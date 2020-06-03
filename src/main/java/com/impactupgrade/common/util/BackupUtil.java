@@ -16,7 +16,7 @@ import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 
 import java.io.File;
-import java.util.Optional;
+import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -53,21 +53,19 @@ public class BackupUtil {
         container.runScriptlet(PathType.CLASSPATH, "salesforce-export-downloader/salesforce-backup.rb");
 
         // should have only downloaded a single zip, so grab the first file
-        Optional<File> f = FileUtils.listFiles(new File("backup-salesforce"), null, false)
-            .stream().findFirst();
+        Collection<File> files = FileUtils.listFiles(new File("backup-salesforce"), null, false);
 
-        if (f.isPresent()) {
-          log.info("uploading {} to Backblaze B2", f.get().getName());
+        // from here on out, closely following example code from
+        // https://github.com/Backblaze/b2-sdk-java/blob/master/samples/src/main/java/com/backblaze/b2/sample/B2Sample.java
 
-          // from here on out, closely following example code from
-          // https://github.com/Backblaze/b2-sdk-java/blob/master/samples/src/main/java/com/backblaze/b2/sample/B2Sample.java
+        B2StorageClient client = B2StorageClientFactory
+            .createDefaultFactory()
+            .create(BACKBLAZE_KEYID, BACKBLAZE_KEY, "impact-upgrade-hub");
 
-          B2StorageClient client = B2StorageClientFactory
-              .createDefaultFactory()
-              .create(BACKBLAZE_KEYID, BACKBLAZE_KEY, "impact-upgrade-hub");
-          B2ContentSource source = B2FileContentSource
-              .builder(f.get())
-              .build();
+        for (File file : files) {
+          log.info("uploading {} to Backblaze B2", file.getName());
+
+          B2ContentSource source = B2FileContentSource.builder(file).build();
 
           final B2UploadListener uploadListener = (progress) -> {
             final double percent = (100. * (progress.getBytesSoFar() / (double) progress.getLength()));
@@ -75,14 +73,12 @@ public class BackupUtil {
           };
 
           B2UploadFileRequest request = B2UploadFileRequest
-              .builder(BACKBLAZE_BUCKETID, "salesforce/" + f.get().getName(), B2ContentTypes.APPLICATION_OCTET, source)
+              .builder(BACKBLAZE_BUCKETID, "salesforce/" + file.getName(), B2ContentTypes.APPLICATION_OCTET, source)
               .setListener(uploadListener)
               .build();
           B2FileVersion upload = client.uploadLargeFile(request, executorService);
 
           log.info("upload complete: {}", upload);
-        } else {
-          log.warn("could not find the downloaded SFDC backup file");
         }
       } catch (Exception e) {
         log.error("SFDC backup failed", e);
