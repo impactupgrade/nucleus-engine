@@ -90,8 +90,4 @@ public class BackupUtil {
     };
     new Thread(thread).start();
   }
-
-  public static void main(String[] args) {
-    backupSFDC("support@tinyhandsintl.org", "}CanXq!m8<c9KVAD4j5GbZwjSeNgclDz0znFFFw1u", "lovejustice.my.salesforce.com");
-  }
 }
