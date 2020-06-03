@@ -8,10 +8,15 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-// TODO: Didn't end up needing this, but leaving it here for future uses. Always rely on existing SDKs first
-// (or create your own open source SDK, like we're doing with hubspot-java-client), but use this as a last-resort
-// to directly call APIs with a raw HTTP client (Jersey)
 public class HttpClient {
+
+  public static String getAsString(String url) {
+    Client client = ClientBuilder.newClient();
+    WebTarget webTarget = client.target(url);
+    Invocation.Builder invocationBuilder = webTarget.request(MediaType.TEXT_PLAIN);
+    Response response = invocationBuilder.get();
+    return response.readEntity(String.class);
+  }
 
   public static <T> Response postXml(T entity, String url, String... paths) {
     return post(MediaType.APPLICATION_XML, entity, url, paths);
