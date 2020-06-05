@@ -27,10 +27,10 @@ public class EmailUtil {
   }
 
 
-  public static void sendEmail(String subject, String body, String to) throws MessagingException {
+  public static void sendEmail(String subject, String body, String to, String from) throws MessagingException {
     Session session = Session.getInstance(props, null);
     Message msg = new MimeMessage(session);
-    msg.setFrom(new InternetAddress("support@lovejustice.ngo"));
+    msg.setFrom(new InternetAddress(from));
     msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to, false));
     msg.setSubject(subject);
     msg.setText(body);
