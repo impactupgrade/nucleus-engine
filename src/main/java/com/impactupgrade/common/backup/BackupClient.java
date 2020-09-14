@@ -1,4 +1,4 @@
-package com.impactupgrade.common.util;
+package com.impactupgrade.common.backup;
 
 import com.backblaze.b2.client.B2StorageClient;
 import com.backblaze.b2.client.B2StorageClientFactory;
@@ -20,9 +20,9 @@ import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class BackupUtil {
+public class BackupClient {
 
-  private static final Logger log = LogManager.getLogger(BackupUtil.class);
+  private static final Logger log = LogManager.getLogger(BackupClient.class);
 
   private static final String BACKBLAZE_KEYID = System.getenv("BACKBLAZE.KEYID");
   private static final String BACKBLAZE_KEY = System.getenv("BACKBLAZE.KEY");
