@@ -9,6 +9,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
@@ -36,6 +37,7 @@ public abstract class App {
 
     // API/REST (Jersey)
     ResourceConfig resourceConfig = new ResourceConfig();
+    resourceConfig.register(MultiPartFeature.class);
     registerServices(resourceConfig);
     applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
 
