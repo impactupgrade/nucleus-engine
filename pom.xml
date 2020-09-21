@@ -7,11 +7,11 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>hub-parent</artifactId>
-    <version>1.0.3.Final</version>
+    <version>1.0.5.Final</version>
   </parent>
 
   <artifactId>hub-common</artifactId>
-  <version>1.1.2-SNAPSHOT</version>
+  <version>1.1.2.Final</version>
 
   <!--
       Using https://gitlab.com/impact-upgrade/maven-repo as a private repo. Assumes you have the following in your ~/.m2/settings.xml:
