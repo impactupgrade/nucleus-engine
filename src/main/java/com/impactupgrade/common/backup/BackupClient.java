@@ -24,9 +24,9 @@ public class BackupClient {
 
   private static final Logger log = LogManager.getLogger(BackupClient.class);
 
-  private static final String BACKBLAZE_KEYID = System.getenv("BACKBLAZE.KEYID");
-  private static final String BACKBLAZE_KEY = System.getenv("BACKBLAZE.KEY");
-  private static final String BACKBLAZE_BUCKETID = System.getenv("BACKBLAZE.BUCKETID");
+  private static final String BACKBLAZE_KEYID = System.getenv("BACKBLAZE_KEYID");
+  private static final String BACKBLAZE_KEY = System.getenv("BACKBLAZE_KEY");
+  private static final String BACKBLAZE_BUCKETID = System.getenv("BACKBLAZE_BUCKETID");
 
   /**
    * Backup SFDC using a mix of https://github.com/carojkov/salesforce-export-downloader and

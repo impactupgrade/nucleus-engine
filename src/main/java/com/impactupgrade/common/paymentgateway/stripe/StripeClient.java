@@ -6,12 +6,12 @@ import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class AbstractStripeClient {
+public class StripeClient {
 
-  private static final Logger log = LogManager.getLogger(AbstractStripeClient.class.getName());
+  private static final Logger log = LogManager.getLogger(StripeClient.class.getName());
 
   static {
-    Stripe.apiKey = System.getenv("STRIPE.KEY");
+    Stripe.apiKey = System.getenv("STRIPE_KEY");
   }
 
   public static void cancelSubscription(String subscriptionId) throws StripeException {
