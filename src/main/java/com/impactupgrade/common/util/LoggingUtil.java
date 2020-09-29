@@ -14,6 +14,8 @@ public class LoggingUtil {
    * @param s
    * @param params
    */
+  // TODO: Passing in a logger was intended to make use of the caller's classname in logs, but that doesn't
+  // appear to be happening...
   public static void verbose(Logger log, String s, Object... params) {
     if (VERBOSE) log.info(s, params);
   }
