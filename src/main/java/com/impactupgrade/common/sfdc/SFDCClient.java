@@ -58,27 +58,30 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   private static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName";
+  // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
+  // this should be config driven!
+  public static String CUSTOM_CONTACT_FIELDS = "";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
-    String query = "select " + CONTACT_FIELDS + " from contact where id = '" + contactId + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where id = '" + contactId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
   public List<SObject> getContactsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + CONTACT_FIELDS + " from contact where accountId = '" + accountId + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where accountId = '" + accountId + "'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
   public List<SObject> getContactsByEmail(String email) throws ConnectionException, InterruptedException {
-    String query = "select " + CONTACT_FIELDS + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
   public List<SObject> getContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
-    String query = "select " + CONTACT_FIELDS + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
@@ -117,5 +120,13 @@ public class SFDCClient extends SFDCPartnerAPIClient {
     sObject.setId(saveResult.getId());
 
     return saveResult;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // INTERNAL
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private String getFieldsList(String list, String customList) {
+    return customList.length() > 0 ? list + ", " + customList : list;
   }
 }

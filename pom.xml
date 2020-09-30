@@ -11,7 +11,7 @@
   </parent>
 
   <artifactId>hub-common</artifactId>
-  <version>2.0.1-SNAPSHOT</version>
+  <version>2.0.1.Final</version>
 
   <!--
       Using https://gitlab.com/impact-upgrade/maven-repo as a private repo. Assumes you have the following in your ~/.m2/settings.xml:
