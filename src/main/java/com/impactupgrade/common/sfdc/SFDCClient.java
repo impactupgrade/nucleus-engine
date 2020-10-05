@@ -1,5 +1,6 @@
 package com.impactupgrade.common.sfdc;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.common.util.LoggingUtil;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.sforce.soap.partner.SaveResult;
@@ -8,8 +9,11 @@ import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SFDCClient extends SFDCPartnerAPIClient {
 
@@ -47,8 +51,13 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  private static final String ACCOUNT_FIELDS = "id, OwnerId, name, email__c, phone, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c";
+  // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
+  // this should be config driven!
+  public static String CUSTOM_ACCOUNT_FIELDS = "";
+
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select id, OwnerId from account where id = '" + accountId + "'";
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, CUSTOM_ACCOUNT_FIELDS) + " from account where id = '" + accountId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
@@ -57,33 +66,161 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName";
+  private static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingStateCode, account.BillingCountry, account.BillingCountryCode, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
   // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
   // this should be config driven!
   public static String CUSTOM_CONTACT_FIELDS = "";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where id = '" + contactId + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where id = '" + contactId + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
   public List<SObject> getContactsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where accountId = '" + accountId + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where accountId = '" + accountId + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
+  public Optional<SObject> getContactByEmail(String email) throws ConnectionException, InterruptedException {
+    String query = "select " + CONTACT_FIELDS + " from contact where email = '" + email + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
+
   public List<SObject> getContactsByEmail(String email) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "'";
+    if (Strings.isNullOrEmpty(email)){
+      return Collections.emptyList();
+    }
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
   public List<SObject> getContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
+  }
+
+  public List<SObject> getDupContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
+    if (Strings.isNullOrEmpty(firstName) && Strings.isNullOrEmpty(lastName)){
+      return Collections.emptyList();
+    }
+
+    List<SObject> contacts = Collections.emptyList();
+
+    if (!Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
+      String query = "select " + CONTACT_FIELDS + " from contact where firstname = '" + firstName + "' AND lastname = '" + lastName + "'";
+      LoggingUtil.verbose(log, query);
+      contacts = queryList(query);
+    }
+    if (contacts.isEmpty()) {
+      String query = "select " + CONTACT_FIELDS + " from contact where lastname = '" + lastName + "'";
+      LoggingUtil.verbose(log, query);
+      contacts = queryList(query);
+    }
+
+    return contacts;
+  }
+
+  public List<SObject> getDupContactsByPhone(String phone) throws ConnectionException, InterruptedException {
+    if (Strings.isNullOrEmpty(phone)){
+      return Collections.emptyList();
+    }
+
+    // TODO: Will need to rework this section for international support
+    StringBuilder query = new StringBuilder("select " + CONTACT_FIELDS + " from contact where ");
+    phone = phone.replaceAll("[\\D.]", "");
+    if (phone.matches("\\d{10}")){
+      String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
+      query
+          .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+          .append(" OR HomePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+          .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
+      LoggingUtil.verbose(log, query.toString());
+      return queryList(query.toString());
+    } else if (phone.matches("\\d{11}")) {
+      String[] phoneArr = {phone.substring(0, 1), phone.substring(1, 4), phone.substring(4, 7), phone.substring(7, 11)};
+      query
+          .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'")
+          .append(" OR HomePhone LIKE '").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'")
+          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'")
+          .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'");
+      LoggingUtil.verbose(log, query.toString());
+      return queryList(query.toString());
+    } else {
+      return Collections.emptyList();
+    }
+  }
+
+  public List<SObject> getDupContactsByAddress(String street, String city, String state, String zip, String country) throws ConnectionException, InterruptedException {
+    if (Strings.isNullOrEmpty(street)){
+      return Collections.emptyList();
+    }
+
+    // TODO: Test and make sure this format actually works for a variety of addresses, or if we need to try several
+    String address = street + ", " + city + ", " + state + " " + zip + ", " + country;
+    LoggingUtil.verbose(log, address);
+    String query = "select " + CONTACT_FIELDS + " from contact where npe01__Home_Address__c LIKE '" + street + "%'";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
+  public List<SObject> searchContacts(String searchParam) throws ConnectionException, InterruptedException {
+    searchParam = searchParam.replaceAll("\\s+", " ").trim();
+    List<String> segments = Arrays.asList(searchParam.split(" "));
+
+    String clauses = segments.stream()
+        .map(segment -> {
+          // Note: default to NULL as a simple means of ensuring the phone number searches don't return any results...
+          String possiblePhoneNumber = segment.replaceAll("\\D+", "").isEmpty()
+              ? "NULL" : segment.replaceAll("\\D+", "");
+
+          return "lastname LIKE '" + segment + "%'" +
+              " OR firstname LIKE '" + segment + "%'" +
+              " OR email LIKE '%" + segment + "%'" +
+              " OR npe01__Home_Address__c LIKE '%" + segment + "%'" +
+              " OR phone LIKE '%" + possiblePhoneNumber + "%'" +
+              " OR MobilePhone LIKE '%" + possiblePhoneNumber + "%'" +
+              " OR HomePhone LIKE '%" + possiblePhoneNumber + "%'" +
+              " OR OtherPhone LIKE '%" + possiblePhoneNumber + "%'";
+        })
+        .collect(Collectors.joining(") AND (","(",")"));
+
+    String query = "select " + CONTACT_FIELDS + " from contact where " + clauses + " ORDER BY account.name, name";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // DONATIONS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private static final String DONATION_FIELDS = "id, AccountId, amount, name, RecordTypeId, Campaign_Name__c, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
+  // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
+  // this should be config driven!
+  public static String CUSTOM_DONATION_FIELDS = "";
+
+  public List<SObject> getDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from Opportunity where accountid = '" + accountId + "' AND StageName != 'Pledged' ORDER BY CloseDate DESC";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
+  public List<SObject> getFailingDonationsLastMonthByAccountId(String accountId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, CUSTOM_DONATION_FIELDS) + " from Opportunity where stageName = 'Failed Attempt' AND CloseDate = LAST_MONTH AND AccountId = '" + accountId + "'";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
+  public Optional<SObject> getLatestPostedDonation(String recurringDonationId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, CUSTOM_DONATION_FIELDS) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' and stageName = 'Posted' order by CloseDate desc limit 1";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,8 +234,46 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // RECURRING DONATIONS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npsp__InstallmentFrequency__c";
+  // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
+  // this should be config driven!
+  public static String CUSTOM_RECURRINGDONATION_FIELDS = "";
+
+  public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, CUSTOM_RECURRINGDONATION_FIELDS) + " from npe03__Recurring_Donation__c where id='" + id + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
+
+  public List<SObject> getRecurringDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, CUSTOM_RECURRINGDONATION_FIELDS) + " from npe03__Recurring_Donation__c where (npe03__Open_Ended_Status__c != 'Closed' or paused_status__c != '') and npe03__Organization__c" + " = '" + accountId + "'";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private static final String USER_FIELDS = "id, firstName, lastName, email, phone";
+  // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
+  // this should be config driven!
+  public static String CUSTOM_USER_FIELDS = "";
+
+  public Optional<SObject> getUserById(String userId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(USER_FIELDS, CUSTOM_USER_FIELDS) + " from user where id = '" + userId + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
+
+  public Optional<SObject> getUserByEmail(String email) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(USER_FIELDS, CUSTOM_USER_FIELDS) + " from user where isActive = true and email = '" + email + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
 
   /**
    * Use with caution, it retrieves ALL active users. Unsuitable for orgs with many users.
