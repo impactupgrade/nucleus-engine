@@ -30,20 +30,20 @@
 
       Create your own token following https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token
   -->
-<!--  <repositories>-->
-<!--    <repository>-->
-<!--      <id>gitlab-maven</id>-->
-<!--      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>-->
-<!--    </repository>-->
-<!--  </repositories>-->
-<!--  <distributionManagement>-->
-<!--    <repository>-->
-<!--      <id>gitlab-maven</id>-->
-<!--      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>-->
-<!--    </repository>-->
-<!--    <snapshotRepository>-->
-<!--      <id>gitlab-maven</id>-->
-<!--      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>-->
-<!--    </snapshotRepository>-->
-<!--  </distributionManagement>-->
+  <repositories>
+    <repository>
+      <id>gitlab-maven</id>
+      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>
+    </repository>
+  </repositories>
+  <distributionManagement>
+    <repository>
+      <id>gitlab-maven</id>
+      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>
+    </repository>
+    <snapshotRepository>
+      <id>gitlab-maven</id>
+      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>
