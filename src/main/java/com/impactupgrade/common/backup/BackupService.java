@@ -15,14 +15,22 @@ import org.apache.logging.log4j.Logger;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.core.Response;
 import java.io.File;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class BackupClient {
+@Path("/backup")
+public class BackupService {
 
-  private static final Logger log = LogManager.getLogger(BackupClient.class);
+  private static final Logger log = LogManager.getLogger(BackupService.class);
+
+  private static final String SFDC_USERNAME = System.getenv("SFDC_USERNAME");
+  private static final String SFDC_PASSWORD = System.getenv("SFDC_PASSWORD");
+  private static final String SFDC_URL = System.getenv("SFDC_URL");
 
   private static final String BACKBLAZE_KEYID = System.getenv("BACKBLAZE_KEYID");
   private static final String BACKBLAZE_KEY = System.getenv("BACKBLAZE_KEY");
@@ -32,7 +40,11 @@ public class BackupClient {
    * Backup SFDC using a mix of https://github.com/carojkov/salesforce-export-downloader and
    * https://github.com/Backblaze/b2-sdk-java.
    */
-  public static void backupSFDC(String sfdcUsername, String sfdcPassword, String sfdcUrl) {
+  @GET
+  @Path("/weekly")
+  public Response weekly() {
+    log.info("backing up all platforms");
+
     // some of the tasks (like Backblaze B2) can multi-thread and process in parallel, so create
     // an executor pool for the whole setup to run off of
     final ExecutorService executorService = Executors.newFixedThreadPool(
@@ -47,9 +59,9 @@ public class BackupClient {
 
         // using jruby to kick off the ruby script -- see https://github.com/carojkov/salesforce-export-downloader
         ScriptingContainer container = new ScriptingContainer();
-        container.getEnvironment().put("SFDC_USERNAME", sfdcUsername);
-        container.getEnvironment().put("SFDC_PASSWORD", sfdcPassword);
-        container.getEnvironment().put("SFDC_URL", sfdcUrl);
+        container.getEnvironment().put("SFDC_USERNAME", SFDC_USERNAME);
+        container.getEnvironment().put("SFDC_PASSWORD", SFDC_PASSWORD);
+        container.getEnvironment().put("SFDC_URL", SFDC_URL);
         container.runScriptlet(PathType.CLASSPATH, "salesforce-export-downloader/salesforce-backup.rb");
 
         // should have only downloaded a single zip, so grab the first file
@@ -85,5 +97,7 @@ public class BackupClient {
       }
     };
     new Thread(thread).start();
+
+    return Response.ok().build();
   }
 }
