@@ -4,8 +4,14 @@ import com.google.common.base.Strings;
 import com.impactupgrade.common.security.SecurityUtil;
 import com.impactupgrade.common.util.GoogleSheetsUtil;
 import com.sforce.soap.partner.sobject.SObject;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -16,9 +22,16 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Path("/sfdc")
 public class SFDCService {
@@ -26,6 +39,8 @@ public class SFDCService {
   private static final Logger log = LogManager.getLogger(SFDCService.class.getName());
 
   private static final SFDCClient sfdcClient = new SFDCClient();
+  private static final SFDCMetadataClient sfdcMetadataClient = new SFDCMetadataClient();
+  private static final SFDCBulkClient sfdcBulkClient = new SFDCBulkClient();
 
   /**
    * Bulk update records using the given GSheet.
@@ -127,5 +142,172 @@ public class SFDCService {
       System.out.println(sObject);
       sfdcClient.batchUpdate(sObject);
     }
+  }
+
+  /**
+   * Adding a new value to custom picklists involves adding it to the picklist itself, then enabling the new value
+   * across all Account/Contact/Donation/RecurringDonation/Campaign record types. This endpoint automates the entire
+   * process, end to end.
+   */
+  @Path("/picklist")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response addValueToPicklist(
+      @FormParam("globalPicklistApiName") String globalPicklistApiName,
+      @FormParam("value") String newValue,
+      @FormParam("recordTypeFieldApiNames") List<String> recordTypeFieldApiNames,
+      @Context HttpServletRequest request
+  ) {
+    SecurityUtil.verifyApiKey(request);
+
+    // takes a while, so spin it off as a new thread
+    Runnable thread = () -> {
+      try {
+        sfdcMetadataClient.addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
+        log.info("FINISHED: {}", globalPicklistApiName);
+      } catch (Exception e) {
+        log.error("{} failed", globalPicklistApiName, e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
+  /**
+   * Imports a new iWave export file into SFDC.
+   */
+  @Path("/iwave")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response iwave(
+      @FormDataParam("file") File file,
+      @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @Context HttpServletRequest request
+  ) {
+    SecurityUtil.verifyApiKey(request);
+
+    // takes a while, so spin it off as a new thread
+    Runnable thread = () -> {
+      try {
+        // Unfortunately, the iWave CSV exports do not include SF identifiers, only email. So we must first retrieve
+        // all contacts by email and insert their SF IDs into the CSV.
+
+        java.nio.file.Path combinedFile = File.createTempFile("iwave_import.csv", null).toPath();
+
+        try (
+            CSVParser csvParser = CSVParser.parse(
+                file,
+                Charset.defaultCharset(),
+                CSVFormat.DEFAULT
+                    .withFirstRecordAsHeader()
+                    .withIgnoreHeaderCase()
+                    .withTrim()
+            );
+
+            BufferedWriter writer = Files.newBufferedWriter(combinedFile);
+
+            CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(
+                "Id",
+                "Date Scored",
+                "Profile ID",
+                "Profile URL",
+                "iWave Score",
+                "Propensity Rating",
+                "Affinity Rating",
+                "Primary Affinity Rating",
+                "Secondary Affinity Rating",
+                "Capacity Rating",
+                "Est. Capacity Value",
+                "Capacity Range",
+                "Est. Capacity Source",
+                "Planned Giving Bequest",
+                "Planned Giving Annuity",
+                "Planned Giving Trust",
+                "RFM Score",
+                "RFM Recency Rating",
+                "RFM Frequency Rating",
+                "RFM Monetary Rating"
+            ));
+        ) {
+          int counter = 1; // let the loop start with 2 to account for the CSV header
+          for (CSVRecord csvRecord : csvParser) {
+            String email = csvRecord.get("Email");
+            log.info("processing row {}: {}", counter++, email);
+
+            if (!Strings.isNullOrEmpty(email)) {
+              Optional<SObject> contact = sfdcClient.getContactByEmail(email);
+              if (contact.isPresent()) {
+                // SF expects date in yyyy-MM-dd'T'HH:mm:ss.SSS'Z, but iWave gives yyyy-MM-dd HH:mm
+                Date date = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(csvRecord.get("Date Scored"));
+
+                csvPrinter.printRecord(
+                    contact.get().getId(),
+                    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(date),
+                    csvRecord.get("Profile ID"),
+                    csvRecord.get("Profile URL"),
+                    csvRecord.get("iWave Score"),
+                    csvRecord.get("Propensity Rating"),
+                    csvRecord.get("Affinity Rating"),
+                    csvRecord.get("Primary Affinity Rating"),
+                    csvRecord.get("Secondary Affinity Rating"),
+                    csvRecord.get("Capacity Rating"),
+                    csvRecord.get("Est. Capacity Value"),
+                    csvRecord.get("Capacity Range"),
+                    csvRecord.get("Est. Capacity Source"),
+                    csvRecord.get("Planned Giving Bequest"),
+                    csvRecord.get("Planned Giving Annuity"),
+                    csvRecord.get("Planned Giving Trust"),
+                    csvRecord.get("RFM Score"),
+                    csvRecord.get("RFM Recency Rating"),
+                    csvRecord.get("RFM Frequency Rating"),
+                    csvRecord.get("RFM Monetary Rating")
+                );
+              } else {
+                log.warn("Could not find contact: {}", email);
+              }
+            }
+          }
+        }
+
+        sfdcBulkClient.uploadIWaveFile(combinedFile.toFile());
+        log.info("FINISHED: iwave");
+      } catch (Exception e) {
+        log.error("iwave update failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
+  /**
+   * Imports a new Windfall CSV file into SFDC.
+   */
+  @Path("/windfall")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response windfall(
+      @FormDataParam("file") File file,
+      @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @Context HttpServletRequest request
+  ) {
+    SecurityUtil.verifyApiKey(request);
+
+    // takes a while, so spin it off as a new thread
+    Runnable thread = () -> {
+      try {
+        sfdcBulkClient.uploadWindfallFile(file);
+        log.info("FINISHED: windfall");
+      } catch (Exception e) {
+        log.error("Windfall update failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
   }
 }

@@ -75,7 +75,7 @@ public class SFDCMetadataClient {
 	 * @param newValue
 	 * @throws ConnectionException
 	 */
-	public void addValueToPicklist(String globalPicklistApiName, String newValue, String... recordTypeFieldApiNames) throws ConnectionException {
+	public void addValueToPicklist(String globalPicklistApiName, String newValue, List<String> recordTypeFieldApiNames) throws ConnectionException {
 		log.info("adding {} {}", globalPicklistApiName, newValue);
 
 		MetadataConnection metadataConn = metadataConn();
@@ -124,7 +124,7 @@ public class SFDCMetadataClient {
 					// find the picklist
 					for (RecordTypePicklistValue picklist : recordType.getPicklistValues()) {
 						// important to use contains and not equals here, as the name isn't 100% consistent across the RecordTypes
-						if (Arrays.stream(recordTypeFieldApiNames).anyMatch(s -> picklist.getPicklist().contains(s))) {
+						if (recordTypeFieldApiNames.stream().anyMatch(s -> picklist.getPicklist().contains(s))) {
 							if (Arrays.stream(picklist.getValues()).anyMatch(value -> value.getFullName().equals(newValue))) {
 								log.info("{} {} already in record type {}/{}; skipping...", globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
 							} else {
