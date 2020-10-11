@@ -71,7 +71,7 @@ public class SFDCBulkClient {
   public void uploadWindfallFile(File contactFile) throws AsyncApiException, ConnectionException, IOException {
     try (
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("com/impactupgrade/sfdc/windfall/spec.csv");
+            .getResourceAsStream("com/impactupgrade/common/sfdc/windfall/spec.csv");
         InputStream contactFileInputStream = new FileInputStream(contactFile)
     ) {
       BulkConnection bulkConn = bulkConn();
@@ -81,6 +81,25 @@ public class SFDCBulkClient {
       uploadSpec(job, specFileInputStream, bulkConn);
 
       List<BatchInfo> fileUpload = createBatchesFromCSVFile(job, contactFileInputStream, bulkConn);
+      closeJob(job.getId(), bulkConn);
+      awaitCompletion(job, fileUpload, bulkConn);
+      checkResults(job, fileUpload, bulkConn);
+    }
+  }
+
+  public void uploadIWaveFile(File iwaveFile) throws AsyncApiException, ConnectionException, IOException {
+    try (
+        InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
+            .getResourceAsStream("com/impactupgrade/common/sfdc/iwave/spec.csv");
+        InputStream iwaveFileInputStream = new FileInputStream(iwaveFile)
+    ) {
+      BulkConnection bulkConn = bulkConn();
+
+      JobInfo job = createJob("Contact", OperationEnum.update, bulkConn);
+
+      uploadSpec(job, specFileInputStream, bulkConn);
+
+      List<BatchInfo> fileUpload = createBatchesFromCSVFile(job, iwaveFileInputStream, bulkConn);
       closeJob(job.getId(), bulkConn);
       awaitCompletion(job, fileUpload, bulkConn);
       checkResults(job, fileUpload, bulkConn);
