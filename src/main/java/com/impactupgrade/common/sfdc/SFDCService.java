@@ -99,7 +99,7 @@ public class SFDCService {
 
   private void bulkUpdate(String type, Map<String, String> row, Map<String, String> userNameToId,
       String optionalFieldColumnName) throws InterruptedException {
-    String id = row.get(type + " ID");
+    String id = row.get(type + " ID").trim();
     if (Strings.nullToEmpty(id).trim().isEmpty()) {
       // TODO: if ID is not included, support first retrieving by name, etc.
       log.warn("blank ID; did not {}}", type);
@@ -107,7 +107,7 @@ public class SFDCService {
       SObject sObject = new SObject(type);
       sObject.setId(id);
 
-      String newOwner = row.get("New " + type + " Owner");
+      String newOwner = row.get("New " + type + " Owner").trim();
       if (!Strings.nullToEmpty(newOwner).trim().isEmpty()) {
         String newOwnerId = userNameToId.get(newOwner);
         if (newOwnerId == null) {
@@ -119,8 +119,8 @@ public class SFDCService {
 
       // If an optional field was provided, the column name will be Type + Field name. Ex: "Account Top_Donor__c".
       // Make sure the column name starts with the SObject type we're working with!
-      if (optionalFieldColumnName.startsWith(type)) {
-        String optionalFieldValue = row.get(optionalFieldColumnName);
+      if (optionalFieldColumnName != null && optionalFieldColumnName.startsWith(type)) {
+        String optionalFieldValue = row.get(optionalFieldColumnName).trim();
         if (!Strings.nullToEmpty(optionalFieldValue).trim().isEmpty()) {
           // strip the type from the beginning
           String field = optionalFieldColumnName.replace(type + " ", "");
