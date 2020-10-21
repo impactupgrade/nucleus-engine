@@ -1,28 +1,24 @@
 package com.impactupgrade.common.sfdc;
 
-import com.sforce.async.AsyncApiException;
-import com.sforce.async.BatchInfo;
-import com.sforce.async.BatchStateEnum;
-import com.sforce.async.BulkConnection;
-import com.sforce.async.CSVReader;
-import com.sforce.async.ContentType;
-import com.sforce.async.JobInfo;
-import com.sforce.async.JobStateEnum;
-import com.sforce.async.OperationEnum;
+import com.sforce.async.*;
 import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -59,9 +55,69 @@ public class SFDCBulkClient {
     return new BulkConnection(bulkConfig);
   }
 
+  public void ownerTransfer(String oldOwnerId, String newOwnerId, String object, String... whereClauses)
+      throws ConnectionException, AsyncApiException, IOException {
+    String query = "SELECT Id, OwnerId FROM " + object + " WHERE OwnerId='" + oldOwnerId + "'";
+    for (String whereClause : whereClauses) {
+      query += " AND " + whereClause;
+    }
+
+    log.info("retrieving all {} records to transfer; bulk query: {}", object, query);
+
+    try (
+        ByteArrayInputStream queryIS = new ByteArrayInputStream(query.getBytes());
+        InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
+            .getResourceAsStream("com/impactupgrade/common/sfdc/ownertransfer_spec.csv")
+    ) {
+      BulkConnection bulkConn = bulkConn();
+
+      JobInfo queryJob = createJob(object, OperationEnum.query, bulkConn);
+      BatchInfo queryBatchInfo = bulkConn.createBatchFromStream(queryJob, queryIS);
+      closeJob(queryJob.getId(), bulkConn);
+      awaitCompletion(queryJob, queryBatchInfo, bulkConn);
+
+      QueryResultList queryResultList = bulkConn.getQueryResultList(queryJob.getId(), queryBatchInfo.getId());
+      String[] queryResults = queryResultList.getResult();
+      for (int i = 0; i < queryResults.length; i++) {
+        log.info("processing query result set {} of {}", i+1, queryResults.length);
+        String queryResultId = queryResults[i];
+
+        InputStream queryResultIS = null;
+        InputStream newOwnerIS = null;
+
+        try {
+          // TODO: I'm assuming each one of the results contains the CSV header, and can therefore be run
+          // as independent chunks!
+          queryResultIS = bulkConn.getQueryResultStream(queryJob.getId(), queryBatchInfo.getId(), queryResultId);
+          String queryResult = IOUtils.toString(queryResultIS, StandardCharsets.UTF_8);
+          // TODO: SHOULD be ok for now, but may need to switch to a streaming setup to preserve memory for huge sets...
+          queryResult = queryResult.replaceAll(oldOwnerId, newOwnerId);
+
+          newOwnerIS = IOUtils.toInputStream(queryResult, StandardCharsets.UTF_8);
+
+          JobInfo updateJob = createJob(object, OperationEnum.update, bulkConn);
+
+          uploadSpec(updateJob, specFileInputStream, bulkConn);
+
+          List<BatchInfo> fileUpload = createBatchesFromCSV(updateJob, newOwnerIS, bulkConn);
+          closeJob(updateJob.getId(), bulkConn);
+          awaitCompletion(updateJob, fileUpload, bulkConn);
+          checkUploadResults(updateJob, fileUpload, bulkConn);
+        } finally {
+          if (newOwnerIS != null) {
+            newOwnerIS.close();
+          }
+          if (queryResultIS != null) {
+            queryResultIS.close();
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Upload the given contactFile (InputStream of a Windfall CSV) through the SFDC Bulk API, including our
-   * customized spec.csv which provides CSV->SFDC field mappings.
+   * customized iwave_spec.csv which provides CSV->SFDC field mappings.
    *
    * @param contactFile
    * @throws AsyncApiException
@@ -71,7 +127,7 @@ public class SFDCBulkClient {
   public void uploadWindfallFile(File contactFile) throws AsyncApiException, ConnectionException, IOException {
     try (
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("com/impactupgrade/common/sfdc/windfall/spec.csv");
+            .getResourceAsStream("com/impactupgrade/common/sfdc/windfall_spec.csv");
         InputStream contactFileInputStream = new FileInputStream(contactFile)
     ) {
       BulkConnection bulkConn = bulkConn();
@@ -80,17 +136,17 @@ public class SFDCBulkClient {
 
       uploadSpec(job, specFileInputStream, bulkConn);
 
-      List<BatchInfo> fileUpload = createBatchesFromCSVFile(job, contactFileInputStream, bulkConn);
+      List<BatchInfo> fileUpload = createBatchesFromCSV(job, contactFileInputStream, bulkConn);
       closeJob(job.getId(), bulkConn);
       awaitCompletion(job, fileUpload, bulkConn);
-      checkResults(job, fileUpload, bulkConn);
+      checkUploadResults(job, fileUpload, bulkConn);
     }
   }
 
   public void uploadIWaveFile(File iwaveFile) throws AsyncApiException, ConnectionException, IOException {
     try (
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("com/impactupgrade/common/sfdc/iwave/spec.csv");
+            .getResourceAsStream("com/impactupgrade/common/sfdc/iwave_spec.csv");
         InputStream iwaveFileInputStream = new FileInputStream(iwaveFile)
     ) {
       BulkConnection bulkConn = bulkConn();
@@ -99,10 +155,10 @@ public class SFDCBulkClient {
 
       uploadSpec(job, specFileInputStream, bulkConn);
 
-      List<BatchInfo> fileUpload = createBatchesFromCSVFile(job, iwaveFileInputStream, bulkConn);
+      List<BatchInfo> fileUpload = createBatchesFromCSV(job, iwaveFileInputStream, bulkConn);
       closeJob(job.getId(), bulkConn);
       awaitCompletion(job, fileUpload, bulkConn);
-      checkResults(job, fileUpload, bulkConn);
+      checkUploadResults(job, fileUpload, bulkConn);
     }
   }
 
@@ -114,7 +170,7 @@ public class SFDCBulkClient {
   /**
    * Gets the results of the operation and checks for errors.
    */
-  private void checkResults(JobInfo job, List<BatchInfo> batchInfoList, BulkConnection bulkConn)
+  private void checkUploadResults(JobInfo job, List<BatchInfo> batchInfoList, BulkConnection bulkConn)
       throws AsyncApiException, IOException {
     // batchInfoList was populated when batches were created and submitted
     for (BatchInfo b : batchInfoList) {
@@ -149,6 +205,10 @@ public class SFDCBulkClient {
     bulkConn.updateJob(job);
   }
 
+  private void awaitCompletion(JobInfo job, BatchInfo batchInfo, BulkConnection bulkConn) throws AsyncApiException {
+    awaitCompletion(job, Collections.singletonList(batchInfo), bulkConn);
+  }
+
   /**
    * Wait for a job to complete by polling the Bulk API.
    *
@@ -159,7 +219,7 @@ public class SFDCBulkClient {
    * @throws AsyncApiException
    */
   private void awaitCompletion(JobInfo job, List<BatchInfo> batchInfoList, BulkConnection bulkConn)
-      throws AsyncApiException {
+          throws AsyncApiException {
     long sleepTime = 0L;
     Set<String> incomplete = new HashSet<>();
     for (BatchInfo bi : batchInfoList) {
@@ -208,19 +268,19 @@ public class SFDCBulkClient {
    *
    * @param jobInfo
    *            Job associated with new batches
-   * @param csvFile
+   * @param csv
    *            The source file for batch data
    */
-  private List<BatchInfo> createBatchesFromCSVFile(JobInfo jobInfo, InputStream csvFile, BulkConnection bulkConn)
-      throws IOException, AsyncApiException, ConnectionException {
+  private List<BatchInfo> createBatchesFromCSV(JobInfo jobInfo, InputStream csv, BulkConnection bulkConn)
+      throws IOException, AsyncApiException {
     List<BatchInfo> batchInfos = new ArrayList<BatchInfo>();
     BufferedReader rdr = new BufferedReader(
-        new InputStreamReader(csvFile)
+        new InputStreamReader(csv)
     );
     // read the CSV header row
     byte[] headerBytes = (rdr.readLine() + "\n").getBytes("UTF-8");
     int headerBytesLength = headerBytes.length;
-    File tmpFile = File.createTempFile("bulkAPIInsert", ".csv");
+    File tmpFile = File.createTempFile("bulkAPIUpdate", ".csv");
 
     // Split the CSV file into multiple batches
     try {
@@ -282,5 +342,12 @@ public class SFDCBulkClient {
       log.info(batchInfo);
       batchInfos.add(batchInfo);
     }
+  }
+
+  public static void main(String[] args) throws ConnectionException, InterruptedException, AsyncApiException, IOException {
+//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Account");
+//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Contact");
+//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "npe03__Recurring_Donation__c", "npe03__Open_Ended_Status__c='Open'");
+//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Opportunity", "StageName='Pledged'");
   }
 }
