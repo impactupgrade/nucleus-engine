@@ -3,6 +3,7 @@ package com.impactupgrade.common.paymentgateway.stripe;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.paymentgateway.PaymentGatewayEvent;
 import com.impactupgrade.common.util.LoggingUtil;
+import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
@@ -22,6 +23,10 @@ import java.util.Optional;
 public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
 
   private static final Logger log = LogManager.getLogger(AbstractStripeService.class);
+
+  static {
+    Stripe.apiKey = System.getenv("STRIPE_KEY");
+  }
 
   protected Response webhook(String json, T paymentGatewayEvent) {
     LoggingUtil.verbose(log, json);
