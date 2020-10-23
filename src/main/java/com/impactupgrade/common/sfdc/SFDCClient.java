@@ -73,7 +73,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   public static String CUSTOM_DEFAULT_CAMPAIGN_ID = "";
 
   public Optional<SObject> getCampaignById(String campaignId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from campaign where id = '" + campaignId + "'";
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, CUSTOM_CAMPAIGN_FIELDS) + " from campaign where id = '" + campaignId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
