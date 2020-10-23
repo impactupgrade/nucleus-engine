@@ -119,7 +119,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   }
 
   public Optional<SObject> getContactByEmail(String email) throws ConnectionException, InterruptedException {
-    String query = "select " + CONTACT_FIELDS + " from contact where email = '" + email + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, CUSTOM_CONTACT_FIELDS) + " from contact where email = '" + email + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
