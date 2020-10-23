@@ -6,6 +6,7 @@ import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
+import com.stripe.model.Plan;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 
@@ -158,8 +159,9 @@ public class PaymentGatewayEvent {
     // Stripe is in cents
     // TODO: currency conversion support? This is eventually updated as charges are received, but for brand new ones
     // with a trial, this could throw off future forecasting!
-    subscriptionAmountInDollars = stripeSubscription.getPlan().getAmount() / 100.0;
-    subscriptionCurrency = stripeSubscription.getPlan().getCurrency();
+    Plan plan = stripeSubscription.getItems().getData().get(0).getPlan();
+    subscriptionAmountInDollars = plan.getAmount() / 100.0;
+    subscriptionCurrency = plan.getCurrency();
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,

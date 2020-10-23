@@ -20,6 +20,13 @@
       <artifactId>commons-csv</artifactId>
       <version>1.8</version>
     </dependency>
+
+    <!-- TODO: update in hub-parent -->
+    <dependency>
+      <groupId>com.stripe</groupId>
+      <artifactId>stripe-java</artifactId>
+      <version>20.20.0</version>
+    </dependency>
   </dependencies>
 
   <!--

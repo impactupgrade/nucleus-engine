@@ -6,6 +6,7 @@ import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.Subscription;
+import com.stripe.param.CustomerRetrieveParams;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,7 +37,10 @@ public class StripeClient {
   }
 
   public static Customer getCustomer(String id) throws StripeException {
-    return Customer.retrieve(id);
+    CustomerRetrieveParams customerParams = CustomerRetrieveParams.builder()
+        .addExpand("sources")
+        .build();
+    return Customer.retrieve(id, customerParams, null);
   }
 
   public static void cancelSubscription(String subscriptionId) throws StripeException {
