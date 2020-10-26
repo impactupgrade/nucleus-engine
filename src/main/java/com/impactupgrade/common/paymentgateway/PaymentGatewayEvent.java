@@ -9,6 +9,7 @@ import com.stripe.model.Invoice;
 import com.stripe.model.Plan;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
+import com.stripe.model.SubscriptionItem;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -102,11 +103,20 @@ public class PaymentGatewayEvent {
   }
 
   protected void initStripeCustomer(Customer stripeCustomer) {
-    email = stripeCustomer.getEmail();
-    // TODO: Are these metadata fields LJI specific?
+    // These metadata fields might be LJI specific, but try them anyway.
     fullName = stripeCustomer.getMetadata().get("customer_name");
     firstName = stripeCustomer.getMetadata().get("first_name");
     lastName = stripeCustomer.getMetadata().get("last_name");
+    if (Strings.isNullOrEmpty(fullName)) {
+      fullName = stripeCustomer.getName();
+    }
+    if (Strings.isNullOrEmpty(lastName) && !Strings.isNullOrEmpty(fullName)) {
+      String[] split = fullName.split(" ");
+      firstName = split[0];
+      lastName = split[1];
+    }
+
+    email = stripeCustomer.getEmail();
     phone = stripeCustomer.getPhone();
 
     if (stripeCustomer.getAddress() != null) {
@@ -159,9 +169,9 @@ public class PaymentGatewayEvent {
     // Stripe is in cents
     // TODO: currency conversion support? This is eventually updated as charges are received, but for brand new ones
     // with a trial, this could throw off future forecasting!
-    Plan plan = stripeSubscription.getItems().getData().get(0).getPlan();
-    subscriptionAmountInDollars = plan.getAmount() / 100.0;
-    subscriptionCurrency = plan.getCurrency();
+    SubscriptionItem item = stripeSubscription.getItems().getData().get(0);
+    subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
+    subscriptionCurrency = item.getPrice().getCurrency();
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,
