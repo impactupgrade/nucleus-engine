@@ -42,7 +42,7 @@ public class TwilioService {
 
   private static final Logger log = LogManager.getLogger(TwilioService.class);
 
-  private static final long HUBSPOT_SMS_LIST_ID = Long.parseLong(System.getenv("HUBSPOT_SMSLISTID"));
+  private static final long DEFAULT_HUBSPOT_SMS_LIST_ID = Long.parseLong(System.getenv("HUBSPOT_SMSLISTID"));
 
   static {
     Twilio.init(System.getenv("TWILIO_ACCOUNTSID"), System.getenv("TWILIO_AUTHTOKEN"));
@@ -72,6 +72,7 @@ public class TwilioService {
               try {
                 Message twilioMessage = Message.creator(
                     new PhoneNumber(pn),
+                    // TODO: OOPS!
                     new PhoneNumber("+17207789988"),
                     message
                 ).create();
@@ -109,7 +110,8 @@ public class TwilioService {
       @FormParam("Body") String message,
       @FormParam("FirstName") String firstName,
       @FormParam("LastName") String lastName,
-      @FormParam("Email") String email
+      @FormParam("Email") String email,
+      @FormParam("HubSpotListId") Long hsListId
   ) {
     log.info("from={} message={}", from, message);
     log.info("other fields: firstName={}, lastName={}, email={}", firstName, lastName, email);
@@ -124,10 +126,10 @@ public class TwilioService {
     try {
       Contact contact = HubSpotClientFactory.client().contacts().insert(contactBuilder);
       log.info("created HubSpot contact {}", contact.getVid());
-      addToHubSpotList(contact.getVid());
+      addToHubSpotList(contact.getVid(), hsListId);
     } catch (DuplicateContactException e) {
       log.info("contact already existed in HubSpot");
-      addToHubSpotList(e.getVid());
+      addToHubSpotList(e.getVid(), hsListId);
     } catch (HubSpotException e) {
       log.error("HubSpot failed for an unknown reason: {}", e.getMessage());
     }
@@ -191,9 +193,13 @@ public class TwilioService {
     return Response.ok().entity(xml).build();
   }
 
-  private void addToHubSpotList(long contactVid) {
+  private void addToHubSpotList(long contactVid, Long hsListId) {
+    if (hsListId == null || hsListId == 0L) {
+      log.info("explicit HubSpot list ID not provided; using the default {}", DEFAULT_HUBSPOT_SMS_LIST_ID);
+      hsListId = DEFAULT_HUBSPOT_SMS_LIST_ID;
+    }
     // note that HubSpot auto-prevents duplicate entries in lists
-    HubSpotClientFactory.client().lists().addContactToList(HUBSPOT_SMS_LIST_ID, contactVid);
-    log.info("added HubSpot contact {} to list {}", contactVid, HUBSPOT_SMS_LIST_ID);
+    HubSpotClientFactory.client().lists().addContactToList(hsListId, contactVid);
+    log.info("added HubSpot contact {} to list {}", contactVid, hsListId);
   }
 }
