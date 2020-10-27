@@ -27,6 +27,13 @@
       <artifactId>stripe-java</artifactId>
       <version>20.20.0</version>
     </dependency>
+
+    <!-- TODO: upgrade this in hub-parent -->
+    <dependency>
+      <groupId>com.impactupgrade.integration</groupId>
+      <artifactId>hubspot-java-client</artifactId>
+      <version>1.0.3.Final</version>
+    </dependency>
   </dependencies>
 
   <!--

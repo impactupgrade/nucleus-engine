@@ -92,6 +92,8 @@ public class TwilioService {
   }
 
   // TODO: Let apps decide SF vs HS, etc.
+
+
   /**
    * This webhook serves multiple purposes. It can be used directly on a Twilio number, receiving standard From/Body
    * pairs as texts are received. It can also be used by Twilio Studio flows, Twilio Functions, etc. for more complex
@@ -114,24 +116,41 @@ public class TwilioService {
       @FormParam("HubSpotListId") Long hsListId
   ) {
     log.info("from={} message={}", from, message);
-    log.info("other fields: firstName={}, lastName={}, email={}", firstName, lastName, email);
+    log.info("other fields: firstName={}, lastName={}, email={}, hsListId={}", firstName, lastName, email, hsListId);
 
-    // add the new contact
-    ContactBuilder contactBuilder = new ContactBuilder()
-        .phone(from)
-        .firstName(firstName)
-        .lastName(lastName)
-        .email(email);
+    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
+    from = from.replace("+1", "");
 
-    try {
-      Contact contact = HubSpotClientFactory.client().contacts().insert(contactBuilder);
-      log.info("created HubSpot contact {}", contact.getVid());
+    // First, look for an existing contact based off the phone number. Important to use the PN since the
+    // Twilio Studio flow has some flavors that assume the contact is already in HS, so only the PN (From) will be
+    // provided. Other flows allow email to be optional.
+    Contact contact = null;
+    ContactArray contacts = HubSpotClientFactory.client().contacts().search(from);
+    if (contacts.getContacts().isEmpty()) {
+      // Didn't exist, so attempt to create it.
+      ContactBuilder contactBuilder = new ContactBuilder()
+          .phone(from)
+          .firstName(firstName)
+          .lastName(lastName)
+          .email(email);
+      try {
+        contact = HubSpotClientFactory.client().contacts().insert(contactBuilder);
+        log.info("created HubSpot contact {}", contact.getVid());
+        addToHubSpotList(contact.getVid(), hsListId);
+      } catch (DuplicateContactException e) {
+        // likely due to an email collision...
+        log.info("contact already existed in HubSpot: {}", e.getVid());
+      } catch (HubSpotException e) {
+        log.error("HubSpot failed for an unknown reason: {}", e.getMessage());
+      }
+    } else {
+      // Existed, so use it
+      contact = contacts.getContacts().get(0);
+      log.info("contact already existed in HubSpot: {}", contact.getVid());
+    }
+
+    if (contact != null) {
       addToHubSpotList(contact.getVid(), hsListId);
-    } catch (DuplicateContactException e) {
-      log.info("contact already existed in HubSpot");
-      addToHubSpotList(e.getVid(), hsListId);
-    } catch (HubSpotException e) {
-      log.error("HubSpot failed for an unknown reason: {}", e.getMessage());
     }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
