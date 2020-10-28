@@ -27,6 +27,7 @@ public class PaymentGatewayEvent {
   protected String lastName;
   protected String paymentMethod;
   protected String phone;
+  protected String refundId;
   protected String state;
   protected String street;
   protected Double subscriptionAmountInDollars;
@@ -86,7 +87,8 @@ public class PaymentGatewayEvent {
   public void initStripe(Refund stripeRefund) {
     initStripeCommon();
 
-    transactionId = stripeRefund.getId();
+    refundId = stripeRefund.getId();
+    transactionId = stripeRefund.getCharge();
   }
 
   public void initStripe(Subscription stripeSubscription, Customer stripeCustomer) {
@@ -341,6 +343,10 @@ public class PaymentGatewayEvent {
 
   public String getPhone() {
     return phone;
+  }
+
+  public String getRefundId() {
+    return refundId;
   }
 
   public String getState() {

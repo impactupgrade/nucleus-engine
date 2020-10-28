@@ -60,9 +60,16 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             chargeFailed(paymentGatewayEvent);
             break;
           case "charge.refunded":
-            Refund refund = (Refund) stripeObject;
+            // TODO: Not completely understanding this one just yet, but it appears a recent API change
+            // is sending Charges instead of Refunds in this case...
+            Refund refund;
+            if (stripeObject instanceof Charge) {
+              Charge charge = (Charge) stripeObject;
+              refund = charge.getRefunds().getData().get(0);
+            } else {
+              refund = (Refund) stripeObject;
+            }
             log.info("found refund {}", refund.getId());
-
             paymentGatewayEvent.initStripe(refund);
 
             chargeRefunded(paymentGatewayEvent);
