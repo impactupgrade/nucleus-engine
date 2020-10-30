@@ -19,6 +19,7 @@ public class PaymentGatewayEvent {
 
   protected String city;
   protected String country;
+  protected String customerId;
   protected String depositTransactionId;
   protected String email;
   protected String firstName;
@@ -105,6 +106,8 @@ public class PaymentGatewayEvent {
   }
 
   protected void initStripeCustomer(Customer stripeCustomer) {
+    customerId = stripeCustomer.getId();
+
     // These metadata fields might be LJI specific, but try them anyway.
     fullName = stripeCustomer.getMetadata().get("customer_name");
     firstName = stripeCustomer.getMetadata().get("first_name");
@@ -237,6 +240,8 @@ public class PaymentGatewayEvent {
     phone = paymentSpringTransaction.getPhone();
 
     if (paymentSpringCustomer.isPresent()) {
+      customerId = paymentSpringCustomer.get().getId();
+
       if (Strings.isNullOrEmpty(email)) {
         email = paymentSpringCustomer.get().getEmail();
       }
@@ -311,6 +316,10 @@ public class PaymentGatewayEvent {
 
   public String getCountry() {
     return country;
+  }
+
+  public String getCustomerId() {
+    return customerId;
   }
 
   public String getDepositTransactionId() {
