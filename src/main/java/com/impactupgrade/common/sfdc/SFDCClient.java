@@ -101,7 +101,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingStateCode, account.BillingCountry, account.BillingCountryCode, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
   // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
   // this should be config driven!
   public static String CUSTOM_CONTACT_FIELDS = "";
