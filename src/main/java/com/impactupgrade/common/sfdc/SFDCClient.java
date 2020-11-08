@@ -78,23 +78,21 @@ public class SFDCClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
-  public SObject getCampaignByIdOrDefault(String campaignId) throws ConnectionException, InterruptedException {
-    return getCampaignById(campaignId).orElseGet(() -> {
-      if (!Strings.isNullOrEmpty(CUSTOM_DEFAULT_CAMPAIGN_ID)) {
-        try {
-          Optional<SObject> defaultCampaign = getCampaignById(CUSTOM_DEFAULT_CAMPAIGN_ID);
-          if (defaultCampaign.isPresent()) {
-            return defaultCampaign.get();
-          }
-        } catch(ConnectionException | InterruptedException e){
-          log.error("failed to retrieve the default campaign", e);
-        }
+  public Optional<SObject> getCampaignByIdOrDefault(String campaignId) throws ConnectionException, InterruptedException {
+    if (!Strings.isNullOrEmpty(campaignId)) {
+      Optional<SObject> campaign = getCampaignById(campaignId);
+      if (campaign.isPresent()) {
+        return campaign;
       }
+    }
 
-      log.warn("SFDC is missing a default campaign");
-      // TODO: this will cause NPEs downstream, but we should treat this as a catastrophic blocker anyway...
-      return null;
-    });
+    if (!Strings.isNullOrEmpty(CUSTOM_DEFAULT_CAMPAIGN_ID)) {
+      Optional<SObject> defaultCampaign = getCampaignById(CUSTOM_DEFAULT_CAMPAIGN_ID);
+      return defaultCampaign;
+    }
+
+    log.warn("SFDC is missing a default campaign");
+    return Optional.empty();
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
