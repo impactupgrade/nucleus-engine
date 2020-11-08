@@ -14,6 +14,7 @@ import com.stripe.model.Invoice;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
+import com.stripe.net.RequestOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,6 +30,12 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
   }
 
   protected Response webhook(String json, T paymentGatewayEvent) {
+    return webhook(json, paymentGatewayEvent, StripeClient.defaultRequestOptions());
+  }
+
+  // Allow subclasses to pass in their own RequestOptions, primarily to control the Stripe API key as needed
+  // (ex: DR funding nations).
+  protected Response webhook(String json, T paymentGatewayEvent, RequestOptions requestOptions) {
     LoggingUtil.verbose(log, json);
 
     // stripe-java uses GSON, so Jersey/Jackson won't work on its own
@@ -52,11 +59,11 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
       try {
         switch (event.getType()) {
           case "charge.succeeded":
-            processCharge(stripeObject, paymentGatewayEvent);
+            processCharge(stripeObject, paymentGatewayEvent, requestOptions);
             chargeSucceeded(paymentGatewayEvent);
             break;
           case "charge.failed":
-            processCharge(stripeObject, paymentGatewayEvent);
+            processCharge(stripeObject, paymentGatewayEvent, requestOptions);
             chargeFailed(paymentGatewayEvent);
             break;
           case "charge.refunded":
@@ -89,7 +96,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
               // the incoming payment will handle it. This prevents timing issues for start-now subscriptions, where
               // we'll likely get the subscription and charge near instantaneously (but on different requests/threads).
 
-              Customer createdSubscriptionCustomer = StripeClient.getCustomer(createdSubscription.getCustomer());
+              Customer createdSubscriptionCustomer = StripeClient.getCustomer(createdSubscription.getCustomer(), requestOptions);
               log.info("found customer {}", createdSubscriptionCustomer.getId());
 
               paymentGatewayEvent.initStripe(createdSubscription, createdSubscriptionCustomer);
@@ -102,7 +109,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
           case "customer.subscription.deleted":
             Subscription deletedSubscription = (Subscription) stripeObject;
             log.info("found subscription {}", deletedSubscription.getId());
-            Customer deletedSubscriptionCustomer = StripeClient.getCustomer(deletedSubscription.getCustomer());
+            Customer deletedSubscriptionCustomer = StripeClient.getCustomer(deletedSubscription.getCustomer(), requestOptions);
             log.info("found customer {}", deletedSubscriptionCustomer.getId());
             paymentGatewayEvent.initStripe(deletedSubscription, deletedSubscriptionCustomer);
 
@@ -124,17 +131,17 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     return Response.status(200).build();
   }
 
-  private void processCharge(StripeObject stripeObject, T paymentGatewayEvent) throws StripeException {
+  private void processCharge(StripeObject stripeObject, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
     Charge charge = (Charge) stripeObject;
     log.info("found charge {}", charge.getId());
-    Customer chargeCustomer = StripeClient.getCustomer(charge.getCustomer());
+    Customer chargeCustomer = StripeClient.getCustomer(charge.getCustomer(), requestOptions);
     log.info("found customer {}", chargeCustomer.getId());
 
     Optional<Invoice> chargeInvoice;
     if (Strings.isNullOrEmpty(charge.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(StripeClient.getInvoice(charge.getInvoice()));
+      chargeInvoice = Optional.of(StripeClient.getInvoice(charge.getInvoice(), requestOptions));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
@@ -142,7 +149,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
       chargeBalanceTransaction = Optional.empty();
     } else {
-      chargeBalanceTransaction = Optional.of(StripeClient.getBalanceTransaction(charge.getBalanceTransaction()));
+      chargeBalanceTransaction = Optional.of(StripeClient.getBalanceTransaction(charge.getBalanceTransaction(), requestOptions));
       log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
     }
 
