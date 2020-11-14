@@ -269,8 +269,9 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   }
 
   public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId) throws ConnectionException, InterruptedException {
-    // TODO: query from the original LJI code -- looks okish, but find ways to improve it?
-    String query = "select id, name, amount, CloseDate, AccountId, npe03__Recurring_Donation__c, StageName, campaignid, Type from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TODAY ORDER BY CloseDate Desc LIMIT 1";
+    // TODO: Using TOMORROW to account for timezone issues -- we can typically get away with that approach
+    // since most RDs are monthly...
+    String query = "select id, name, amount, CloseDate, AccountId, npe03__Recurring_Donation__c, StageName, campaignid, Type from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
@@ -301,7 +302,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getRecurringDonationsBySubscriptionId(String subscriptionIdFieldName, String subscriptionId) throws ConnectionException, InterruptedException {
-    String query = "select id, " + subscriptionIdFieldName + ", npe03__Open_Ended_Status__c, npe03__Amount__c, Type__c, npe03__Recurring_Donation_Campaign__c, npe03__Installment_Period__c from npe03__Recurring_Donation__c where " + subscriptionIdFieldName + " = '" + subscriptionId + "'";
+    String query = "select id, " + subscriptionIdFieldName + ", npe03__Open_Ended_Status__c, npe03__Amount__c, npe03__Recurring_Donation_Campaign__c, npe03__Installment_Period__c from npe03__Recurring_Donation__c where " + subscriptionIdFieldName + " = '" + subscriptionId + "'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
