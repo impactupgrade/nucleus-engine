@@ -1,5 +1,7 @@
 package com.impactupgrade.common.util;
 
+import com.google.common.base.Strings;
+
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -41,9 +43,10 @@ public class HttpClient {
       webTarget = webTarget.path(path);
     }
 
-    return webTarget
-        .request(mediaType)
-        .header("Authorization", "Bearer " + bearerToken)
-        .post(Entity.entity(entity, mediaType));
+    Invocation.Builder builder = webTarget.request(mediaType);
+    if (!Strings.isNullOrEmpty(bearerToken)) {
+      builder.header("Authorization", "Bearer " + bearerToken);
+    }
+    return builder.post(Entity.entity(entity, mediaType));
   }
 }
