@@ -49,7 +49,7 @@ public class StripeClient {
     log.info("cancelled subscription {}", id);
   }
 
-  protected static RequestOptions defaultRequestOptions() {
+  public static RequestOptions defaultRequestOptions() {
     return RequestOptions.builder().setApiKey(STRIPE_DEFAULT_KEY).build();
   }
 }
