@@ -1,5 +1,6 @@
 package com.impactupgrade.common.util;
 
+import com.google.common.base.Strings;
 import com.sun.mail.smtp.SMTPTransport;
 import org.springframework.stereotype.Service;
 
@@ -27,18 +28,27 @@ public class EmailUtil {
     props.put("mail.smtp.timeout", "60000");
   }
 
-
-  public static void sendEmail(String subject, String body, String to, String from) throws MessagingException {
+  public static void sendEmail(String subject, String textBody, String htmlBody, String to, String from)
+      throws MessagingException {
     Session session = Session.getInstance(props, null);
+
     Message msg = new MimeMessage(session);
     msg.setFrom(new InternetAddress(from));
     msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to, false));
     msg.setSubject(subject);
-    msg.setText(body);
+    if (!Strings.isNullOrEmpty(textBody)) {
+      msg.setText(textBody);
+    }
+    if (!Strings.isNullOrEmpty(htmlBody)) {
+      msg.setContent(htmlBody, "text/html");
+    }
     msg.setSentDate(new Date());
+
     SMTPTransport t = (SMTPTransport) session.getTransport("smtp");
     t.connect(SMTP_SERVER, SMTP_USERNAME, SMTP_PASSWORD);
     t.sendMessage(msg, msg.getAllRecipients());
     t.close();
   }
+
+
 }
