@@ -9,5 +9,8 @@
         <module name="hub-common" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="hub-common" target="11" />
+    </bytecodeTargetLevel>
   </component>
 </project>
