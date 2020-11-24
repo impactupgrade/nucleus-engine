@@ -6,6 +6,7 @@ import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.Plan;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
@@ -13,6 +14,7 @@ import com.stripe.model.SubscriptionItem;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 public class PaymentGatewayEvent {
@@ -66,7 +68,7 @@ public class PaymentGatewayEvent {
       transactionDate = Calendar.getInstance();
     }
 
-    depositTransactionId = stripeCharge.getBalanceTransaction();
+    stripeBalanceTransaction.ifPresent(balanceTransaction -> depositTransactionId = balanceTransaction.getId());
     transactionDescription = stripeCharge.getDescription();
     transactionId = stripeCharge.getId();
     transactionSuccess = !"failed".equalsIgnoreCase(stripeCharge.getStatus());
@@ -77,6 +79,44 @@ public class PaymentGatewayEvent {
     } else {
       transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
       transactionOriginalCurrency = stripeCharge.getCurrency();
+      // TODO: this implies the values will *not* be set for failed transactions!
+      if (stripeBalanceTransaction.isPresent()) {
+        transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;
+        transactionExchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
+      }
+    }
+  }
+
+  public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
+      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
+    initStripeCommon();
+    initStripeCustomer(stripeCustomer);
+
+    // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
+    // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
+    // first donation do it in order to prevent timing issues.
+    if (stripeInvoice.isPresent() && !Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
+      initStripeSubscription(stripeInvoice.get().getSubscriptionObject());
+    }
+
+    if (stripePaymentIntent.getCreated() != null) {
+      transactionDate = Calendar.getInstance();
+      transactionDate.setTimeInMillis(stripePaymentIntent.getCreated() * 1000);
+    } else {
+      transactionDate = Calendar.getInstance();
+    }
+
+    stripeBalanceTransaction.ifPresent(balanceTransaction -> depositTransactionId = balanceTransaction.getId());
+    transactionDescription = stripePaymentIntent.getDescription();
+    transactionId = stripePaymentIntent.getId();
+    transactionSuccess = !"failed".equalsIgnoreCase(stripePaymentIntent.getStatus());
+
+    if ("usd".equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
+      // Stripe is in cents
+      transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
+    } else {
+      transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
+      transactionOriginalCurrency = stripePaymentIntent.getCurrency();
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
         transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;

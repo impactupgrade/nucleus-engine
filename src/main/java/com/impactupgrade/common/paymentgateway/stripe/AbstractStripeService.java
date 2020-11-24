@@ -11,6 +11,7 @@ import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.Invoice;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
@@ -19,6 +20,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.ws.rs.core.Response;
+import java.util.List;
 import java.util.Optional;
 
 public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
@@ -62,19 +64,19 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             Charge succeededCharge = (Charge) stripeObject;
             log.info("found charge {}", succeededCharge.getId());
 
-            if (succeededCharge.getCaptured() != null && succeededCharge.getCaptured()) {
+            if (Strings.isNullOrEmpty(succeededCharge.getPaymentIntent())) {
+              log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", succeededCharge.getId());
+            } else {
               processCharge(succeededCharge, paymentGatewayEvent, requestOptions);
               chargeSucceeded(paymentGatewayEvent);
-            } else {
-              log.info("charge {} is captured=false, meaning it's an intent/authorization; skipping and waiting for the charge.captured event...", succeededCharge.getId());
             }
 
             break;
-          case "charge.captured":
-            Charge capturedCharge = (Charge) stripeObject;
-            log.info("found charge {}", capturedCharge.getId());
+          case "payment_intent.succeeded":
+            PaymentIntent succeededPaymentIntent = (PaymentIntent) stripeObject;
+            log.info("found payment intent {}", succeededPaymentIntent.getId());
 
-            processCharge(capturedCharge, paymentGatewayEvent, requestOptions);
+            processPaymentIntent(succeededPaymentIntent, paymentGatewayEvent, requestOptions);
             chargeSucceeded(paymentGatewayEvent);
 
             break;
@@ -83,6 +85,13 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             log.info("found charge {}", failedCharge.getId());
 
             processCharge(failedCharge, paymentGatewayEvent, requestOptions);
+            chargeFailed(paymentGatewayEvent);
+            break;
+          case "payment_intent.payment_failed":
+            PaymentIntent failedPaymentIntent = (PaymentIntent) stripeObject;
+            log.info("found payment intent {}", failedPaymentIntent.getId());
+
+            processPaymentIntent(failedPaymentIntent, paymentGatewayEvent, requestOptions);
             chargeFailed(paymentGatewayEvent);
             break;
           case "charge.refunded":
@@ -150,7 +159,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     return Response.status(200).build();
   }
 
-  private Charge processCharge(Charge charge, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
+  private void processCharge(Charge charge, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
     Customer chargeCustomer = StripeClient.getCustomer(charge.getCustomer(), requestOptions);
     log.info("found customer {}", chargeCustomer.getId());
 
@@ -171,8 +180,32 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     }
 
     paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
+  }
 
-    return charge;
+  private void processPaymentIntent(PaymentIntent paymentIntent, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
+    Customer chargeCustomer = StripeClient.getCustomer(paymentIntent.getCustomer(), requestOptions);
+    log.info("found customer {}", chargeCustomer.getId());
+
+    Optional<Invoice> chargeInvoice;
+    if (Strings.isNullOrEmpty(paymentIntent.getInvoice())) {
+      chargeInvoice = Optional.empty();
+    } else {
+      chargeInvoice = Optional.of(StripeClient.getInvoice(paymentIntent.getInvoice(), requestOptions));
+      log.info("found invoice {}", chargeInvoice.get().getId());
+    }
+
+    Optional<BalanceTransaction> chargeBalanceTransaction = Optional.empty();
+    if (paymentIntent.getCharges() != null && !paymentIntent.getCharges().getData().isEmpty()) {
+      if (paymentIntent.getCharges().getData().size() == 1) {
+        String balanceTransactionId = paymentIntent.getCharges().getData().get(0).getBalanceTransaction();
+        if (!Strings.isNullOrEmpty(balanceTransactionId)) {
+          chargeBalanceTransaction = Optional.of(StripeClient.getBalanceTransaction(balanceTransactionId, requestOptions));
+          log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
+        }
+      }
+    }
+
+    paymentGatewayEvent.initStripe(paymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
   }
 
   protected abstract void chargeSucceeded(T paymentGatewayEvent) throws Exception;
