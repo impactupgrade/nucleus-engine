@@ -59,11 +59,30 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
       try {
         switch (event.getType()) {
           case "charge.succeeded":
-            processCharge(stripeObject, paymentGatewayEvent, requestOptions);
+            Charge succeededCharge = (Charge) stripeObject;
+            log.info("found charge {}", succeededCharge.getId());
+
+            if (succeededCharge.getCaptured() != null && succeededCharge.getCaptured()) {
+              processCharge(succeededCharge, paymentGatewayEvent, requestOptions);
+              chargeSucceeded(paymentGatewayEvent);
+            } else {
+              log.info("charge {} is captured=false, meaning it's an intent/authorization; skipping and waiting for the charge.captured event...", succeededCharge.getId());
+            }
+
+            break;
+          case "charge.captured":
+            Charge capturedCharge = (Charge) stripeObject;
+            log.info("found charge {}", capturedCharge.getId());
+
+            processCharge(capturedCharge, paymentGatewayEvent, requestOptions);
             chargeSucceeded(paymentGatewayEvent);
+
             break;
           case "charge.failed":
-            processCharge(stripeObject, paymentGatewayEvent, requestOptions);
+            Charge failedCharge = (Charge) stripeObject;
+            log.info("found charge {}", failedCharge.getId());
+
+            processCharge(failedCharge, paymentGatewayEvent, requestOptions);
             chargeFailed(paymentGatewayEvent);
             break;
           case "charge.refunded":
@@ -131,9 +150,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     return Response.status(200).build();
   }
 
-  private void processCharge(StripeObject stripeObject, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
-    Charge charge = (Charge) stripeObject;
-    log.info("found charge {}", charge.getId());
+  private Charge processCharge(Charge charge, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
     Customer chargeCustomer = StripeClient.getCustomer(charge.getCustomer(), requestOptions);
     log.info("found customer {}", chargeCustomer.getId());
 
@@ -154,6 +171,8 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     }
 
     paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
+
+    return charge;
   }
 
   protected abstract void chargeSucceeded(T paymentGatewayEvent) throws Exception;
