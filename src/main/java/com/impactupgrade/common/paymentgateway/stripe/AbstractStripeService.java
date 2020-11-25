@@ -27,10 +27,6 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
 
   private static final Logger log = LogManager.getLogger(AbstractStripeService.class);
 
-  static {
-    Stripe.apiKey = System.getenv("STRIPE_KEY");
-  }
-
   protected Response webhook(String json, T paymentGatewayEvent) {
     return webhook(json, paymentGatewayEvent, StripeClient.defaultRequestOptions());
   }
@@ -64,7 +60,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             Charge succeededCharge = (Charge) stripeObject;
             log.info("found charge {}", succeededCharge.getId());
 
-            if (Strings.isNullOrEmpty(succeededCharge.getPaymentIntent())) {
+            if (!Strings.isNullOrEmpty(succeededCharge.getPaymentIntent())) {
               log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", succeededCharge.getId());
             } else {
               processCharge(succeededCharge, paymentGatewayEvent, requestOptions);
@@ -183,7 +179,16 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
   }
 
   private void processPaymentIntent(PaymentIntent paymentIntent, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
-    Customer chargeCustomer = StripeClient.getCustomer(paymentIntent.getCustomer(), requestOptions);
+    // TODO: For TER, the customers aren't always included in the webhook -- not sure why. For now, if that's the case,
+    // retrieve the whole PaymentIntent and try again...
+    Customer chargeCustomer;
+    if (Strings.isNullOrEmpty(paymentIntent.getCustomer())) {
+      log.info("payment intent {} was missing the customer id in the webhook; retrieving the full payment intent...", paymentIntent.getId());
+      PaymentIntent fullPaymentIntent = StripeClient.getPaymentIntent(paymentIntent.getId(), requestOptions);
+      chargeCustomer = StripeClient.getCustomer(fullPaymentIntent.getCustomer(), requestOptions);
+    } else {
+      chargeCustomer = StripeClient.getCustomer(paymentIntent.getCustomer(), requestOptions);
+    }
     log.info("found customer {}", chargeCustomer.getId());
 
     Optional<Invoice> chargeInvoice;

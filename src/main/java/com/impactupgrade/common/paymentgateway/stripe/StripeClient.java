@@ -6,9 +6,11 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.CustomerRetrieveParams;
+import com.stripe.param.PaymentIntentRetrieveParams;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -41,6 +43,10 @@ public class StripeClient {
         .addExpand("sources")
         .build();
     return Customer.retrieve(id, customerParams, requestOptions);
+  }
+
+  public static PaymentIntent getPaymentIntent(String id, RequestOptions requestOptions) throws StripeException {
+    return PaymentIntent.retrieve(id, requestOptions);
   }
 
   public static void cancelSubscription(String id, RequestOptions requestOptions) throws StripeException {
