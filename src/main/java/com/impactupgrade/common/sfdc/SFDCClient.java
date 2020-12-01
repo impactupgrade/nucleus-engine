@@ -233,7 +233,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String DONATION_FIELDS = "id, AccountId, amount, name, RecordTypeId, Campaign_Name__c, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
+  protected static final String DONATION_FIELDS = "id, AccountId, ContactId, amount, name, RecordTypeId, Campaign_Name__c, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
   // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
   // this should be config driven!
   public static String CUSTOM_DONATION_FIELDS = "";
@@ -271,7 +271,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId) throws ConnectionException, InterruptedException {
     // TODO: Using TOMORROW to account for timezone issues -- we can typically get away with that approach
     // since most RDs are monthly...
-    String query = "select id, name, amount, CloseDate, AccountId, npe03__Recurring_Donation__c, StageName, campaignid, Type from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
+    String query = "select id, name, amount, CloseDate, AccountId, ContactId, npe03__Recurring_Donation__c, StageName, campaignid, Type from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
