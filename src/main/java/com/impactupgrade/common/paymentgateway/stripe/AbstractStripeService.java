@@ -80,15 +80,13 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             Charge failedCharge = (Charge) stripeObject;
             log.info("found charge {}", failedCharge.getId());
 
-            processCharge(failedCharge, paymentGatewayEvent, requestOptions);
-            chargeFailed(paymentGatewayEvent);
-            break;
-          case "payment_intent.payment_failed":
-            PaymentIntent failedPaymentIntent = (PaymentIntent) stripeObject;
-            log.info("found payment intent {}", failedPaymentIntent.getId());
+            if (!Strings.isNullOrEmpty(failedCharge.getPaymentIntent())) {
+              log.info("charge {} is part of an intent; skipping...", failedCharge.getId());
+            } else {
+              processCharge(failedCharge, paymentGatewayEvent, requestOptions);
+              chargeFailed(paymentGatewayEvent);
+            }
 
-            processPaymentIntent(failedPaymentIntent, paymentGatewayEvent, requestOptions);
-            chargeFailed(paymentGatewayEvent);
             break;
           case "charge.refunded":
             // TODO: Not completely understanding this one just yet, but it appears a recent API change
