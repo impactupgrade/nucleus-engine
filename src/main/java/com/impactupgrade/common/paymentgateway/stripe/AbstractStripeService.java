@@ -28,12 +28,12 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
   private static final Logger log = LogManager.getLogger(AbstractStripeService.class);
 
   protected Response webhook(String json, T paymentGatewayEvent) {
-    return webhook(json, paymentGatewayEvent, StripeClient.defaultRequestOptions());
+    return webhook(json, paymentGatewayEvent, StripeClient.defaultRequestOptions(), "usd");
   }
 
   // Allow subclasses to pass in their own RequestOptions, primarily to control the Stripe API key as needed
   // (ex: DR funding nations).
-  protected Response webhook(String json, T paymentGatewayEvent, RequestOptions requestOptions) {
+  protected Response webhook(String json, T paymentGatewayEvent, RequestOptions requestOptions, String orgCurrency) {
     LoggingUtil.verbose(log, json);
 
     // stripe-java uses GSON, so Jersey/Jackson won't work on its own
@@ -63,7 +63,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             if (!Strings.isNullOrEmpty(succeededCharge.getPaymentIntent())) {
               log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", succeededCharge.getId());
             } else {
-              processCharge(succeededCharge, paymentGatewayEvent, requestOptions);
+              processCharge(succeededCharge, paymentGatewayEvent, requestOptions, orgCurrency);
               chargeSucceeded(paymentGatewayEvent);
             }
 
@@ -72,7 +72,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             PaymentIntent succeededPaymentIntent = (PaymentIntent) stripeObject;
             log.info("found payment intent {}", succeededPaymentIntent.getId());
 
-            processPaymentIntent(succeededPaymentIntent, paymentGatewayEvent, requestOptions);
+            processPaymentIntent(succeededPaymentIntent, paymentGatewayEvent, requestOptions, orgCurrency);
             chargeSucceeded(paymentGatewayEvent);
 
             break;
@@ -83,7 +83,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
             if (!Strings.isNullOrEmpty(failedCharge.getPaymentIntent())) {
               log.info("charge {} is part of an intent; skipping...", failedCharge.getId());
             } else {
-              processCharge(failedCharge, paymentGatewayEvent, requestOptions);
+              processCharge(failedCharge, paymentGatewayEvent, requestOptions, orgCurrency);
               chargeFailed(paymentGatewayEvent);
             }
 
@@ -153,7 +153,8 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     return Response.status(200).build();
   }
 
-  private void processCharge(Charge charge, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
+  private void processCharge(Charge charge, T paymentGatewayEvent, RequestOptions requestOptions, String orgCurrency)
+      throws StripeException {
     Customer chargeCustomer = StripeClient.getCustomer(charge.getCustomer(), requestOptions);
     log.info("found customer {}", chargeCustomer.getId());
 
@@ -173,10 +174,11 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
       log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
     }
 
-    paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
+    paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction, orgCurrency);
   }
 
-  private void processPaymentIntent(PaymentIntent paymentIntent, T paymentGatewayEvent, RequestOptions requestOptions) throws StripeException {
+  private void processPaymentIntent(PaymentIntent paymentIntent, T paymentGatewayEvent, RequestOptions requestOptions,
+      String orgCurrency) throws StripeException {
     // TODO: For TER, the customers aren't always included in the webhook -- not sure why. For now, if that's the case,
     // retrieve the whole PaymentIntent and try again...
     Customer chargeCustomer;
@@ -208,7 +210,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
       }
     }
 
-    paymentGatewayEvent.initStripe(paymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
+    paymentGatewayEvent.initStripe(paymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction, orgCurrency);
   }
 
   protected abstract void chargeSucceeded(T paymentGatewayEvent) throws Exception;

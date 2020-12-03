@@ -15,6 +15,7 @@ import com.stripe.model.SubscriptionItem;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 public class PaymentGatewayEvent {
@@ -50,7 +51,7 @@ public class PaymentGatewayEvent {
   protected String zip;
 
   public void initStripe(Charge stripeCharge, Customer stripeCustomer,
-      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
+      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction, String orgCurrency) {
     initStripeCommon();
     initStripeCustomer(stripeCustomer);
 
@@ -73,12 +74,13 @@ public class PaymentGatewayEvent {
     transactionId = stripeCharge.getId();
     transactionSuccess = !"failed".equalsIgnoreCase(stripeCharge.getStatus());
 
-    if ("usd".equalsIgnoreCase(stripeCharge.getCurrency())) {
-      // Stripe is in cents
+    transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
+    transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
+    if (orgCurrency.equalsIgnoreCase(stripeCharge.getCurrency())) {
+      // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
-      transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
-      transactionOriginalCurrency = stripeCharge.getCurrency();
+      // currency is different than what the org is expecting, so assume it was converted
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
         transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;
@@ -88,7 +90,7 @@ public class PaymentGatewayEvent {
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
-      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
+      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction, String orgCurrency) {
     initStripeCommon();
     initStripeCustomer(stripeCustomer);
 
@@ -111,12 +113,13 @@ public class PaymentGatewayEvent {
     transactionId = stripePaymentIntent.getId();
     transactionSuccess = !"failed".equalsIgnoreCase(stripePaymentIntent.getStatus());
 
-    if ("usd".equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
-      // Stripe is in cents
+    transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
+    transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
+    if (orgCurrency.equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
+      // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
-      transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
-      transactionOriginalCurrency = stripePaymentIntent.getCurrency();
+      // currency is different than what the org is expecting, so assume it was converted
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
         transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;
@@ -216,7 +219,7 @@ public class PaymentGatewayEvent {
     // with a trial, this could throw off future forecasting!
     SubscriptionItem item = stripeSubscription.getItems().getData().get(0);
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
-    subscriptionCurrency = item.getPrice().getCurrency();
+    subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,
