@@ -55,94 +55,7 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
       log.info("received event {}: {}", event.getType(), event.getId());
 
       try {
-        switch (event.getType()) {
-          case "charge.succeeded":
-            Charge succeededCharge = (Charge) stripeObject;
-            log.info("found charge {}", succeededCharge.getId());
-
-            if (!Strings.isNullOrEmpty(succeededCharge.getPaymentIntent())) {
-              log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", succeededCharge.getId());
-            } else {
-              processCharge(succeededCharge, paymentGatewayEvent, requestOptions, orgCurrency);
-              chargeSucceeded(paymentGatewayEvent);
-            }
-
-            break;
-          case "payment_intent.succeeded":
-            PaymentIntent succeededPaymentIntent = (PaymentIntent) stripeObject;
-            log.info("found payment intent {}", succeededPaymentIntent.getId());
-
-            processPaymentIntent(succeededPaymentIntent, paymentGatewayEvent, requestOptions, orgCurrency);
-            chargeSucceeded(paymentGatewayEvent);
-
-            break;
-          case "charge.failed":
-            Charge failedCharge = (Charge) stripeObject;
-            log.info("found charge {}", failedCharge.getId());
-
-            if (!Strings.isNullOrEmpty(failedCharge.getPaymentIntent())) {
-              log.info("charge {} is part of an intent; skipping...", failedCharge.getId());
-            } else {
-              processCharge(failedCharge, paymentGatewayEvent, requestOptions, orgCurrency);
-              chargeFailed(paymentGatewayEvent);
-            }
-
-            break;
-          case "charge.refunded":
-            // TODO: Not completely understanding this one just yet, but it appears a recent API change
-            // is sending Charges instead of Refunds in this case...
-            Refund refund;
-            if (stripeObject instanceof Charge) {
-              Charge charge = (Charge) stripeObject;
-              refund = charge.getRefunds().getData().get(0);
-            } else {
-              refund = (Refund) stripeObject;
-            }
-            log.info("found refund {}", refund.getId());
-            paymentGatewayEvent.initStripe(refund);
-
-            chargeRefunded(paymentGatewayEvent);
-            break;
-          case "customer.subscription.created":
-            Subscription createdSubscription = (Subscription) stripeObject;
-            log.info("found subscription {}", createdSubscription.getId());
-
-            if ("true".equalsIgnoreCase(createdSubscription.getMetadata().get("auto-migrated"))) {
-              // This subscription comes from an auto-migration path, most likely from PaymentSpring through
-              // the Donor Portal. In this case, the migration will have already updated the existing
-              // recurring donation. Prevent this from creating another one.
-
-              log.info("skipping the auto-migrated subscription");
-            } else if ("trialing".equalsIgnoreCase(createdSubscription.getStatus())) {
-              // IE, handle the subscription if it's going to happen in the future. Otherwise, if it started already,
-              // the incoming payment will handle it. This prevents timing issues for start-now subscriptions, where
-              // we'll likely get the subscription and charge near instantaneously (but on different requests/threads).
-
-              Customer createdSubscriptionCustomer = StripeClient.getCustomer(createdSubscription.getCustomer(), requestOptions);
-              log.info("found customer {}", createdSubscriptionCustomer.getId());
-
-              paymentGatewayEvent.initStripe(createdSubscription, createdSubscriptionCustomer);
-
-              subscriptionTrialing(paymentGatewayEvent);
-            } else {
-              log.info("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
-            }
-            break;
-          case "customer.subscription.deleted":
-            Subscription deletedSubscription = (Subscription) stripeObject;
-            log.info("found subscription {}", deletedSubscription.getId());
-            Customer deletedSubscriptionCustomer = StripeClient.getCustomer(deletedSubscription.getCustomer(), requestOptions);
-            log.info("found customer {}", deletedSubscriptionCustomer.getId());
-            paymentGatewayEvent.initStripe(deletedSubscription, deletedSubscriptionCustomer);
-
-            // NOTE: the customer.subscription.deleted name is a little misleading -- it instead means
-            // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
-            // simply close the recurring donation.
-            subscriptionDeleted(paymentGatewayEvent);
-            break;
-          default:
-            log.info("unhandled Stripe webhook event type: {}", event.getType());
-        }
+        processEvent(event.getType(), stripeObject, paymentGatewayEvent, requestOptions, orgCurrency);
       } catch (Exception e) {
         log.error("failed to process the Stripe event", e);
         // TODO: email notification?
@@ -151,6 +64,99 @@ public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
     new Thread(thread).start();
 
     return Response.status(200).build();
+  }
+
+  // Public so that utilities can call this directly (ex: replaying missing events).
+  public void processEvent(String eventType, StripeObject stripeObject, T paymentGatewayEvent,
+      RequestOptions requestOptions, String orgCurrency) throws Exception {
+    switch (eventType) {
+      case "charge.succeeded":
+        Charge succeededCharge = (Charge) stripeObject;
+        log.info("found charge {}", succeededCharge.getId());
+
+        if (!Strings.isNullOrEmpty(succeededCharge.getPaymentIntent())) {
+          log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", succeededCharge.getId());
+        } else {
+          processCharge(succeededCharge, paymentGatewayEvent, requestOptions, orgCurrency);
+          chargeSucceeded(paymentGatewayEvent);
+        }
+
+        break;
+      case "payment_intent.succeeded":
+        PaymentIntent succeededPaymentIntent = (PaymentIntent) stripeObject;
+        log.info("found payment intent {}", succeededPaymentIntent.getId());
+
+        processPaymentIntent(succeededPaymentIntent, paymentGatewayEvent, requestOptions, orgCurrency);
+        chargeSucceeded(paymentGatewayEvent);
+
+        break;
+      case "charge.failed":
+        Charge failedCharge = (Charge) stripeObject;
+        log.info("found charge {}", failedCharge.getId());
+
+        if (!Strings.isNullOrEmpty(failedCharge.getPaymentIntent())) {
+          log.info("charge {} is part of an intent; skipping...", failedCharge.getId());
+        } else {
+          processCharge(failedCharge, paymentGatewayEvent, requestOptions, orgCurrency);
+          chargeFailed(paymentGatewayEvent);
+        }
+
+        break;
+      case "charge.refunded":
+        // TODO: Not completely understanding this one just yet, but it appears a recent API change
+        // is sending Charges instead of Refunds in this case...
+        Refund refund;
+        if (stripeObject instanceof Charge) {
+          Charge charge = (Charge) stripeObject;
+          refund = charge.getRefunds().getData().get(0);
+        } else {
+          refund = (Refund) stripeObject;
+        }
+        log.info("found refund {}", refund.getId());
+        paymentGatewayEvent.initStripe(refund);
+
+        chargeRefunded(paymentGatewayEvent);
+        break;
+      case "customer.subscription.created":
+        Subscription createdSubscription = (Subscription) stripeObject;
+        log.info("found subscription {}", createdSubscription.getId());
+
+        if ("true".equalsIgnoreCase(createdSubscription.getMetadata().get("auto-migrated"))) {
+          // This subscription comes from an auto-migration path, most likely from PaymentSpring through
+          // the Donor Portal. In this case, the migration will have already updated the existing
+          // recurring donation. Prevent this from creating another one.
+
+          log.info("skipping the auto-migrated subscription");
+        } else if ("trialing".equalsIgnoreCase(createdSubscription.getStatus())) {
+          // IE, handle the subscription if it's going to happen in the future. Otherwise, if it started already,
+          // the incoming payment will handle it. This prevents timing issues for start-now subscriptions, where
+          // we'll likely get the subscription and charge near instantaneously (but on different requests/threads).
+
+          Customer createdSubscriptionCustomer = StripeClient.getCustomer(createdSubscription.getCustomer(), requestOptions);
+          log.info("found customer {}", createdSubscriptionCustomer.getId());
+
+          paymentGatewayEvent.initStripe(createdSubscription, createdSubscriptionCustomer);
+
+          subscriptionTrialing(paymentGatewayEvent);
+        } else {
+          log.info("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
+        }
+        break;
+      case "customer.subscription.deleted":
+        Subscription deletedSubscription = (Subscription) stripeObject;
+        log.info("found subscription {}", deletedSubscription.getId());
+        Customer deletedSubscriptionCustomer = StripeClient.getCustomer(deletedSubscription.getCustomer(), requestOptions);
+        log.info("found customer {}", deletedSubscriptionCustomer.getId());
+        paymentGatewayEvent.initStripe(deletedSubscription, deletedSubscriptionCustomer);
+
+        // NOTE: the customer.subscription.deleted name is a little misleading -- it instead means
+        // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
+        // simply close the recurring donation.
+        subscriptionDeleted(paymentGatewayEvent);
+        break;
+      default:
+        log.info("unhandled Stripe webhook event type: {}", eventType);
+    }
   }
 
   private void processCharge(Charge charge, T paymentGatewayEvent, RequestOptions requestOptions, String orgCurrency)
