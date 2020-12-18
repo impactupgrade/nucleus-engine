@@ -52,5 +52,8 @@ public abstract class App {
     server.start();
   }
 
+  /**
+   * Allows the app to register any unique endpoints with Jersey.
+   */
   protected abstract void registerServices(ResourceConfig resourceConfig);
 }
