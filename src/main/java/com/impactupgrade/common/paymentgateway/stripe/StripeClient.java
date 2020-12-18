@@ -4,7 +4,11 @@ import com.sforce.ws.ConnectionException;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
+import com.stripe.model.Charge;
+import com.stripe.model.ChargeCollection;
 import com.stripe.model.Customer;
+import com.stripe.model.Event;
+import com.stripe.model.EventCollection;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
@@ -15,6 +19,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +58,35 @@ public class StripeClient {
     log.info("cancelling subscription {}...", id);
     Subscription.retrieve(id, requestOptions).cancel();
     log.info("cancelled subscription {}", id);
+  }
+
+  public Iterable<Charge> getAllCharges(Date startDate, Date endDate) throws StripeException {
+    Map<String, Object> params = new HashMap<>();
+    params.put("limit", 100);
+    Map<String, Object> createdParams = new HashMap<>();
+    createdParams.put("gte", startDate);
+    createdParams.put("lte", endDate);
+    params.put("created", createdParams);
+
+    List<String> expandList = new ArrayList<>();
+    expandList.add("data.payment_intent");
+    params.put("expand", expandList);
+
+    ChargeCollection chargeCollection = Charge.list(params, defaultRequestOptions());
+    return chargeCollection.autoPagingIterable();
+  }
+
+  public Iterable<Event> getAllEvents(String eventType, Date startDate, Date endDate) throws StripeException {
+    Map<String, Object> params = new HashMap<>();
+    params.put("limit", 100);
+    Map<String, Object> createdParams = new HashMap<>();
+    createdParams.put("gte", startDate);
+    createdParams.put("lte", endDate);
+    params.put("created", createdParams);
+    params.put("type", eventType);
+
+    EventCollection eventCollection = Event.list(params, defaultRequestOptions());
+    return eventCollection.autoPagingIterable();
   }
 
   public static RequestOptions defaultRequestOptions() {
