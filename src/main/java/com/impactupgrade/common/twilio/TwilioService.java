@@ -42,10 +42,12 @@ public class TwilioService {
 
   private static final Logger log = LogManager.getLogger(TwilioService.class);
 
-  private static final long DEFAULT_HUBSPOT_SMS_LIST_ID = Long.parseLong(System.getenv("HUBSPOT_SMSLISTID"));
+  private static final String DEFAULT_HUBSPOT_SMS_LIST_ID = System.getenv("HUBSPOT_SMSLISTID");
 
   static {
-    Twilio.init(System.getenv("TWILIO_ACCOUNTSID"), System.getenv("TWILIO_AUTHTOKEN"));
+    if (!Strings.isNullOrEmpty(System.getenv("TWILIO_ACCOUNTSID"))) {
+      Twilio.init(System.getenv("TWILIO_ACCOUNTSID"), System.getenv("TWILIO_AUTHTOKEN"));
+    }
   }
 
   @Path("/outbound/hubspot-list")
@@ -215,7 +217,7 @@ public class TwilioService {
   private void addToHubSpotList(long contactVid, Long hsListId) {
     if (hsListId == null || hsListId == 0L) {
       log.info("explicit HubSpot list ID not provided; using the default {}", DEFAULT_HUBSPOT_SMS_LIST_ID);
-      hsListId = DEFAULT_HUBSPOT_SMS_LIST_ID;
+      hsListId = Long.parseLong(DEFAULT_HUBSPOT_SMS_LIST_ID);
     }
     // note that HubSpot auto-prevents duplicate entries in lists
     HubSpotClientFactory.client().lists().addContactToList(hsListId, contactVid);
