@@ -1,0 +1,28 @@
+package com.impactupgrade.common.paymentgateway;
+
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
+
+public class PaymentGatewayDeposit {
+
+  private Calendar date;
+  private Map<String, Double> ledgerTotals = new HashMap<>();
+
+  public Calendar getDate() {
+    return date;
+  }
+
+  public void setDate(Calendar date) {
+    this.date = date;
+  }
+
+  public Map<String, Double> getLedgerTotals() {
+    return ledgerTotals;
+  }
+
+  public void addTransaction(double totalReceived, String campaignId) {
+    double ledgerTotal = ledgerTotals.getOrDefault(campaignId, 0.0) + totalReceived;
+    ledgerTotals.put(campaignId, ledgerTotal);
+  }
+}

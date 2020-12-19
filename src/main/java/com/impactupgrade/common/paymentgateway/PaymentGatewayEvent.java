@@ -1,24 +1,25 @@
 package com.impactupgrade.common.paymentgateway;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.common.environment.Environment;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
-import com.stripe.model.Plan;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
 public class PaymentGatewayEvent {
+
+  protected final Environment env;
 
   protected String city;
   protected String country;
@@ -50,6 +51,10 @@ public class PaymentGatewayEvent {
   protected boolean transactionSuccess;
   protected String zip;
 
+  public PaymentGatewayEvent(Environment env) {
+    this.env = env;
+  }
+
   public void initStripe(Charge stripeCharge, Customer stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction, String orgCurrency) {
     initStripeCommon();
@@ -59,7 +64,7 @@ public class PaymentGatewayEvent {
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
     // first donation do it in order to prevent timing issues.
     if (stripeInvoice.isPresent() && !Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
-      initStripeSubscription(stripeInvoice.get().getSubscriptionObject());
+      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer);
     }
 
     if (stripeCharge.getCreated() != null) {
@@ -98,7 +103,7 @@ public class PaymentGatewayEvent {
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
     // first donation do it in order to prevent timing issues.
     if (stripeInvoice.isPresent() && !Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
-      initStripeSubscription(stripeInvoice.get().getSubscriptionObject());
+      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer);
     }
 
     if (stripePaymentIntent.getCreated() != null) {
@@ -139,7 +144,7 @@ public class PaymentGatewayEvent {
     initStripeCommon();
     initStripeCustomer(stripeCustomer);
 
-    initStripeSubscription(stripeSubscription);
+    initStripeSubscription(stripeSubscription, stripeCustomer);
   }
 
   protected void initStripeCommon() {
@@ -151,7 +156,7 @@ public class PaymentGatewayEvent {
   protected void initStripeCustomer(Customer stripeCustomer) {
     customerId = stripeCustomer.getId();
 
-    // These metadata fields might be LJI specific, but try them anyway.
+    // TODO: These metadata fields might be LJI specific, but try them anyway. Move to Environment?
     fullName = stripeCustomer.getMetadata().get("customer_name");
     firstName = stripeCustomer.getMetadata().get("first_name");
     lastName = stripeCustomer.getMetadata().get("last_name");
@@ -196,7 +201,8 @@ public class PaymentGatewayEvent {
     }
   }
 
-  protected void initStripeSubscription(Subscription stripeSubscription) {
+  // Keep stripeCustomer, even though we don't use it here -- needed in subclasses.
+  protected void initStripeSubscription(Subscription stripeSubscription, Customer stripeCustomer) {
     if (stripeSubscription.getTrialEnd() != null) {
       subscriptionStartDate = Calendar.getInstance();
       subscriptionStartDate.setTimeInMillis(stripeSubscription.getTrialEnd() * 1000);

@@ -1,5 +1,10 @@
 package com.impactupgrade.common;
 
+import com.impactupgrade.common.backup.BackupService;
+import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.paymentgateway.PaymentGatewayService;
+import com.impactupgrade.common.sfdc.SFDCService;
+import com.impactupgrade.common.twilio.TwilioService;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
@@ -22,6 +27,8 @@ public abstract class App {
     System.setProperty(BusFactory.BUS_FACTORY_PROPERTY_NAME, CXFBusFactory.class.getName());
   }
 
+  private final Environment __defaultEnv = new Environment();
+
   protected void start() throws Exception {
     Server server = new Server();
 
@@ -37,8 +44,8 @@ public abstract class App {
 
     // API/REST (Jersey)
     ResourceConfig resourceConfig = new ResourceConfig();
-    resourceConfig.register(MultiPartFeature.class);
     registerServices(resourceConfig);
+    resourceConfig.register(MultiPartFeature.class);
     applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
 
     // SOAP (CXF)
@@ -52,8 +59,17 @@ public abstract class App {
     server.start();
   }
 
+  protected Environment getEnvironment() {
+    return __defaultEnv;
+  }
+
   /**
-   * Allows the app to register any unique endpoints with Jersey.
+   * Allows the app to register the default services or override them with anything unique.
    */
-  protected abstract void registerServices(ResourceConfig resourceConfig);
+  protected void registerServices(ResourceConfig resourceConfig) {
+    resourceConfig.register(new BackupService());
+    resourceConfig.register(new PaymentGatewayService(getEnvironment()));
+    resourceConfig.register(new SFDCService());
+    resourceConfig.register(new TwilioService());
+  }
 }
