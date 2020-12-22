@@ -69,7 +69,7 @@ public abstract class App {
   protected void registerServices(ResourceConfig resourceConfig) {
     resourceConfig.register(new BackupService());
     resourceConfig.register(new PaymentGatewayService(getEnvironment()));
-    resourceConfig.register(new SFDCService());
+    resourceConfig.register(new SFDCService(getEnvironment()));
     resourceConfig.register(new TwilioService());
   }
 }

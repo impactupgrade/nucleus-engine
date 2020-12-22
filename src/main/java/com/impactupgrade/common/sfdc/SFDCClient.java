@@ -1,6 +1,7 @@
 package com.impactupgrade.common.sfdc;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.util.LoggingUtil;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.sforce.soap.partner.SaveResult;
@@ -29,22 +30,28 @@ public class SFDCClient extends SFDCPartnerAPIClient {
     }
   }
 
-  public SFDCClient(String username, String password) {
+  protected static final String SDF_DATE = "yyyy-MM-dd";
+
+  protected final Environment env;
+
+  public SFDCClient(Environment env, String username, String password) {
     super(
         username,
         password,
         AUTH_URL,
         20 // objects are massive, so toning down the batch sizes
     );
+    this.env = env;
   }
 
-  public SFDCClient() {
+  public SFDCClient(Environment env) {
     super(
         System.getenv("SFDC_USERNAME"),
         System.getenv("SFDC_PASSWORD"),
         AUTH_URL,
         20 // objects are massive, so toning down the batch sizes
     );
+    this.env = env;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,6 +273,12 @@ public class SFDCClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(DONATION_FIELDS, CUSTOM_DONATION_FIELDS) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' and stageName = 'Posted' order by CloseDate desc limit 1";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
+  }
+
+  public List<com.sforce.soap.partner.sobject.SObject> getDonationsInDeposit(String depositId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, CUSTOM_DONATION_FIELDS) + " from Opportunity where " + env.sfdcFieldOppDepositID() + " = '" + depositId + "'";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
   }
 
   public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId) throws ConnectionException, InterruptedException {

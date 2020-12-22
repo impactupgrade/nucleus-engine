@@ -1,6 +1,7 @@
 package com.impactupgrade.common.sfdc;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.security.SecurityUtil;
 import com.impactupgrade.common.util.GoogleSheetsUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -38,9 +39,17 @@ public class SFDCService {
 
   private static final Logger log = LogManager.getLogger(SFDCService.class.getName());
 
-  private static final SFDCClient sfdcClient = new SFDCClient();
-  private static final SFDCMetadataClient sfdcMetadataClient = new SFDCMetadataClient();
-  private static final SFDCBulkClient sfdcBulkClient = new SFDCBulkClient();
+  protected final Environment env;
+  private final SFDCClient sfdcClient;
+  private final SFDCMetadataClient sfdcMetadataClient;
+  private final SFDCBulkClient sfdcBulkClient;
+
+  public SFDCService(Environment env) {
+    this.env = env;
+    sfdcClient = new SFDCClient(env);
+    sfdcMetadataClient = new SFDCMetadataClient(env);
+    sfdcBulkClient = new SFDCBulkClient(env);
+  }
 
   /**
    * Bulk update records using the given GSheet.

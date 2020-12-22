@@ -10,8 +10,6 @@ import com.impactupgrade.integration.paymentspring.model.Subscription;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import com.stripe.exception.StripeException;
-import com.stripe.model.BalanceTransaction;
-import com.stripe.model.Charge;
 import com.stripe.model.Payout;
 import com.stripe.net.RequestOptions;
 import org.apache.logging.log4j.LogManager;
@@ -39,17 +37,17 @@ public class PaymentGatewayService {
 
   private static final Logger log = LogManager.getLogger(PaymentGatewayService.class);
 
-  private static final SFDCClient sfdcClient = new SFDCClient();
-
-  private final Environment env;
+  protected final Environment env;
+  private final SFDCClient sfdcClient;
 
   public PaymentGatewayService(Environment env) {
     this.env = env;
+    sfdcClient = new SFDCClient(env);
   }
 
   /**
    * Provides a list of deposits into checking accounts, powered by all supported payment gateways. Aggregates
-   * each deposit's unrestricted vs. restricted giving (generally determined by campaign metadata) and fees.
+   * each deposit's unrestricted vs. restricted giving (generally determined by campaign metadata) using net received.
    */
   @Path("/deposits")
   @GET
@@ -58,7 +56,7 @@ public class PaymentGatewayService {
       @QueryParam("start") long startMillis,
       @QueryParam("end") long endMillis,
       @Context HttpServletRequest request
-  ) throws StripeException {
+  ) throws StripeException, ConnectionException, InterruptedException {
     SecurityUtil.verifyApiKey(request);
 
     Calendar start = Calendar.getInstance();
@@ -71,27 +69,21 @@ public class PaymentGatewayService {
     List<PaymentGatewayDeposit> deposits = new ArrayList<>();
     List<Payout> payouts = StripeClient.getPayouts(start, end, 100, getStripeRequestOptions());
     for (Payout payout : payouts) {
-      PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
-
       Calendar c = Calendar.getInstance();
       c.setTimeInMillis(payout.getArrivalDate() * 1000);
-      deposit.setDate(c);
+      PaymentGatewayDeposit deposit = new PaymentGatewayDeposit(c);
 
-      List<BalanceTransaction> balanceTransactions = StripeClient.getBalanceTransactions(payout, getStripeRequestOptions());
-      for (BalanceTransaction balanceTransaction : balanceTransactions) {
-        if (balanceTransaction.getSourceObject() instanceof Charge) {
-          double amount = balanceTransaction.getNet() / 100.0;
-          Charge charge = (Charge) balanceTransaction.getSourceObject();
-          String campaignId = env.getCampaignRetriever().stripeCharge(charge).stripeRequestOptions(getStripeRequestOptions()).getCampaign();
-          deposit.addTransaction(amount, campaignId);
-        }
+      List<SObject> opps = sfdcClient.getDonationsInDeposit(payout.getId());
+      for (SObject opp : opps) {
+        double amount = Double.parseDouble(opp.getField(env.sfdcFieldOppDepositNet()).toString());
+        String campaignId = opp.getField("CampaignId").toString();
+        deposit.addTransaction(amount, campaignId);
       }
       deposits.add(deposit);
     }
 
     // TODO: OTHERS
 
-    // TODO: Gson needed?
     return Response.status(200).entity(deposits).build();
   }
 

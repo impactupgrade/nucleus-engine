@@ -153,6 +153,8 @@ public class StripeClient {
     transactionExpand.add("data.source");
     // also include the customer -- need it as a fallback for campaigns
     transactionExpand.add("data.source.customer");
+    // and the payment intent
+    transactionExpand.add("data.source.payment_intent");
     transactionParams.put("expand", transactionExpand);
     BalanceTransactionCollection balanceTransactionsPage = BalanceTransaction.list(transactionParams, requestOptions);
     log.info("found {} transactions in payout page", balanceTransactionsPage.getData().size());

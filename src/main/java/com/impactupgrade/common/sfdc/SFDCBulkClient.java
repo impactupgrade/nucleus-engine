@@ -1,5 +1,6 @@
 package com.impactupgrade.common.sfdc;
 
+import com.impactupgrade.common.environment.Environment;
 import com.sforce.async.*;
 import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
@@ -35,10 +36,16 @@ public class SFDCBulkClient {
 
   private static final Logger log = LogManager.getLogger(SFDCBulkClient.class.getName());
 
+  protected final Environment env;
+
+  public SFDCBulkClient(Environment env) {
+    this.env = env;
+  }
+
   // Keep it simple and build on-demand, since this is rarely used! But if caching is needed, see the
   // approach in SFDCPartnerAPIClient.
   private BulkConnection bulkConn() throws ConnectionException, AsyncApiException {
-    LoginResult loginResult = new SFDCClient().login();
+    LoginResult loginResult = new SFDCClient(env).login();
 
     ConnectorConfig bulkConfig = new ConnectorConfig();
     bulkConfig.setSessionId(loginResult.getSessionId());

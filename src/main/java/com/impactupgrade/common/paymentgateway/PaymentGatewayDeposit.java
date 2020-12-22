@@ -6,15 +6,20 @@ import java.util.Map;
 
 public class PaymentGatewayDeposit {
 
-  private Calendar date;
+  private final Calendar date;
+
   private Map<String, Double> ledgerTotals = new HashMap<>();
+
+  public PaymentGatewayDeposit(Calendar date) {
+    this.date = date;
+  }
 
   public Calendar getDate() {
     return date;
   }
 
-  public void setDate(Calendar date) {
-    this.date = date;
+  public double getTotal() {
+    return ledgerTotals.values().stream().reduce(0.0, Double::sum);
   }
 
   public Map<String, Double> getLedgerTotals() {

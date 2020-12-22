@@ -24,6 +24,8 @@ public class PaymentGatewayEvent {
   protected String city;
   protected String country;
   protected String customerId;
+  protected String depositId;
+  protected Calendar depositDate;
   protected String depositTransactionId;
   protected String email;
   protected String firstName;
@@ -42,6 +44,7 @@ public class PaymentGatewayEvent {
   protected Calendar subscriptionNextDate;
   protected Calendar subscriptionStartDate;
   protected Double transactionAmountInDollars;
+  protected Double transactionNetAmountInDollars;
   protected Calendar transactionDate;
   protected String transactionDescription;
   protected Double transactionExchangeRate;
@@ -80,6 +83,7 @@ public class PaymentGatewayEvent {
     transactionSuccess = !"failed".equalsIgnoreCase(stripeCharge.getStatus());
 
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
+    stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
     if (orgCurrency.equalsIgnoreCase(stripeCharge.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
@@ -119,6 +123,7 @@ public class PaymentGatewayEvent {
     transactionSuccess = !"failed".equalsIgnoreCase(stripePaymentIntent.getStatus());
 
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
+    stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
     if (orgCurrency.equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
@@ -351,6 +356,22 @@ public class PaymentGatewayEvent {
     }
   }
 
+  public String getDepositId() {
+    return depositId;
+  }
+
+  public void setDepositId(String depositId) {
+    this.depositId = depositId;
+  }
+
+  public Calendar getDepositDate() {
+    return depositDate;
+  }
+
+  public void setDepositDate(Calendar depositDate) {
+    this.depositDate = depositDate;
+  }
+
   // TRANSIENT
 
   public boolean isTransactionRecurring() {
@@ -441,6 +462,10 @@ public class PaymentGatewayEvent {
 
   public Double getTransactionAmountInDollars() {
     return transactionAmountInDollars;
+  }
+
+  public Double getTransactionNetAmountInDollars() {
+    return transactionNetAmountInDollars;
   }
 
   public Calendar getTransactionDate() {

@@ -13,6 +13,24 @@ public class Environment {
 
   private static final Logger log = LogManager.getLogger(Environment.class);
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // UNIQUE FIELDS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public String sfdcFieldOppDepositDate() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "sfdcFieldOppDepositDate");
+  }
+  public String sfdcFieldOppDepositID() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "sfdcFieldOppDepositID");
+  }
+  public String sfdcFieldOppDepositNet() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "sfdcFieldOppDepositNet");
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // CUSTOM LOGIC WRAPPED IN BUILDER PATTERNS OR FP
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   // TODO: I'm assuming something super unique may be needed in a subclass, but it's possible we've done this well.
   public CampaignRetriever getCampaignRetriever() {
     return new CampaignRetriever(getCampaignMetadataKeys());
@@ -21,6 +39,10 @@ public class Environment {
   protected String[] getCampaignMetadataKeys() {
     return new String[]{"sf_campaign"};
   }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // CUSTOM LOGIC
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public String getStripeCustomerIdFromRecurringDonation(SObject recurringDonation) {
     throw new NotImplementedException(getClass().getSimpleName() + "." + "getStripeCustomerIdFromRecurringDonation");
