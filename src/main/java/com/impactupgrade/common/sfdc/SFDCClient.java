@@ -73,7 +73,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CAMPAIGN_FIELDS = "id, name";
+  protected static final String CAMPAIGN_FIELDS = "id, name, parentid";
   // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
   // this should be config driven!
   public static String CUSTOM_CAMPAIGN_FIELDS = "";
@@ -240,7 +240,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String DONATION_FIELDS = "id, AccountId, ContactId, amount, name, RecordTypeId, CampaignId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
+  protected static final String DONATION_FIELDS = "id, AccountId, ContactId, amount, name, RecordTypeId, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
   // TODO: For now, keep this simple and allow apps to statically set custom fields to include. But eventually,
   // this should be config driven!
   public static String CUSTOM_DONATION_FIELDS = "";

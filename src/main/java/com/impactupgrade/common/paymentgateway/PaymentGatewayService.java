@@ -29,7 +29,9 @@ import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
@@ -63,27 +65,85 @@ public class PaymentGatewayService {
     Date start = new Date(startMillis);
     Date end = new Date(endMillis);
 
+    // Keep a cache of parent campaigns we visit, just to ease hits on the SFDC API.
+    Map<String, Optional<SObject>> campaignCache = new HashMap<>();
+
     // STRIPE
 
     List<PaymentGatewayDeposit> deposits = new ArrayList<>();
     List<Payout> payouts = StripeClient.getPayouts(start, end, 100, getStripeRequestOptions());
     for (Payout payout : payouts) {
+      PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
+      deposit.setUrl("https://dashboard.stripe.com/payouts/" + payout.getId());
       Calendar c = Calendar.getInstance();
       c.setTimeInMillis(payout.getArrivalDate() * 1000);
-      PaymentGatewayDeposit deposit = new PaymentGatewayDeposit(c);
+      deposit.setDate(c);
 
       List<SObject> opps = sfdcClient.getDonationsInDeposit(payout.getId());
       for (SObject opp : opps) {
-        double amount = Double.parseDouble(opp.getField(env.sfdcFieldOppDepositNet()).toString());
-        String campaignId = opp.getField("CampaignId").toString();
-        deposit.addTransaction(amount, campaignId);
+        double gross = Double.parseDouble(opp.getField("Amount").toString());
+        double net = Double.parseDouble(opp.getField(env.sfdcFieldOppDepositNet()).toString());
+        if (opp.getField("CampaignId") != null && opp.getField("CampaignId").toString().length() > 0) {
+          String campaignId = opp.getField("CampaignId").toString();
+          Optional<SObject> campaign = findCampaign(campaignId, campaignCache);
+          Optional<SObject> parentCampaign = findParentCampaign(campaign, campaignCache);
+
+          if (campaign.isPresent()) {
+            if (parentCampaign.isPresent()) {
+              deposit.addTransaction(gross, net, parentCampaign.get().getId(), parentCampaign.get().getField("Name").toString(),
+                  campaignId, campaign.get().getField("Name").toString());
+            } else {
+              deposit.addTransaction(gross, net, campaignId, campaign.get().getField("Name").toString());
+            }
+          }
+        }
       }
+
       deposits.add(deposit);
     }
 
     // TODO: OTHERS
 
     return Response.status(200).entity(deposits).build();
+  }
+
+  private Optional<SObject> findCampaign(String campaignId, Map<String, Optional<SObject>> campaignCache) throws ConnectionException, InterruptedException {
+    if (campaignCache.containsKey(campaignId)) {
+      return campaignCache.get(campaignId);
+    }
+
+    log.info("campaign {} not cached; visiting...", campaignId);
+    Optional<SObject> campaign = sfdcClient.getCampaignById(campaignId);
+    campaignCache.put(campaignId, campaign);
+    return campaign;
+  }
+
+  private Optional<SObject> findParentCampaign(Optional<SObject> campaign, Map<String, Optional<SObject>> campaignCache) throws ConnectionException, InterruptedException {
+    if (campaign.isEmpty()) {
+      return campaign;
+    }
+
+    if (campaign.get().getField("ParentId") == null || campaign.get().getField("ParentId").toString().isEmpty()) {
+      // reached the top of the tree
+      return campaign;
+    }
+
+    String parentId = campaign.get().getField("ParentId").toString();
+
+    Optional<SObject> parentCampaign;
+    if (campaignCache.containsKey(parentId)) {
+      parentCampaign = campaignCache.get(parentId);
+    } else {
+      log.info("campaign {} not cached; visiting...", parentId);
+      parentCampaign = sfdcClient.getCampaignById(parentId);
+      campaignCache.put(parentId, parentCampaign);
+    }
+
+    if (parentCampaign.isPresent()) {
+      return findParentCampaign(parentCampaign, campaignCache);
+    } else {
+      return Optional.empty();
+    }
   }
 
   @Path("/cancelrecurringdonation")
