@@ -20,7 +20,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -68,7 +67,7 @@ public class StripeClient {
     log.info("cancelled subscription {}", id);
   }
 
-  public Iterable<Charge> getAllCharges(Date startDate, Date endDate, RequestOptions requestOptions) throws StripeException {
+  public static Iterable<Charge> getAllCharges(Date startDate, Date endDate, RequestOptions requestOptions) throws StripeException {
     Map<String, Object> params = new HashMap<>();
     params.put("limit", 100);
     Map<String, Object> createdParams = new HashMap<>();
@@ -84,7 +83,7 @@ public class StripeClient {
     return chargeCollection.autoPagingIterable();
   }
 
-  public Iterable<Event> getAllEvents(String eventType, Date startDate, Date endDate, RequestOptions requestOptions) throws StripeException {
+  public static Iterable<Event> getAllEvents(String eventType, Date startDate, Date endDate, RequestOptions requestOptions) throws StripeException {
     Map<String, Object> params = new HashMap<>();
     params.put("limit", 100);
     Map<String, Object> createdParams = new HashMap<>();
@@ -97,10 +96,10 @@ public class StripeClient {
     return eventCollection.autoPagingIterable();
   }
 
-  public static List<Payout> getPayouts(Calendar start, Calendar end, int payoutLimit, RequestOptions requestOptions) throws StripeException {
+  public static List<Payout> getPayouts(Date startDate, Date endDate, int payoutLimit, RequestOptions requestOptions) throws StripeException {
     PayoutListParams.ArrivalDate arrivalDate = PayoutListParams.ArrivalDate.builder()
-        .setGte(start.getTimeInMillis() / 1000)
-        .setLte(end.getTimeInMillis() / 1000)
+        .setGte(startDate.getTime() / 1000)
+        .setLte(endDate.getTime() / 1000)
         .build();
     PayoutListParams params = PayoutListParams.builder()
         .setLimit((long) payoutLimit)

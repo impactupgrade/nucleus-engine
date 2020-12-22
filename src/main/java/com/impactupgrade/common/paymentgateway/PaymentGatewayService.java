@@ -28,6 +28,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -59,10 +60,8 @@ public class PaymentGatewayService {
   ) throws StripeException, ConnectionException, InterruptedException {
     SecurityUtil.verifyApiKey(request);
 
-    Calendar start = Calendar.getInstance();
-    start.setTimeInMillis(startMillis);
-    Calendar end = Calendar.getInstance();
-    end.setTimeInMillis(endMillis);
+    Date start = new Date(startMillis);
+    Date end = new Date(endMillis);
 
     // STRIPE
 
