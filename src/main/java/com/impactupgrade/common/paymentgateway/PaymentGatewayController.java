@@ -36,14 +36,14 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 
 @Path("/paymentgateway")
-public class PaymentGatewayService {
+public class PaymentGatewayController {
 
-  private static final Logger log = LogManager.getLogger(PaymentGatewayService.class);
+  private static final Logger log = LogManager.getLogger(PaymentGatewayController.class);
 
   protected final Environment env;
   private final SFDCClient sfdcClient;
 
-  public PaymentGatewayService(Environment env) {
+  public PaymentGatewayController(Environment env) {
     this.env = env;
     sfdcClient = new SFDCClient(env);
   }

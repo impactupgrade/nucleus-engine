@@ -1,10 +1,10 @@
 package com.impactupgrade.common;
 
-import com.impactupgrade.common.backup.BackupService;
+import com.impactupgrade.common.backup.BackupController;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.paymentgateway.PaymentGatewayService;
-import com.impactupgrade.common.sfdc.SFDCService;
-import com.impactupgrade.common.twilio.TwilioService;
+import com.impactupgrade.common.paymentgateway.PaymentGatewayController;
+import com.impactupgrade.common.sfdc.SFDCController;
+import com.impactupgrade.common.twilio.TwilioController;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
@@ -67,9 +67,9 @@ public abstract class App {
    * Allows the app to register the default services or override them with anything unique.
    */
   protected void registerServices(ResourceConfig resourceConfig) {
-    resourceConfig.register(new BackupService());
-    resourceConfig.register(new PaymentGatewayService(getEnvironment()));
-    resourceConfig.register(new SFDCService(getEnvironment()));
-    resourceConfig.register(new TwilioService());
+    resourceConfig.register(new BackupController());
+    resourceConfig.register(new PaymentGatewayController(getEnvironment()));
+    resourceConfig.register(new SFDCController(getEnvironment()));
+    resourceConfig.register(new TwilioController());
   }
 }

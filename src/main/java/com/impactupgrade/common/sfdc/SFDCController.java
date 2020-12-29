@@ -35,16 +35,16 @@ import java.util.Map;
 import java.util.Optional;
 
 @Path("/sfdc")
-public class SFDCService {
+public class SFDCController {
 
-  private static final Logger log = LogManager.getLogger(SFDCService.class.getName());
+  private static final Logger log = LogManager.getLogger(SFDCController.class.getName());
 
   protected final Environment env;
   private final SFDCClient sfdcClient;
   private final SFDCMetadataClient sfdcMetadataClient;
   private final SFDCBulkClient sfdcBulkClient;
 
-  public SFDCService(Environment env) {
+  public SFDCController(Environment env) {
     this.env = env;
     sfdcClient = new SFDCClient(env);
     sfdcMetadataClient = new SFDCMetadataClient(env);

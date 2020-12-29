@@ -24,9 +24,9 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 
-public abstract class AbstractStripeService<T extends PaymentGatewayEvent> {
+public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
 
-  private static final Logger log = LogManager.getLogger(AbstractStripeService.class);
+  private static final Logger log = LogManager.getLogger(AbstractStripeController.class);
 
   protected Response webhook(String json) {
     return webhook(json, StripeClient.defaultRequestOptions(), "usd");

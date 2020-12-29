@@ -19,9 +19,9 @@ import java.util.Optional;
  * successful/failed charges, subscription changes, etc. It also houses anything PaymentSpring-specific called by the
  * Portal UI.
  */
-public abstract class AbstractPaymentSpringService<T extends PaymentGatewayEvent> {
+public abstract class AbstractPaymentSpringController<T extends PaymentGatewayEvent> {
 
-  private static final Logger log = LogManager.getLogger(AbstractPaymentSpringService.class);
+  private static final Logger log = LogManager.getLogger(AbstractPaymentSpringController.class);
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 

@@ -38,9 +38,9 @@ import java.util.List;
  * as the Twilio webhook to receive inbound messages and events.
  */
 @Path("/twilio")
-public class TwilioService {
+public class TwilioController {
 
-  private static final Logger log = LogManager.getLogger(TwilioService.class);
+  private static final Logger log = LogManager.getLogger(TwilioController.class);
 
   private static final String DEFAULT_HUBSPOT_SMS_LIST_ID = System.getenv("HUBSPOT_SMSLISTID");
 

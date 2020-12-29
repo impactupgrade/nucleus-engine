@@ -24,9 +24,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Path("/backup")
-public class BackupService {
+public class BackupController {
 
-  private static final Logger log = LogManager.getLogger(BackupService.class);
+  private static final Logger log = LogManager.getLogger(BackupController.class);
 
   private static final String SFDC_USERNAME = System.getenv("SFDC_USERNAME");
   private static final String SFDC_PASSWORD = System.getenv("SFDC_PASSWORD");
