@@ -1,6 +1,7 @@
 package com.impactupgrade.common.paymentgateway.stripe;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.paymentgateway.PaymentGatewayEvent;
 import com.impactupgrade.common.util.LoggingUtil;
 import com.stripe.exception.StripeException;
@@ -15,26 +16,46 @@ import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
-import com.stripe.net.RequestOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 
-public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
+/**
+ * This service acts as the central webhook endpoint for Stripe events, handling everything from
+ * successful/failed charges, subscription changes, etc. It also houses anything Stripe-specific called by the
+ * Portal UI.
+ */
+@Path("/stripe")
+public class StripeController {
 
-  private static final Logger log = LogManager.getLogger(AbstractStripeController.class);
+  private static final Logger log = LogManager.getLogger(StripeController.class);
 
-  protected Response webhook(String json) {
-    return webhook(json, StripeClient.defaultRequestOptions(), "usd");
+  private final Environment env;
+  private final StripeClient stripeClient;
+
+  public StripeController(Environment env) {
+    this.env = env;
+    stripeClient = new StripeClient(env);
   }
 
-  // Allow subclasses to pass in their own RequestOptions, primarily to control the Stripe API key as needed
-  // (ex: DR funding nations).
-  protected Response webhook(String json, RequestOptions requestOptions, String orgCurrency) {
+  /**
+   * Receives and processes *all* webhooks from Stripe.
+   *
+   * @param json
+   * @return
+   */
+  @Path("/webhook")
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response webhook(String json) {
     LoggingUtil.verbose(log, json);
 
     // stripe-java uses GSON, so Jersey/Jackson won't work on its own
@@ -56,7 +77,7 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
       log.info("received event {}: {}", event.getType(), event.getId());
 
       try {
-        processEvent(event.getType(), stripeObject, requestOptions, orgCurrency);
+        processEvent(event.getType(), stripeObject);
       } catch (Exception e) {
         log.error("failed to process the Stripe event", e);
         // TODO: email notification?
@@ -67,9 +88,10 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
     return Response.status(200).build();
   }
 
-  // Public so that utilities can call this directly (ex: replaying missing events).
-  public void processEvent(String eventType, StripeObject stripeObject, RequestOptions requestOptions,
-      String orgCurrency) throws Exception {
+  // Public so that utilities can call this directly.
+  public void processEvent(String eventType, StripeObject stripeObject) throws Exception {
+    PaymentGatewayEvent paymentGatewayEvent = env.buildPaymentGatewayEvent();
+
     switch (eventType) {
       case "charge.succeeded": {
         Charge charge = (Charge) stripeObject;
@@ -78,9 +100,8 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
           log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
-          T paymentGatewayEvent = newEvent();
-          processCharge(charge, paymentGatewayEvent, requestOptions, orgCurrency);
-          chargeSucceeded(paymentGatewayEvent);
+          processCharge(charge, paymentGatewayEvent);
+          env.transactionSucceeded(paymentGatewayEvent);
         }
 
         break;
@@ -89,9 +110,8 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
         log.info("found payment intent {}", paymentIntent.getId());
 
-        T paymentGatewayEvent = newEvent();
-        processPaymentIntent(paymentIntent, paymentGatewayEvent, requestOptions, orgCurrency);
-        chargeSucceeded(paymentGatewayEvent);
+        processPaymentIntent(paymentIntent, paymentGatewayEvent);
+        env.transactionSucceeded(paymentGatewayEvent);
 
         break;
       }
@@ -102,9 +122,8 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
           log.info("charge {} is part of an intent; skipping...", charge.getId());
         } else {
-          T paymentGatewayEvent = newEvent();
-          processCharge(charge, paymentGatewayEvent, requestOptions, orgCurrency);
-          chargeFailed(paymentGatewayEvent);
+          processCharge(charge, paymentGatewayEvent);
+          env.transactionFailed(paymentGatewayEvent);
         }
 
         break;
@@ -121,9 +140,8 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
         }
         log.info("found refund {}", refund.getId());
 
-        T paymentGatewayEvent = newEvent();
         paymentGatewayEvent.initStripe(refund);
-        chargeRefunded(paymentGatewayEvent);
+        env.transactionRefunded(paymentGatewayEvent);
         break;
       }
       case "customer.subscription.created": {
@@ -141,12 +159,11 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
           // the incoming payment will handle it. This prevents timing issues for start-now subscriptions, where
           // we'll likely get the subscription and charge near instantaneously (but on different requests/threads).
 
-          Customer createdSubscriptionCustomer = StripeClient.getCustomer(subscription.getCustomer(), requestOptions);
+          Customer createdSubscriptionCustomer = stripeClient.getCustomer(subscription.getCustomer());
           log.info("found customer {}", createdSubscriptionCustomer.getId());
 
-          T paymentGatewayEvent = newEvent();
           paymentGatewayEvent.initStripe(subscription, createdSubscriptionCustomer);
-          subscriptionTrialing(paymentGatewayEvent);
+          env.subscriptionTrialing(paymentGatewayEvent);
         } else {
           log.info("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
         }
@@ -155,38 +172,36 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
       case "customer.subscription.deleted": {
         Subscription subscription = (Subscription) stripeObject;
         log.info("found subscription {}", subscription.getId());
-        Customer deletedSubscriptionCustomer = StripeClient.getCustomer(subscription.getCustomer(), requestOptions);
+        Customer deletedSubscriptionCustomer = stripeClient.getCustomer(subscription.getCustomer());
         log.info("found customer {}", deletedSubscriptionCustomer.getId());
 
-        T paymentGatewayEvent = newEvent();
         paymentGatewayEvent.initStripe(subscription, deletedSubscriptionCustomer);
         // NOTE: the customer.subscription.deleted name is a little misleading -- it instead means
         // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
         // simply close the recurring donation.
-        subscriptionDeleted(paymentGatewayEvent);
+        env.subscriptionClosed(paymentGatewayEvent);
         break;
       }
       case "payout.paid": {
         Payout payout = (Payout) stripeObject;
         log.info("found payout {}", payout.getId());
-        List<BalanceTransaction> balanceTransactions = StripeClient.getBalanceTransactions(payout, requestOptions);
+        List<BalanceTransaction> balanceTransactions = stripeClient.getBalanceTransactions(payout);
         for (BalanceTransaction balanceTransaction : balanceTransactions) {
           if (balanceTransaction.getSourceObject() instanceof Charge) {
             Charge charge = (Charge) balanceTransaction.getSourceObject();
             log.info("found charge {}", charge.getId());
 
-            T paymentGatewayEvent = newEvent();
             if (Strings.isNullOrEmpty(charge.getPaymentIntent())) {
-              processCharge(charge, Optional.of(balanceTransaction), paymentGatewayEvent, requestOptions, orgCurrency);
+              processCharge(charge, Optional.of(balanceTransaction), paymentGatewayEvent);
             } else {
               log.info("found intent {}", charge.getPaymentIntent());
-              processPaymentIntent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction), paymentGatewayEvent, requestOptions, orgCurrency);
+              processPaymentIntent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction), paymentGatewayEvent);
             }
             paymentGatewayEvent.setDepositId(payout.getId());
             Calendar c = Calendar.getInstance();
             c.setTimeInMillis(payout.getArrivalDate() * 1000);
             paymentGatewayEvent.setDepositDate(c);
-            chargeDeposited(paymentGatewayEvent);
+            env.transactionDeposited(paymentGatewayEvent);
           }
         }
         break;
@@ -196,62 +211,61 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
     }
   }
 
-  private void processCharge(Charge charge, T paymentGatewayEvent, RequestOptions requestOptions, String orgCurrency)
+  private void processCharge(Charge charge, PaymentGatewayEvent paymentGatewayEvent)
       throws StripeException {
     Optional<BalanceTransaction> chargeBalanceTransaction;
     if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
       chargeBalanceTransaction = Optional.empty();
     } else {
-      chargeBalanceTransaction = Optional.of(StripeClient.getBalanceTransaction(charge.getBalanceTransaction(), requestOptions));
+      chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(charge.getBalanceTransaction()));
       log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
     }
 
-    processCharge(charge, chargeBalanceTransaction, paymentGatewayEvent, requestOptions, orgCurrency);
+    processCharge(charge, chargeBalanceTransaction, paymentGatewayEvent);
   }
 
   private void processCharge(Charge charge, Optional<BalanceTransaction> chargeBalanceTransaction,
-      T paymentGatewayEvent, RequestOptions requestOptions, String orgCurrency) throws StripeException {
-    Customer chargeCustomer = StripeClient.getCustomer(charge.getCustomer(), requestOptions);
+      PaymentGatewayEvent paymentGatewayEvent) throws StripeException {
+    Customer chargeCustomer = stripeClient.getCustomer(charge.getCustomer());
     log.info("found customer {}", chargeCustomer.getId());
 
     Optional<Invoice> chargeInvoice;
     if (Strings.isNullOrEmpty(charge.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(StripeClient.getInvoice(charge.getInvoice(), requestOptions));
+      chargeInvoice = Optional.of(stripeClient.getInvoice(charge.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
-    paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction, orgCurrency);
+    paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
   }
 
-  private void processPaymentIntent(PaymentIntent paymentIntent, T paymentGatewayEvent, RequestOptions requestOptions,
-      String orgCurrency) throws StripeException {
+  private void processPaymentIntent(PaymentIntent paymentIntent, PaymentGatewayEvent paymentGatewayEvent) throws StripeException {
     Optional<BalanceTransaction> chargeBalanceTransaction = Optional.empty();
     if (paymentIntent.getCharges() != null && !paymentIntent.getCharges().getData().isEmpty()) {
       if (paymentIntent.getCharges().getData().size() == 1) {
         String balanceTransactionId = paymentIntent.getCharges().getData().get(0).getBalanceTransaction();
         if (!Strings.isNullOrEmpty(balanceTransactionId)) {
-          chargeBalanceTransaction = Optional.of(StripeClient.getBalanceTransaction(balanceTransactionId, requestOptions));
+          chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(balanceTransactionId));
           log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
         }
       }
     }
 
-    processPaymentIntent(paymentIntent, chargeBalanceTransaction, paymentGatewayEvent, requestOptions, orgCurrency);
+    processPaymentIntent(paymentIntent, chargeBalanceTransaction, paymentGatewayEvent);
   }
 
   private void processPaymentIntent(PaymentIntent paymentIntent, Optional<BalanceTransaction> chargeBalanceTransaction,
-      T paymentGatewayEvent, RequestOptions requestOptions, String orgCurrency) throws StripeException {
+      PaymentGatewayEvent paymentGatewayEvent) throws StripeException {
     // TODO: For TER, the customers aren't always included in the webhook -- not sure why. For now, if that's the case,
     // retrieve the whole PaymentIntent and try again...
     Customer chargeCustomer;
     if (Strings.isNullOrEmpty(paymentIntent.getCustomer())) {
       log.info("payment intent {} was missing the customer id in the webhook; retrieving the full payment intent...", paymentIntent.getId());
-      PaymentIntent fullPaymentIntent = StripeClient.getPaymentIntent(paymentIntent.getId(), requestOptions);
-      chargeCustomer = StripeClient.getCustomer(fullPaymentIntent.getCustomer(), requestOptions);
+      PaymentIntent fullPaymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
+      chargeCustomer = stripeClient.getCustomer(fullPaymentIntent.getCustomer());
     } else {
-      chargeCustomer = StripeClient.getCustomer(paymentIntent.getCustomer(), requestOptions);
+      chargeCustomer = stripeClient.getCustomer(paymentIntent.getCustomer());
     }
     log.info("found customer {}", chargeCustomer.getId());
 
@@ -259,20 +273,59 @@ public abstract class AbstractStripeController<T extends PaymentGatewayEvent> {
     if (Strings.isNullOrEmpty(paymentIntent.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(StripeClient.getInvoice(paymentIntent.getInvoice(), requestOptions));
+      chargeInvoice = Optional.of(stripeClient.getInvoice(paymentIntent.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
-    paymentGatewayEvent.initStripe(paymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction, orgCurrency);
+    paymentGatewayEvent.initStripe(paymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
   }
 
-  // Some events (like Payouts) require multiple PaymentGatewayEvents to be built. Let the subclass do it on-demand.
-  protected abstract T newEvent() throws Exception;
+  // TODO: To be wrapped in a REST call for the UI to kick off, etc.
+//  public void verifyAndReplayStripeCharges(Date startDate, Date endDate) throws StripeException {
+//    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+//    Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+//    int count = 0;
+//    for (Charge charge : charges) {
+//      if (!charge.getStatus().equalsIgnoreCase("succeeded")
+//          || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+//        continue;
+//      }
+//
+//      count++;
+//
+//      try {
+//        String paymentIntentId = charge.getPaymentIntent();
+//        String chargeId = charge.getId();
+//        Optional<SObject> opportunity = Optional.empty();
+//        if (!Strings.isNullOrEmpty(paymentIntentId)) {
+//          opportunity = sfdcClient.getDonationByTransactionId("Stripe_Charge_ID__c", paymentIntentId);
+//        }
+//        if (opportunity.isEmpty()) {
+//          opportunity = sfdcClient.getDonationByTransactionId("Stripe_Charge_ID__c", chargeId);
+//        }
+//
+//        if (opportunity.isEmpty()) {
+//          System.out.println("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
+//
+//          if (Strings.isNullOrEmpty(paymentIntentId)) {
+//            processEvent("charge.succeeded", charge);
+//          } else {
+//            processEvent("payment_intent.succeeded", charge.getPaymentIntentObject());
+//          }
+//        }
+//      } catch (Exception e) {
+//        e.printStackTrace();
+//      }
+//    }
+//  }
 
-  protected abstract void chargeDeposited(T paymentGatewayEvent) throws Exception;
-  protected abstract void chargeSucceeded(T paymentGatewayEvent) throws Exception;
-  protected abstract void chargeFailed(T paymentGatewayEvent) throws Exception;
-  protected abstract void chargeRefunded(T paymentGatewayEvent) throws Exception;
-  protected abstract void subscriptionTrialing(T paymentGatewayEvent) throws Exception;
-  protected abstract void subscriptionDeleted(T paymentGatewayEvent) throws Exception;
+  // TODO: To be wrapped in a REST call for the UI to kick off, etc.
+//  public void replayStripePayouts(Date startDate, Date endDate) throws Exception {
+//    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+//    Iterable<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+//    for (Payout payout : payouts) {
+//      System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
+//      processEvent("payout.paid", payout);
+//    }
+//  }
 }

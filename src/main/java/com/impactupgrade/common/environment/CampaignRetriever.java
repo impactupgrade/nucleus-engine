@@ -7,7 +7,6 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
-import com.stripe.net.RequestOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,14 +15,15 @@ public class CampaignRetriever {
 
   private static final Logger log = LogManager.getLogger(CampaignRetriever.class);
 
+  private final StripeClient stripeClient;
   private final String[] metadataKeys;
   private Charge stripeCharge = null;
   private PaymentIntent stripePaymentIntent = null;
   private Subscription stripeSubscription = null;
   private Customer stripeCustomer = null;
-  private RequestOptions stripeRequestOptions = StripeClient.defaultRequestOptions();
 
-  public CampaignRetriever(String[] metadataKeys) {
+  public CampaignRetriever(Environment env, String[] metadataKeys) {
+    stripeClient = new StripeClient(env);
     this.metadataKeys = metadataKeys;
   }
 
@@ -41,10 +41,6 @@ public class CampaignRetriever {
   }
   public CampaignRetriever stripeCustomer(Customer stripeCustomer) {
     this.stripeCustomer = stripeCustomer;
-    return this;
-  }
-  public CampaignRetriever stripeRequestOptions(RequestOptions stripeRequestOptions) {
-    this.stripeRequestOptions = stripeRequestOptions;
     return this;
   }
 
@@ -70,7 +66,7 @@ public class CampaignRetriever {
         // may not have been passed into CampaignRetriever explicitly. Ex: getting transactions from a payout.
         if (!Strings.isNullOrEmpty(stripeCharge.getPaymentIntent())) {
           try {
-            PaymentIntent paymentIntent = StripeClient.getPaymentIntent(stripeCharge.getPaymentIntent(), stripeRequestOptions);
+            PaymentIntent paymentIntent = stripeClient.getPaymentIntent(stripeCharge.getPaymentIntent());
             campaignId = paymentIntent.getMetadata().get(metadataKey);
             if (!Strings.isNullOrEmpty(campaignId)) break;
           } catch (StripeException e) {

@@ -11,7 +11,6 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Payout;
-import com.stripe.net.RequestOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -42,10 +41,12 @@ public class PaymentGatewayController {
 
   protected final Environment env;
   private final SFDCClient sfdcClient;
+  private final StripeClient stripeClient;
 
   public PaymentGatewayController(Environment env) {
     this.env = env;
     sfdcClient = new SFDCClient(env);
+    stripeClient = new StripeClient(env);
   }
 
   /**
@@ -71,7 +72,7 @@ public class PaymentGatewayController {
     // STRIPE
 
     List<PaymentGatewayDeposit> deposits = new ArrayList<>();
-    List<Payout> payouts = StripeClient.getPayouts(start, end, 100, getStripeRequestOptions());
+    List<Payout> payouts = stripeClient.getPayouts(start, end, 100);
     for (Payout payout : payouts) {
       PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
       deposit.setUrl("https://dashboard.stripe.com/payouts/" + payout.getId());
@@ -158,7 +159,7 @@ public class PaymentGatewayController {
         (stripeSubscriptionId, stripeCustomerId) -> {
           try {
             // this will trigger a webhook to be sent from Stripe to SFDC to clear out the donation
-            StripeClient.cancelSubscription(stripeSubscriptionId, StripeClient.defaultRequestOptions());
+            stripeClient.cancelSubscription(stripeSubscriptionId);
           } catch (StripeException e) {
             throw new RuntimeException(e);
           }
@@ -202,10 +203,5 @@ public class PaymentGatewayController {
 
     log.warn("{} does not have a supported payment gateway subscription id", recurringDonationId);
     return Response.status(Response.Status.NOT_FOUND).build();
-  }
-
-  // TODO: This likely won't work for DR. Instead need to let the endpoint method be overloaded...
-  protected RequestOptions getStripeRequestOptions() {
-    return StripeClient.defaultRequestOptions();
   }
 }

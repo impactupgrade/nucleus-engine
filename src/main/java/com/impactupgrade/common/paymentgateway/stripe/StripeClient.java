@@ -1,6 +1,7 @@
 package com.impactupgrade.common.paymentgateway.stripe;
 
 import com.google.common.collect.Iterables;
+import com.impactupgrade.common.environment.Environment;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.BalanceTransactionCollection;
@@ -13,7 +14,6 @@ import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Payout;
 import com.stripe.model.Subscription;
-import com.stripe.net.RequestOptions;
 import com.stripe.param.CustomerRetrieveParams;
 import com.stripe.param.PayoutListParams;
 import org.apache.logging.log4j.LogManager;
@@ -29,45 +29,49 @@ public class StripeClient {
 
   private static final Logger log = LogManager.getLogger(StripeClient.class.getName());
 
-  private static final String STRIPE_DEFAULT_KEY = System.getenv("STRIPE_KEY");
-
   protected static final String SDF = "MM/dd/yy hh:mm";
 
-  public static Charge getCharge(String id, RequestOptions requestOptions) throws StripeException {
-    return Charge.retrieve(id, requestOptions);
+  protected final Environment env;
+
+  public StripeClient(Environment env) {
+    this.env = env;
   }
 
-  public static Invoice getInvoice(String id, RequestOptions requestOptions) throws StripeException {
+  public Charge getCharge(String id) throws StripeException {
+    return Charge.retrieve(id, env.buildStripeRequestOptions());
+  }
+
+  public Invoice getInvoice(String id) throws StripeException {
     Map<String, Object> params = new HashMap<>();
     List<String> expand = new ArrayList<>();
     expand.add("subscription");
     params.put("expand", expand);
 
-    return Invoice.retrieve(id, params, requestOptions);
+    return Invoice.retrieve(id, params, env.buildStripeRequestOptions());
   }
 
-  public static BalanceTransaction getBalanceTransaction(String id, RequestOptions requestOptions) throws StripeException {
-    return BalanceTransaction.retrieve(id, requestOptions);
+  public BalanceTransaction getBalanceTransaction(String id) throws StripeException {
+    return BalanceTransaction.retrieve(id, env.buildStripeRequestOptions());
   }
 
-  public static Customer getCustomer(String id, RequestOptions requestOptions) throws StripeException {
+  public Customer getCustomer(String id) throws StripeException {
     CustomerRetrieveParams customerParams = CustomerRetrieveParams.builder()
         .addExpand("sources")
         .build();
-    return Customer.retrieve(id, customerParams, requestOptions);
+    return Customer.retrieve(id, customerParams, env.buildStripeRequestOptions());
   }
 
-  public static PaymentIntent getPaymentIntent(String id, RequestOptions requestOptions) throws StripeException {
-    return PaymentIntent.retrieve(id, requestOptions);
+  public PaymentIntent getPaymentIntent(String id) throws StripeException {
+    return PaymentIntent.retrieve(id, env.buildStripeRequestOptions());
   }
 
-  public static void cancelSubscription(String id, RequestOptions requestOptions) throws StripeException {
+  public void cancelSubscription(String id) throws StripeException {
     log.info("cancelling subscription {}...", id);
-    Subscription.retrieve(id, requestOptions).cancel();
+    Subscription.retrieve(id, env.buildStripeRequestOptions()).cancel();
     log.info("cancelled subscription {}", id);
   }
 
-  public static Iterable<Charge> getAllCharges(Date startDate, Date endDate, RequestOptions requestOptions) throws StripeException {
+  public Iterable<Charge> getAllCharges(Date startDate, Date endDate) throws StripeException {
     Map<String, Object> params = new HashMap<>();
     params.put("limit", 100);
     Map<String, Object> createdParams = new HashMap<>();
@@ -79,11 +83,11 @@ public class StripeClient {
     expandList.add("data.payment_intent");
     params.put("expand", expandList);
 
-    ChargeCollection chargeCollection = Charge.list(params, requestOptions);
+    ChargeCollection chargeCollection = Charge.list(params, env.buildStripeRequestOptions());
     return chargeCollection.autoPagingIterable();
   }
 
-  public static Iterable<Event> getAllEvents(String eventType, Date startDate, Date endDate, RequestOptions requestOptions) throws StripeException {
+  public Iterable<Event> getAllEvents(String eventType, Date startDate, Date endDate) throws StripeException {
     Map<String, Object> params = new HashMap<>();
     params.put("limit", 100);
     Map<String, Object> createdParams = new HashMap<>();
@@ -92,11 +96,11 @@ public class StripeClient {
     params.put("created", createdParams);
     params.put("type", eventType);
 
-    EventCollection eventCollection = Event.list(params, requestOptions);
+    EventCollection eventCollection = Event.list(params, env.buildStripeRequestOptions());
     return eventCollection.autoPagingIterable();
   }
 
-  public static List<Payout> getPayouts(Date startDate, Date endDate, int payoutLimit, RequestOptions requestOptions) throws StripeException {
+  public List<Payout> getPayouts(Date startDate, Date endDate, int payoutLimit) throws StripeException {
     PayoutListParams.ArrivalDate arrivalDate = PayoutListParams.ArrivalDate.builder()
         .setGte(startDate.getTime() / 1000)
         .setLte(endDate.getTime() / 1000)
@@ -106,26 +110,26 @@ public class StripeClient {
         .setArrivalDate(arrivalDate)
         .build();
 
-    return Payout.list(params, requestOptions).getData();
+    return Payout.list(params, env.buildStripeRequestOptions()).getData();
   }
 
-  public static List<Payout> getPayouts(String endingBefore, int payoutLimit, RequestOptions requestOptions) throws StripeException {
+  public List<Payout> getPayouts(String endingBefore, int payoutLimit) throws StripeException {
     Map<String, Object> payoutParams = new HashMap<>();
     // "ending_before" is a little misleading -- results are LIFO, so this actually means "give me all payouts
     // that have happened *after* (chronologically) the given payoutId
     payoutParams.put("ending_before", endingBefore);
     payoutParams.put("limit", payoutLimit);
 
-    return Payout.list(payoutParams, requestOptions).getData();
+    return Payout.list(payoutParams, env.buildStripeRequestOptions()).getData();
   }
 
-  public static List<BalanceTransaction> getBalanceTransactions(String payoutId, RequestOptions requestOptions) throws StripeException {
-    Payout payout = Payout.retrieve(payoutId, requestOptions);
-    return getBalanceTransactions(payout, requestOptions);
+  public List<BalanceTransaction> getBalanceTransactions(String payoutId) throws StripeException {
+    Payout payout = Payout.retrieve(payoutId, env.buildStripeRequestOptions());
+    return getBalanceTransactions(payout);
   }
 
-  public static List<BalanceTransaction> getBalanceTransactions(Payout payout, RequestOptions requestOptions) throws StripeException {
-    List<BalanceTransaction> balanceTransactions = getBalanceTransactions(payout, null, requestOptions);
+  public List<BalanceTransaction> getBalanceTransactions(Payout payout) throws StripeException {
+    List<BalanceTransaction> balanceTransactions = getBalanceTransactions(payout, null);
     if (balanceTransactions.isEmpty()) {
       log.info("no new payouts to process");
     }
@@ -138,7 +142,7 @@ public class StripeClient {
    * we need to iterate over the paging.
    * @return
    */
-  private static List<BalanceTransaction> getBalanceTransactions(Payout payout, BalanceTransaction startingAfter, RequestOptions requestOptions)
+  private List<BalanceTransaction> getBalanceTransactions(Payout payout, BalanceTransaction startingAfter)
       throws StripeException {
 
     Map<String, Object> transactionParams = new HashMap<>();
@@ -155,19 +159,15 @@ public class StripeClient {
     // and the payment intent
     transactionExpand.add("data.source.payment_intent");
     transactionParams.put("expand", transactionExpand);
-    BalanceTransactionCollection balanceTransactionsPage = BalanceTransaction.list(transactionParams, requestOptions);
+    BalanceTransactionCollection balanceTransactionsPage = BalanceTransaction.list(transactionParams, env.buildStripeRequestOptions());
     log.info("found {} transactions in payout page", balanceTransactionsPage.getData().size());
 
     List<BalanceTransaction> balanceTransactions = new ArrayList<>(balanceTransactionsPage.getData());
     // if there were 100 transactions, iterate to add the next page
     if (balanceTransactionsPage.getData().size() >= 100) {
-      balanceTransactions.addAll(getBalanceTransactions(payout, Iterables.getLast(balanceTransactionsPage.getData()), requestOptions));
+      balanceTransactions.addAll(getBalanceTransactions(payout, Iterables.getLast(balanceTransactionsPage.getData())));
     }
 
     return balanceTransactions;
-  }
-
-  public static RequestOptions defaultRequestOptions() {
-    return RequestOptions.builder().setApiKey(STRIPE_DEFAULT_KEY).build();
   }
 }

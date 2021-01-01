@@ -3,6 +3,8 @@ package com.impactupgrade.common;
 import com.impactupgrade.common.backup.BackupController;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.paymentgateway.PaymentGatewayController;
+import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringController;
+import com.impactupgrade.common.paymentgateway.stripe.StripeController;
 import com.impactupgrade.common.sfdc.SFDCController;
 import com.impactupgrade.common.twilio.TwilioController;
 import org.apache.cxf.Bus;
@@ -69,7 +71,9 @@ public abstract class App {
   protected void registerServices(ResourceConfig resourceConfig) {
     resourceConfig.register(new BackupController());
     resourceConfig.register(new PaymentGatewayController(getEnvironment()));
+    resourceConfig.register(new PaymentSpringController(getEnvironment()));
     resourceConfig.register(new SFDCController(getEnvironment()));
+    resourceConfig.register(new StripeController(getEnvironment()));
     resourceConfig.register(new TwilioController());
   }
 }

@@ -2,6 +2,7 @@ package com.impactupgrade.common.paymentgateway.paymentspring;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.paymentgateway.PaymentGatewayEvent;
 import com.impactupgrade.integration.paymentspring.model.Customer;
 import com.impactupgrade.integration.paymentspring.model.Event;
@@ -10,6 +11,10 @@ import com.impactupgrade.integration.paymentspring.model.Transaction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Optional;
@@ -19,16 +24,29 @@ import java.util.Optional;
  * successful/failed charges, subscription changes, etc. It also houses anything PaymentSpring-specific called by the
  * Portal UI.
  */
-public abstract class AbstractPaymentSpringController<T extends PaymentGatewayEvent> {
+@Path("/paymentspring")
+public class PaymentSpringController {
 
-  private static final Logger log = LogManager.getLogger(AbstractPaymentSpringController.class);
+  private static final Logger log = LogManager.getLogger(PaymentSpringController.class);
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
+  private final Environment env;
+
+  public PaymentSpringController(Environment env) {
+    this.env = env;
+  }
+
   /**
    * Receives and processes *all* webhooks from PaymentSpring.
+   *
+   * @param json
+   * @return
    */
-  protected Response webhook(String json, T paymentGatewayEvent) {
+  @Path("/webhook")
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response webhook(String json) {
     // PaymentSpring is so bloody difficult to replay. For now, as we're fixing issues, always log the raw requests.
 //    LoggingUtil.verbose(log, json);
     log.info(json);
@@ -48,6 +66,8 @@ public abstract class AbstractPaymentSpringController<T extends PaymentGatewayEv
       log.info("received event {}: {}", event.getEventResource(), event.getEventType());
 
       try {
+        PaymentGatewayEvent paymentGatewayEvent = env.buildPaymentGatewayEvent();
+
         switch (event.getEventResource()) {
           case "transaction":
             Transaction transaction = objectMapper.readValue(event.getPayloadJson().toString(), Transaction.class);
@@ -76,13 +96,13 @@ public abstract class AbstractPaymentSpringController<T extends PaymentGatewayEv
 
             switch (event.getEventType()) {
               case "created":
-                transactionCreated(paymentGatewayEvent);
+                env.transactionSucceeded(paymentGatewayEvent);
                 break;
               case "failed":
-                transactionFailed(paymentGatewayEvent);
+                env.transactionFailed(paymentGatewayEvent);
                 break;
               case "refunded":
-                transactionRefunded(paymentGatewayEvent);
+                env.transactionRefunded(paymentGatewayEvent);
                 break;
               default:
                 log.info("unhandled PaymentSpring transaction event type: {}", event.getEventType());
@@ -101,7 +121,7 @@ public abstract class AbstractPaymentSpringController<T extends PaymentGatewayEv
 
                 paymentGatewayEvent.initPaymentSpring(subscription);
 
-                subscriptionDestroyed(paymentGatewayEvent);
+                env.subscriptionClosed(paymentGatewayEvent);
                 break;
               default:
                 log.info("unhandled PaymentSpring subscription event type: {}", event.getEventType());
@@ -119,9 +139,4 @@ public abstract class AbstractPaymentSpringController<T extends PaymentGatewayEv
 
     return Response.status(200).build();
   }
-
-  protected abstract void transactionCreated(T paymentGatewayEvent) throws Exception;
-  protected abstract void transactionFailed(T paymentGatewayEvent) throws Exception;
-  protected abstract void transactionRefunded(T paymentGatewayEvent) throws Exception;
-  protected abstract void subscriptionDestroyed(T paymentGatewayEvent) throws Exception;
 }

@@ -59,7 +59,7 @@ public class PaymentGatewayEvent {
   }
 
   public void initStripe(Charge stripeCharge, Customer stripeCustomer,
-      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction, String orgCurrency) {
+      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     initStripeCommon();
     initStripeCustomer(stripeCustomer);
 
@@ -85,7 +85,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
-    if (orgCurrency.equalsIgnoreCase(stripeCharge.getCurrency())) {
+    if (env.getCurrency().equalsIgnoreCase(stripeCharge.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
@@ -99,7 +99,7 @@ public class PaymentGatewayEvent {
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
-      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction, String orgCurrency) {
+      Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     initStripeCommon();
     initStripeCustomer(stripeCustomer);
 
@@ -125,7 +125,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
-    if (orgCurrency.equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
+    if (env.getCurrency().equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
