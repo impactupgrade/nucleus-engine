@@ -19,6 +19,13 @@ public class Environment {
   // UNIQUE FIELDS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  public String sfdcAccountFields() { return ""; }
+  public String sfdcCampaignFields() { return ""; }
+  public String sfdcContactFields() { return ""; }
+  public String sfdcDonationFields() { return ""; }
+  public String sfdcRecurringDonationFields() { return ""; }
+  public String sfdcUserFields() { return ""; }
+
   public String sfdcFieldOppDepositDate() {
     throw new NotImplementedException(getClass().getSimpleName() + "." + "sfdcFieldOppDepositDate");
   }
@@ -42,6 +49,8 @@ public class Environment {
   protected String[] getCampaignMetadataKeys() {
     return new String[]{"sf_campaign"};
   }
+
+  public String getDefaultSFDCCampaignId() { return ""; }
 
   public PaymentGatewayEvent buildPaymentGatewayEvent() {
     return new PaymentGatewayEvent(this);
