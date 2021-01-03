@@ -5,7 +5,6 @@ import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
-import com.impactupgrade.common.util.LoggingUtil;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
@@ -18,87 +17,40 @@ import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
+import org.apache.camel.Exchange;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * This service acts as the central webhook endpoint for Stripe events, handling everything from
- * successful/failed charges, subscription changes, etc. It also houses anything Stripe-specific called by the
- * Portal UI.
- */
-@Path("/stripe")
-public class StripeController {
+public class StripeProcessor {
 
-  private static final Logger log = LogManager.getLogger(StripeController.class);
+  private static final Logger log = LogManager.getLogger(StripeProcessor.class);
 
   private final Environment env;
   private final StripeClient stripeClient;
   private final DonorService donorService;
   private final DonationService donationService;
 
-  public StripeController(Environment env) {
+  public StripeProcessor(Environment env) {
     this.env = env;
     stripeClient = new StripeClient(env);
     donorService = new DonorService(env);
     donationService = new DonationService(env);
   }
 
-  /**
-   * Receives and processes *all* webhooks from Stripe.
-   *
-   * @param json
-   * @return
-   */
-  @Path("/webhook")
-  @POST
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response webhook(String json) {
-    LoggingUtil.verbose(log, json);
-
-    // stripe-java uses GSON, so Jersey/Jackson won't work on its own
-    Event event = Event.GSON.fromJson(json, Event.class);
-
+  public void processEvent(Event event, Exchange exchange) {
     EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-    StripeObject stripeObject;
-    if (dataObjectDeserializer.getObject().isPresent()) {
-      stripeObject = dataObjectDeserializer.getObject().get();
-    } else {
-      log.error("Stripe deserialization failed, probably due to an API version mismatch.");
-      return Response.status(500).build();
-    }
-
-    // takes a while, so spin it off as a new thread
-    Runnable thread = () -> {
-      // don't log the whole thing -- can be found in Stripe's dashboard -> Developers -> Webhooks
-      // log this within the new thread for traceability's sake
-      log.info("received event {}: {}", event.getType(), event.getId());
-
-      try {
-        processEvent(event.getType(), stripeObject);
-      } catch (Exception e) {
-        log.error("failed to process the Stripe event", e);
-        // TODO: email notification?
-      }
-    };
-    new Thread(thread).start();
-
-    return Response.status(200).build();
+    StripeObject stripeObject = dataObjectDeserializer.getObject().get();
+    exchange.getMessage().setBody(stripeObject);
   }
 
-  // Public so that utilities can call this directly.
-  public void processEvent(String eventType, StripeObject stripeObject) throws Exception {
+  public void processEvent(StripeObject stripeObject, Exchange exchange) throws Exception {
     PaymentGatewayEvent paymentGatewayEvent = env.buildPaymentGatewayEvent();
 
-    switch (eventType) {
+    switch (event.getType()) {
       case "charge.succeeded": {
         Charge charge = (Charge) stripeObject;
         log.info("found charge {}", charge.getId());
@@ -217,7 +169,7 @@ public class StripeController {
         break;
       }
       default:
-        log.info("unhandled Stripe webhook event type: {}", eventType);
+        log.info("unhandled Stripe webhook event type: {}", event.getType());
     }
   }
 
