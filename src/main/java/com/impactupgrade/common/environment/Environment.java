@@ -1,20 +1,39 @@
 package com.impactupgrade.common.environment;
 
+import com.impactupgrade.common.crm.AggregateCrmDestinationService;
+import com.impactupgrade.common.crm.CrmSourceService;
 import com.impactupgrade.common.exception.NotImplementedException;
-import com.impactupgrade.common.paymentgateway.PaymentGatewayEvent;
+import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.net.RequestOptions;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * This class allows the app to provide all the custom data and flows we need that are super-specific to the individual
  * org's environment.
+ *
+ * TODO: This is quickly going to get out of control and will need broken down into more
+ * flexible concepts. But for now, isolating them customization requirements to one spot...
  */
 public class Environment {
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // SERVICE PROVIDERS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private static final Logger log = LogManager.getLogger(Environment.class);
+  /**
+   * Define a single CRM as the end-all source-of-truth for retrievals and queries.
+   */
+  public CrmSourceService crmSource() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "crmSource");
+  }
 
+  /**
+   * Define one or more CRMs as the destinations for donation data.
+   */
+  public AggregateCrmDestinationService crmDonationDestinations() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "crmDonationDestinations");
+  }
+
+  // TODO: other destinations: SMS interactions, etc.
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // UNIQUE FIELDS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +54,6 @@ public class Environment {
   public String sfdcFieldOppDepositNet() {
     throw new NotImplementedException(getClass().getSimpleName() + "." + "sfdcFieldOppDepositNet");
   }
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CUSTOM LOGIC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,31 +82,7 @@ public class Environment {
     return RequestOptions.builder().setApiKey(System.getenv("STRIPE_KEY")).build();
   }
 
-  // TODO: the paymentGatewayEvent process methods may be able to pull in some common code...
-
-  public void transactionDeposited(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "transactionDeposited");
-  }
-
-  public void transactionSucceeded(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "transactionSucceeded");
-  }
-
-  public void transactionFailed(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "transactionFailed");
-  }
-
-  public void transactionRefunded(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "transactionRefunded");
-  }
-
-  public void subscriptionTrialing(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "subscriptionTrialing");
-  }
-
-  public void subscriptionClosed(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "subscriptionClosed");
-  }
+  // TODO: Need to be refactored so they're not assuming SFDC
 
   public String getStripeCustomerIdFromRecurringDonation(SObject recurringDonation) {
     throw new NotImplementedException(getClass().getSimpleName() + "." + "getStripeCustomerIdFromRecurringDonation");

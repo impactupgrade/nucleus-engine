@@ -1,4 +1,4 @@
-package com.impactupgrade.common.sfdc;
+package com.impactupgrade.common.crm.sfdc;
 
 import com.impactupgrade.common.environment.Environment;
 import com.sforce.soap.metadata.Connector;
@@ -27,9 +27,9 @@ import java.util.List;
 /**
  * Wraps the SFDC Metadata SOAP API.
  */
-public class SFDCMetadataClient {
+public class SfdcMetadataClient {
 
-	private static final Logger log = LogManager.getLogger(SFDCMetadataClient.class.getName());
+	private static final Logger log = LogManager.getLogger(SfdcMetadataClient.class.getName());
 
 	protected final Environment env;
 	private final String username;
@@ -43,7 +43,7 @@ public class SFDCMetadataClient {
 		metadataConfig.setPassword(password);
 		// Oh, Salesforce. We must call the login endpoint to obtain the metadataServerUrl and sessionId.
 		// No idea why this isn't generated as a part of the connection, like Enterprise WSDL does it...
-		LoginResult loginResult = new SFDCClient(env, username, password).login();
+		LoginResult loginResult = new SfdcClient(env, username, password).login();
 		metadataConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
 		metadataConfig.setSessionId(loginResult.getSessionId());
 		return Connector.newConnection(metadataConfig);
@@ -56,7 +56,7 @@ public class SFDCMetadataClient {
 	 * @param username
 	 * @param password
 	 */
-	public SFDCMetadataClient(Environment env, String username, String password) {
+	public SfdcMetadataClient(Environment env, String username, String password) {
 		this.env = env;
 		this.username = username;
 		this.password = password;
@@ -65,7 +65,7 @@ public class SFDCMetadataClient {
 	/**
 	 * Log in using the default account.
 	 */
-	public SFDCMetadataClient(Environment env) {
+	public SfdcMetadataClient(Environment env) {
 		this.env = env;
 		this.username = System.getenv("SFDC_USERNAME");
 		this.password = System.getenv("SFDC_PASSWORD");

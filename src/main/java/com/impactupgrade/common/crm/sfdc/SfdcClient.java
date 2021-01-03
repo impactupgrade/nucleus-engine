@@ -1,10 +1,9 @@
-package com.impactupgrade.common.sfdc;
+package com.impactupgrade.common.crm.sfdc;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.util.LoggingUtil;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
-import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
@@ -16,9 +15,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class SFDCClient extends SFDCPartnerAPIClient {
+public class SfdcClient extends SFDCPartnerAPIClient {
 
-  private static final Logger log = LogManager.getLogger(SFDCClient.class.getName());
+  private static final Logger log = LogManager.getLogger(SfdcClient.class.getName());
 
   private static final String AUTH_URL;
   static {
@@ -34,7 +33,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
 
   protected final Environment env;
 
-  public SFDCClient(Environment env, String username, String password) {
+  public SfdcClient(Environment env, String username, String password) {
     super(
         username,
         password,
@@ -44,7 +43,7 @@ public class SFDCClient extends SFDCPartnerAPIClient {
     this.env = env;
   }
 
-  public SFDCClient(Environment env) {
+  public SfdcClient(Environment env) {
     super(
         System.getenv("SFDC_USERNAME"),
         System.getenv("SFDC_PASSWORD"),
@@ -113,19 +112,13 @@ public class SFDCClient extends SFDCPartnerAPIClient {
   }
 
   public Optional<SObject> getContactByEmail(String email) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.sfdcContactFields()) + " from contact where email = '" + email + "'";
-    LoggingUtil.verbose(log, query);
-    return querySingle(query);
-  }
-
-  public List<SObject> getContactsByEmail(String email) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(email)){
-      return Collections.emptyList();
+      return Optional.empty();
     }
 
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.sfdcContactFields()) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "' ORDER BY name";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.sfdcContactFields()) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "'";
     LoggingUtil.verbose(log, query);
-    return queryList(query);
+    return querySingle(query);
   }
 
   public List<SObject> getContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
@@ -297,10 +290,10 @@ public class SFDCClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
-  public List<SObject> getRecurringDonationsBySubscriptionId(String subscriptionIdFieldName, String subscriptionId) throws ConnectionException, InterruptedException {
+  public Optional<SObject> getRecurringDonationBySubscriptionId(String subscriptionIdFieldName, String subscriptionId) throws ConnectionException, InterruptedException {
     String query = "select id, " + subscriptionIdFieldName + ", npe03__Open_Ended_Status__c, npe03__Amount__c, npe03__Recurring_Donation_Campaign__c, npe03__Installment_Period__c from npe03__Recurring_Donation__c where " + subscriptionIdFieldName + " = '" + subscriptionId + "'";
     LoggingUtil.verbose(log, query);
-    return queryList(query);
+    return querySingle(query);
   }
 
   public List<SObject> getRecurringDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
@@ -334,19 +327,6 @@ public class SFDCClient extends SFDCPartnerAPIClient {
     String query = "select id, firstName, lastName from user where isActive = true";
     LoggingUtil.verbose(log, query);
     return queryList(query);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // DRY HELPERS
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public SaveResult insert(SObject sObject) throws InterruptedException {
-    SaveResult saveResult = super.insert(sObject);
-
-    // for convenience, set the ID back on the sObject so it can be directly reused for further processing
-    sObject.setId(saveResult.getId());
-
-    return saveResult;
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // INTERNAL

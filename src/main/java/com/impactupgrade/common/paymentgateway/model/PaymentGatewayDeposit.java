@@ -1,4 +1,4 @@
-package com.impactupgrade.common.paymentgateway;
+package com.impactupgrade.common.paymentgateway.model;
 
 import java.util.Calendar;
 import java.util.HashMap;

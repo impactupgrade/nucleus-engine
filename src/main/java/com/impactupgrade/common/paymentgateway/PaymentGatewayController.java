@@ -2,10 +2,11 @@ package com.impactupgrade.common.paymentgateway;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.paymentgateway.model.PaymentGatewayDeposit;
 import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringClientFactory;
 import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
 import com.impactupgrade.common.security.SecurityUtil;
-import com.impactupgrade.common.sfdc.SFDCClient;
+import com.impactupgrade.common.crm.sfdc.SfdcClient;
 import com.impactupgrade.integration.paymentspring.model.Subscription;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
@@ -40,12 +41,12 @@ public class PaymentGatewayController {
   private static final Logger log = LogManager.getLogger(PaymentGatewayController.class);
 
   protected final Environment env;
-  private final SFDCClient sfdcClient;
+  private final SfdcClient sfdcClient;
   private final StripeClient stripeClient;
 
   public PaymentGatewayController(Environment env) {
     this.env = env;
-    sfdcClient = new SFDCClient(env);
+    sfdcClient = new SfdcClient(env);
     stripeClient = new StripeClient(env);
   }
 

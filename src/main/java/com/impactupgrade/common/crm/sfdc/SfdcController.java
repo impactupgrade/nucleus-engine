@@ -1,4 +1,4 @@
-package com.impactupgrade.common.sfdc;
+package com.impactupgrade.common.crm.sfdc;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
@@ -35,20 +35,20 @@ import java.util.Map;
 import java.util.Optional;
 
 @Path("/sfdc")
-public class SFDCController {
+public class SfdcController {
 
-  private static final Logger log = LogManager.getLogger(SFDCController.class.getName());
+  private static final Logger log = LogManager.getLogger(SfdcController.class.getName());
 
   protected final Environment env;
-  private final SFDCClient sfdcClient;
-  private final SFDCMetadataClient sfdcMetadataClient;
-  private final SFDCBulkClient sfdcBulkClient;
+  private final SfdcClient sfdcClient;
+  private final SfdcMetadataClient sfdcMetadataClient;
+  private final SfdcBulkClient sfdcBulkClient;
 
-  public SFDCController(Environment env) {
+  public SfdcController(Environment env) {
     this.env = env;
-    sfdcClient = new SFDCClient(env);
-    sfdcMetadataClient = new SFDCMetadataClient(env);
-    sfdcBulkClient = new SFDCBulkClient(env);
+    sfdcClient = new SfdcClient(env);
+    sfdcMetadataClient = new SfdcMetadataClient(env);
+    sfdcBulkClient = new SfdcBulkClient(env);
   }
 
   /**

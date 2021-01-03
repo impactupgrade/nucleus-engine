@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
+// TODO: Move to the paymentgateway package?
 public class CampaignRetriever {
 
   private static final Logger log = LogManager.getLogger(CampaignRetriever.class);

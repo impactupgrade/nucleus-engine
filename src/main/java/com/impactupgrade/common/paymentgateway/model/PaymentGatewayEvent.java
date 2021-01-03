@@ -1,4 +1,4 @@
-package com.impactupgrade.common.paymentgateway;
+package com.impactupgrade.common.paymentgateway.model;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
@@ -21,11 +21,11 @@ public class PaymentGatewayEvent {
 
   protected final Environment env;
 
+  // determined by event
+  protected String campaignId;
   protected String city;
   protected String country;
   protected String customerId;
-  protected String depositId;
-  protected Calendar depositDate;
   protected String depositTransactionId;
   protected String email;
   protected String firstName;
@@ -53,6 +53,12 @@ public class PaymentGatewayEvent {
   protected String transactionOriginalCurrency;
   protected boolean transactionSuccess;
   protected String zip;
+
+  // transient, during processing
+  protected String crmAccountId;
+  protected String crmContactId;
+  protected String depositId;
+  protected Calendar depositDate;
 
   public PaymentGatewayEvent(Environment env) {
     this.env = env;
@@ -96,6 +102,8 @@ public class PaymentGatewayEvent {
         transactionExchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
       }
     }
+
+    campaignId = env.getCampaignRetriever().stripeCharge(stripeCharge).stripeCustomer(stripeCustomer).getCampaign();
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
@@ -136,6 +144,8 @@ public class PaymentGatewayEvent {
         transactionExchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
       }
     }
+
+    campaignId = env.getCampaignRetriever().stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer).getCampaign();
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -231,6 +241,8 @@ public class PaymentGatewayEvent {
     SubscriptionItem item = stripeSubscription.getItems().getData().get(0);
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
+
+    campaignId = env.getCampaignRetriever().stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer).getCampaign();
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,
@@ -325,6 +337,23 @@ public class PaymentGatewayEvent {
     }
 
     fullName = firstName + " " + lastName;
+
+    // Furthering the madness, staff can't manually change the campaign on a subscription, only the customer.
+    // So check the customer *first* and let it override the subscription.
+    if (paymentSpringCustomer.isPresent()) {
+      campaignId = paymentSpringCustomer.get().getMetadata().get("sf_campaign_id").replaceAll("[^A-Za-z0-9]", "");
+      // some appear to be using "campaign", so try that too (SMH)
+      if (Strings.isNullOrEmpty(campaignId)) {
+        campaignId = paymentSpringCustomer.get().getMetadata().get("campaign").replaceAll("[^A-Za-z0-9]", "");
+      }
+    }
+    if (Strings.isNullOrEmpty(campaignId)) {
+      campaignId = paymentSpringTransaction.getMetadata().get("sf_campaign_id").replaceAll("[^A-Za-z0-9]", "");
+      // some appear to be using "campaign", so try that too (SMH)
+      if (Strings.isNullOrEmpty(campaignId)) {
+        campaignId = paymentSpringTransaction.getMetadata().get("campaign").replaceAll("[^A-Za-z0-9]", "");
+      }
+    }
   }
 
   protected void initPaymentSpringSubscription(
@@ -346,14 +375,23 @@ public class PaymentGatewayEvent {
     subscriptionNextDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
   }
 
-  private Calendar getTransactionDate(Date date) {
-    if (date != null) {
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTime(date);
-      return calendar;
-    } else {
-      return Calendar.getInstance();
-    }
+  // TRANSIENT
+
+
+  public String getCrmAccountId() {
+    return crmAccountId;
+  }
+
+  public void setCrmAccountId(String crmAccountId) {
+    this.crmAccountId = crmAccountId;
+  }
+
+  public String getCrmContactId() {
+    return crmContactId;
+  }
+
+  public void setCrmContactId(String crmContactId) {
+    this.crmContactId = crmContactId;
   }
 
   public String getDepositId() {
@@ -372,13 +410,26 @@ public class PaymentGatewayEvent {
     this.depositDate = depositDate;
   }
 
-  // TRANSIENT
-
   public boolean isTransactionRecurring() {
     return !Strings.isNullOrEmpty(subscriptionId);
   }
 
+  private Calendar getTransactionDate(Date date) {
+    if (date != null) {
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTime(date);
+      return calendar;
+    } else {
+      return Calendar.getInstance();
+    }
+  }
+
   // ACCESSORS
+
+
+  public String getCampaignId() {
+    return campaignId;
+  }
 
   public String getCity() {
     return city;
