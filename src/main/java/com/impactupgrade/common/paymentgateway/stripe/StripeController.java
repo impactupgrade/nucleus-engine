@@ -2,7 +2,9 @@ package com.impactupgrade.common.paymentgateway.stripe;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.paymentgateway.PaymentGatewayEvent;
+import com.impactupgrade.common.paymentgateway.DonationService;
+import com.impactupgrade.common.paymentgateway.DonorService;
+import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 import com.impactupgrade.common.util.LoggingUtil;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -40,10 +42,14 @@ public class StripeController {
 
   private final Environment env;
   private final StripeClient stripeClient;
+  private final DonorService donorService;
+  private final DonationService donationService;
 
   public StripeController(Environment env) {
     this.env = env;
     stripeClient = new StripeClient(env);
+    donorService = env.donorService();
+    donationService = env.donationService();
   }
 
   /**
@@ -90,7 +96,7 @@ public class StripeController {
 
   // Public so that utilities can call this directly.
   public void processEvent(String eventType, StripeObject stripeObject) throws Exception {
-    PaymentGatewayEvent paymentGatewayEvent = env.buildPaymentGatewayEvent();
+    PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
 
     switch (eventType) {
       case "charge.succeeded": {
@@ -101,7 +107,8 @@ public class StripeController {
           log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
           processCharge(charge, paymentGatewayEvent);
-          env.transactionSucceeded(paymentGatewayEvent);
+          donorService.processAccount(paymentGatewayEvent);
+          donationService.createDonation(paymentGatewayEvent);
         }
 
         break;
@@ -111,7 +118,8 @@ public class StripeController {
         log.info("found payment intent {}", paymentIntent.getId());
 
         processPaymentIntent(paymentIntent, paymentGatewayEvent);
-        env.transactionSucceeded(paymentGatewayEvent);
+        donorService.processAccount(paymentGatewayEvent);
+        donationService.createDonation(paymentGatewayEvent);
 
         break;
       }
@@ -123,7 +131,8 @@ public class StripeController {
           log.info("charge {} is part of an intent; skipping...", charge.getId());
         } else {
           processCharge(charge, paymentGatewayEvent);
-          env.transactionFailed(paymentGatewayEvent);
+          donorService.processAccount(paymentGatewayEvent);
+          donationService.createDonation(paymentGatewayEvent);
         }
 
         break;
@@ -141,7 +150,7 @@ public class StripeController {
         log.info("found refund {}", refund.getId());
 
         paymentGatewayEvent.initStripe(refund);
-        env.transactionRefunded(paymentGatewayEvent);
+        donationService.refundDonation(paymentGatewayEvent);
         break;
       }
       case "customer.subscription.created": {
@@ -163,7 +172,8 @@ public class StripeController {
           log.info("found customer {}", createdSubscriptionCustomer.getId());
 
           paymentGatewayEvent.initStripe(subscription, createdSubscriptionCustomer);
-          env.subscriptionTrialing(paymentGatewayEvent);
+          donorService.processAccount(paymentGatewayEvent);
+          donationService.processSubscription(paymentGatewayEvent);
         } else {
           log.info("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
         }
@@ -179,7 +189,7 @@ public class StripeController {
         // NOTE: the customer.subscription.deleted name is a little misleading -- it instead means
         // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
         // simply close the recurring donation.
-        env.subscriptionClosed(paymentGatewayEvent);
+        donationService.closeRecurringDonation(paymentGatewayEvent);
         break;
       }
       case "payout.paid": {
@@ -201,7 +211,7 @@ public class StripeController {
             Calendar c = Calendar.getInstance();
             c.setTimeInMillis(payout.getArrivalDate() * 1000);
             paymentGatewayEvent.setDepositDate(c);
-            env.transactionDeposited(paymentGatewayEvent);
+            donationService.chargeDeposited(paymentGatewayEvent);
           }
         }
         break;

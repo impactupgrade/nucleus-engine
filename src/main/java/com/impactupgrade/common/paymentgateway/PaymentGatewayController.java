@@ -2,10 +2,11 @@ package com.impactupgrade.common.paymentgateway;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.paymentgateway.model.PaymentGatewayDeposit;
 import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringClientFactory;
 import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
 import com.impactupgrade.common.security.SecurityUtil;
-import com.impactupgrade.common.sfdc.SFDCClient;
+import com.impactupgrade.common.crm.sfdc.SfdcClient;
 import com.impactupgrade.integration.paymentspring.model.Subscription;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
@@ -40,12 +41,12 @@ public class PaymentGatewayController {
   private static final Logger log = LogManager.getLogger(PaymentGatewayController.class);
 
   protected final Environment env;
-  private final SFDCClient sfdcClient;
+  private final SfdcClient sfdcClient;
   private final StripeClient stripeClient;
 
   public PaymentGatewayController(Environment env) {
     this.env = env;
-    sfdcClient = new SFDCClient(env);
+    sfdcClient = new SfdcClient(env);
     stripeClient = new StripeClient(env);
   }
 
@@ -83,7 +84,7 @@ public class PaymentGatewayController {
       List<SObject> opps = sfdcClient.getDonationsInDeposit(payout.getId());
       for (SObject opp : opps) {
         double gross = Double.parseDouble(opp.getField("Amount").toString());
-        double net = Double.parseDouble(opp.getField(env.sfdcFieldOppDepositNet()).toString());
+        double net = Double.parseDouble(opp.getField(env.sfdcFieldOpportunityDepositNet()).toString());
         if (opp.getField("CampaignId") != null && opp.getField("CampaignId").toString().length() > 0) {
           String campaignId = opp.getField("CampaignId").toString();
           Optional<SObject> campaign = findCampaign(campaignId, campaignCache);
@@ -192,11 +193,11 @@ public class PaymentGatewayController {
     Optional<SObject> recurringDonationSO = sfdcClient.getRecurringDonationById(recurringDonationId);
     if (recurringDonationSO.isPresent()) {
       SObject recurringDonation = recurringDonationSO.get();
-      if (!Strings.isNullOrEmpty(env.getStripeSubscriptionIdFromRecurringDonation(recurringDonation))) {
-        stripeAction.accept(env.getStripeSubscriptionIdFromRecurringDonation(recurringDonation), env.getStripeCustomerIdFromRecurringDonation(recurringDonation));
+      if (!Strings.isNullOrEmpty(env.stripeSubscriptionIdFromRecurringDonation(recurringDonation))) {
+        stripeAction.accept(env.stripeSubscriptionIdFromRecurringDonation(recurringDonation), env.stripeCustomerIdFromRecurringDonation(recurringDonation));
         return Response.ok().build();
-      } else if (!Strings.isNullOrEmpty(env.getPaymentSpringSubscriptionIdFromRecurringDonation(recurringDonation))) {
-        paymentspringAction.accept(env.getPaymentSpringSubscriptionIdFromRecurringDonation(recurringDonation), env.getPaymentSpringCustomerIdFromRecurringDonation(recurringDonation));
+      } else if (!Strings.isNullOrEmpty(env.paymentSpringSubscriptionIdFromRecurringDonation(recurringDonation))) {
+        paymentspringAction.accept(env.paymentSpringSubscriptionIdFromRecurringDonation(recurringDonation), env.paymentSpringCustomerIdFromRecurringDonation(recurringDonation));
         return Response.ok().build();
       }
     }

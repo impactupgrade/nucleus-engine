@@ -3,7 +3,9 @@ package com.impactupgrade.common.paymentgateway.paymentspring;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.paymentgateway.PaymentGatewayEvent;
+import com.impactupgrade.common.paymentgateway.DonationService;
+import com.impactupgrade.common.paymentgateway.DonorService;
+import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 import com.impactupgrade.integration.paymentspring.model.Customer;
 import com.impactupgrade.integration.paymentspring.model.Event;
 import com.impactupgrade.integration.paymentspring.model.Subscription;
@@ -32,9 +34,13 @@ public class PaymentSpringController {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Environment env;
+  private final DonorService donorService;
+  private final DonationService donationService;
 
   public PaymentSpringController(Environment env) {
     this.env = env;
+    donorService = env.donorService();
+    donationService = env.donationService();
   }
 
   /**
@@ -66,7 +72,7 @@ public class PaymentSpringController {
       log.info("received event {}: {}", event.getEventResource(), event.getEventType());
 
       try {
-        PaymentGatewayEvent paymentGatewayEvent = env.buildPaymentGatewayEvent();
+        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
 
         switch (event.getEventResource()) {
           case "transaction":
@@ -96,13 +102,15 @@ public class PaymentSpringController {
 
             switch (event.getEventType()) {
               case "created":
-                env.transactionSucceeded(paymentGatewayEvent);
+                donorService.processAccount(paymentGatewayEvent);
+                donationService.createDonation(paymentGatewayEvent);
                 break;
               case "failed":
-                env.transactionFailed(paymentGatewayEvent);
+                donorService.processAccount(paymentGatewayEvent);
+                donationService.createDonation(paymentGatewayEvent);
                 break;
               case "refunded":
-                env.transactionRefunded(paymentGatewayEvent);
+                donationService.refundDonation(paymentGatewayEvent);
                 break;
               default:
                 log.info("unhandled PaymentSpring transaction event type: {}", event.getEventType());
@@ -121,7 +129,7 @@ public class PaymentSpringController {
 
                 paymentGatewayEvent.initPaymentSpring(subscription);
 
-                env.subscriptionClosed(paymentGatewayEvent);
+                donationService.closeRecurringDonation(paymentGatewayEvent);
                 break;
               default:
                 log.info("unhandled PaymentSpring subscription event type: {}", event.getEventType());

@@ -1,4 +1,4 @@
-package com.impactupgrade.common.sfdc;
+package com.impactupgrade.common.crm.sfdc;
 
 import com.impactupgrade.common.environment.Environment;
 import com.sforce.async.*;
@@ -32,20 +32,20 @@ import java.util.Set;
  * Taken and adapted from:
  * https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_code_walkthrough.htm
  */
-public class SFDCBulkClient {
+public class SfdcBulkClient {
 
-  private static final Logger log = LogManager.getLogger(SFDCBulkClient.class.getName());
+  private static final Logger log = LogManager.getLogger(SfdcBulkClient.class.getName());
 
   protected final Environment env;
 
-  public SFDCBulkClient(Environment env) {
+  public SfdcBulkClient(Environment env) {
     this.env = env;
   }
 
   // Keep it simple and build on-demand, since this is rarely used! But if caching is needed, see the
   // approach in SFDCPartnerAPIClient.
   private BulkConnection bulkConn() throws ConnectionException, AsyncApiException {
-    LoginResult loginResult = new SFDCClient(env).login();
+    LoginResult loginResult = new SfdcClient(env).login();
 
     ConnectorConfig bulkConfig = new ConnectorConfig();
     bulkConfig.setSessionId(loginResult.getSessionId());
@@ -352,9 +352,9 @@ public class SFDCBulkClient {
   }
 
   public static void main(String[] args) throws ConnectionException, InterruptedException, AsyncApiException, IOException {
-//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Account");
-//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Contact");
-//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "npe03__Recurring_Donation__c", "npe03__Open_Ended_Status__c='Open'");
-//    new SFDCBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Opportunity", "StageName='Pledged'");
+//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Account");
+//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Contact");
+//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "npe03__Recurring_Donation__c", "npe03__Open_Ended_Status__c='Open'");
+//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Opportunity", "StageName='Pledged'");
   }
 }

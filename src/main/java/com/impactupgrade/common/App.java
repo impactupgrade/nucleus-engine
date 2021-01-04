@@ -1,12 +1,6 @@
 package com.impactupgrade.common;
 
-import com.impactupgrade.common.backup.BackupController;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.paymentgateway.PaymentGatewayController;
-import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringController;
-import com.impactupgrade.common.paymentgateway.stripe.StripeController;
-import com.impactupgrade.common.sfdc.SFDCController;
-import com.impactupgrade.common.twilio.TwilioController;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
@@ -46,7 +40,12 @@ public abstract class App {
 
     // API/REST (Jersey)
     ResourceConfig resourceConfig = new ResourceConfig();
-    registerServices(resourceConfig);
+    resourceConfig.register(getEnvironment().backupController());
+    resourceConfig.register(getEnvironment().paymentGatewayController());
+    resourceConfig.register(getEnvironment().paymentSpringController());
+    resourceConfig.register(getEnvironment().sfdcController());
+    resourceConfig.register(getEnvironment().stripeController());
+    resourceConfig.register(getEnvironment().twilioController());
     resourceConfig.register(MultiPartFeature.class);
     applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
 
@@ -63,17 +62,5 @@ public abstract class App {
 
   protected Environment getEnvironment() {
     return __defaultEnv;
-  }
-
-  /**
-   * Allows the app to register the default services or override them with anything unique.
-   */
-  protected void registerServices(ResourceConfig resourceConfig) {
-    resourceConfig.register(new BackupController());
-    resourceConfig.register(new PaymentGatewayController(getEnvironment()));
-    resourceConfig.register(new PaymentSpringController(getEnvironment()));
-    resourceConfig.register(new SFDCController(getEnvironment()));
-    resourceConfig.register(new StripeController(getEnvironment()));
-    resourceConfig.register(new TwilioController());
   }
 }

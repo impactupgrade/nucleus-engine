@@ -11,6 +11,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
+// TODO: Move to the paymentgateway package?
+// TODO: Could this be replaced by overriding services?
 public class CampaignRetriever {
 
   private static final Logger log = LogManager.getLogger(CampaignRetriever.class);
@@ -22,9 +24,9 @@ public class CampaignRetriever {
   private Subscription stripeSubscription = null;
   private Customer stripeCustomer = null;
 
-  public CampaignRetriever(Environment env, String[] metadataKeys) {
+  public CampaignRetriever(Environment env) {
     stripeClient = new StripeClient(env);
-    this.metadataKeys = metadataKeys;
+    this.metadataKeys = env.campaignMetadataKeys();
   }
 
   public CampaignRetriever stripeCharge(Charge stripeCharge) {

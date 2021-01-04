@@ -1,4 +1,4 @@
-package com.impactupgrade.common.hubspot;
+package com.impactupgrade.common.crm.hubspot;
 
 import com.impactupgrade.integration.hubspot.HubSpotClient;
 

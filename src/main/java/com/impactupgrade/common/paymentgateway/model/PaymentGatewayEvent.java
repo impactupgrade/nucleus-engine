@@ -1,6 +1,7 @@
-package com.impactupgrade.common.paymentgateway;
+package com.impactupgrade.common.paymentgateway.model;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.common.environment.CampaignRetriever;
 import com.impactupgrade.common.environment.Environment;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
@@ -18,14 +19,15 @@ import java.util.Locale;
 import java.util.Optional;
 
 public class PaymentGatewayEvent {
-
+  
   protected final Environment env;
+  protected final CampaignRetriever campaignRetriever;
 
+  // determined by event
+  protected String campaignId;
   protected String city;
   protected String country;
   protected String customerId;
-  protected String depositId;
-  protected Calendar depositDate;
   protected String depositTransactionId;
   protected String email;
   protected String firstName;
@@ -54,9 +56,19 @@ public class PaymentGatewayEvent {
   protected boolean transactionSuccess;
   protected String zip;
 
+  // context set within processing steps
+  protected String primaryCrmAccountId;
+  protected String primaryCrmContactId;
+  protected String depositId;
+  protected Calendar depositDate;
+
   public PaymentGatewayEvent(Environment env) {
     this.env = env;
+    campaignRetriever = new CampaignRetriever(env);
   }
+
+  // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
+  // into forms and contain NBSP characters :(
 
   public void initStripe(Charge stripeCharge, Customer stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
@@ -85,7 +97,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
-    if (env.getCurrency().equalsIgnoreCase(stripeCharge.getCurrency())) {
+    if (env.defaultCurrency().equalsIgnoreCase(stripeCharge.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
@@ -96,6 +108,8 @@ public class PaymentGatewayEvent {
         transactionExchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
       }
     }
+
+    campaignId = campaignRetriever.stripeCharge(stripeCharge).stripeCustomer(stripeCustomer).getCampaign();
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
@@ -125,7 +139,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
-    if (env.getCurrency().equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
+    if (env.defaultCurrency().equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
@@ -136,6 +150,8 @@ public class PaymentGatewayEvent {
         transactionExchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
       }
     }
+
+    campaignId = campaignRetriever.stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer).getCampaign();
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -231,6 +247,8 @@ public class PaymentGatewayEvent {
     SubscriptionItem item = stripeSubscription.getItems().getData().get(0);
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
+
+    campaignId = campaignRetriever.stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer).getCampaign();
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,
@@ -325,6 +343,23 @@ public class PaymentGatewayEvent {
     }
 
     fullName = firstName + " " + lastName;
+
+    // Furthering the madness, staff can't manually change the campaign on a subscription, only the customer.
+    // So check the customer *first* and let it override the subscription.
+    if (paymentSpringCustomer.isPresent()) {
+      campaignId = paymentSpringCustomer.get().getMetadata().get("sf_campaign_id").replaceAll("[^A-Za-z0-9]", "");
+      // some appear to be using "campaign", so try that too (SMH)
+      if (Strings.isNullOrEmpty(campaignId)) {
+        campaignId = paymentSpringCustomer.get().getMetadata().get("campaign").replaceAll("[^A-Za-z0-9]", "");
+      }
+    }
+    if (Strings.isNullOrEmpty(campaignId)) {
+      campaignId = paymentSpringTransaction.getMetadata().get("sf_campaign_id").replaceAll("[^A-Za-z0-9]", "");
+      // some appear to be using "campaign", so try that too (SMH)
+      if (Strings.isNullOrEmpty(campaignId)) {
+        campaignId = paymentSpringTransaction.getMetadata().get("campaign").replaceAll("[^A-Za-z0-9]", "");
+      }
+    }
   }
 
   protected void initPaymentSpringSubscription(
@@ -345,15 +380,23 @@ public class PaymentGatewayEvent {
     subscriptionStartDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
     subscriptionNextDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
   }
+  
+  // CONTEXT SET WITHIN PROCESSING STEPS
 
-  private Calendar getTransactionDate(Date date) {
-    if (date != null) {
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTime(date);
-      return calendar;
-    } else {
-      return Calendar.getInstance();
-    }
+  public String getPrimaryCrmAccountId() {
+    return primaryCrmAccountId;
+  }
+
+  public void setPrimaryCrmAccountId(String primaryCrmAccountId) {
+    this.primaryCrmAccountId = primaryCrmAccountId;
+  }
+
+  public String getPrimaryCrmContactId() {
+    return primaryCrmContactId;
+  }
+
+  public void setPrimaryCrmContactId(String primaryCrmContactId) {
+    this.primaryCrmContactId = primaryCrmContactId;
   }
 
   public String getDepositId() {
@@ -378,7 +421,21 @@ public class PaymentGatewayEvent {
     return !Strings.isNullOrEmpty(subscriptionId);
   }
 
+  private Calendar getTransactionDate(Date date) {
+    if (date != null) {
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTime(date);
+      return calendar;
+    } else {
+      return Calendar.getInstance();
+    }
+  }
+
   // ACCESSORS
+
+  public String getCampaignId() {
+    return campaignId;
+  }
 
   public String getCity() {
     return city;

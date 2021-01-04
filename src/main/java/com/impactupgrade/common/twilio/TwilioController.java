@@ -2,7 +2,7 @@ package com.impactupgrade.common.twilio;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.impactupgrade.common.hubspot.HubSpotClientFactory;
+import com.impactupgrade.common.crm.hubspot.HubSpotClientFactory;
 import com.impactupgrade.common.security.SecurityUtil;
 import com.impactupgrade.integration.hubspot.builder.ContactBuilder;
 import com.impactupgrade.integration.hubspot.exception.DuplicateContactException;
