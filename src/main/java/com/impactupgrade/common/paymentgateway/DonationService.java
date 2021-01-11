@@ -2,7 +2,6 @@ package com.impactupgrade.common.paymentgateway;
 
 import com.impactupgrade.common.crm.AggregateCrmDestinationService;
 import com.impactupgrade.common.crm.CrmSourceService;
-import com.impactupgrade.common.crm.model.CrmCampaign;
 import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.crm.model.CrmRecurringDonation;
 import com.impactupgrade.common.environment.Environment;
@@ -30,33 +29,32 @@ public class DonationService {
     Optional<CrmDonation> existingDonation = crmSource.getDonation(paymentGatewayEvent);
 
     if (existingDonation.isPresent()) {
-      // donation already exists in Salesforce with the transactionId - do not process the donation
-      log.info("found existing SFDC donation {} using transaction {}; skipping creation...",
+      // donation already exists in the CRM with the transactionId - do not process the donation
+      log.info("found existing CRM donation {} using transaction {}; skipping creation...",
           existingDonation.get().id(), paymentGatewayEvent.getTransactionId());
       return;
     }
-
-    Optional<CrmCampaign> campaign = crmSource.getCampaignByIdOrDefault(paymentGatewayEvent.getCampaignId());
-    Optional<String> recurringDonationId = Optional.empty();
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
       Optional<CrmRecurringDonation> recurringDonation = crmSource.getRecurringDonation(paymentGatewayEvent);
 
       if (recurringDonation.isEmpty()) {
-        log.info("unable to find SFDC recurring donation using subscriptionId {}; creating it...",
+        log.info("unable to find CRM recurring donation using subscriptionId {}; creating it...",
             paymentGatewayEvent.getSubscriptionId());
         // NOTE: See the note on the customer.subscription.created event handling. We insert recurring donations
         // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
         // first donation do it in order to prevent timing issues.
-        recurringDonationId = Optional.of(crmDestinations.insertRecurringDonation(paymentGatewayEvent));
+        String recurringDonationId = crmDestinations.insertRecurringDonation(paymentGatewayEvent);
+        paymentGatewayEvent.setPrimaryCrmRecurringDonationId(recurringDonationId);
       } else {
-        log.info("found SFDC recurring donation {} using subscriptionId {}",
-            recurringDonation.get().id(), paymentGatewayEvent.getSubscriptionId());
-        recurringDonationId = recurringDonation.map(CrmRecurringDonation::id);
+        String recurringDonationId = recurringDonation.get().id();
+        log.info("found CRM recurring donation {} using subscriptionId {}",
+            recurringDonationId, paymentGatewayEvent.getSubscriptionId());
+        paymentGatewayEvent.setPrimaryCrmRecurringDonationId(recurringDonationId);
       }
     }
 
-    crmDestinations.insertDonation(paymentGatewayEvent, recurringDonationId);
+    crmDestinations.insertDonation(paymentGatewayEvent);
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
@@ -64,11 +62,11 @@ public class DonationService {
 
     // make sure that a donation was found and that only 1 donation was found
     if (donation.isPresent()) {
-      log.info("refunding SFDC donation {} with refunded charge {}", donation.get().id(), paymentGatewayEvent.getTransactionId());
-      // Refund the transaction in Salesforce
+      log.info("refunding CRM donation {} with refunded charge {}", donation.get().id(), paymentGatewayEvent.getTransactionId());
+      // Refund the transaction in the CRM
       crmDestinations.refundDonation(paymentGatewayEvent);
     } else {
-      log.warn("unable to find SFDC donation using transaction {}", paymentGatewayEvent.getTransactionId());
+      log.warn("unable to find CRM donation using transaction {}", paymentGatewayEvent.getTransactionId());
     }
   }
 
@@ -76,11 +74,11 @@ public class DonationService {
     Optional<CrmRecurringDonation> recurringDonation = crmSource.getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {
-      log.info("unable to find SFDC recurring donation using subscription {}; creating it...",
+      log.info("unable to find CRM recurring donation using subscription {}; creating it...",
           paymentGatewayEvent.getSubscriptionId());
       crmDestinations.insertRecurringDonation(paymentGatewayEvent);
     } else {
-      log.info("found an existing SFDC recurring donation using subscription {}",
+      log.info("found an existing CRM recurring donation using subscription {}",
           paymentGatewayEvent.getSubscriptionId());
     }
   }
@@ -89,7 +87,7 @@ public class DonationService {
     Optional<CrmRecurringDonation> recurringDonation = crmSource.getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {
-      log.warn("unable to find SFDC recurring donation using subscriptionId{}",
+      log.warn("unable to find CRM recurring donation using subscriptionId{}",
           paymentGatewayEvent.getSubscriptionId());
       return;
     }
@@ -101,7 +99,7 @@ public class DonationService {
     Optional<CrmDonation> donation = crmSource.getDonation(paymentGatewayEvent);
 
     if (donation.isEmpty()) {
-      log.info("missing an SFDC donation for transaction {}; notifying staff...", paymentGatewayEvent.getTransactionId());
+      log.info("missing an CRM donation for transaction {}; notifying staff...", paymentGatewayEvent.getTransactionId());
       // TODO: Send email alert
       // TODO: First retry the original charge/intent succeeded event, just in case the original webhook failed?
       return;

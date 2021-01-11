@@ -101,19 +101,16 @@ public class PaymentSpringController {
             paymentGatewayEvent.initPaymentSpring(transaction, transactionCustomer, transactionSubscription);
 
             switch (event.getEventType()) {
-              case "created":
+              case "created" -> {
                 donorService.processAccount(paymentGatewayEvent);
                 donationService.createDonation(paymentGatewayEvent);
-                break;
-              case "failed":
+              }
+              case "failed" -> {
                 donorService.processAccount(paymentGatewayEvent);
                 donationService.createDonation(paymentGatewayEvent);
-                break;
-              case "refunded":
-                donationService.refundDonation(paymentGatewayEvent);
-                break;
-              default:
-                log.info("unhandled PaymentSpring transaction event type: {}", event.getEventType());
+              }
+              case "refunded" -> donationService.refundDonation(paymentGatewayEvent);
+              default -> log.info("unhandled PaymentSpring transaction event type: {}", event.getEventType());
             }
             break;
           case "subscription":

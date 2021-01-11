@@ -45,7 +45,7 @@ public class SfdcBulkClient {
   // Keep it simple and build on-demand, since this is rarely used! But if caching is needed, see the
   // approach in SFDCPartnerAPIClient.
   private BulkConnection bulkConn() throws ConnectionException, AsyncApiException {
-    LoginResult loginResult = new SfdcClient(env).login();
+    LoginResult loginResult = env.sfdcClient().login();
 
     ConnectorConfig bulkConfig = new ConnectorConfig();
     bulkConfig.setSessionId(loginResult.getSessionId());

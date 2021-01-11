@@ -47,7 +47,7 @@ public class StripeController {
 
   public StripeController(Environment env) {
     this.env = env;
-    stripeClient = new StripeClient(env);
+    stripeClient = env.stripeClient();
     donorService = env.donorService();
     donationService = env.donationService();
   }
@@ -99,7 +99,7 @@ public class StripeController {
     PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
 
     switch (eventType) {
-      case "charge.succeeded": {
+      case "charge.succeeded" -> {
         Charge charge = (Charge) stripeObject;
         log.info("found charge {}", charge.getId());
 
@@ -110,20 +110,16 @@ public class StripeController {
           donorService.processAccount(paymentGatewayEvent);
           donationService.createDonation(paymentGatewayEvent);
         }
-
-        break;
       }
-      case "payment_intent.succeeded": {
+      case "payment_intent.succeeded" -> {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
         log.info("found payment intent {}", paymentIntent.getId());
 
         processPaymentIntent(paymentIntent, paymentGatewayEvent);
         donorService.processAccount(paymentGatewayEvent);
         donationService.createDonation(paymentGatewayEvent);
-
-        break;
       }
-      case "charge.failed": {
+      case "charge.failed" -> {
         Charge charge = (Charge) stripeObject;
         log.info("found charge {}", charge.getId());
 
@@ -134,15 +130,12 @@ public class StripeController {
           donorService.processAccount(paymentGatewayEvent);
           donationService.createDonation(paymentGatewayEvent);
         }
-
-        break;
       }
-      case "charge.refunded": {
+      case "charge.refunded" -> {
         // TODO: Not completely understanding this one just yet, but it appears a recent API change
         // is sending Charges instead of Refunds in this case...
         Refund refund;
-        if (stripeObject instanceof Charge) {
-          Charge charge = (Charge) stripeObject;
+        if (stripeObject instanceof Charge charge) {
           refund = charge.getRefunds().getData().get(0);
         } else {
           refund = (Refund) stripeObject;
@@ -151,9 +144,8 @@ public class StripeController {
 
         paymentGatewayEvent.initStripe(refund);
         donationService.refundDonation(paymentGatewayEvent);
-        break;
       }
-      case "customer.subscription.created": {
+      case "customer.subscription.created" -> {
         Subscription subscription = (Subscription) stripeObject;
         log.info("found subscription {}", subscription.getId());
 
@@ -177,9 +169,8 @@ public class StripeController {
         } else {
           log.info("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
         }
-        break;
       }
-      case "customer.subscription.deleted": {
+      case "customer.subscription.deleted" -> {
         Subscription subscription = (Subscription) stripeObject;
         log.info("found subscription {}", subscription.getId());
         Customer deletedSubscriptionCustomer = stripeClient.getCustomer(subscription.getCustomer());
@@ -190,15 +181,13 @@ public class StripeController {
         // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
         // simply close the recurring donation.
         donationService.closeRecurringDonation(paymentGatewayEvent);
-        break;
       }
-      case "payout.paid": {
+      case "payout.paid" -> {
         Payout payout = (Payout) stripeObject;
         log.info("found payout {}", payout.getId());
         List<BalanceTransaction> balanceTransactions = stripeClient.getBalanceTransactions(payout);
         for (BalanceTransaction balanceTransaction : balanceTransactions) {
-          if (balanceTransaction.getSourceObject() instanceof Charge) {
-            Charge charge = (Charge) balanceTransaction.getSourceObject();
+          if (balanceTransaction.getSourceObject() instanceof Charge charge) {
             log.info("found charge {}", charge.getId());
 
             if (Strings.isNullOrEmpty(charge.getPaymentIntent())) {
@@ -214,10 +203,8 @@ public class StripeController {
             donationService.chargeDeposited(paymentGatewayEvent);
           }
         }
-        break;
       }
-      default:
-        log.info("unhandled Stripe webhook event type: {}", eventType);
+      default -> log.info("unhandled Stripe webhook event type: {}", eventType);
     }
   }
 

@@ -43,7 +43,7 @@ public class SfdcMetadataClient {
 		metadataConfig.setPassword(password);
 		// Oh, Salesforce. We must call the login endpoint to obtain the metadataServerUrl and sessionId.
 		// No idea why this isn't generated as a part of the connection, like Enterprise WSDL does it...
-		LoginResult loginResult = new SfdcClient(env, username, password).login();
+		LoginResult loginResult = env.sfdcClient(username, password).login();
 		metadataConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
 		metadataConfig.setSessionId(loginResult.getSessionId());
 		return Connector.newConnection(metadataConfig);

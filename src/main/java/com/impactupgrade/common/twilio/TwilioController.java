@@ -95,7 +95,6 @@ public class TwilioController {
 
   // TODO: Let apps decide SF vs HS, etc.
 
-
   /**
    * This webhook serves multiple purposes. It can be used directly on a Twilio number, receiving standard From/Body
    * pairs as texts are received. It can also be used by Twilio Studio flows, Twilio Functions, etc. for more complex

@@ -59,6 +59,7 @@ public class PaymentGatewayEvent {
   // context set within processing steps
   protected String primaryCrmAccountId;
   protected String primaryCrmContactId;
+  protected String primaryCrmRecurringDonationId;
   protected String depositId;
   protected Calendar depositDate;
 
@@ -397,6 +398,14 @@ public class PaymentGatewayEvent {
 
   public void setPrimaryCrmContactId(String primaryCrmContactId) {
     this.primaryCrmContactId = primaryCrmContactId;
+  }
+
+  public String getPrimaryCrmRecurringDonationId() {
+    return primaryCrmRecurringDonationId;
+  }
+
+  public void setPrimaryCrmRecurringDonationId(String primaryCrmRecurringDonationId) {
+    this.primaryCrmRecurringDonationId = primaryCrmRecurringDonationId;
   }
 
   public String getDepositId() {

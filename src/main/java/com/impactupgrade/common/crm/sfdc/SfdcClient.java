@@ -2,6 +2,7 @@ package com.impactupgrade.common.crm.sfdc;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.exception.NotImplementedException;
 import com.impactupgrade.common.util.LoggingUtil;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.sforce.soap.partner.sobject.SObject;
@@ -54,13 +55,37 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // CUSTOM COLUMNS TO RETRIEVE IN QUERIES, TO BE OVERRIDDEN AS NEEDED
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected String accountFields() { return ""; }
+  protected String campaignFields() { return ""; }
+  protected String contactFields() { return ""; }
+  protected String donationFields() { return ""; }
+  protected String recurringDonationFields() { return ""; }
+  protected String userFields() { return ""; }
+
+  // Some clients needlessly split these into gateway-specific fields (one for Stripe, one for PS, etc). For now,
+  // allow each to be a simple list. We'll include all of them in the queries.
+  // TODO: Throwing NotImplementedException if not provided, but we should probably dictate a default for the core impl.
+  protected List<String> paymentGatewayDepositIdFields() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "paymentGatewayDepositIdFields");
+  }
+  protected List<String> paymentGatewaySubscriptionIdFields() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "paymentGatewaySubscriptionIdFields");
+  }
+  protected List<String> paymentGatewayTransactionIdFields() {
+    throw new NotImplementedException(getClass().getSimpleName() + "." + "paymentGatewayTransactionIdFields");
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, email__c, phone, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c";
 
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.sfdcAccountFields()) + " from account where id = '" + accountId + "'";
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, accountFields()) + " from account where id = '" + accountId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
@@ -72,25 +97,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected static final String CAMPAIGN_FIELDS = "id, name, parentid";
 
   public Optional<SObject> getCampaignById(String campaignId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.sfdcCampaignFields()) + " from campaign where id = '" + campaignId + "'";
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, campaignFields()) + " from campaign where id = '" + campaignId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
-  }
-
-  public Optional<SObject> getCampaignByIdOrDefault(String campaignId) throws ConnectionException, InterruptedException {
-    if (!Strings.isNullOrEmpty(campaignId)) {
-      Optional<SObject> campaign = getCampaignById(campaignId);
-      if (campaign.isPresent()) {
-        return campaign;
-      }
-    }
-
-    if (!Strings.isNullOrEmpty(env.defaultSFDCCampaignId())) {
-      return getCampaignById(env.defaultSFDCCampaignId());
-    }
-
-    log.warn("SFDC is missing a default campaign");
-    return Optional.empty();
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -100,13 +109,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.sfdcContactFields()) + " from contact where id = '" + contactId + "' ORDER BY name";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where id = '" + contactId + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
   public List<SObject> getContactsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.sfdcContactFields()) + " from contact where accountId = '" + accountId + "' ORDER BY name";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where accountId = '" + accountId + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
@@ -116,13 +125,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       return Optional.empty();
     }
 
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.sfdcContactFields()) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
   public List<SObject> getContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.sfdcContactFields()) + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "' ORDER BY name";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
@@ -225,37 +234,39 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected static final String DONATION_FIELDS = "id, AccountId, ContactId, amount, name, RecordTypeId, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
 
   public Optional<SObject> getDonationById(String donationId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.sfdcDonationFields()) + " from Opportunity where id = '" + donationId + "'";
+    String query = "select " + getFieldsList(DONATION_FIELDS, donationFields()) + " from Opportunity where id = '" + donationId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
-  public Optional<SObject> getDonationByTransactionId(String transactionIdField, String transactionId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.sfdcDonationFields()) + " from Opportunity where " + transactionIdField + " = '" + transactionId + "'";
+  public Optional<SObject> getDonationByTransactionId(String transactionId) throws ConnectionException, InterruptedException {
+    String transactionIdClauses = paymentGatewayTransactionIdFields().stream().map(t -> t + " = '" + transactionId + "'").collect(Collectors.joining(" OR "));
+    String query = "select " + getFieldsList(DONATION_FIELDS, donationFields()) + " from Opportunity where " + transactionIdClauses;
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
   public List<SObject> getDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.sfdcDonationFields()) + " from Opportunity where accountid = '" + accountId + "' AND StageName != 'Pledged' ORDER BY CloseDate DESC";
+    String query = "select " + getFieldsList(DONATION_FIELDS, donationFields()) + " from Opportunity where accountid = '" + accountId + "' AND StageName != 'Pledged' ORDER BY CloseDate DESC";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
   public List<SObject> getFailingDonationsLastMonthByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.sfdcDonationFields()) + " from Opportunity where stageName = 'Failed Attempt' AND CloseDate = LAST_MONTH AND AccountId = '" + accountId + "'";
+    String query = "select " + getFieldsList(DONATION_FIELDS, donationFields()) + " from Opportunity where stageName = 'Failed Attempt' AND CloseDate = LAST_MONTH AND AccountId = '" + accountId + "'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
   public Optional<SObject> getLatestPostedDonation(String recurringDonationId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.sfdcDonationFields()) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' and stageName = 'Posted' order by CloseDate desc limit 1";
+    String query = "select " + getFieldsList(DONATION_FIELDS, donationFields()) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' and stageName = 'Posted' order by CloseDate desc limit 1";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
-  public List<com.sforce.soap.partner.sobject.SObject> getDonationsInDeposit(String depositId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.sfdcDonationFields()) + " from Opportunity where " + env.sfdcFieldOpportunityDepositId() + " = '" + depositId + "'";
+  public List<SObject> getDonationsInDeposit(String depositId) throws ConnectionException, InterruptedException {
+    String depositIdClauses = paymentGatewayDepositIdFields().stream().map(d -> d + " = '" + depositId + "'").collect(Collectors.joining(" OR "));
+    String query = "select " + getFieldsList(DONATION_FIELDS, donationFields()) + " from Opportunity where " + depositIdClauses;
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
@@ -285,19 +296,20 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npsp__InstallmentFrequency__c";
 
   public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.sfdcRecurringDonationFields()) + " from npe03__Recurring_Donation__c where id='" + id + "'";
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, recurringDonationFields()) + " from npe03__Recurring_Donation__c where id='" + id + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
-  public Optional<SObject> getRecurringDonationBySubscriptionId(String subscriptionIdFieldName, String subscriptionId) throws ConnectionException, InterruptedException {
-    String query = "select id, " + subscriptionIdFieldName + ", npe03__Open_Ended_Status__c, npe03__Amount__c, npe03__Recurring_Donation_Campaign__c, npe03__Installment_Period__c from npe03__Recurring_Donation__c where " + subscriptionIdFieldName + " = '" + subscriptionId + "'";
+  public Optional<SObject> getRecurringDonationBySubscriptionId(String subscriptionId) throws ConnectionException, InterruptedException {
+    String subscriptionIdClauses = paymentGatewaySubscriptionIdFields().stream().map(s -> s + " = '" + subscriptionId + "'").collect(Collectors.joining(" OR "));
+    String query = "select id, npe03__Open_Ended_Status__c, npe03__Amount__c, npe03__Recurring_Donation_Campaign__c, npe03__Installment_Period__c from npe03__Recurring_Donation__c where " + subscriptionIdClauses;
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
   public List<SObject> getRecurringDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.sfdcRecurringDonationFields()) + " from npe03__Recurring_Donation__c where (npe03__Open_Ended_Status__c != 'Closed' or paused_status__c != '') and npe03__Organization__c" + " = '" + accountId + "'";
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, recurringDonationFields()) + " from npe03__Recurring_Donation__c where (npe03__Open_Ended_Status__c != 'Closed' or paused_status__c != '') and npe03__Organization__c" + " = '" + accountId + "'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
@@ -309,13 +321,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected static final String USER_FIELDS = "id, firstName, lastName, email, phone";
 
   public Optional<SObject> getUserById(String userId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(USER_FIELDS, env.sfdcUserFields()) + " from user where id = '" + userId + "'";
+    String query = "select " + getFieldsList(USER_FIELDS, userFields()) + " from user where id = '" + userId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
 
   public Optional<SObject> getUserByEmail(String email) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(USER_FIELDS, env.sfdcUserFields()) + " from user where isActive = true and email = '" + email + "'";
+    String query = "select " + getFieldsList(USER_FIELDS, userFields()) + " from user where isActive = true and email = '" + email + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }

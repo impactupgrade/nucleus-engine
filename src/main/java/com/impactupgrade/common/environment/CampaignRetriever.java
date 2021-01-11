@@ -17,6 +17,7 @@ public class CampaignRetriever {
 
   private static final Logger log = LogManager.getLogger(CampaignRetriever.class);
 
+  private final Environment env;
   private final StripeClient stripeClient;
   private final String[] metadataKeys;
   private Charge stripeCharge = null;
@@ -25,7 +26,8 @@ public class CampaignRetriever {
   private Customer stripeCustomer = null;
 
   public CampaignRetriever(Environment env) {
-    stripeClient = new StripeClient(env);
+    this.env = env;
+    stripeClient = env.stripeClient();
     this.metadataKeys = env.campaignMetadataKeys();
   }
 

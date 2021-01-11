@@ -46,7 +46,7 @@ public class SfdcController {
 
   public SfdcController(Environment env) {
     this.env = env;
-    sfdcClient = new SfdcClient(env);
+    sfdcClient = env.sfdcClient();
     sfdcMetadataClient = new SfdcMetadataClient(env);
     sfdcBulkClient = new SfdcBulkClient(env);
   }

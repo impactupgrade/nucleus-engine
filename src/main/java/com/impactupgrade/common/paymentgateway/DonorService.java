@@ -37,14 +37,14 @@ public class DonorService {
     // attempt to find a Contact using the email
     Optional<CrmContact> existingContact = crmSource.getContactByEmail(paymentGatewayEvent.getEmail());
     if (existingContact.isPresent()) {
-      log.info("found SFDC contact {} and account {} using email {}",
+      log.info("found CRM contact {} and account {} using email {}",
           existingContact.get().id(), existingContact.get().accountId(), paymentGatewayEvent.getEmail());
       paymentGatewayEvent.setPrimaryCrmAccountId(existingContact.get().accountId());
       paymentGatewayEvent.setPrimaryCrmContactId(existingContact.get().id());
       return;
     }
 
-    log.info("unable to find SFDC contact using email {}; creating a new account and contact",
+    log.info("unable to find CRM contact using email {}; creating a new account and contact",
         paymentGatewayEvent.getEmail());
 
     // create new Household Account
