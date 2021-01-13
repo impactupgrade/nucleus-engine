@@ -261,14 +261,14 @@ public class StripeController {
     log.info("found customer {}", chargeCustomer.getId());
 
     Optional<Invoice> chargeInvoice;
-    if (Strings.isNullOrEmpty(paymentIntent.getInvoice())) {
+    if (Strings.isNullOrEmpty(fullPaymentIntent.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(stripeClient.getInvoice(paymentIntent.getInvoice()));
+      chargeInvoice = Optional.of(stripeClient.getInvoice(fullPaymentIntent.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
-    paymentGatewayEvent.initStripe(paymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
+    paymentGatewayEvent.initStripe(fullPaymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
   }
 
   // TODO: To be wrapped in a REST call for the UI to kick off, etc.
