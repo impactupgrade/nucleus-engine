@@ -21,7 +21,6 @@ import java.util.Optional;
 public class PaymentGatewayEvent {
   
   protected final Environment env;
-  protected final CampaignRetriever campaignRetriever;
 
   // determined by event
   protected String campaignId;
@@ -65,7 +64,6 @@ public class PaymentGatewayEvent {
 
   public PaymentGatewayEvent(Environment env) {
     this.env = env;
-    campaignRetriever = new CampaignRetriever(env);
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
@@ -110,7 +108,7 @@ public class PaymentGatewayEvent {
       }
     }
 
-    campaignId = campaignRetriever.stripeCharge(stripeCharge).stripeCustomer(stripeCustomer).getCampaign();
+    processCampaignId(new CampaignRetriever(env).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer));
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
@@ -152,7 +150,7 @@ public class PaymentGatewayEvent {
       }
     }
 
-    campaignId = campaignRetriever.stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer).getCampaign();
+    processCampaignId(new CampaignRetriever(env).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer));
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -249,7 +247,7 @@ public class PaymentGatewayEvent {
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
-    campaignId = campaignRetriever.stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer).getCampaign();
+    processCampaignId(new CampaignRetriever(env).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer));
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,
@@ -380,6 +378,14 @@ public class PaymentGatewayEvent {
 
     subscriptionStartDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
     subscriptionNextDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
+  }
+
+  private void processCampaignId(CampaignRetriever campaignRetriever) {
+    String campaignId = campaignRetriever.getCampaign();
+    if (!Strings.isNullOrEmpty(campaignId)) {
+      // Only set the campaignId if the new retrieval was not empty! This allows us to define fallbacks...
+      this.campaignId = campaignId;
+    }
   }
   
   // CONTEXT SET WITHIN PROCESSING STEPS

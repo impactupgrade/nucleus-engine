@@ -254,16 +254,10 @@ public class StripeController {
 
   private void processPaymentIntent(PaymentIntent paymentIntent, Optional<BalanceTransaction> chargeBalanceTransaction,
       PaymentGatewayEvent paymentGatewayEvent) throws StripeException {
-    // TODO: For TER, the customers aren't always included in the webhook -- not sure why. For now, if that's the case,
-    // retrieve the whole PaymentIntent and try again...
-    Customer chargeCustomer;
-    if (Strings.isNullOrEmpty(paymentIntent.getCustomer())) {
-      log.info("payment intent {} was missing the customer id in the webhook; retrieving the full payment intent...", paymentIntent.getId());
-      PaymentIntent fullPaymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
-      chargeCustomer = stripeClient.getCustomer(fullPaymentIntent.getCustomer());
-    } else {
-      chargeCustomer = stripeClient.getCustomer(paymentIntent.getCustomer());
-    }
+    // TODO: For TER, the customers and/or metadata aren't always included in the webhook -- not sure why.
+    //  For now, retrieve the whole PaymentIntent and try again...
+    PaymentIntent fullPaymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
+    Customer chargeCustomer = stripeClient.getCustomer(fullPaymentIntent.getCustomer());
     log.info("found customer {}", chargeCustomer.getId());
 
     Optional<Invoice> chargeInvoice;
