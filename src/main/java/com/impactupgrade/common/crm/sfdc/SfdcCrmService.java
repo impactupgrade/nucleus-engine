@@ -154,7 +154,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
           SObject recurringDonation = new SObject("Npe03__Recurring_Donation__c");
           recurringDonation.setId(recurringDonationId);
           recurringDonation.setField("Npe03__Amount__c", paymentGatewayEvent.getTransactionAmountInDollars());
-          setRecurringDonationFields(recurringDonation, paymentGatewayEvent);
+          setRecurringDonationFieldsFromCampaignChange(recurringDonation, paymentGatewayEvent);
           sfdcClient.update(recurringDonation);
         }
 
@@ -237,6 +237,9 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     return sfdcClient.insert(recurringDonation).getId();
   }
 
+  /**
+   * Set any necessary fields on an RD before it's inserted.
+   */
   protected void setRecurringDonationFields(SObject recurringDonation, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getPrimaryCrmAccountId());
     recurringDonation.setField("Npe03__Amount__c", paymentGatewayEvent.getSubscriptionAmountInDollars());
@@ -250,6 +253,14 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
 
     // Purely a default, but we expect this to be generally overridden.
     recurringDonation.setField("Name", paymentGatewayEvent.getFullName() + " Recurring Donation");
+  }
+
+  /**
+   * If an RD's campaign is changed (typically due to new metadata on a payment gateway subscription), give an
+   * opportunity to change specific fields before updating the RD.
+   */
+  protected void setRecurringDonationFieldsFromCampaignChange(SObject recurringDonation, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+
   }
 
   @Override
