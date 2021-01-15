@@ -139,6 +139,25 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
         log.info("found SFDC pledged opportunity {} in recurring donation {}",
             pledgedOpportunity.getId(), recurringDonationId);
 
+        // check to see if amount changed
+        Double amount = Double.valueOf(pledgedOpportunity.getField("Amount").toString());
+        boolean amountChanged = !amount.equals(paymentGatewayEvent.getTransactionAmountInDollars());
+        // check to see if campaign changed
+        String currentCampaign = pledgedOpportunity.getField("CampaignId") == null ? null : pledgedOpportunity.getField("CampaignId").toString();
+        String newCampaign = paymentGatewayEvent.getCampaignId();
+        boolean campaignChanged = newCampaign != null && !newCampaign.equals(currentCampaign);
+        // check to see if the amount or campaign changed and update the Recurring Donation object accordingly
+        // note that this changes future pledged donations, etc. -- useful for subscription or exchange rate changes
+        if (amountChanged || campaignChanged) {
+          log.info("updating recurring donation due to the following on the pledged donation: amountChanged={} campaignChanged={}",
+              amountChanged, campaignChanged);
+          SObject recurringDonation = new SObject("Npe03__Recurring_Donation__c");
+          recurringDonation.setId(recurringDonationId);
+          recurringDonation.setField("Npe03__Amount__c", paymentGatewayEvent.getTransactionAmountInDollars());
+          setRecurringDonationFields(recurringDonation, paymentGatewayEvent);
+          sfdcClient.update(recurringDonation);
+        }
+
         // check to see if the recurring donation was a failed attempt or successful
         if (paymentGatewayEvent.isTransactionSuccess()) {
           // update existing pledged donation to "Posted"
