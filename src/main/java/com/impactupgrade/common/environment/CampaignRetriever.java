@@ -107,7 +107,7 @@ public class CampaignRetriever {
 
     if (campaignId != null) {
       // IMPORTANT: The designation code is copy/pasted by a human and we've had issues with whitespace. Strip it!
-      campaignId = campaignId.replaceAll("[^A-Za-z0-9]", "");
+      campaignId = campaignId.replaceAll("[^A-Za-z0-9_-]", "");
     }
 
     return campaignId;
