@@ -186,7 +186,10 @@ public class PaymentGatewayEvent {
     if (Strings.isNullOrEmpty(lastName) && !Strings.isNullOrEmpty(fullName)) {
       String[] split = fullName.split(" ");
       firstName = split[0];
-      lastName = split[1];
+      // some donors are using a single-word business name in the individual name field
+      if (split.length > 1) {
+        lastName = split[1];
+      }
     }
 
     email = stripeCustomer.getEmail();
