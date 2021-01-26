@@ -7,14 +7,12 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
-import com.stripe.model.Plan;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -161,7 +159,10 @@ public class PaymentGatewayEvent {
     if (Strings.isNullOrEmpty(lastName) && !Strings.isNullOrEmpty(fullName)) {
       String[] split = fullName.split(" ");
       firstName = split[0];
-      lastName = split[1];
+      // some donors are using a single-word business name in the individual name field
+      if (split.length > 1) {
+        lastName = split[1];
+      }
     }
 
     email = stripeCustomer.getEmail();
