@@ -13,6 +13,15 @@
   <artifactId>hub-common</artifactId>
   <version>3.0.0-SNAPSHOT</version>
 
+  <dependencies>
+    <!-- TODO: update in hub-parent -->
+    <dependency>
+      <groupId>com.impactupgrade.integration</groupId>
+      <artifactId>salesforce-java-tools</artifactId>
+      <version>0.2.7-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+
   <!--
       Using https://gitlab.com/impact-upgrade/maven-repo as a private repo. Assumes you have the following in your ~/.m2/settings.xml:
 
