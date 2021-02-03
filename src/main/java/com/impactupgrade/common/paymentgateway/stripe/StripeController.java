@@ -6,6 +6,7 @@ import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 import com.impactupgrade.common.util.LoggingUtil;
+import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
@@ -26,7 +27,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -272,51 +275,53 @@ public class StripeController {
   }
 
   // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-//  public void verifyAndReplayStripeCharges(Date startDate, Date endDate) throws StripeException {
-//    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-//    Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
-//    int count = 0;
-//    for (Charge charge : charges) {
-//      if (!charge.getStatus().equalsIgnoreCase("succeeded")
-//          || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
-//        continue;
-//      }
-//
-//      count++;
-//
-//      try {
-//        String paymentIntentId = charge.getPaymentIntent();
-//        String chargeId = charge.getId();
-//        Optional<SObject> opportunity = Optional.empty();
-//        if (!Strings.isNullOrEmpty(paymentIntentId)) {
-//          opportunity = sfdcClient.getDonationByTransactionId("Stripe_Charge_ID__c", paymentIntentId);
-//        }
-//        if (opportunity.isEmpty()) {
-//          opportunity = sfdcClient.getDonationByTransactionId("Stripe_Charge_ID__c", chargeId);
-//        }
-//
-//        if (opportunity.isEmpty()) {
-//          System.out.println("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
-//
-//          if (Strings.isNullOrEmpty(paymentIntentId)) {
-//            processEvent("charge.succeeded", charge);
-//          } else {
-//            processEvent("payment_intent.succeeded", charge.getPaymentIntentObject());
-//          }
-//        }
-//      } catch (Exception e) {
-//        e.printStackTrace();
-//      }
-//    }
-//  }
+  public void verifyAndReplayStripeCharges(Date startDate, Date endDate) throws StripeException {
+    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+    Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+    int count = 0;
+    for (Charge charge : charges) {
+      if (!charge.getStatus().equalsIgnoreCase("succeeded")
+          || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+        continue;
+      }
+
+      count++;
+
+      try {
+        String paymentIntentId = charge.getPaymentIntent();
+        String chargeId = charge.getId();
+        Optional<SObject> opportunity = Optional.empty();
+        if (!Strings.isNullOrEmpty(paymentIntentId)) {
+          // TODO: Needs pulled to CrmSourceService
+          opportunity = env.sfdcClient().getDonationByTransactionId(paymentIntentId);
+        }
+        if (opportunity.isEmpty()) {
+          // TODO: Needs pulled to CrmSourceService
+          opportunity = env.sfdcClient().getDonationByTransactionId(chargeId);
+        }
+
+        if (opportunity.isEmpty()) {
+          System.out.println("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
+
+          if (Strings.isNullOrEmpty(paymentIntentId)) {
+            processEvent("charge.succeeded", charge);
+          } else {
+            processEvent("payment_intent.succeeded", charge.getPaymentIntentObject());
+          }
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+  }
 
   // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-//  public void replayStripePayouts(Date startDate, Date endDate) throws Exception {
-//    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-//    Iterable<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
-//    for (Payout payout : payouts) {
-//      System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
-//      processEvent("payout.paid", payout);
-//    }
-//  }
+  public void replayStripePayouts(Date startDate, Date endDate) throws Exception {
+    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+    Iterable<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+    for (Payout payout : payouts) {
+      System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
+      processEvent("payout.paid", payout);
+    }
+  }
 }
