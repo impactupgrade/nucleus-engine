@@ -31,7 +31,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
 
   public SfdcCrmService(Environment env) {
     this.env = env;
-    sfdcClient = env.sfdcClient();;
+    sfdcClient = env.sfdcClient();
   }
 
   @Override

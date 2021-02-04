@@ -8,6 +8,7 @@ import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
+import com.stripe.model.MetadataStore;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
@@ -16,6 +17,7 @@ import com.stripe.model.SubscriptionItem;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 public class PaymentGatewayEvent {
@@ -72,7 +74,7 @@ public class PaymentGatewayEvent {
   public void initStripe(Charge stripeCharge, Customer stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     initStripeCommon();
-    initStripeCustomer(stripeCustomer);
+    initStripeCustomer(stripeCustomer, stripeCharge);
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
@@ -114,7 +116,7 @@ public class PaymentGatewayEvent {
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     initStripeCommon();
-    initStripeCustomer(stripeCustomer);
+    initStripeCustomer(stripeCustomer, stripePaymentIntent);
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
@@ -162,7 +164,7 @@ public class PaymentGatewayEvent {
 
   public void initStripe(Subscription stripeSubscription, Customer stripeCustomer) {
     initStripeCommon();
-    initStripeCustomer(stripeCustomer);
+    initStripeCustomer(stripeCustomer, stripeSubscription);
 
     initStripeSubscription(stripeSubscription, stripeCustomer);
   }
@@ -173,24 +175,10 @@ public class PaymentGatewayEvent {
     paymentMethod = "credit card";
   }
 
-  protected void initStripeCustomer(Customer stripeCustomer) {
+  protected void initStripeCustomer(Customer stripeCustomer, MetadataStore<?> stripeMetadataBackup) {
     customerId = stripeCustomer.getId();
 
-    // TODO: These metadata fields might be LJI specific, but try them anyway. Move to Environment?
-    fullName = stripeCustomer.getMetadata().get("customer_name");
-    firstName = stripeCustomer.getMetadata().get("first_name");
-    lastName = stripeCustomer.getMetadata().get("last_name");
-    if (Strings.isNullOrEmpty(fullName)) {
-      fullName = stripeCustomer.getName();
-    }
-    if (Strings.isNullOrEmpty(lastName) && !Strings.isNullOrEmpty(fullName)) {
-      String[] split = fullName.split(" ");
-      firstName = split[0];
-      // some donors are using a single-word business name in the individual name field
-      if (split.length > 1) {
-        lastName = split[1];
-      }
-    }
+    initStripeCustomerName(stripeCustomer, stripeMetadataBackup);
 
     email = stripeCustomer.getEmail();
     phone = stripeCustomer.getPhone();
@@ -221,6 +209,69 @@ public class PaymentGatewayEvent {
             }
             zip = stripeCard.getAddressZip();
           });
+    }
+  }
+
+  // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
+  // Some donation forms and vendors use true Customer names, others use metadata on Customer, other still only put
+  // names in metadata on the Charge or Subscription. Madness. But let's be helpful...
+  protected void initStripeCustomerName(Customer stripeCustomer, MetadataStore<?> stripeMetadataBackup) {
+    // For the full name, start with Customer name. Generally this is populated, but a few vendors don't always do it.
+    fullName = stripeCustomer.getName();
+    // If that didn't work, look in the metadata. We've seen variations of "customer" or "full" name used.
+    if (Strings.isNullOrEmpty(fullName)) {
+      fullName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return (key.contains("customer") || key.contains("full")) && key.contains("name");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+    // If that still didn't work, look in the backup metadata (typically a charge or subscription).
+    if (Strings.isNullOrEmpty(fullName)) {
+      fullName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return (key.contains("customer") || key.contains("full")) && key.contains("name");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+
+    // Now do first name, again using metadata.
+    firstName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+      String key = e.getKey().toLowerCase(Locale.ROOT);
+      return key.contains("first") && key.contains("name");
+    }).findFirst().map(Map.Entry::getValue).orElse(null);
+    if (Strings.isNullOrEmpty(firstName)) {
+      firstName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return key.contains("first") && key.contains("name");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+
+    // And now the last name.
+    lastName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+      String key = e.getKey().toLowerCase(Locale.ROOT);
+      return key.contains("last") && key.contains("name");
+    }).findFirst().map(Map.Entry::getValue).orElse(null);
+    if (Strings.isNullOrEmpty(lastName)) {
+      lastName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return key.contains("last") && key.contains("name");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+
+    // If we still don't have a first/last name, but do have full name, fall back to using a split.
+    if (Strings.isNullOrEmpty(lastName) && !Strings.isNullOrEmpty(fullName)) {
+      String[] split = fullName.split("\s+");
+      firstName = split[0];
+      // Some donors are using a single-word business name in the individual name field, so this won't exist.
+      if (split.length > 1) {
+        // But we might also have some multi-word last names. So, catch them all. Rather than dealing with an array
+        // slice, simply remove the first name, then trim leading whitespace.
+        lastName = fullName.replace(firstName, "").trim();
+      }
+    }
+
+    // If we still don't have a full name, but do have a first and last, combine them.
+    if (Strings.isNullOrEmpty(fullName) && !Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
+      fullName = firstName + " " + lastName;
     }
   }
 
