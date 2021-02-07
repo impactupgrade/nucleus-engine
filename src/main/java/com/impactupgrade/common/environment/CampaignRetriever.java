@@ -11,13 +11,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
-// TODO: Move to the paymentgateway package?
+// TODO: Move to the paymentgateway package and make it abstract?
 // TODO: Could this be replaced by overriding services?
 public class CampaignRetriever {
 
   private static final Logger log = LogManager.getLogger(CampaignRetriever.class);
 
-  private final Environment env;
   private final StripeClient stripeClient;
   private final String[] metadataKeys;
   private Charge stripeCharge = null;
@@ -25,9 +24,8 @@ public class CampaignRetriever {
   private Subscription stripeSubscription = null;
   private Customer stripeCustomer = null;
 
-  public CampaignRetriever(Environment env) {
-    this.env = env;
-    stripeClient = env.stripeClient();
+  public CampaignRetriever(Environment env, RequestEnvironment requestEnv) {
+    stripeClient = requestEnv.stripeClient();
     this.metadataKeys = env.campaignMetadataKeys();
   }
 

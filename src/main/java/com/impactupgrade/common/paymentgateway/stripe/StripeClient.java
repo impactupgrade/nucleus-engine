@@ -1,7 +1,6 @@
 package com.impactupgrade.common.paymentgateway.stripe;
 
 import com.google.common.collect.Iterables;
-import com.impactupgrade.common.environment.Environment;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.BalanceTransactionCollection;
@@ -32,14 +31,14 @@ public class StripeClient {
 
   protected static final String SDF = "MM/dd/yy hh:mm";
 
-  protected final Environment env;
+  protected final RequestOptions requestOptions;
 
-  public StripeClient(Environment env) {
-    this.env = env;
+  public StripeClient(String apiKey) {
+    requestOptions = RequestOptions.builder().setApiKey(apiKey).build();
   }
 
   public Charge getCharge(String id) throws StripeException {
-    return Charge.retrieve(id, buildStripeRequestOptions());
+    return Charge.retrieve(id, requestOptions);
   }
 
   public Invoice getInvoice(String id) throws StripeException {
@@ -48,27 +47,27 @@ public class StripeClient {
     expand.add("subscription");
     params.put("expand", expand);
 
-    return Invoice.retrieve(id, params, buildStripeRequestOptions());
+    return Invoice.retrieve(id, params, requestOptions);
   }
 
   public BalanceTransaction getBalanceTransaction(String id) throws StripeException {
-    return BalanceTransaction.retrieve(id, buildStripeRequestOptions());
+    return BalanceTransaction.retrieve(id, requestOptions);
   }
 
   public Customer getCustomer(String id) throws StripeException {
     CustomerRetrieveParams customerParams = CustomerRetrieveParams.builder()
         .addExpand("sources")
         .build();
-    return Customer.retrieve(id, customerParams, buildStripeRequestOptions());
+    return Customer.retrieve(id, customerParams, requestOptions);
   }
 
   public PaymentIntent getPaymentIntent(String id) throws StripeException {
-    return PaymentIntent.retrieve(id, buildStripeRequestOptions());
+    return PaymentIntent.retrieve(id, requestOptions);
   }
 
   public void cancelSubscription(String id) throws StripeException {
     log.info("cancelling subscription {}...", id);
-    Subscription.retrieve(id, buildStripeRequestOptions()).cancel();
+    Subscription.retrieve(id, requestOptions).cancel();
     log.info("cancelled subscription {}", id);
   }
 
@@ -84,7 +83,7 @@ public class StripeClient {
     expandList.add("data.payment_intent");
     params.put("expand", expandList);
 
-    ChargeCollection chargeCollection = Charge.list(params, buildStripeRequestOptions());
+    ChargeCollection chargeCollection = Charge.list(params, requestOptions);
     return chargeCollection.autoPagingIterable();
   }
 
@@ -97,7 +96,7 @@ public class StripeClient {
     params.put("created", createdParams);
     params.put("type", eventType);
 
-    EventCollection eventCollection = Event.list(params, buildStripeRequestOptions());
+    EventCollection eventCollection = Event.list(params, requestOptions);
     return eventCollection.autoPagingIterable();
   }
 
@@ -111,7 +110,7 @@ public class StripeClient {
         .setArrivalDate(arrivalDate)
         .build();
 
-    return Payout.list(params, buildStripeRequestOptions()).getData();
+    return Payout.list(params, requestOptions).getData();
   }
 
   public List<Payout> getPayouts(String endingBefore, int payoutLimit) throws StripeException {
@@ -121,11 +120,11 @@ public class StripeClient {
     payoutParams.put("ending_before", endingBefore);
     payoutParams.put("limit", payoutLimit);
 
-    return Payout.list(payoutParams, buildStripeRequestOptions()).getData();
+    return Payout.list(payoutParams, requestOptions).getData();
   }
 
   public List<BalanceTransaction> getBalanceTransactions(String payoutId) throws StripeException {
-    Payout payout = Payout.retrieve(payoutId, buildStripeRequestOptions());
+    Payout payout = Payout.retrieve(payoutId, requestOptions);
     return getBalanceTransactions(payout);
   }
 
@@ -160,7 +159,7 @@ public class StripeClient {
     // and the payment intent
     transactionExpand.add("data.source.payment_intent");
     transactionParams.put("expand", transactionExpand);
-    BalanceTransactionCollection balanceTransactionsPage = BalanceTransaction.list(transactionParams, buildStripeRequestOptions());
+    BalanceTransactionCollection balanceTransactionsPage = BalanceTransaction.list(transactionParams, requestOptions);
     log.info("found {} transactions in payout page", balanceTransactionsPage.getData().size());
 
     List<BalanceTransaction> balanceTransactions = new ArrayList<>(balanceTransactionsPage.getData());
@@ -170,9 +169,5 @@ public class StripeClient {
     }
 
     return balanceTransactions;
-  }
-
-  protected RequestOptions buildStripeRequestOptions() {
-    return RequestOptions.builder().setApiKey(System.getenv("STRIPE_KEY")).build();
   }
 }

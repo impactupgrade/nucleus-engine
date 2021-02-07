@@ -3,6 +3,7 @@ package com.impactupgrade.common.paymentgateway.paymentspring;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.environment.RequestEnvironment;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
@@ -13,9 +14,11 @@ import com.impactupgrade.integration.paymentspring.model.Transaction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -52,7 +55,7 @@ public class PaymentSpringController {
   @Path("/webhook")
   @POST
   @Produces(MediaType.APPLICATION_JSON)
-  public Response webhook(String json) {
+  public Response webhook(String json, @Context HttpServletRequest request) {
     // PaymentSpring is so bloody difficult to replay. For now, as we're fixing issues, always log the raw requests.
 //    LoggingUtil.verbose(log, json);
     log.info(json);
@@ -72,7 +75,7 @@ public class PaymentSpringController {
       log.info("received event {}: {}", event.getEventResource(), event.getEventType());
 
       try {
-        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env, RequestEnvironment.fromRequest(request));
 
         switch (event.getEventResource()) {
           case "transaction":

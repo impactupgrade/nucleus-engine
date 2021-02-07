@@ -2,6 +2,7 @@ package com.impactupgrade.common.paymentgateway.stripe;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.environment.RequestEnvironment;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
@@ -22,9 +23,11 @@ import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
@@ -44,13 +47,11 @@ public class StripeController {
   private static final Logger log = LogManager.getLogger(StripeController.class);
 
   private final Environment env;
-  private final StripeClient stripeClient;
   private final DonorService donorService;
   private final DonationService donationService;
 
   public StripeController(Environment env) {
     this.env = env;
-    stripeClient = env.stripeClient();
     donorService = env.donorService();
     donationService = env.donationService();
   }
@@ -64,7 +65,7 @@ public class StripeController {
   @Path("/webhook")
   @POST
   @Produces(MediaType.APPLICATION_JSON)
-  public Response webhook(String json) {
+  public Response webhook(String json, @Context HttpServletRequest request) {
     LoggingUtil.verbose(log, json);
 
     // stripe-java uses GSON, so Jersey/Jackson won't work on its own
@@ -86,7 +87,7 @@ public class StripeController {
       log.info("received event {}: {}", event.getType(), event.getId());
 
       try {
-        processEvent(event.getType(), stripeObject);
+        processEvent(event.getType(), stripeObject, RequestEnvironment.fromRequest(request));
       } catch (Exception e) {
         log.error("failed to process the Stripe event", e);
         // TODO: email notification?
@@ -98,8 +99,8 @@ public class StripeController {
   }
 
   // Public so that utilities can call this directly.
-  public void processEvent(String eventType, StripeObject stripeObject) throws Exception {
-    PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+  public void processEvent(String eventType, StripeObject stripeObject, RequestEnvironment requestEnv) throws Exception {
+    PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env, requestEnv);
 
     switch (eventType) {
       case "charge.succeeded" -> {
@@ -109,7 +110,7 @@ public class StripeController {
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
           log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
-          processCharge(charge, paymentGatewayEvent);
+          processCharge(charge, paymentGatewayEvent, requestEnv);
           donorService.processAccount(paymentGatewayEvent);
           donationService.createDonation(paymentGatewayEvent);
         }
@@ -118,7 +119,7 @@ public class StripeController {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
         log.info("found payment intent {}", paymentIntent.getId());
 
-        processPaymentIntent(paymentIntent, paymentGatewayEvent);
+        processPaymentIntent(paymentIntent, paymentGatewayEvent, requestEnv);
         donorService.processAccount(paymentGatewayEvent);
         donationService.createDonation(paymentGatewayEvent);
       }
@@ -129,7 +130,7 @@ public class StripeController {
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
           log.info("charge {} is part of an intent; skipping...", charge.getId());
         } else {
-          processCharge(charge, paymentGatewayEvent);
+          processCharge(charge, paymentGatewayEvent, requestEnv);
           donorService.processAccount(paymentGatewayEvent);
           donationService.createDonation(paymentGatewayEvent);
         }
@@ -163,7 +164,7 @@ public class StripeController {
           // the incoming payment will handle it. This prevents timing issues for start-now subscriptions, where
           // we'll likely get the subscription and charge near instantaneously (but on different requests/threads).
 
-          Customer createdSubscriptionCustomer = stripeClient.getCustomer(subscription.getCustomer());
+          Customer createdSubscriptionCustomer = requestEnv.stripeClient().getCustomer(subscription.getCustomer());
           log.info("found customer {}", createdSubscriptionCustomer.getId());
 
           paymentGatewayEvent.initStripe(subscription, createdSubscriptionCustomer);
@@ -176,7 +177,7 @@ public class StripeController {
       case "customer.subscription.deleted" -> {
         Subscription subscription = (Subscription) stripeObject;
         log.info("found subscription {}", subscription.getId());
-        Customer deletedSubscriptionCustomer = stripeClient.getCustomer(subscription.getCustomer());
+        Customer deletedSubscriptionCustomer = requestEnv.stripeClient().getCustomer(subscription.getCustomer());
         log.info("found customer {}", deletedSubscriptionCustomer.getId());
 
         paymentGatewayEvent.initStripe(subscription, deletedSubscriptionCustomer);
@@ -188,16 +189,16 @@ public class StripeController {
       case "payout.paid" -> {
         Payout payout = (Payout) stripeObject;
         log.info("found payout {}", payout.getId());
-        List<BalanceTransaction> balanceTransactions = stripeClient.getBalanceTransactions(payout);
+        List<BalanceTransaction> balanceTransactions = requestEnv.stripeClient().getBalanceTransactions(payout);
         for (BalanceTransaction balanceTransaction : balanceTransactions) {
           if (balanceTransaction.getSourceObject() instanceof Charge charge) {
             log.info("found charge {}", charge.getId());
 
             if (Strings.isNullOrEmpty(charge.getPaymentIntent())) {
-              processCharge(charge, Optional.of(balanceTransaction), paymentGatewayEvent);
+              processCharge(charge, Optional.of(balanceTransaction), paymentGatewayEvent, requestEnv);
             } else {
               log.info("found intent {}", charge.getPaymentIntent());
-              processPaymentIntent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction), paymentGatewayEvent);
+              processPaymentIntent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction), paymentGatewayEvent, requestEnv);
             }
             paymentGatewayEvent.setDepositId(payout.getId());
             Calendar c = Calendar.getInstance();
@@ -211,63 +212,64 @@ public class StripeController {
     }
   }
 
-  private void processCharge(Charge charge, PaymentGatewayEvent paymentGatewayEvent)
+  private void processCharge(Charge charge, PaymentGatewayEvent paymentGatewayEvent, RequestEnvironment requestEnv)
       throws StripeException {
     Optional<BalanceTransaction> chargeBalanceTransaction;
     if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
       chargeBalanceTransaction = Optional.empty();
     } else {
-      chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(charge.getBalanceTransaction()));
+      chargeBalanceTransaction = Optional.of(requestEnv.stripeClient().getBalanceTransaction(charge.getBalanceTransaction()));
       log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
     }
 
-    processCharge(charge, chargeBalanceTransaction, paymentGatewayEvent);
+    processCharge(charge, chargeBalanceTransaction, paymentGatewayEvent, requestEnv);
   }
 
   private void processCharge(Charge charge, Optional<BalanceTransaction> chargeBalanceTransaction,
-      PaymentGatewayEvent paymentGatewayEvent) throws StripeException {
-    Customer chargeCustomer = stripeClient.getCustomer(charge.getCustomer());
+      PaymentGatewayEvent paymentGatewayEvent, RequestEnvironment requestEnv) throws StripeException {
+    Customer chargeCustomer = requestEnv.stripeClient().getCustomer(charge.getCustomer());
     log.info("found customer {}", chargeCustomer.getId());
 
     Optional<Invoice> chargeInvoice;
     if (Strings.isNullOrEmpty(charge.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(stripeClient.getInvoice(charge.getInvoice()));
+      chargeInvoice = Optional.of(requestEnv.stripeClient().getInvoice(charge.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
     paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
   }
 
-  private void processPaymentIntent(PaymentIntent paymentIntent, PaymentGatewayEvent paymentGatewayEvent) throws StripeException {
+  private void processPaymentIntent(PaymentIntent paymentIntent, PaymentGatewayEvent paymentGatewayEvent,
+      RequestEnvironment requestEnv) throws StripeException {
     Optional<BalanceTransaction> chargeBalanceTransaction = Optional.empty();
     if (paymentIntent.getCharges() != null && !paymentIntent.getCharges().getData().isEmpty()) {
       if (paymentIntent.getCharges().getData().size() == 1) {
         String balanceTransactionId = paymentIntent.getCharges().getData().get(0).getBalanceTransaction();
         if (!Strings.isNullOrEmpty(balanceTransactionId)) {
-          chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(balanceTransactionId));
+          chargeBalanceTransaction = Optional.of(requestEnv.stripeClient().getBalanceTransaction(balanceTransactionId));
           log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
         }
       }
     }
 
-    processPaymentIntent(paymentIntent, chargeBalanceTransaction, paymentGatewayEvent);
+    processPaymentIntent(paymentIntent, chargeBalanceTransaction, paymentGatewayEvent, requestEnv);
   }
 
   private void processPaymentIntent(PaymentIntent paymentIntent, Optional<BalanceTransaction> chargeBalanceTransaction,
-      PaymentGatewayEvent paymentGatewayEvent) throws StripeException {
+      PaymentGatewayEvent paymentGatewayEvent, RequestEnvironment requestEnv) throws StripeException {
     // TODO: For TER, the customers and/or metadata aren't always included in the webhook -- not sure why.
     //  For now, retrieve the whole PaymentIntent and try again...
-    PaymentIntent fullPaymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
-    Customer chargeCustomer = stripeClient.getCustomer(fullPaymentIntent.getCustomer());
+    PaymentIntent fullPaymentIntent = requestEnv.stripeClient().getPaymentIntent(paymentIntent.getId());
+    Customer chargeCustomer = requestEnv.stripeClient().getCustomer(fullPaymentIntent.getCustomer());
     log.info("found customer {}", chargeCustomer.getId());
 
     Optional<Invoice> chargeInvoice;
     if (Strings.isNullOrEmpty(fullPaymentIntent.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(stripeClient.getInvoice(fullPaymentIntent.getInvoice()));
+      chargeInvoice = Optional.of(requestEnv.stripeClient().getInvoice(fullPaymentIntent.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
@@ -275,9 +277,9 @@ public class StripeController {
   }
 
   // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-  public void verifyAndReplayStripeCharges(Date startDate, Date endDate) throws StripeException {
+  public void verifyAndReplayStripeCharges(Date startDate, Date endDate, RequestEnvironment requestEnv) throws StripeException {
     SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-    Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+    Iterable<Charge> charges = requestEnv.stripeClient().getAllCharges(startDate, endDate);
     int count = 0;
     for (Charge charge : charges) {
       if (!charge.getStatus().equalsIgnoreCase("succeeded")
@@ -304,9 +306,9 @@ public class StripeController {
           System.out.println("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
 
           if (Strings.isNullOrEmpty(paymentIntentId)) {
-            processEvent("charge.succeeded", charge);
+            processEvent("charge.succeeded", charge, requestEnv);
           } else {
-            processEvent("payment_intent.succeeded", charge.getPaymentIntentObject());
+            processEvent("payment_intent.succeeded", charge.getPaymentIntentObject(), requestEnv);
           }
         }
       } catch (Exception e) {
@@ -316,12 +318,12 @@ public class StripeController {
   }
 
   // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-  public void replayStripePayouts(Date startDate, Date endDate) throws Exception {
+  public void replayStripePayouts(Date startDate, Date endDate, RequestEnvironment requestEnv) throws Exception {
     SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-    Iterable<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+    Iterable<Payout> payouts = requestEnv.stripeClient().getPayouts(startDate, endDate, 100);
     for (Payout payout : payouts) {
       System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
-      processEvent("payout.paid", payout);
+      processEvent("payout.paid", payout, requestEnv);
     }
   }
 }

@@ -3,6 +3,7 @@ package com.impactupgrade.common.paymentgateway.model;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.CampaignRetriever;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.environment.RequestEnvironment;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class PaymentGatewayEvent {
   
   protected final Environment env;
+  protected final RequestEnvironment requestEnv;
 
   // determined by event
   protected String campaignId;
@@ -64,8 +66,9 @@ public class PaymentGatewayEvent {
   protected String depositId;
   protected Calendar depositDate;
 
-  public PaymentGatewayEvent(Environment env) {
+  public PaymentGatewayEvent(Environment env, RequestEnvironment requestEnv) {
     this.env = env;
+    this.requestEnv = requestEnv;
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
@@ -98,7 +101,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
-    if (env.defaultCurrency().equalsIgnoreCase(stripeCharge.getCurrency())) {
+    if (requestEnv.currency().equalsIgnoreCase(stripeCharge.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
@@ -110,7 +113,7 @@ public class PaymentGatewayEvent {
       }
     }
 
-    processCampaignId(new CampaignRetriever(env).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer));
+    processCampaignId(new CampaignRetriever(env, requestEnv).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer));
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
@@ -140,7 +143,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
-    if (env.defaultCurrency().equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
+    if (requestEnv.currency().equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
@@ -152,7 +155,7 @@ public class PaymentGatewayEvent {
       }
     }
 
-    processCampaignId(new CampaignRetriever(env).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer));
+    processCampaignId(new CampaignRetriever(env, requestEnv).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer));
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -301,7 +304,7 @@ public class PaymentGatewayEvent {
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
-    processCampaignId(new CampaignRetriever(env).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer));
+    processCampaignId(new CampaignRetriever(env, requestEnv).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer));
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,
