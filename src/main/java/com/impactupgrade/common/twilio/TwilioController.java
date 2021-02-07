@@ -222,4 +222,46 @@ public class TwilioController {
     HubSpotClientFactory.client().lists().addContactToList(hsListId, contactVid);
     log.info("added HubSpot contact {} to list {}", contactVid, hsListId);
   }
+
+  // TODO: Temporary method to prototype an MMS replacement of the mobile app. In the future,
+  // this can be molded into an API...
+//  public void mmsDemo(String to) {
+//    Message.creator(
+//        new PhoneNumber(to),
+//        new PhoneNumber("+12607862676"),
+//        "Destiny Rescue is committed to rescuing children from the sex trade and empowering them to stay free. Our rescue agents risk their lives searching for underaged children in brothels, red light districts and sexually abusive situations."
+//    ).setMediaUrl(Arrays.asList(
+//        URI.create("https://www.destinyrescue.org/us/files/2019/07/undercover.jpg")
+//    )).create();
+//
+//    // TODO: Instead, need to wait for the success callback from the previous message
+//    try {
+//      Thread.sleep(7000);
+//    } catch (InterruptedException e) {
+//      e.printStackTrace();
+//    }
+//
+//    Message.creator(
+//        new com.twilio.type.PhoneNumber(to),
+//        new com.twilio.type.PhoneNumber("+12607862676"),
+//        "And this is a demo of multiple pictures..."
+//    ).setMediaUrl(Arrays.asList(
+//        URI.create("https://www.destinyrescue.org/us/files/2016/08/0f3925c4508498abbcfba6dcdec996ca.png"),
+//        URI.create("https://www.destinyrescue.org/us/files/2016/08/43c4d8f8ad80dae89a7301004f75d9de.png"),
+//        URI.create("https://www.destinyrescue.org/us/files/2016/07/df88c43ce3f312428cfe55c4adcdca60.jpg")
+//    )).create();
+//
+//    // TODO: Instead, need to wait for the success callback from the previous message
+//    try {
+//      Thread.sleep(7000);
+//    } catch (InterruptedException e) {
+//      e.printStackTrace();
+//    }
+//
+//    Message.creator(
+//        new PhoneNumber(to),
+//        new PhoneNumber("+12607862676"),
+//        "Finally, a call to action. Learn more about how we’re working to rescue the enslaved: https://www.destinyrescue.org/us/what-we-do/rescue/"
+//    ).create();
+//  }
 }
