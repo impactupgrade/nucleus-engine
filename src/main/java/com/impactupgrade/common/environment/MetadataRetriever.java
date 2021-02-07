@@ -13,64 +13,64 @@ import org.apache.logging.log4j.Logger;
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
 // TODO: Move to the paymentgateway package and make it abstract?
 // TODO: Could this be replaced by overriding services?
-public class CampaignRetriever {
+public class MetadataRetriever {
 
-  private static final Logger log = LogManager.getLogger(CampaignRetriever.class);
+  private static final Logger log = LogManager.getLogger(MetadataRetriever.class);
 
   private final StripeClient stripeClient;
-  private final String[] metadataKeys;
+
   private Charge stripeCharge = null;
   private PaymentIntent stripePaymentIntent = null;
   private Subscription stripeSubscription = null;
   private Customer stripeCustomer = null;
 
-  public CampaignRetriever(Environment env, RequestEnvironment requestEnv) {
+  public MetadataRetriever(RequestEnvironment requestEnv) {
     stripeClient = requestEnv.stripeClient();
-    this.metadataKeys = env.campaignMetadataKeys();
   }
 
-  public CampaignRetriever stripeCharge(Charge stripeCharge) {
+  public MetadataRetriever stripeCharge(Charge stripeCharge) {
     this.stripeCharge = stripeCharge;
     return this;
   }
-  public CampaignRetriever stripePaymentIntent(PaymentIntent stripePaymentIntent) {
+  public MetadataRetriever stripePaymentIntent(PaymentIntent stripePaymentIntent) {
     this.stripePaymentIntent = stripePaymentIntent;
     return this;
   }
-  public CampaignRetriever stripeSubscription(Subscription stripeSubscription) {
+  public MetadataRetriever stripeSubscription(Subscription stripeSubscription) {
     this.stripeSubscription = stripeSubscription;
     return this;
   }
-  public CampaignRetriever stripeCustomer(Customer stripeCustomer) {
+  public MetadataRetriever stripeCustomer(Customer stripeCustomer) {
     this.stripeCustomer = stripeCustomer;
     return this;
   }
 
-  public String getCampaign() {
-    String campaignId = null;
+  public String getMetadataValue(String[] metadataKeys) {
+    String metadataValue = null;
 
     for (String metadataKey : metadataKeys) {
       if (stripePaymentIntent != null) {
-        campaignId = stripePaymentIntent.getMetadata().get(metadataKey);
-        if (!Strings.isNullOrEmpty(campaignId)) break;
+        metadataValue = stripePaymentIntent.getMetadata().get(metadataKey);
+        if (!Strings.isNullOrEmpty(metadataValue)) break;
 
         if (stripePaymentIntent.getCustomerObject() != null) {
-          campaignId = stripePaymentIntent.getCustomerObject().getMetadata().get(metadataKey);
-          if (!Strings.isNullOrEmpty(campaignId)) break;
+          metadataValue = stripePaymentIntent.getCustomerObject().getMetadata().get(metadataKey);
+          if (!Strings.isNullOrEmpty(metadataValue)) break;
         }
       }
 
       if (stripeCharge != null) {
-        campaignId = stripeCharge.getMetadata().get(metadataKey);
-        if (!Strings.isNullOrEmpty(campaignId)) break;
+        metadataValue = stripeCharge.getMetadata().get(metadataKey);
+        if (!Strings.isNullOrEmpty(metadataValue)) break;
 
-        // If the campaign isn't on the charge, try pulling the intent from the API. There are cases where the intent
-        // may not have been passed into CampaignRetriever explicitly. Ex: getting transactions from a payout.
+        // If the key isn't on the charge, try pulling the intent from the API. There are cases where the intent
+        // may not have been passed into MetadataRetriever explicitly. Ex: getting transactions from a payout.
         if (!Strings.isNullOrEmpty(stripeCharge.getPaymentIntent())) {
           try {
-            PaymentIntent paymentIntent = stripeClient.getPaymentIntent(stripeCharge.getPaymentIntent());
-            campaignId = paymentIntent.getMetadata().get(metadataKey);
-            if (!Strings.isNullOrEmpty(campaignId)) break;
+            // TODO: If this is retrieved, cache it?
+            stripePaymentIntent = stripeClient.getPaymentIntent(stripeCharge.getPaymentIntent());
+            metadataValue = stripePaymentIntent.getMetadata().get(metadataKey);
+            if (!Strings.isNullOrEmpty(metadataValue)) break;
           } catch (StripeException e) {
             // For now, don't let this become a checked exception...
             log.error("unable to retrieve PaymentIntent", e);
@@ -78,24 +78,24 @@ public class CampaignRetriever {
         }
 
         if (stripeCharge.getCustomerObject() != null) {
-          campaignId = stripeCharge.getCustomerObject().getMetadata().get(metadataKey);
-          if (!Strings.isNullOrEmpty(campaignId)) break;
+          metadataValue = stripeCharge.getCustomerObject().getMetadata().get(metadataKey);
+          if (!Strings.isNullOrEmpty(metadataValue)) break;
         }
       }
 
       if (stripeSubscription != null) {
-        campaignId = stripeSubscription.getMetadata().get(metadataKey);
-        if (!Strings.isNullOrEmpty(campaignId)) break;
+        metadataValue = stripeSubscription.getMetadata().get(metadataKey);
+        if (!Strings.isNullOrEmpty(metadataValue)) break;
 
         if (stripeSubscription.getCustomerObject() != null) {
-          campaignId = stripeSubscription.getCustomerObject().getMetadata().get(metadataKey);
-          if (!Strings.isNullOrEmpty(campaignId)) break;
+          metadataValue = stripeSubscription.getCustomerObject().getMetadata().get(metadataKey);
+          if (!Strings.isNullOrEmpty(metadataValue)) break;
         }
       }
 
       if (stripeCustomer != null) {
-        campaignId = stripeCustomer.getMetadata().get(metadataKey);
-        if (!Strings.isNullOrEmpty(campaignId)) break;
+        metadataValue = stripeCustomer.getMetadata().get(metadataKey);
+        if (!Strings.isNullOrEmpty(metadataValue)) break;
       }
 
       // TODO: If the stripeCustomer isn't explicitly given, and it wasn't expanded in the charge/intent/subscription,
@@ -103,11 +103,11 @@ public class CampaignRetriever {
       // Perf hit, but the ultimate fallback.
     }
 
-    if (campaignId != null) {
+    if (metadataValue != null) {
       // IMPORTANT: The designation code is copy/pasted by a human and we've had issues with whitespace. Strip it!
-      campaignId = campaignId.replaceAll("[^A-Za-z0-9_-]", "");
+      metadataValue = metadataValue.replaceAll("[^A-Za-z0-9_-]", "");
     }
 
-    return campaignId;
+    return metadataValue;
   }
 }

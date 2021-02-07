@@ -13,6 +13,8 @@ import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringContro
 import com.impactupgrade.common.paymentgateway.stripe.StripeController;
 import com.impactupgrade.common.twilio.TwilioController;
 
+import javax.ws.rs.container.ContainerRequestContext;
+
 /**
  * This class allows the app to provide all the custom data and flows we need that are super-specific to the individual
  * org's environment.
@@ -57,12 +59,29 @@ public class Environment {
 
   // TODO: other destinations: SMS interactions, etc.
 
+  /**
+   * Many organizations will only have one RequestEnvironment. But some (DR, Donation Spring, etc.) are by-request.
+   * In those cases, they'll need to provide their own constructor (and generally, a unique Controller method
+   * to go with it). So make it obvious that this is only the default.
+   */
+  public RequestEnvironment newRequestEnvironment(ContainerRequestContext context) {
+    return new RequestEnvironment(context);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // UNIQUE FIELDS
   // TODO: Make these all env vars?
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  public String[] accountMetadataKeys() {
+    return new String[]{"sf_account"};
+  }
+
   public String[] campaignMetadataKeys() {
     return new String[]{"sf_campaign"};
+  }
+
+  public String[] contactMetadataKeys() {
+    return new String[]{"sf_contact"};
   }
 }

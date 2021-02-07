@@ -47,7 +47,7 @@ public class StripeControllerTest extends AbstractTest {
     Map<String, String> chargeMetadata = Map.of("Designation Code", "campaign_1");
     charge.setMetadata(chargeMetadata);
 
-    stripeController.processEvent("charge.succeeded", charge, new DefaultRequestEnvironment());
+    stripeController.processEvent("charge.succeeded", charge, new DefaultRequestEnvironment(null));
 
     ArgumentCaptor<PaymentGatewayEvent> argumentCaptor = ArgumentCaptor.forClass(PaymentGatewayEvent.class);
     verify(donationServiceMock).createDonation(argumentCaptor.capture());

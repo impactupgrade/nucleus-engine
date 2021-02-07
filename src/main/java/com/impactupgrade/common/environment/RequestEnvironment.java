@@ -3,6 +3,7 @@ package com.impactupgrade.common.environment;
 import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.container.ContainerRequestContext;
 
 /**
  * Much like Environment, this allows context-specific info to be set *per request*. Examples: SaaS flexibility,
@@ -13,15 +14,14 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class RequestEnvironment {
 
-  // NOTE: Don't build any of these on-demand! Let each request do it once.
-  private final StripeClient stripeClient;
+  protected final ContainerRequestContext context;
 
-  public RequestEnvironment() {
-    stripeClient = new StripeClient(System.getenv("STRIPE_KEY"));
+  public RequestEnvironment(ContainerRequestContext context) {
+    this.context = context;
   }
 
   public StripeClient stripeClient() {
-    return stripeClient;
+    return new StripeClient(System.getenv("STRIPE_KEY"));
   }
 
   public String currency() {

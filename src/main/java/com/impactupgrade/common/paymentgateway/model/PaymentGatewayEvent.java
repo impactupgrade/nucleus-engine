@@ -1,7 +1,7 @@
 package com.impactupgrade.common.paymentgateway.model;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.common.environment.CampaignRetriever;
+import com.impactupgrade.common.environment.MetadataRetriever;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.environment.RequestEnvironment;
 import com.stripe.model.BalanceTransaction;
@@ -32,6 +32,7 @@ public class PaymentGatewayEvent {
   protected String country;
   protected String customerId;
   protected String depositTransactionId;
+  protected String description;
   protected String email;
   protected String firstName;
   protected String fullName;
@@ -59,7 +60,7 @@ public class PaymentGatewayEvent {
   protected boolean transactionSuccess;
   protected String zip;
 
-  // context set within processing steps
+  // context set within processing steps OR pulled from event metadata
   protected String primaryCrmAccountId;
   protected String primaryCrmContactId;
   protected String primaryCrmRecurringDonationId;
@@ -113,7 +114,10 @@ public class PaymentGatewayEvent {
       }
     }
 
-    processCampaignId(new CampaignRetriever(env, requestEnv).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer));
+    description = stripeCharge.getDescription();
+
+    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer);
+    processMetadata(metadataRetriever);
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
@@ -155,7 +159,10 @@ public class PaymentGatewayEvent {
       }
     }
 
-    processCampaignId(new CampaignRetriever(env, requestEnv).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer));
+    description = stripePaymentIntent.getDescription();
+
+    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer);
+    processMetadata(metadataRetriever);
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -304,7 +311,8 @@ public class PaymentGatewayEvent {
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
-    processCampaignId(new CampaignRetriever(env, requestEnv).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer));
+    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer);
+    processMetadata(metadataRetriever);
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,
@@ -437,15 +445,24 @@ public class PaymentGatewayEvent {
     subscriptionNextDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
   }
 
-  private void processCampaignId(CampaignRetriever campaignRetriever) {
-    String campaignId = campaignRetriever.getCampaign();
+  private void processMetadata(MetadataRetriever metadataRetriever) {
+    String accountId = metadataRetriever.getMetadataValue(env.accountMetadataKeys());
+    String campaignId = metadataRetriever.getMetadataValue(env.campaignMetadataKeys());
+    String contactId = metadataRetriever.getMetadataValue(env.contactMetadataKeys());
+
+    // Only set the values if the new retrieval was not empty! This allows us to define fallbacks...
+    if (!Strings.isNullOrEmpty(accountId)) {
+      this.primaryCrmAccountId = accountId;
+    }
     if (!Strings.isNullOrEmpty(campaignId)) {
-      // Only set the campaignId if the new retrieval was not empty! This allows us to define fallbacks...
       this.campaignId = campaignId;
+    }
+    if (!Strings.isNullOrEmpty(contactId)) {
+      this.primaryCrmContactId = contactId;
     }
   }
   
-  // CONTEXT SET WITHIN PROCESSING STEPS
+  // CONTEXT SET WITHIN PROCESSING STEPS *OR* FROM EVENT METADATA
 
   public String getPrimaryCrmAccountId() {
     return primaryCrmAccountId;
@@ -523,6 +540,10 @@ public class PaymentGatewayEvent {
 
   public String getDepositTransactionId() {
     return depositTransactionId;
+  }
+
+  public String getDescription() {
+    return description;
   }
 
   public String getEmail() {

@@ -4,6 +4,7 @@ import com.google.common.collect.Iterables;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.BalanceTransactionCollection;
+import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.ChargeCollection;
 import com.stripe.model.Customer;
@@ -11,18 +12,30 @@ import com.stripe.model.Event;
 import com.stripe.model.EventCollection;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentSource;
 import com.stripe.model.Payout;
+import com.stripe.model.Plan;
+import com.stripe.model.Product;
 import com.stripe.model.Subscription;
 import com.stripe.net.RequestOptions;
+import com.stripe.param.ChargeCreateParams;
+import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerRetrieveParams;
+import com.stripe.param.CustomerUpdateParams;
+import com.stripe.param.PaymentSourceCollectionCreateParams;
 import com.stripe.param.PayoutListParams;
+import com.stripe.param.PlanCreateParams;
+import com.stripe.param.ProductCreateParams;
+import com.stripe.param.SubscriptionCreateParams;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class StripeClient {
@@ -169,5 +182,103 @@ public class StripeClient {
     }
 
     return balanceTransactions;
+  }
+
+  public Customer createCustomer(String name, String email, String sourceToken) throws StripeException {
+    CustomerCreateParams customerParams = CustomerCreateParams.builder()
+        .setName(name)
+        // Important to use the name as the description! Allows the Subscriptions list to display customers
+        // by-name, otherwise it's limited to email.
+        .setDescription(name)
+        .setEmail(email)
+        .setSource(sourceToken)
+        .addExpand("sources")
+        .build();
+    return Customer.create(customerParams, requestOptions);
+  }
+
+  public PaymentSource updateCustomerSource(Customer customer, String sourceToken) throws StripeException {
+    PaymentSourceCollectionCreateParams params = PaymentSourceCollectionCreateParams.builder()
+        .setSource(sourceToken)
+        .build();
+    PaymentSource newSource = customer.getSources().create(params, requestOptions);
+
+    // de-duplicate
+    Iterable<PaymentSource> existingSources = customer.getSources().autoPagingIterable();
+    for (PaymentSource existingSource : existingSources) {
+      // TODO: Assumes we're card only -- will break for Plaid!
+      Card existingCard = (Card) existingSource;
+      Card newCard = (Card) newSource;
+      if (existingCard.getFingerprint().equals(newCard.getFingerprint())
+          && existingCard.getExpMonth().equals(newCard.getExpMonth()) && existingCard.getExpYear().equals(newCard.getExpYear())) {
+        log.info("card duplicated an existing source; removing it and reusing the existing one");
+        newCard.delete(requestOptions);
+        return existingCard;
+      }
+    }
+
+    return newSource;
+  }
+
+  // TODO: SFDC specific
+  public Customer updateCustomer(Customer customer, String sfAccountId, String sfContactId) throws StripeException {
+    Map<String, String> customerMetadata = new HashMap<>();
+    // TODO: DR specific
+    customerMetadata.put("sf_account", sfAccountId);
+    customerMetadata.put("sf_contact", sfContactId);
+
+    CustomerUpdateParams customerParams = CustomerUpdateParams.builder()
+        .setMetadata(customerMetadata)
+        .addExpand("sources")
+        .build();
+    return customer.update(customerParams, requestOptions);
+  }
+
+  // TODO: SFDC specific
+  public Charge createCharge(Customer customer, PaymentSource source, long amountInCents, String currency, String description,
+      String sfCampaignId, String sfOppRecordType) throws StripeException {
+    Map<String, String> chargeMetadata = new HashMap<>();
+    // TODO: DR specific
+    chargeMetadata.put("sf_campaign", sfCampaignId);
+    chargeMetadata.put("sf_opp_record_type", sfOppRecordType);
+
+    ChargeCreateParams chargeParams = ChargeCreateParams.builder()
+        .setCustomer(customer.getId())
+        .setSource(source.getId())
+        .setAmount(amountInCents)
+        .setCurrency(currency)
+        .setDescription(description)
+        .setMetadata(chargeMetadata)
+        .build();
+    return Charge.create(chargeParams, requestOptions);
+  }
+
+  // TODO: SFDC specific
+  public Subscription createSubscription(Customer customer, PaymentSource source, String sfCampaignId, long amountInCents,
+      String currency) throws StripeException {
+    ProductCreateParams productParams = ProductCreateParams.builder()
+        .setName(customer.getName() + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)")
+        .build();
+    Product product = Product.create(productParams, requestOptions);
+    PlanCreateParams planParams = PlanCreateParams.builder()
+        .setProduct(product.getId())
+        .setInterval(PlanCreateParams.Interval.MONTH)
+        .setAmount(amountInCents)
+        .setCurrency(currency)
+        .build();
+    Plan plan = Plan.create(planParams, requestOptions);
+
+    Map<String, String> subscriptionMetadata = new HashMap<>();
+    // TODO: DR specific
+    subscriptionMetadata.put("sf_campaign", sfCampaignId);
+
+    SubscriptionCreateParams.Item item = SubscriptionCreateParams.Item.builder().setPlan(plan.getId()).build();
+    SubscriptionCreateParams subscriptionParams = SubscriptionCreateParams.builder()
+        .setCustomer(customer.getId())
+        .setDefaultSource(source.getId())
+        .addItem(item)
+        .setMetadata(subscriptionMetadata)
+        .build();
+    return Subscription.create(subscriptionParams, requestOptions);
   }
 }

@@ -14,6 +14,8 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
+import javax.ws.rs.container.ContainerRequestFilter;
+
 public abstract class App {
 
   // $PORT env var provided by Heroku
@@ -47,6 +49,8 @@ public abstract class App {
     resourceConfig.register(getEnvironment().stripeController());
     resourceConfig.register(getEnvironment().twilioController());
     resourceConfig.register(MultiPartFeature.class);
+    // register the filter that inserts our RequestEnvironment
+    resourceConfig.register((ContainerRequestFilter) context -> context.setProperty("requestEnv", getEnvironment().newRequestEnvironment(context)));
     applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
 
     // SOAP (CXF)

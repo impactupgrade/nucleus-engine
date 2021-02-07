@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import javax.ws.rs.container.ContainerRequestContext;
+
 @ExtendWith(MockitoExtension.class)
 public abstract class AbstractTest {
 
@@ -55,9 +57,18 @@ public abstract class AbstractTest {
     public AggregateCrmDestinationService crmDonationDestinationServices() {
       return new AggregateCrmDestinationService(crmDestinationServiceMock);
     }
+
+    @Override
+    public RequestEnvironment newRequestEnvironment(ContainerRequestContext context) {
+      return new DefaultRequestEnvironment(context);
+    }
   }
 
   public class DefaultRequestEnvironment extends RequestEnvironment {
+    public DefaultRequestEnvironment(ContainerRequestContext context) {
+      super(context);
+    }
+
     @Override
     public StripeClient stripeClient() {
       return stripeClientMock;
