@@ -10,7 +10,6 @@ import com.impactupgrade.common.crm.model.CrmRecurringDonation;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.exception.NotImplementedException;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
-import com.neovisionaries.i18n.CountryCode;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
@@ -21,10 +20,6 @@ import java.util.Optional;
 public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
 
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
-
-  // TODO
-  private static final String RECORD_TYPE_ACCOUNT_HOUSEHOLD = "012f4000000ZcEiAAK";
-  private static final String RECORD_TYPE_CONTACT_STANDARD = "012f4000000a6v0AAA";
 
   protected final Environment env;
   protected final SfdcClient sfdcClient;
@@ -57,75 +52,33 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   @Override
   public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     SObject account = new SObject("Account");
-    account.setField("RecordTypeId", RECORD_TYPE_ACCOUNT_HOUSEHOLD);
+    setAccountFields(account, paymentGatewayEvent);
+    return sfdcClient.insert(account).getId();
+  }
 
+  protected void setAccountFields(SObject account, PaymentGatewayEvent paymentGatewayEvent) {
     account.setField("Name", paymentGatewayEvent.getFullName());
 
-    // NOTE: Some orgs have country/state picklists enabled, but the state picklists are sparsely populated (and often
-    // incorrect) for non-US countries. TER does not currently mail anything to international donors, so we're
-    // opting to fill out the state only for stateside gifts. However, we'll fill out the account description
-    // with the raw state, in case we need it later
-    // TODO: Need to allow orgs to enable the picklist assumptions?
-
-    if ("US".equalsIgnoreCase(paymentGatewayEvent.getCountry())
-        || "USA".equalsIgnoreCase(paymentGatewayEvent.getCountry())
-        || "United States".equalsIgnoreCase(paymentGatewayEvent.getCountry())
-        || "United States of America".equalsIgnoreCase(paymentGatewayEvent.getCountry())
-        || "America".equalsIgnoreCase(paymentGatewayEvent.getCountry())
-        || Strings.isNullOrEmpty(paymentGatewayEvent.getCountry())) {
-
-      account.setField("BillingStreet", paymentGatewayEvent.getStreet());
-      account.setField("BillingCity", paymentGatewayEvent.getCity());
-      account.setField("BillingPostalCode", paymentGatewayEvent.getZip());
-
-      boolean isStateCode = false;
-      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getState())) {
-        if (paymentGatewayEvent.getState().length() == 2) {
-          isStateCode = true;
-          account.setField("BillingStateCode", paymentGatewayEvent.getState());
-        } else {
-          account.setField("BillingState", paymentGatewayEvent.getState());
-        }
-      }
-
-      // If we're using a state code, we *must* also use the country code!
-
-      if (isStateCode) {
-        account.setField("BillingCountryCode", "US");
-      } else {
-        account.setField("BillingCountry", "United States");
-      }
-    } else {
-      account.setField("BillingStreet", paymentGatewayEvent.getStreet());
-      account.setField("BillingCity", paymentGatewayEvent.getCity());
-      account.setField("BillingPostalCode", paymentGatewayEvent.getZip());
-      if (paymentGatewayEvent.getCountry().length() == 2) {
-        // was a 2-char country code to begin with; use verbatim
-        account.setField("BillingCountryCode", paymentGatewayEvent.getCountry());
-      } else if (paymentGatewayEvent.getCountry().length() == 3) {
-        // was a 3-char country code, but Salesforce is currently tripping on them -- convert to 2-char
-        account.setField("BillingCountryCode", CountryCode.getByCode(paymentGatewayEvent.getCountry()).getAlpha2());
-      } else {
-        // not a code, so use the open-ended flavor
-        account.setField("BillingCountry", paymentGatewayEvent.getCountry());
-      }
-      account.setField("Description", "Non-US State: " + paymentGatewayEvent.getState());
-    }
-
-    return sfdcClient.insert(account).getId();
+    account.setField("BillingStreet", paymentGatewayEvent.getStreet());
+    account.setField("BillingCity", paymentGatewayEvent.getCity());
+    account.setField("BillingState", paymentGatewayEvent.getState());
+    account.setField("BillingPostalCode", paymentGatewayEvent.getZip());
+    account.setField("BillingCountry", paymentGatewayEvent.getCountry());
   }
 
   @Override
   public String insertContact(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     SObject contact = new SObject("Contact");
-    contact.setField("RecordTypeId", RECORD_TYPE_CONTACT_STANDARD);
+    setContactFields(contact, paymentGatewayEvent);
+    return sfdcClient.insert(contact).getId();
+  }
+
+  protected void setContactFields(SObject contact, PaymentGatewayEvent paymentGatewayEvent) {
     contact.setField("AccountId", paymentGatewayEvent.getPrimaryCrmAccountId());
     contact.setField("FirstName", paymentGatewayEvent.getFirstName());
     contact.setField("LastName", paymentGatewayEvent.getLastName());
     contact.setField("Email", paymentGatewayEvent.getEmail());
     contact.setField("MobilePhone", paymentGatewayEvent.getPhone());
-
-    return sfdcClient.insert(contact).getId();
   }
 
   @Override
