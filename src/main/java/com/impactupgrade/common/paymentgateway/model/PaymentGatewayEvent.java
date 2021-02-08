@@ -522,6 +522,11 @@ public class PaymentGatewayEvent {
 
   // ACCESSORS
 
+
+  public RequestEnvironment getRequestEnv() {
+    return requestEnv;
+  }
+
   public String getCampaignId() {
     return campaignId;
   }

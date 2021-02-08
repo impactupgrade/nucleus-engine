@@ -185,6 +185,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     SObject opportunity = new SObject("Opportunity");
 
     opportunity.setField("AccountId", paymentGatewayEvent.getPrimaryCrmAccountId());
+    // TODO: Shouldn't this be doing ContactId?
     opportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
 
     setOpportunityFields(opportunity, campaign, paymentGatewayEvent);
@@ -195,6 +196,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   protected void setOpportunityFields(SObject opportunity, Optional<SObject> campaign, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // check to see if this was a failed payment attempt and set the StageName accordingly
     if (paymentGatewayEvent.isTransactionSuccess()) {
+      // TODO: If LJI/TER end up being the only ones using this, default it to Closed Won
       opportunity.setField("StageName", "Posted");
     } else {
       opportunity.setField("StageName", "Failed Attempt");
@@ -204,6 +206,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     opportunity.setField("CampaignId", getCampaignOrDefault(paymentGatewayEvent).map(SObject::getId).orElse(null));
     opportunity.setField("CloseDate", paymentGatewayEvent.getTransactionDate());
     opportunity.setField("Description", paymentGatewayEvent.getTransactionDescription());
+    opportunity.setField("CurrencyIsoCode", paymentGatewayEvent.getTransactionOriginalCurrency());
 
     // purely a default, but we generally expect this to be overridden
     opportunity.setField("Name", paymentGatewayEvent.getFullName() + " Donation");
@@ -213,6 +216,11 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = getDonation(paymentGatewayEvent);
 
+    if (donation.isEmpty()) {
+      log.warn("unable to find SFDC donation using transaction {}", paymentGatewayEvent.getTransactionId());
+      return;
+    }
+
     SObject opportunity = new SObject("Opportunity");
     opportunity.setId(donation.get().id());
     setOpportunityRefundFields(opportunity, paymentGatewayEvent);
@@ -221,7 +229,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   }
 
   protected void setOpportunityRefundFields(SObject opportunity, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: LJI/TER specific?
+    // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
   }
 
@@ -242,6 +250,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
    * Set any necessary fields on an RD before it's inserted.
    */
   protected void setRecurringDonationFields(SObject recurringDonation, Optional<SObject> campaign, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    // TODO: Assign to contact if available? Can only do one or the other -- see DR.
     recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getPrimaryCrmAccountId());
     recurringDonation.setField("Npe03__Amount__c", paymentGatewayEvent.getSubscriptionAmountInDollars());
     recurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
@@ -251,6 +260,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     recurringDonation.setField("Npe03__Date_Established__c", paymentGatewayEvent.getSubscriptionStartDate());
     recurringDonation.setField("Npe03__Next_Payment_Date__c", paymentGatewayEvent.getSubscriptionNextDate());
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(paymentGatewayEvent).map(SObject::getId).orElse(null));
+    recurringDonation.setField("CurrencyIsoCode", paymentGatewayEvent.getSubscriptionCurrency());
 
     // Purely a default, but we expect this to be generally overridden.
     recurringDonation.setField("Name", paymentGatewayEvent.getFullName() + " Recurring Donation");
@@ -268,12 +278,17 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   @Override
   public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(paymentGatewayEvent);
-    if (recurringDonation.isPresent()) {
-      SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-      toUpdate.setId(recurringDonation.get().id());
-      toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
-      sfdcClient.update(toUpdate);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find SFDC recurring donation using subscriptionId {}",
+          paymentGatewayEvent.getSubscriptionId());
+      return;
     }
+
+    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    toUpdate.setId(recurringDonation.get().id());
+    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
+    sfdcClient.update(toUpdate);
   }
 
   protected Optional<SObject> getCampaignOrDefault(PaymentGatewayEvent paymentGatewayEvent) throws ConnectionException, InterruptedException {
