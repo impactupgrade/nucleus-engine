@@ -90,4 +90,8 @@ public class Environment {
   public String[] contactMetadataKeys() {
     return new String[]{"sf_contact"};
   }
+
+  public String[] recordTypeMetadataKeys() {
+    return new String[]{"sf_opp_record_type"};
+  }
 }

@@ -63,6 +63,7 @@ public class PaymentGatewayEvent {
   // context set within processing steps OR pulled from event metadata
   protected String primaryCrmAccountId;
   protected String primaryCrmContactId;
+  protected String primaryCrmRecordTypeId;
   protected String primaryCrmRecurringDonationId;
   protected String depositId;
   protected Calendar depositDate;
@@ -449,6 +450,7 @@ public class PaymentGatewayEvent {
     String accountId = metadataRetriever.getMetadataValue(env.accountMetadataKeys());
     String campaignId = metadataRetriever.getMetadataValue(env.campaignMetadataKeys());
     String contactId = metadataRetriever.getMetadataValue(env.contactMetadataKeys());
+    String recordTypeId = metadataRetriever.getMetadataValue(env.recordTypeMetadataKeys());
 
     // Only set the values if the new retrieval was not empty! This allows us to define fallbacks...
     if (!Strings.isNullOrEmpty(accountId)) {
@@ -459,6 +461,9 @@ public class PaymentGatewayEvent {
     }
     if (!Strings.isNullOrEmpty(contactId)) {
       this.primaryCrmContactId = contactId;
+    }
+    if (!Strings.isNullOrEmpty(recordTypeId)) {
+      this.primaryCrmRecordTypeId = recordTypeId;
     }
   }
   
@@ -486,6 +491,14 @@ public class PaymentGatewayEvent {
 
   public void setPrimaryCrmRecurringDonationId(String primaryCrmRecurringDonationId) {
     this.primaryCrmRecurringDonationId = primaryCrmRecurringDonationId;
+  }
+
+  public String getPrimaryCrmRecordTypeId() {
+    return primaryCrmRecordTypeId;
+  }
+
+  public void setPrimaryCrmRecordTypeId(String primaryCrmRecordTypeId) {
+    this.primaryCrmRecordTypeId = primaryCrmRecordTypeId;
   }
 
   public String getDepositId() {

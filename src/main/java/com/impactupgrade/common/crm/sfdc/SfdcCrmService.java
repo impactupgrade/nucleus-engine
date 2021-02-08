@@ -245,7 +245,8 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   }
 
   protected Optional<SObject> getCampaignOrDefault(PaymentGatewayEvent paymentGatewayEvent) throws ConnectionException, InterruptedException {
-    Optional<SObject> campaign = sfdcClient.getCampaignById(paymentGatewayEvent.getCampaignId());
+    Optional<SObject> campaign = Strings.isNullOrEmpty(paymentGatewayEvent.getCampaignId())
+        ? Optional.empty() : sfdcClient.getCampaignById(paymentGatewayEvent.getCampaignId());
 
     if (campaign.isEmpty()) {
       String defaultCampaignId = getDefaultCampaignId();
