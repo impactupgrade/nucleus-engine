@@ -48,6 +48,7 @@ public abstract class App {
     resourceConfig.register(getEnvironment().sfdcController());
     resourceConfig.register(getEnvironment().stripeController());
     resourceConfig.register(getEnvironment().twilioController());
+    getEnvironment().registerServices(resourceConfig);
     resourceConfig.register(MultiPartFeature.class);
     // register the filter that inserts our RequestEnvironment
     resourceConfig.register((ContainerRequestFilter) context -> context.setProperty("requestEnv", getEnvironment().newRequestEnvironment(context)));
