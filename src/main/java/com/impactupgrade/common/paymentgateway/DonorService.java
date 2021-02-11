@@ -28,9 +28,20 @@ public class DonorService {
   public void processAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // attempt to find a Contact using the email
 
-    if (Strings.isNullOrEmpty(paymentGatewayEvent.getEmail())) {
-      log.warn("payment gateway event {} had no email address; skipping processing", paymentGatewayEvent.getTransactionId());
+    if (Strings.isNullOrEmpty(paymentGatewayEvent.getEmail())
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmAccountId())
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmContactId())) {
+      log.warn("payment gateway event {} had no email address or CRM IDs; skipping processing", paymentGatewayEvent.getTransactionId());
       // TODO: email support@?
+      return;
+    }
+
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmAccountId())
+        && !Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmContactId())) {
+      log.info("found CRM contact {} and account {}",
+          paymentGatewayEvent.getPrimaryCrmContactId(), paymentGatewayEvent.getPrimaryCrmAccountId());
+      paymentGatewayEvent.setPrimaryCrmAccountId(paymentGatewayEvent.getPrimaryCrmAccountId());
+      paymentGatewayEvent.setPrimaryCrmContactId(paymentGatewayEvent.getPrimaryCrmContactId());
       return;
     }
 
