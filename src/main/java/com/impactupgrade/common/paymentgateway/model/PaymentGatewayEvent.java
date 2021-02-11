@@ -103,7 +103,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
-    if (requestEnv.currency().equalsIgnoreCase(stripeCharge.getCurrency())) {
+    if (requestEnv.currency().equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
@@ -148,7 +148,7 @@ public class PaymentGatewayEvent {
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
-    if (requestEnv.currency().equalsIgnoreCase(stripePaymentIntent.getCurrency())) {
+    if (requestEnv.currency().equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
