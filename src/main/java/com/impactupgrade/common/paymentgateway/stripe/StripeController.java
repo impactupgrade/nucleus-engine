@@ -80,6 +80,9 @@ public class StripeController {
       return Response.status(500).build();
     }
 
+    // Do this outside the thread, to ensure the request doesn't end first...
+    final RequestEnvironment requestEnv = env.newRequestEnvironment(request);
+
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       // don't log the whole thing -- can be found in Stripe's dashboard -> Developers -> Webhooks
@@ -87,7 +90,7 @@ public class StripeController {
       log.info("received event {}: {}", event.getType(), event.getId());
 
       try {
-        processEvent(event.getType(), stripeObject, env.newRequestEnvironment(request));
+        processEvent(event.getType(), stripeObject, requestEnv);
       } catch (Exception e) {
         log.error("failed to process the Stripe event", e);
         // TODO: email notification?
