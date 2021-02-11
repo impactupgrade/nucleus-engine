@@ -535,7 +535,6 @@ public class PaymentGatewayEvent {
 
   // ACCESSORS
 
-
   public RequestEnvironment getRequestEnv() {
     return requestEnv;
   }
@@ -666,5 +665,12 @@ public class PaymentGatewayEvent {
 
   public String getZip() {
     return zip;
+  }
+
+  // SETTERS
+
+  // Mainly needed by DR to set a default country based on FN when missing.
+  public void setCountry(String country) {
+    this.country = country;
   }
 }
