@@ -1,6 +1,8 @@
 package com.impactupgrade.common;
 
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.filter.CORSFilter;
+import com.impactupgrade.common.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
@@ -13,8 +15,6 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
-
-import javax.ws.rs.container.ContainerRequestFilter;
 
 public abstract class App {
 
@@ -42,16 +42,21 @@ public abstract class App {
 
     // API/REST (Jersey)
     ResourceConfig resourceConfig = new ResourceConfig();
+
+    resourceConfig.register(new CORSFilter());
+    resourceConfig.register(new SecurityExceptionMapper());
+
     resourceConfig.register(getEnvironment().backupController());
     resourceConfig.register(getEnvironment().paymentGatewayController());
     resourceConfig.register(getEnvironment().paymentSpringController());
     resourceConfig.register(getEnvironment().sfdcController());
     resourceConfig.register(getEnvironment().stripeController());
     resourceConfig.register(getEnvironment().twilioController());
+
     getEnvironment().registerServices(resourceConfig);
+
     resourceConfig.register(MultiPartFeature.class);
-    // register the filter that inserts our RequestEnvironment
-    resourceConfig.register((ContainerRequestFilter) context -> context.setProperty("requestEnv", getEnvironment().newRequestEnvironment(context)));
+
     applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
 
     // SOAP (CXF)

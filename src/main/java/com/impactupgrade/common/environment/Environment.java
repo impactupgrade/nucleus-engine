@@ -10,11 +10,12 @@ import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.PaymentGatewayController;
 import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringController;
+import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
 import com.impactupgrade.common.paymentgateway.stripe.StripeController;
 import com.impactupgrade.common.twilio.TwilioController;
 import org.glassfish.jersey.server.ResourceConfig;
 
-import javax.ws.rs.container.ContainerRequestContext;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * This class allows the app to provide all the custom data and flows we need that are super-specific to the individual
@@ -70,8 +71,34 @@ public class Environment {
    * In those cases, they'll need to provide their own constructor (and generally, a unique Controller method
    * to go with it). So make it obvious that this is only the default.
    */
-  public RequestEnvironment newRequestEnvironment(ContainerRequestContext context) {
-    return new RequestEnvironment(context);
+  public RequestEnvironment newRequestEnvironment(HttpServletRequest request) {
+    return new RequestEnvironment(request);
+  }
+
+  /**
+   * Much like Environment, this allows context-specific info to be set *per request*. Examples: SaaS flexibility,
+   * orgs that have multiple keys within them (DR FNs), etc.
+   *
+   * Note that not every processing flow needs this! Allow it to be built on-demand by the Controller methods calling
+   * Services/Clients where this is truly required.
+   *
+   * We embed it here to make sure the constructor isn't used directly in hub-common. Force the above method to allow overrides!
+   */
+  public static class RequestEnvironment {
+
+    protected final HttpServletRequest request;
+
+    protected RequestEnvironment(HttpServletRequest request) {
+      this.request = request;
+    }
+
+    public StripeClient stripeClient() {
+      return new StripeClient(System.getenv("STRIPE_KEY"));
+    }
+
+    public String currency() {
+      return "usd";
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -3,7 +3,7 @@ package com.impactupgrade.common.paymentgateway.model;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.MetadataRetriever;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.environment.RequestEnvironment;
+import com.impactupgrade.common.environment.Environment.RequestEnvironment;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;

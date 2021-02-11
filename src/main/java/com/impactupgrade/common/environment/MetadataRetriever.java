@@ -1,6 +1,7 @@
 package com.impactupgrade.common.environment;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.common.environment.Environment.RequestEnvironment;
 import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;

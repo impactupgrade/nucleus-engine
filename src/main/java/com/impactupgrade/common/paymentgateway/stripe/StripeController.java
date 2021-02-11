@@ -2,7 +2,7 @@ package com.impactupgrade.common.paymentgateway.stripe;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.environment.RequestEnvironment;
+import com.impactupgrade.common.environment.Environment.RequestEnvironment;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
@@ -87,7 +87,7 @@ public class StripeController {
       log.info("received event {}: {}", event.getType(), event.getId());
 
       try {
-        processEvent(event.getType(), stripeObject, RequestEnvironment.fromRequest(request));
+        processEvent(event.getType(), stripeObject, env.newRequestEnvironment(request));
       } catch (Exception e) {
         log.error("failed to process the Stripe event", e);
         // TODO: email notification?

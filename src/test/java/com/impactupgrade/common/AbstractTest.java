@@ -5,7 +5,7 @@ import com.impactupgrade.common.crm.CrmDestinationService;
 import com.impactupgrade.common.crm.CrmSourceService;
 import com.impactupgrade.common.crm.sfdc.SfdcClient;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.environment.RequestEnvironment;
+import com.impactupgrade.common.environment.Environment.RequestEnvironment;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
@@ -13,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import javax.ws.rs.container.ContainerRequestContext;
+import javax.servlet.http.HttpServletRequest;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AbstractTest {
@@ -59,14 +59,14 @@ public abstract class AbstractTest {
     }
 
     @Override
-    public RequestEnvironment newRequestEnvironment(ContainerRequestContext context) {
-      return new DefaultRequestEnvironment(context);
+    public RequestEnvironment newRequestEnvironment(HttpServletRequest request) {
+      return new DefaultRequestEnvironment(request);
     }
   }
 
   public class DefaultRequestEnvironment extends RequestEnvironment {
-    public DefaultRequestEnvironment(ContainerRequestContext context) {
-      super(context);
+    public DefaultRequestEnvironment(HttpServletRequest request) {
+      super(request);
     }
 
     @Override

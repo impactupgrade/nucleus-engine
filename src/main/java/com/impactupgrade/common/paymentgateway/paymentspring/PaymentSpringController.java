@@ -3,7 +3,7 @@ package com.impactupgrade.common.paymentgateway.paymentspring;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.environment.RequestEnvironment;
+import com.impactupgrade.common.environment.Environment.RequestEnvironment;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
@@ -75,7 +75,7 @@ public class PaymentSpringController {
       log.info("received event {}: {}", event.getEventResource(), event.getEventType());
 
       try {
-        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env, RequestEnvironment.fromRequest(request));
+        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env, env.newRequestEnvironment(request));
 
         switch (event.getEventResource()) {
           case "transaction":
