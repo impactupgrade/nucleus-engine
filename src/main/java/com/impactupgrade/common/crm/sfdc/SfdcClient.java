@@ -94,7 +94,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CAMPAIGN_FIELDS = "id, name, parentid";
+  protected static final String CAMPAIGN_FIELDS = "id, name, parentid, ownerid";
 
   public Optional<SObject> getCampaignById(String campaignId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, campaignFields()) + " from campaign where id = '" + campaignId + "'";
