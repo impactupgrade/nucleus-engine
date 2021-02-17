@@ -149,7 +149,6 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     opportunity.setField("CampaignId", campaign.map(SObject::getId).orElse(null));
     opportunity.setField("CloseDate", paymentGatewayEvent.getTransactionDate());
     opportunity.setField("Description", paymentGatewayEvent.getTransactionDescription());
-    opportunity.setField("CurrencyIsoCode", paymentGatewayEvent.getTransactionOriginalCurrency());
 
     // purely a default, but we generally expect this to be overridden
     opportunity.setField("Name", paymentGatewayEvent.getFullName() + " Donation");
