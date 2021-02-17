@@ -2,8 +2,9 @@ package com.impactupgrade.common.paymentgateway.paymentspring;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.environment.Environment.RequestEnvironment;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
@@ -11,10 +12,13 @@ import com.impactupgrade.integration.paymentspring.model.Customer;
 import com.impactupgrade.integration.paymentspring.model.Event;
 import com.impactupgrade.integration.paymentspring.model.Subscription;
 import com.impactupgrade.integration.paymentspring.model.Transaction;
+import com.impactupgrade.integration.paymentspring.model.TransactionList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -22,7 +26,10 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * This service acts as the central webhook endpoint for PaymentSpring events, handling everything from
@@ -146,5 +153,42 @@ public class PaymentSpringController {
     new Thread(thread).start();
 
     return Response.status(200).build();
+  }
+  private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+  @Path("/failed-transactions")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response failedTransactions(@FormParam("start_date") String startDate, @FormParam("end_date") String endDate) {
+    List<Transaction> failedTransactions = getFailedTransactions(startDate, endDate, 100, 1);
+    // Sort failed transactions list by created datetime
+    List<Transaction> sortedList = failedTransactions.stream()
+        .sorted(Comparator.comparing(Transaction::getCreatedAt).reversed())
+        .collect(Collectors.toList());
+
+    String jsonList = GSON.toJson(sortedList);
+
+    return Response.ok().entity(jsonList).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  private List<Transaction> getFailedTransactions(String startDate, String endDate, int limit, int page) {
+    // Initial list of transactions for current page
+    TransactionList transactions = PaymentSpringClientFactory.client().transactions().getTransactionsBetweenDates(startDate, endDate, limit, page);
+    List<Transaction> failedTransactions = transactions.getList();
+
+    // Number of pages needed
+    int totalResults = transactions.getMeta().getTotalResults();
+    int totalPages = (totalResults / limit) + 1;
+
+    // Grab only the failed transactions from list
+    failedTransactions = failedTransactions.stream().filter(t -> t.getAmountFailed() > 0).collect(Collectors.toList());
+
+    // If more pages need to get all possible results, recursive call
+    if (page <= totalPages) {
+      failedTransactions.addAll(getFailedTransactions(startDate, endDate, limit, page + 1));
+    }
+
+    return failedTransactions;
   }
 }

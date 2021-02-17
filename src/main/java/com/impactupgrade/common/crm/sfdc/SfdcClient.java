@@ -10,7 +10,7 @@ import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -90,6 +90,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  public List<SObject> getAccountsByName(String name) throws ConnectionException, InterruptedException {
+    // Note the formal greeting -- super important, as that's often used in numerous imports/exports
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, accountFields()) + " from account where name like '" + name + "' or npo02__Formal_Greeting__c='" + name + "'";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +113,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where id = '" + contactId + "' ORDER BY name";
@@ -130,6 +137,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  public List<SObject> getContactsByName(String name) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where name like '%" + name + "%' ORDER BY name";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
   public List<SObject> getContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
@@ -144,12 +157,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<SObject> contacts = Collections.emptyList();
 
     if (!Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
-      String query = "select " + CONTACT_FIELDS + " from contact where firstname = '" + firstName + "' AND lastname = '" + lastName + "'";
+      String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where firstname = '" + firstName + "' AND lastname = '" + lastName + "'";
       LoggingUtil.verbose(log, query);
       contacts = queryList(query);
     }
     if (contacts.isEmpty()) {
-      String query = "select " + CONTACT_FIELDS + " from contact where lastname = '" + lastName + "'";
+      String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where lastname = '" + lastName + "'";
       LoggingUtil.verbose(log, query);
       contacts = queryList(query);
     }
@@ -163,7 +176,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     // TODO: Will need to rework this section for international support
-    StringBuilder query = new StringBuilder("select " + CONTACT_FIELDS + " from contact where ");
+    StringBuilder query = new StringBuilder("select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where ");
     phone = phone.replaceAll("[\\D.]", "");
     if (phone.matches("\\d{10}")){
       String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
@@ -196,33 +209,46 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     // TODO: Test and make sure this format actually works for a variety of addresses, or if we need to try several
     String address = street + ", " + city + ", " + state + " " + zip + ", " + country;
     LoggingUtil.verbose(log, address);
-    String query = "select " + CONTACT_FIELDS + " from contact where npe01__Home_Address__c LIKE '" + street + "%'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where npe01__Home_Address__c LIKE '" + street + "%'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
-  public List<SObject> searchContacts(String searchParam) throws ConnectionException, InterruptedException {
-    searchParam = searchParam.replaceAll("\\s+", " ").trim();
-    List<String> segments = Arrays.asList(searchParam.split(" "));
+  public List<SObject> searchContacts(String firstName, String lastName, String email, String phone, String address)
+      throws ConnectionException, InterruptedException {
+    ArrayList<String> searchParams = new ArrayList<>();
 
-    String clauses = segments.stream()
-        .map(segment -> {
-          // Note: default to NULL as a simple means of ensuring the phone number searches don't return any results...
-          String possiblePhoneNumber = segment.replaceAll("\\D+", "").isEmpty()
-              ? "NULL" : segment.replaceAll("\\D+", "");
+    if (!Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
+      searchParams.add("(firstname LIKE '%" + firstName + "%' AND lastname LIKE '%" + lastName + "%')");
+    } else {
+      if (!Strings.isNullOrEmpty(firstName)) {
+        searchParams.add("firstname LIKE '%" + firstName + "%'");
+      }
+      if (!Strings.isNullOrEmpty(lastName)) {
+        searchParams.add("lastname LIKE '%" + lastName + "%'");
+      }
+    }
 
-          return "lastname LIKE '" + segment + "%'" +
-              " OR firstname LIKE '" + segment + "%'" +
-              " OR email LIKE '%" + segment + "%'" +
-              " OR npe01__Home_Address__c LIKE '%" + segment + "%'" +
-              " OR phone LIKE '%" + possiblePhoneNumber + "%'" +
-              " OR MobilePhone LIKE '%" + possiblePhoneNumber + "%'" +
-              " OR HomePhone LIKE '%" + possiblePhoneNumber + "%'" +
-              " OR OtherPhone LIKE '%" + possiblePhoneNumber + "%'";
-        })
-        .collect(Collectors.joining(") AND (","(",")"));
+    if (!Strings.isNullOrEmpty(email)) {
+      searchParams.add("email LIKE '%" + email + "%'");
+    }
+    if (!Strings.isNullOrEmpty(phone)) {
+      String phoneClean = phone.replaceAll("\\D+", "");
+      phoneClean = phoneClean.replaceAll("", "%");
+      if (!phoneClean.isEmpty()) {
+        searchParams.add("phone LIKE '" + phoneClean + "'");
+        searchParams.add("MobilePhone LIKE '" + phoneClean + "'");
+        searchParams.add("HomePhone LIKE '" + phoneClean + "'");
+        searchParams.add("OtherPhone LIKE '" + phoneClean + "'");
+      }
+    }
+    if (!Strings.isNullOrEmpty(address)) {
+      searchParams.add("npe01__Home_Address__c LIKE '%" + address + "%'");
+    }
 
-    String query = "select " + CONTACT_FIELDS + " from contact where " + clauses + " ORDER BY account.name, name";
+    String clauses = String.join( " OR ", searchParams);
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where " + clauses + " ORDER BY account.name, name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
@@ -274,7 +300,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId) throws ConnectionException, InterruptedException {
     // TODO: Using TOMORROW to account for timezone issues -- we can typically get away with that approach
     // since most RDs are monthly...
-    String query = "select id, name, amount, CloseDate, AccountId, ContactId, npe03__Recurring_Donation__c, StageName, campaignid, Type from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
+    String query = "select " + getFieldsList(DONATION_FIELDS, donationFields()) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
   }
@@ -303,22 +329,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public Optional<SObject> getRecurringDonationBySubscriptionId(String subscriptionId) throws ConnectionException, InterruptedException {
     String subscriptionIdClauses = paymentGatewaySubscriptionIdFields().stream().map(s -> s + " = '" + subscriptionId + "'").collect(Collectors.joining(" OR "));
-    String query = "select id, npe03__Open_Ended_Status__c, npe03__Amount__c, npe03__Recurring_Donation_Campaign__c, npe03__Installment_Period__c from npe03__Recurring_Donation__c where " + subscriptionIdClauses;
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, recurringDonationFields()) + " from npe03__Recurring_Donation__c where " + subscriptionIdClauses;
     LoggingUtil.verbose(log, query);
     return querySingle(query);
-  }
-
-  public List<SObject> getRecurringDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, recurringDonationFields()) + " from npe03__Recurring_Donation__c where (npe03__Open_Ended_Status__c != 'Closed' or paused_status__c != '') and npe03__Organization__c" + " = '" + accountId + "'";
-    LoggingUtil.verbose(log, query);
-    return queryList(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String USER_FIELDS = "id, firstName, lastName, email, phone";
+  protected static final String USER_FIELDS = "id, name, firstName, lastName, email, phone";
 
   public Optional<SObject> getUserById(String userId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(USER_FIELDS, userFields()) + " from user where id = '" + userId + "'";

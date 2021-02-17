@@ -46,9 +46,9 @@ public class StripeController {
 
   private static final Logger log = LogManager.getLogger(StripeController.class);
 
-  private final Environment env;
-  private final DonorService donorService;
-  private final DonationService donationService;
+  protected final Environment env;
+  protected final DonorService donorService;
+  protected final DonationService donationService;
 
   public StripeController(Environment env) {
     this.env = env;
@@ -157,8 +157,8 @@ public class StripeController {
         log.info("found subscription {}", subscription.getId());
 
         if ("true".equalsIgnoreCase(subscription.getMetadata().get("auto-migrated"))) {
-          // This subscription comes from an auto-migration path, most likely from PaymentSpring through
-          // the Donor Portal. In this case, the migration will have already updated the existing
+          // This subscription comes from an auto-migration path, such as PaymentSpring -> Stripe through
+          // LJI's Donor Portal. In this case, the migration will have already updated the existing
           // recurring donation. Prevent this from creating another one.
 
           log.info("skipping the auto-migrated subscription");

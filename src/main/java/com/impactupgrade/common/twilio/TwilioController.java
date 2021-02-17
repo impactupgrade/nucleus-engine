@@ -74,7 +74,7 @@ public class TwilioController {
               try {
                 Message twilioMessage = Message.creator(
                     new PhoneNumber(pn),
-                    // TODO: OOPS!
+                    // TODO: OOPS! This is LJIs! Env var?
                     new PhoneNumber("+17207789988"),
                     message
                 ).create();
@@ -93,7 +93,7 @@ public class TwilioController {
     return Response.ok().build();
   }
 
-  // TODO: Let apps decide SF vs HS, etc.
+  // TODO: Use abstract CRMs, not HS directly!
 
   /**
    * This webhook serves multiple purposes. It can be used directly on a Twilio number, receiving standard From/Body
