@@ -202,7 +202,6 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     recurringDonation.setField("Npe03__Date_Established__c", paymentGatewayEvent.getSubscriptionStartDate());
     recurringDonation.setField("Npe03__Next_Payment_Date__c", paymentGatewayEvent.getSubscriptionNextDate());
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(paymentGatewayEvent).map(SObject::getId).orElse(null));
-    recurringDonation.setField("CurrencyIsoCode", paymentGatewayEvent.getSubscriptionCurrency());
 
     // Purely a default, but we expect this to be generally overridden.
     recurringDonation.setField("Name", paymentGatewayEvent.getFullName() + " Recurring Donation");
