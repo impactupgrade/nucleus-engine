@@ -40,9 +40,9 @@ public class SfdcController {
   private static final Logger log = LogManager.getLogger(SfdcController.class.getName());
 
   protected final Environment env;
-  private final SfdcClient sfdcClient;
-  private final SfdcMetadataClient sfdcMetadataClient;
-  private final SfdcBulkClient sfdcBulkClient;
+  protected final SfdcClient sfdcClient;
+  protected final SfdcMetadataClient sfdcMetadataClient;
+  protected final SfdcBulkClient sfdcBulkClient;
 
   public SfdcController(Environment env) {
     this.env = env;

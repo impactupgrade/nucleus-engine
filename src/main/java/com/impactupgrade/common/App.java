@@ -6,7 +6,7 @@ import com.impactupgrade.common.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
-import org.apache.cxf.transport.servlet.CXFServlet;
+import org.apache.cxf.transport.servlet.CXFNonSpringServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.session.SessionHandler;
@@ -15,6 +15,8 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
+
+import javax.servlet.ServletConfig;
 
 public abstract class App {
 
@@ -53,18 +55,22 @@ public abstract class App {
     resourceConfig.register(getEnvironment().stripeController());
     resourceConfig.register(getEnvironment().twilioController());
 
-    getEnvironment().registerServices(resourceConfig);
-
     resourceConfig.register(MultiPartFeature.class);
 
-    applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
-
     // SOAP (CXF)
-    Bus bus = BusFactory.getDefaultBus(true);
-    CXFServlet cxfServlet = new CXFServlet();
-    cxfServlet.setBus(bus);
-    ServletHolder cxfServletHolder = new ServletHolder(cxfServlet);
-    applicationContext.addServlet(cxfServletHolder, "/soap/*");
+    CXFNonSpringServlet cxfServlet = new CXFNonSpringServlet() {
+      @Override
+      public void loadBus(ServletConfig servletConfig) {
+        super.loadBus(servletConfig);
+        Bus bus = getBus();
+        BusFactory.setDefaultBus(bus);
+      }
+    };
+
+    getEnvironment().registerServices(resourceConfig);
+
+    applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
+    applicationContext.addServlet(new ServletHolder(cxfServlet), "/soap/*");
 
     server.setHandler(applicationContext);
     server.start();
