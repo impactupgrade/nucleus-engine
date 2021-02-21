@@ -10,6 +10,7 @@ import org.apache.cxf.transport.servlet.CXFNonSpringServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.session.SessionHandler;
+import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -17,8 +18,9 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
 import javax.servlet.ServletConfig;
+import java.net.URL;
 
-public abstract class App {
+public class App {
 
   // $PORT env var provided by Heroku
   private static final int PORT = Integer.parseInt(System.getenv("PORT"));
@@ -38,24 +40,28 @@ public abstract class App {
     httpConnector.setIdleTimeout(5 * 60 * 1000);
     server.addConnector(httpConnector);
 
-    ServletContextHandler applicationContext = new ServletContextHandler(ServletContextHandler.SESSIONS);
-    applicationContext.setContextPath("/");
-    applicationContext.setSessionHandler(new SessionHandler());
+    ServletContextHandler servletHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
+    servletHandler.setContextPath("/");
+    servletHandler.setSessionHandler(new SessionHandler());
 
     // API/REST (Jersey)
-    ResourceConfig resourceConfig = new ResourceConfig();
+    ResourceConfig apiConfig = new ResourceConfig();
 
-    resourceConfig.register(new CORSFilter());
-    resourceConfig.register(new SecurityExceptionMapper());
+    apiConfig.register(new CORSFilter());
+    apiConfig.register(new SecurityExceptionMapper());
 
-    resourceConfig.register(getEnvironment().backupController());
-    resourceConfig.register(getEnvironment().paymentGatewayController());
-    resourceConfig.register(getEnvironment().paymentSpringController());
-    resourceConfig.register(getEnvironment().sfdcController());
-    resourceConfig.register(getEnvironment().stripeController());
-    resourceConfig.register(getEnvironment().twilioController());
+    apiConfig.register(getEnvironment().backupController());
+    apiConfig.register(getEnvironment().paymentGatewayController());
+    apiConfig.register(getEnvironment().paymentSpringController());
+    apiConfig.register(getEnvironment().sfdcController());
+    apiConfig.register(getEnvironment().stripeController());
+    apiConfig.register(getEnvironment().twilioController());
 
-    resourceConfig.register(MultiPartFeature.class);
+    apiConfig.register(MultiPartFeature.class);
+
+    getEnvironment().registerServices(apiConfig);
+
+    servletHandler.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
 
     // SOAP (CXF)
     CXFNonSpringServlet cxfServlet = new CXFNonSpringServlet() {
@@ -66,17 +72,37 @@ public abstract class App {
         BusFactory.setDefaultBus(bus);
       }
     };
+    servletHandler.addServlet(new ServletHolder(cxfServlet), "/soap/*");
 
-    getEnvironment().registerServices(resourceConfig);
+    // static resources
+    ClassLoader cl = App.class.getClassLoader();
+    // get a reference to any resource in the static dir
+    URL staticFileUrl = cl.getResource("static/test.txt");
+    // grab the absolute path of the static dir itself
+    String staticDirPath = staticFileUrl.toURI().resolve("./").normalize().toString();
+    // use that as the resource base
+    servletHandler.setResourceBase(staticDirPath);
 
-    applicationContext.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/api/*");
-    applicationContext.addServlet(new ServletHolder(cxfServlet), "/soap/*");
+    // servlet for static resources
+    ServletHolder holderHome = new ServletHolder("static", DefaultServlet.class);
+    holderHome.setInitParameter("resourceBase", staticDirPath);
+    holderHome.setInitParameter("pathInfoOnly", "true");
+    servletHandler.addServlet(holderHome, "/static/*");
 
-    server.setHandler(applicationContext);
+    // TODO: We may not end up needing this, but standard practice...
+    ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
+    servletHandler.addServlet(defaultServlet, "/");
+
+    server.setHandler(servletHandler);
     server.start();
   }
 
   protected Environment getEnvironment() {
     return __defaultEnv;
+  }
+
+  // TODO: Temporary, mainly for DS testing.
+  public static void main(String... args) throws Exception {
+    new App().start();
   }
 }
