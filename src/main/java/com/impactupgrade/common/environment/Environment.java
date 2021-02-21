@@ -5,7 +5,6 @@ import com.impactupgrade.common.crm.AggregateCrmDestinationService;
 import com.impactupgrade.common.crm.CrmSourceService;
 import com.impactupgrade.common.crm.sfdc.SfdcClient;
 import com.impactupgrade.common.crm.sfdc.SfdcController;
-import com.impactupgrade.common.exception.NotImplementedException;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.PaymentGatewayController;
@@ -13,6 +12,8 @@ import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringContro
 import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
 import com.impactupgrade.common.paymentgateway.stripe.StripeController;
 import com.impactupgrade.common.twilio.TwilioController;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import javax.servlet.http.HttpServletRequest;
@@ -22,6 +23,8 @@ import javax.servlet.http.HttpServletRequest;
  * org's environment.
  */
 public class Environment {
+
+  private static final Logger log = LogManager.getLogger(Environment.class);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // REGISTRY
@@ -49,14 +52,16 @@ public class Environment {
    * Define a single CRM as the end-all source-of-truth for retrievals and queries.
    */
   public CrmSourceService crmSourceService() {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "crmSource");
+    log.error("NOT IMPLEMENTED");
+    return null;
   }
 
   /**
    * Define one or more CRMs as the destinations for donation data.
    */
   public AggregateCrmDestinationService crmDonationDestinationServices() {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "crmDonationDestinations");
+    log.error("NOT IMPLEMENTED");
+    return null;
   }
 
   // TODO: other destinations: SMS interactions, etc.

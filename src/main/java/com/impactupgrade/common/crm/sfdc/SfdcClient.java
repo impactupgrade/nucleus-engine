@@ -2,7 +2,6 @@ package com.impactupgrade.common.crm.sfdc;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.Environment;
-import com.impactupgrade.common.exception.NotImplementedException;
 import com.impactupgrade.common.util.LoggingUtil;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.sforce.soap.partner.sobject.SObject;
@@ -67,15 +66,17 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   // Some clients needlessly split these into gateway-specific fields (one for Stripe, one for PS, etc). For now,
   // allow each to be a simple list. We'll include all of them in the queries.
-  // TODO: Throwing NotImplementedException if not provided, but we should probably dictate a default for the core impl.
   protected List<String> paymentGatewayDepositIdFields() {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "paymentGatewayDepositIdFields");
+    log.error("NOT IMPLEMENTED");
+    return Collections.emptyList();
   }
   protected List<String> paymentGatewaySubscriptionIdFields() {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "paymentGatewaySubscriptionIdFields");
+    log.error("NOT IMPLEMENTED");
+    return Collections.emptyList();
   }
   protected List<String> paymentGatewayTransactionIdFields() {
-    throw new NotImplementedException(getClass().getSimpleName() + "." + "paymentGatewayTransactionIdFields");
+    log.error("NOT IMPLEMENTED");
+    return Collections.emptyList();
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
