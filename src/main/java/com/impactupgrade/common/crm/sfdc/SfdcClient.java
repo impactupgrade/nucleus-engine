@@ -138,13 +138,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getContactsByName(String name) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where name like '%" + name + "%' ORDER BY name";
+    String escapedName = name.replaceAll("'", "\\\\'");
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where name like '%" + escapedName + "%' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
   public List<SObject> getContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where firstName = '" + firstName + "' and lastName = '" + lastName + "' ORDER BY name";
+    String escapedFirstName = firstName.replaceAll("'", "\\\\'");
+    String escapedLastName = lastName.replaceAll("'", "\\\\'");
+    String query = "select " + getFieldsList(CONTACT_FIELDS, contactFields()) + " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }

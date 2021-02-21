@@ -148,7 +148,6 @@ public class SfdcController {
         }
       }
 
-      System.out.println(sObject);
       sfdcClient.batchUpdate(sObject);
     }
   }
