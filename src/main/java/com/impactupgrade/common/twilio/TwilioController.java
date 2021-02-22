@@ -44,6 +44,8 @@ public class TwilioController {
 
   private static final String DEFAULT_HUBSPOT_SMS_LIST_ID = System.getenv("HUBSPOT_SMSLISTID");
 
+  private static final String PHONE_NUMBER = System.getenv("TWILIO_SENDER_PN");
+
   static {
     if (!Strings.isNullOrEmpty(System.getenv("TWILIO_ACCOUNTSID"))) {
       Twilio.init(System.getenv("TWILIO_ACCOUNTSID"), System.getenv("TWILIO_AUTHTOKEN"));
@@ -74,8 +76,7 @@ public class TwilioController {
               try {
                 Message twilioMessage = Message.creator(
                     new PhoneNumber(pn),
-                    // TODO: OOPS! This is LJIs! Env var?
-                    new PhoneNumber("+17207789988"),
+                    new PhoneNumber(TWILIO_SENDER_PN),
                     message
                 ).create();
 
