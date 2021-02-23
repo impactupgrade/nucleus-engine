@@ -233,13 +233,14 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   }
 
   @Override
-  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public String closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {
       log.warn("unable to find SFDC recurring donation using subscriptionId {}",
           paymentGatewayEvent.getSubscriptionId());
-      return;
+      // TODO: replace null return
+      return null;
     }
 
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
@@ -247,6 +248,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
     setRecurringDonationFieldsForClose(toUpdate, paymentGatewayEvent);
     sfdcClient.update(toUpdate);
+    return toUpdate.getId();
   }
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update

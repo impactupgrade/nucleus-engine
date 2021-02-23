@@ -79,11 +79,12 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
   }
 
   @Override
-  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    crmPrimaryService.closeRecurringDonation(paymentGatewayEvent);
+  public String closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    String rdId = crmPrimaryService.closeRecurringDonation(paymentGatewayEvent);
     for (CrmDestinationService crmService : crmSecondaryServices) {
       crmService.closeRecurringDonation(paymentGatewayEvent);
     }
+    return rdId;
   }
 
   @Override
