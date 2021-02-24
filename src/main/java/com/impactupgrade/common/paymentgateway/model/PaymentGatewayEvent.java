@@ -143,7 +143,8 @@ public class PaymentGatewayEvent {
     stripeBalanceTransaction.ifPresent(balanceTransaction -> depositTransactionId = balanceTransaction.getId());
     transactionDescription = stripePaymentIntent.getDescription();
     transactionId = stripePaymentIntent.getId();
-    transactionSuccess = !"failed".equalsIgnoreCase(stripePaymentIntent.getStatus());
+    // note this is different than a charge, which uses "failed" -- "requires_payment_method" == intent didn't complete
+    transactionSuccess = !"requires_payment_method".equalsIgnoreCase(stripePaymentIntent.getStatus());
 
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
