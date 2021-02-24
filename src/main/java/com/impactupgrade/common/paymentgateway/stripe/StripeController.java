@@ -138,6 +138,14 @@ public class StripeController {
           donationService.createDonation(paymentGatewayEvent);
         }
       }
+      case "payment_intent.payment_failed" -> {
+        PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
+        log.info("found payment intent {}", paymentIntent.getId());
+
+        processPaymentIntent(paymentIntent, paymentGatewayEvent, requestEnv);
+        donorService.processAccount(paymentGatewayEvent);
+        donationService.createDonation(paymentGatewayEvent);
+      }
       case "charge.refunded" -> {
         // TODO: Not completely understanding this one just yet, but it appears a recent API change
         // is sending Charges instead of Refunds in this case...
