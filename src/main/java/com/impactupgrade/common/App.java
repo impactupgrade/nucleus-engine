@@ -3,10 +3,8 @@ package com.impactupgrade.common;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.filter.CORSFilter;
 import com.impactupgrade.common.security.SecurityExceptionMapper;
-import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
-import org.apache.cxf.transport.servlet.CXFNonSpringServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.session.SessionHandler;
@@ -17,7 +15,6 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
-import javax.servlet.ServletConfig;
 import java.net.URL;
 
 public class App {
@@ -59,20 +56,11 @@ public class App {
 
     apiConfig.register(MultiPartFeature.class);
 
-    getEnvironment().registerServices(apiConfig);
+    getEnvironment().registerAPIControllers(apiConfig);
 
     servletHandler.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
 
-    // SOAP (CXF)
-    CXFNonSpringServlet cxfServlet = new CXFNonSpringServlet() {
-      @Override
-      public void loadBus(ServletConfig servletConfig) {
-        super.loadBus(servletConfig);
-        Bus bus = getBus();
-        BusFactory.setDefaultBus(bus);
-      }
-    };
-    servletHandler.addServlet(new ServletHolder(cxfServlet), "/soap/*");
+    getEnvironment().registerServlets(servletHandler);
 
     // static resources
     ClassLoader cl = App.class.getClassLoader();

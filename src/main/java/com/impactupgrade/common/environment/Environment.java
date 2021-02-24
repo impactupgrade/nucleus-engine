@@ -14,6 +14,7 @@ import com.impactupgrade.common.paymentgateway.stripe.StripeController;
 import com.impactupgrade.common.twilio.TwilioController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import javax.servlet.http.HttpServletRequest;
@@ -67,9 +68,14 @@ public class Environment {
   // TODO: other destinations: SMS interactions, etc.
 
   /**
-   * Allow orgs to add completely-custom Controllers, etc.
+   * Allow orgs to add custom Controllers, etc.
    */
-  public void registerServices(ResourceConfig resourceConfig) {}
+  public void registerAPIControllers(ResourceConfig apiConfig) {}
+
+  /**
+   * Allow orgs to add completely-custom servlets (CXF, etc.)
+   */
+  public void registerServlets(ServletContextHandler servletHandler) {}
 
   /**
    * Many organizations will only have one RequestEnvironment. But some (DR, Donation Spring, etc.) are by-request.
