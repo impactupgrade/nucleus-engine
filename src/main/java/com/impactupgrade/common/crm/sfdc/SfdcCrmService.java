@@ -117,9 +117,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     } else {
       // subscription payment failed
       // create new Opportunity and post it to the recurring donation leaving the Pledged donation there
-      pledgedOpportunity.setId(null);
-      setOpportunityFields(pledgedOpportunity, campaign, paymentGatewayEvent);
-      return sfdcClient.insert(pledgedOpportunity).getId();
+      return processNewDonation(campaign, recurringDonationId, paymentGatewayEvent);
     }
   }
 
