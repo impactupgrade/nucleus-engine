@@ -44,7 +44,7 @@ public class TwilioController {
 
   private static final String DEFAULT_HUBSPOT_SMS_LIST_ID = System.getenv("HUBSPOT_SMSLISTID");
 
-  private static final String PHONE_NUMBER = System.getenv("TWILIO_SENDER_PN");
+  private static final String TWILIO_SENDER_PN = System.getenv("TWILIO_SENDER_PN");
 
   static {
     if (!Strings.isNullOrEmpty(System.getenv("TWILIO_ACCOUNTSID"))) {
