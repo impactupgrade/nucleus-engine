@@ -32,7 +32,6 @@ public class PaymentGatewayEvent {
   protected String country;
   protected String customerId;
   protected String depositTransactionId;
-  protected String description;
   protected String email;
   protected String firstName;
   protected String fullName;
@@ -116,7 +115,7 @@ public class PaymentGatewayEvent {
       }
     }
 
-    description = stripeCharge.getDescription();
+    transactionDescription = stripeCharge.getDescription();
 
     MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer);
     processMetadata(metadataRetriever);
@@ -163,7 +162,7 @@ public class PaymentGatewayEvent {
       }
     }
 
-    description = stripePaymentIntent.getDescription();
+    transactionDescription = stripePaymentIntent.getDescription();
 
     MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer);
     processMetadata(metadataRetriever);
@@ -561,10 +560,6 @@ public class PaymentGatewayEvent {
 
   public String getDepositTransactionId() {
     return depositTransactionId;
-  }
-
-  public String getDescription() {
-    return description;
   }
 
   public String getEmail() {
