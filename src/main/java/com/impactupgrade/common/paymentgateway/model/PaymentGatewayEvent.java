@@ -45,6 +45,7 @@ public class PaymentGatewayEvent {
   protected String street;
   protected Double subscriptionAmountInDollars;
   protected String subscriptionCurrency;
+  protected String subscriptionDescription;
   protected String subscriptionId;
   protected String subscriptionInterval;
   protected Calendar subscriptionNextDate;
@@ -311,6 +312,7 @@ public class PaymentGatewayEvent {
     // TODO: currency conversion support? This is eventually updated as charges are received, but for brand new ones
     // with a trial, this could throw off future forecasting!
     SubscriptionItem item = stripeSubscription.getItems().getData().get(0);
+    subscriptionDescription = item.getPrice().getProductObject().getDescription();
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
@@ -611,6 +613,10 @@ public class PaymentGatewayEvent {
 
   public String getSubscriptionCurrency() {
     return subscriptionCurrency;
+  }
+
+  public String getSubscriptionDescription() {
+    return subscriptionDescription;
   }
 
   public String getSubscriptionId() {
