@@ -235,8 +235,8 @@ public class StripeClient {
   }
 
   // TODO: SFDC specific
-  public Charge createCharge(Customer customer, PaymentSource source, long amountInCents, String currency, String description,
-      String sfCampaignId, String sfOppRecordType) throws StripeException {
+  public Charge createCharge(Customer customer, PaymentSource source, long amountInCents, String currency,
+      String description, String sfCampaignId, String sfOppRecordType) throws StripeException {
     Map<String, String> chargeMetadata = new HashMap<>();
     // TODO: DR specific
     chargeMetadata.put("sf_campaign", sfCampaignId);
@@ -254,10 +254,11 @@ public class StripeClient {
   }
 
   // TODO: SFDC specific
-  public Subscription createSubscription(Customer customer, PaymentSource source, String sfCampaignId, long amountInCents,
-      String currency) throws StripeException {
+  public Subscription createSubscription(Customer customer, PaymentSource source, long amountInCents, String currency,
+      String description, String sfCampaignId) throws StripeException {
     ProductCreateParams productParams = ProductCreateParams.builder()
         .setName(customer.getName() + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)")
+        .setDescription(description)
         .build();
     Product product = Product.create(productParams, requestOptions);
     PlanCreateParams planParams = PlanCreateParams.builder()
