@@ -1,5 +1,6 @@
 package com.impactupgrade.common.paymentgateway.stripe;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -242,6 +243,9 @@ public class StripeClient {
     chargeMetadata.put("sf_campaign", sfCampaignId);
     chargeMetadata.put("sf_opp_record_type", sfOppRecordType);
 
+    // Stripe hates empty strings
+    description = Strings.isNullOrEmpty(description) ? null : description;
+
     ChargeCreateParams chargeParams = ChargeCreateParams.builder()
         .setCustomer(customer.getId())
         .setSource(source.getId())
@@ -256,6 +260,9 @@ public class StripeClient {
   // TODO: SFDC specific
   public Subscription createSubscription(Customer customer, PaymentSource source, long amountInCents, String currency,
       String description, String sfCampaignId) throws StripeException {
+    // Stripe hates empty strings
+    description = Strings.isNullOrEmpty(description) ? null : description;
+
     ProductCreateParams productParams = ProductCreateParams.builder()
         .setName(customer.getName() + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)")
         .setDescription(description)
