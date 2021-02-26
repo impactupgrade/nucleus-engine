@@ -311,12 +311,14 @@ public class PaymentGatewayEvent {
     // TODO: currency conversion support? This is eventually updated as charges are received, but for brand new ones
     // with a trial, this could throw off future forecasting!
     SubscriptionItem item = stripeSubscription.getItems().getData().get(0);
-    subscriptionDescription = item.getPrice().getProductObject().getDescription();
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
     MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer);
     processMetadata(metadataRetriever);
+
+    // TODO: We could shift this to MetadataRetriever, but odds are we're the only ones setting it...
+    subscriptionDescription = stripeSubscription.getMetadata().get("description");
   }
 
   public void initPaymentSpring(com.impactupgrade.integration.paymentspring.model.Transaction paymentSpringTransaction,

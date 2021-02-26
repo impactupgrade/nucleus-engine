@@ -265,7 +265,6 @@ public class StripeClient {
 
     ProductCreateParams productParams = ProductCreateParams.builder()
         .setName(customer.getName() + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)")
-        .setDescription(description)
         .build();
     Product product = Product.create(productParams, requestOptions);
     PlanCreateParams planParams = PlanCreateParams.builder()
@@ -277,6 +276,7 @@ public class StripeClient {
     Plan plan = Plan.create(planParams, requestOptions);
 
     Map<String, String> subscriptionMetadata = new HashMap<>();
+    subscriptionMetadata.put("description", description);
     // TODO: DR specific
     subscriptionMetadata.put("sf_campaign", sfCampaignId);
 
