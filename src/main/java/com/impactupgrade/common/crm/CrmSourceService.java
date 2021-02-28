@@ -9,8 +9,6 @@ import java.util.Optional;
 
 public interface CrmSourceService {
 
-  Optional<CrmRecurringDonation> getRecurringDonation(String recurringDonationId) throws Exception;
-
   Optional<CrmContact> getContactByEmail(String email) throws Exception;
 
   Optional<CrmContact> getContactByPhone(String phone) throws Exception;

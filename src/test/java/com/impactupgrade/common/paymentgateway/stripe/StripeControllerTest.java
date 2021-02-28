@@ -2,6 +2,7 @@ package com.impactupgrade.common.paymentgateway.stripe;
 
 import com.impactupgrade.common.AbstractTest;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.environment.EnvironmentConfig;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,10 +22,12 @@ public class StripeControllerTest extends AbstractTest {
 
   @Test
   public void testCustomCampaignMetadata() throws Exception {
+    EnvironmentConfig envConfig = new EnvironmentConfig();
+    envConfig.campaignMetadataKeys = List.of("sf_campaign", "Designation Code");
     Environment env = new DefaultEnvironment() {
       @Override
-      public String[] campaignMetadataKeys() {
-        return new String[]{"sf_campaign", "Designation Code"};
+      public EnvironmentConfig config() {
+        return envConfig;
       }
     };
     StripeController stripeController = new StripeController(env);

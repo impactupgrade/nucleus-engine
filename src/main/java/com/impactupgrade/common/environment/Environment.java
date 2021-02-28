@@ -28,6 +28,10 @@ public class Environment {
 
   private static final Logger log = LogManager.getLogger(Environment.class);
 
+  // Whenever possible, we focus on being configuration-driven using one, large JSON file.
+  private final EnvironmentConfig config = EnvironmentConfig.init();
+  public EnvironmentConfig config() { return config; }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // REGISTRY
   // Provides a simple registry of controllers, services, etc. to allow subprojects to override concepts as needed!
@@ -96,6 +100,10 @@ public class Environment {
    */
   public void registerServlets(ServletContextHandler servletHandler) {}
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // UTILITY
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   /**
    * Many organizations will only have one RequestEnvironment. But some (DR, Donation Spring, etc.) are by-request.
    * In those cases, they'll need to provide their own constructor (and generally, a unique Controller method
@@ -129,26 +137,5 @@ public class Environment {
     public String currency() {
       return "usd";
     }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // UNIQUE FIELDS
-  // TODO: Make these all env vars?
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public String[] accountMetadataKeys() {
-    return new String[]{"sf_account"};
-  }
-
-  public String[] campaignMetadataKeys() {
-    return new String[]{"sf_campaign"};
-  }
-
-  public String[] contactMetadataKeys() {
-    return new String[]{"sf_contact"};
-  }
-
-  public String[] recordTypeMetadataKeys() {
-    return new String[]{"sf_opp_record_type"};
   }
 }

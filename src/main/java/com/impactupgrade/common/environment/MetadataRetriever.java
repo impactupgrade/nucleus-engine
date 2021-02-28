@@ -11,6 +11,8 @@ import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
+
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
 // TODO: Move to the paymentgateway package and make it abstract?
 // TODO: Could this be replaced by overriding services?
@@ -46,7 +48,7 @@ public class MetadataRetriever {
     return this;
   }
 
-  public String getMetadataValue(String[] metadataKeys) {
+  public String getMetadataValue(List<String> metadataKeys) {
     String metadataValue = null;
 
     for (String metadataKey : metadataKeys) {

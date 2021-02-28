@@ -18,7 +18,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.List;
 import java.util.Optional;
 
-public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
+public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
 
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
 
@@ -47,11 +47,6 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return toCrmDonation(sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId()));
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(String recurringDonationId) throws Exception {
-    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(recurringDonationId));
   }
 
   @Override
