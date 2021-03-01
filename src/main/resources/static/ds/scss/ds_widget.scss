@@ -18,6 +18,14 @@ $overlay_bg: rgba(0,0,0,0.34);
 $button_color: #EDEDED;
 $button_text: #767575;
 
+body{
+  &.ds-open {
+    height: 100vh !important;
+    overflow-y: hidden !important;
+    position: fixed;
+  }
+}
+
 .ds_widget_reminder{
   font-family: 'Montserrat', sans-serif;
   display: none;
@@ -31,12 +39,29 @@ $button_text: #767575;
   bottom: 40px;
   right: 40px;
   align-items: center;
+  @media only screen and (max-width: 430px) {
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    left: 0;
+    border-radius: 0;
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    box-shadow: none;
+    font-size: .8em;
+  }
   img{
     display: inline-block;
     padding: 15px 15px;
+    @media only screen and (max-width: 430px) {
+      padding: 5px 5px;
+    }
   }
   p{
     line-height: 24px;
+    @media only screen and (max-width: 430px) {
+      line-height: 18px;
+    }
   }
   .buttons{
     overflow: hidden;
@@ -54,6 +79,9 @@ $button_text: #767575;
       font-weight: 500;
       padding:15px 15px;
       text-decoration:none;
+      @media only screen and (max-width: 430px) {
+        font-size:1em;
+      }
       &:first-of-type{
         border-radius: 0 10px 0 0;
         border-bottom:1px solid $button_text;
@@ -175,29 +203,32 @@ $button_text: #767575;
     align-items: start;
     padding-top: 5%;
     will-change: transform;
-    @media only screen and (max-width: 350px) {
+    @media only screen and (max-width: 740px), screen and (max-height: 730px) {
       padding-top: 0;
     }
-
   }
   .modal__container {
+    position: relative;
     font-family: 'Montserrat', sans-serif;
     background-color: $color_white;
     padding: 15px;
     width: 90%;
     max-width: 535px;
-    max-height: 90vh;
+    max-height: 593px;
+    height: 90%;
     border-radius: 15px;
-    overflow-y: auto;
+    overflow: hidden;
     box-sizing: border-box;
     font-weight: 400;
     -webkit-box-shadow: 0px 5px 10px 0px $drop_shadow;
     -moz-box-shadow: 0px 5px 10px 0px $drop_shadow;
     box-shadow: 0px 5px 10px 0px $drop_shadow;
     will-change: transform;
-    @media only screen and (max-width: 350px) {
+    @media only screen and (max-width: 740px), screen and (max-height: 730px) {
+      height: 100%;
+      max-height: 100%;
       width: 100%;
-      max-height: 100vh;
+      max-width: 100%;
       border-radius: 0;
       padding: 5px;
       -webkit-box-shadow: none;
@@ -272,6 +303,11 @@ $button_text: #767575;
     .modal__footer {
       display: flex;
       align-items: center;
+      height: 25px;
+      padding-top: 5px;
+      @media only screen and (max-width: 740px), screen and (max-height: 730px) {
+        border-top: solid 1px rgba(0,0,0,0.43);
+      }
       > div {
         flex: 33%;
         &.center{
@@ -519,7 +555,7 @@ $button_text: #767575;
       width: 100%;
       max-width: 100px;
       margin-bottom: 20px;
-      @media only screen and (max-width: 420px) {
+      @media only screen and (max-width: 740px), screen and (max-height: 730px) {
         max-width: 45%;
         flex: 1 1 45%;
       }
@@ -583,11 +619,15 @@ $button_text: #767575;
 
   .modal__content {
     font-family: 'Montserrat', sans-serif;
-    margin-top: 1em;
-    margin-bottom: 1em;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    overflow-y: auto;
     line-height: 1.5;
     color: rgba(0,0,0,.8);
     font-weight: 400;
+    position: relative;
+    top: 0;
+    height: calc(100% - 95px);
     &.business{
       .business_section{
         display: block;
@@ -695,6 +735,12 @@ $button_text: #767575;
         &.current{
           display: block;
         }
+        &:last-of-type {
+          .foot{
+            width: 90%;
+            margin: 0 auto;
+          }
+        }
         .foot{
           display: flex;
           flex-direction: row;
@@ -707,8 +753,10 @@ $button_text: #767575;
             font-size: 45px;
             font-weight: 500;
             display: flex;
+            flex-direction: row;
             white-space: nowrap;
-            @media only screen and (max-width: 420px) {
+            justify-content: space-between;
+            @media only screen and (max-width: 740px), screen and (max-height: 730px) {
               width: 100%;
               margin-bottom: 15px;
             }
@@ -734,6 +782,7 @@ $button_text: #767575;
               font-weight: 500;
               border: none;
               width: inherit;
+              min-width: 0;
               flex: 1 1;
               &:focus{
                 outline: none;
@@ -792,7 +841,7 @@ $button_text: #767575;
     border-radius: 10px;
     padding: 26px 53px;
     transition: background-color 0.5s ease;
-    @media only screen and (max-width: 420px) {
+    @media only screen and (max-width: 740px), screen and (max-height: 730px) {
       width: 100%;
       margin-bottom: 10px;
     }

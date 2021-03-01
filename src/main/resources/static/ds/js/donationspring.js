@@ -8,8 +8,8 @@ var donationspring = new function () {
     thankyou_msg = '';
 
   document.write('<script src="https://js.stripe.com/v3/"></script>');
+  
   this.init = function (args) {
-    
     document.querySelector('head').innerHTML += '<link rel="stylesheet" href="css/ds_widget.css" type="text/css"/>';
     document.getElementById('donationspring').innerHTML += '<button class="btn give_now_button" data-donationspring-open role="button">Give Now</button>';
 
@@ -64,6 +64,7 @@ var donationspring = new function () {
       document.getElementById('ds_modal__title').style.display = "block";
       document.getElementById('ds_modal__back_button').style.display = "none";
     }
+    document.getElementById('ds-modal__content').scrollTop = 0;
   }
 
   this.next_prev = function (n) {
@@ -167,9 +168,17 @@ var donationspring = new function () {
   }
 
   ds_initial_values = function(args){
-    thankyou_msg = args.thankyou_msg;
+    stripe = Stripe(args.stripe);
     amount_input = document.querySelectorAll('.amount');
-    switch (args.default_donation_type) {
+    primary_color = args.primary_color || "#3399CC";
+    toHSL(primary_color);
+    default_donation_type = args.default_donation_type || "onetime";
+    form_type = args.form_type || "donation";
+    default_amt = args.default_amt || 50;
+    values = args.values || [25, 50, 100, 500, 1000, 1500, 2000];
+    thankyou_msg = args.thankyou_msg || "<p>Thank you for your donation! You really help to make a difference!</p>";
+
+    switch (default_donation_type) {
       case 'monthly':
         document.querySelectorAll('input[type=radio][name="donation_type"]')[1].checked = true;
         for (s = 0; s < amount_input.length; s++) {
@@ -184,90 +193,83 @@ var donationspring = new function () {
         break;
     }
 
-    if (args.values) {
-      stripe = Stripe(args.stripe);
-      toHSL(args.primary_color);
+    switch (form_type) {
+      case 'donation':
+        document.getElementById("ds_type-donation").style.display = "block";
+        break;
+      case 'campaign':
+        document.getElementById("ds_type-campaign").style.display = "block";
+        break;
+      case 'event':
+        document.getElementById("ds_type-event").style.display = "block";
+        break;
+      default:
+        document.getElementById("ds_type-donation").style.display = "block";
+    }
 
-      if (args.form_type) {
-        switch (args.form_type) {
-          case 'donation':
-            document.getElementById("ds_type-donation").style.display = "block";
-            break;
-          case 'campaign':
-            document.getElementById("ds_type-campaign").style.display = "block";
-            break;
-          case 'event':
-            document.getElementById("ds_type-event").style.display = "block";
-            break;
-          default:
-            document.getElementById("ds_type-donation").style.display = "block";
-        }
+    var donation_amounts = document.getElementById("donation_amounts");
+    document.getElementById("da_manual_amount").value = default_amt;
+    document.getElementsByName("donation_amount")[0].value = default_amt;
+    var giving_amount_display = document.getElementById("giving_amount");
+    var giving_duration_display = document.getElementById("giving_duration");
+    giving_amount_display.innerHTML = default_amt;
+    giving_duration_display.innerHTML = ' ' + default_donation_type;
+    for (v = 0; v < values.length; v++) {
+      var amt_button = document.createElement('div');
+      amt_button.className = 'button_radio-wrapper';
+      if (default_amt == values[v]) {
+        amt_button.innerHTML = '<input type="radio" id="da_' + values[v] + '" name="donation_amount_select" value="' + values[v] + '" checked> <label for="da_' + values[v] + '">$' + values[v] + '</label>';
+      } else {
+        amt_button.innerHTML = '<input type="radio" id="da_' + values[v] + '" name="donation_amount_select" value="' + values[v] + '"> <label for="da_' + values[v] + '">$' + values[v] + '</label>';
       }
+      donation_amounts.appendChild(amt_button);
+    }
+    var other_button = document.createElement('div');
+    other_button.className = 'button_radio-wrapper';
+    other_button.innerHTML = '<input type="radio" id="da_other" name="donation_amount_select" value="other"> <label for="da_other">Other</label>';
+    donation_amounts.appendChild(other_button);
 
-      var donation_amounts = document.getElementById("donation_amounts");
-      document.getElementById("da_manual_amount").value = args.default_amt;
-      document.getElementsByName("donation_amount")[0].value = args.default_amt;
-      var giving_amount_display = document.getElementById("giving_amount");
-      var giving_duration_display = document.getElementById("giving_duration");
-      giving_amount_display.innerHTML = args.default_amt;
-      giving_duration_display.innerHTML = ' ' + args.default_donation_type;
-      for (v = 0; v < args.values.length; v++) {
-        var amt_button = document.createElement('div');
-        amt_button.className = 'button_radio-wrapper';
-        if (args.default_amt == args.values[v]) {
-          amt_button.innerHTML = '<input type="radio" id="da_' + args.values[v] + '" name="donation_amount_select" value="' + args.values[v] + '" checked> <label for="da_' + args.values[v] + '">$' + args.values[v] + '</label>';
-        } else {
-          amt_button.innerHTML = '<input type="radio" id="da_' + args.values[v] + '" name="donation_amount_select" value="' + args.values[v] + '"> <label for="da_' + args.values[v] + '">$' + args.values[v] + '</label>';
-        }
-        donation_amounts.appendChild(amt_button);
+    if (args.campaign){
+      document.getElementById("goal_thermometer").style.display = "block";
+      document.getElementById("ds_raised_amt").childNodes[0].innerHTML = '$' + args.campaign.raised_amt;
+      document.getElementById("ds_goal_amt").childNodes[1].innerHTML = '$' + args.campaign.goal_amt;
+      var percent_complete = (args.campaign.raised_amt / args.campaign.goal_amt) * 100;
+      document.getElementById("ds_bar-value").setAttribute("style", "width:" + percent_complete + "%");
+    }
+
+    if (args.sub_selection) {
+      var options = args.sub_selection.options;
+      var sub_selection = document.getElementById("donation_subselection");
+
+      var select_wrap = document.createElement('div');
+      select_wrap.classList.add("input-wrapper");
+      sub_selection.appendChild(select_wrap);
+
+      var selectListLabel = document.createElement("label");
+      selectListLabel.setAttribute("for", 'subselection');
+      selectListLabel.innerHTML = args.sub_selection.title + '<span class="req">*</span>';
+      select_wrap.appendChild(selectListLabel);
+
+      var selectList = document.createElement("select");
+      selectList.dataset.required = true;
+      selectList.id = "subselection";
+      selectList.name = "sub_selection";
+      var default_option = document.createElement("option");
+      default_option.value = '';
+      default_option.text = args.sub_selection.initial_option;
+      selectList.appendChild(default_option);
+      for (var i = 0; i < options.length; i++) {
+        var option = document.createElement("option");
+        option.value = options[i][1];
+        option.text = options[i][0];
+        selectList.appendChild(option);
       }
-      var other_button = document.createElement('div');
-      other_button.className = 'button_radio-wrapper';
-      other_button.innerHTML = '<input type="radio" id="da_other" name="donation_amount_select" value="other"> <label for="da_other">Other</label>';
-      donation_amounts.appendChild(other_button);
+      select_wrap.appendChild(selectList);
 
-      if (args.campaign){
-        document.getElementById("goal_thermometer").style.display = "block";
-        document.getElementById("ds_raised_amt").childNodes[0].innerHTML = '$' + args.campaign.raised_amt;
-        document.getElementById("ds_goal_amt").childNodes[1].innerHTML = '$' + args.campaign.goal_amt;
-        var percent_complete = (args.campaign.raised_amt / args.campaign.goal_amt) * 100;
-        document.getElementById("ds_bar-value").setAttribute("style", "width:" + percent_complete + "%");
-      }
-
-      if (args.sub_selection) {
-        var options = args.sub_selection.options;
-        var sub_selection = document.getElementById("donation_subselection");
-
-        var select_wrap = document.createElement('div');
-        select_wrap.classList.add("input-wrapper");
-        sub_selection.appendChild(select_wrap);
-
-        var selectListLabel = document.createElement("label");
-        selectListLabel.setAttribute("for", 'subselection');
-        selectListLabel.innerHTML = args.sub_selection.title + '<span class="req">*</span>';
-        select_wrap.appendChild(selectListLabel);
-
-        var selectList = document.createElement("select");
-        selectList.dataset.required = true;
-        selectList.id = "subselection";
-        selectList.name = "sub_selection";
-        var default_option = document.createElement("option");
-        default_option.value = '';
-        default_option.text = args.sub_selection.initial_option;
-        selectList.appendChild(default_option);
-        for (var i = 0; i < options.length; i++) {
-          var option = document.createElement("option");
-          option.value = options[i][1];
-          option.text = options[i][0];
-          selectList.appendChild(option);
-        }
-        select_wrap.appendChild(selectList);
-
-        var selectListError = document.createElement("span");
-        selectListError.classList.add("errorSpan");
-        selectListError.innerHTML = 'This field is required.';
-        select_wrap.appendChild(selectListError);
-      }
+      var selectListError = document.createElement("span");
+      selectListError.classList.add("errorSpan");
+      selectListError.innerHTML = 'This field is required.';
+      select_wrap.appendChild(selectListError);
     }
   }
 
@@ -277,7 +279,7 @@ var donationspring = new function () {
     const business_donation_button = document.getElementById('donate_as_business');
     modal = document.getElementById('ds_modal');
     ds_open_trigger_button.addEventListener('click', function (event) {
-      ds_open_modal(modal);
+      donationspring.ds_open_modal(modal);
     });
     ds_close_trigger_button.addEventListener('click', function (event) {
       ds_close_modal(modal);
@@ -363,16 +365,11 @@ var donationspring = new function () {
     }
   };
 
-  this.ds_reopen_modal = function () {
+  this.ds_open_modal = function (){
     donationspring.ds_hide_reminder();
     modal.setAttribute('aria-hidden', 'false');
     modal.classList.add('is-open');
-    ds_trap_modal(modal);
-  }
-
-  ds_open_modal = function (){
-    modal.setAttribute('aria-hidden', 'false');
-    modal.classList.add('is-open');
+    document.getElementsByTagName("BODY")[0].classList.add('ds-open');
     ds_trap_modal(modal);
   }
 
@@ -380,6 +377,7 @@ var donationspring = new function () {
     modal.setAttribute('aria-hidden', 'true');
     setTimeout(function () {
       modal.classList.remove('is-open');
+      document.getElementsByTagName("BODY")[0].classList.remove('ds-open');
     }, 100);
 
     if (!ds_submitted){

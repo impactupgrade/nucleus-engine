@@ -13,13 +13,13 @@
 
   <div class="ds_modal_widget" id="ds_modal" aria-hidden="true" style="visibility: hidden;">
     <div class="modal__overlay" tabindex="-1">
-      <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="ds_modal-title">
-        <header class="modal__header">
+      <div id="ds_modal__container" class="modal__container" role="dialog" aria-modal="true" aria-labelledby="ds_modal-title">
+        <div class="modal__header">
           <h2 id="ds_modal__title" class="modal__title">Donation Spring Demo</h2>
           <button id="ds_modal__back_button" class="modal__back_button" onclick="donationspring.next_prev(-1)"><span>Back</span></button>
           <button class="modal__close" aria-label="Close modal" data-donationspring-close type="button"></button>
-        </header>
-        <main class="modal__content">
+        </div>
+        <div id="ds-modal__content" class="modal__content">
           <div class="ds_steps">
             <form name="ds_form" id="ds_form" action="https://441a8aa82bddf6a61b7930a09bac1309.m.pipedream.net" method="POST">
               <div id="step-1" class="ds_step">
@@ -51,7 +51,7 @@
                 <fieldset id="donation_subselection" class="donation_subselection"></fieldset>
                 <div class="foot">
                   <div class="amount">
-                    <input type="text" data-required="true" id="da_manual_amount" value="" onkeypress="return donationspring.isNumber(event)" aria-label="Donation Amount">
+                    <input type="text" data-required="true" id="da_manual_amount" inputmode="numeric" pattern="[0-9]*" value="" onkeypress="return donationspring.isNumber(event)" aria-label="Donation Amount">
                   </div>
                   <button class="modal__btn modal__btn-continue" type="button" onclick="donationspring.next_prev(1)">Continue</button>
                 </div>
@@ -737,8 +737,8 @@
               <div id="thankyou_msg"></div>
             </div>
           </div>
-        </main>
-        <footer class="modal__footer">
+        </div>
+        <div class="modal__footer">
           <div><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGYAAAASCAMAAACesluHAAABF1BMVEUAAAAAS4wAWowAWowAWowAUoQAWowAWIsAWosAW4wAWosAUIcAW4wAW4wAW4wAW4wAWooAWYsAWYoAW4oAWYsAWIoAVIgAWosAWosAWowAWosAWIoAW4sAWosAWosAWowAWYwAV4gAUIUZsd4AWowAWosAWosAWYsAWYsAWIoAV4wAWosAWosAWosAWosAWosAWosAWYsAV4cAWowAWosAW4sAWosAWosAWYoAW4sAWosAWosYsd4AW4sAWYsPqdsAW4wZsd4AWosAW4sYsd8YsN4XsN4AWYsWst8Xr9wRrdsQodsZsd4Zsd4AWosAWosYsN0Ysd4Zsd4Zsd4Zsd4Zsd4YsN0WseAYsN8Urt8as90AW4wZsd4XV1lqAAAAW3RSTlMAAuDnmwb4ND+gewz08odrWlNDgSYjD7+6s0cr125pTi8bCfvr0ZJmXx0Y5MevrH1XNxT8zpmWjDvu2re1j3MQ/fDdqIh+UUk+JxYI1q2jeHRc5+DNl0o5aiUeDBsaTQAAAwtJREFUOMu1k+eSm0AQhHvJQiAhhFDOOVo5h8u+4EvO9vD+z+FFKp+rzv7l0k3VzhY9M3z0AvjvuDm9YNfr7wxvG5de+frCK9/gbeP2g/fx5vLp7ufN2xr6cepd43btefd/cYLHJF+Vr7glz/tw96rwbqkfCXG3/nhx++nqwvPKny5fP7tI8SPZueYu7p+fy97T7u6vYmwSey01wuHGXmzV9X4QUNN+33ue7AiTw3405IavhfW8DGhF8KYBW3MfX59Ov4KlalKD1aMsPwm5pWgu+GhtNo49a9rTWhOwa1I2ZaMdkHrilo8vEtK440I3eS2SBNA5c0uSVF1KoZIA9M1kINMtQRJcfvhRsKvP3ufLL4CtiILSr5JuKhQtVoQkTYkKU5oYCj2w+okoElUhBMGcZbp09p6hNFkxXegdMK3Oue8pFOBJQLFdYHC7U47Z7DHA7r78Zee/CKeouksy8uGTjmOOxMc+UTBOSr1O7aG4iKlEDsf49zqPjGW+D4ymHo7rzMcEtnaHvWC2CYDjRVdKVfsHDL6VnwHZoG6qNGzTI1QloypGASpVZIF6zKaMY475ZZsdMNlqdv9tFBVHzzUNlWNaRnooDl4wG39DodKStIHoHjC70x3PKYWo1lxUAG2U0CjOFeq43CMilBiKJyGBNBwws0C+6ruZG0U9h9RSTyIyeghUZi+Y7N5NXwxKGsLV2h6D9T4Xs0rGUcbAlLZ1mgAW9YoLhSFLEua9eEbAHsPSQqyU6ctwA11wDNuYSSQahYKWkX9jhsJcxnAVAsfIK/OA+cZXuqbmla5KmXmWzNiMeGVLs7TRBmb0Tk5r+bjSBMTEKl6pA2plvMokgj4GcjJZOCsBSER+Y/De7CTOHmQfg2A1+uePJ9MwVItodGLa6BIfr1FW9d2dU2OyUMQRnQMRy8q3wCMYyaVkIB3zz0FzbF9Lz1EY8D3PV8vKcUMYtHy98IKRU+GGixBNrboDpKwmb7FiQ4vP25ZFlRZy1MWRokfZf8nqiKSaacSOhZHi2j/1fFxs93jpF2bHbM9OYHL9AAAAAElFTkSuQmCC" alt="Powered By Donation Spring"/></div>
           <div class="center">
             <ol class="ds_timeline">
@@ -748,7 +748,7 @@
             </ol>
           </div>
           <div></div>
-        </footer>
+        </div>
       </div>
     </div>
   </div>
@@ -757,19 +757,25 @@
     <img alt="Donation Spring" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADYAAAA6CAMAAADMWVqUAAAAM1BMVEUAAAAgr98asd4Zst4Yr98asd4asd0bst8cr98br98bsd0asd4asN0as98asN0Zst8asd7IcHO1AAAAEHRSTlMAEO+/IM+AYEAwj9+fUK9whqzFLQAAAVxJREFUSMftlNuOhSAMRTd3QfD0/792DlhkxoypmMzL5Kwnja603Sngw3/ClhDBqERk4h0r0RsXd8vVF61kK1PDoWKokUVrIaa+eH7WN1ocWqSOqG20YwA4YlZRC9xWbI9MgIjXxJmvNCrfIC5qr8u4y/ztazMmBXuaki0xvm3BgZYsT4Okeqsc4qXFszOOOy090UvoB3r3/Ihe1sY0XozenLzt0OyNzRgU1jIqNhljkpXLraxZPqgXY/KnQWharqUcdUa9IRafzTpSaZ2Xt6XpwOMC6/tfEQutfCmIGz3aTVCU215K1ZjQQ9EFhb4TIXsWm1KaTj2KXsECf9odgY0H0TTIogWlW0tjMs07IrfpgMzSGkRhnMB+32mP24Sq/XJO5eniMm3VuZameUwRd23FJLppflbLTbOz2qtqDrNEvLWEeWzd5wfwaLM4whOye6QF80izzzS88OFP+QJAxCNGftorEQAAAABJRU5ErkJggg==">
     <p>Complete your donation today to make a difference</p>
     <div class="buttons">
-      <button type="button" class="active" onclick="donationspring.ds_reopen_modal()">I’m Ready</button>
+      <button type="button" class="active" onclick="donationspring.ds_open_modal()">I’m Ready</button>
       <button type="button" onclick="donationspring.ds_hide_reminder()">Not today</button>
     </div>
   </div>
 
   <script>
     donationspring.init({
+      // Stripe Key is required
       'stripe': 'pk_test_TYooMQauvdEDq54NiTphI7jx',
+      // Options that have a default if not set. //
+      /* 
       'primary_color': '#3399CC', // purple = #6a0dad
       'form_type': 'donation', // donation, campaign, event
-      'default_donation_type': 'monthly', // onetime, monthly
-      'values': [50,100,500,1000,1500,2000,2500],
-      'default_amt': 100,
+      'default_donation_type': 'onetime', // onetime, monthly
+      'values': [25,50,100,500,1000,1500,2000],
+      'default_amt': 50,
+      'thankyou_msg': '<p>Thank you for your donation! You really help to make a difference!</p>',
+      */
+      // These only show on the form if the option is set //
       'campaign': {
         'raised_amt': 800,
         'goal_amt' : 2000
@@ -782,8 +788,7 @@
           ["Option #2", "Option 2"],
           ["Option #3", "Option 3"],
         ]
-      },
-      'thankyou_msg': '<p>Thank you for your donation! You really help to make a difference!</p>'
+      }
     });
   </script>
 
