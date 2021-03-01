@@ -417,18 +417,21 @@ public class PaymentGatewayEvent {
     // Furthering the madness, staff can't manually change the campaign on a subscription, only the customer.
     // So check the customer *first* and let it override the subscription.
     if (paymentSpringCustomer.isPresent()) {
-      campaignId = paymentSpringCustomer.get().getMetadata().get("sf_campaign_id").replaceAll("[^A-Za-z0-9]", "");
+      campaignId = paymentSpringCustomer.get().getMetadata().get("sf_campaign_id");
       // some appear to be using "campaign", so try that too (SMH)
       if (Strings.isNullOrEmpty(campaignId)) {
-        campaignId = paymentSpringCustomer.get().getMetadata().get("campaign").replaceAll("[^A-Za-z0-9]", "");
+        campaignId = paymentSpringCustomer.get().getMetadata().get("campaign");
       }
     }
     if (Strings.isNullOrEmpty(campaignId)) {
-      campaignId = paymentSpringTransaction.getMetadata().get("sf_campaign_id").replaceAll("[^A-Za-z0-9]", "");
+      campaignId = paymentSpringTransaction.getMetadata().get("sf_campaign_id");
       // some appear to be using "campaign", so try that too (SMH)
       if (Strings.isNullOrEmpty(campaignId)) {
-        campaignId = paymentSpringTransaction.getMetadata().get("campaign").replaceAll("[^A-Za-z0-9]", "");
+        campaignId = paymentSpringTransaction.getMetadata().get("campaign");
       }
+    }
+    if (campaignId != null) {
+      campaignId = campaignId.replaceAll("[^A-Za-z0-9]", "");
     }
   }
 
