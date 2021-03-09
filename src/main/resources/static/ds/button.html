@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
+  <title>Donation Spring</title>
+  <script>
+    window.onload = function() {
+      var ds_color = parent.document.documentElement.style.getPropertyValue('--ds_color');
+      var ds_l = parent.document.documentElement.style.getPropertyValue('--ds_l');
+      document.documentElement.style.setProperty('--ds_color', ds_color);
+      document.documentElement.style.setProperty('--ds_l', ds_l);
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;400;500;600&display=swap');
+    :root {
+      --ds_color:200, 60%; /*the base color*/
+      --ds_l:50%; /*the initial lightness*/
+      --ds_color-primary: hsl(var(--ds_color),var(--ds_l));
+      --ds_color-primary-darker: hsl(var(--ds_color),calc(var(--ds_l) - 10%));
+      --ds_color-primary-darkest: hsl(var(--ds_color),calc(var(--ds_l) - 20%)); 
+    }
+
+    .give_now_button{
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 300;
+      padding-left: 1em;
+      padding-right: 1em;
+      padding-top: .5em;
+      padding-bottom: .5em;
+      background-color: var(--ds_color-primary);
+      color: white;
+      border-radius: .25em;
+      border-style: none;
+      border-width: 0;
+      cursor: pointer;
+      -webkit-appearance: button;
+      text-transform: none;
+      overflow: visible;
+      line-height: 1.15;
+      margin: 0;
+      will-change: transform;
+      -moz-osx-font-smoothing: grayscale;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      transition: -webkit-transform .25s ease-out;
+      transition: transform .25s ease-out;
+      transition: transform .25s ease-out,-webkit-transform .25s ease-out;
+      -webkit-box-shadow: 0px 2px 2px 0px  rgba(0,0,0,0.16);
+      -moz-box-shadow: 0px 2px 2px 0px  rgba(0,0,0,0.16);
+      box-shadow: 0px 2px 2px 0px  rgba(0,0,0,0.16);
+    }
+    .give_now_button:focus{
+      background-color: var(--ds_color-primary-darker);
+    }
+    .give_now_button:hover{
+      background-color: var(--ds_color-primary-darker);
+    }
+  </style>
+</head>
+<body>
+  <button id="DSGNBTN" class="btn give_now_button" data-donationspring-open role="button" onclick="parent.ds.showform()">Give Now</button>
+</body>
+</html>
+
+
