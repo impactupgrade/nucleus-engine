@@ -101,6 +101,8 @@ public class TwilioController {
    * pairs as texts are received. It can also be used by Twilio Studio flows, Twilio Functions, etc. for more complex
    * interactions. Try to make use of the standard form params whenever possible to maintain the overlap!
    *
+   * TODO: This should use the abstract CRM and not assume HS!
+   *
    * @param from
    * @param message
    * @return
@@ -138,7 +140,6 @@ public class TwilioController {
       try {
         contact = HubSpotClientFactory.client().contacts().insert(contactBuilder);
         log.info("created HubSpot contact {}", contact.getVid());
-        addToHubSpotList(contact.getVid(), hsListId);
       } catch (DuplicateContactException e) {
         // likely due to an email collision...
         log.info("contact already existed in HubSpot: {}", e.getVid());
