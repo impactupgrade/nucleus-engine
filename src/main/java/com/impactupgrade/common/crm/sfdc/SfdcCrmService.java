@@ -249,7 +249,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   }
 
   @Override
-  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) {
+  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
     // TODO: Different for every org, so allow it to be overridden. But, we should start shifting all this to env.json
   }
 

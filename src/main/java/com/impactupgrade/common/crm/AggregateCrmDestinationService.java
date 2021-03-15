@@ -86,7 +86,7 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
   }
 
   @Override
-  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) {
+  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
     crmPrimaryService.smsSignup(messagingWebhookEvent);
     for (CrmDestinationService crmService : crmSecondaryServices) {
       crmService.smsSignup(messagingWebhookEvent);

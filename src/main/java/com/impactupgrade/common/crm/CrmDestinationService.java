@@ -14,5 +14,5 @@ public interface CrmDestinationService {
   void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
 
   String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
-  void smsSignup(MessagingWebhookEvent messagingWebhookEvent);
+  void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
 }

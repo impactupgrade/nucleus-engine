@@ -61,7 +61,7 @@ public class HubSpotCrmService implements CrmSourceService, CrmDestinationServic
 
   // TODO: replace with V3
   @Override
-  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) {
+  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
     String listId = messagingWebhookEvent.getListId();
     if (Strings.isNullOrEmpty(listId)) {
       log.info("explicit HubSpot list ID not provided; using the default {}", DEFAULT_HUBSPOT_SMS_LIST_ID);
