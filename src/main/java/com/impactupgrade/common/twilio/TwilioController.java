@@ -135,8 +135,13 @@ public class TwilioController {
       ContactBuilder contactBuilder = new ContactBuilder()
           .phone(from)
           .firstName(firstName)
-          .lastName(lastName)
-          .email(email);
+          .lastName(lastName);
+
+      // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
+      if (email != null && email.contains("@")) {
+        contactBuilder.email(email);
+      }
+
       try {
         contact = HubSpotClientFactory.client().contacts().insert(contactBuilder);
         log.info("created HubSpot contact {}", contact.getVid());
