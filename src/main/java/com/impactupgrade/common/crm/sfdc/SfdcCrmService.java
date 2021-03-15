@@ -8,12 +8,14 @@ import com.impactupgrade.common.crm.model.CrmContact;
 import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.crm.model.CrmRecurringDonation;
 import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
 import java.util.Optional;
 
 public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
@@ -31,6 +33,15 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   @Override
   public Optional<CrmContact> getContactByEmail(String email) throws Exception {
     return toCrmContact(sfdcClient.getContactByEmail(email));
+  }
+
+  @Override
+  public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
+    List<SObject> contacts = sfdcClient.getContactsByPhone(phone);
+    if (contacts.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(toCrmContact(contacts.get(0)));
   }
 
   @Override
@@ -225,6 +236,21 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
   protected void setRecurringDonationFieldsForClose(SObject recurringDonation,
       PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  }
+
+  @Override
+  public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
+    SObject contact = new SObject("Contact");
+    contact.setField("FirstName", messagingWebhookEvent.getFirstName());
+    contact.setField("LastName", messagingWebhookEvent.getLastName());
+    contact.setField("Email", messagingWebhookEvent.getEmail());
+    contact.setField("MobilePhone", messagingWebhookEvent.getPhone());
+    return sfdcClient.insert(contact).getId();
+  }
+
+  @Override
+  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) {
+    // TODO: Different for every org, so allow it to be overridden. But, we should start shifting all this to env.json
   }
 
   protected Optional<SObject> getCampaignOrDefault(PaymentGatewayEvent paymentGatewayEvent) throws ConnectionException, InterruptedException {

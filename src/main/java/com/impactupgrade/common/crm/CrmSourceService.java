@@ -13,6 +13,8 @@ public interface CrmSourceService {
 
   Optional<CrmContact> getContactByEmail(String email) throws Exception;
 
+  Optional<CrmContact> getContactByPhone(String phone) throws Exception;
+
   Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
 
   Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;

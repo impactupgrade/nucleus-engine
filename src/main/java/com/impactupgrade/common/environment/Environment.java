@@ -5,13 +5,14 @@ import com.impactupgrade.common.crm.AggregateCrmDestinationService;
 import com.impactupgrade.common.crm.CrmSourceService;
 import com.impactupgrade.common.crm.sfdc.SfdcClient;
 import com.impactupgrade.common.crm.sfdc.SfdcController;
+import com.impactupgrade.common.messaging.MessagingService;
+import com.impactupgrade.common.messaging.twilio.TwilioController;
 import com.impactupgrade.common.paymentgateway.DonationService;
 import com.impactupgrade.common.paymentgateway.DonorService;
 import com.impactupgrade.common.paymentgateway.PaymentGatewayController;
 import com.impactupgrade.common.paymentgateway.paymentspring.PaymentSpringController;
 import com.impactupgrade.common.paymentgateway.stripe.StripeClient;
 import com.impactupgrade.common.paymentgateway.stripe.StripeController;
-import com.impactupgrade.common.twilio.TwilioController;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -38,7 +39,7 @@ public class Environment {
   public PaymentSpringController paymentSpringController() { return new PaymentSpringController(this); }
   public SfdcController sfdcController() { return new SfdcController(this); }
   public StripeController stripeController() { return new StripeController(this); }
-  public TwilioController twilioController() { return new TwilioController(); }
+  public TwilioController twilioController() { return new TwilioController(this); }
 
   // TODO: To date, there hasn't been a need to customize these at the request level! For now, keep them here,
   // since RequestEnvironment primarily works at the integration/client level.
@@ -46,8 +47,12 @@ public class Environment {
   public DonationService donationService() { return new DonationService(this); }
   public DonorService donorService() { return new DonorService(this); }
 
+  public MessagingService messagingService() { return new MessagingService(this); }
+
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password) { return new SfdcClient(this, username, password); }
+
+  // TODO: replace these methods with string-based selectors in json, once merged with the hubspot branch
 
   /**
    * Define a single CRM as the end-all source-of-truth for retrievals and queries.
@@ -65,7 +70,21 @@ public class Environment {
     return null;
   }
 
-  // TODO: other destinations: SMS interactions, etc.
+  /**
+   * Define one CRMs as the primary integration point for SMS engagement.
+   */
+  public CrmSourceService crmSMSSourceService() {
+    log.error("NOT IMPLEMENTED");
+    return null;
+  }
+
+  /**
+   * Define one or more CRMs as the primary integration point for SMS engagement.
+   */
+  public AggregateCrmDestinationService crmSMSDestinationServices() {
+    log.error("NOT IMPLEMENTED");
+    return null;
+  }
 
   /**
    * Allow orgs to add custom Controllers, etc.

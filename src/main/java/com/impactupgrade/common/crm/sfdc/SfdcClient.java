@@ -174,7 +174,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return contacts;
   }
 
-  public List<SObject> getDupContactsByPhone(String phone) throws ConnectionException, InterruptedException {
+  public List<SObject> getContactsByPhone(String phone) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(phone)){
       return Collections.emptyList();
     }
@@ -205,7 +205,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
   }
 
-  public List<SObject> getDupContactsByAddress(String street, String city, String state, String zip, String country) throws ConnectionException, InterruptedException {
+  public List<SObject> getContactsByAddress(String street, String city, String state, String zip, String country) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(street)){
       return Collections.emptyList();
     }

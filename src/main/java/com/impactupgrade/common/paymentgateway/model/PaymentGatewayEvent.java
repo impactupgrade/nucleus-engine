@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+// TODO: Rename to PaymentGatewayWebhookEvent?
 public class PaymentGatewayEvent {
   
   protected final Environment env;
