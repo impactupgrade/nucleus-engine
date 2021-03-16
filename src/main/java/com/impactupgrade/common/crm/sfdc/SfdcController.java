@@ -28,6 +28,7 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -150,6 +151,61 @@ public class SfdcController {
 
       sfdcClient.batchUpdate(sObject);
     }
+  }
+
+  @Path("/bulk-delete")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response bulkDelete(
+      @FormDataParam("google-sheet-url") String gsheetUrl,
+      @FormDataParam("file") File file,
+      @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @Context HttpServletRequest request) {
+    SecurityUtil.verifyApiKey(request);
+
+    Runnable thread = () -> {
+      try {
+        List<Map<String, String>> data;
+        if (!Strings.isNullOrEmpty(gsheetUrl)) {
+          data = GoogleSheetsUtil.getSheetData(gsheetUrl);
+        } else if (file != null) {
+          CSVParser csvParser = CSVParser.parse(
+              file,
+              Charset.defaultCharset(),
+              CSVFormat.DEFAULT
+                  .withFirstRecordAsHeader()
+                  .withIgnoreHeaderCase()
+                  .withTrim()
+          );
+          data = new ArrayList<>();
+          for (CSVRecord csvRecord : csvParser) {
+            data.add(csvRecord.toMap());
+          }
+        } else {
+          log.warn("no GSheet/CSV provided; skipping");
+          return;
+        }
+
+        for (int i = 0; i < data.size(); i++) {
+          Map<String, String> row = data.get(i);
+
+          log.info("processing row {} of {}: {}", i + 2, data.size() + 1, row);
+
+          // TODO: support others
+          String opportunityId = row.get("Opportunity ID");
+          SObject opportunity = new SObject("Opportunity");
+          opportunity.setId(opportunityId);
+          sfdcClient.batchDelete(opportunity);
+        }
+        sfdcClient.batchFlush();;
+      } catch (Exception e) {
+        log.error("bulkDelete failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
   }
 
   /**
