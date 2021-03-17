@@ -1,13 +1,12 @@
-package com.impactupgrade.common.twilio;
+package com.impactupgrade.common.messaging.twilio;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.crm.hubspot.HubSpotClientFactory;
+import com.impactupgrade.common.environment.Environment;
+import com.impactupgrade.common.messaging.MessagingService;
+import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.security.SecurityUtil;
-import com.impactupgrade.integration.hubspot.builder.ContactBuilder;
-import com.impactupgrade.integration.hubspot.exception.DuplicateContactException;
-import com.impactupgrade.integration.hubspot.exception.HubSpotException;
-import com.impactupgrade.integration.hubspot.model.Contact;
 import com.impactupgrade.integration.hubspot.model.ContactArray;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
@@ -42,14 +41,18 @@ public class TwilioController {
 
   private static final Logger log = LogManager.getLogger(TwilioController.class);
 
-  private static final String DEFAULT_HUBSPOT_SMS_LIST_ID = System.getenv("HUBSPOT_SMSLISTID");
-
   private static final String TWILIO_SENDER_PN = System.getenv("TWILIO_SENDER_PN");
 
   static {
     if (!Strings.isNullOrEmpty(System.getenv("TWILIO_ACCOUNTSID"))) {
       Twilio.init(System.getenv("TWILIO_ACCOUNTSID"), System.getenv("TWILIO_AUTHTOKEN"));
     }
+  }
+
+  private final MessagingService messagingService;
+
+  public TwilioController(Environment env) {
+    messagingService = env.messagingService();
   }
 
   @Path("/outbound/hubspot-list")
@@ -111,55 +114,29 @@ public class TwilioController {
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_XML)
-  public Response webhook(
+  public Response inboundSignup(
       @FormParam("From") String from,
       @FormParam("Body") String message,
       @FormParam("FirstName") String firstName,
       @FormParam("LastName") String lastName,
       @FormParam("Email") String email,
-      @FormParam("HubSpotListId") Long hsListId
-  ) {
+      @FormParam("ListId") String listId,
+      @FormParam("HubSpotListId") @Deprecated Long hsListId
+  ) throws Exception {
     log.info("from={} message={}", from, message);
     log.info("other fields: firstName={}, lastName={}, email={}, hsListId={}", firstName, lastName, email, hsListId);
 
-    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
-    from = from.replace("+1", "");
-
-    // First, look for an existing contact based off the phone number. Important to use the PN since the
-    // Twilio Studio flow has some flavors that assume the contact is already in HS, so only the PN (From) will be
-    // provided. Other flows allow email to be optional.
-    Contact contact = null;
-    ContactArray contacts = HubSpotClientFactory.client().contacts().search(from);
-    if (contacts.getContacts().isEmpty()) {
-      // Didn't exist, so attempt to create it.
-      ContactBuilder contactBuilder = new ContactBuilder()
-          .phone(from)
-          .firstName(firstName)
-          .lastName(lastName);
-
-      // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
-      if (email != null && email.contains("@")) {
-        contactBuilder.email(email);
-      }
-
-      try {
-        contact = HubSpotClientFactory.client().contacts().insert(contactBuilder);
-        log.info("created HubSpot contact {}", contact.getVid());
-      } catch (DuplicateContactException e) {
-        // likely due to an email collision...
-        log.info("contact already existed in HubSpot: {}", e.getVid());
-      } catch (HubSpotException e) {
-        log.error("HubSpot failed for an unknown reason: {}", e.getMessage());
-      }
+    MessagingWebhookEvent event = new MessagingWebhookEvent();
+    event.setPhone(from);
+    event.setFirstName(firstName);
+    event.setLastName(lastName);
+    event.setEmail(email);
+    if (hsListId != null && hsListId > 0) {
+      event.setListId(hsListId + "");
     } else {
-      // Existed, so use it
-      contact = contacts.getContacts().get(0);
-      log.info("contact already existed in HubSpot: {}", contact.getVid());
+      event.setListId(listId);
     }
-
-    if (contact != null) {
-      addToHubSpotList(contact.getVid(), hsListId);
-    }
+    messagingService.signup(event);
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
     MessagingResponse response = new MessagingResponse.Builder().build();
@@ -218,16 +195,6 @@ public class TwilioController {
     }
 
     return Response.ok().entity(xml).build();
-  }
-
-  private void addToHubSpotList(long contactVid, Long hsListId) {
-    if (hsListId == null || hsListId == 0L) {
-      log.info("explicit HubSpot list ID not provided; using the default {}", DEFAULT_HUBSPOT_SMS_LIST_ID);
-      hsListId = Long.parseLong(DEFAULT_HUBSPOT_SMS_LIST_ID);
-    }
-    // note that HubSpot auto-prevents duplicate entries in lists
-    HubSpotClientFactory.client().lists().addContactToList(hsListId, contactVid);
-    log.info("added HubSpot contact {} to list {}", contactVid, hsListId);
   }
 
   // TODO: Temporary method to prototype an MMS replacement of the mobile app. In the future,

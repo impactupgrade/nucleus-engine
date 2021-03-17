@@ -1,5 +1,6 @@
 package com.impactupgrade.common.crm;
 
+import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 
 public class AggregateCrmDestinationService implements CrmDestinationService {
@@ -72,6 +73,23 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
     crmPrimaryService.closeRecurringDonation(paymentGatewayEvent);
     for (CrmDestinationService crmService : crmSecondaryServices) {
       crmService.closeRecurringDonation(paymentGatewayEvent);
+    }
+  }
+
+  @Override
+  public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
+    String primaryId = crmPrimaryService.insertContact(messagingWebhookEvent);
+    for (CrmDestinationService crmService : crmSecondaryServices) {
+      crmService.insertContact(messagingWebhookEvent);
+    }
+    return primaryId;
+  }
+
+  @Override
+  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
+    crmPrimaryService.smsSignup(messagingWebhookEvent);
+    for (CrmDestinationService crmService : crmSecondaryServices) {
+      crmService.smsSignup(messagingWebhookEvent);
     }
   }
 }

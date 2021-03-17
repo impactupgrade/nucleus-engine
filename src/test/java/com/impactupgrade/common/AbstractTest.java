@@ -59,6 +59,11 @@ public abstract class AbstractTest {
     }
 
     @Override
+    public AggregateCrmDestinationService crmSMSDestinationServices() {
+      return new AggregateCrmDestinationService(crmDestinationServiceMock);
+    }
+
+    @Override
     public RequestEnvironment newRequestEnvironment(HttpServletRequest request) {
       return new DefaultRequestEnvironment(request);
     }
