@@ -333,8 +333,12 @@ public class StripeController {
     SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
     Iterable<Payout> payouts = requestEnv.stripeClient().getPayouts(startDate, endDate, 100);
     for (Payout payout : payouts) {
-      System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
-      processEvent("payout.paid", payout, requestEnv);
+      try {
+        System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
+        processEvent("payout.paid", payout, requestEnv);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
   }
 }
