@@ -4,6 +4,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.common.crm.hubspot.HubSpotClientFactory;
 import com.impactupgrade.common.security.SecurityUtil;
+import com.impactupgrade.common.util.Utils;
 import com.impactupgrade.integration.hubspot.builder.ContactBuilder;
 import com.impactupgrade.integration.hubspot.exception.DuplicateContactException;
 import com.impactupgrade.integration.hubspot.exception.HubSpotException;
@@ -116,14 +117,22 @@ public class TwilioController {
       @FormParam("Body") String message,
       @FormParam("FirstName") String firstName,
       @FormParam("LastName") String lastName,
+      @FormParam("FullName") String fullName,
       @FormParam("Email") String email,
       @FormParam("HubSpotListId") Long hsListId
   ) {
     log.info("from={} message={}", from, message);
-    log.info("other fields: firstName={}, lastName={}, email={}, hsListId={}", firstName, lastName, email, hsListId);
+    log.info("other fields: firstName={}, lastName={}, fullName={}, email={}, hsListId={}",
+        firstName, lastName, fullName, email, hsListId);
 
     // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
     from = from.replace("+1", "");
+
+    if (!Strings.isNullOrEmpty(fullName)) {
+      String[] split = Utils.fullNameToFirstLast(fullName);
+      firstName = split[0];
+      lastName = split[1];
+    }
 
     // First, look for an existing contact based off the phone number. Important to use the PN since the
     // Twilio Studio flow has some flavors that assume the contact is already in HS, so only the PN (From) will be

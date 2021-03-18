@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.common.environment.MetadataRetriever;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.environment.Environment.RequestEnvironment;
+import com.impactupgrade.common.util.Utils;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;
@@ -272,14 +273,9 @@ public class PaymentGatewayEvent {
 
     // If we still don't have a first/last name, but do have full name, fall back to using a split.
     if (Strings.isNullOrEmpty(lastName) && !Strings.isNullOrEmpty(fullName)) {
-      String[] split = fullName.split("\s+");
+      String[] split = Utils.fullNameToFirstLast(fullName);
       firstName = split[0];
-      // Some donors are using a single-word business name in the individual name field, so this won't exist.
-      if (split.length > 1) {
-        // But we might also have some multi-word last names. So, catch them all. Rather than dealing with an array
-        // slice, simply remove the first name, then trim leading whitespace.
-        lastName = fullName.replace(firstName, "").trim();
-      }
+      lastName = split[1];
     }
 
     // If we still don't have a full name, but do have a first and last, combine them.
