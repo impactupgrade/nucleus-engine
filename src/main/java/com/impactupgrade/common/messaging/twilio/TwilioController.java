@@ -7,6 +7,7 @@ import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.messaging.MessagingService;
 import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.security.SecurityUtil;
+import com.impactupgrade.common.util.Utils;
 import com.impactupgrade.integration.hubspot.model.ContactArray;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
@@ -119,12 +120,20 @@ public class TwilioController {
       @FormParam("Body") String message,
       @FormParam("FirstName") String firstName,
       @FormParam("LastName") String lastName,
+      @FormParam("FullName") String fullName,
       @FormParam("Email") String email,
       @FormParam("ListId") String listId,
       @FormParam("HubSpotListId") @Deprecated Long hsListId
   ) throws Exception {
     log.info("from={} message={}", from, message);
-    log.info("other fields: firstName={}, lastName={}, email={}, hsListId={}", firstName, lastName, email, hsListId);
+    log.info("other fields: firstName={}, lastName={}, fullName={}, email={}, hsListId={}",
+        firstName, lastName, fullName, email, hsListId);
+
+    if (!Strings.isNullOrEmpty(fullName)) {
+      String[] split = Utils.fullNameToFirstLast(fullName);
+      firstName = split[0];
+      lastName = split[1];
+    }
 
     MessagingWebhookEvent event = new MessagingWebhookEvent();
     event.setPhone(from);
