@@ -49,6 +49,22 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   }
 
   @Override
+  public void updateDonation(CrmDonation donation) throws Exception {
+    SObject sObject = new SObject("Opportunity");
+    sObject.setId(donation.getId());
+
+    // TODO: duplicates setOpportunityFields -- may need to rethink the breakdown
+    if (donation.isSuccessful()) {
+      // TODO: If LJI/TER end up being the only ones using this, default it to Closed Won
+      sObject.setField("StageName", "Posted");
+    } else {
+      sObject.setField("StageName", "Failed Attempt");
+    }
+
+    sfdcClient.update(sObject);
+  }
+
+  @Override
   public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     SObject account = new SObject("Account");
     setAccountFields(account, paymentGatewayEvent);
@@ -162,7 +178,7 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
     }
 
     SObject opportunity = new SObject("Opportunity");
-    opportunity.setId(donation.get().id());
+    opportunity.setId(donation.get().getId());
     setOpportunityRefundFields(opportunity, paymentGatewayEvent);
 
     sfdcClient.update(opportunity);
@@ -265,7 +281,13 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
 
   protected CrmDonation toCrmDonation(SObject sObject) {
     String id = sObject.getId();
-    return new CrmDonation(id);
+
+    // TODO: yuck -- allow subclasses to more easily define custom mappers?
+    Object statusO = sObject.getField("StageName");
+    String status = statusO == null ? null : statusO.toString();
+    boolean successful = "Posted".equalsIgnoreCase(status) || "Closed Won".equalsIgnoreCase(status);
+
+    return new CrmDonation(id, successful);
   }
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {

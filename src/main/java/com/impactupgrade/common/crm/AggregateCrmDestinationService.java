@@ -1,5 +1,6 @@
 package com.impactupgrade.common.crm;
 
+import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 
 public class AggregateCrmDestinationService implements CrmDestinationService {
@@ -14,6 +15,15 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
   }
 
   // TODO: For all of these, will likely need to provide the primary id (or additional context) to the secondaries
+
+
+  @Override
+  public void updateDonation(CrmDonation donation) throws Exception {
+    crmPrimaryService.updateDonation(donation);
+    for (CrmDestinationService crmService : crmSecondaryServices) {
+      crmService.updateDonation(donation);
+    }
+  }
 
   @Override
   public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
