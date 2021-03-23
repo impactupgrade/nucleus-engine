@@ -1,8 +1,10 @@
 package com.impactupgrade.common.crm;
 
+import com.impactupgrade.common.crm.model.CrmRecurringDonation;
 import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
+import java.util.Optional;
 
 public interface CrmDestinationService {
 
@@ -14,7 +16,7 @@ public interface CrmDestinationService {
   void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
-  String closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  Optional<CrmRecurringDonation> closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
   void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
 }

@@ -1,8 +1,10 @@
 package com.impactupgrade.common.crm;
 
+import com.impactupgrade.common.crm.model.CrmRecurringDonation;
 import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
+import java.util.Optional;
 
 public class AggregateCrmDestinationService implements CrmDestinationService {
 
@@ -79,12 +81,12 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
   }
 
   @Override
-  public String closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    String rdId = crmPrimaryService.closeRecurringDonation(paymentGatewayEvent);
+  public Optional<CrmRecurringDonation> closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = crmPrimaryService.closeRecurringDonation(paymentGatewayEvent);
     for (CrmDestinationService crmService : crmSecondaryServices) {
       crmService.closeRecurringDonation(paymentGatewayEvent);
     }
-    return rdId;
+    return recurringDonation;
   }
 
   @Override

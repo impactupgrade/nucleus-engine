@@ -105,8 +105,8 @@ public class HubSpotCrmService implements CrmSourceService, CrmDestinationServic
   }
 
   @Override
-  public String closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    return null;
+  public Optional<CrmRecurringDonation> closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    return Optional.empty();
   }
 
   @Override
