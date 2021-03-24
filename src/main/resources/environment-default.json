@@ -1,0 +1,30 @@
+{
+  "accountMetadataKeys": ["account", "sf_account"],
+  "campaignMetadataKeys": ["campaign", "sf_campaign"],
+  "contactMetadataKeys": ["contact", "sf_contact"],
+  "recordTypeMetadataKeys": ["sf_opp_record_type"],
+
+  "hubSpot": {
+    "donationPipeline": {
+      "name": "Donations",
+      "successStage": "Closed won",
+      "refundedStage": "Refunded",
+      "failedStage": "Closed lost"
+    },
+    "recurringDonationPipeline": {
+      "name": "Recurring Donations",
+      "openStage": "Closed won",
+      "closedStage": "Closed lost"
+    },
+    "fields": {
+      "payment_gateway_name": "payment_gateway_name",
+      "payment_gateway_transaction_id": "payment_gateway_transaction_id",
+      "payment_gateway_customer_id": "payment_gateway_customer_id",
+      "payment_gateway_subscription_id": "payment_gateway_subscription_id",
+      "payment_gateway_refund_id": "payment_gateway_refund_id",
+      "payment_gateway_deposit_id": "payment_gateway_deposit_id",
+      "payment_gateway_deposit_date": "payment_gateway_deposit_date",
+      "payment_gateway_deposit_net_amount": "payment_gateway_deposit_net_amount"
+    }
+  }
+}

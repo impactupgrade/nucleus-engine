@@ -8,7 +8,7 @@ import com.impactupgrade.common.messaging.MessagingService;
 import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.security.SecurityUtil;
 import com.impactupgrade.common.util.Utils;
-import com.impactupgrade.integration.hubspot.model.ContactArray;
+import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.twiml.MessagingResponse;
@@ -69,7 +69,7 @@ public class TwilioController {
     Runnable thread = () -> {
       for (Long listId : listIds) {
         log.info("retrieving contacts from list {}", listId);
-        ContactArray contactArray = HubSpotClientFactory.client().lists().getContactsInList(listId);
+        ContactArray contactArray = HubSpotClientFactory.v1Client().contactList().getContactsInList(listId);
         log.info("found {} contacts in list {}", contactArray.getContacts().size(), listId);
         contactArray.getContacts().stream()
             .filter(c -> c.getProperties().getPhone() != null)

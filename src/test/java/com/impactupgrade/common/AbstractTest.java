@@ -27,6 +27,7 @@ public abstract class AbstractTest {
 
   @Mock protected StripeClient stripeClientMock;
 
+  // TODO: Need to provide a default EnvironmentConfig
   public class DefaultEnvironment extends Environment {
     @Override
     public DonationService donationService() {
