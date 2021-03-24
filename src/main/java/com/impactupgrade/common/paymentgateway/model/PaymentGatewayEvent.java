@@ -452,10 +452,10 @@ public class PaymentGatewayEvent {
   }
 
   private void processMetadata(MetadataRetriever metadataRetriever) {
-    String accountId = metadataRetriever.getMetadataValue(env.config().accountMetadataKeys);
-    String campaignId = metadataRetriever.getMetadataValue(env.config().campaignMetadataKeys);
-    String contactId = metadataRetriever.getMetadataValue(env.config().contactMetadataKeys);
-    String recordTypeId = metadataRetriever.getMetadataValue(env.config().recordTypeMetadataKeys);
+    String accountId = metadataRetriever.getMetadataValue(env.config().metadataKeys.account);
+    String campaignId = metadataRetriever.getMetadataValue(env.config().metadataKeys.campaign);
+    String contactId = metadataRetriever.getMetadataValue(env.config().metadataKeys.contact);
+    String recordTypeId = metadataRetriever.getMetadataValue(env.config().metadataKeys.recordType);
 
     // Only set the values if the new retrieval was not empty! This allows us to define fallbacks...
     if (!Strings.isNullOrEmpty(accountId)) {

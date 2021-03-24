@@ -23,7 +23,7 @@ public class StripeControllerTest extends AbstractTest {
   @Test
   public void testCustomCampaignMetadata() throws Exception {
     EnvironmentConfig envConfig = new EnvironmentConfig();
-    envConfig.campaignMetadataKeys = List.of("sf_campaign", "Designation Code");
+    envConfig.metadataKeys.campaign = List.of("sf_campaign", "Designation Code");
     Environment env = new DefaultEnvironment() {
       @Override
       public EnvironmentConfig config() {

@@ -1,10 +1,33 @@
 {
-  "accountMetadataKeys": ["account", "sf_account"],
-  "campaignMetadataKeys": ["campaign", "sf_campaign"],
-  "contactMetadataKeys": ["contact", "sf_contact"],
-  "recordTypeMetadataKeys": ["sf_opp_record_type"],
+  "metadataKeys":{
+    "account": ["account", "sf_account"],
+    "campaign": ["campaign", "sf_campaign"],
+    "contact": ["contact", "sf_contact"],
+    "recordType": ["sf_opp_record_type"]
+  },
 
-  "hubSpot": {
+  "salesforce": {
+    "fields": {
+      "paymentGatewayName": "",
+      "paymentGatewayTransactionId": "",
+      "paymentGatewayCustomerId": "",
+      "paymentGatewaySubscriptionId": "",
+      "paymentGatewayRefundId": "",
+      "paymentGatewayDepositId": "",
+      "paymentGatewayDepositDate": "",
+      "paymentGatewayDepositNetAmount": ""
+    },
+    "customFields": {
+      "account": [],
+      "campaign": [],
+      "contact": [],
+      "donation": [],
+      "recurringDonation": [],
+      "user": []
+    }
+  },
+
+  "hubspot": {
     "donationPipeline": {
       "name": "Donations",
       "successStage": "Closed won",
@@ -17,14 +40,15 @@
       "closedStage": "Closed lost"
     },
     "fields": {
-      "payment_gateway_name": "payment_gateway_name",
-      "payment_gateway_transaction_id": "payment_gateway_transaction_id",
-      "payment_gateway_customer_id": "payment_gateway_customer_id",
-      "payment_gateway_subscription_id": "payment_gateway_subscription_id",
-      "payment_gateway_refund_id": "payment_gateway_refund_id",
-      "payment_gateway_deposit_id": "payment_gateway_deposit_id",
-      "payment_gateway_deposit_date": "payment_gateway_deposit_date",
-      "payment_gateway_deposit_net_amount": "payment_gateway_deposit_net_amount"
-    }
+      "paymentGatewayName": "payment_gateway_name",
+      "paymentGatewayTransactionId": "payment_gateway_transaction_id",
+      "paymentGatewayCustomerId": "payment_gateway_customer_id",
+      "paymentGatewaySubscriptionId": "payment_gateway_subscription_id",
+      "paymentGatewayRefundId": "payment_gateway_refund_id",
+      "paymentGatewayDepositId": "payment_gateway_deposit_id",
+      "paymentGatewayDepositDate": "payment_gateway_deposit_date",
+      "paymentGatewayDepositNetAmount": "payment_gateway_deposit_net_amount"
+    },
+    "defaultSmsOptInList": ""
   }
 }

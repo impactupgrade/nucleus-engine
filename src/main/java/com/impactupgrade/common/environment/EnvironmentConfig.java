@@ -1,6 +1,5 @@
 package com.impactupgrade.common.environment;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -10,17 +9,38 @@ import java.util.List;
 public class EnvironmentConfig {
   // Even though it's a maintenance point, use a statically typed contract to prevent floating strings everywhere!
 
-  public List<String> accountMetadataKeys = new ArrayList<>();
-  public List<String> campaignMetadataKeys = new ArrayList<>();
-  public List<String> contactMetadataKeys = new ArrayList<>();
-  public List<String> recordTypeMetadataKeys = new ArrayList<>();
+  public MetadataKeys metadataKeys;
 
-  public HubSpot hubSpot = null;
+  public static class MetadataKeys {
+    public List<String> account;
+    public List<String> campaign;
+    public List<String> contact;
+    public List<String> recordType;
+  }
 
-  public static class HubSpot {
+  public Salesforce salesforce;
+
+  public static class Salesforce {
+    public CRMFieldsDefinition fields;
+    public SalesforceCustomFields customFields;
+
+    public static class SalesforceCustomFields {
+      public List<String> account;
+      public List<String> campaign;
+      public List<String> contact;
+      public List<String> donation;
+      public List<String> recurringDonation;
+      public List<String> user;
+    }
+  }
+
+  public Hubspot hubspot;
+
+  public static class Hubspot {
     public HubSpotDonationPipeline donationPipeline;
     public HubSpotRecurringDonationPipeline recurringDonationPipeline;
     public CRMFieldsDefinition fields;
+    public String defaultSmsOptInList;
 
     public static class HubSpotDonationPipeline {
       public String name;

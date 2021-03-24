@@ -75,7 +75,7 @@ public class Environment {
   }
 
   /**
-   * Define one CRMs as the primary integration point for SMS engagement.
+   * Define one CRM as the primary integration point for SMS engagement.
    */
   public CrmSourceService crmSMSSourceService() {
     log.error("NOT IMPLEMENTED");
