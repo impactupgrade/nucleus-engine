@@ -1,8 +1,11 @@
 package com.impactupgrade.common.crm;
 
-import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.crm.model.CrmDonation;
+import com.impactupgrade.common.crm.model.ImportEvent;
+import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
+
+import java.util.List;
 
 public interface CrmDestinationService {
 
@@ -18,4 +21,6 @@ public interface CrmDestinationService {
 
   String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
   void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
+
+  void processImport(List<ImportEvent> importEvents) throws Exception;
 }

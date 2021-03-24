@@ -1,8 +1,11 @@
 package com.impactupgrade.common.crm;
 
-import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.crm.model.CrmDonation;
+import com.impactupgrade.common.crm.model.ImportEvent;
+import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
+
+import java.util.List;
 
 public class AggregateCrmDestinationService implements CrmDestinationService {
 
@@ -16,7 +19,6 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
   }
 
   // TODO: For all of these, will likely need to provide the primary id (or additional context) to the secondaries
-
 
   @Override
   public void updateDonation(CrmDonation donation) throws Exception {
@@ -100,6 +102,14 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
     crmPrimaryService.smsSignup(messagingWebhookEvent);
     for (CrmDestinationService crmService : crmSecondaryServices) {
       crmService.smsSignup(messagingWebhookEvent);
+    }
+  }
+
+  @Override
+  public void processImport(List<ImportEvent> importEvents) throws Exception {
+    crmPrimaryService.processImport(importEvents);
+    for (CrmDestinationService crmService : crmSecondaryServices) {
+      crmService.processImport(importEvents);
     }
   }
 }

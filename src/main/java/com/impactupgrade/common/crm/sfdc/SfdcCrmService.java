@@ -1,12 +1,16 @@
 package com.impactupgrade.common.crm.sfdc;
 
 import com.google.common.base.Strings;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.impactupgrade.common.crm.CrmDestinationService;
 import com.impactupgrade.common.crm.CrmSourceService;
 import com.impactupgrade.common.crm.model.CrmCampaign;
 import com.impactupgrade.common.crm.model.CrmContact;
 import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.crm.model.CrmRecurringDonation;
+import com.impactupgrade.common.crm.model.ImportEvent;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
@@ -15,8 +19,10 @@ import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.text.ParseException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
 
@@ -262,6 +268,115 @@ public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
   @Override
   public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
     // TODO: Different for every org, so allow it to be overridden. But, we should start shifting all this to env.json
+  }
+
+  @Override
+  public void processImport(List<ImportEvent> importEvents) throws Exception {
+    // hold a map of campaigns so we don't have to visit them each time
+    LoadingCache<String, Optional<SObject>> campaignCache = CacheBuilder.newBuilder().build(
+        new CacheLoader<>() {
+          @Override
+          public Optional<SObject> load(String campaignId) throws ConnectionException, InterruptedException {
+            log.info("loading campaign {}", campaignId);
+            return sfdcClient.getCampaignById(campaignId);
+          }
+        }
+    );
+
+    for (int i = 0; i < importEvents.size(); i++) {
+      ImportEvent importEvent = importEvents.get(i);
+
+      log.info("processing row {} of {}: {}", i + 2, importEvents.size() + 1, importEvent);
+
+      String email = importEvent.getEmail();
+      String firstName = importEvent.getFirstName();
+      String lastName = importEvent.getLastName();
+
+      // First try to get contact by email
+      Optional<SObject> existingContact = sfdcClient.getContactByEmail(email);
+      log.info("found contact for email {}: {}", email, existingContact.isPresent());
+
+      // If none by email, get contact by name
+      if (existingContact.isEmpty()) {
+        // TODO: Break this out into a separate method so that DR can filter by FN?
+        List<SObject> existingContacts = sfdcClient.getContactsByName(firstName, lastName);
+
+        log.info("number of contacts for name {} {}: {}", firstName, lastName, existingContacts.size());
+
+        if (existingContacts.size() > 1) {
+          // To be safe, let's skip this row for now and deal with it manually...
+          log.warn("SKIPPING row due to multiple contacts found!");
+          break;
+        } else {
+          existingContact = existingContacts.stream().findFirst();
+        }
+      }
+
+      SObject contact;
+      if (existingContact.isEmpty()) {
+        // If still can't find contact, create new one
+        contact = new SObject("Contact");
+        setBulkImportContactFields(contact, importEvent);
+        String contactId = sfdcClient.insert(contact).getId();
+        // retrieve the contact again, fetching the accountId (and contactId) that was auto created
+        contact = sfdcClient.getContactById(contactId).get();
+      } else {
+        contact = existingContact.get();
+      }
+
+      SObject opportunity = new SObject("Opportunity");
+      setBulkImportOpportunityFields(opportunity, contact, campaignCache, importEvent);
+      sfdcClient.insert(opportunity).getId();
+    }
+  }
+
+  protected void setBulkImportContactFields(SObject contact, ImportEvent importEvent) {
+    contact.setField("OwnerId", importEvent.getOwnerId());
+    contact.setField("FirstName", importEvent.getFirstName());
+    contact.setField("LastName", importEvent.getLastName());
+    contact.setField("MailingStreet", importEvent.getStreet());
+    contact.setField("MailingCity", importEvent.getCity());
+    contact.setField("MailingState", importEvent.getState());
+    contact.setField("MailingPostalCode", importEvent.getZip());
+    contact.setField("MailingCountry", importEvent.getCountry());
+    contact.setField("HomePhone", importEvent.getHomePhone());
+    contact.setField("MobilePhone", importEvent.getMobilePhone());
+    contact.setField("Email", importEvent.getEmail());
+  }
+
+  protected void setBulkImportOpportunityFields(SObject opportunity, SObject contact,
+      LoadingCache<String, Optional<SObject>> campaignCache, ImportEvent importEvent) throws ConnectionException, InterruptedException, ParseException, ExecutionException {
+    opportunity.setField("AccountId", contact.getField("AccountId"));
+    opportunity.setField("ContactId", contact.getId());
+    if (!Strings.isNullOrEmpty(importEvent.getOpportunityRecordTypeId())) {
+      opportunity.setField("RecordTypeId", importEvent.getOpportunityRecordTypeId());
+    } else if (!Strings.isNullOrEmpty(importEvent.getOpportunityRecordTypeName())) {
+      SObject salesRecordType = sfdcClient.getRecordTypeByName(importEvent.getOpportunityRecordTypeName()).get();
+      opportunity.setField("RecordTypeId", salesRecordType.getId());
+    }
+    opportunity.setField("Name", importEvent.getOpportunityName());
+    opportunity.setField("Description", importEvent.getOpportunityDescription());
+    opportunity.setField("Amount", importEvent.getOpportunityAmount().doubleValue());
+    opportunity.setField("StageName", importEvent.getOpportunityStageName());
+    opportunity.setField("CloseDate", importEvent.getOpportunityDate());
+
+    if (!Strings.isNullOrEmpty(importEvent.getOpportunityCampaignId())) {
+      opportunity.setField("CampaignId", importEvent.getOpportunityCampaignId());
+    } else if (!Strings.isNullOrEmpty(importEvent.getOpportunityCampaignExternalRef())) {
+      Optional<SObject> campaign = sfdcClient.getCampaignById(importEvent.getOpportunityCampaignExternalRef());
+      campaign.ifPresent(c -> opportunity.setField("CampaignId", c.getId()));
+    }
+
+    // use the campaign owner if present, but fall back to the sheet otherwise
+    String campaignId = opportunity.getField("CampaignId") == null ? null : opportunity.getField("CampaignId").toString();
+    if (!Strings.isNullOrEmpty(campaignId)) {
+      Optional<SObject> campaign = campaignCache.get(campaignId);
+      campaign.ifPresent(c -> opportunity.setField("OwnerId", c.getField("OwnerId").toString()));
+    }
+    String ownerId = opportunity.getField("OwnerId") == null ? null : opportunity.getField("OwnerId").toString();
+    if (Strings.isNullOrEmpty(ownerId)) {
+      opportunity.setField("OwnerId", importEvent.getOpportunityOwnerId());
+    }
   }
 
   protected Optional<SObject> getCampaignOrDefault(PaymentGatewayEvent paymentGatewayEvent) throws ConnectionException, InterruptedException {

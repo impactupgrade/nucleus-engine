@@ -6,12 +6,10 @@ import com.impactupgrade.common.crm.CrmSourceService;
 import com.impactupgrade.common.crm.model.CrmContact;
 import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.crm.model.CrmRecurringDonation;
+import com.impactupgrade.common.crm.model.ImportEvent;
 import com.impactupgrade.common.environment.Environment;
 import com.impactupgrade.common.messaging.MessagingWebhookEvent;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
-import com.impactupgrade.integration.hubspot.exception.HubSpotException;
-import com.impactupgrade.integration.hubspot.v1.builder.ContactBuilder;
-import com.impactupgrade.integration.hubspot.v1.exception.DuplicateContactException;
 import com.impactupgrade.integration.hubspot.v3.Association;
 import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
@@ -26,6 +24,7 @@ import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
 import java.util.Optional;
 
 public class HubSpotCrmService implements CrmDestinationService, CrmSourceService {
@@ -328,5 +327,10 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
     // TODO: shift to V3
     HubSpotClientFactory.v1Client().contactList().addContactToList(Long.parseLong(listId), Long.parseLong(messagingWebhookEvent.getCrmContactId()));
     log.info("added HubSpot contact {} to list {}", messagingWebhookEvent.getCrmContactId(), listId);
+  }
+
+  @Override
+  public void processImport(List<ImportEvent> importEvents) throws Exception {
+    // TODO
   }
 }
