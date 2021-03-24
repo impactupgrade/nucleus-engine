@@ -1,0 +1,54 @@
+{
+  "metadataKeys":{
+    "account": ["account", "sf_account"],
+    "campaign": ["campaign", "sf_campaign"],
+    "contact": ["contact", "sf_contact"],
+    "recordType": ["sf_opp_record_type"]
+  },
+
+  "salesforce": {
+    "fields": {
+      "paymentGatewayName": "",
+      "paymentGatewayTransactionId": "",
+      "paymentGatewayCustomerId": "",
+      "paymentGatewaySubscriptionId": "",
+      "paymentGatewayRefundId": "",
+      "paymentGatewayDepositId": "",
+      "paymentGatewayDepositDate": "",
+      "paymentGatewayDepositNetAmount": ""
+    },
+    "customFields": {
+      "account": [],
+      "campaign": [],
+      "contact": [],
+      "donation": [],
+      "recurringDonation": [],
+      "user": []
+    }
+  },
+
+  "hubspot": {
+    "donationPipeline": {
+      "name": "Donations",
+      "successStage": "Closed won",
+      "refundedStage": "Refunded",
+      "failedStage": "Closed lost"
+    },
+    "recurringDonationPipeline": {
+      "name": "Recurring Donations",
+      "openStage": "Closed won",
+      "closedStage": "Closed lost"
+    },
+    "fields": {
+      "paymentGatewayName": "payment_gateway_name",
+      "paymentGatewayTransactionId": "payment_gateway_transaction_id",
+      "paymentGatewayCustomerId": "payment_gateway_customer_id",
+      "paymentGatewaySubscriptionId": "payment_gateway_subscription_id",
+      "paymentGatewayRefundId": "payment_gateway_refund_id",
+      "paymentGatewayDepositId": "payment_gateway_deposit_id",
+      "paymentGatewayDepositDate": "payment_gateway_deposit_date",
+      "paymentGatewayDepositNetAmount": "payment_gateway_deposit_net_amount"
+    },
+    "defaultSmsOptInList": ""
+  }
+}
