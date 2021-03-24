@@ -74,7 +74,7 @@ public class SfdcBulkClient {
     try (
         ByteArrayInputStream queryIS = new ByteArrayInputStream(query.getBytes());
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("com/impactupgrade/common/sfdc/ownertransfer_spec.csv")
+            .getResourceAsStream("sfdc/ownertransfer_spec.csv")
     ) {
       BulkConnection bulkConn = bulkConn();
 
@@ -134,7 +134,7 @@ public class SfdcBulkClient {
   public void uploadWindfallFile(File contactFile) throws AsyncApiException, ConnectionException, IOException {
     try (
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("com/impactupgrade/common/sfdc/windfall_spec.csv");
+            .getResourceAsStream("sfdc/windfall_spec.csv");
         InputStream contactFileInputStream = new FileInputStream(contactFile)
     ) {
       BulkConnection bulkConn = bulkConn();
@@ -153,7 +153,7 @@ public class SfdcBulkClient {
   public void uploadIWaveFile(File iwaveFile) throws AsyncApiException, ConnectionException, IOException {
     try (
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("com/impactupgrade/common/sfdc/iwave_spec.csv");
+            .getResourceAsStream("sfdc/iwave_spec.csv");
         InputStream iwaveFileInputStream = new FileInputStream(iwaveFile)
     ) {
       BulkConnection bulkConn = bulkConn();
