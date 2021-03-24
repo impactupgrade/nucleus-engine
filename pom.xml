@@ -21,6 +21,15 @@
     </dependency>
   </dependencies>
 
+  <dependencies>
+    <!-- TODO: move to hub-parent -->
+    <dependency>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+      <version>20201115</version>
+    </dependency>
+  </dependencies>
+
   <build>
     <plugins>
       <!-- Allows the example to be run via 'mvn compile exec:java' -->
