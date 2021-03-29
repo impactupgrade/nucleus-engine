@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.sforce.soap.partner.sobject.SObject;
+import com.sforce.ws.ConnectionException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;

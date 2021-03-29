@@ -1,5 +1,7 @@
 package com.impactupgrade.nucleus.controller;
 
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.segment.CrmSourceService;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.security.SecurityUtil;
@@ -8,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.Produces;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -22,10 +25,12 @@ public class PaymentGatewayController {
 
   protected final Environment env;
   protected final CrmSourceService crmSourceService;
+  protected final DonationService donationService;
 
   public PaymentGatewayController(Environment env) {
     this.env = env;
     crmSourceService = env.crmSourceService();
+    donationService = env.donationService();
   }
 
   // TODO: Rethink this method. I'm not excited about getRecurringDonation having to return the gateway-specific
@@ -50,5 +55,28 @@ public class PaymentGatewayController {
 //      log.warn("{} was not found in the source CRM", recurringDonationId);
 //      return Response.status(Response.Status.NOT_FOUND).build();
 //    }
+  }
+
+  @Path("/update-recurring-donation-amount")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response updateRecurringDonationAmount(
+      @FormParam("rd-id") String recurringDonationId,
+      @FormParam("amount") Double amount,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    SecurityUtil.verifyApiKey(request);
+
+    final Environment.RequestEnvironment requestEnv = env.newRequestEnvironment(request);
+
+    // TODO: helper method taking form data -> ManageDonationEvent
+    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv);
+    manageDonationEvent.setDonationId(recurringDonationId);
+    manageDonationEvent.setAmount(amount);
+
+    donationService.updateRecurringDonation(manageDonationEvent);
+
+    return Response.status(200).build();
   }
 }

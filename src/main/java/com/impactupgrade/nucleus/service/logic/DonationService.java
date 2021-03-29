@@ -1,11 +1,14 @@
 package com.impactupgrade.nucleus.service.logic;
 
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.service.segment.AggregateCrmDestinationService;
 import com.impactupgrade.nucleus.service.segment.CrmSourceService;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
+import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,11 +21,13 @@ public class DonationService {
   private final Environment env;
   private final CrmSourceService crmSource;
   private final AggregateCrmDestinationService crmDestinations;
+  private final PaymentGatewayService paymentGatewayService;
 
   public DonationService(Environment env) {
     this.env = env;
     crmSource = env.crmSourceService();
     crmDestinations = env.crmDonationDestinationServices();
+    paymentGatewayService = env.paymentGatewayService();
   }
 
   public void createDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -103,6 +108,19 @@ public class DonationService {
     }
 
     crmDestinations.closeRecurringDonation(paymentGatewayEvent);
+  }
+
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = crmSource.getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getDonationId());
+      return;
+    }
+
+    crmDestinations.updateRecurringDonation(manageDonationEvent);
+    manageDonationEvent.setSubscriptionId(crmSource.getSubscriptionId(manageDonationEvent));
+    paymentGatewayService.updateSubscription(manageDonationEvent);
   }
 
   public void chargeDeposited(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
