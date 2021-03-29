@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.impactupgrade.nucleus.controller.BackupController;
+import com.impactupgrade.nucleus.controller.DonationSpringController;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.AggregateCrmDestinationService;
 import com.impactupgrade.nucleus.service.segment.CrmSourceService;
@@ -40,6 +41,7 @@ public class Environment {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public BackupController backupController() { return new BackupController(); }
+  public DonationSpringController donationSpringController() { return new DonationSpringController(this); }
   public PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(this); }
   public PaymentSpringController paymentSpringController() { return new PaymentSpringController(this); }
   public SfdcController sfdcController() { return new SfdcController(this); }

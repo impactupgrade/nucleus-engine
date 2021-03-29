@@ -1,7 +1,6 @@
 package com.impactupgrade.nucleus;
 
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.filter.CORSFilter;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
@@ -9,13 +8,17 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
+import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
+import javax.servlet.DispatcherType;
 import java.net.URL;
+import java.util.EnumSet;
 
 public class App {
 
@@ -37,17 +40,24 @@ public class App {
     httpConnector.setIdleTimeout(5 * 60 * 1000);
     server.addConnector(httpConnector);
 
-    ServletContextHandler servletHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
-    servletHandler.setContextPath("/");
-    servletHandler.setSessionHandler(new SessionHandler());
+    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+    context.setContextPath("/");
+    context.setSessionHandler(new SessionHandler());
+
+    // CORS
+    FilterHolder cors = context.addFilter(CrossOriginFilter.class, "/*", EnumSet.of(DispatcherType.REQUEST));
+    cors.setInitParameter(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
+    cors.setInitParameter(CrossOriginFilter.ACCESS_CONTROL_ALLOW_ORIGIN_HEADER, "*");
+    cors.setInitParameter(CrossOriginFilter.ALLOWED_METHODS_PARAM, "GET,POST,PUT,DELETE,OPTIONS,HEAD");
+    cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin,Authorization");
 
     // API/REST (Jersey)
     ResourceConfig apiConfig = new ResourceConfig();
 
-    apiConfig.register(new CORSFilter());
     apiConfig.register(new SecurityExceptionMapper());
 
     apiConfig.register(getEnvironment().backupController());
+    apiConfig.register(getEnvironment().donationSpringController());
     apiConfig.register(getEnvironment().paymentGatewayController());
     apiConfig.register(getEnvironment().paymentSpringController());
     apiConfig.register(getEnvironment().sfdcController());
@@ -58,9 +68,9 @@ public class App {
 
     getEnvironment().registerAPIControllers(apiConfig);
 
-    servletHandler.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
+    context.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
 
-    getEnvironment().registerServlets(servletHandler);
+    getEnvironment().registerServlets(context);
 
     // static resources
     ClassLoader cl = App.class.getClassLoader();
@@ -68,20 +78,14 @@ public class App {
     URL staticFileUrl = cl.getResource("static/test.txt");
     // grab the absolute path of the static dir itself
     String staticDirPath = staticFileUrl.toURI().resolve("./").normalize().toString();
-    // use that as the resource base
-    servletHandler.setResourceBase(staticDirPath);
+    // use that as the static resource base
+    context.setResourceBase(staticDirPath);
 
-    // servlet for static resources
-    ServletHolder holderHome = new ServletHolder("static", DefaultServlet.class);
-    holderHome.setInitParameter("resourceBase", staticDirPath);
-    holderHome.setInitParameter("pathInfoOnly", "true");
-    servletHandler.addServlet(holderHome, "/static/*");
-
-    // TODO: We may not end up needing this, but standard practice...
+    // needed primarily to serve the static content
     ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
-    servletHandler.addServlet(defaultServlet, "/");
+    context.addServlet(defaultServlet, "/");
 
-    server.setHandler(servletHandler);
+    server.setHandler(context);
     server.start();
   }
 
@@ -89,7 +93,8 @@ public class App {
     return __defaultEnv;
   }
 
-  // TODO: Temporary, mainly for DS testing.
+  // TODO: Temporary? Not sure if we'll run hub-common directly, or wrap it with nucleus-core for multitenancy.
+  // For now, this is fine -- mainly need it for DS.
   public static void main(String... args) throws Exception {
     new App().start();
   }
