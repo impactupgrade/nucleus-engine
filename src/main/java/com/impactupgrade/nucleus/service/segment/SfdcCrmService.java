@@ -9,19 +9,20 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import java.text.ParseException;
+import java.util.concurrent.ExecutionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.text.ParseException;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
 
@@ -57,6 +58,15 @@ public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(paymentGatewayEvent.getSubscriptionId()));
+  }
+
+  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(manageDonationEvent.getDonationId()));
+  }
+
+  @Override
+  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws ConnectionException, InterruptedException {
+    return sfdcClient.getSubscriptionId(manageDonationEvent.getDonationId());
   }
 
   @Override
@@ -329,6 +339,22 @@ public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
     }
   }
 
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      return;
+    }
+
+    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    toUpdate.setId(manageDonationEvent.getDonationId());
+    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
+      toUpdate.setField("Npe03__Amount__c", manageDonationEvent.getAmount());
+    }
+    sfdcClient.update(toUpdate);
+  }
+
   protected void setBulkImportContactFields(SObject contact, CRMImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());
     contact.setField("FirstName", importEvent.getFirstName());
@@ -431,7 +457,10 @@ public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
 
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
     String id = sObject.getId();
-    return new CrmRecurringDonation(id);
+    String accountId = (String) sObject.getField("npe03__Organization__c");
+    String subscriptionId = (String) sObject.getField(env.config().salesforce.fields.paymentGatewaySubscriptionId);
+    Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
+    return new CrmRecurringDonation(id, accountId, subscriptionId, amount);
   }
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {

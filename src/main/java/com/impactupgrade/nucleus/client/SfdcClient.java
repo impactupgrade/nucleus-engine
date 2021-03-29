@@ -3,6 +3,8 @@ package com.impactupgrade.nucleus.client;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.sforce.soap.partner.sobject.SObject;
@@ -307,6 +309,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.config().salesforce.customFields.recurringDonation) + " from npe03__Recurring_Donation__c where " + env.config().salesforce.fields.paymentGatewaySubscriptionId + " = '" + subscriptionId + "'";
     LoggingUtil.verbose(log, query);
     return querySingle(query);
+  }
+
+  public String getSubscriptionId(String recurringDonationId) throws ConnectionException, InterruptedException {
+    String query = "select " + env.config().salesforce.fields.paymentGatewaySubscriptionId + " from npe03__Recurring_Donation__c where id='" + recurringDonationId + "'";
+    LoggingUtil.verbose(log, query);
+    return (String) querySingle(query).get().getField(env.config().salesforce.fields.paymentGatewaySubscriptionId);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

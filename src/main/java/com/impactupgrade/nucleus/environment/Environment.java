@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.impactupgrade.nucleus.controller.BackupController;
+import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.AggregateCrmDestinationService;
 import com.impactupgrade.nucleus.service.segment.CrmSourceService;
 import com.impactupgrade.nucleus.client.SfdcClient;
@@ -57,6 +58,14 @@ public class Environment {
   public SfdcClient sfdcClient(String username, String password) { return new SfdcClient(this, username, password); }
 
   // TODO: replace these methods with string-based selectors in json, once merged with the hubspot branch
+
+  /**
+   * Define primary PaymentGateway
+   */
+  public PaymentGatewayService paymentGatewayService() {
+    log.error("NOT IMPLEMENTED");
+    return null;
+  }
 
   /**
    * Define a single CRM as the end-all source-of-truth for retrievals and queries.

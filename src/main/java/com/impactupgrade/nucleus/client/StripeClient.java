@@ -2,6 +2,8 @@ package com.impactupgrade.nucleus.client;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
+import com.stripe.Stripe;
+import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.BalanceTransactionCollection;
@@ -16,8 +18,10 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.model.PaymentSource;
 import com.stripe.model.Payout;
 import com.stripe.model.Plan;
+import com.stripe.model.Price;
 import com.stripe.model.Product;
 import com.stripe.model.Subscription;
+import com.stripe.model.SubscriptionItem;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.ChargeCreateParams;
 import com.stripe.param.CustomerCreateParams;
@@ -28,6 +32,7 @@ import com.stripe.param.PayoutListParams;
 import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
+import com.stripe.param.SubscriptionUpdateParams;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -79,10 +84,18 @@ public class StripeClient {
     return PaymentIntent.retrieve(id, requestOptions);
   }
 
+  public Subscription getSubscription(String id) throws StripeException {
+    return Subscription.retrieve(id, requestOptions);
+  }
+
   public void cancelSubscription(String id) throws StripeException {
     log.info("cancelling subscription {}...", id);
     Subscription.retrieve(id, requestOptions).cancel();
     log.info("cancelled subscription {}", id);
+  }
+
+  public SubscriptionItem getSubscriptionItem(String id) throws StripeException {
+    return SubscriptionItem.retrieve(id, requestOptions);
   }
 
   public Iterable<Charge> getAllCharges(Date startDate, Date endDate) throws StripeException {
@@ -221,6 +234,31 @@ public class StripeClient {
     return newSource;
   }
 
+  public void updateSubscriptionAmount(String subscriptionId, double dollarAmount) throws StripeException {
+    log.info("updating subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+
+    Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
+    Plan existingPlan = subscription.getItems().getData().get(0).getPlan();
+
+    Plan plan = createPlan(dollarAmount, existingPlan.getCurrency(), existingPlan.getInterval());
+
+    // update the subscription with the new plan
+    SubscriptionUpdateParams subscriptionUpdateParams = SubscriptionUpdateParams.builder()
+        .setCancelAtPeriodEnd(false)
+        .setProrationBehavior(SubscriptionUpdateParams.ProrationBehavior.NONE)
+        .addItem(
+            // overwrite the existing item with the new one by using the existing id
+            SubscriptionUpdateParams.Item.builder()
+                .setId(subscription.getItems().getData().get(0).getId())
+                .setPlan(plan.getId())
+                .build())
+        .build();
+
+    subscription.update(subscriptionUpdateParams, requestOptions);
+
+    log.info("updated subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+  }
+
   // TODO: SFDC specific
   public Customer updateCustomer(Customer customer, String sfAccountId, String sfContactId) throws StripeException {
     Map<String, String> customerMetadata = new HashMap<>();
@@ -289,4 +327,57 @@ public class StripeClient {
         .build();
     return Subscription.create(subscriptionParams, requestOptions);
   }
+
+  public Plan createPlan(double dollarAmount, String currencyCode, String frequency) throws StripeException {
+    frequency = frequency.toLowerCase(Locale.ROOT);
+    if ("week".equalsIgnoreCase(frequency)) {
+      frequency = "weekly";
+    } else if ("month".equalsIgnoreCase(frequency)) {
+      frequency = "monthly";
+    } else if ("year".equalsIgnoreCase(frequency)) {
+      frequency = "yearly";
+    }
+
+    int wholeDollarAmount = (int) dollarAmount;
+
+    String planId = "plan_" + wholeDollarAmount + "_" + currencyCode + "_" + frequency;
+
+    try {
+      Plan plan = Plan.retrieve(planId, requestOptions);
+      if (plan != null) {
+        log.info("plan {} already exists", planId);
+        return plan;
+      }
+    } catch (InvalidRequestException e) {
+      // fall-through -- SDK currently throws this if the plan does *not* exist
+    }
+
+    log.info("plan {} does not exist; creating it...", planId);
+
+    PlanCreateParams.Interval interval = PlanCreateParams.Interval.MONTH;
+    if ("yearly".equalsIgnoreCase(frequency)) {
+      interval = PlanCreateParams.Interval.YEAR;
+    } else if ("weekly".equalsIgnoreCase(frequency)) {
+      interval = PlanCreateParams.Interval.WEEK;
+    }
+
+    PlanCreateParams planCreateParams = PlanCreateParams
+        .builder()
+        .setId(planId)
+        .setProduct(
+            PlanCreateParams.Product.builder()
+                .setName("plan " + wholeDollarAmount + " " + currencyCode + " " + frequency)
+                .build()
+        )
+        .setAmount((long) (dollarAmount * 100))
+        .setCurrency(currencyCode)
+        .setInterval(interval)
+        .build();
+    Plan plan = Plan.create(planCreateParams, requestOptions);
+
+    log.info("created plan {}", planId);
+
+    return plan;
+  }
+
 }
