@@ -207,30 +207,31 @@ var donationspring = new function () {
           y[i].parentElement.classList.remove("invalid");
           y[i].setAttribute("aria-invalid", !valid);
         }
+        switch (y[i].name) {
+          case 'email':
+            if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
+              y[i].parentElement.classList.add("invalid");
+              y[i].setAttribute("aria-invalid", valid);
+              valid = false;
+            } else {
+              y[i].parentElement.classList.remove("invalid");
+              y[i].setAttribute("aria-invalid", !valid);
+            }
+            break;
+          case 'business_email':
+            if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
+              y[i].parentElement.classList.add("invalid");
+              y[i].setAttribute("aria-invalid", valid);
+              valid = false;
+            } else {
+              y[i].parentElement.classList.remove("invalid");
+              y[i].setAttribute("aria-invalid", !valid);
+            }
+            break;
+        }
       }
 
-      switch (y[i].name) {
-        case 'email':
-          if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
-            y[i].parentElement.classList.add("invalid");
-            y[i].setAttribute("aria-invalid", valid);
-            valid = false;
-          } else {
-            y[i].parentElement.classList.remove("invalid");
-            y[i].setAttribute("aria-invalid", !valid);
-          }
-          break;
-        case 'business_email':
-          if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
-            y[i].parentElement.classList.add("invalid");
-            y[i].setAttribute("aria-invalid", valid);
-            valid = false;
-          } else {
-            y[i].parentElement.classList.remove("invalid");
-            y[i].setAttribute("aria-invalid", !valid);
-          }
-          break;
-      }
+      
 
     }
 
