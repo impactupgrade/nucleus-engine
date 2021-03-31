@@ -9,15 +9,18 @@
 <body style="background-color: rgb(212, 212, 212);">
 
   <script type="text/javascript" src="js/ds.js"></script>
-  <div style="height: 200px;"></div>
-  <div id="donationspring"></div>
-  <div style="height: 2000px;">
-  </div>
+  <p>iFrame Button and Form</p>
+  <div data-ds-display="button"></div>
+  <br><br><br><br><br>
+  <p>Inline Form</p>
+  <div data-ds-display="form"></div>
 
-  <script>
+
+
+<script>
     ds.init({
-      'id': 'client_id',
-      //'primary_color': '#6a0dad', // purple = #6a0dad
+      /* 'form_title': 'Demo Title',
+      'primary_color': '#6a0dad', // purple = #6a0dad
       'form_type': 'donation', // donation, campaign, event
       'default_donation_type': 'onetime', // onetime, monthly
       'values': [25,50,100,500,1000,1500,2000],
@@ -35,7 +38,7 @@
           ["Option #2", "Option 2"],
           ["Option #3", "Option 3"],
         ]
-      }
+      } */
     });
   </script>
 

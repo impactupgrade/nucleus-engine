@@ -1,18 +1,18 @@
 var donationspring = new function () {
 
-  var current_step = 1,
-    stripe = Stripe("pk_test_TYooMQauvdEDq54NiTphI7jx"),
-    card = '',
-    //modal = document.getElementById("ds_modal"),
-    thankyou_msg = '';
+  var current_step, stripe, card, thankyou_msg;
+  //modal = document.getElementById("ds_modal"),
 
-  ds_initial_values = function (args) {
+  function ds_initial_values(args) {
+    current_step = 1;
+    stripe = Stripe("pk_test_TYooMQauvdEDq54NiTphI7jx");
     amount_input = document.querySelectorAll('.amount');
     default_donation_type = args.default_donation_type || "onetime";
     form_type = args.form_type || "donation";
     default_amt = args.default_amt || 50;
     values = args.values || [25, 50, 100, 500, 1000, 1500, 2000];
     thankyou_msg = args.thankyou_msg || "<p>Thank you for your donation! You really help to make a difference!</p>";
+    form_title = args.form_title || "Donation Spring";
 
     switch (default_donation_type) {
       case 'monthly':
@@ -43,6 +43,7 @@ var donationspring = new function () {
         document.getElementById("ds_type-donation").style.display = "block";
     }
 
+    document.getElementById("ds_modal__title").innerHTML = form_title;
     var donation_amounts = document.getElementById("donation_amounts");
     document.getElementById("da_manual_amount").value = default_amt;
     document.getElementsByName("donation_amount")[0].value = default_amt;

@@ -6,11 +6,27 @@ var ds = new function () {
   this.init = function (args) {
     primary_color = args.primary_color || primary_color;
     toHSL(primary_color);
-    if (document.body.contains(document.getElementById('donationspring'))) {
-      ds.options = args;
-      addbutton();
-      addform();
-      addreminder();
+
+    loadScript("https://js.stripe.com/v3/", function () {
+      console.log('Stripe Loaded');
+    });
+
+    var ds_displays = document.querySelectorAll('[data-ds-display]');
+
+    for (var i in ds_displays) {
+      if (ds_displays.hasOwnProperty(i)) {
+        switch (ds_displays[i].getAttribute('data-ds-display')) {
+          case "button":
+            ds.options = args;
+            addbutton();
+            addform_iframe();
+            //addreminder();
+            break;
+          case "form":
+            addform_inline(args);
+            break;
+        }
+      }
     }
   }
 
@@ -23,17 +39,16 @@ var ds = new function () {
       //event.preventDefault();
       //event.stopPropagation();
       //form.focus();
-      console.log('out of focus');
     });
-    ds.hidereminder();
+    //ds.hidereminder();
   };
 
   this.hideform = function () {
     document.body.style.overflow = "inherit"
     document.getElementById('DSFORM').style.display = "none";
-    if (!ds.ds_submitted){
+  /*  if (!ds.ds_submitted){
       ds.showreminder();
-    }
+    } */
   };
 
   this.showreminder = function () {
@@ -45,21 +60,52 @@ var ds = new function () {
   };
 
   addbutton = function () {
-    document.getElementById('donationspring').innerHTML += '<iframe width="125" title="Donation Spring" height="40" src="button.html" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="visibility: visible; display: inline-block !important; vertical-align: middle !important; width: 125px !important; min-width: 40px !important; max-width: 125px !important; height: 40px !important; min-height: 40px !important; max-height: 125px !important;" id="DSDB"></iframe>'
+    document.querySelector('[data-ds-display="button"]').innerHTML += '<iframe width="125" title="Donation Spring" height="40" src="button.html" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="visibility: visible; display: inline-block !important; vertical-align: middle !important; width: 125px !important; min-width: 40px !important; max-width: 125px !important; height: 40px !important; min-height: 40px !important; max-height: 125px !important;" id="DSDB"></iframe>'
   };
 
-  addform = function() {
+  function loadScript(src, callback) {
+    var script = document.createElement("script");
+    script.setAttribute("src", src);
+    script.addEventListener("load", callback);
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(script, firstScriptTag);
+  };
+
+  addform_inline = function (args) {
+
+      loadScript("js/donationspring.js", function () {
+        loadHTML();
+      });
+
+
+    function loadHTML(){
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (xhttp.readyState == XMLHttpRequest.DONE) {
+          if (xhttp.status == 200) {
+            document.querySelector('[data-ds-display="form"]').innerHTML = this.responseText;
+            donationspring.init(args);
+          }
+        }
+      };
+      xhttp.open("GET", "form_inline.html", true);
+      xhttp.send(); 
+    }
+
+  }
+
+  addform_iframe = function() {
     dsform = document.createElement('iframe');
     dsform.setAttribute('id', 'DSFORM');
     dsform.setAttribute('frameborder', '0');
     dsform.setAttribute('title', 'Donation Spring Form');
     dsform.setAttribute('style', 'display: none; margin: 0 !important;padding: 0 !important;border: 0 !important; width: 100% !important; height: 100% !important; position: fixed !important; opacity: 1 !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 2147483646 !important;');
-    dsform.setAttribute('src', 'form.html');
+    dsform.setAttribute('src', 'form_iframe.html');
     dsform.setAttribute('onload', 'this.contentWindow.focus()');
     document.body.appendChild(dsform);
   };
 
-  addreminder = function () {
+/*  addreminder = function () {
     dsreminder = document.createElement('iframe');
     dsreminder.setAttribute('id', 'DSREMIND');
     dsreminder.setAttribute('frameborder', '0');
@@ -70,7 +116,7 @@ var ds = new function () {
     dsreminder.setAttribute('style', 'display: none !important; visibility: visible; !important; opacity: 1 !important; inset: auto 10px 10px auto !important; position: fixed !important; z-index: 2147483644 !important; margin: 0px !important; padding: 0px !important; height: 110px !important; min-height: 110px !important; max-height: 110px !important; width: 425px !important; min-width: 425px !important; max-width: 425px !important;');
     dsreminder.setAttribute('src', 'reminder.html');
     document.body.appendChild(dsreminder);
-  };
+  }; */
 
   toHSL = function (hex) {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
