@@ -4,7 +4,6 @@ import com.impactupgrade.nucleus.AbstractTest;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
-import com.impactupgrade.nucleus.controller.StripeController;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentSourceCollection;
@@ -12,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -24,7 +23,7 @@ public class StripeControllerTest extends AbstractTest {
   @Test
   public void testCustomCampaignMetadata() throws Exception {
     EnvironmentConfig envConfig = new EnvironmentConfig();
-    envConfig.metadataKeys.campaign = List.of("sf_campaign", "Designation Code");
+    envConfig.metadataKeys.campaign = Set.of("sf_campaign", "Designation Code");
     Environment env = new DefaultEnvironment() {
       @Override
       public EnvironmentConfig config() {
