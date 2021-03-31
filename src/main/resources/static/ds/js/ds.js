@@ -1,33 +1,37 @@
 var ds = new function () {
   let primary_color = "#3399CC";
-
   this.ds_submitted = false;
+
+  function loadScript(src, callback ) {
+    var script = document.createElement("script");
+    script.setAttribute("src", src);
+    script.addEventListener("load", callback);
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(script, firstScriptTag);
+  };
 
   this.init = function (args) {
     primary_color = args.primary_color || primary_color;
     toHSL(primary_color);
 
     loadScript("https://js.stripe.com/v3/", function () {
-      console.log('Stripe Loaded');
-    });
-
-    var ds_displays = document.querySelectorAll('[data-ds-display]');
-
-    for (var i in ds_displays) {
-      if (ds_displays.hasOwnProperty(i)) {
-        switch (ds_displays[i].getAttribute('data-ds-display')) {
-          case "button":
-            ds.options = args;
-            addbutton();
-            addform_iframe();
-            //addreminder();
-            break;
-          case "form":
-            addform_inline(args);
-            break;
+      var ds_displays = document.querySelectorAll('[data-ds-display]');
+      for (var i in ds_displays) {
+        if (ds_displays.hasOwnProperty(i)) {
+          switch (ds_displays[i].getAttribute('data-ds-display')) {
+            case "button":
+              ds.options = args;
+              addbutton();
+              addform_iframe();
+              //addreminder();
+              break;
+            case "form":
+              addform_inline(args);
+              break;
+          }
         }
       }
-    }
+    });
   }
 
   this.showform = function () {
@@ -36,9 +40,9 @@ var ds = new function () {
     form.style.display = "block";
     form.focus();
     form.addEventListener('focusout', function (event) {
-      //event.preventDefault();
-      //event.stopPropagation();
-      //form.focus();
+      event.preventDefault();
+      event.stopPropagation();
+      form.focus();
     });
     //ds.hidereminder();
   };
@@ -63,21 +67,12 @@ var ds = new function () {
     document.querySelector('[data-ds-display="button"]').innerHTML += '<iframe width="125" title="Donation Spring" height="40" src="button.html" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="visibility: visible; display: inline-block !important; vertical-align: middle !important; width: 125px !important; min-width: 40px !important; max-width: 125px !important; height: 40px !important; min-height: 40px !important; max-height: 125px !important;" id="DSDB"></iframe>'
   };
 
-  function loadScript(src, callback) {
-    var script = document.createElement("script");
-    script.setAttribute("src", src);
-    script.addEventListener("load", callback);
-    var firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(script, firstScriptTag);
-  };
+
 
   addform_inline = function (args) {
-
       loadScript("js/donationspring.js", function () {
         loadHTML();
       });
-
-
     function loadHTML(){
       var xhttp = new XMLHttpRequest();
       xhttp.onreadystatechange = function () {
@@ -91,7 +86,6 @@ var ds = new function () {
       xhttp.open("GET", "form_inline.html", true);
       xhttp.send(); 
     }
-
   }
 
   addform_iframe = function() {
@@ -120,15 +114,12 @@ var ds = new function () {
 
   toHSL = function (hex) {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-
     var r = parseInt(result[1], 16);
     var g = parseInt(result[2], 16);
     var b = parseInt(result[3], 16);
-
     r /= 255, g /= 255, b /= 255;
     var max = Math.max(r, g, b), min = Math.min(r, g, b);
     var h, s, l = (max + min) / 2;
-
     if (max == min) {
       h = s = 0; // achromatic
     } else {
@@ -141,13 +132,11 @@ var ds = new function () {
       }
       h /= 6;
     };
-
     s = s * 100;
     s = Math.round(s);
     l = l * 100;
     l = Math.round(l);
     h = Math.round(360 * h);
-
     document.documentElement.style.setProperty('--ds_color', h + ', ' + s + '%');
     document.documentElement.style.setProperty('--ds_l', l + '%');
   }

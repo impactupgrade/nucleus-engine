@@ -1,7 +1,6 @@
 var donationspring = new function () {
 
   var current_step, stripe, card, thankyou_msg;
-  //modal = document.getElementById("ds_modal"),
 
   function ds_initial_values(args) {
     current_step = 1;
@@ -202,11 +201,37 @@ var donationspring = new function () {
       if (isVisible(y[i])){
         if (y[i].value == "" && y[i].getAttribute('data-required') == 'true') {
           y[i].parentElement.classList.add("invalid");
+          y[i].setAttribute("aria-invalid", valid);
           valid = false;
         } else {
           y[i].parentElement.classList.remove("invalid");
+          y[i].setAttribute("aria-invalid", !valid);
         }
       }
+
+      switch (y[i].name) {
+        case 'email':
+          if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
+            y[i].parentElement.classList.add("invalid");
+            y[i].setAttribute("aria-invalid", valid);
+            valid = false;
+          } else {
+            y[i].parentElement.classList.remove("invalid");
+            y[i].setAttribute("aria-invalid", !valid);
+          }
+          break;
+        case 'business_email':
+          if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
+            y[i].parentElement.classList.add("invalid");
+            y[i].setAttribute("aria-invalid", valid);
+            valid = false;
+          } else {
+            y[i].parentElement.classList.remove("invalid");
+            y[i].setAttribute("aria-invalid", !valid);
+          }
+          break;
+      }
+
     }
 
     if (valid) {
@@ -291,6 +316,7 @@ var donationspring = new function () {
 
     var giving_amount_display = document.getElementById("giving_amount");
     var donation_amount_inputs = document.querySelectorAll('input[type=radio][name="donation_amount_select"]');
+
     donation_amount_inputs.forEach(amount => amount.addEventListener('input', function () {
       if (amount.value != 'other'){
         document.getElementById("da_manual_amount").value = amount.value;
@@ -305,9 +331,7 @@ var donationspring = new function () {
 
     document.getElementById("da_manual_amount").addEventListener('input', function () {
       var donation_value = this.value;
-
       document.getElementsByName("donation_amount")[0].value = donation_value;
-
       giving_amount_display.innerHTML = donation_value;
       for (i = 0; i < donation_amount_inputs.length; i++) {
         if (donation_amount_inputs[i].value === donation_value){
@@ -317,10 +341,17 @@ var donationspring = new function () {
           donation_amount_inputs[donation_amount_inputs.length-1].checked = true;
         }
       };
+
+      if (donation_value < 5){
+        var continue_buttons = document.getElementsByClassName("modal__btn-continue");
+        for (var i = 0; i < continue_buttons.length; i++) {
+          this.value = '';
+        }
+        alert('The minimum donation is $5.00');
+      }
     });
 
     document.getElementById("ds_form").addEventListener("submit", submitDonationForm);
-
   }
 
   show_class = function (elem) {
@@ -347,7 +378,7 @@ var donationspring = new function () {
     }
   };
 
-  ds_trap_modal = function (modal){
+ /*  ds_trap_modal = function (modal){
     document.activeElement = null;
     const focusableElements = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
     const firstFocusableElement = modal.querySelectorAll(focusableElements)[0];
@@ -374,6 +405,6 @@ var donationspring = new function () {
         }
       }
     });
-  }
+  } */
 
 };
