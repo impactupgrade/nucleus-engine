@@ -29,17 +29,15 @@ public class DonorService {
     // attempt to find a Contact using the email
 
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getEmail())
-        && Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmAccountId())
-        && Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmContactId())) {
-      log.warn("payment gateway event {} had no email address or CRM IDs; skipping processing", paymentGatewayEvent.getTransactionId());
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmAccountId())) {
+      log.warn("payment gateway event {} had no email address or CRM ID; skipping processing", paymentGatewayEvent.getTransactionId());
       // TODO: email support@?
       return;
     }
 
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmAccountId())
-        && !Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmContactId())) {
-      log.info("found CRM contact {} and account {}",
-          paymentGatewayEvent.getPrimaryCrmContactId(), paymentGatewayEvent.getPrimaryCrmAccountId());
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getPrimaryCrmAccountId())) {
+      log.info("found CRM account {} and contact {}",
+          paymentGatewayEvent.getPrimaryCrmAccountId(), paymentGatewayEvent.getPrimaryCrmContactId());
       paymentGatewayEvent.setPrimaryCrmAccountId(paymentGatewayEvent.getPrimaryCrmAccountId());
       paymentGatewayEvent.setPrimaryCrmContactId(paymentGatewayEvent.getPrimaryCrmContactId());
       return;
