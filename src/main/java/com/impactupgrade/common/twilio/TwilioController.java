@@ -164,6 +164,27 @@ public class TwilioController {
       // Existed, so use it
       contact = contacts.getContacts().get(0);
       log.info("contact already existed in HubSpot: {}", contact.getVid());
+
+      boolean update = false;
+      ContactBuilder contactBuilder = new ContactBuilder();
+      if (Strings.isNullOrEmpty(contact.getProperties().getFirstname().getValue()) && !Strings.isNullOrEmpty(firstName)) {
+        log.info("contact {} missing firstName; updating it...", contact.getVid());
+        update = true;
+        contactBuilder.firstName(firstName);
+      }
+      if (Strings.isNullOrEmpty(contact.getProperties().getLastname().getValue()) && !Strings.isNullOrEmpty(lastName)) {
+        log.info("contact {} missing lastName; updating it...", contact.getVid());
+        update = true;
+        contactBuilder.lastName(lastName);
+      }
+      if (Strings.isNullOrEmpty(contact.getProperties().getEmail().getValue()) && !Strings.isNullOrEmpty(email)) {
+        log.info("contact {} missing email; updating it...", contact.getVid());
+        update = true;
+        contactBuilder.email(email);
+      }
+      if (update) {
+        HubSpotClientFactory.client().contacts().updateById(contactBuilder, contact.getVid() + "");
+      }
     }
 
     if (contact != null) {
@@ -231,8 +252,13 @@ public class TwilioController {
 
   private void addToHubSpotList(long contactVid, Long hsListId) {
     if (hsListId == null || hsListId == 0L) {
-      log.info("explicit HubSpot list ID not provided; using the default {}", DEFAULT_HUBSPOT_SMS_LIST_ID);
-      hsListId = Long.parseLong(DEFAULT_HUBSPOT_SMS_LIST_ID);
+      if (Strings.isNullOrEmpty(DEFAULT_HUBSPOT_SMS_LIST_ID)) {
+        log.info("explicit HubSpot list ID not provided; skipping the list insert...");
+        return;
+      } else {
+        log.info("explicit HubSpot list ID not provided; using the default {}", DEFAULT_HUBSPOT_SMS_LIST_ID);
+        hsListId = Long.parseLong(DEFAULT_HUBSPOT_SMS_LIST_ID);
+      }
     }
     // note that HubSpot auto-prevents duplicate entries in lists
     HubSpotClientFactory.client().lists().addContactToList(hsListId, contactVid);
