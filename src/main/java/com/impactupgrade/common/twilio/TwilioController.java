@@ -167,17 +167,20 @@ public class TwilioController {
 
       boolean update = false;
       ContactBuilder contactBuilder = new ContactBuilder();
-      if (Strings.isNullOrEmpty(contact.getProperties().getFirstname().getValue()) && !Strings.isNullOrEmpty(firstName)) {
+      if ((contact.getProperties().getFirstname() == null || Strings.isNullOrEmpty(contact.getProperties().getFirstname().getValue()))
+          && !Strings.isNullOrEmpty(firstName)) {
         log.info("contact {} missing firstName; updating it...", contact.getVid());
         update = true;
         contactBuilder.firstName(firstName);
       }
-      if (Strings.isNullOrEmpty(contact.getProperties().getLastname().getValue()) && !Strings.isNullOrEmpty(lastName)) {
+      if ((contact.getProperties().getLastname() == null || Strings.isNullOrEmpty(contact.getProperties().getLastname().getValue()))
+          && !Strings.isNullOrEmpty(lastName)) {
         log.info("contact {} missing lastName; updating it...", contact.getVid());
         update = true;
         contactBuilder.lastName(lastName);
       }
-      if (Strings.isNullOrEmpty(contact.getProperties().getEmail().getValue()) && !Strings.isNullOrEmpty(email)) {
+      if ((contact.getProperties().getEmail() == null || Strings.isNullOrEmpty(contact.getProperties().getEmail().getValue()))
+          && !Strings.isNullOrEmpty(email)) {
         log.info("contact {} missing email; updating it...", contact.getVid());
         update = true;
         contactBuilder.email(email);
