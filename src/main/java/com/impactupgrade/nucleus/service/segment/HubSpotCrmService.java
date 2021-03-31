@@ -335,8 +335,13 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
     String listId = messagingWebhookEvent.getListId();
     if (Strings.isNullOrEmpty(listId)) {
       String defaultListId = env.config().hubspot.defaultSmsOptInList;
-      log.info("explicit HubSpot list ID not provided; using the default {}", defaultListId);
-      listId = defaultListId;
+      if (Strings.isNullOrEmpty(defaultListId)) {
+        log.info("explicit HubSpot list ID not provided; skipping the list insert...");
+        return;
+      } else {
+        log.info("explicit HubSpot list ID not provided; using the default {}", defaultListId);
+        listId = defaultListId;
+      }
     }
     // note that HubSpot auto-prevents duplicate entries in lists
     // TODO: shift to V3
