@@ -1,21 +1,31 @@
 package com.impactupgrade.nucleus.environment;
 
-import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Set;
 
 /**
  * Whenever possible, we focus on being configuration-driven using one, large JSON file.
- * See environment-default.json for the base layer!
+ * See environment-default.json for the base layer! Then, organizations can provide their own environment.json file
+ * to overwrite specific values from the default. environment.json is assumed to be on the thread's classpath.
  */
 public class EnvironmentConfig {
-  // Even though it's a maintenance point, use a statically typed contract to prevent floating strings everywhere!
+
+  private static final Logger log = LogManager.getLogger(EnvironmentConfig.class.getName());
+
+  // We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
 
   public MetadataKeys metadataKeys;
 
   public static class MetadataKeys {
-    public List<String> account;
-    public List<String> campaign;
-    public List<String> contact;
-    public List<String> recordType;
+    public Set<String> account;
+    public Set<String> campaign;
+    public Set<String> contact;
+    public Set<String> recordType;
   }
 
   public Salesforce salesforce;
@@ -25,12 +35,12 @@ public class EnvironmentConfig {
     public SalesforceCustomFields customFields;
 
     public static class SalesforceCustomFields {
-      public List<String> account;
-      public List<String> campaign;
-      public List<String> contact;
-      public List<String> donation;
-      public List<String> recurringDonation;
-      public List<String> user;
+      public Set<String> account;
+      public Set<String> campaign;
+      public Set<String> contact;
+      public Set<String> donation;
+      public Set<String> recurringDonation;
+      public Set<String> user;
     }
   }
 
@@ -69,7 +79,24 @@ public class EnvironmentConfig {
   }
 
   public static EnvironmentConfig init() {
-    // TODO: use environment-default.json as a base, but overlay clients' json for overrides
-    return new EnvironmentConfig();
+    try (
+        InputStream jsonDefault = Thread.currentThread().getContextClassLoader()
+            .getResourceAsStream("environment-default.json");
+        InputStream jsonOrg = Thread.currentThread().getContextClassLoader()
+            .getResourceAsStream("environment.json")
+    ) {
+      ObjectMapper mapper = new ObjectMapper();
+      // Allows nested objects, collections, etc. to be merged together.
+      mapper.setDefaultMergeable(true);
+      // Start with the default JSON as the foundation.
+      EnvironmentConfig envConfig = mapper.readValue(jsonDefault, EnvironmentConfig.class);
+      // Then override specific properties with anything that's in env.json.
+      mapper.readerForUpdating(envConfig).readValue(jsonOrg);
+      return envConfig;
+    } catch (IOException e) {
+      log.error("Unable to read environment JSON files! Exiting...", e);
+      System.exit(1);
+      return null;
+    }
   }
 }
