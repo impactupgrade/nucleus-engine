@@ -678,4 +678,50 @@ public class PaymentGatewayWebhookEvent {
   public void setCountry(String country) {
     this.country = country;
   }
+
+  @Override
+  public String toString() {
+    return "PaymentGatewayEvent{" +
+        "env=" + env +
+        ", requestEnv=" + requestEnv +
+        ", campaignId='" + campaignId + '\'' +
+        ", city='" + city + '\'' +
+        ", country='" + country + '\'' +
+        ", customerId='" + customerId + '\'' +
+        ", depositTransactionId='" + depositTransactionId + '\'' +
+        ", email='" + email + '\'' +
+        ", firstName='" + firstName + '\'' +
+        ", fullName='" + fullName + '\'' +
+        ", gatewayName='" + gatewayName + '\'' +
+        ", lastName='" + lastName + '\'' +
+        ", paymentMethod='" + paymentMethod + '\'' +
+        ", phone='" + phone + '\'' +
+        ", refundId='" + refundId + '\'' +
+        ", state='" + state + '\'' +
+        ", street='" + street + '\'' +
+        ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
+        ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
+        ", subscriptionDescription='" + subscriptionDescription + '\'' +
+        ", subscriptionId='" + subscriptionId + '\'' +
+        ", subscriptionInterval='" + subscriptionInterval + '\'' +
+        ", subscriptionNextDate=" + subscriptionNextDate +
+        ", subscriptionStartDate=" + subscriptionStartDate +
+        ", transactionAmountInDollars=" + transactionAmountInDollars +
+        ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
+        ", transactionDate=" + transactionDate +
+        ", transactionDescription='" + transactionDescription + '\'' +
+        ", transactionExchangeRate=" + transactionExchangeRate +
+        ", transactionId='" + transactionId + '\'' +
+        ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
+        ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
+        ", transactionSuccess=" + transactionSuccess +
+        ", zip='" + zip + '\'' +
+        ", primaryCrmAccountId='" + primaryCrmAccountId + '\'' +
+        ", primaryCrmContactId='" + primaryCrmContactId + '\'' +
+        ", primaryCrmRecordTypeId='" + primaryCrmRecordTypeId + '\'' +
+        ", primaryCrmRecurringDonationId='" + primaryCrmRecurringDonationId + '\'' +
+        ", depositId='" + depositId + '\'' +
+        ", depositDate=" + depositDate +
+        '}';
+  }
 }
