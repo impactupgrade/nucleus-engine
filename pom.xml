@@ -11,7 +11,7 @@
   </parent>
 
   <artifactId>hub-common</artifactId>
-  <version>3.0.12.Final</version>
+  <version>3.0.13-SNAPSHOT</version>
 
   <build>
     <plugins>
