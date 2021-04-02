@@ -679,49 +679,52 @@ public class PaymentGatewayWebhookEvent {
     this.country = country;
   }
 
+  // TODO: Auto generated, but then modified. Note that this is used for failure notifactions sent to staff, etc.
+  // We might be better off breaking this out into a separate, dedicated method.
   @Override
   public String toString() {
     return "PaymentGatewayEvent{" +
-        "env=" + env +
-        ", requestEnv=" + requestEnv +
-        ", campaignId='" + campaignId + '\'' +
-        ", city='" + city + '\'' +
-        ", country='" + country + '\'' +
-        ", customerId='" + customerId + '\'' +
-        ", depositTransactionId='" + depositTransactionId + '\'' +
-        ", email='" + email + '\'' +
+
         ", firstName='" + firstName + '\'' +
-        ", fullName='" + fullName + '\'' +
-        ", gatewayName='" + gatewayName + '\'' +
         ", lastName='" + lastName + '\'' +
-        ", paymentMethod='" + paymentMethod + '\'' +
+        ", fullName='" + fullName + '\'' +
+        ", email='" + email + '\'' +
         ", phone='" + phone + '\'' +
-        ", refundId='" + refundId + '\'' +
-        ", state='" + state + '\'' +
+
         ", street='" + street + '\'' +
+        ", city='" + city + '\'' +
+        ", state='" + state + '\'' +
+        ", zip='" + zip + '\'' +
+        ", country='" + country + '\'' +
+
+        ", gatewayName='" + gatewayName + '\'' +
+        ", paymentMethod='" + paymentMethod + '\'' +
+
+        ", customerId='" + customerId + '\'' +
+        ", transactionId='" + transactionId + '\'' +
+        ", subscriptionId='" + subscriptionId + '\'' +
+        ", campaignId='" + campaignId + '\'' +
+
+        ", transactionDate=" + transactionDate +
+        ", transactionSuccess=" + transactionSuccess +
+        ", transactionDescription='" + transactionDescription + '\'' +
+        ", transactionAmountInDollars=" + transactionAmountInDollars +
+        ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
+        ", transactionExchangeRate=" + transactionExchangeRate +
+        ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
+        ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
+
         ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
         ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
         ", subscriptionDescription='" + subscriptionDescription + '\'' +
-        ", subscriptionId='" + subscriptionId + '\'' +
         ", subscriptionInterval='" + subscriptionInterval + '\'' +
-        ", subscriptionNextDate=" + subscriptionNextDate +
         ", subscriptionStartDate=" + subscriptionStartDate +
-        ", transactionAmountInDollars=" + transactionAmountInDollars +
-        ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
-        ", transactionDate=" + transactionDate +
-        ", transactionDescription='" + transactionDescription + '\'' +
-        ", transactionExchangeRate=" + transactionExchangeRate +
-        ", transactionId='" + transactionId + '\'' +
-        ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
-        ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
-        ", transactionSuccess=" + transactionSuccess +
-        ", zip='" + zip + '\'' +
+        ", subscriptionNextDate=" + subscriptionNextDate +
+
         ", primaryCrmAccountId='" + primaryCrmAccountId + '\'' +
         ", primaryCrmContactId='" + primaryCrmContactId + '\'' +
         ", primaryCrmRecordTypeId='" + primaryCrmRecordTypeId + '\'' +
-        ", primaryCrmRecurringDonationId='" + primaryCrmRecurringDonationId + '\'' +
-        ", depositId='" + depositId + '\'' +
-        ", depositDate=" + depositDate +
+        ", primaryCrmRecurringDonationId='" + primaryCrmRecurringDonationId +
         '}';
   }
 }
