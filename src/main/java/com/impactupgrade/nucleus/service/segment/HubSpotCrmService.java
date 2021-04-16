@@ -5,6 +5,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -100,6 +101,23 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
   @Override
   public void updateDonation(CrmDonation donation) throws Exception {
+    // TODO
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
+  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     // TODO
   }
 
@@ -317,8 +335,13 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
     String listId = messagingWebhookEvent.getListId();
     if (Strings.isNullOrEmpty(listId)) {
       String defaultListId = env.config().hubspot.defaultSmsOptInList;
-      log.info("explicit HubSpot list ID not provided; using the default {}", defaultListId);
-      listId = defaultListId;
+      if (Strings.isNullOrEmpty(defaultListId)) {
+        log.info("explicit HubSpot list ID not provided; skipping the list insert...");
+        return;
+      } else {
+        log.info("explicit HubSpot list ID not provided; using the default {}", defaultListId);
+        listId = defaultListId;
+      }
     }
     // note that HubSpot auto-prevents duplicate entries in lists
     // TODO: shift to V3

@@ -1,11 +1,11 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.service.segment.AggregateCrmDestinationService;
 import com.impactupgrade.nucleus.service.segment.CrmSourceService;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,6 +37,31 @@ public class MessagingService {
       contactId = crmContact.get().id();
       log.info("contact already existed in HubSpot: {}", contactId);
     }
+
+    // TODO: update logic from old TwilioController -- needs broken down into CrmService updates
+//    boolean update = false;
+//    ContactBuilder contactBuilder = new ContactBuilder();
+//    if ((contact.getProperties().getFirstname() == null || Strings.isNullOrEmpty(contact.getProperties().getFirstname().getValue()))
+//        && !Strings.isNullOrEmpty(firstName)) {
+//      log.info("contact {} missing firstName; updating it...", contact.getVid());
+//      update = true;
+//      contactBuilder.firstName(firstName);
+//    }
+//    if ((contact.getProperties().getLastname() == null || Strings.isNullOrEmpty(contact.getProperties().getLastname().getValue()))
+//        && !Strings.isNullOrEmpty(lastName)) {
+//      log.info("contact {} missing lastName; updating it...", contact.getVid());
+//      update = true;
+//      contactBuilder.lastName(lastName);
+//    }
+//    if ((contact.getProperties().getEmail() == null || Strings.isNullOrEmpty(contact.getProperties().getEmail().getValue()))
+//        && !Strings.isNullOrEmpty(email)) {
+//      log.info("contact {} missing email; updating it...", contact.getVid());
+//      update = true;
+//      contactBuilder.email(email);
+//    }
+//    if (update) {
+//      HubSpotClientFactory.client().contacts().updateById(contactBuilder, contact.getVid() + "");
+//    }
 
     if (!Strings.isNullOrEmpty(contactId)) {
       event.setCrmContactId(contactId);

@@ -2,15 +2,16 @@ package com.impactupgrade.nucleus.client;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.LoggingUtil;
-import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -309,6 +310,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  public String getSubscriptionId(String recurringDonationId) throws ConnectionException, InterruptedException {
+    String query = "select " + env.config().salesforce.fields.paymentGatewaySubscriptionId + " from npe03__Recurring_Donation__c where id='" + recurringDonationId + "'";
+    LoggingUtil.verbose(log, query);
+    return (String) querySingle(query).get().getField(env.config().salesforce.fields.paymentGatewaySubscriptionId);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -340,7 +347,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // INTERNAL
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected String getFieldsList(String list, List<String> customList) {
+  protected String getFieldsList(String list, Collection<String> customList) {
     return customList.size() > 0 ? list + ", " + Joiner.on(", ").join(customList) : list;
   }
 }

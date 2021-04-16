@@ -2,10 +2,13 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 
 import java.util.List;
+import java.util.Optional;
 
 public class AggregateCrmDestinationService implements CrmDestinationService {
 
@@ -25,6 +28,14 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
     crmPrimaryService.updateDonation(donation);
     for (CrmDestinationService crmService : crmSecondaryServices) {
       crmService.updateDonation(donation);
+    }
+  }
+
+  @Override
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    crmPrimaryService.updateRecurringDonation(manageDonationEvent);
+    for (CrmDestinationService crmService : crmSecondaryServices) {
+      crmService.updateRecurringDonation(manageDonationEvent);
     }
   }
 

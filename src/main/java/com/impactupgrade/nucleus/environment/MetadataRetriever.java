@@ -1,8 +1,8 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.environment.Environment.RequestEnvironment;
 import com.impactupgrade.nucleus.client.StripeClient;
+import com.impactupgrade.nucleus.environment.Environment.RequestEnvironment;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -11,7 +11,7 @@ import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.List;
+import java.util.Collection;
 
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
 // TODO: Move to the paymentgateway package and make it abstract?
@@ -48,7 +48,7 @@ public class MetadataRetriever {
     return this;
   }
 
-  public String getMetadataValue(List<String> metadataKeys) {
+  public String getMetadataValue(Collection<String> metadataKeys) {
     String metadataValue = null;
 
     for (String metadataKey : metadataKeys) {

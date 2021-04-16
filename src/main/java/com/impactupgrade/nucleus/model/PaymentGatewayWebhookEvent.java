@@ -678,4 +678,53 @@ public class PaymentGatewayWebhookEvent {
   public void setCountry(String country) {
     this.country = country;
   }
+
+  // TODO: Auto generated, but then modified. Note that this is used for failure notifactions sent to staff, etc.
+  // We might be better off breaking this out into a separate, dedicated method.
+  @Override
+  public String toString() {
+    return "PaymentGatewayEvent{" +
+
+        ", firstName='" + firstName + '\'' +
+        ", lastName='" + lastName + '\'' +
+        ", fullName='" + fullName + '\'' +
+        ", email='" + email + '\'' +
+        ", phone='" + phone + '\'' +
+
+        ", street='" + street + '\'' +
+        ", city='" + city + '\'' +
+        ", state='" + state + '\'' +
+        ", zip='" + zip + '\'' +
+        ", country='" + country + '\'' +
+
+        ", gatewayName='" + gatewayName + '\'' +
+        ", paymentMethod='" + paymentMethod + '\'' +
+
+        ", customerId='" + customerId + '\'' +
+        ", transactionId='" + transactionId + '\'' +
+        ", subscriptionId='" + subscriptionId + '\'' +
+        ", campaignId='" + campaignId + '\'' +
+
+        ", transactionDate=" + transactionDate +
+        ", transactionSuccess=" + transactionSuccess +
+        ", transactionDescription='" + transactionDescription + '\'' +
+        ", transactionAmountInDollars=" + transactionAmountInDollars +
+        ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
+        ", transactionExchangeRate=" + transactionExchangeRate +
+        ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
+        ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
+
+        ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
+        ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
+        ", subscriptionDescription='" + subscriptionDescription + '\'' +
+        ", subscriptionInterval='" + subscriptionInterval + '\'' +
+        ", subscriptionStartDate=" + subscriptionStartDate +
+        ", subscriptionNextDate=" + subscriptionNextDate +
+
+        ", primaryCrmAccountId='" + primaryCrmAccountId + '\'' +
+        ", primaryCrmContactId='" + primaryCrmContactId + '\'' +
+        ", primaryCrmRecordTypeId='" + primaryCrmRecordTypeId + '\'' +
+        ", primaryCrmRecurringDonationId='" + primaryCrmRecurringDonationId +
+        '}';
+  }
 }
