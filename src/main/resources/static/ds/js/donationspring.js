@@ -330,8 +330,17 @@ var donationspring = new function () {
       }
     }));
 
+    document.getElementById("da_manual_amount").addEventListener('change', function () {
+      if (this.value < 5) {
+        var continue_buttons = document.getElementsByClassName("modal__btn-continue");
+        for (var i = 0; i < continue_buttons.length; i++) {
+          this.value = '';
+        }
+        alert('The minimum donation is $5.00');
+      }
+    });
+
     document.getElementById("da_manual_amount").addEventListener('input', function () {
-      var donation_value = this.value;
       document.getElementsByName("donation_amount")[0].value = donation_value;
       giving_amount_display.innerHTML = donation_value;
       for (i = 0; i < donation_amount_inputs.length; i++) {
@@ -342,14 +351,6 @@ var donationspring = new function () {
           donation_amount_inputs[donation_amount_inputs.length-1].checked = true;
         }
       };
-
-      if (donation_value < 5){
-        var continue_buttons = document.getElementsByClassName("modal__btn-continue");
-        for (var i = 0; i < continue_buttons.length; i++) {
-          this.value = '';
-        }
-        alert('The minimum donation is $5.00');
-      }
     });
 
     document.getElementById("ds_form").addEventListener("submit", submitDonationForm);
