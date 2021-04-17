@@ -1,12 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;400;500;600&display=swap');
 
 :root {
-    --ds_color:200, 60%; /*the base color*/
-    --ds_l:50%; /*the initial lightness*/
-    
-    --ds_color-primary: hsl(var(--ds_color),var(--ds_l));
-    --ds_color-primary-darker: hsl(var(--ds_color),calc(var(--ds_l) - 10%));
-    --ds_color-primary-darkest: hsl(var(--ds_color),calc(var(--ds_l) - 20%)); 
+  --ds_color:200, 60%; /*the base color*/
+  --ds_l:50%; /*the initial lightness*/
+  --ds_color-primary: hsl(var(--ds_color),var(--ds_l));
+  --ds_color-primary-darker: hsl(var(--ds_color),calc(var(--ds_l) - 10%));
+  --ds_color-primary-darkest: hsl(var(--ds_color),calc(var(--ds_l) - 20%)); 
 }
 
 $primary_color: #3399CC;
@@ -18,141 +17,13 @@ $overlay_bg: rgba(0,0,0,0.34);
 $button_color: #EDEDED;
 $button_text: #767575;
 
-body{
-  &.ds-open {
-    height: 100vh !important;
-    overflow-y: hidden !important;
-    position: fixed;
-  }
-}
-
-.ds_widget_reminder{
-  font-family: 'Montserrat', sans-serif;
-  display: none;
-  -webkit-box-shadow: 0px 0px 6px 0px $drop_shadow;
-  -moz-box-shadow: 0px 0px 6px 0px $drop_shadow;
-  box-shadow: 0px 0px 6px 0px $drop_shadow;
-  background: $color_white;
-  max-width: 434px;
-  border-radius: 10px;
-  position: fixed;
-  bottom: 40px;
-  right: 40px;
-  align-items: center;
-  @media only screen and (max-width: 430px) {
-    bottom: 0;
-    width: 100%;
-    max-width: 100%;
-    left: 0;
-    border-radius: 0;
-    -webkit-box-shadow: none;
-    -moz-box-shadow: none;
-    box-shadow: none;
-    font-size: .8em;
-  }
-  img{
-    display: inline-block;
-    padding: 15px 15px;
-    @media only screen and (max-width: 430px) {
-      padding: 5px 5px;
-    }
-  }
-  p{
-    line-height: 24px;
-    @media only screen and (max-width: 430px) {
-      line-height: 18px;
-    }
-  }
-  .buttons{
-    overflow: hidden;
-    button{
-      float: right;
-      background-color:transparent;
-      border-radius:0px;
-      border:none;
-      border-left: 1px solid $button_text;
-      display: inline-block;
-      cursor:pointer;
-      color:$button_text;
-      font-family: 'Montserrat', sans-serif;
-      font-size:14px;
-      font-weight: 500;
-      padding:15px 15px;
-      text-decoration:none;
-      @media only screen and (max-width: 430px) {
-        font-size:1em;
-      }
-      &:first-of-type{
-        border-radius: 0 10px 0 0;
-        border-bottom:1px solid $button_text;
-      }
-      &:last-of-type{
-        border-radius: 0 0 10px 0;
-      }
-      &.active{
-        color: var(--ds_color-primary);
-      }
-      &:hover{
-        color: $color_white;
-        background-color: var(--ds_color-primary);
-      }
-    }
-    
-  }
-}
-
-#donationspring{
-  .give_now_button{
-    font-family: 'Montserrat', sans-serif;
-    font-size: 18px;
-    font-weight: 300;
-    padding-left: 1em;
-    padding-right: 1em;
-    padding-top: .5em;
-    padding-bottom: .5em;
-    background-color: var(--ds_color-primary);
-    color: $color_white;
-    border-radius: .25em;
-    border-style: none;
-    border-width: 0;
-    cursor: pointer;
-    -webkit-appearance: button;
-    text-transform: none;
-    overflow: visible;
-    line-height: 1.15;
-    margin: 0;
-    will-change: transform;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    transition: -webkit-transform .25s ease-out;
-    transition: transform .25s ease-out;
-    transition: transform .25s ease-out,-webkit-transform .25s ease-out;
-    -webkit-box-shadow: 0px 2px 2px 0px  rgba(0,0,0,0.16);
-    -moz-box-shadow: 0px 2px 2px 0px  rgba(0,0,0,0.16);
-    box-shadow: 0px 2px 2px 0px  rgba(0,0,0,0.16);
-    &:focus{
-      background-color: var(--ds_color-primary-darker);
-    }
-    &:hover{
-      background-color: var(--ds_color-primary-darker);
-    }
-  }
-}
-
 .ds_modal_widget {
-  visibility: unset !important;
-  outline: none;
-
   font-size: 16px;
   font-family: 'Montserrat', sans-serif;
   text-rendering: optimizeLegibility !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important; 
-  display: none;
-  z-index: 100000;
+  margin-bottom: 40px;
 
   .row {
     display: flex;
@@ -188,25 +59,13 @@ body{
     padding: 0 1em;
   }
 
-  &.is-open {
-    display: block;
-  }
-  .modal__overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: $overlay_bg;
-    display: flex;
-    justify-content: center;
-    align-items: start;
-    padding-top: 5%;
-    will-change: transform;
-    @media only screen and (max-width: 740px), screen and (max-height: 730px) {
-      padding-top: 0;
+  &.inline_form{
+    .modal__container{
+      margin: 0 !important;
     }
   }
+  
+
   .modal__container {
     position: relative;
     font-family: 'Montserrat', sans-serif;
@@ -214,8 +73,7 @@ body{
     padding: 15px;
     width: 90%;
     max-width: 535px;
-    max-height: 593px;
-    height: 90%;
+    margin: 0 auto;
     border-radius: 15px;
     overflow: hidden;
     box-sizing: border-box;
@@ -224,16 +82,9 @@ body{
     -moz-box-shadow: 0px 5px 10px 0px $drop_shadow;
     box-shadow: 0px 5px 10px 0px $drop_shadow;
     will-change: transform;
-    @media only screen and (max-width: 740px), screen and (max-height: 730px) {
-      height: 100%;
-      max-height: 100%;
+    @media only screen and (max-width: 740px) {
       width: 100%;
       max-width: 100%;
-      border-radius: 0;
-      padding: 5px;
-      -webkit-box-shadow: none;
-      -moz-box-shadow: none;
-      box-shadow: none;
     }
     .modal__header {
       display: flex;
@@ -295,7 +146,6 @@ body{
           outline: none;
           &:before {
             content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs/%3E%3Cpath fill='black' d='M7 23l7-7-7-7 2-2 7 7 7-7 2 2-7 7 7 7-2 2-7-7-7 7z'/%3E%3C/svg%3E");
-            
           }
         }
       }
@@ -305,13 +155,16 @@ body{
       align-items: center;
       height: 25px;
       padding-top: 5px;
-      @media only screen and (max-width: 740px), screen and (max-height: 730px) {
+      @media only screen and (max-width: 740px) {
         border-top: solid 1px rgba(0,0,0,0.43);
       }
       > div {
         flex: 33%;
         &.center{
           text-align: center;
+        }
+        svg{
+          width: 102px;
         }
       }
     }
@@ -555,7 +408,7 @@ body{
       width: 100%;
       max-width: 100px;
       margin-bottom: 20px;
-      @media only screen and (max-width: 740px), screen and (max-height: 730px) {
+      @media only screen and (max-width: 740px) {
         max-width: 45%;
         flex: 1 1 45%;
       }
@@ -627,7 +480,7 @@ body{
     font-weight: 400;
     position: relative;
     top: 0;
-    height: calc(100% - 95px);
+    //height: calc(100% - 95px);
     &.business{
       .business_section{
         display: block;
@@ -756,7 +609,7 @@ body{
             flex-direction: row;
             white-space: nowrap;
             justify-content: space-between;
-            @media only screen and (max-width: 740px), screen and (max-height: 730px) {
+            @media only screen and (max-width: 740px) {
               width: 100%;
               margin-bottom: 15px;
             }
@@ -798,10 +651,7 @@ body{
     font-family: 'Montserrat', sans-serif;
     font-size: .875em;
     font-weight: 300;
-    padding-left: 1em;
-    padding-right: 1em;
-    padding-top: .5em;
-    padding-bottom: .5em;
+    padding: .5em 1em;
     background-color: $button_color;
     color: rgba(0,0,0,.8);
     border-radius: .25em;
@@ -841,7 +691,7 @@ body{
     border-radius: 10px;
     padding: 26px 53px;
     transition: background-color 0.5s ease;
-    @media only screen and (max-width: 740px), screen and (max-height: 730px) {
+    @media only screen and (max-width: 740px) {
       width: 100%;
       margin-bottom: 10px;
     }
@@ -852,44 +702,6 @@ body{
     &:hover{
       background-color: var(--ds_color-primary-darker);
     }
-  }
-
-
-  &[aria-hidden="false"]{
-    .modal__overlay {
-      animation: dsfadeIn .3s cubic-bezier(0.0, 0.0, 0.2, 1);
-    }
-    .modal__container {
-      animation: dsslideIn .3s cubic-bezier(0, 0, .2, 1);
-    }
-  }
-  &[aria-hidden="true"]{
-    .modal__overlay {
-    animation: dsfadeOut .3s cubic-bezier(0.0, 0.0, 0.2, 1);
-    }
-    .modal__container {
-      animation: dsslideOut .3s cubic-bezier(0, 0, .2, 1);
-    }
-  }
-
-  @keyframes dsfadeIn {
-    from { opacity: 0; }
-      to { opacity: 1; }
-  }
-
-  @keyframes dsfadeOut {
-    from { opacity: 1; }
-      to { opacity: 0; }
-  }
-
-  @keyframes dsslideIn {
-  from { transform: translateY(15%); }
-    to { transform: translateY(0); }
-  }
-
-  @keyframes dsslideOut {
-    from { transform: translateY(0); }
-    to { transform: translateY(-10%); }
   }
 
   #step-1{

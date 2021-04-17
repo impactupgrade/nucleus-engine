@@ -1,19 +1,117 @@
 var donationspring = new function () {
 
-  var current_step = 1,
-    stripe = '',
-    card = '',
-    ds_submitted = false,
-    modal = '',
-    thankyou_msg = '';
+  var current_step, stripe, card, thankyou_msg;
 
-  document.write('<script src="https://js.stripe.com/v3/"></script>');
-  
+  function ds_initial_values(args) {
+    current_step = 1;
+    stripe = Stripe("pk_test_TYooMQauvdEDq54NiTphI7jx");
+    amount_input = document.querySelectorAll('.amount');
+    default_donation_type = args.default_donation_type || "onetime";
+    form_type = args.form_type || "donation";
+    default_amt = args.default_amt || 50;
+    values = args.values || [25, 50, 100, 500, 1000, 1500, 2000];
+    thankyou_msg = args.thankyou_msg || "<p>Thank you for your donation! You really help to make a difference!</p>";
+    form_title = args.form_title || "Donation Spring";
+
+    switch (default_donation_type) {
+      case 'monthly':
+        document.querySelectorAll('input[type=radio][name="donation_type"]')[1].checked = true;
+        for (s = 0; s < amount_input.length; s++) {
+          amount_input[s].setAttribute('data-is_month', '/month');
+        }
+        break;
+      case 'onetime':
+        document.querySelectorAll('input[type=radio][name="donation_type"]')[0].checked = true;
+        for (s = 0; s < amount_input.length; s++) {
+          amount_input[s].setAttribute('data-is_month', '');
+        }
+        break;
+    }
+
+    switch (form_type) {
+      case 'donation':
+        document.getElementById("ds_type-donation").style.display = "block";
+        break;
+      case 'campaign':
+        document.getElementById("ds_type-campaign").style.display = "block";
+        break;
+      case 'event':
+        document.getElementById("ds_type-event").style.display = "block";
+        break;
+      default:
+        document.getElementById("ds_type-donation").style.display = "block";
+    }
+
+    document.getElementById("ds_modal__title").innerHTML = form_title;
+    var donation_amounts = document.getElementById("donation_amounts");
+    document.getElementById("da_manual_amount").value = default_amt;
+    document.getElementsByName("donation_amount")[0].value = default_amt;
+    var giving_amount_display = document.getElementById("giving_amount");
+    var giving_duration_display = document.getElementById("giving_duration");
+    giving_amount_display.innerHTML = default_amt;
+    giving_duration_display.innerHTML = ' ' + default_donation_type;
+    for (v = 0; v < values.length; v++) {
+      var amt_button = document.createElement('div');
+      amt_button.className = 'button_radio-wrapper';
+      if (default_amt == values[v]) {
+        amt_button.innerHTML = '<input type="radio" id="da_' + values[v] + '" name="donation_amount_select" value="' + values[v] + '" checked> <label for="da_' + values[v] + '">$' + values[v] + '</label>';
+      } else {
+        amt_button.innerHTML = '<input type="radio" id="da_' + values[v] + '" name="donation_amount_select" value="' + values[v] + '"> <label for="da_' + values[v] + '">$' + values[v] + '</label>';
+      }
+      donation_amounts.appendChild(amt_button);
+    }
+    var other_button = document.createElement('div');
+    other_button.className = 'button_radio-wrapper';
+    other_button.innerHTML = '<input type="radio" id="da_other" name="donation_amount_select" value="other"> <label for="da_other">Other</label>';
+    donation_amounts.appendChild(other_button);
+
+    if (args.campaign) {
+      document.getElementById("goal_thermometer").style.display = "block";
+      document.getElementById("ds_raised_amt").childNodes[0].innerHTML = '$' + args.campaign.raised_amt;
+      document.getElementById("ds_goal_amt").childNodes[1].innerHTML = '$' + args.campaign.goal_amt;
+      var percent_complete = (args.campaign.raised_amt / args.campaign.goal_amt) * 100;
+      document.getElementById("ds_bar-value").setAttribute("style", "width:" + percent_complete + "%");
+    }
+
+    if (args.sub_selection) {
+      var options = args.sub_selection.options;
+      var sub_selection = document.getElementById("donation_subselection");
+
+      var select_wrap = document.createElement('div');
+      select_wrap.classList.add("input-wrapper");
+      sub_selection.appendChild(select_wrap);
+
+      var selectListLabel = document.createElement("label");
+      selectListLabel.setAttribute("for", 'subselection');
+      selectListLabel.innerHTML = args.sub_selection.title + '<span class="req">*</span>';
+      select_wrap.appendChild(selectListLabel);
+
+      var selectList = document.createElement("select");
+      selectList.dataset.required = true;
+      selectList.id = "subselection";
+      selectList.name = "sub_selection";
+      var default_option = document.createElement("option");
+      default_option.value = '';
+      default_option.text = args.sub_selection.initial_option;
+      selectList.appendChild(default_option);
+      for (var i = 0; i < options.length; i++) {
+        var option = document.createElement("option");
+        option.value = options[i][1];
+        option.text = options[i][0];
+        selectList.appendChild(option);
+      }
+      select_wrap.appendChild(selectList);
+
+      var selectListError = document.createElement("span");
+      selectListError.classList.add("errorSpan");
+      selectListError.innerHTML = 'This field is required.';
+      select_wrap.appendChild(selectListError);
+    }
+  }
+
   this.init = function (args) {
-    document.querySelector('head').innerHTML += '<link rel="stylesheet" href="css/ds_widget.css" type="text/css"/>';
-    document.getElementById('donationspring').innerHTML += '<button class="btn give_now_button" data-donationspring-open role="button">Give Now</button>';
 
-    if (args){
+    if (args) {
       ds_initial_values(args);
     }
     this.show_step(current_step);
@@ -42,6 +140,7 @@ var donationspring = new function () {
         displayError.textContent = '';
       }
     });
+    
   };
 
   this.show_step = function (n) {
@@ -102,11 +201,38 @@ var donationspring = new function () {
       if (isVisible(y[i])){
         if (y[i].value == "" && y[i].getAttribute('data-required') == 'true') {
           y[i].parentElement.classList.add("invalid");
+          y[i].setAttribute("aria-invalid", valid);
           valid = false;
         } else {
           y[i].parentElement.classList.remove("invalid");
+          y[i].setAttribute("aria-invalid", !valid);
+        }
+        switch (y[i].name) {
+          case 'email':
+            if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
+              y[i].parentElement.classList.add("invalid");
+              y[i].setAttribute("aria-invalid", valid);
+              valid = false;
+            } else {
+              y[i].parentElement.classList.remove("invalid");
+              y[i].setAttribute("aria-invalid", !valid);
+            }
+            break;
+          case 'business_email':
+            if (!y[i].value.match(/^\w+([\.+_-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)) {
+              y[i].parentElement.classList.add("invalid");
+              y[i].setAttribute("aria-invalid", valid);
+              valid = false;
+            } else {
+              y[i].parentElement.classList.remove("invalid");
+              y[i].setAttribute("aria-invalid", !valid);
+            }
+            break;
         }
       }
+
+      
+
     }
 
     if (valid) {
@@ -160,132 +286,15 @@ var donationspring = new function () {
             document.getElementById("ds_modal__title").innerHTML = 'Donation Received';
             document.getElementById("ds_modal__back_button").style.display = "none";
             document.getElementById("ds_modal__title").style.display = "block";
-            ds_submitted = true;
+            parent.ds.ds_submitted = true;
           }
         });
       }
     });
   }
 
-  ds_initial_values = function(args){
-    stripe = Stripe(args.stripe);
-    amount_input = document.querySelectorAll('.amount');
-    primary_color = args.primary_color || "#3399CC";
-    toHSL(primary_color);
-    default_donation_type = args.default_donation_type || "onetime";
-    form_type = args.form_type || "donation";
-    default_amt = args.default_amt || 50;
-    values = args.values || [25, 50, 100, 500, 1000, 1500, 2000];
-    thankyou_msg = args.thankyou_msg || "<p>Thank you for your donation! You really help to make a difference!</p>";
-
-    switch (default_donation_type) {
-      case 'monthly':
-        document.querySelectorAll('input[type=radio][name="donation_type"]')[1].checked = true;
-        for (s = 0; s < amount_input.length; s++) {
-          amount_input[s].setAttribute('data-is_month', '/month');
-        }
-        break;
-      case 'onetime':
-        document.querySelectorAll('input[type=radio][name="donation_type"]')[0].checked = true;
-        for (s = 0; s < amount_input.length; s++) {
-          amount_input[s].setAttribute('data-is_month', '');
-        }
-        break;
-    }
-
-    switch (form_type) {
-      case 'donation':
-        document.getElementById("ds_type-donation").style.display = "block";
-        break;
-      case 'campaign':
-        document.getElementById("ds_type-campaign").style.display = "block";
-        break;
-      case 'event':
-        document.getElementById("ds_type-event").style.display = "block";
-        break;
-      default:
-        document.getElementById("ds_type-donation").style.display = "block";
-    }
-
-    var donation_amounts = document.getElementById("donation_amounts");
-    document.getElementById("da_manual_amount").value = default_amt;
-    document.getElementsByName("donation_amount")[0].value = default_amt;
-    var giving_amount_display = document.getElementById("giving_amount");
-    var giving_duration_display = document.getElementById("giving_duration");
-    giving_amount_display.innerHTML = default_amt;
-    giving_duration_display.innerHTML = ' ' + default_donation_type;
-    for (v = 0; v < values.length; v++) {
-      var amt_button = document.createElement('div');
-      amt_button.className = 'button_radio-wrapper';
-      if (default_amt == values[v]) {
-        amt_button.innerHTML = '<input type="radio" id="da_' + values[v] + '" name="donation_amount_select" value="' + values[v] + '" checked> <label for="da_' + values[v] + '">$' + values[v] + '</label>';
-      } else {
-        amt_button.innerHTML = '<input type="radio" id="da_' + values[v] + '" name="donation_amount_select" value="' + values[v] + '"> <label for="da_' + values[v] + '">$' + values[v] + '</label>';
-      }
-      donation_amounts.appendChild(amt_button);
-    }
-    var other_button = document.createElement('div');
-    other_button.className = 'button_radio-wrapper';
-    other_button.innerHTML = '<input type="radio" id="da_other" name="donation_amount_select" value="other"> <label for="da_other">Other</label>';
-    donation_amounts.appendChild(other_button);
-
-    if (args.campaign){
-      document.getElementById("goal_thermometer").style.display = "block";
-      document.getElementById("ds_raised_amt").childNodes[0].innerHTML = '$' + args.campaign.raised_amt;
-      document.getElementById("ds_goal_amt").childNodes[1].innerHTML = '$' + args.campaign.goal_amt;
-      var percent_complete = (args.campaign.raised_amt / args.campaign.goal_amt) * 100;
-      document.getElementById("ds_bar-value").setAttribute("style", "width:" + percent_complete + "%");
-    }
-
-    if (args.sub_selection) {
-      var options = args.sub_selection.options;
-      var sub_selection = document.getElementById("donation_subselection");
-
-      var select_wrap = document.createElement('div');
-      select_wrap.classList.add("input-wrapper");
-      sub_selection.appendChild(select_wrap);
-
-      var selectListLabel = document.createElement("label");
-      selectListLabel.setAttribute("for", 'subselection');
-      selectListLabel.innerHTML = args.sub_selection.title + '<span class="req">*</span>';
-      select_wrap.appendChild(selectListLabel);
-
-      var selectList = document.createElement("select");
-      selectList.dataset.required = true;
-      selectList.id = "subselection";
-      selectList.name = "sub_selection";
-      var default_option = document.createElement("option");
-      default_option.value = '';
-      default_option.text = args.sub_selection.initial_option;
-      selectList.appendChild(default_option);
-      for (var i = 0; i < options.length; i++) {
-        var option = document.createElement("option");
-        option.value = options[i][1];
-        option.text = options[i][0];
-        selectList.appendChild(option);
-      }
-      select_wrap.appendChild(selectList);
-
-      var selectListError = document.createElement("span");
-      selectListError.classList.add("errorSpan");
-      selectListError.innerHTML = 'This field is required.';
-      select_wrap.appendChild(selectListError);
-    }
-  }
-
   ds_triggers = function (){
-    const ds_open_trigger_button = document.querySelector('[data-donationspring-open]');
-    const ds_close_trigger_button = document.querySelector('[data-donationspring-close]');
-    const business_donation_button = document.getElementById('donate_as_business');
-    modal = document.getElementById('ds_modal');
-    ds_open_trigger_button.addEventListener('click', function (event) {
-      donationspring.ds_open_modal(modal);
-    });
-    ds_close_trigger_button.addEventListener('click', function (event) {
-      ds_close_modal(modal);
-    });
-
-    business_donation_button.addEventListener('click', function (event) {
+    document.getElementById('donate_as_business').addEventListener('click', function (event) {
       document.querySelector('.modal__content').classList.toggle("business");
     });
 
@@ -308,6 +317,7 @@ var donationspring = new function () {
 
     var giving_amount_display = document.getElementById("giving_amount");
     var donation_amount_inputs = document.querySelectorAll('input[type=radio][name="donation_amount_select"]');
+
     donation_amount_inputs.forEach(amount => amount.addEventListener('input', function () {
       if (amount.value != 'other'){
         document.getElementById("da_manual_amount").value = amount.value;
@@ -320,12 +330,18 @@ var donationspring = new function () {
       }
     }));
 
-    var donation_amount_input = document.getElementById("da_manual_amount");
-    donation_amount_input.addEventListener('input', function () {
-      var donation_value = this.value;
+    document.getElementById("da_manual_amount").addEventListener('change', function () {
+      if (this.value < 5) {
+        var continue_buttons = document.getElementsByClassName("modal__btn-continue");
+        for (var i = 0; i < continue_buttons.length; i++) {
+          this.value = '';
+        }
+        alert('The minimum donation is $5.00');
+      }
+    });
 
+    document.getElementById("da_manual_amount").addEventListener('input', function () {
       document.getElementsByName("donation_amount")[0].value = donation_value;
-
       giving_amount_display.innerHTML = donation_value;
       for (i = 0; i < donation_amount_inputs.length; i++) {
         if (donation_amount_inputs[i].value === donation_value){
@@ -338,7 +354,6 @@ var donationspring = new function () {
     });
 
     document.getElementById("ds_form").addEventListener("submit", submitDonationForm);
-
   }
 
   show_class = function (elem) {
@@ -365,36 +380,7 @@ var donationspring = new function () {
     }
   };
 
-  this.ds_open_modal = function (){
-    donationspring.ds_hide_reminder();
-    modal.setAttribute('aria-hidden', 'false');
-    modal.classList.add('is-open');
-    document.getElementsByTagName("BODY")[0].classList.add('ds-open');
-    ds_trap_modal(modal);
-  }
-
-  ds_close_modal = function () {
-    modal.setAttribute('aria-hidden', 'true');
-    setTimeout(function () {
-      modal.classList.remove('is-open');
-      document.getElementsByTagName("BODY")[0].classList.remove('ds-open');
-    }, 100);
-
-    if (!ds_submitted){
-      show_reminder();
-    }
-  }
-
-  show_reminder = function () {
-    console.log('Show Donation Reminder');
-    document.getElementById('ds_widget_reminder').style.display = "flex";
-  }
-
-  this.ds_hide_reminder = function () {
-    document.getElementById('ds_widget_reminder').style.display = "none";
-  }
-
-  ds_trap_modal = function (modal){
+ /*  ds_trap_modal = function (modal){
     document.activeElement = null;
     const focusableElements = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
     const firstFocusableElement = modal.querySelectorAll(focusableElements)[0];
@@ -405,7 +391,7 @@ var donationspring = new function () {
       let isEscapePressed = e.key === 'Escape';
       if (!isTabPressed) {
         if (isEscapePressed){
-          ds_close_modal(modal);
+          parent.ds.hideform();
         }
         return;
       }
@@ -421,40 +407,6 @@ var donationspring = new function () {
         }
       }
     });
-  }
-
-  toHSL = function(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-
-    var r = parseInt(result[1], 16);
-    var g = parseInt(result[2], 16);
-    var b = parseInt(result[3], 16);
-
-    r /= 255, g /= 255, b /= 255;
-    var max = Math.max(r, g, b), min = Math.min(r, g, b);
-    var h, s, l = (max + min) / 2;
-
-    if (max == min) {
-      h = s = 0; // achromatic
-    } else {
-      var d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
-      }
-      h /= 6;
-    }
-
-    s = s * 100;
-    s = Math.round(s);
-    l = l * 100;
-    l = Math.round(l);
-    h = Math.round(360 * h);
-
-    document.documentElement.style.setProperty('--ds_color', h + ', ' + s + '%');
-    document.documentElement.style.setProperty('--ds_l', l + '%');
-  }
+  } */
 
 };
