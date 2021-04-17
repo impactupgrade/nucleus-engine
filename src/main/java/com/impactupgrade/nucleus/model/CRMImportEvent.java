@@ -18,6 +18,8 @@ public class CRMImportEvent {
 
   private static final Logger log = LogManager.getLogger(CRMImportEvent.class.getName());
 
+  private final Map<String, String> raw;
+
   private String city;
   private String country;
   private String email;
@@ -29,6 +31,9 @@ public class CRMImportEvent {
   private String state;
   private String street;
   private String zip;
+
+  private boolean optInEmail;
+  private boolean optInSms;
 
   private BigDecimal opportunityAmount;
   private String opportunityCampaignExternalRef;
@@ -43,12 +48,16 @@ public class CRMImportEvent {
   private String opportunityStageName;
   private String opportunityTerminal;
 
+  public CRMImportEvent(Map<String, String> raw) {
+    this.raw = raw;
+  }
+
   public static List<CRMImportEvent> fromGeneric(List<Map<String, String>> data) {
     return data.stream().map(CRMImportEvent::fromGeneric).collect(Collectors.toList());
   }
 
   public static CRMImportEvent fromGeneric(Map<String, String> data) {
-    CRMImportEvent importEvent = new CRMImportEvent();
+    CRMImportEvent importEvent = new CRMImportEvent(data);
 
     importEvent.city = data.get("City");
     importEvent.country = data.get("Country");
@@ -62,6 +71,9 @@ public class CRMImportEvent {
     importEvent.state = data.get("State");
     importEvent.street = data.get("Address");
     importEvent.zip = data.get("PostCode");
+
+    importEvent.optInEmail = "yes".equalsIgnoreCase(data.get("Email Opt In")) || "true".equalsIgnoreCase(data.get("Email Opt In"));
+    importEvent.optInSms = "yes".equalsIgnoreCase(data.get("SMS Opt In")) || "true".equalsIgnoreCase(data.get("SMS Opt In"));
 
     importEvent.opportunityDate = Calendar.getInstance();
     try {
@@ -96,7 +108,7 @@ public class CRMImportEvent {
 
   // Taken from a sample CSV export from STS's Jan-Feb 2021 FB fundraisers.
   public static CRMImportEvent fromFBFundraiser(Map<String, String> data) {
-    CRMImportEvent importEvent = new CRMImportEvent();
+    CRMImportEvent importEvent = new CRMImportEvent(data);
 
     // Note: commented-out fields were deemed not needed, for now
 //    importEvent. = data.get("Charge Time");
@@ -184,6 +196,14 @@ public class CRMImportEvent {
     return zip;
   }
 
+  public boolean isOptInEmail() {
+    return optInEmail;
+  }
+
+  public boolean isOptInSms() {
+    return optInSms;
+  }
+
   public BigDecimal getOpportunityAmount() {
     return opportunityAmount;
   }
@@ -230,5 +250,9 @@ public class CRMImportEvent {
 
   public String getOpportunityTerminal() {
     return opportunityTerminal;
+  }
+
+  public Map<String, String> getRaw() {
+    return raw;
   }
 }

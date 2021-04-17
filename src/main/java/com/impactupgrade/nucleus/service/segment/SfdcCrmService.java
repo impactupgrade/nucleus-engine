@@ -4,25 +4,25 @@ import com.google.common.base.Strings;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CRMImportEvent;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
-import com.impactupgrade.nucleus.client.SfdcClient;
-import com.impactupgrade.nucleus.environment.Environment;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import java.text.ParseException;
-import java.util.concurrent.ExecutionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.text.ParseException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
 
@@ -307,8 +307,7 @@ public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
 
       // If none by email, get contact by name
       if (existingContact.isEmpty()) {
-        // TODO: Break this out into a separate method so that DR can filter by FN?
-        List<SObject> existingContacts = sfdcClient.getContactsByName(firstName, lastName);
+        List<SObject> existingContacts = sfdcClient.getContactsByName(firstName, lastName, importEvent.getRaw());
 
         log.info("number of contacts for name {} {}: {}", firstName, lastName, existingContacts.size());
 

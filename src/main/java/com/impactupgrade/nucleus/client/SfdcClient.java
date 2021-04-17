@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class SfdcClient extends SFDCPartnerAPIClient {
@@ -113,14 +114,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
-  public List<SObject> getContactsByName(String name) throws ConnectionException, InterruptedException {
+  // the context map allows overrides to be given additional hints (such as DR's FNs)
+  public List<SObject> getContactsByName(String name, Map<String, String> context) throws ConnectionException, InterruptedException {
     String escapedName = name.replaceAll("'", "\\\\'");
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.config().salesforce.customFields.contact) + " from contact where name like '%" + escapedName + "%' ORDER BY name";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
-  public List<SObject> getContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
+  // the context map allows overrides to be given additional hints (such as DR's FNs)
+  public List<SObject> getContactsByName(String firstName, String lastName, Map<String, String> context) throws ConnectionException, InterruptedException {
     String escapedFirstName = firstName.replaceAll("'", "\\\\'");
     String escapedLastName = lastName.replaceAll("'", "\\\\'");
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.config().salesforce.customFields.contact) + " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
