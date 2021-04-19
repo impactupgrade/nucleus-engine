@@ -43,6 +43,15 @@ var donationspring = new function () {
         document.getElementById("ds_type-donation").style.display = "block";
     }
 
+    var spinner_overlay = document.createElement('div');
+    spinner_overlay.setAttribute('class', 'spinner_overlay');
+    spinner_overlay.setAttribute('id', 'processing_overlay');
+    document.getElementById('ds_modal__container').appendChild(spinner_overlay);
+
+    var spinner = document.createElement('div');
+    spinner.setAttribute('class', 'spinner');
+    spinner_overlay.appendChild(spinner);
+
     document.getElementById("ds_modal__title").innerHTML = form_title;
     var donation_amounts = document.getElementById("donation_amounts");
     document.getElementById("da_manual_amount").value = default_amt;
@@ -231,14 +240,6 @@ var donationspring = new function () {
             break;
         }
       }
-
-      
-
-    }
-
-    if (valid) {
-    } else {
-      console.log('Not Valid');
     }
     return valid;
   }
@@ -249,6 +250,7 @@ var donationspring = new function () {
     if (!validateForm()) {
       return false;
     }
+    document.getElementById('processing_overlay').style.display = "flex";
 
     stripe.createToken(card).then(function (result) {
       if (result.error) {
@@ -294,8 +296,10 @@ var donationspring = new function () {
             document.getElementById("ds_modal__title").innerHTML = 'Donation Received';
             document.getElementById("ds_modal__back_button").style.display = "none";
             document.getElementById("ds_modal__title").style.display = "block";
+            document.getElementById('processing_overlay').style.display = "none";
             parent.ds.ds_submitted = true;
           } else {
+            document.getElementById('processing_overlay').style.display = "none";
             var errorElement = document.getElementById('card-errors');
             response.text().then(function(data) {
               errorElement.textContent = data;
@@ -355,6 +359,7 @@ var donationspring = new function () {
     });
 
     document.getElementById("da_manual_amount").addEventListener('input', function () {
+      var donation_value = this.value;
       document.getElementsByName("donation_amount")[0].value = donation_value;
       giving_amount_display.innerHTML = donation_value;
       for (i = 0; i < donation_amount_inputs.length; i++) {
