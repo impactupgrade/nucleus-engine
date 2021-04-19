@@ -151,10 +151,10 @@ public class DonationSpringController {
       // To save a bit of response time, spin these off to a new thread.
       Runnable thread = () -> {
         try {
-          EmailUtil.sendEmail(org.getDonorEmailSubject(),
-              org.getDonorEmailBody() + "<br/><br/>" + formData.toStringEmail(), null, formData.getEmail(), "info@donationspring.com");
+          EmailUtil.sendEmail(org.getDonorEmailSubject(), null,
+              org.getDonorEmailBody() + "<br/><br/>" + formData.toStringEmail(), formData.getEmail(), "info@donationspring.com");
 
-          EmailUtil.sendEmail("New Transaction", formData.toStringEmail(), null, org.getNotificationEmail(), "info@donationspring.com");
+          EmailUtil.sendEmail("New Transaction", null, formData.toStringEmail(), org.getNotificationEmail(), "info@donationspring.com");
         } catch (Exception e) {
           log.error("failed to send donation emails", e);
         }
