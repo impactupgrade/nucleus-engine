@@ -36,7 +36,7 @@ public class DonationSpringFormData {
   @FormParam("business_address_2") private String businessAddress2;
   @FormParam("business_city") private String businessCity;
   @FormParam("business_state") private String businessState;
-  @FormParam("business_zip_code") private String businessZip;
+  @FormParam("business_zip") private String businessZip;
   @FormParam("business_country") private String businessCountry;
   @FormParam("billing_address") private String billingAddress;
   @FormParam("billing_address_2") private String billingAddress2;

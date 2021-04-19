@@ -194,13 +194,13 @@ public class DonationSpringController {
     put(customerMetadata, "business_address_2", formData.getBusinessAddress2());
     put(customerMetadata, "business_city", formData.getBusinessCity());
     put(customerMetadata, "business_state", formData.getBusinessState());
-    put(customerMetadata, "business_zip_code", formData.getBusinessZip());
+    put(customerMetadata, "business_zip", formData.getBusinessZip());
     put(customerMetadata, "business_country", formData.getBusinessCountryFullName());
     put(customerMetadata, "billing_address", formData.getBillingAddress());
     put(customerMetadata, "billing_address_2", formData.getBillingAddress2());
     put(customerMetadata, "billing_city", formData.getBillingCity());
     put(customerMetadata, "billing_state", formData.getBillingState());
-    put(customerMetadata, "billing_zip_code", formData.getBillingZip());
+    put(customerMetadata, "billing_zip", formData.getBillingZip());
     put(customerMetadata, "billing_country", formData.getBillingCountryFullName());
 
     CustomerCreateParams customerParams = CustomerCreateParams.builder()
