@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.util.Utils;
 import com.neovisionaries.i18n.CountryCode;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -170,9 +171,10 @@ public class DonationSpringFormData {
     return String.format("campaign=%s donation_type=%s donation_amount=%s stripe_token=%s stripe_bank_account_token=%s donate_as_business=%s first_name=%s last_name=%s email=%s phone=%s business_name=%s business_email=%s business_address=%s business_address_2=%s business_city=%s business_state=%s business_zip_code=%s business_country=%s billing_address=%s billing_address_2=%s billing_city=%s billing_state=%s billing_zip=%s billing_country=%s referer=%s origin=%s", campaign, donationType, amount, stripeCCToken, stripeACHToken, donateAsBusiness, firstName, lastName, email, phone, businessName, businessEmail, businessAddress, businessAddress2, businessCity, businessState, businessZip, businessCountry, billingAddress, billingAddress2, billingCity, billingState, billingZip, billingCountry, referer, origin);
   }
 
-  public String toStringEmail() {
+  public String toStringEmail(Organization org) {
     StringBuilder sb = new StringBuilder();
 
+    sb.append("Organization: " + org.getName() + "<br/>");
     sb.append("Amount: " + CURRENCY_FORMATTER.format(getAmount()) + "<br/>");
     if (!Strings.isNullOrEmpty(getCampaign())) {
       sb.append("Campaign: " + campaign + "<br/>");
