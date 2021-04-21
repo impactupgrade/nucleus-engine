@@ -252,6 +252,16 @@ var donationspring = new function () {
     }
     document.getElementById('processing_overlay').style.display = "flex";
 
+    grecaptcha.ready(function () {
+      grecaptcha.execute('6LfXz7EaAAAAAGATGud2gKe0Aq7cxePyzU50RgTd', { action: 'create_comment' }).then(function (token) {
+        var recaptcha_field = document.createElement("input");
+        recaptcha_field.setAttribute("type", "hidden");
+        recaptcha_field.setAttribute("name", "g-recaptcha-response");
+        recaptcha_field.setAttribute("value", token);
+        document.getElementById('ds_form').appendChild(recaptcha_field);
+      });;
+    });
+
     stripe.createToken(card).then(function (result) {
       if (result.error) {
         var errorElement = document.getElementById('card-errors');
