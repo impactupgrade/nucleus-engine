@@ -90,8 +90,10 @@ public class EnvironmentConfig {
       mapper.setDefaultMergeable(true);
       // Start with the default JSON as the foundation.
       EnvironmentConfig envConfig = mapper.readValue(jsonDefault, EnvironmentConfig.class);
-      // Then override specific properties with anything that's in env.json.
-      mapper.readerForUpdating(envConfig).readValue(jsonOrg);
+      // Then override specific properties with anything that's in env.json, if there is one.
+      if (jsonOrg != null) {
+        mapper.readerForUpdating(envConfig).readValue(jsonOrg);
+      }
       return envConfig;
     } catch (IOException e) {
       log.error("Unable to read environment JSON files! Exiting...", e);

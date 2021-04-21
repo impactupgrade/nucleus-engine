@@ -1,0 +1,1 @@
+web: java --enable-preview $JAVA_OPTS -cp target/classes:target/dependency/* com.impactupgrade.nucleus.App

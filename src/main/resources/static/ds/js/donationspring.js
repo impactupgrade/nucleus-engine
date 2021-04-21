@@ -1,10 +1,11 @@
 var donationspring = new function () {
 
-  var current_step, stripe, card, thankyou_msg;
+  var current_step, stripe, card, thankyou_msg, api_key;
 
   function ds_initial_values(args) {
     current_step = 1;
-    stripe = Stripe("pk_test_TYooMQauvdEDq54NiTphI7jx");
+    api_key = args.ds_api_key;
+    stripe = Stripe(args.stripe_public_key);
     amount_input = document.querySelectorAll('.amount');
     default_donation_type = args.default_donation_type || "onetime";
     form_type = args.form_type || "donation";
@@ -41,6 +42,15 @@ var donationspring = new function () {
       default:
         document.getElementById("ds_type-donation").style.display = "block";
     }
+
+    var spinner_overlay = document.createElement('div');
+    spinner_overlay.setAttribute('class', 'spinner_overlay');
+    spinner_overlay.setAttribute('id', 'processing_overlay');
+    document.getElementById('ds_modal__container').appendChild(spinner_overlay);
+
+    var spinner = document.createElement('div');
+    spinner.setAttribute('class', 'spinner');
+    spinner_overlay.appendChild(spinner);
 
     document.getElementById("ds_modal__title").innerHTML = form_title;
     var donation_amounts = document.getElementById("donation_amounts");
@@ -230,14 +240,6 @@ var donationspring = new function () {
             break;
         }
       }
-
-      
-
-    }
-
-    if (valid) {
-    } else {
-      console.log('Not Valid');
     }
     return valid;
   }
@@ -248,6 +250,7 @@ var donationspring = new function () {
     if (!validateForm()) {
       return false;
     }
+    document.getElementById('processing_overlay').style.display = "flex";
 
     stripe.createToken(card).then(function (result) {
       if (result.error) {
@@ -257,36 +260,51 @@ var donationspring = new function () {
       } else {
         document.getElementsByName("stripe_token")[0].value = result.token.id;
         let formData = new FormData(ds_form);
-        let parsedData = {};
+
+        // let parsedData = {};
+        let parsedData = [];
         for (let name of formData) {
           if (typeof (parsedData[name[0]]) == "undefined") {
             let tempdata = formData.getAll(name[0]);
             if (tempdata.length > 1) {
-              parsedData[name[0]] = tempdata;
+              // parsedData[name[0]] = tempdata;
+              parsedData.push([name[0]] + "=" + tempdata);
             } else {
-              parsedData[name[0]] = tempdata[0];
+              // parsedData[name[0]] = tempdata[0];
+              parsedData.push([name[0]] + "=" + tempdata[0]);
             }
           }
         }
 
         let options = {};
+        // TODO: Clarify what this is doing? Odd that the switch falls through on POST
         switch (ds_form.method.toLowerCase()) {
           case 'post':
-            options.body = JSON.stringify(parsedData);
+            // options.body = JSON.stringify(parsedData);
+            options.body = parsedData.join('&');
           case 'get':
             options.method = ds_form.method;
-            options.headers = { 'Content-Type': 'application/json' };
+            // options.headers = { 'Content-Type': 'application/json' };
+            options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
             break;
         }
 
-        fetch(ds_form.action, options).then(r => r.json()).then(data => {
-          if (data.success) {
+        fetch("https://nucleus.impactupgrade.com/api/donationspring/" + api_key + "/donate", options).then(function(response) {
+          if (response.status === 200) {
             donationspring.next_prev(1);
             document.getElementById("thankyou_msg").innerHTML = thankyou_msg;
             document.getElementById("ds_modal__title").innerHTML = 'Donation Received';
             document.getElementById("ds_modal__back_button").style.display = "none";
             document.getElementById("ds_modal__title").style.display = "block";
+            document.getElementById('processing_overlay').style.display = "none";
             parent.ds.ds_submitted = true;
+          } else {
+            document.getElementById('processing_overlay').style.display = "none";
+            var errorElement = document.getElementById('card-errors');
+            response.text().then(function(data) {
+              errorElement.textContent = data;
+            });
+            return false;
           }
         });
       }
@@ -341,6 +359,7 @@ var donationspring = new function () {
     });
 
     document.getElementById("da_manual_amount").addEventListener('input', function () {
+      var donation_value = this.value;
       document.getElementsByName("donation_amount")[0].value = donation_value;
       giving_amount_display.innerHTML = donation_value;
       for (i = 0; i < donation_amount_inputs.length; i++) {

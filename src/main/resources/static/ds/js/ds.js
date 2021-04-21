@@ -11,6 +11,9 @@ var ds = new function () {
   };
 
   this.init = function (args) {
+    args.ds_api_key = "REPLACE_ME_DS_API_KEY";
+    args.stripe_public_key = "REPLACE_ME_STRIPE_PUBLIC_KEY";
+
     primary_color = args.primary_color || primary_color;
     toHSL(primary_color);
 
@@ -64,13 +67,13 @@ var ds = new function () {
   };
 
   addbutton = function () {
-    document.querySelector('[data-ds-display="button"]').innerHTML += '<iframe width="125" title="Donation Spring" height="40" src="button.html" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="visibility: visible; display: inline-block !important; vertical-align: middle !important; width: 125px !important; min-width: 40px !important; max-width: 125px !important; height: 40px !important; min-height: 40px !important; max-height: 125px !important;" id="DSDB"></iframe>'
+    document.querySelector('[data-ds-display="button"]').innerHTML += '<iframe width="125" title="Donation Spring" height="40" src="https://nucleus.impactupgrade.com/ds/button.html" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="visibility: visible; display: inline-block !important; vertical-align: middle !important; width: 125px !important; min-width: 40px !important; max-width: 125px !important; height: 40px !important; min-height: 40px !important; max-height: 125px !important;" id="DSDB"></iframe>'
   };
 
 
 
   addform_inline = function (args) {
-      loadScript("js/donationspring.js", function () {
+      loadScript("https://nucleus.impactupgrade.com/ds/js/donationspring.js", function () {
         loadHTML();
       });
     function loadHTML(){
@@ -83,7 +86,7 @@ var ds = new function () {
           }
         }
       };
-      xhttp.open("GET", "form_inline.html", true);
+      xhttp.open("GET", "https://nucleus.impactupgrade.com/ds/form_inline.html", true);
       xhttp.send(); 
     }
   }
@@ -94,7 +97,7 @@ var ds = new function () {
     dsform.setAttribute('frameborder', '0');
     dsform.setAttribute('title', 'Donation Spring Form');
     dsform.setAttribute('style', 'display: none; margin: 0 !important;padding: 0 !important;border: 0 !important; width: 100% !important; height: 100% !important; position: fixed !important; opacity: 1 !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 2147483646 !important;');
-    dsform.setAttribute('src', 'form_iframe.html');
+    dsform.setAttribute('src', 'https://nucleus.impactupgrade.com/ds/form_iframe.html');
     dsform.setAttribute('onload', 'this.contentWindow.focus()');
     document.body.appendChild(dsform);
   };
@@ -108,7 +111,7 @@ var ds = new function () {
     dsreminder.setAttribute('marginwidth', '0');
     dsreminder.setAttribute('title', 'Donation Spring Reminder');
     dsreminder.setAttribute('style', 'display: none !important; visibility: visible; !important; opacity: 1 !important; inset: auto 10px 10px auto !important; position: fixed !important; z-index: 2147483644 !important; margin: 0px !important; padding: 0px !important; height: 110px !important; min-height: 110px !important; max-height: 110px !important; width: 425px !important; min-width: 425px !important; max-width: 425px !important;');
-    dsreminder.setAttribute('src', 'reminder.html');
+    dsreminder.setAttribute('src', 'https://nucleus.impactupgrade.com/ds/reminder.html');
     document.body.appendChild(dsreminder);
   }; */
 
