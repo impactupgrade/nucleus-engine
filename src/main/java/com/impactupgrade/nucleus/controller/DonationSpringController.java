@@ -116,7 +116,6 @@ public class DonationSpringController {
         return Response.status(400).entity("Donation blocked as possible spam. If this is in error, please try again or contact us!").build();
       }
 
-      // TODO: form time delta (hashed -- see DS)
       // TODO: recaptcha
 
       Organization org = getOrganization(apiKey);
@@ -152,9 +151,9 @@ public class DonationSpringController {
       Runnable thread = () -> {
         try {
           EmailUtil.sendEmail(org.getDonorEmailSubject(), null,
-              org.getDonorEmailBody() + "<br/><br/>" + formData.toStringEmail(), formData.getEmail(), "info@donationspring.com");
+              org.getDonorEmailBody() + "<br/><br/>" + formData.toStringEmail(org), formData.getEmail(), "info@donationspring.com");
 
-          EmailUtil.sendEmail("New Transaction", null, formData.toStringEmail(), org.getNotificationEmail(), "info@donationspring.com");
+          EmailUtil.sendEmail("New Transaction", null, formData.toStringEmail(org), org.getNotificationEmail(), "info@donationspring.com");
         } catch (Exception e) {
           log.error("failed to send donation emails", e);
         }
