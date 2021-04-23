@@ -1,7 +1,8 @@
 package com.impactupgrade.nucleus.security;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.ext.ExceptionMapper;
+
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.ExceptionMapper;
 
 public class SecurityExceptionMapper implements ExceptionMapper<SecurityException> {
 

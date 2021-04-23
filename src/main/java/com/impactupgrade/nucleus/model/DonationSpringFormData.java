@@ -4,12 +4,12 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.util.Utils;
 import com.neovisionaries.i18n.CountryCode;
+import jakarta.ws.rs.FormParam;
+import jakarta.ws.rs.HeaderParam;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.ws.rs.FormParam;
-import javax.ws.rs.HeaderParam;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.Calendar;

@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
+import jakarta.servlet.DispatcherType;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
 import org.eclipse.jetty.server.Server;
@@ -16,7 +17,6 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
-import javax.servlet.DispatcherType;
 import java.net.URL;
 import java.util.EnumSet;
 
