@@ -76,6 +76,8 @@ public class EnvironmentConfig {
     public String paymentGatewayDepositId;
     public String paymentGatewayDepositDate;
     public String paymentGatewayDepositNetAmount;
+    // TODO: Although this one is specifically for a HS shortcoming (no deal-to-deal association)...
+    public String recurringDonationDealId;
   }
 
   public static EnvironmentConfig init() {

@@ -47,7 +47,8 @@
       "paymentGatewayRefundId": "payment_gateway_refund_id",
       "paymentGatewayDepositId": "payment_gateway_deposit_id",
       "paymentGatewayDepositDate": "payment_gateway_deposit_date",
-      "paymentGatewayDepositNetAmount": "payment_gateway_deposit_net_amount"
+      "paymentGatewayDepositNetAmount": "payment_gateway_deposit_net_amount",
+      "recurringDonationDealId": "recurring_donation_deal_id"
     },
     "defaultSmsOptInList": ""
   }

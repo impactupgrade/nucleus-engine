@@ -165,9 +165,11 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
     Deal response = hsClient.deal().insert(deal);
     if (response != null) {
       if (paymentGatewayEvent.isTransactionRecurring()) {
-        Association recurringDonationAssociation = new Association(response.getId(), paymentGatewayEvent.getPrimaryCrmRecurringDonationId(),
-            "deal_to_deal");
-        hsClient.association().insert(recurringDonationAssociation);
+        // TODO: This would be ideal, but not currently supported by HS. However, supposedly it might be in the future.
+        //  Keeping this in case that happens. But for now, see setDonationFields -- we set a custom field.
+//        Association recurringDonationAssociation = new Association(response.getId(), paymentGatewayEvent.getPrimaryCrmRecurringDonationId(),
+//            "deal_to_deal");
+//        hsClient.association().insert(recurringDonationAssociation);
       }
       Association companyAssociation = new Association(response.getId(), paymentGatewayEvent.getPrimaryCrmAccountId(),
           "deal_to_company"); // TODO: make sure this also creates company_to_deal
@@ -194,8 +196,11 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDescription(paymentGatewayEvent.getTransactionDescription());
-    // purely a default, but we generally expect this to be overridden
-    deal.setDealname(paymentGatewayEvent.getFullName() + " Donation");
+    deal.setDealname("Donation: " + paymentGatewayEvent.getFullName());
+
+    if (paymentGatewayEvent.isTransactionRecurring()) {
+      deal.getCustomProperties().put(env.config().hubspot.fields.recurringDonationDealId, paymentGatewayEvent.getPrimaryCrmRecurringDonationId());
+    }
 
     deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayName, paymentGatewayEvent.getGatewayName());
     deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
@@ -289,8 +294,7 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
     // TODO: Assumed to be monthly. If quarterly/yearly support needed, will need a custom field + divide the gift into the monthly rate.
     deal.setRecurringRevenueAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
-    // purely a default, but we generally expect this to be overridden
-    deal.setDealname(paymentGatewayEvent.getFullName() + " Recurring Donation");
+    deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getFullName());
 
     deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayName, paymentGatewayEvent.getGatewayName());
     deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
