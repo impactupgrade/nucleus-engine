@@ -30,14 +30,14 @@
   "hubspot": {
     "donationPipeline": {
       "name": "Donations",
-      "successStage": "Closed won",
-      "refundedStage": "Refunded",
-      "failedStage": "Closed lost"
+      "successStage": "closedwon",
+      "refundedStage": "refunded",
+      "failedStage": "closedlost"
     },
     "recurringDonationPipeline": {
       "name": "Recurring Donations",
-      "openStage": "Closed won",
-      "closedStage": "Closed lost"
+      "openStage": "closedwon",
+      "closedStage": "closedlost"
     },
     "fields": {
       "paymentGatewayName": "payment_gateway_name",

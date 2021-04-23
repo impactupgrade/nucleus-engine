@@ -1,15 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
-import com.impactupgrade.nucleus.client.HubSpotClientFactory;
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.integration.hubspot.v3.Association;
 import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
@@ -21,11 +12,23 @@ import com.impactupgrade.integration.hubspot.v3.DealProperties;
 import com.impactupgrade.integration.hubspot.v3.DealResults;
 import com.impactupgrade.integration.hubspot.v3.Filter;
 import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
+import com.impactupgrade.nucleus.client.HubSpotClientFactory;
+import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class HubSpotCrmService implements CrmDestinationService, CrmSourceService {
 
@@ -41,8 +44,8 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
   @Override
   public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    Filter filter = new Filter("email", "EQ", email);
-    ContactResults results = hsClient.contact().search(filter);
+    Filter[] filters = new Filter[]{new Filter("email", "EQ", email)};
+    ContactResults results = hsClient.contact().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -50,15 +53,15 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
     Contact result = results.getResults().get(0);
     String id = result.getId();
-    String accountId = result.getProperties().getCompanyId();
+    String accountId = result.getProperties().getAssociatedcompanyid();
     return Optional.of(new CrmContact(id, accountId));
   }
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
     // TODO: also need to include mobilephone
-    Filter filter = new Filter("phone", "EQ", phone);
-    ContactResults results = hsClient.contact().search(filter);
+    Filter[] filters = new Filter[]{new Filter("phone", "EQ", phone)};
+    ContactResults results = hsClient.contact().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -66,14 +69,14 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
     Contact result = results.getResults().get(0);
     String id = result.getId();
-    String accountId = result.getProperties().getCompanyId();
+    String accountId = result.getProperties().getAssociatedcompanyid();
     return Optional.of(new CrmContact(id, accountId));
   }
 
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    Filter filter = new Filter(env.config().hubspot.fields.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId());
-    DealResults results = hsClient.deal().search(filter);
+    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fields.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
+    DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -87,8 +90,8 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    Filter filter = new Filter(env.config().hubspot.fields.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId());
-    DealResults results = hsClient.deal().search(filter);
+    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fields.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId())};
+    DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -148,7 +151,7 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
   }
 
   protected void setContactFields(ContactProperties contact, PaymentGatewayWebhookEvent paymentGatewayEvent) {
-    contact.setCompanyId(paymentGatewayEvent.getPrimaryCrmAccountId());
+    contact.setAssociatedcompanyid(paymentGatewayEvent.getPrimaryCrmAccountId());
     contact.setFirstname(paymentGatewayEvent.getFirstName());
     contact.setLastname(paymentGatewayEvent.getLastName());
     contact.setEmail(paymentGatewayEvent.getEmail());
@@ -356,5 +359,17 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
   @Override
   public void processImport(List<CRMImportEvent> importEvents) throws Exception {
     // TODO
+  }
+
+  // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.
+  private List<String> getCustomPropertyNames() {
+    return Arrays.stream(EnvironmentConfig.CRMFieldsDefinition.class.getFields()).map(f -> {
+      try {
+        return f.get(env.config().hubspot.fields).toString();
+      } catch (IllegalAccessException e) {
+        log.error("failed to retrieve custom fields from schema", e);
+        return "";
+      }
+    }).collect(Collectors.toList());
   }
 }
