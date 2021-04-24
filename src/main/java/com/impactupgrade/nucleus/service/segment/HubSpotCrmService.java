@@ -1,7 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.integration.hubspot.v3.Association;
 import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
 import com.impactupgrade.integration.hubspot.v3.Contact;
@@ -26,6 +25,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -84,7 +84,7 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
     Deal result = results.getResults().get(0);
     String id = result.getId();
-    boolean successful = env.config().hubspot.donationPipeline.successStage.equalsIgnoreCase(result.getProperties().getDealstage());
+    boolean successful = env.config().hubspot.donationPipeline.successStageId.equalsIgnoreCase(result.getProperties().getDealstage());
     return Optional.of(new CrmDonation(id, successful));
   }
 
@@ -174,12 +174,8 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 //            "deal_to_deal");
 //        hsClient.association().insert(recurringDonationAssociation);
       }
-      Association companyAssociation = new Association(response.getId(), paymentGatewayEvent.getPrimaryCrmAccountId(),
-          "deal_to_company"); // TODO: make sure this also creates company_to_deal
-      hsClient.association().insert(companyAssociation);
-      Association contactAssociation = new Association(response.getId(), paymentGatewayEvent.getPrimaryCrmContactId(),
-          "deal_to_contact"); // TODO: make sure this also creates contact_to_deal
-      hsClient.association().insert(contactAssociation);
+      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getPrimaryCrmAccountId());
+      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getPrimaryCrmContactId());
 
       return response.getId();
     } else {
@@ -190,11 +186,11 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
   protected void setDonationFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
-    deal.setPipeline(env.config().hubspot.donationPipeline.name);
+    deal.setPipeline(env.config().hubspot.donationPipeline.id);
     if (paymentGatewayEvent.isTransactionSuccess()) {
-      deal.setDealstage(env.config().hubspot.donationPipeline.successStage);
+      deal.setDealstage(env.config().hubspot.donationPipeline.successStageId);
     } else {
-      deal.setDealstage(env.config().hubspot.donationPipeline.failedStage);
+      deal.setDealstage(env.config().hubspot.donationPipeline.failedStageId);
     }
 
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
@@ -242,7 +238,7 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
   }
 
   protected void setDonationRefundFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    deal.setDealstage(env.config().hubspot.donationPipeline.refundedStage);
+    deal.setDealstage(env.config().hubspot.donationPipeline.refundedStageId);
 
     deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
   }
@@ -275,12 +271,8 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
     Deal response = hsClient.deal().insert(deal);
     if (response != null) {
-      Association companyAssociation = new Association(response.getId(), paymentGatewayEvent.getPrimaryCrmAccountId(),
-          "deal_to_company"); // TODO: make sure this also creates company_to_deal
-      hsClient.association().insert(companyAssociation);
-      Association contactAssociation = new Association(response.getId(), paymentGatewayEvent.getPrimaryCrmContactId(),
-          "deal_to_contact"); // TODO: make sure this also creates contact_to_deal
-      hsClient.association().insert(contactAssociation);
+      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getPrimaryCrmAccountId());
+      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getPrimaryCrmContactId());
 
       return response.getId();
     } else {
@@ -291,11 +283,12 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
   protected void setRecurringDonationFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
-    deal.setPipeline(env.config().hubspot.recurringDonationPipeline.name);
-    deal.setDealstage(env.config().hubspot.recurringDonationPipeline.openStage);
+    deal.setPipeline(env.config().hubspot.recurringDonationPipeline.id);
+    deal.setDealstage(env.config().hubspot.recurringDonationPipeline.openStageId);
 
     // TODO: Assumed to be monthly. If quarterly/yearly support needed, will need a custom field + divide the gift into the monthly rate.
     deal.setRecurringRevenueAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
+    deal.setRecurringRevenueDealType("NEW_BUSINESS");
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getFullName());
 
@@ -315,7 +308,6 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
     }
 
     DealProperties deal = new DealProperties();
-    deal.setDealstage(env.config().hubspot.recurringDonationPipeline.closedStage);
     setRecurringDonationFieldsForClose(deal, paymentGatewayEvent);
 
     hsClient.deal().update(recurringDonation.get().id(), deal);
@@ -323,6 +315,8 @@ public class HubSpotCrmService implements CrmDestinationService, CrmSourceServic
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
   protected void setRecurringDonationFieldsForClose(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    deal.setRecurringRevenueInactiveDate(Calendar.getInstance());
+    deal.setRecurringRevenueInactiveReason("CHURNED");
   }
 
   @Override

@@ -53,16 +53,16 @@ public class EnvironmentConfig {
     public String defaultSmsOptInList;
 
     public static class HubSpotDonationPipeline {
-      public String name;
-      public String successStage;
-      public String failedStage;
-      public String refundedStage;
+      public String id;
+      public String successStageId;
+      public String failedStageId;
+      public String refundedStageId;
     }
 
     public static class HubSpotRecurringDonationPipeline {
-      public String name;
-      public String openStage;
-      public String closedStage;
+      public String id;
+      public String openStageId;
+      public String closedStageId;
     }
   }
 
