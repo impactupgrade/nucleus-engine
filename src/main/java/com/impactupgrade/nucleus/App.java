@@ -2,9 +2,10 @@ package com.impactupgrade.nucleus;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
-import jakarta.servlet.DispatcherType;
+import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
+import org.apache.cxf.transport.servlet.CXFNonSpringServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.session.SessionHandler;
@@ -17,6 +18,7 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
+import javax.servlet.DispatcherType;
 import java.net.URL;
 import java.util.EnumSet;
 
@@ -24,10 +26,6 @@ public class App {
 
   // $PORT env var provided by Heroku
   private static final int PORT = Integer.parseInt(System.getenv("PORT"));
-
-  static {
-    System.setProperty(BusFactory.BUS_FACTORY_PROPERTY_NAME, CXFBusFactory.class.getName());
-  }
 
   private final Environment __defaultEnv = new Environment();
 
@@ -70,8 +68,6 @@ public class App {
 
     context.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
 
-    getEnvironment().registerServlets(context);
-
     // static resources
     ClassLoader cl = App.class.getClassLoader();
     // get a reference to any resource in the static dir
@@ -87,6 +83,23 @@ public class App {
 
     server.setHandler(context);
     server.start();
+
+    // TODO: CXF docs show this being registered *after* the server has started. Not sure...
+
+    // SOAP (CXF)
+    // TODO: This needs tested in LJI. Last time we tried configuring everything here, didn't work -- not sure
+    //  if it's a classpath issue, etc.
+    System.setProperty(BusFactory.BUS_FACTORY_PROPERTY_NAME, CXFBusFactory.class.getName());
+    CXFNonSpringServlet cxf = new CXFNonSpringServlet();
+    ServletHolder soapServlet = new ServletHolder(cxf);
+    soapServlet.setName("soap");
+    soapServlet.setForcedPath("soap");
+    context.addServlet(soapServlet, "/soap/*");
+    Bus bus = cxf.getBus();
+//    setBus(bus);
+    BusFactory.setDefaultBus(bus);
+
+    getEnvironment().registerServlets(context);
   }
 
   protected Environment getEnvironment() {

@@ -1,6 +1,6 @@
 package com.impactupgrade.nucleus.security;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * An API key must be sent by the Hub UI and other non-public-webhook clients, included as a header.

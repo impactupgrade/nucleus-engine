@@ -7,10 +7,11 @@ import com.impactupgrade.nucleus.environment.Environment.RequestEnvironment;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import javax.servlet.http.HttpServletRequest;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AbstractTest {

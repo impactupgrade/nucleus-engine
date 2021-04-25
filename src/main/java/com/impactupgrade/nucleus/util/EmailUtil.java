@@ -2,7 +2,6 @@ package com.impactupgrade.nucleus.util;
 
 import com.google.common.base.Strings;
 import com.sun.mail.smtp.SMTPTransport;
-import org.springframework.stereotype.Service;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
@@ -12,7 +11,6 @@ import javax.mail.internet.MimeMessage;
 import java.util.Date;
 import java.util.Properties;
 
-@Service
 public class EmailUtil {
 
   private static final String SMTP_SERVER = "smtp.sendgrid.net";

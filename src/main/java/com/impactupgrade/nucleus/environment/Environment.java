@@ -17,11 +17,12 @@ import com.impactupgrade.nucleus.service.segment.HubSpotCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SfdcCrmService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.glassfish.jersey.server.ResourceConfig;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * This class allows the app to provide all the custom data and flows we need that are super-specific to the individual
@@ -90,7 +91,7 @@ public class Environment {
   /**
    * Allow orgs to add completely-custom servlets (CXF, etc.)
    */
-  public void registerServlets(ServletContextHandler servletHandler) {}
+  public void registerServlets(ServletContextHandler context) {}
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // UTILITY
