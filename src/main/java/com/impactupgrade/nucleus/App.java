@@ -84,11 +84,7 @@ public class App {
     server.setHandler(context);
     server.start();
 
-    // TODO: CXF docs show this being registered *after* the server has started. Not sure...
-
     // SOAP (CXF)
-    // TODO: This needs tested in LJI. Last time we tried configuring everything here, didn't work -- not sure
-    //  if it's a classpath issue, etc.
     System.setProperty(BusFactory.BUS_FACTORY_PROPERTY_NAME, CXFBusFactory.class.getName());
     CXFNonSpringServlet cxf = new CXFNonSpringServlet();
     ServletHolder soapServlet = new ServletHolder(cxf);

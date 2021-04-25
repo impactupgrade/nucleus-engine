@@ -148,7 +148,7 @@ public class StripeController {
       }
       case "charge.refunded" -> {
         // TODO: Not completely understanding this one just yet, but it appears a recent API change
-        // is sending Charges instead of Refunds in this case...
+        //  is sending Charges instead of Refunds in this case...
         Refund refund;
         if (stripeObject instanceof Charge charge) {
           refund = charge.getRefunds().getData().get(0);
@@ -312,11 +312,11 @@ public class StripeController {
         String chargeId = charge.getId();
         Optional<SObject> opportunity = Optional.empty();
         if (!Strings.isNullOrEmpty(paymentIntentId)) {
-          // TODO: Needs pulled to CrmSourceService
+          // TODO: Needs pulled to CrmService
           opportunity = env.sfdcClient().getDonationByTransactionId(paymentIntentId);
         }
         if (opportunity.isEmpty()) {
-          // TODO: Needs pulled to CrmSourceService
+          // TODO: Needs pulled to CrmService
           opportunity = env.sfdcClient().getDonationByTransactionId(chargeId);
         }
 

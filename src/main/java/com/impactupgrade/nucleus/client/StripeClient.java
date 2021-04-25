@@ -272,13 +272,7 @@ public class StripeClient {
     log.info("updated subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
   }
 
-  // TODO: SFDC specific
   public Customer updateCustomer(Customer customer, Map<String, String> customerMetadata) throws StripeException {
-//    Map<String, String> customerMetadata = new HashMap<>();
-//    // TODO: DR specific
-//    customerMetadata.put("sf_account", sfAccountId);
-//    customerMetadata.put("sf_contact", sfContactId);
-
     CustomerUpdateParams customerParams = CustomerUpdateParams.builder()
         .setMetadata(customerMetadata)
         .addExpand("sources")
@@ -288,11 +282,6 @@ public class StripeClient {
 
   public Charge createCharge(Customer customer, PaymentSource source, long amountInCents, String currency,
       String description, Map<String, String> chargeMetadata) throws StripeException {
-//    Map<String, String> chargeMetadata = new HashMap<>();
-//    // TODO: DR specific
-//    chargeMetadata.put("sf_campaign", sfCampaignId);
-//    chargeMetadata.put("sf_opp_record_type", sfOppRecordType);
-
     // Stripe hates empty strings
     description = Strings.isNullOrEmpty(description) ? null : description;
 
@@ -324,10 +313,9 @@ public class StripeClient {
         .build();
     Plan plan = Plan.create(planParams, requestOptions);
 
-//    Map<String, String> subscriptionMetadata = new HashMap<>();
-//    subscriptionMetadata.put("description", description);
-//    // TODO: DR specific
-//    subscriptionMetadata.put("sf_campaign", sfCampaignId);
+    // TODO: This 1) assumes the Map is mutable and 2) overwrites one explicitly provided by the caller
+    description = Strings.isNullOrEmpty(description) ? null : description;
+    subscriptionMetadata.put("description", description);
 
     SubscriptionCreateParams.Item item = SubscriptionCreateParams.Item.builder().setPlan(plan.getId()).build();
     SubscriptionCreateParams subscriptionParams = SubscriptionCreateParams.builder()

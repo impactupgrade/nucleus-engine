@@ -98,14 +98,10 @@ public class TwilioController {
     return Response.ok().build();
   }
 
-  // TODO: Use abstract CRMs, not HS directly!
-
   /**
    * This webhook serves multiple purposes. It can be used directly on a Twilio number, receiving standard From/Body
    * pairs as texts are received. It can also be used by Twilio Studio flows, Twilio Functions, etc. for more complex
    * interactions. Try to make use of the standard form params whenever possible to maintain the overlap!
-   *
-   * TODO: This should use the abstract CRM and not assume HS!
    *
    * @param from
    * @param message
