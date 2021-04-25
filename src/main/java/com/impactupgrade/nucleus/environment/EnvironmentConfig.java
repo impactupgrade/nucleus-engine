@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -19,72 +20,72 @@ public class EnvironmentConfig {
 
   // We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
 
-  public Platforms platforms;
+  public Platforms platforms = new Platforms();
 
   public static class Platforms {
-    public String crm;
-    public String paymentGateway;
+    public String crm = "";
+    public String paymentGateway = "";
   }
 
-  public MetadataKeys metadataKeys;
+  public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys {
-    public Set<String> account;
-    public Set<String> campaign;
-    public Set<String> contact;
-    public Set<String> recordType;
+    public Set<String> account = new HashSet<>();
+    public Set<String> campaign = new HashSet<>();
+    public Set<String> contact = new HashSet<>();
+    public Set<String> recordType = new HashSet<>();
   }
 
-  public Salesforce salesforce;
+  public Salesforce salesforce = new Salesforce();
 
   public static class Salesforce {
-    public CRMFieldsDefinition fields;
-    public SalesforceCustomFields customFields;
+    public CRMFieldsDefinition fields = new CRMFieldsDefinition();
+    public SalesforceCustomFields customFields = new SalesforceCustomFields();
 
     public static class SalesforceCustomFields {
-      public Set<String> account;
-      public Set<String> campaign;
-      public Set<String> contact;
-      public Set<String> donation;
-      public Set<String> recurringDonation;
-      public Set<String> user;
+      public Set<String> account = new HashSet<>();
+      public Set<String> campaign = new HashSet<>();
+      public Set<String> contact = new HashSet<>();
+      public Set<String> donation = new HashSet<>();
+      public Set<String> recurringDonation = new HashSet<>();
+      public Set<String> user = new HashSet<>();
     }
   }
 
-  public Hubspot hubspot;
+  public Hubspot hubspot = new Hubspot();
 
   public static class Hubspot {
-    public HubSpotDonationPipeline donationPipeline;
-    public HubSpotRecurringDonationPipeline recurringDonationPipeline;
-    public CRMFieldsDefinition fields;
-    public String defaultSmsOptInList;
+    public HubSpotDonationPipeline donationPipeline = new HubSpotDonationPipeline();
+    public HubSpotRecurringDonationPipeline recurringDonationPipeline = new HubSpotRecurringDonationPipeline();
+    public CRMFieldsDefinition fields = new CRMFieldsDefinition();
+    public String defaultSmsOptInList = "";
 
     public static class HubSpotDonationPipeline {
-      public String id;
-      public String successStageId;
-      public String failedStageId;
-      public String refundedStageId;
+      public String id = "";
+      public String successStageId = "";
+      public String failedStageId = "";
+      public String refundedStageId = "";
     }
 
     public static class HubSpotRecurringDonationPipeline {
-      public String id;
-      public String openStageId;
-      public String closedStageId;
+      public String id = "";
+      public String openStageId = "";
+      public String closedStageId = "";
     }
   }
 
   // TODO: For now, assuming this can be common across all CRMs
   public static class CRMFieldsDefinition {
-    public String paymentGatewayName;
-    public String paymentGatewayTransactionId;
-    public String paymentGatewayCustomerId;
-    public String paymentGatewaySubscriptionId;
-    public String paymentGatewayRefundId;
-    public String paymentGatewayDepositId;
-    public String paymentGatewayDepositDate;
-    public String paymentGatewayDepositNetAmount;
+    public String paymentGatewayName = "";
+    public String paymentGatewayTransactionId = "";
+    public String paymentGatewayCustomerId = "";
+    public String paymentGatewaySubscriptionId = "";
+    public String paymentGatewayRefundId = "";
+    public String paymentGatewayDepositId = "";
+    public String paymentGatewayDepositDate = "";
+    public String paymentGatewayDepositNetAmount = "";
     // TODO: Although this one is specifically for a HS shortcoming (no deal-to-deal association)...
-    public String recurringDonationDealId;
+    public String recurringDonationDealId = "";
   }
 
   public static EnvironmentConfig init() {
