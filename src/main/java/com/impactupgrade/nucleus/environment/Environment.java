@@ -13,7 +13,10 @@ import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.HubSpotCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
+import com.impactupgrade.nucleus.service.segment.SfdcCrmService;
+import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -57,20 +60,24 @@ public class Environment {
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password) { return new SfdcClient(this, username, password); }
 
-  // TODO: replace these methods with string-based selectors in json, once merged with the hubspot branch
+  public CrmService crmService() {
+    String platformName = config.platforms.crm;
+    if ("salesforce".equalsIgnoreCase(platformName)) {
+      return new SfdcCrmService(this);
+    } else if ("hubspot".equalsIgnoreCase(platformName)) {
+      return new HubSpotCrmService(this);
+    }
 
-  /**
-   * Define primary PaymentGateway
-   */
-  public PaymentGatewayService paymentGatewayService() {
     log.error("NOT IMPLEMENTED");
     return null;
   }
 
-  /**
-   * Define primary CRM
-   */
-  public CrmService crmService() {
+  public PaymentGatewayService paymentGatewayService() {
+    String platformName = config.platforms.paymentGateway;
+    if ("stripe".equalsIgnoreCase(platformName)) {
+      return new StripePaymentGatewayService(this);
+    }
+
     log.error("NOT IMPLEMENTED");
     return null;
   }
@@ -115,6 +122,7 @@ public class Environment {
       this.request = request;
     }
 
+    // TODO: How to do this without being vendor-specific?
     public StripeClient stripeClient() {
       return new StripeClient(System.getenv("STRIPE_KEY"));
     }

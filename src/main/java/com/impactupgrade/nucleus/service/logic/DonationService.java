@@ -98,7 +98,7 @@ public class DonationService {
     Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {
-      log.warn("unable to find CRM recurring donation using subscriptionId{}",
+      log.warn("unable to find CRM recurring donation using subscriptionId {}",
           paymentGatewayEvent.getSubscriptionId());
       return;
     }

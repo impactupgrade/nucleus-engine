@@ -1,5 +1,10 @@
 {
-  "metadataKeys":{
+  "platforms": {
+    "crm": "",
+    "paymentGateway": ""
+  },
+
+  "metadataKeys": {
     "account": ["account", "account_id", "sf_account", "sf_account_id"],
     "campaign": ["campaign", "campaign_id", "sf_campaign", "sf_campaign_id"],
     "contact": ["contact", "contact_id", "sf_contact", "sf_contact_id"],

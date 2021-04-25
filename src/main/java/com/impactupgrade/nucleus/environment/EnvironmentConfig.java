@@ -19,6 +19,13 @@ public class EnvironmentConfig {
 
   // We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
 
+  public Platforms platforms;
+
+  public static class Platforms {
+    public String crm;
+    public String paymentGateway;
+  }
+
   public MetadataKeys metadataKeys;
 
   public static class MetadataKeys {
