@@ -6,9 +6,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.Environment.RequestEnvironment;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
-import com.impactupgrade.nucleus.service.segment.AggregateCrmDestinationService;
-import com.impactupgrade.nucleus.service.segment.CrmDestinationService;
-import com.impactupgrade.nucleus.service.segment.CrmSourceService;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,8 +19,7 @@ public abstract class AbstractTest {
   @Mock protected DonationService donationServiceMock;
   @Mock protected DonorService donorServiceMock;
   @Mock protected SfdcClient sfdcClientMock;
-  @Mock protected CrmSourceService crmSourceServiceMock;
-  @Mock protected CrmDestinationService crmDestinationServiceMock;
+  @Mock protected CrmService crmServiceMock;
 
   @Mock protected StripeClient stripeClientMock;
 
@@ -49,18 +46,8 @@ public abstract class AbstractTest {
     }
 
     @Override
-    public CrmSourceService crmSourceService() {
-      return crmSourceServiceMock;
-    }
-
-    @Override
-    public AggregateCrmDestinationService crmDonationDestinationServices() {
-      return new AggregateCrmDestinationService(crmDestinationServiceMock);
-    }
-
-    @Override
-    public AggregateCrmDestinationService crmSMSDestinationServices() {
-      return new AggregateCrmDestinationService(crmDestinationServiceMock);
+    public CrmService crmService() {
+      return crmServiceMock;
     }
 
     @Override

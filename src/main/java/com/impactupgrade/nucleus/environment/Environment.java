@@ -12,8 +12,7 @@ import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
-import com.impactupgrade.nucleus.service.segment.AggregateCrmDestinationService;
-import com.impactupgrade.nucleus.service.segment.CrmSourceService;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
@@ -69,33 +68,9 @@ public class Environment {
   }
 
   /**
-   * Define a single CRM as the end-all source-of-truth for retrievals and queries.
+   * Define primary CRM
    */
-  public CrmSourceService crmSourceService() {
-    log.error("NOT IMPLEMENTED");
-    return null;
-  }
-
-  /**
-   * Define one or more CRMs as the destinations for donation data.
-   */
-  public AggregateCrmDestinationService crmDonationDestinationServices() {
-    log.error("NOT IMPLEMENTED");
-    return null;
-  }
-
-  /**
-   * Define one CRM as the primary integration point for SMS engagement.
-   */
-  public CrmSourceService crmSMSSourceService() {
-    log.error("NOT IMPLEMENTED");
-    return null;
-  }
-
-  /**
-   * Define one or more CRMs as the primary integration point for SMS engagement.
-   */
-  public AggregateCrmDestinationService crmSMSDestinationServices() {
+  public CrmService crmService() {
     log.error("NOT IMPLEMENTED");
     return null;
   }

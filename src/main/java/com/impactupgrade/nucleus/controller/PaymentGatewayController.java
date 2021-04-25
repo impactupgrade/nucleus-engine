@@ -4,7 +4,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.logic.DonationService;
-import com.impactupgrade.nucleus.service.segment.CrmSourceService;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.FormParam;
@@ -23,12 +23,12 @@ public class PaymentGatewayController {
   private static final Logger log = LogManager.getLogger(PaymentGatewayController.class);
 
   protected final Environment env;
-  protected final CrmSourceService crmSourceService;
+  protected final CrmService crmService;
   protected final DonationService donationService;
 
   public PaymentGatewayController(Environment env) {
     this.env = env;
-    crmSourceService = env.crmSourceService();
+    crmService = env.crmService();
     donationService = env.donationService();
   }
 

@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
-public class SfdcCrmService implements CrmDestinationService, CrmSourceService {
+public class SfdcCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
 

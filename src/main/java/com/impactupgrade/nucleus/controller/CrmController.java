@@ -3,7 +3,7 @@ package com.impactupgrade.nucleus.controller;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CRMImportEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.segment.CrmDestinationService;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.Consumes;
@@ -32,10 +32,10 @@ public class CrmController {
 
   private static final Logger log = LogManager.getLogger(CrmController.class.getName());
 
-  private final CrmDestinationService crmDestinationService;
+  private final CrmService crmService;
 
   public CrmController(Environment env) {
-    crmDestinationService = env.crmDonationDestinationServices();
+    crmService = env.crmService();
   }
 
   @Path("/bulk-import/file")
@@ -64,7 +64,7 @@ public class CrmController {
         }
 
         List<CRMImportEvent> importEvents = CRMImportEvent.fromGeneric(data);
-        crmDestinationService.processImport(importEvents);
+        crmService.processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -87,7 +87,7 @@ public class CrmController {
       try {
         List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
         List<CRMImportEvent> importEvents = CRMImportEvent.fromGeneric(data);
-        crmDestinationService.processImport(importEvents);
+        crmService.processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -123,7 +123,7 @@ public class CrmController {
         }
 
         List<CRMImportEvent> importEvents = CRMImportEvent.fromFBFundraiser(data);
-        crmDestinationService.processImport(importEvents);
+        crmService.processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }

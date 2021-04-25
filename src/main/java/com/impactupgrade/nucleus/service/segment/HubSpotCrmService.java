@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class HubSpotCrmService implements CrmDestinationService, CrmSourceService {
+public class HubSpotCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 

@@ -1,11 +1,10 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
-import com.impactupgrade.nucleus.service.segment.AggregateCrmDestinationService;
-import com.impactupgrade.nucleus.service.segment.CrmSourceService;
-import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,13 +15,11 @@ public class DonorService {
   private static final Logger log = LogManager.getLogger(DonorService.class);
 
   private final Environment env;
-  private final CrmSourceService crmSource;
-  private final AggregateCrmDestinationService crmDestinations;
+  private final CrmService crmService;
 
   public DonorService(Environment env) {
     this.env = env;
-    crmSource = env.crmSourceService();
-    crmDestinations = env.crmDonationDestinationServices();
+    crmService = env.crmService();
   }
 
   public void processAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -44,7 +41,7 @@ public class DonorService {
     }
 
     // attempt to find a Contact using the email
-    Optional<CrmContact> existingContact = crmSource.getContactByEmail(paymentGatewayEvent.getEmail());
+    Optional<CrmContact> existingContact = crmService.getContactByEmail(paymentGatewayEvent.getEmail());
     if (existingContact.isPresent()) {
       log.info("found CRM contact {} and account {} using email {}",
           existingContact.get().id(), existingContact.get().accountId(), paymentGatewayEvent.getEmail());
@@ -57,10 +54,10 @@ public class DonorService {
         paymentGatewayEvent.getEmail());
 
     // create new Household Account
-    String accountId = crmDestinations.insertAccount(paymentGatewayEvent);
+    String accountId = crmService.insertAccount(paymentGatewayEvent);
     paymentGatewayEvent.setPrimaryCrmAccountId(accountId);
     // create new Contact
-    String contactId = crmDestinations.insertContact(paymentGatewayEvent);
+    String contactId = crmService.insertContact(paymentGatewayEvent);
     paymentGatewayEvent.setPrimaryCrmContactId(contactId);
   }
 }
