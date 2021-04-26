@@ -80,7 +80,14 @@ public class EnvironmentConfig {
     public String recurringDonationDealId = "";
   }
 
-  // TODO: For now, assuming this can be common across all CRMs
+  // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
+  //  not often the case! Ex: LJI and TER have separate sets of fields for Stripe vs. PaymentSpring vs. Paypal. For now,
+  //  methods that need these fields most be overridden case by case in order to tweak the query to check for all the
+  //  possible variations. In the future, we should look to make these definitions gateway-specific, but it will take
+  //  significant refactoring. It'd be easy enough to do a map lookup, using the gateway name, if we know it ahead of
+  //  time (payment gateway webhook controllers, etc). But in some cases, we don't! Ex: PaymentGatewayService isn't
+  //  currently told ahead of time what gateway to expect, so that wouldn't know which set of these fields to grab.
+  //  Needs careful thought...
   public static class CRMFieldDefinitions {
     public String paymentGatewayName = "";
     public String paymentGatewayTransactionId = "";
