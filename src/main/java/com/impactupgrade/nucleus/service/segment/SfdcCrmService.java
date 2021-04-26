@@ -172,11 +172,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setOpportunityFields(SObject opportunity, Optional<SObject> campaign, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    if (!Strings.isNullOrEmpty(env.config().hubspot.fieldDefinitions.paymentGatewayTransactionId)) {
-      opportunity.setField(env.config().hubspot.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayTransactionId)) {
+      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
     }
-    if (!Strings.isNullOrEmpty(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId)) {
-      opportunity.setField(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
+      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     }
 
     // check to see if this was a failed payment attempt and set the StageName accordingly
@@ -251,11 +251,11 @@ public class SfdcCrmService implements CrmService {
    * Set any necessary fields on an RD before it's inserted.
    */
   protected void setRecurringDonationFields(SObject recurringDonation, Optional<SObject> campaign, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    if (!Strings.isNullOrEmpty(env.config().hubspot.fieldDefinitions.paymentGatewaySubscriptionId)) {
-      recurringDonation.setField(env.config().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId)) {
+      recurringDonation.setField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
     }
-    if (!Strings.isNullOrEmpty(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId)) {
-      recurringDonation.setField(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
+      recurringDonation.setField(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     }
 
     // TODO: Assign to contact if available? Can only do one or the other -- see DR.
