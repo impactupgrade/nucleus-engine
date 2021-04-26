@@ -30,6 +30,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+// TODO: At the moment, this assumes field definitions are always present in env.json! However, if situations come up
+//  similar to SFDC where that won't be the case (ex: LJI/TER's split between payment gateway fields), this will need
+//  sanity checks like we have in SfdcCrmService.
+
 public class HubSpotCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
