@@ -39,8 +39,8 @@ public class EnvironmentConfig {
   public Salesforce salesforce = new Salesforce();
 
   public static class Salesforce {
-    public CRMFieldsDefinition fields = new CRMFieldsDefinition();
-    public SalesforceCustomFields customFields = new SalesforceCustomFields();
+    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
+    public SalesforceCustomFields customQueryFields = new SalesforceCustomFields();
     public String defaultCampaignId = "";
 
     public static class SalesforceCustomFields {
@@ -58,7 +58,7 @@ public class EnvironmentConfig {
   public static class Hubspot {
     public HubSpotDonationPipeline donationPipeline = new HubSpotDonationPipeline();
     public HubSpotRecurringDonationPipeline recurringDonationPipeline = new HubSpotRecurringDonationPipeline();
-    public CRMFieldsDefinition fields = new CRMFieldsDefinition();
+    public HubspotCRMFieldDefinitions fieldDefinitions = new HubspotCRMFieldDefinitions();
     public String defaultSmsOptInList = "";
 
     public static class HubSpotDonationPipeline {
@@ -75,8 +75,13 @@ public class EnvironmentConfig {
     }
   }
 
+  public static class HubspotCRMFieldDefinitions extends CRMFieldDefinitions {
+    // TODO: Although this one is specifically for a HS shortcoming (no deal-to-deal association)...
+    public String recurringDonationDealId = "";
+  }
+
   // TODO: For now, assuming this can be common across all CRMs
-  public static class CRMFieldsDefinition {
+  public static class CRMFieldDefinitions {
     public String paymentGatewayName = "";
     public String paymentGatewayTransactionId = "";
     public String paymentGatewayCustomerId = "";
@@ -85,8 +90,6 @@ public class EnvironmentConfig {
     public String paymentGatewayDepositId = "";
     public String paymentGatewayDepositDate = "";
     public String paymentGatewayDepositNetAmount = "";
-    // TODO: Although this one is specifically for a HS shortcoming (no deal-to-deal association)...
-    public String recurringDonationDealId = "";
   }
 
   public static EnvironmentConfig init() {

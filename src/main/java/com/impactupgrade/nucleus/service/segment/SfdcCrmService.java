@@ -206,8 +206,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setOpportunityRefundFields(SObject opportunity, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fields.paymentGatewayRefundId)) {
-      opportunity.setField(env.config().salesforce.fields.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
+      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
     }
     // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
@@ -218,13 +218,13 @@ public class SfdcCrmService implements CrmService {
     // TODO: Might be helpful to do something like this further upstream, preventing unnecessary processing in hub-common
     Optional<SObject> opportunity = sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
     if (opportunity.isPresent()) {
-      if (!Strings.isNullOrEmpty(env.config().salesforce.fields.paymentGatewayDepositId)
-          && opportunity.get().getField(env.config().salesforce.fields.paymentGatewayDepositId) == null) {
+      if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayDepositId)
+          && opportunity.get().getField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
         SObject opportunityUpdate = new SObject("Opportunity");
         opportunityUpdate.setId(opportunity.get().getId());
-        opportunityUpdate.setField(env.config().salesforce.fields.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-        opportunityUpdate.setField(env.config().salesforce.fields.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-        opportunityUpdate.setField(env.config().salesforce.fields.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+        opportunityUpdate.setField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+        opportunityUpdate.setField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
         sfdcClient.update(opportunityUpdate);
       } else {
         log.info("skipping {}; already marked with deposit info", opportunity.get().getId());
@@ -473,7 +473,7 @@ public class SfdcCrmService implements CrmService {
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
     String id = sObject.getId();
     String accountId = (String) sObject.getField("npe03__Organization__c");
-    String subscriptionId = (String) sObject.getField(env.config().salesforce.fields.paymentGatewaySubscriptionId);
+    String subscriptionId = (String) sObject.getField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
     return new CrmRecurringDonation(id, accountId, subscriptionId, amount);
   }

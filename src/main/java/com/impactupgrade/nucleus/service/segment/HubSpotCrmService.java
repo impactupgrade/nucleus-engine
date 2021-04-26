@@ -75,7 +75,7 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fields.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
+    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
     DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
@@ -90,7 +90,7 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fields.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId())};
+    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId())};
     DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
@@ -198,12 +198,12 @@ public class HubSpotCrmService implements CrmService {
     deal.setDealname("Donation: " + paymentGatewayEvent.getFullName());
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
-      deal.getCustomProperties().put(env.config().hubspot.fields.recurringDonationDealId, paymentGatewayEvent.getPrimaryCrmRecurringDonationId());
+      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getPrimaryCrmRecurringDonationId());
     }
 
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayName, paymentGatewayEvent.getGatewayName());
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     // Do NOT set subscriptionId! In getRecurringDonation, we search by that and expect only the RD to be returned.
 
     // TODO: Waiting to hear back from Josh about multi-currency support. The following was from LJI's SFDC support.
@@ -240,7 +240,7 @@ public class HubSpotCrmService implements CrmService {
   protected void setDonationRefundFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     deal.setDealstage(env.config().hubspot.donationPipeline.refundedStageId);
 
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
   }
 
   @Override
@@ -255,9 +255,9 @@ public class HubSpotCrmService implements CrmService {
     }
 
     DealProperties deal = new DealProperties();
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
 
     hsClient.deal().update(donation.get().getId(), deal);
   }
@@ -292,9 +292,9 @@ public class HubSpotCrmService implements CrmService {
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getFullName());
 
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayName, paymentGatewayEvent.getGatewayName());
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
-    deal.getCustomProperties().put(env.config().hubspot.fields.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
   }
 
   @Override
@@ -357,9 +357,9 @@ public class HubSpotCrmService implements CrmService {
 
   // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.
   private List<String> getCustomPropertyNames() {
-    return Arrays.stream(EnvironmentConfig.CRMFieldsDefinition.class.getFields()).map(f -> {
+    return Arrays.stream(EnvironmentConfig.CRMFieldDefinitions.class.getFields()).map(f -> {
       try {
-        return f.get(env.config().hubspot.fields).toString();
+        return f.get(env.config().hubspot.fieldDefinitions).toString();
       } catch (IllegalAccessException e) {
         log.error("failed to retrieve custom fields from schema", e);
         return "";

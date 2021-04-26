@@ -12,7 +12,7 @@
   },
 
   "salesforce": {
-    "fields": {
+    "fieldDefinitions": {
       "paymentGatewayName": "",
       "paymentGatewayTransactionId": "",
       "paymentGatewayCustomerId": "",
@@ -22,7 +22,7 @@
       "paymentGatewayDepositDate": "",
       "paymentGatewayDepositNetAmount": ""
     },
-    "customFields": {
+    "customQueryFields": {
       "account": [],
       "campaign": [],
       "contact": [],
@@ -45,7 +45,7 @@
       "openStageId": "",
       "closedStageId": ""
     },
-    "fields": {
+    "fieldDefinitions": {
       "paymentGatewayName": "payment_gateway_name",
       "paymentGatewayTransactionId": "payment_gateway_transaction_id",
       "paymentGatewayCustomerId": "payment_gateway_customer_id",
