@@ -29,7 +29,8 @@
       "donation": [],
       "recurringDonation": [],
       "user": []
-    }
+    },
+    "defaultCampaignId": ""
   },
 
   "hubspot": {

@@ -41,6 +41,7 @@ public class EnvironmentConfig {
   public static class Salesforce {
     public CRMFieldsDefinition fields = new CRMFieldsDefinition();
     public SalesforceCustomFields customFields = new SalesforceCustomFields();
+    public String defaultCampaignId = "";
 
     public static class SalesforceCustomFields {
       public Set<String> account = new HashSet<>();

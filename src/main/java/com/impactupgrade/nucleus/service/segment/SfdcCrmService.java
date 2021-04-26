@@ -206,14 +206,30 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setOpportunityRefundFields(SObject opportunity, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fields.paymentGatewayRefundId)) {
+      opportunity.setField(env.config().salesforce.fields.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
+    }
     // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
   }
 
   @Override
   public void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    // TODO: This one tends to be super org-specific, but maybe there's a sensible default...
-    log.warn("skipping insertDonationDeposit; custom logic that must be implemented by the org");
+    // TODO: Might be helpful to do something like this further upstream, preventing unnecessary processing in hub-common
+    Optional<SObject> opportunity = sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
+    if (opportunity.isPresent()) {
+      if (!Strings.isNullOrEmpty(env.config().salesforce.fields.paymentGatewayDepositId)
+          && opportunity.get().getField(env.config().salesforce.fields.paymentGatewayDepositId) == null) {
+        SObject opportunityUpdate = new SObject("Opportunity");
+        opportunityUpdate.setId(opportunity.get().getId());
+        opportunityUpdate.setField(env.config().salesforce.fields.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.config().salesforce.fields.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+        opportunityUpdate.setField(env.config().salesforce.fields.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+        sfdcClient.update(opportunityUpdate);
+      } else {
+        log.info("skipping {}; already marked with deposit info", opportunity.get().getId());
+      }
+    }
   }
 
   @Override
@@ -408,7 +424,7 @@ public class SfdcCrmService implements CrmService {
         ? Optional.empty() : sfdcClient.getCampaignById(paymentGatewayEvent.getCampaignId());
 
     if (campaign.isEmpty()) {
-      String defaultCampaignId = getDefaultCampaignId();
+      String defaultCampaignId = env.config().salesforce.defaultCampaignId;
       if (Strings.isNullOrEmpty(defaultCampaignId)) {
         log.info("campaign {} not found, but no default provided", paymentGatewayEvent.getCampaignId());
       } else {
@@ -464,9 +480,5 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmRecurringDonation);
-  }
-
-  protected String getDefaultCampaignId() {
-    return null;
   }
 }
