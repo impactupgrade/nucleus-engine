@@ -172,6 +172,9 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setOpportunityFields(SObject opportunity, Optional<SObject> campaign, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayName)) {
+      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    }
     if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayTransactionId)) {
       opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
     }
@@ -251,6 +254,9 @@ public class SfdcCrmService implements CrmService {
    * Set any necessary fields on an RD before it's inserted.
    */
   protected void setRecurringDonationFields(SObject recurringDonation, Optional<SObject> campaign, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayName)) {
+      recurringDonation.setField(env.config().salesforce.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    }
     if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId)) {
       recurringDonation.setField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
     }
