@@ -58,6 +58,7 @@ public class PaymentGatewayWebhookEvent {
   protected String transactionId;
   protected Double transactionOriginalAmountInDollars;
   protected String transactionOriginalCurrency;
+  protected boolean transactionCurrencyConverted;
   protected boolean transactionSuccess;
   protected String zip;
 
@@ -108,6 +109,7 @@ public class PaymentGatewayWebhookEvent {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
+      transactionCurrencyConverted = true;
       // currency is different than what the org is expecting, so assume it was converted
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
@@ -155,6 +157,7 @@ public class PaymentGatewayWebhookEvent {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
+      transactionCurrencyConverted = true;
       // currency is different than what the org is expecting, so assume it was converted
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
@@ -663,6 +666,10 @@ public class PaymentGatewayWebhookEvent {
     return transactionOriginalCurrency;
   }
 
+  public boolean isTransactionCurrencyConverted() {
+    return transactionCurrencyConverted;
+  }
+
   public boolean isTransactionSuccess() {
     return transactionSuccess;
   }
@@ -678,7 +685,7 @@ public class PaymentGatewayWebhookEvent {
     this.country = country;
   }
 
-  // TODO: Auto generated, but then modified. Note that this is used for failure notifactions sent to staff, etc.
+  // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.
   // We might be better off breaking this out into a separate, dedicated method.
   @Override
   public String toString() {
@@ -712,6 +719,7 @@ public class PaymentGatewayWebhookEvent {
         ", transactionExchangeRate=" + transactionExchangeRate +
         ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
         ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
+        ", transactionCurrencyConverted='" + transactionCurrencyConverted + '\'' +
 
         ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
         ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
