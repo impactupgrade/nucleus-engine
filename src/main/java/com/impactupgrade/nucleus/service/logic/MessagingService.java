@@ -32,7 +32,7 @@ public class MessagingService {
     } else {
       // Existed, so use it
       contactId = crmContact.get().id();
-      log.info("contact already existed in HubSpot: {}", contactId);
+      log.info("contact already existed in CRM: {}", contactId);
     }
 
     // TODO: update logic from old TwilioController -- needs broken down into CrmService updates
