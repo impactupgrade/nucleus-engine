@@ -22,8 +22,6 @@ public class DonationSpringFormData {
 
   protected static final NumberFormat CURRENCY_FORMATTER = NumberFormat.getCurrencyInstance();
 
-  // TODO: not campaign, but fund selection
-  @FormParam("campaign") private String campaign;
   @FormParam("donation_type") private String donationType; // onetime or monthly
   @FormParam("donation_amount") private Double amount;
   @FormParam("donate_as_business") private String donateAsBusiness;
@@ -31,6 +29,7 @@ public class DonationSpringFormData {
   @FormParam("last_name") private String lastName;
   @FormParam("email") private String email;
   @FormParam("phone") private String phone;
+  @FormParam("sub_selection") private String fund;
   @FormParam("business_name") private String businessName;
   @FormParam("business_email") private String businessEmail;
   @FormParam("business_address") private String businessAddress;
@@ -163,12 +162,12 @@ public class DonationSpringFormData {
   // Purposefully keep the tokens out of this!
   @Override
   public String toString() {
-    return String.format("campaign=%s donation_type=%s donation_amount=%s donate_as_business=%s first_name=%s last_name=%s email=%s phone=%s business_name=%s business_email=%s business_address=%s business_address_2=%s business_city=%s business_state=%s business_zip_code=%s business_country=%s billing_address=%s billing_address_2=%s billing_city=%s billing_state=%s billing_zip=%s billing_country=%s referer=%s origin=%s", campaign, donationType, amount, donateAsBusiness, firstName, lastName, email, phone, businessName, businessEmail, businessAddress, businessAddress2, businessCity, businessState, businessZip, businessCountry, billingAddress, billingAddress2, billingCity, billingState, billingZip, billingCountry, referer, origin);
+    return String.format("donation_type=%s donation_amount=%s donate_as_business=%s first_name=%s last_name=%s email=%s phone=%s sub_selection=%s business_name=%s business_email=%s business_address=%s business_address_2=%s business_city=%s business_state=%s business_zip_code=%s business_country=%s billing_address=%s billing_address_2=%s billing_city=%s billing_state=%s billing_zip=%s billing_country=%s referer=%s origin=%s", fund, donationType, amount, donateAsBusiness, firstName, lastName, email, phone, businessName, businessEmail, businessAddress, businessAddress2, businessCity, businessState, businessZip, businessCountry, billingAddress, billingAddress2, billingCity, billingState, billingZip, billingCountry, referer, origin);
   }
 
   // TODO: REMOVE AFTER INITIAL LAUNCH TESTS
   public String toStringFull() {
-    return String.format("campaign=%s donation_type=%s donation_amount=%s stripe_token=%s stripe_bank_account_token=%s donate_as_business=%s first_name=%s last_name=%s email=%s phone=%s business_name=%s business_email=%s business_address=%s business_address_2=%s business_city=%s business_state=%s business_zip_code=%s business_country=%s billing_address=%s billing_address_2=%s billing_city=%s billing_state=%s billing_zip=%s billing_country=%s referer=%s origin=%s", campaign, donationType, amount, stripeCCToken, stripeACHToken, donateAsBusiness, firstName, lastName, email, phone, businessName, businessEmail, businessAddress, businessAddress2, businessCity, businessState, businessZip, businessCountry, billingAddress, billingAddress2, billingCity, billingState, billingZip, billingCountry, referer, origin);
+    return String.format("donation_type=%s donation_amount=%s stripe_token=%s stripe_bank_account_token=%s donate_as_business=%s first_name=%s last_name=%s email=%s phone=%s sub_selection=%s business_name=%s business_email=%s business_address=%s business_address_2=%s business_city=%s business_state=%s business_zip_code=%s business_country=%s billing_address=%s billing_address_2=%s billing_city=%s billing_state=%s billing_zip=%s billing_country=%s referer=%s origin=%s", fund, donationType, amount, stripeCCToken, stripeACHToken, donateAsBusiness, firstName, lastName, email, phone, businessName, businessEmail, businessAddress, businessAddress2, businessCity, businessState, businessZip, businessCountry, billingAddress, billingAddress2, billingCity, billingState, billingZip, billingCountry, referer, origin);
   }
 
   public String toStringEmail(Organization org) {
@@ -176,8 +175,8 @@ public class DonationSpringFormData {
 
     sb.append("Organization: " + org.getName() + "<br/>");
     sb.append("Amount: " + CURRENCY_FORMATTER.format(getAmount()) + "<br/>");
-    if (!Strings.isNullOrEmpty(getCampaign())) {
-      sb.append("Campaign: " + campaign + "<br/>");
+    if (!Strings.isNullOrEmpty(getFund())) {
+      sb.append("Fund: " + fund + "<br/>");
     }
     if (isRecurring()) {
       sb.append("RECURRING: " + donationType + "<br/>");
@@ -204,14 +203,6 @@ public class DonationSpringFormData {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // GENERATED GETTERS/SETTERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public String getCampaign() {
-    return campaign;
-  }
-
-  public void setCampaign(String campaign) {
-    this.campaign = campaign;
-  }
 
   public String getDonationType() {
     return donationType;
@@ -267,6 +258,14 @@ public class DonationSpringFormData {
 
   public void setPhone(String phone) {
     this.phone = phone;
+  }
+
+  public String getFund() {
+    return fund;
+  }
+
+  public void setFund(String fund) {
+    this.fund = fund;
   }
 
   public String getBusinessName() {

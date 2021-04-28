@@ -223,7 +223,7 @@ public class DonationSpringController {
     log.info("processing payment with Stripe");
 
     Map<String, String> metadata = new HashMap<>();
-    put(metadata, "campaign", formData.getCampaign());
+    put(metadata, "fund", formData.getFund());
     put(metadata, "notes", formData.getNotes());
 
     if (formData.isRecurring()) {
