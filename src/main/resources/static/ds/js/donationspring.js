@@ -11,7 +11,7 @@ var donationspring = new function () {
     form_type = args.form_type || "donation";
     default_amt = args.default_amt || 50;
     values = args.values || [25, 50, 100, 500, 1000, 1500, 2000];
-    thankyou_msg = args.thankyou_msg || "<p>Thank you for your donation! You really help to make a difference!</p>";
+    thankyou_msg = args.thankyou_msg || "<p>Thank you for your donation!</p>";
     form_title = args.form_title || "Donation Spring";
 
     switch (default_donation_type) {
