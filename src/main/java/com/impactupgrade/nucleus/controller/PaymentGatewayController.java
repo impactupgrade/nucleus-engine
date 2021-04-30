@@ -76,4 +76,27 @@ public class PaymentGatewayController {
 
     return Response.status(200).build();
   }
+
+  @Path("/update-recurring-donation-payment-method")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response updateRecurringDonationPaymentMethod(
+      @FormParam("rd-id") String recurringDonationId,
+      @FormParam("amount") Double amount,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    SecurityUtil.verifyApiKey(request);
+
+    final Environment.RequestEnvironment requestEnv = env.newRequestEnvironment(request);
+
+    // TODO: helper method taking form data -> ManageDonationEvent
+    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv);
+    manageDonationEvent.setDonationId(recurringDonationId);
+    manageDonationEvent.setAmount(amount);
+
+    donationService.updateRecurringDonation(manageDonationEvent);
+
+    return Response.status(200).build();
+  }
 }

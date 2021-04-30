@@ -310,7 +310,17 @@ public class StripeClient {
     } else {
       log.info("paused subscription {} indefinitely", subscription.getId());
     }
+  }
 
+  public void updateSubscriptionPaymentMethod(String subscriptionId, String paymentMethodToken) throws StripeException {
+    Subscription subscription = getSubscription(subscriptionId);
+    String customerId = subscription.getCustomer();
+    log.info("updating customer {} payment method on subscription {}...", customerId, subscriptionId);
+
+    Customer customer = getCustomer(customerId);
+    CustomerUpdateParams params = CustomerUpdateParams.builder().setSource(paymentMethodToken).build();
+    customer.update(params);
+    log.info("updated customer {} payment method on subscription {}", customerId, subscriptionId);
   }
 
   public Customer updateCustomer(Customer customer, Map<String, String> customerMetadata) throws StripeException {
