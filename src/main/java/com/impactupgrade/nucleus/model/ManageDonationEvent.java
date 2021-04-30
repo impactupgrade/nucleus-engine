@@ -25,10 +25,10 @@ public class ManageDonationEvent {
     this.requestEnv = requestEnv;
     this.setDonationId(formData.recurringDonationId);
 
-    if (!Strings.isNullOrEmpty(String.valueOf(formData.amount))) this.amount = formData.amount.get();
-    if (!formData.nextPaymentDate.isEmpty()) this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
-    this.setPauseDonation(formData.pauseDonation);
-    if (!formData.pauseDonationUntilDate.isEmpty()) this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
+    if (formData.amount.isPresent()) this.amount = formData.amount.get();
+    if (formData.nextPaymentDate.isPresent()) this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
+    this.setPauseDonation(formData.pauseDonation == true);
+    if (formData.pauseDonationUntilDate.isPresent()) this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
   }
 
   // ACCESSORS

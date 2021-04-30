@@ -301,6 +301,33 @@ public class SfdcCrmService implements CrmService {
       PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
   }
 
+  // Give orgs an opportunity to set anything else that's unique to them, prior to pause
+  protected void setRecurringDonationFieldsForPause(SObject recurringDonation,
+      ManageDonationEvent manageDonationEvent) throws Exception {
+  }
+
+  public void pauseRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      return;
+    }
+
+    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    toUpdate.setId(manageDonationEvent.getDonationId());
+    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
+    toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
+
+    if (manageDonationEvent.getPauseDonationUntilDate() == null) {
+      log.info("pausing {} indefinitely...", manageDonationEvent.getDonationId());
+    } else {
+      log.info("pausing {} until {}...", manageDonationEvent.getDonationId(), manageDonationEvent.getPauseDonationUntilDate().getTime());
+    }
+    setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
+    sfdcClient.update(toUpdate);
+  }
+
   @Override
   public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
     SObject contact = new SObject("Contact");
@@ -396,7 +423,7 @@ public class SfdcCrmService implements CrmService {
     sfdcClient.update(toUpdate);
 
     if (manageDonationEvent.getPauseDonation() == true) {
-      sfdcClient.pauseRecurringDonation(manageDonationEvent.getDonationId(), manageDonationEvent.getPauseDonationUntilDate());
+      pauseRecurringDonation(manageDonationEvent);
     }
   }
 

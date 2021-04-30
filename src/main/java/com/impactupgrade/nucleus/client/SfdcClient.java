@@ -320,21 +320,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return (String) querySingle(query).get().getField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
   }
 
-  public void pauseRecurringDonation(String donationId, Calendar pauseUntilDate) throws InterruptedException {
-    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(donationId);
-    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
-    toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
-
-    if (pauseUntilDate == null) {
-      log.info("pausing {} indefinitely...", donationId);
-    } else {
-      log.info("pausing {} until {}...", donationId, pauseUntilDate.getTime());
-    }
-
-    update(toUpdate);
-  }
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
