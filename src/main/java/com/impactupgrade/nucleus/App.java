@@ -55,7 +55,6 @@ public class App {
     apiConfig.register(new SecurityExceptionMapper());
 
     apiConfig.register(getEnvironment().backupController());
-    apiConfig.register(getEnvironment().donationSpringController());
     apiConfig.register(getEnvironment().paymentGatewayController());
     apiConfig.register(getEnvironment().paymentSpringController());
     apiConfig.register(getEnvironment().sfdcController());
@@ -67,6 +66,8 @@ public class App {
     getEnvironment().registerAPIControllers(apiConfig);
 
     context.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
+
+    // TODO: Move DS assets to nucleus-core and allow the superclass to provide them to the context?
 
     // static resources
     ClassLoader cl = App.class.getClassLoader();
@@ -100,11 +101,5 @@ public class App {
 
   protected Environment getEnvironment() {
     return __defaultEnv;
-  }
-
-  // TODO: Temporary? Not sure if we'll run hub-common directly, or wrap it with nucleus-core for multitenancy.
-  // For now, this is fine -- mainly need it for DS.
-  public static void main(String... args) throws Exception {
-    new App().start();
   }
 }
