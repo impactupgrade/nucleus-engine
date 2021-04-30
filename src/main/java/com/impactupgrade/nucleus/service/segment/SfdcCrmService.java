@@ -387,8 +387,17 @@ public class SfdcCrmService implements CrmService {
     toUpdate.setId(manageDonationEvent.getDonationId());
     if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
       toUpdate.setField("Npe03__Amount__c", manageDonationEvent.getAmount());
+      log.info("Updating Npe03__Amount__c to {}...", manageDonationEvent.getAmount());
+    }
+    if (manageDonationEvent.getNextPaymentDate() != null) {
+      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
+      log.info("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
     }
     sfdcClient.update(toUpdate);
+
+    if (manageDonationEvent.getPauseDonation() == true) {
+      sfdcClient.pauseRecurringDonation(manageDonationEvent.getDonationId(), manageDonationEvent.getPauseDonationUntilDate());
+    }
   }
 
   protected void setBulkImportContactFields(SObject contact, CRMImportEvent importEvent) {
