@@ -56,6 +56,10 @@ public class StripeClient {
     requestOptions = RequestOptions.builder().setApiKey(apiKey).build();
   }
 
+  public StripeClient(RequestOptions requestOptions) {
+    this.requestOptions = requestOptions;
+  }
+
   public Charge getCharge(String id) throws StripeException {
     return Charge.retrieve(id, requestOptions);
   }
