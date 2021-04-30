@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -317,6 +318,21 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId + " from npe03__Recurring_Donation__c where id='" + recurringDonationId + "'";
     LoggingUtil.verbose(log, query);
     return (String) querySingle(query).get().getField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
+  }
+
+  public void pauseRecurringDonation(String donationId, Calendar pauseUntilDate) throws InterruptedException {
+    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    toUpdate.setId(donationId);
+    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
+    toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
+
+    if (pauseUntilDate == null) {
+      log.info("pausing {} indefinitely...", donationId);
+    } else {
+      log.info("pausing {} until {}...", donationId, pauseUntilDate.getTime());
+    }
+
+    update(toUpdate);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

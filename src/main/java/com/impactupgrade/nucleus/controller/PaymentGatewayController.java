@@ -2,13 +2,16 @@ package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.ManageDonationFormData;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
@@ -62,19 +65,13 @@ public class PaymentGatewayController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response updateRecurringDonationAmount(
-      @FormParam("rd-id") String recurringDonationId,
-      @FormParam("amount") Double amount,
+      @BeanParam ManageDonationFormData formData,
       @Context HttpServletRequest request
   ) throws Exception {
     SecurityUtil.verifyApiKey(request);
-
     final Environment.RequestEnvironment requestEnv = env.newRequestEnvironment(request);
 
-    // TODO: helper method taking form data -> ManageDonationEvent
-    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv);
-    manageDonationEvent.setDonationId(recurringDonationId);
-    manageDonationEvent.setAmount(amount);
-
+    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv, formData);
     donationService.updateRecurringDonation(manageDonationEvent);
 
     return Response.status(200).build();

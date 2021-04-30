@@ -37,6 +37,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -274,6 +275,40 @@ public class StripeClient {
     subscription.update(subscriptionUpdateParams, requestOptions);
 
     log.info("updated subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+  }
+
+  public void updateSubscriptionDate(String subscriptionId, Calendar nextPaymentDate) throws StripeException {
+    log.info("updating subscription {} date...", subscriptionId);
+    SubscriptionUpdateParams params =
+        SubscriptionUpdateParams.builder()
+            .setTrialEnd(nextPaymentDate.getTimeInMillis() / 1000)
+            .setProrationBehavior(SubscriptionUpdateParams.ProrationBehavior.NONE)
+            .build();
+    Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
+    subscription.update(params, requestOptions);
+    log.info("updated subscription {} date to {}...", subscriptionId, nextPaymentDate.getTime());
+  }
+
+  public void pauseSubscription(String subscriptionId, Calendar pauseUntilDate) throws StripeException {
+    log.info("pausing subscription {}...", subscriptionId);
+
+    Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
+
+    SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
+    pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
+    if (pauseUntilDate != null){
+      pauseBuilder.setResumesAt(pauseUntilDate.getTimeInMillis() / 1000);
+    }
+
+    SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(pauseBuilder.build()).build();
+    subscription.update(params, requestOptions);
+
+    if (pauseUntilDate != null) {
+      log.info("paused subscription {} until {}", subscription.getId(), pauseUntilDate.getTime());
+    } else {
+      log.info("paused subscription {} indefinitely", subscription.getId());
+    }
+
   }
 
   public Customer updateCustomer(Customer customer, Map<String, String> customerMetadata) throws StripeException {

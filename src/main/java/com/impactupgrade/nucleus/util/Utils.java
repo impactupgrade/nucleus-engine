@@ -1,5 +1,10 @@
 package com.impactupgrade.nucleus.util;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+
 public class Utils {
 
   public static String[] fullNameToFirstLast(String fullName) {
@@ -27,5 +32,14 @@ public class Utils {
       return null;
     }
     return s;
+  }
+
+  public static Calendar getCalendarFromDateString(String date) throws ParseException {
+    if (date != null && !date.isEmpty()) {
+      Date localDate = new SimpleDateFormat("yyyy-MM-dd").parse(date);
+      Calendar calendar = new Calendar.Builder().setInstant(localDate.getTime()).build();
+      return calendar;
+    }
+    return null;
   }
 }

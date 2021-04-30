@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.stripe.exception.StripeException;
@@ -14,6 +15,17 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
-    manageDonationEvent.getRequestEnv().stripeClient().updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
+    StripeClient stripeClient = manageDonationEvent.getRequestEnv().stripeClient();
+    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
+      stripeClient.updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
+    }
+
+    if (manageDonationEvent.getNextPaymentDate() != null) {
+      stripeClient.updateSubscriptionDate(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getNextPaymentDate());
+    }
+
+    if (manageDonationEvent.getPauseDonation() == true) {
+      stripeClient.pauseSubscription(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getPauseDonationUntilDate());
+    }
   }
 }

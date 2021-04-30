@@ -1,7 +1,11 @@
 package com.impactupgrade.nucleus.model;
 
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.util.Utils;
+import java.text.ParseException;
+import java.util.Calendar;
 
 public class ManageDonationEvent {
   protected final Environment.RequestEnvironment requestEnv;
@@ -9,9 +13,22 @@ public class ManageDonationEvent {
   protected String donationId;
   protected Double amount;
   protected String subscriptionId;
+  protected Calendar nextPaymentDate;
+  protected Calendar pauseDonationUntilDate;
+  protected Boolean pauseDonation;
 
   public ManageDonationEvent(Environment.RequestEnvironment requestEnv) {
     this.requestEnv = requestEnv;
+  }
+
+  public ManageDonationEvent(Environment.RequestEnvironment requestEnv, ManageDonationFormData formData) throws ParseException {
+    this.requestEnv = requestEnv;
+    this.setDonationId(formData.recurringDonationId);
+
+    if (!Strings.isNullOrEmpty(String.valueOf(formData.amount))) this.amount = formData.amount.get();
+    if (!formData.nextPaymentDate.isEmpty()) this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
+    this.setPauseDonation(formData.pauseDonation);
+    if (!formData.pauseDonationUntilDate.isEmpty()) this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
   }
 
   // ACCESSORS
@@ -30,11 +47,26 @@ public class ManageDonationEvent {
 
   public void setSubscriptionId(String subscriptionId) { this.subscriptionId = subscriptionId; }
 
+  public Calendar getNextPaymentDate() { return this.nextPaymentDate; }
+
+  public void setNextPaymentDate(Calendar nextPaymentDate) { this.nextPaymentDate = nextPaymentDate; }
+
+  public Boolean getPauseDonation() { return this.pauseDonation; }
+
+  public void setPauseDonation(Boolean pauseDonation) { this.pauseDonation = pauseDonation; }
+
+  public Calendar getPauseDonationUntilDate() { return this.pauseDonationUntilDate; }
+
+  public void setPauseDonationUntilDate(Calendar pauseDonationUntilDate) { this.pauseDonationUntilDate = pauseDonationUntilDate; }
+
   public String toString() {
     return "ManageDonationEvent {" +
-        "\n donationId: " + this.donationId + "," +
-        "\n amount: " + this.amount + "," +
-        "\n subscriptionId: " + this.subscriptionId +
-        "\n }";
+        ",\n donationId: " + this.donationId +
+        ",\n amount: " + this.amount +
+        ",\n subscriptionId: " + this.subscriptionId +
+        ",\n nextPaymentDate: " + this.nextPaymentDate  +
+        ",\n pauseDonation: " + this.pauseDonation +
+        ",\n pauseDonationUntilDate: " + this.pauseDonationUntilDate +
+        ",\n }";
   }
 }
