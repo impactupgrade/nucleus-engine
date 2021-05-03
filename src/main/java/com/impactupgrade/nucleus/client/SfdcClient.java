@@ -68,7 +68,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c";
+  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, RecordTypeId";
 
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.config().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
@@ -87,7 +87,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CAMPAIGN_FIELDS = "id, name, parentid, ownerid";
+  protected static final String CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
 
   public Optional<SObject> getCampaignById(String campaignId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.config().salesforce.customQueryFields.campaign) + " from campaign where id = '" + campaignId + "'";
@@ -99,7 +99,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c, RecordTypeId";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.config().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
@@ -308,7 +308,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // RECURRING DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npsp__InstallmentFrequency__c";
+  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npsp__InstallmentFrequency__c, RecordTypeId";
 
   public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.config().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where id='" + id + "'";
