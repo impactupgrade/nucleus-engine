@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus.integration;
+package com.impactupgrade.nucleus.it;
 
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.StripeClient;
@@ -8,7 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 
 // TODO: hard coding for now...
 
-public class IntegrationTestEnvironment extends Environment {
+public class ITEnvironment extends Environment {
 
   @Override
   public SfdcClient sfdcClient() {

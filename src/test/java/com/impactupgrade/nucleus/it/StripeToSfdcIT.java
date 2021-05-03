@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus.integration;
+package com.impactupgrade.nucleus.it;
 
 import com.google.common.io.Resources;
 import com.impactupgrade.nucleus.client.SfdcClient;
@@ -28,9 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class StripeToSalesforceIntegrationTest extends JerseyTest {
+public class StripeToSfdcIT extends JerseyTest {
 
-  protected IntegrationTestEnvironment env;
+  protected ITEnvironment env;
 
   // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
   // do not name this setUp()
@@ -53,7 +53,7 @@ public class StripeToSalesforceIntegrationTest extends JerseyTest {
     enable(TestProperties.LOG_TRAFFIC);
     enable(TestProperties.DUMP_ENTITY);
 
-    env = new IntegrationTestEnvironment();
+    env = new ITEnvironment();
 
     ResourceConfig apiConfig = new ResourceConfig();
 
@@ -66,7 +66,7 @@ public class StripeToSalesforceIntegrationTest extends JerseyTest {
   }
 
   @Test
-  public void stripeToSfdc() throws Exception {
+  public void core() throws Exception {
     SfdcClient sfdcClient = env.sfdcClient();
 
     // first delete the opps/contact/account using the payload's email address
