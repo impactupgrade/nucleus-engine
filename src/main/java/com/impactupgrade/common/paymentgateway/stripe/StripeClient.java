@@ -33,12 +33,15 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+// TODO: The method arguments are getting out of control. Update these to use a record class to pass in
+//  whatever is needed.
 public class StripeClient {
 
   private static final Logger log = LogManager.getLogger(StripeClient.class.getName());
@@ -258,7 +261,7 @@ public class StripeClient {
 
   // TODO: SFDC specific
   public Subscription createSubscription(Customer customer, PaymentSource source, long amountInCents, String currency,
-      String description, String sfCampaignId, Map<String, String> subscriptionMetadata) throws StripeException {
+      String description, String sfCampaignId, Integer autoCancelMonths, Map<String, String> subscriptionMetadata) throws StripeException {
     // Stripe hates empty strings
     description = Strings.isNullOrEmpty(description) ? null : description;
 
@@ -278,11 +281,19 @@ public class StripeClient {
     // TODO: DR specific
     subscriptionMetadata.put("sf_campaign", sfCampaignId);
 
+    Long cancelAt = null;
+    if (autoCancelMonths != null) {
+      Calendar future = Calendar.getInstance();
+      future.add(Calendar.MONTH, autoCancelMonths);
+      cancelAt = future.getTimeInMillis() / 1000;
+    }
+
     SubscriptionCreateParams.Item item = SubscriptionCreateParams.Item.builder().setPlan(plan.getId()).build();
     SubscriptionCreateParams subscriptionParams = SubscriptionCreateParams.builder()
         .setCustomer(customer.getId())
         .setDefaultSource(source.getId())
         .addItem(item)
+        .setCancelAt(cancelAt)
         .setMetadata(subscriptionMetadata)
         .build();
     return Subscription.create(subscriptionParams, requestOptions);
