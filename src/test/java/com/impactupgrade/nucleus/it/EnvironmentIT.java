@@ -8,7 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 
 // TODO: hard coding for now...
 
-public class ITEnvironment extends Environment {
+public class EnvironmentIT extends Environment {
 
   @Override
   public SfdcClient sfdcClient() {
