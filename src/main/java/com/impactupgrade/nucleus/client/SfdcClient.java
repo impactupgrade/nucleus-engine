@@ -11,7 +11,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -22,13 +21,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   private static final Logger log = LogManager.getLogger(SfdcClient.class.getName());
 
+  public static final String AUTH_URL_PRODUCTION = "https://login.salesforce.com/services/Soap/u/47.0/";
+  public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/47.0/";
+
   private static final String AUTH_URL;
   static {
     String profile = System.getenv("PROFILE");
     if ("production".equalsIgnoreCase(profile)) {
-      AUTH_URL = "https://login.salesforce.com/services/Soap/u/47.0/";
+      AUTH_URL = AUTH_URL_PRODUCTION;
     } else {
-      AUTH_URL = "https://test.salesforce.com/services/Soap/u/47.0/";
+      AUTH_URL = AUTH_URL_SANDBOX;
     }
   }
 
@@ -36,26 +38,32 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected final Environment env;
 
-  public SfdcClient(Environment env, String username, String password) {
+  public SfdcClient(Environment env, String username, String password, String authUrl) {
     super(
         username,
         password,
-        AUTH_URL,
+        authUrl,
         20 // objects are massive, so toning down the batch sizes
     );
     this.env = env;
+  }
+
+  public SfdcClient(Environment env, String username, String password) {
+    this(
+        env,
+        username,
+        password,
+        AUTH_URL
+    );
   }
 
   public SfdcClient(Environment env) {
-    super(
+    this(
+        env,
         System.getenv("SFDC_USERNAME"),
-        System.getenv("SFDC_PASSWORD"),
-        AUTH_URL,
-        20 // objects are massive, so toning down the batch sizes
+        System.getenv("SFDC_PASSWORD")
     );
-    this.env = env;
   }
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

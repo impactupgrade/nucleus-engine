@@ -53,6 +53,7 @@ public class App {
     ResourceConfig apiConfig = new ResourceConfig();
 
     apiConfig.register(new SecurityExceptionMapper());
+    apiConfig.register(MultiPartFeature.class);
 
     apiConfig.register(getEnvironment().backupController());
     apiConfig.register(getEnvironment().paymentGatewayController());
@@ -60,8 +61,6 @@ public class App {
     apiConfig.register(getEnvironment().sfdcController());
     apiConfig.register(getEnvironment().stripeController());
     apiConfig.register(getEnvironment().twilioController());
-
-    apiConfig.register(MultiPartFeature.class);
 
     getEnvironment().registerAPIControllers(apiConfig);
 
