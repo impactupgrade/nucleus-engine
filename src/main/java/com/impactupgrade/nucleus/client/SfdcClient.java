@@ -68,7 +68,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, email__c, phone, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c";
+  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c";
 
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.config().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
