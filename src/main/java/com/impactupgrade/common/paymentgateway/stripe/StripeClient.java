@@ -185,7 +185,7 @@ public class StripeClient {
     return balanceTransactions;
   }
 
-  public Customer createCustomer(String name, String email, String sourceToken) throws StripeException {
+  public Customer createCustomer(String name, String email, String sourceToken, Map<String, String> customerMetadata) throws StripeException {
     CustomerCreateParams customerParams = CustomerCreateParams.builder()
         .setName(name)
         // Important to use the name as the description! Allows the Subscriptions list to display customers
@@ -193,6 +193,7 @@ public class StripeClient {
         .setDescription(name)
         .setEmail(email)
         .setSource(sourceToken)
+        .setMetadata(customerMetadata)
         .addExpand("sources")
         .build();
     return Customer.create(customerParams, requestOptions);
@@ -222,8 +223,7 @@ public class StripeClient {
   }
 
   // TODO: SFDC specific
-  public Customer updateCustomer(Customer customer, String sfAccountId, String sfContactId) throws StripeException {
-    Map<String, String> customerMetadata = new HashMap<>();
+  public Customer updateCustomer(Customer customer, String sfAccountId, String sfContactId, Map<String, String> customerMetadata) throws StripeException {
     // TODO: DR specific
     customerMetadata.put("sf_account", sfAccountId);
     customerMetadata.put("sf_contact", sfContactId);
@@ -237,8 +237,7 @@ public class StripeClient {
 
   // TODO: SFDC specific
   public Charge createCharge(Customer customer, PaymentSource source, long amountInCents, String currency,
-      String description, String sfCampaignId, String sfOppRecordType) throws StripeException {
-    Map<String, String> chargeMetadata = new HashMap<>();
+      String description, String sfCampaignId, String sfOppRecordType, Map<String, String> chargeMetadata) throws StripeException {
     // TODO: DR specific
     chargeMetadata.put("sf_campaign", sfCampaignId);
     chargeMetadata.put("sf_opp_record_type", sfOppRecordType);
@@ -259,7 +258,7 @@ public class StripeClient {
 
   // TODO: SFDC specific
   public Subscription createSubscription(Customer customer, PaymentSource source, long amountInCents, String currency,
-      String description, String sfCampaignId) throws StripeException {
+      String description, String sfCampaignId, Map<String, String> subscriptionMetadata) throws StripeException {
     // Stripe hates empty strings
     description = Strings.isNullOrEmpty(description) ? null : description;
 
@@ -275,7 +274,6 @@ public class StripeClient {
         .build();
     Plan plan = Plan.create(planParams, requestOptions);
 
-    Map<String, String> subscriptionMetadata = new HashMap<>();
     subscriptionMetadata.put("description", description);
     // TODO: DR specific
     subscriptionMetadata.put("sf_campaign", sfCampaignId);
