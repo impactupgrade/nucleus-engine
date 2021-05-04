@@ -7,10 +7,19 @@
   <title>Donation Spring</title>
   <script>
     window.onload = function() {
-      var ds_color = parent.document.documentElement.style.getPropertyValue('--ds_color');
-      var ds_l = parent.document.documentElement.style.getPropertyValue('--ds_l');
-      document.documentElement.style.setProperty('--ds_color', ds_color);
-      document.documentElement.style.setProperty('--ds_l', ds_l);
+      window.top.postMessage('button_loaded', '*');
+    }
+
+    window.onmessage = (event) => {
+      var data = JSON.parse(event.data);
+      if (data.action === 'set_color') {
+        document.documentElement.style.setProperty('--ds_color', data.ds_color);
+        document.documentElement.style.setProperty('--ds_l', data.ds_l);
+      }
+    }
+
+    function show_form(){
+      window.top.postMessage('show_form', '*');
     }
   </script>
   <style>
@@ -64,7 +73,7 @@
   </style>
 </head>
 <body>
-  <button id="DSGNBTN" class="btn give_now_button" data-donationspring-open role="button" onclick="parent.ds.showform()">Give Now</button>
+  <button name="DSGNBTN" id="DSGNBTN" class="btn give_now_button" data-donationspring-open role="button" onclick="show_form()">Give Now</button>
 </body>
 </html>
 

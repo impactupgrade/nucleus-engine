@@ -1,10 +1,9 @@
 var donationspring = new function () {
 
-  var current_step, stripe, card, thankyou_msg, api_key;
+  var current_step, stripe, card, thankyou_msg, submit_url;
 
   function ds_initial_values(args) {
     current_step = 1;
-    api_key = args.ds_api_key;
     stripe = Stripe(args.stripe_public_key);
     amount_input = document.querySelectorAll('.amount');
     default_donation_type = args.default_donation_type || "onetime";
@@ -13,6 +12,7 @@ var donationspring = new function () {
     values = args.values || [25, 50, 100, 500, 1000, 1500, 2000];
     thankyou_msg = args.thankyou_msg || "<p>Thank you for your donation!</p>";
     form_title = args.form_title || "Donation Spring";
+    submit_url = "https://nucleus.impactupgrade.com/api/donationspring/" + args.ds_api_key + "/donate";
 
     switch (default_donation_type) {
       case 'monthly':
@@ -289,7 +289,7 @@ var donationspring = new function () {
             break;
         }
 
-        fetch("https://nucleus.impactupgrade.com/api/donationspring/" + api_key + "/donate", options).then(function(response) {
+        fetch(submit_url, options).then(function(response) {
           if (response.status === 200) {
             donationspring.next_prev(1);
             document.getElementById("thankyou_msg").innerHTML = thankyou_msg;
@@ -297,7 +297,7 @@ var donationspring = new function () {
             document.getElementById("ds_modal__back_button").style.display = "none";
             document.getElementById("ds_modal__title").style.display = "block";
             document.getElementById('processing_overlay').style.display = "none";
-            parent.ds.ds_submitted = true;
+            window.top.postMessage('form_submited', '*');
           } else {
             document.getElementById('processing_overlay').style.display = "none";
             var errorElement = document.getElementById('card-errors');
@@ -410,7 +410,7 @@ var donationspring = new function () {
       let isEscapePressed = e.key === 'Escape';
       if (!isTabPressed) {
         if (isEscapePressed){
-          parent.ds.hideform();
+          window.top.postMessage('hide_form', '*');
         }
         return;
       }

@@ -10,10 +10,22 @@
   <script type="text/javascript" src="https://nucleus.impactupgrade.com/ds/js/donationspring.js"></script>
   <script>
     window.onload = function() {
-      var ds_color = parent.document.documentElement.style.getPropertyValue('--ds_color');
-      var ds_l = parent.document.documentElement.style.getPropertyValue('--ds_l');
-      document.documentElement.style.setProperty('--ds_color', ds_color);
-      document.documentElement.style.setProperty('--ds_l', ds_l);
+      window.top.postMessage('form_loaded', '*');
+    }
+
+    window.onmessage = (event) => {
+      var data = JSON.parse(event.data);
+      if (data.action === 'set_color') {
+        document.documentElement.style.setProperty('--ds_color', data.ds_color);
+        document.documentElement.style.setProperty('--ds_l', data.ds_l);
+      }
+
+      if (data.action === 'load_options') {
+        donationspring.init(data.args);
+      }
+    }
+    function hide_form(){
+      window.top.postMessage('hide_form', '*');
     }
   </script>
 </head>
@@ -761,10 +773,6 @@
         </div>
       </div>
   </div>
-
-  <script>
-    donationspring.init(parent.ds.options);
-  </script>
 
 </body>
 </html>
