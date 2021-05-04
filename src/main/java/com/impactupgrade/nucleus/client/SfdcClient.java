@@ -11,7 +11,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -22,13 +21,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   private static final Logger log = LogManager.getLogger(SfdcClient.class.getName());
 
+  public static final String AUTH_URL_PRODUCTION = "https://login.salesforce.com/services/Soap/u/47.0/";
+  public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/47.0/";
+
   private static final String AUTH_URL;
   static {
     String profile = System.getenv("PROFILE");
     if ("production".equalsIgnoreCase(profile)) {
-      AUTH_URL = "https://login.salesforce.com/services/Soap/u/47.0/";
+      AUTH_URL = AUTH_URL_PRODUCTION;
     } else {
-      AUTH_URL = "https://test.salesforce.com/services/Soap/u/47.0/";
+      AUTH_URL = AUTH_URL_SANDBOX;
     }
   }
 
@@ -36,31 +38,37 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected final Environment env;
 
-  public SfdcClient(Environment env, String username, String password) {
+  public SfdcClient(Environment env, String username, String password, String authUrl) {
     super(
         username,
         password,
-        AUTH_URL,
+        authUrl,
         20 // objects are massive, so toning down the batch sizes
     );
     this.env = env;
+  }
+
+  public SfdcClient(Environment env, String username, String password) {
+    this(
+        env,
+        username,
+        password,
+        AUTH_URL
+    );
   }
 
   public SfdcClient(Environment env) {
-    super(
+    this(
+        env,
         System.getenv("SFDC_USERNAME"),
-        System.getenv("SFDC_PASSWORD"),
-        AUTH_URL,
-        20 // objects are massive, so toning down the batch sizes
+        System.getenv("SFDC_PASSWORD")
     );
-    this.env = env;
   }
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, email__c, phone, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c";
+  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, RecordTypeId";
 
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.config().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
@@ -79,7 +87,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CAMPAIGN_FIELDS = "id, name, parentid, ownerid";
+  protected static final String CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
 
   public Optional<SObject> getCampaignById(String campaignId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.config().salesforce.customQueryFields.campaign) + " from campaign where id = '" + campaignId + "'";
@@ -91,7 +99,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c, RecordTypeId";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.config().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
@@ -300,7 +308,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // RECURRING DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npsp__InstallmentFrequency__c";
+  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npsp__InstallmentFrequency__c, RecordTypeId";
 
   public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.config().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where id='" + id + "'";

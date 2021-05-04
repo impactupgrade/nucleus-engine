@@ -7,6 +7,7 @@ import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.util.LoggingUtil;
+import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -65,7 +66,7 @@ public class StripeController {
   @Path("/webhook")
   @POST
   @Produces(MediaType.APPLICATION_JSON)
-  public Response webhook(String json, @Context HttpServletRequest request) {
+  public Response webhook(String json, @Context HttpServletRequest request) throws Exception {
     LoggingUtil.verbose(log, json);
 
     // stripe-java uses GSON, so Jersey/Jackson won't work on its own
@@ -80,23 +81,27 @@ public class StripeController {
       return Response.status(500).build();
     }
 
+    // don't log the whole thing -- can be found in Stripe's dashboard -> Developers -> Webhooks
+    // log this within the new thread for traceability's sake
+    log.info("received event {}: {}", event.getType(), event.getId());
+
     // Do this outside the thread, to ensure the request doesn't end first...
     final RequestEnvironment requestEnv = env.newRequestEnvironment(request);
 
-    // takes a while, so spin it off as a new thread
-    Runnable thread = () -> {
-      // don't log the whole thing -- can be found in Stripe's dashboard -> Developers -> Webhooks
-      // log this within the new thread for traceability's sake
-      log.info("received event {}: {}", event.getType(), event.getId());
-
-      try {
-        processEvent(event.getType(), stripeObject, requestEnv);
-      } catch (Exception e) {
-        log.error("failed to process the Stripe event", e);
-        // TODO: email notification?
-      }
-    };
-    new Thread(thread).start();
+    if (TestUtil.SKIP_NEW_THREADS) {
+      processEvent(event.getType(), stripeObject, requestEnv);
+    } else {
+      // takes a while, so spin it off as a new thread
+      Runnable thread = () -> {
+        try {
+          processEvent(event.getType(), stripeObject, requestEnv);
+        } catch (Exception e) {
+          log.error("failed to process the Stripe event", e);
+          // TODO: email notification?
+        }
+      };
+      new Thread(thread).start();
+    }
 
     return Response.status(200).build();
   }

@@ -1,0 +1,206 @@
+{
+  "id": "evt_1ImrONHAwJOu5brr34orru6n",
+  "object": "event",
+  "api_version": "2020-08-27",
+  "created": 1620008414,
+  "data": {
+    "object": {
+      "id": "pi_1ImrOLHAwJOu5brrpQ71F1G9",
+      "object": "payment_intent",
+      "amount": 10000,
+      "amount_capturable": 0,
+      "amount_received": 10000,
+      "application": null,
+      "application_fee_amount": null,
+      "canceled_at": null,
+      "cancellation_reason": null,
+      "capture_method": "automatic",
+      "charges": {
+        "object": "list",
+        "data": [
+          {
+            "id": "ch_1ImrOMHAwJOu5brrzpcvaN02",
+            "object": "charge",
+            "amount": 10000,
+            "amount_captured": 10000,
+            "amount_refunded": 0,
+            "application": null,
+            "application_fee": null,
+            "application_fee_amount": null,
+            "balance_transaction": "txn_1ImrOMHAwJOu5brrP6j3LZ3w",
+            "billing_details": {
+              "address": {
+                "city": null,
+                "country": null,
+                "line1": null,
+                "line2": null,
+                "postal_code": null,
+                "state": null
+              },
+              "email": null,
+              "name": null,
+              "phone": null
+            },
+            "calculated_statement_descriptor": "IMPACT UPGRADE",
+            "captured": true,
+            "created": 1620008414,
+            "currency": "usd",
+            "customer": "cus_JPgkris8GTsXIH",
+            "description": "stripe-charge-success",
+            "destination": null,
+            "dispute": null,
+            "disputed": false,
+            "failure_code": null,
+            "failure_message": null,
+            "fraud_details": {
+            },
+            "invoice": null,
+            "livemode": false,
+            "metadata": {
+            },
+            "on_behalf_of": null,
+            "order": null,
+            "outcome": {
+              "network_status": "approved_by_network",
+              "reason": null,
+              "risk_level": "normal",
+              "risk_score": 4,
+              "seller_message": "Payment complete.",
+              "type": "authorized"
+            },
+            "paid": true,
+            "payment_intent": "pi_1ImrOLHAwJOu5brrpQ71F1G9",
+            "payment_method": "src_1ImrOKHAwJOu5brr563XLeLz",
+            "payment_method_details": {
+              "card": {
+                "brand": "visa",
+                "checks": {
+                  "address_line1_check": null,
+                  "address_postal_code_check": null,
+                  "cvc_check": "pass"
+                },
+                "country": "US",
+                "exp_month": 12,
+                "exp_year": 2022,
+                "fingerprint": "WHTBeQ5HmOeHlWfu",
+                "funding": "credit",
+                "installments": null,
+                "last4": "4242",
+                "network": "visa",
+                "three_d_secure": null,
+                "wallet": null
+              },
+              "type": "card"
+            },
+            "receipt_email": null,
+            "receipt_number": null,
+            "receipt_url": "https://pay.stripe.com/receipts/acct_1Imqu3HAwJOu5brr/ch_1ImrOMHAwJOu5brrzpcvaN02/rcpt_JPglEJQGO2dL6vDk1a8eFuaL5zTG5vD",
+            "refunded": false,
+            "refunds": {
+              "object": "list",
+              "data": [
+              ],
+              "has_more": false,
+              "total_count": 0,
+              "url": "/v1/charges/ch_1ImrOMHAwJOu5brrzpcvaN02/refunds"
+            },
+            "review": null,
+            "shipping": null,
+            "source": {
+              "id": "src_1ImrOKHAwJOu5brr563XLeLz",
+              "object": "source",
+              "amount": null,
+              "card": {
+                "exp_month": 12,
+                "exp_year": 2022,
+                "last4": "4242",
+                "country": "US",
+                "brand": "Visa",
+                "cvc_check": "pass",
+                "funding": "credit",
+                "fingerprint": "WHTBeQ5HmOeHlWfu",
+                "three_d_secure": "optional",
+                "name": null,
+                "address_line1_check": null,
+                "address_zip_check": null,
+                "tokenization_method": null,
+                "dynamic_last4": null
+              },
+              "client_secret": "src_client_secret_qbMbzhsqShVitDoqf9g2pTs9",
+              "created": 1620008414,
+              "currency": null,
+              "flow": "none",
+              "livemode": false,
+              "metadata": {
+              },
+              "owner": {
+                "address": null,
+                "email": null,
+                "name": null,
+                "phone": null,
+                "verified_address": null,
+                "verified_email": null,
+                "verified_name": null,
+                "verified_phone": null
+              },
+              "statement_descriptor": null,
+              "status": "chargeable",
+              "type": "card",
+              "usage": "reusable"
+            },
+            "source_transfer": null,
+            "statement_descriptor": "Impact Upgrade",
+            "statement_descriptor_suffix": null,
+            "status": "succeeded",
+            "transfer_data": null,
+            "transfer_group": null
+          }
+        ],
+        "has_more": false,
+        "total_count": 1,
+        "url": "/v1/charges?payment_intent=pi_1ImrOLHAwJOu5brrpQ71F1G9"
+      },
+      "client_secret": "pi_1ImrOLHAwJOu5brrpQ71F1G9_secret_Pp07BprmMKsKd3f2mC7gGSfFT",
+      "confirmation_method": "automatic",
+      "created": 1620008413,
+      "currency": "usd",
+      "customer": "cus_JPgkris8GTsXIH",
+      "description": "stripe-charge-success",
+      "invoice": null,
+      "last_payment_error": null,
+      "livemode": false,
+      "metadata": {
+      },
+      "next_action": null,
+      "on_behalf_of": null,
+      "payment_method": null,
+      "payment_method_options": {
+        "card": {
+          "installments": null,
+          "network": null,
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card"
+      ],
+      "receipt_email": null,
+      "review": null,
+      "setup_future_usage": "off_session",
+      "shipping": null,
+      "source": "src_1ImrOKHAwJOu5brr563XLeLz",
+      "statement_descriptor": "Impact Upgrade",
+      "statement_descriptor_suffix": null,
+      "status": "succeeded",
+      "transfer_data": null,
+      "transfer_group": null
+    }
+  },
+  "livemode": true,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_yccNGzM4ReakLK",
+    "idempotency_key": null
+  },
+  "type": "payment_intent.succeeded"
+}
