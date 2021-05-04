@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class StripeToSfdcIT extends AbstractIT {
 
   @Test
-  public void core() throws Exception {
+  public void coreOneTime() throws Exception {
     deleteSfdcRecords("team+integration+tester@impactupgrade.com");
 
     // play a Stripe webhook, captured directly from our Stripe account itself
