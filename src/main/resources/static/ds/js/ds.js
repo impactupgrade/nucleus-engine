@@ -17,6 +17,8 @@ var ds = new function () {
     primary_color = args.primary_color || primary_color;
     toHSL(primary_color);
 
+    loadScript("https://www.google.com/recaptcha/api.js?render=6LfXz7EaAAAAAGATGud2gKe0Aq7cxePyzU50RgTd");
+
     loadScript("https://js.stripe.com/v3/", function () {
       var ds_displays = document.querySelectorAll('[data-ds-display]');
       for (var i in ds_displays) {
