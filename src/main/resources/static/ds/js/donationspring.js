@@ -164,6 +164,13 @@ var donationspring = new function () {
       if (index == current_step - 1){
         item.classList.add("current");
       }
+
+      if (current_step == 3) {
+        var tip_status = document.getElementById('add_tip').checked;
+        if (tip_status){
+          calc_tip('add');
+        }
+      }
     })
     document.querySelectorAll('.ds_step')[current_step-1].style.display = "block";
     if (current_step > 1){
@@ -372,6 +379,14 @@ var donationspring = new function () {
       };
     });
 
+    document.getElementById("add_tip").addEventListener('change', function () {
+      if (this.checked) {
+        calc_tip('add');
+      } else {
+        calc_tip('remove');
+      }
+    });
+
     document.getElementById("ds_form").addEventListener("submit", submitDonationForm);
   }
 
@@ -398,6 +413,21 @@ var donationspring = new function () {
       show_class(el[i]);
     }
   };
+
+  calc_tip = function (method) {
+    const pre_tip_donation_amt = parseFloat(document.getElementById("da_manual_amount").value);
+    if (method == 'add'){
+      var add_tip = (pre_tip_donation_amt * 0.05);
+      var total_donation = (pre_tip_donation_amt + add_tip);
+      console.log(pre_tip_donation_amt);
+      console.log(add_tip);
+      console.log(total_donation);
+      document.getElementsByName("donation_with_tip")[0].value = total_donation;
+    } else {
+      document.getElementsByName("donation_with_tip")[0].value = pre_tip_donation_amt;
+    }
+    
+  }
 
  /*  ds_trap_modal = function (modal){
     document.activeElement = null;
