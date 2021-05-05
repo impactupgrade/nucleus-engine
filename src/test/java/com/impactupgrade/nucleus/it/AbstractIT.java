@@ -63,15 +63,21 @@ public class AbstractIT extends JerseyTest {
   protected void deleteSfdcRecords(String email) throws Exception {
     SfdcClient sfdcClient = getEnv().sfdcClient();
 
-    // first delete the opps/contact/account using the payload's email address
     Optional<SObject> existingContact = sfdcClient.getContactByEmail(email);
     if (existingContact.isPresent()) {
       String accountId = existingContact.get().getField("AccountId").toString();
       Optional<SObject> existingAccount = sfdcClient.getAccountById(accountId);
+
       List<SObject> existingOpps = sfdcClient.getDonationsByAccountId(accountId);
       for (SObject existingOpp : existingOpps) {
         sfdcClient.delete(existingOpp);
       }
+
+      List<SObject> existingRDs = sfdcClient.getRecurringDonationsByAccountId(accountId);
+      for (SObject existingRD : existingRDs) {
+        sfdcClient.delete(existingRD);
+      }
+
       sfdcClient.delete(existingContact.get());
       sfdcClient.delete(existingAccount.get());
     }
