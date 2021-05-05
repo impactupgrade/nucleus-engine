@@ -60,11 +60,11 @@ public class PaymentGatewayController {
 //    }
   }
 
-  @Path("/update-recurring-donation-amount")
+  @Path("/update-recurring-donation")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response updateRecurringDonationAmount(
+  public Response updateRecurringDonation(
       @BeanParam ManageDonationFormData formData,
       @Context HttpServletRequest request
   ) throws Exception {
@@ -82,20 +82,15 @@ public class PaymentGatewayController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response updateRecurringDonationPaymentMethod(
-      @FormParam("rd-id") String recurringDonationId,
-      @FormParam("amount") Double amount,
+      @BeanParam ManageDonationFormData formData,
       @Context HttpServletRequest request
   ) throws Exception {
     SecurityUtil.verifyApiKey(request);
 
     final Environment.RequestEnvironment requestEnv = env.newRequestEnvironment(request);
 
-    // TODO: helper method taking form data -> ManageDonationEvent
-    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv);
-    manageDonationEvent.setDonationId(recurringDonationId);
-    manageDonationEvent.setAmount(amount);
-
-    donationService.updateRecurringDonation(manageDonationEvent);
+    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv, formData);
+    donationService.updateRecurringDonationPaymentMethod(manageDonationEvent);
 
     return Response.status(200).build();
   }

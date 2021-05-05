@@ -16,6 +16,7 @@ public class ManageDonationEvent {
   protected Calendar nextPaymentDate;
   protected Calendar pauseDonationUntilDate;
   protected Boolean pauseDonation;
+  protected String stripeToken;
 
   public ManageDonationEvent(Environment.RequestEnvironment requestEnv) {
     this.requestEnv = requestEnv;
@@ -24,10 +25,11 @@ public class ManageDonationEvent {
   public ManageDonationEvent(Environment.RequestEnvironment requestEnv, ManageDonationFormData formData) throws ParseException {
     this.requestEnv = requestEnv;
     this.setDonationId(formData.recurringDonationId);
+    if (formData.stripeToken.isPresent()) this.stripeToken = formData.stripeToken.get();
 
     if (formData.amount.isPresent()) this.amount = formData.amount.get();
     if (formData.nextPaymentDate.isPresent()) this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
-    this.setPauseDonation(formData.pauseDonation == true);
+    if (formData.pauseDonation.isPresent()) this.setPauseDonation(formData.pauseDonation.get() == true);
     if (formData.pauseDonationUntilDate.isPresent()) this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
   }
 
@@ -59,6 +61,10 @@ public class ManageDonationEvent {
 
   public void setPauseDonationUntilDate(Calendar pauseDonationUntilDate) { this.pauseDonationUntilDate = pauseDonationUntilDate; }
 
+  public String getStripeToken() { return this.stripeToken; }
+
+  public void setStripeToken(String stripeToken) { this.stripeToken = stripeToken; }
+
   public String toString() {
     return "ManageDonationEvent {" +
         ",\n donationId: " + this.donationId +
@@ -67,6 +73,7 @@ public class ManageDonationEvent {
         ",\n nextPaymentDate: " + this.nextPaymentDate  +
         ",\n pauseDonation: " + this.pauseDonation +
         ",\n pauseDonationUntilDate: " + this.pauseDonationUntilDate +
+        ",\n stripeToken: " + this.stripeToken +
         ",\n }";
   }
 }

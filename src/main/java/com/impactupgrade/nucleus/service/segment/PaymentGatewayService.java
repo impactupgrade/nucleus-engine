@@ -6,4 +6,5 @@ import com.stripe.exception.StripeException;
 public interface PaymentGatewayService {
 
   void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException;
+  void updateSubscriptionPaymentMethod(ManageDonationEvent manageDonationEvent) throws StripeException;
 }

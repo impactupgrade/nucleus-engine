@@ -317,9 +317,16 @@ public class StripeClient {
     String customerId = subscription.getCustomer();
     log.info("updating customer {} payment method on subscription {}...", customerId, subscriptionId);
 
+    // add source to customer
     Customer customer = getCustomer(customerId);
-    CustomerUpdateParams params = CustomerUpdateParams.builder().setSource(paymentMethodToken).build();
-    customer.update(params);
+    PaymentSource newSource = updateCustomerSource(customer, paymentMethodToken);
+
+    // set source as defaultSource for subscription
+    SubscriptionUpdateParams subscriptionParams = SubscriptionUpdateParams.builder()
+        .setDefaultSource(newSource.getId())
+        .build();
+    subscription.update(subscriptionParams, requestOptions);
+
     log.info("updated customer {} payment method on subscription {}", customerId, subscriptionId);
   }
 
