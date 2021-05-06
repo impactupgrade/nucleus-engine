@@ -292,12 +292,11 @@ public class PaymentGatewayWebhookEvent {
     if (stripeSubscription.getTrialEnd() != null) {
       subscriptionStartDate = Calendar.getInstance();
       subscriptionStartDate.setTimeInMillis(stripeSubscription.getTrialEnd() * 1000);
-      subscriptionNextDate = Calendar.getInstance();
-      subscriptionNextDate.setTimeInMillis(stripeSubscription.getTrialEnd() * 1000);
     } else {
       subscriptionStartDate = Calendar.getInstance();
-      subscriptionNextDate = Calendar.getInstance();
+      subscriptionStartDate.setTimeInMillis(stripeSubscription.getStartDate() * 1000);
     }
+    subscriptionNextDate = subscriptionStartDate;
 
     subscriptionId = stripeSubscription.getId();
     if (stripeSubscription.getPendingInvoiceItemInterval() != null) {
