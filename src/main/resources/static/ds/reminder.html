@@ -7,10 +7,15 @@
   <title>Donation Spring Reminder</title>
   <script>
     window.onload = function() {
-      var ds_color = parent.document.documentElement.style.getPropertyValue('--ds_color');
-      var ds_l = parent.document.documentElement.style.getPropertyValue('--ds_l');
-      document.documentElement.style.setProperty('--ds_color', ds_color);
-      document.documentElement.style.setProperty('--ds_l', ds_l);
+      window.parent.postMessage('reminder_loaded', '*');
+    }
+
+    window.onmessage = (event) => {
+      var data = JSON.parse(event.data);
+      if (data.action === 'set_color') {
+        document.documentElement.style.setProperty('--ds_color', data.ds_color);
+        document.documentElement.style.setProperty('--ds_l', data.ds_l);
+      }
     }
   </script>
   <style>
@@ -84,8 +89,8 @@
     <img alt="Donation Spring" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADYAAAA6CAMAAADMWVqUAAAAM1BMVEUAAAAgr98asd4Zst4Yr98asd4asd0bst8cr98br98bsd0asd4asN0as98asN0Zst8asd7IcHO1AAAAEHRSTlMAEO+/IM+AYEAwj9+fUK9whqzFLQAAAVxJREFUSMftlNuOhSAMRTd3QfD0/792DlhkxoypmMzL5Kwnja603Sngw3/ClhDBqERk4h0r0RsXd8vVF61kK1PDoWKokUVrIaa+eH7WN1ocWqSOqG20YwA4YlZRC9xWbI9MgIjXxJmvNCrfIC5qr8u4y/ztazMmBXuaki0xvm3BgZYsT4Okeqsc4qXFszOOOy090UvoB3r3/Ihe1sY0XozenLzt0OyNzRgU1jIqNhljkpXLraxZPqgXY/KnQWharqUcdUa9IRafzTpSaZ2Xt6XpwOMC6/tfEQutfCmIGz3aTVCU215K1ZjQQ9EFhb4TIXsWm1KaTj2KXsECf9odgY0H0TTIogWlW0tjMs07IrfpgMzSGkRhnMB+32mP24Sq/XJO5eniMm3VuZameUwRd23FJLppflbLTbOz2qtqDrNEvLWEeWzd5wfwaLM4whOye6QF80izzzS88OFP+QJAxCNGftorEQAAAABJRU5ErkJggg==">
     <p>Complete your donation today to make a difference</p>
     <div class="buttons">
-      <button type="button" class="active" onclick="parent.ds.showform()">I’m Ready</button>
-      <button type="button" onclick="parent.ds.hidereminder()">Not today</button>
+      <button type="button" class="active" onclick=" window.parent.postMessage('show_form', '*');">I’m Ready</button>
+      <button type="button" onclick=" window.parent.postMessage('hide_reminder', '*');">Not today</button>
     </div>
   </div>
 </body>

@@ -261,16 +261,13 @@ var donationspring = new function () {
         document.getElementsByName("stripe_token")[0].value = result.token.id;
         let formData = new FormData(ds_form);
 
-        // let parsedData = {};
         let parsedData = [];
         for (let name of formData) {
           if (typeof (parsedData[name[0]]) == "undefined") {
             let tempdata = formData.getAll(name[0]);
             if (tempdata.length > 1) {
-              // parsedData[name[0]] = tempdata;
               parsedData.push([name[0]] + "=" + tempdata);
             } else {
-              // parsedData[name[0]] = tempdata[0];
               parsedData.push([name[0]] + "=" + tempdata[0]);
             }
           }
@@ -280,11 +277,9 @@ var donationspring = new function () {
         // TODO: Clarify what this is doing? Odd that the switch falls through on POST
         switch (ds_form.method.toLowerCase()) {
           case 'post':
-            // options.body = JSON.stringify(parsedData);
             options.body = parsedData.join('&');
           case 'get':
             options.method = ds_form.method;
-            // options.headers = { 'Content-Type': 'application/json' };
             options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
             break;
         }
@@ -297,7 +292,7 @@ var donationspring = new function () {
             document.getElementById("ds_modal__back_button").style.display = "none";
             document.getElementById("ds_modal__title").style.display = "block";
             document.getElementById('processing_overlay').style.display = "none";
-            window.top.postMessage('form_submited', '*');
+            window.parent.postMessage('form_submited', '*');
           } else {
             document.getElementById('processing_overlay').style.display = "none";
             var errorElement = document.getElementById('card-errors');
@@ -398,34 +393,4 @@ var donationspring = new function () {
       show_class(el[i]);
     }
   };
-
- /*  ds_trap_modal = function (modal){
-    document.activeElement = null;
-    const focusableElements = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    const firstFocusableElement = modal.querySelectorAll(focusableElements)[0];
-    const focusableContent = modal.querySelectorAll(focusableElements);
-    const lastFocusableElement = focusableContent[focusableContent.length - 1];
-    modal.addEventListener('keydown', function (e) {
-      let isTabPressed = e.key === 'Tab';
-      let isEscapePressed = e.key === 'Escape';
-      if (!isTabPressed) {
-        if (isEscapePressed){
-          window.top.postMessage('hide_form', '*');
-        }
-        return;
-      }
-      if (e.shiftKey) {
-        if (document.activeElement === firstFocusableElement) {
-          lastFocusableElement.focus();
-          e.preventDefault();
-        }
-      } else {
-        if (document.activeElement === lastFocusableElement) {
-          firstFocusableElement.focus();
-          e.preventDefault();
-        }
-      }
-    });
-  } */
-
 };

@@ -10,7 +10,7 @@
   <script type="text/javascript" src="https://nucleus.impactupgrade.com/ds/js/donationspring.js"></script>
   <script>
     window.onload = function() {
-      window.top.postMessage('form_loaded', '*');
+      window.parent.postMessage('form_loaded', '*');
     }
 
     window.onmessage = (event) => {
@@ -25,7 +25,7 @@
       }
     }
     function hide_form(){
-      window.top.postMessage('hide_form', '*');
+      window.parent.postMessage('hide_form', '*');
     }
   </script>
 </head>
@@ -36,7 +36,7 @@
         <div class="modal__header">
           <h2 id="ds_modal__title" class="modal__title">Donation Spring Demo</h2>
           <button id="ds_modal__back_button" class="modal__back_button" onclick="donationspring.next_prev(-1)"><span>Back</span></button>
-          <button class="modal__close" aria-label="Close modal" onclick="parent.ds.hideform()" type="button"></button>
+          <button id="modal__close" class="modal__close" aria-label="Close modal" onclick="hide_form()" type="button"></button>
         </div>
         <div id="ds-modal__content" class="modal__content">
           <div class="ds_steps">
@@ -773,6 +773,15 @@
         </div>
       </div>
   </div>
+
+   <script>
+    if(parent.window.frames[window.name].name == 'DSFORM-INLINE'){
+      is_inline = true;
+      document.getElementById("ds_modal").classList.add("inline_form");
+      document.getElementById("modal__close").style.display = "none";
+      document.body.style.background = "transparent";
+    }
+  </script>
 
 </body>
 </html>

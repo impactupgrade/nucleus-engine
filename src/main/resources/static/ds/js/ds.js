@@ -40,6 +40,14 @@ var ds = new function () {
           event.source.window.postMessage('{"action": "set_color", "ds_color":"' + ds_color + '", "ds_l":"' + ds_l + '"}', '*')
           event.source.window.postMessage('{"action": "load_options", "args": ' + JSON.stringify(args) + '}', '*')
           break;
+        case 'reminder_loaded':
+          var ds_color = document.documentElement.style.getPropertyValue('--ds_color');
+          var ds_l = document.documentElement.style.getPropertyValue('--ds_l');
+          event.source.window.postMessage('{"action": "set_color", "ds_color":"' + ds_color + '", "ds_l":"' + ds_l + '"}', '*')
+          break;
+        case 'hide_reminder':
+          hidereminder();
+          break;
       }
     }
 
@@ -51,11 +59,11 @@ var ds = new function () {
             case "button":
               ds.options = args;
               addbutton();
-              addform_iframe();
-              //addreminder();
+              addform(false);
+              addreminder();
               break;
             case "form":
-              addform_inline(args);
+              addform(true);
               break;
           }
         }
@@ -63,7 +71,7 @@ var ds = new function () {
     });
   }
 
-  this.showform = function () {
+  showform = function () {
     form = document.getElementById('DSFORM');
     document.body.style.overflow = "hidden"
     form.style.display = "block";
@@ -73,63 +81,53 @@ var ds = new function () {
       event.stopPropagation();
       form.focus();
     });
-    //ds.hidereminder();
+    hidereminder();
   };
 
-  this.hideform = function () {
+  hideform = function () {
     document.body.style.overflow = "inherit"
     document.getElementById('DSFORM').style.display = "none";
-  /*  if (!ds.ds_submitted){
-      ds.showreminder();
-    } */
+    if (!ds_submitted){
+      showreminder();
+    }
   };
 
-  this.showreminder = function () {
+  showreminder = function () {
     document.getElementById('DSREMIND').style.display = "block";
   };
 
-  this.hidereminder = function () {
+  hidereminder = function () {
     document.getElementById('DSREMIND').style.display = "none";
   };
 
   addbutton = function () {
-    document.querySelector('[data-ds-display="button"]').innerHTML += '<iframe width="125" title="Donation Spring" height="40" src="https://nucleus.impactupgrade.com/ds/button.html" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="visibility: visible; display: inline-block !important; vertical-align: middle !important; width: 125px !important; min-width: 40px !important; max-width: 125px !important; height: 40px !important; min-height: 40px !important; max-height: 125px !important;" name="DSDB" id="DSDB"></iframe>'
+    document.querySelector('[data-ds-display="button"]').innerHTML += '<iframe width="125" title="Donation Spring" height="40" src="' + root_url +'button.html" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="visibility: visible; display: inline-block !important; vertical-align: middle !important; width: 125px !important; min-width: 40px !important; max-width: 125px !important; height: 40px !important; min-height: 40px !important; max-height: 125px !important;" name="DSDB" id="DSDB"></iframe>'
   };
 
-
-
-  addform_inline = function (args) {
-    loadScript(root_url + "js/donationspring.js", function () {
-        loadHTML();
-      });
-    function loadHTML(){
-      var xhttp = new XMLHttpRequest();
-      xhttp.onreadystatechange = function () {
-        if (xhttp.readyState == XMLHttpRequest.DONE) {
-          if (xhttp.status == 200) {
-            document.querySelector('[data-ds-display="form"]').innerHTML = this.responseText;
-            donationspring.init(args);
-          }
-        }
-      };
-      xhttp.open("GET", root_url + "form_inline.html", true);
-      xhttp.send(); 
-    }
-  }
-
-  addform_iframe = function() {
+  addform = function(inline) {
     dsform = document.createElement('iframe');
-    dsform.setAttribute('id', 'DSFORM');
-    dsform.setAttribute('name', 'DSFORM');
     dsform.setAttribute('frameborder', '0');
     dsform.setAttribute('title', 'Donation Spring Form');
-    dsform.setAttribute('style', 'display: none; margin: 0 !important;padding: 0 !important;border: 0 !important; width: 100% !important; height: 100% !important; position: fixed !important; opacity: 1 !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 2147483646 !important;');
-    dsform.setAttribute('src', root_url + 'form_iframe.html');
-    dsform.setAttribute('onload', 'this.contentWindow.focus()');
-    document.body.appendChild(dsform);
+    if (inline) {
+      dsform.setAttribute('id', 'DSFORM-INLINE');
+      dsform.setAttribute('name', 'DSFORM-INLINE');
+      dsform.setAttribute('style', 'margin: 0 !important;padding: 0 !important;border: 0 !important; width: 741px !important; height: 750px !important;');
+    } else {
+      dsform.setAttribute('id', 'DSFORM');
+      dsform.setAttribute('name', 'DSFORM');
+      dsform.setAttribute('style', 'display: none; margin: 0 !important;padding: 0 !important;border: 0 !important; width: 100% !important; height: 100% !important; position: fixed !important; opacity: 1 !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 2147483646 !important;');
+    }
+    if (inline) {
+      dsform.setAttribute('src', root_url + 'form.html');
+      document.querySelector('[data-ds-display="form"]').appendChild(dsform);
+    } else {
+      dsform.setAttribute('src', root_url + 'form.html');
+      dsform.setAttribute('onload', 'this.contentWindow.focus()');
+      document.body.appendChild(dsform);
+    }
   };
 
-/*  addreminder = function () {
+  addreminder = function () {
     dsreminder = document.createElement('iframe');
     dsreminder.setAttribute('id', 'DSREMIND');
     dsreminder.setAttribute('frameborder', '0');
@@ -140,7 +138,7 @@ var ds = new function () {
     dsreminder.setAttribute('style', 'display: none !important; visibility: visible; !important; opacity: 1 !important; inset: auto 10px 10px auto !important; position: fixed !important; z-index: 2147483644 !important; margin: 0px !important; padding: 0px !important; height: 110px !important; min-height: 110px !important; max-height: 110px !important; width: 425px !important; min-width: 425px !important; max-width: 425px !important;');
     dsreminder.setAttribute('src', root_url + 'reminder.html');
     document.body.appendChild(dsreminder);
-  }; */
+  };
 
   toHSL = function (hex) {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);

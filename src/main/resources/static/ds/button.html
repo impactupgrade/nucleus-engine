@@ -7,7 +7,7 @@
   <title>Donation Spring</title>
   <script>
     window.onload = function() {
-      window.top.postMessage('button_loaded', '*');
+      window.parent.postMessage('button_loaded', '*');
     }
 
     window.onmessage = (event) => {
@@ -19,7 +19,7 @@
     }
 
     function show_form(){
-      window.top.postMessage('show_form', '*');
+      window.parent.postMessage('show_form', '*');
     }
   </script>
   <style>
