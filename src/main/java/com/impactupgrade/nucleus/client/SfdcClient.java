@@ -99,7 +99,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c, RecordTypeId";
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.config().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
