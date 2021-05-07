@@ -14,8 +14,12 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -306,6 +310,11 @@ public class SfdcCrmService implements CrmService {
       ManageDonationEvent manageDonationEvent) throws Exception {
   }
 
+  // Give orgs an opportunity to set anything else that's unique to them, prior to resume
+  protected void setRecurringDonationFieldsForResume(SObject recurringDonation,
+      ManageDonationEvent manageDonationEvent) throws Exception {
+  }
+
   public void pauseRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
 
@@ -326,6 +335,35 @@ public class SfdcCrmService implements CrmService {
     }
     setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
     sfdcClient.update(toUpdate);
+  }
+
+  public void resumeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      return;
+    }
+
+    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    toUpdate.setId(manageDonationEvent.getDonationId());
+    toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
+
+    if (manageDonationEvent.getResumeDonationOnDate() == null) {
+      log.info("resuming {} immediately...", manageDonationEvent.getDonationId());
+
+      // set Npe03__Next_Payment_Date__c to the next day
+      Calendar calendar = Utils.getCalendarFromDateString(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+      calendar.add(Calendar.DATE, 1);
+      toUpdate.setField("Npe03__Next_Payment_Date__c", calendar.getTime());
+    } else {
+      log.info("resuming {} on {}...", manageDonationEvent.getDonationId(), manageDonationEvent.getResumeDonationOnDate().getTime());
+      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
+    }
+    setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
+    sfdcClient.update(toUpdate);
+
+    sfdcClient.refreshRecurringDonation(manageDonationEvent.getDonationId());
   }
 
   @Override
@@ -416,14 +454,14 @@ public class SfdcCrmService implements CrmService {
       toUpdate.setField("Npe03__Amount__c", manageDonationEvent.getAmount());
       log.info("Updating Npe03__Amount__c to {}...", manageDonationEvent.getAmount());
     }
-    if (manageDonationEvent.getNextPaymentDate() != null) {
-      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
-      log.info("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
-    }
     sfdcClient.update(toUpdate);
 
     if (manageDonationEvent.getPauseDonation() == true) {
       pauseRecurringDonation(manageDonationEvent);
+    }
+
+    if (manageDonationEvent.getResumeDonation() == true) {
+      resumeRecurringDonation(manageDonationEvent);
     }
   }
 

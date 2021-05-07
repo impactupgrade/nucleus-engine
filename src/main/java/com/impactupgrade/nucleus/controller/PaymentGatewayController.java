@@ -76,22 +76,4 @@ public class PaymentGatewayController {
 
     return Response.status(200).build();
   }
-
-  @Path("/update-recurring-donation-payment-method")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response updateRecurringDonationPaymentMethod(
-      @BeanParam ManageDonationFormData formData,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    SecurityUtil.verifyApiKey(request);
-
-    final Environment.RequestEnvironment requestEnv = env.newRequestEnvironment(request);
-
-    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv, formData);
-    donationService.updateRecurringDonationPaymentMethod(manageDonationEvent);
-
-    return Response.status(200).build();
-  }
 }

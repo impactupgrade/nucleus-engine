@@ -2,9 +2,9 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.stripe.exception.StripeException;
+import java.text.ParseException;
 
 public interface PaymentGatewayService {
 
-  void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException;
-  void updateSubscriptionPaymentMethod(ManageDonationEvent manageDonationEvent) throws StripeException;
+  void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException;
 }

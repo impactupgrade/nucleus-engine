@@ -119,18 +119,6 @@ public class DonationService {
     paymentGatewayService.updateSubscription(manageDonationEvent);
   }
 
-  public void updateRecurringDonationPaymentMethod(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getDonationId());
-      return;
-    }
-
-    manageDonationEvent.setSubscriptionId(crmService.getSubscriptionId(manageDonationEvent));
-    paymentGatewayService.updateSubscriptionPaymentMethod(manageDonationEvent);
-  }
-
   public void chargeDeposited(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = crmService.getDonation(paymentGatewayEvent);
 

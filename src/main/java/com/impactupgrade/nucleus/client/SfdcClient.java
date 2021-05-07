@@ -4,9 +4,11 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -330,6 +332,26 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId + " from npe03__Recurring_Donation__c where id='" + recurringDonationId + "'";
     LoggingUtil.verbose(log, query);
     return (String) querySingle(query).get().getField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
+  }
+
+  public void refreshRecurringDonation(String donationId) throws ConnectionException {
+    // TODO: set up 'FORCE_URL' env var and the appropriate apex enpoint for orgs so they this will work
+    log.info("refreshing opportunities on {}...", donationId);
+
+    String data = "{\"recurringDonationId\": \"" + donationId + "\"}";
+    String sessionId = login().getSessionId();
+
+    String sfdcEndpoint;
+    if ("production".equalsIgnoreCase(System.getenv("profile"))) {
+      sfdcEndpoint = System.getenv("force_url") + "/services/apexrest/refreshrecurringdonation";
+    } else {
+      sfdcEndpoint = System.getenv("force_url") + "/services/apexrest/refreshrecurringdonation";
+    }
+
+//    Response response = HttpClient.postJson(data, sessionId, sfdcEndpoint);
+//    log.info("SFDC refresh recurring donation response: {}", response.getStatus());
+    log.info("SFDC refresh recurring donation response: { Refresh not set up yet... }");
+
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

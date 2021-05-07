@@ -7,9 +7,10 @@ public class ManageDonationFormData {
 
   @FormParam("rd-id") String recurringDonationId;
   @FormParam("amount") Optional<Double> amount;
-  @FormParam("next-payment-date") Optional<String> nextPaymentDate;
   @FormParam("pause-donation") Optional<Boolean> pauseDonation;
   @FormParam("pause-donation-until") Optional<String> pauseDonationUntilDate;
+  @FormParam("resume-donation") Optional<Boolean> resumeDonation;
+  @FormParam("resume-donation-on") Optional<String> resumeDonationOnDate;
   @FormParam("stripe-token") Optional<String> stripeToken;
 
   @Override
@@ -17,9 +18,10 @@ public class ManageDonationFormData {
     return "ManageDonationFormData{" +
         ",\n recurringDonationId='" + recurringDonationId +
         ",\n amount=" + amount +
-        ",\n nextPaymentDate=" + nextPaymentDate +
         ",\n pauseDonation=" + pauseDonation +
         ",\n pauseDonationUntilDate=" + pauseDonationUntilDate +
+        ",\n resumeDonation=" + resumeDonation +
+        ",\n resumeDonationOnDate=" + resumeDonationOnDate +
         ",\n stripeToken=" + stripeToken +
         ",\n}";
   }
