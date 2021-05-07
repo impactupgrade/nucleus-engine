@@ -10,7 +10,13 @@
   <script type="text/javascript" src="https://nucleus.impactupgrade.com/ds/js/donationspring.js"></script>
   <script>
     window.onload = function() {
-      window.parent.postMessage('form_loaded', '*');
+      window.parent.postMessage('{"action": "form_loaded"}', '*');
+      if(window.name == 'DSFORM-INLINE'){
+        setInterval(function () {
+          let message = { height: document.body.scrollHeight, width: document.body.scrollWidth };
+          window.parent.postMessage('{"action": "set_iframe_size", "args": ' + JSON.stringify(message) + '}', '*');
+        }, 500);
+      }
     }
 
     window.onmessage = (event) => {
@@ -25,7 +31,7 @@
       }
     }
     function hide_form(){
-      window.parent.postMessage('hide_form', '*');
+      window.parent.postMessage('{"action": "hide_form"}', '*');
     }
   </script>
 </head>

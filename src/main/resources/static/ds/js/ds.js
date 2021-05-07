@@ -17,9 +17,24 @@ var ds = new function () {
 
     primary_color = args.primary_color || primary_color;
     toHSL(primary_color);
+
+    document.head.insertAdjacentHTML("beforeend", `
+    <style>
+      #DSFORM-INLINE{
+        transition: height 0.5s linear;
+      }
+      @media only screen and (max-width: 446px) {
+        #DSREMIND{
+          inset: auto 0 10px auto !important;
+        }
+      }
+    </style>
+    `)
+
     
     window.onmessage = (event) => {
-      switch (event.data) {
+      var data = JSON.parse(event.data);
+      switch (data.action) {
         case 'show_form':
           showform();
           break;
@@ -47,6 +62,9 @@ var ds = new function () {
           break;
         case 'hide_reminder':
           hidereminder();
+          break;
+        case 'set_iframe_size':
+          document.querySelector("#DSFORM-INLINE").style.height = (data.args.height + 40) + 'px';
           break;
       }
     }
@@ -111,7 +129,8 @@ var ds = new function () {
     if (inline) {
       dsform.setAttribute('id', 'DSFORM-INLINE');
       dsform.setAttribute('name', 'DSFORM-INLINE');
-      dsform.setAttribute('style', 'margin: 0 !important;padding: 0 !important;border: 0 !important; width: 741px !important; height: 750px !important;');
+      dsform.setAttribute('scrolling', 'no');
+      dsform.setAttribute('style', 'margin: 0 !important;padding: 0 !important;border: 0 !important; max-width: 580px; min-width: 300px; width: 100%; !important; min-height: 590px; height: 100%;');
     } else {
       dsform.setAttribute('id', 'DSFORM');
       dsform.setAttribute('name', 'DSFORM');
@@ -135,7 +154,7 @@ var ds = new function () {
     dsreminder.setAttribute('marginheight', '0');
     dsreminder.setAttribute('marginwidth', '0');
     dsreminder.setAttribute('title', 'Donation Spring Reminder');
-    dsreminder.setAttribute('style', 'display: none !important; visibility: visible; !important; opacity: 1 !important; inset: auto 10px 10px auto !important; position: fixed !important; z-index: 2147483644 !important; margin: 0px !important; padding: 0px !important; height: 110px !important; min-height: 110px !important; max-height: 110px !important; width: 425px !important; min-width: 425px !important; max-width: 425px !important;');
+    dsreminder.setAttribute('style', 'display: none !important; visibility: visible; !important; opacity: 1 !important; inset: auto 10px 10px auto; position: fixed !important; z-index: 2147483644 !important; margin: 0px !important; padding: 0px !important; height: 110px !important; min-height: 110px !important; max-height: 310px !important; width: 100% !important; min-width: 300px !important; max-width: 425px !important;');
     dsreminder.setAttribute('src', root_url + 'reminder.html');
     document.body.appendChild(dsreminder);
   };
