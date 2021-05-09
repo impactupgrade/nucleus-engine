@@ -52,6 +52,7 @@ public class AbstractIT extends JerseyTest {
     apiConfig.register(MultiPartFeature.class);
 
     apiConfig.register(env.stripeController());
+    env.registerAPIControllers(apiConfig);
 
     return apiConfig;
   }

@@ -34,8 +34,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
   }
 
-  protected static final String SDF_DATE = "yyyy-MM-dd";
-
   protected final Environment env;
 
   public SfdcClient(Environment env, String username, String password, String authUrl) {
