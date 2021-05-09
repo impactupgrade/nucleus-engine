@@ -472,56 +472,6 @@ public class PaymentGatewayWebhookEvent {
       this.primaryCrmRecordTypeId = recordTypeId;
     }
   }
-  
-  // CONTEXT SET WITHIN PROCESSING STEPS *OR* FROM EVENT METADATA
-
-  public String getPrimaryCrmAccountId() {
-    return primaryCrmAccountId;
-  }
-
-  public void setPrimaryCrmAccountId(String primaryCrmAccountId) {
-    this.primaryCrmAccountId = primaryCrmAccountId;
-  }
-
-  public String getPrimaryCrmContactId() {
-    return primaryCrmContactId;
-  }
-
-  public void setPrimaryCrmContactId(String primaryCrmContactId) {
-    this.primaryCrmContactId = primaryCrmContactId;
-  }
-
-  public String getPrimaryCrmRecurringDonationId() {
-    return primaryCrmRecurringDonationId;
-  }
-
-  public void setPrimaryCrmRecurringDonationId(String primaryCrmRecurringDonationId) {
-    this.primaryCrmRecurringDonationId = primaryCrmRecurringDonationId;
-  }
-
-  public String getPrimaryCrmRecordTypeId() {
-    return primaryCrmRecordTypeId;
-  }
-
-  public void setPrimaryCrmRecordTypeId(String primaryCrmRecordTypeId) {
-    this.primaryCrmRecordTypeId = primaryCrmRecordTypeId;
-  }
-
-  public String getDepositId() {
-    return depositId;
-  }
-
-  public void setDepositId(String depositId) {
-    this.depositId = depositId;
-  }
-
-  public Calendar getDepositDate() {
-    return depositDate;
-  }
-
-  public void setDepositDate(Calendar depositDate) {
-    this.depositDate = depositDate;
-  }
 
   // TRANSIENT
 
@@ -539,7 +489,12 @@ public class PaymentGatewayWebhookEvent {
     }
   }
 
-  // ACCESSORS
+  // GETTERS/SETTERS
+  // Note that we allow setters here, as orgs sometimes need to override the values based on custom logic.
+
+  public Environment getEnv() {
+    return env;
+  }
 
   public RequestEnvironment getRequestEnv() {
     return requestEnv;
@@ -549,139 +504,312 @@ public class PaymentGatewayWebhookEvent {
     return campaignId;
   }
 
+  public void setCampaignId(String campaignId) {
+    this.campaignId = campaignId;
+  }
+
   public String getCity() {
     return city;
+  }
+
+  public void setCity(String city) {
+    this.city = city;
   }
 
   public String getCountry() {
     return country;
   }
 
+  public void setCountry(String country) {
+    this.country = country;
+  }
+
   public String getCustomerId() {
     return customerId;
+  }
+
+  public void setCustomerId(String customerId) {
+    this.customerId = customerId;
   }
 
   public String getDepositTransactionId() {
     return depositTransactionId;
   }
 
+  public void setDepositTransactionId(String depositTransactionId) {
+    this.depositTransactionId = depositTransactionId;
+  }
+
   public String getEmail() {
     return email;
+  }
+
+  public void setEmail(String email) {
+    this.email = email;
   }
 
   public String getFirstName() {
     return firstName;
   }
 
+  public void setFirstName(String firstName) {
+    this.firstName = firstName;
+  }
+
   public String getFullName() {
     return fullName;
+  }
+
+  public void setFullName(String fullName) {
+    this.fullName = fullName;
   }
 
   public String getGatewayName() {
     return gatewayName;
   }
 
+  public void setGatewayName(String gatewayName) {
+    this.gatewayName = gatewayName;
+  }
+
   public String getLastName() {
     return lastName;
+  }
+
+  public void setLastName(String lastName) {
+    this.lastName = lastName;
   }
 
   public String getPaymentMethod() {
     return paymentMethod;
   }
 
+  public void setPaymentMethod(String paymentMethod) {
+    this.paymentMethod = paymentMethod;
+  }
+
   public String getPhone() {
     return phone;
+  }
+
+  public void setPhone(String phone) {
+    this.phone = phone;
   }
 
   public String getRefundId() {
     return refundId;
   }
 
+  public void setRefundId(String refundId) {
+    this.refundId = refundId;
+  }
+
   public String getState() {
     return state;
+  }
+
+  public void setState(String state) {
+    this.state = state;
   }
 
   public String getStreet() {
     return street;
   }
 
+  public void setStreet(String street) {
+    this.street = street;
+  }
+
   public Double getSubscriptionAmountInDollars() {
     return subscriptionAmountInDollars;
+  }
+
+  public void setSubscriptionAmountInDollars(Double subscriptionAmountInDollars) {
+    this.subscriptionAmountInDollars = subscriptionAmountInDollars;
   }
 
   public String getSubscriptionCurrency() {
     return subscriptionCurrency;
   }
 
+  public void setSubscriptionCurrency(String subscriptionCurrency) {
+    this.subscriptionCurrency = subscriptionCurrency;
+  }
+
   public String getSubscriptionDescription() {
     return subscriptionDescription;
+  }
+
+  public void setSubscriptionDescription(String subscriptionDescription) {
+    this.subscriptionDescription = subscriptionDescription;
   }
 
   public String getSubscriptionId() {
     return subscriptionId;
   }
 
+  public void setSubscriptionId(String subscriptionId) {
+    this.subscriptionId = subscriptionId;
+  }
+
   public String getSubscriptionInterval() {
     return subscriptionInterval;
+  }
+
+  public void setSubscriptionInterval(String subscriptionInterval) {
+    this.subscriptionInterval = subscriptionInterval;
   }
 
   public Calendar getSubscriptionNextDate() {
     return subscriptionNextDate;
   }
 
+  public void setSubscriptionNextDate(Calendar subscriptionNextDate) {
+    this.subscriptionNextDate = subscriptionNextDate;
+  }
+
   public Calendar getSubscriptionStartDate() {
     return subscriptionStartDate;
+  }
+
+  public void setSubscriptionStartDate(Calendar subscriptionStartDate) {
+    this.subscriptionStartDate = subscriptionStartDate;
   }
 
   public Double getTransactionAmountInDollars() {
     return transactionAmountInDollars;
   }
 
+  public void setTransactionAmountInDollars(Double transactionAmountInDollars) {
+    this.transactionAmountInDollars = transactionAmountInDollars;
+  }
+
   public Double getTransactionNetAmountInDollars() {
     return transactionNetAmountInDollars;
+  }
+
+  public void setTransactionNetAmountInDollars(Double transactionNetAmountInDollars) {
+    this.transactionNetAmountInDollars = transactionNetAmountInDollars;
   }
 
   public Calendar getTransactionDate() {
     return transactionDate;
   }
 
+  public void setTransactionDate(Calendar transactionDate) {
+    this.transactionDate = transactionDate;
+  }
+
   public String getTransactionDescription() {
     return transactionDescription;
+  }
+
+  public void setTransactionDescription(String transactionDescription) {
+    this.transactionDescription = transactionDescription;
   }
 
   public Double getTransactionExchangeRate() {
     return transactionExchangeRate;
   }
 
+  public void setTransactionExchangeRate(Double transactionExchangeRate) {
+    this.transactionExchangeRate = transactionExchangeRate;
+  }
+
   public String getTransactionId() {
     return transactionId;
+  }
+
+  public void setTransactionId(String transactionId) {
+    this.transactionId = transactionId;
   }
 
   public Double getTransactionOriginalAmountInDollars() {
     return transactionOriginalAmountInDollars;
   }
 
+  public void setTransactionOriginalAmountInDollars(Double transactionOriginalAmountInDollars) {
+    this.transactionOriginalAmountInDollars = transactionOriginalAmountInDollars;
+  }
+
   public String getTransactionOriginalCurrency() {
     return transactionOriginalCurrency;
+  }
+
+  public void setTransactionOriginalCurrency(String transactionOriginalCurrency) {
+    this.transactionOriginalCurrency = transactionOriginalCurrency;
   }
 
   public boolean isTransactionCurrencyConverted() {
     return transactionCurrencyConverted;
   }
 
+  public void setTransactionCurrencyConverted(boolean transactionCurrencyConverted) {
+    this.transactionCurrencyConverted = transactionCurrencyConverted;
+  }
+
   public boolean isTransactionSuccess() {
     return transactionSuccess;
+  }
+
+  public void setTransactionSuccess(boolean transactionSuccess) {
+    this.transactionSuccess = transactionSuccess;
   }
 
   public String getZip() {
     return zip;
   }
 
-  // SETTERS
+  public void setZip(String zip) {
+    this.zip = zip;
+  }
 
-  // Mainly needed by DR to set a default country based on FN when missing.
-  public void setCountry(String country) {
-    this.country = country;
+  public String getPrimaryCrmAccountId() {
+    return primaryCrmAccountId;
+  }
+
+  public void setPrimaryCrmAccountId(String primaryCrmAccountId) {
+    this.primaryCrmAccountId = primaryCrmAccountId;
+  }
+
+  public String getPrimaryCrmContactId() {
+    return primaryCrmContactId;
+  }
+
+  public void setPrimaryCrmContactId(String primaryCrmContactId) {
+    this.primaryCrmContactId = primaryCrmContactId;
+  }
+
+  public String getPrimaryCrmRecordTypeId() {
+    return primaryCrmRecordTypeId;
+  }
+
+  public void setPrimaryCrmRecordTypeId(String primaryCrmRecordTypeId) {
+    this.primaryCrmRecordTypeId = primaryCrmRecordTypeId;
+  }
+
+  public String getPrimaryCrmRecurringDonationId() {
+    return primaryCrmRecurringDonationId;
+  }
+
+  public void setPrimaryCrmRecurringDonationId(String primaryCrmRecurringDonationId) {
+    this.primaryCrmRecurringDonationId = primaryCrmRecurringDonationId;
+  }
+
+  public String getDepositId() {
+    return depositId;
+  }
+
+  public void setDepositId(String depositId) {
+    this.depositId = depositId;
+  }
+
+  public Calendar getDepositDate() {
+    return depositDate;
+  }
+
+  public void setDepositDate(Calendar depositDate) {
+    this.depositDate = depositDate;
   }
 
   // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.
