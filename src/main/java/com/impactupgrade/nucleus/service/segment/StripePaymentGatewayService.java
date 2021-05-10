@@ -21,6 +21,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       stripeClient.updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
     }
 
+    if (manageDonationEvent.getNextPaymentDate() != null) {
+      stripeClient.updateSubscriptionDate(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getNextPaymentDate());
+    }
+
     if (manageDonationEvent.getPauseDonation() == true) {
       stripeClient.pauseSubscription(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getPauseDonationUntilDate());
     }
