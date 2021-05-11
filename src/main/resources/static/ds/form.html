@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://nucleus.impactupgrade.com/ds/css/ds_widget.css" type="text/css"/>
   <script type="text/javascript" src="https://js.stripe.com/v3/"></script>
   <script type="text/javascript" src="https://nucleus.impactupgrade.com/ds/js/donationspring.js"></script>
+  <script src="https://www.google.com/recaptcha/api.js?render=6LfXz7EaAAAAAGATGud2gKe0Aq7cxePyzU50RgTd"></script>
   <script>
     window.onload = function() {
       window.parent.postMessage('{"action": "form_loaded"}', '*');
@@ -746,11 +747,22 @@
                       <div id="card-element"></div>
                       <div id="card-errors" role="alert"></div>
                     </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="input-wrapper double-column">
+                      <label>
+                        <input type="checkbox" id="add_tip" name="cover_tip_fees" value="true" checked>
+                        Add <b style="color:var(--ds_color-primary)">5%</b> to your donation so that <b>100%</b> of the gift goes to the organization! <small><i>The tip covers both the credit card processing fees and keeps Donation Spring free for nonprofits.</i></small>
+                      </label>
                     </div>
+                  </div>
+
                 </fieldset>
                 <div class="foot">
                   <div class="amount">
-                    <input type="text" data-required="true" aria-required="true" value="" name="donation_amount" readonly aria-label="Donation Amount">
+                    <input type="hidden" value="" name="donation_amount">
+                    <input type="text" data-required="true" aria-required="true" value="" name="donation_with_tip" readonly aria-label="Donation Amount">
                   </div>
                   <button class="modal__btn modal__btn-continue" type="submit">Donate</button>
                 </div>

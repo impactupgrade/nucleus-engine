@@ -1,0 +1,28 @@
+{
+  "platforms": {
+    "crm": "salesforce",
+    "paymentGateway": "stripe"
+  },
+
+  "salesforce": {
+    "fieldDefinitions": {
+      "paymentGatewayName": "Payment_Gateway_Name__c",
+      "paymentGatewayTransactionId": "Payment_Gateway_Transaction_Id__c",
+      "paymentGatewayCustomerId": "Payment_Gateway_Customer_Id__c",
+      "paymentGatewaySubscriptionId": "Payment_Gateway_Subscription_Id__c",
+      "paymentGatewayRefundId": "",
+      "paymentGatewayDepositId": "",
+      "paymentGatewayDepositDate": "",
+      "paymentGatewayDepositNetAmount": ""
+    },
+    "customQueryFields": {
+      "account": [],
+      "campaign": [],
+      "contact": [],
+      "donation": ["Payment_Gateway_Name__c", "Payment_Gateway_Transaction_Id__c", "Payment_Gateway_Customer_Id__c"],
+      "recurringDonation": ["Payment_Gateway_Subscription_Id__c"],
+      "user": []
+    },
+    "defaultCampaignId": ""
+  }
+}

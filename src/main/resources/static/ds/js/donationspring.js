@@ -164,6 +164,13 @@ var donationspring = new function () {
       if (index == current_step - 1){
         item.classList.add("current");
       }
+
+      if (current_step == 3) {
+        var tip_status = document.getElementById('add_tip').checked;
+        if (tip_status){
+          calc_tip('add');
+        }
+      }
     })
     document.querySelectorAll('.ds_step')[current_step-1].style.display = "block";
     if (current_step > 1){
@@ -251,6 +258,16 @@ var donationspring = new function () {
       return false;
     }
     document.getElementById('processing_overlay').style.display = "flex";
+
+    grecaptcha.ready(function () {
+      grecaptcha.execute('6LfXz7EaAAAAAGATGud2gKe0Aq7cxePyzU50RgTd', { action: 'create_comment' }).then(function (token) {
+        var recaptcha_field = document.createElement("input");
+        recaptcha_field.setAttribute("type", "hidden");
+        recaptcha_field.setAttribute("name", "g-recaptcha-response");
+        recaptcha_field.setAttribute("value", token);
+        document.getElementById('ds_form').appendChild(recaptcha_field);
+      });;
+    });
 
     stripe.createToken(card).then(function (result) {
       if (result.error) {
@@ -367,6 +384,14 @@ var donationspring = new function () {
       };
     });
 
+    document.getElementById("add_tip").addEventListener('change', function () {
+      if (this.checked) {
+        calc_tip('add');
+      } else {
+        calc_tip('remove');
+      }
+    });
+
     document.getElementById("ds_form").addEventListener("submit", submitDonationForm);
   }
 
@@ -393,4 +418,16 @@ var donationspring = new function () {
       show_class(el[i]);
     }
   };
+
+  calc_tip = function (method) {
+    const pre_tip_donation_amt = parseFloat(document.getElementById("da_manual_amount").value);
+    if (method == 'add'){
+      var add_tip = (pre_tip_donation_amt * 0.05);
+      var total_donation = (pre_tip_donation_amt + add_tip);
+      document.getElementsByName("donation_with_tip")[0].value = total_donation;
+    } else {
+      document.getElementsByName("donation_with_tip")[0].value = pre_tip_donation_amt;
+    }
+  }
+  
 };

@@ -12,6 +12,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
 // TODO: Move to the paymentgateway package and make it abstract?
@@ -20,8 +22,10 @@ public class MetadataRetriever {
 
   private static final Logger log = LogManager.getLogger(MetadataRetriever.class);
 
-  private final StripeClient stripeClient;
+  // Allow unique circumstances (one-off vendors, etc.) to provide raw context as needed.
+  private final Map<String, String> rawContext = new HashMap<>();
 
+  private final StripeClient stripeClient;
   private Charge stripeCharge = null;
   private PaymentIntent stripePaymentIntent = null;
   private Subscription stripeSubscription = null;
@@ -29,6 +33,11 @@ public class MetadataRetriever {
 
   public MetadataRetriever(RequestEnvironment requestEnv) {
     stripeClient = requestEnv.stripeClient();
+  }
+
+  public MetadataRetriever rawContext(String k, String v) {
+    rawContext.put(k, v);
+    return this;
   }
 
   public MetadataRetriever stripeCharge(Charge stripeCharge) {
@@ -52,6 +61,13 @@ public class MetadataRetriever {
     String metadataValue = null;
 
     for (String metadataKey : metadataKeys) {
+      // Always start with the raw context and let it trump everything else.
+      if (rawContext.containsKey(metadataKey) && !Strings.isNullOrEmpty(rawContext.get(metadataKey))) {
+        return rawContext.get(metadataKey);
+      }
+
+      // TODO: The following looks off. Shouldn't these be in an order of precedent and return if a value is found?
+
       if (stripePaymentIntent != null) {
         metadataValue = stripePaymentIntent.getMetadata().get(metadataKey);
         if (!Strings.isNullOrEmpty(metadataValue)) break;

@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import javax.servlet.http.HttpServletRequest;
 
 @ExtendWith(MockitoExtension.class)
-public abstract class AbstractTest {
+public abstract class AbstractMockTest {
 
   // TODO: Do these need reset after each test method, or does Mockito/Junit do that automatically?
   @Mock protected DonationService donationServiceMock;

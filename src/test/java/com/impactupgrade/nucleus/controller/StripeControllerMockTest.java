@@ -1,6 +1,6 @@
 package com.impactupgrade.nucleus.controller;
 
-import com.impactupgrade.nucleus.AbstractTest;
+import com.impactupgrade.nucleus.AbstractMockTest;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class StripeControllerTest extends AbstractTest {
+public class StripeControllerMockTest extends AbstractMockTest {
 
   @Test
   public void testCustomCampaignMetadata() throws Exception {

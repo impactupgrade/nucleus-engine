@@ -68,6 +68,7 @@ var ds = new function () {
           break;
       }
     }
+    loadScript("https://www.google.com/recaptcha/api.js?render=6LfXz7EaAAAAAGATGud2gKe0Aq7cxePyzU50RgTd");
 
     loadScript("https://js.stripe.com/v3/", function () {
       var ds_displays = document.querySelectorAll('[data-ds-display]');
