@@ -351,11 +351,7 @@ public class SfdcCrmService implements CrmService {
 
     if (manageDonationEvent.getResumeDonationOnDate() == null) {
       log.info("resuming {} immediately...", manageDonationEvent.getDonationId());
-
-      // set Npe03__Next_Payment_Date__c to the next day
-      Calendar calendar = Utils.getCalendarFromDateString(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-      calendar.add(Calendar.DATE, 1);
-      toUpdate.setField("Npe03__Next_Payment_Date__c", calendar.getTime());
+      toUpdate.setField("Npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
     } else {
       log.info("resuming {} on {}...", manageDonationEvent.getDonationId(), manageDonationEvent.getResumeDonationOnDate().getTime());
       toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());

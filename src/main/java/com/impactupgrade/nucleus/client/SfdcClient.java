@@ -341,17 +341,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String data = "{\"recurringDonationId\": \"" + donationId + "\"}";
     String sessionId = login().getSessionId();
 
-    String sfdcEndpoint;
-    if ("production".equalsIgnoreCase(System.getenv("profile"))) {
-      sfdcEndpoint = System.getenv("force_url") + "/services/apexrest/refreshrecurringdonation";
-    } else {
-      sfdcEndpoint = System.getenv("force_url") + "/services/apexrest/refreshrecurringdonation";
-    }
+    String sfdcEndpoint = System.getenv("force_url") + "/services/apexrest/refreshrecurringdonation";
 
-//    Response response = HttpClient.postJson(data, sessionId, sfdcEndpoint);
-//    log.info("SFDC refresh recurring donation response: {}", response.getStatus());
-    log.info("SFDC refresh recurring donation response: { Refresh not set up yet... }");
-
+    Response response = HttpClient.postJson(data, sessionId, sfdcEndpoint);
+    log.info("SFDC refresh recurring donation response: {}", response.getStatus());
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

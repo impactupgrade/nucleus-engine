@@ -33,6 +33,7 @@ import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionUpdateParams;
+import com.stripe.param.common.EmptyParam;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import org.apache.logging.log4j.LogManager;
@@ -318,20 +319,22 @@ public class StripeClient {
   public void resumeSubscription(String subscriptionId, Calendar resumeOnDate) throws StripeException, ParseException {
     Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
 
-    SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
-    pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
     if (resumeOnDate != null) {
-      pauseBuilder.setResumesAt(resumeOnDate.getTimeInMillis() / 1000);
       log.info("resuming subscription {} on {}...", subscription.getId(), resumeOnDate.getTime());
-    } else {
-      Calendar calendar = Utils.getCalendarFromDateString(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-      calendar.add(Calendar.DATE, 1);
-      pauseBuilder.setResumesAt(calendar.getTimeInMillis() / 1000);
 
+      SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
+      pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
+      pauseBuilder.setResumesAt(resumeOnDate.getTimeInMillis() / 1000);
+
+      SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(pauseBuilder.build()).build();
+      subscription.update(params, requestOptions);
+      subscription.update(params, requestOptions);
+    } else {
       log.info("resuming subscription {} immediately...", subscription.getId());
+
+      SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(EmptyParam.EMPTY).build();
+      subscription.update(params, requestOptions);
     }
-    SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(pauseBuilder.build()).build();
-    subscription.update(params, requestOptions);
   }
 
   public void updateSubscriptionPaymentMethod(String subscriptionId, String paymentMethodToken) throws StripeException {
