@@ -22,6 +22,7 @@ import com.stripe.model.PaymentSource;
 import com.stripe.model.Payout;
 import com.stripe.model.Plan;
 import com.stripe.model.Product;
+import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.net.RequestOptions;
@@ -104,6 +105,10 @@ public class StripeClient {
 
   public PaymentIntent getPaymentIntent(String id) throws StripeException {
     return PaymentIntent.retrieve(id, requestOptions);
+  }
+
+  public Refund getRefund(String id) throws StripeException {
+    return Refund.retrieve(id, requestOptions);
   }
 
   public Subscription getSubscription(String id) throws StripeException {
