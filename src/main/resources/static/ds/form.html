@@ -11,10 +11,28 @@
   <script src="https://www.google.com/recaptcha/api.js?render=6LfXz7EaAAAAAGATGud2gKe0Aq7cxePyzU50RgTd"></script>
   <script>
     window.onload = function() {
-      var ds_color = parent.document.documentElement.style.getPropertyValue('--ds_color');
-      var ds_l = parent.document.documentElement.style.getPropertyValue('--ds_l');
-      document.documentElement.style.setProperty('--ds_color', ds_color);
-      document.documentElement.style.setProperty('--ds_l', ds_l);
+      window.parent.postMessage('{"action": "form_loaded"}', '*');
+      if(window.name == 'DSFORM-INLINE'){
+        setInterval(function () {
+          let message = { height: document.body.scrollHeight, width: document.body.scrollWidth };
+          window.parent.postMessage('{"action": "set_iframe_size", "args": ' + JSON.stringify(message) + '}', '*');
+        }, 500);
+      }
+    }
+
+    window.onmessage = (event) => {
+      var data = JSON.parse(event.data);
+      if (data.action === 'set_color') {
+        document.documentElement.style.setProperty('--ds_color', data.ds_color);
+        document.documentElement.style.setProperty('--ds_l', data.ds_l);
+      }
+
+      if (data.action === 'load_options') {
+        donationspring.init(data.args);
+      }
+    }
+    function hide_form(){
+      window.parent.postMessage('{"action": "hide_form"}', '*');
     }
   </script>
 </head>
@@ -25,7 +43,7 @@
         <div class="modal__header">
           <h2 id="ds_modal__title" class="modal__title">Donation Spring Demo</h2>
           <button id="ds_modal__back_button" class="modal__back_button" onclick="donationspring.next_prev(-1)"><span>Back</span></button>
-          <button class="modal__close" aria-label="Close modal" onclick="parent.ds.hideform()" type="button"></button>
+          <button id="modal__close" class="modal__close" aria-label="Close modal" onclick="hide_form()" type="button"></button>
         </div>
         <div id="ds-modal__content" class="modal__content">
           <div class="ds_steps">
@@ -774,8 +792,13 @@
       </div>
   </div>
 
-  <script>
-    donationspring.init(parent.ds.options);
+   <script>
+    if(parent.window.frames[window.name].name == 'DSFORM-INLINE'){
+      is_inline = true;
+      document.getElementById("ds_modal").classList.add("inline_form");
+      document.getElementById("modal__close").style.display = "none";
+      document.body.style.background = "transparent";
+    }
   </script>
 
 </body>

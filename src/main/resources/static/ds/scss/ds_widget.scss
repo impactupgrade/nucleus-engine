@@ -60,11 +60,11 @@ $button_text: #767575;
   }
 
   &.inline_form{
+    margin-bottom: 0;
     .modal__container{
       margin: 0 !important;
     }
   }
-  
 
   .modal__container {
     position: relative;
@@ -82,7 +82,7 @@ $button_text: #767575;
     -moz-box-shadow: 0px 5px 10px 0px $drop_shadow;
     box-shadow: 0px 5px 10px 0px $drop_shadow;
     will-change: transform;
-    @media only screen and (max-width: 740px) {
+    @media only screen and (max-width: 579px) {
       width: 100%;
       max-width: 100%;
     }
@@ -200,7 +200,7 @@ $button_text: #767575;
       align-items: center;
       height: 25px;
       padding-top: 5px;
-      @media only screen and (max-width: 740px) {
+      @media only screen and (max-width: 579px) {
         border-top: solid 1px rgba(0,0,0,0.43);
       }
       > div {
@@ -351,6 +351,10 @@ $button_text: #767575;
       border: none;
       width: 50%;
       min-width: 130px;
+      @media only screen and (max-width: 400px) {
+        width: 50%;
+        min-width: 100px;
+      }
       label {
         cursor: pointer;
         font-size: 1.13em;
@@ -368,7 +372,8 @@ $button_text: #767575;
         box-shadow: 0px 2px 2px 0px  rgba(0,0,0,0.16);
         transition: background-color 0.5s ease;
         @media only screen and (max-width: 400px) {
-          font-size: .9em;
+          font-size: .8em;
+          min-width: 100px;
         }
         &:before {
           display: none;
@@ -453,7 +458,7 @@ $button_text: #767575;
       width: 100%;
       max-width: 100px;
       margin-bottom: 20px;
-      @media only screen and (max-width: 740px) {
+      @media only screen and (max-width: 579px) {
         max-width: 45%;
         flex: 1 1 45%;
       }
@@ -654,7 +659,7 @@ $button_text: #767575;
             flex-direction: row;
             white-space: nowrap;
             justify-content: space-between;
-            @media only screen and (max-width: 740px) {
+            @media only screen and (max-width: 579px) {
               width: 100%;
               margin-bottom: 15px;
             }
@@ -736,7 +741,7 @@ $button_text: #767575;
     border-radius: 10px;
     padding: 26px 53px;
     transition: background-color 0.5s ease;
-    @media only screen and (max-width: 740px) {
+    @media only screen and (max-width: 579px) {
       width: 100%;
       margin-bottom: 10px;
     }
