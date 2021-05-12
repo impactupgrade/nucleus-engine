@@ -1,6 +1,5 @@
 package com.impactupgrade.nucleus.client;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.StripeException;
@@ -45,8 +44,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-// TODO: The method arguments are getting out of control. Update these to use a record class to pass in
-//  whatever is needed.
 public class StripeClient {
 
   private static final Logger log = LogManager.getLogger(StripeClient.class.getName());
@@ -214,21 +211,19 @@ public class StripeClient {
     return balanceTransactions;
   }
 
-  public Customer createCustomer(String name, String email, String sourceToken, Map<String, String> customerMetadata) throws StripeException {
-    CustomerCreateParams customerParams = CustomerCreateParams.builder()
+  public CustomerCreateParams.Builder defaultCustomerBuilder(String name, String email, String sourceToken) {
+    return CustomerCreateParams.builder()
         .setName(name)
         // Important to use the name as the description! Allows the Subscriptions list to display customers
-        // by-name, otherwise it's limited to email.
+        // by-name, otherwise it's limited to email. But still allow this to be overwritten.
         .setDescription(name)
         .setEmail(email)
         .setSource(sourceToken)
-        .setMetadata(customerMetadata)
-        .addExpand("sources")
-        .build();
-    return createCustomer(customerParams);
+        .addExpand("sources");
   }
-  public Customer createCustomer(CustomerCreateParams customerParams) throws StripeException {
-    return Customer.create(customerParams, requestOptions);
+
+  public Customer createCustomer(CustomerCreateParams.Builder customerBuilder) throws StripeException {
+    return Customer.create(customerBuilder.build(), requestOptions);
   }
 
   public PaymentSource updateCustomerSource(Customer customer, String sourceToken) throws StripeException {
@@ -321,43 +316,37 @@ public class StripeClient {
     return customer.update(customerParams, requestOptions);
   }
 
-  public Charge createCharge(Customer customer, PaymentSource source, long amountInCents, String currency,
-      String description, Map<String, String> chargeMetadata) throws StripeException {
-    // Stripe hates empty strings
-    description = Strings.isNullOrEmpty(description) ? null : description;
-
-    ChargeCreateParams chargeParams = ChargeCreateParams.builder()
+  public ChargeCreateParams.Builder defaultChargeBuilder(Customer customer, PaymentSource source, long amountInCents,
+      String currency) {
+    return ChargeCreateParams.builder()
         .setCustomer(customer.getId())
         .setSource(source.getId())
         .setAmount(amountInCents)
-        .setCurrency(currency)
-        .setDescription(description)
-        .setMetadata(chargeMetadata)
-        .build();
-    return Charge.create(chargeParams, requestOptions);
+        .setCurrency(currency);
   }
 
-  public Subscription createSubscription(Customer customer, PaymentSource source, long amountInCents, String currency,
-      String description, Integer autoCancelMonths, Map<String, String> subscriptionMetadata) throws StripeException {
-    // Stripe hates empty strings
-    description = Strings.isNullOrEmpty(description) ? null : description;
+  public Charge createCharge(ChargeCreateParams.Builder chargeBuilder) throws StripeException {
+    return Charge.create(chargeBuilder.build(), requestOptions);
+  }
 
-    ProductCreateParams productParams = ProductCreateParams.builder()
-        .setName(customer.getName() + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)")
-        .build();
-    Product product = Product.create(productParams, requestOptions);
-    PlanCreateParams planParams = PlanCreateParams.builder()
-        .setProduct(product.getId())
+  public ProductCreateParams.Builder defaultProductBuilder(Customer customer, long amountInCents, String currency) {
+    return ProductCreateParams.builder()
+        .setName(customer.getName() + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)");
+  }
+
+  public PlanCreateParams.Builder defaultPlanBuilder(long amountInCents, String currency) {
+    return PlanCreateParams.builder()
         .setInterval(PlanCreateParams.Interval.MONTH)
         .setAmount(amountInCents)
-        .setCurrency(currency)
-        .build();
-    Plan plan = Plan.create(planParams, requestOptions);
+        .setCurrency(currency);
+  }
 
-    // TODO: This 1) assumes the Map is mutable and 2) overwrites one explicitly provided by the caller
-    description = Strings.isNullOrEmpty(description) ? null : description;
-    subscriptionMetadata.put("description", description);
+  public SubscriptionCreateParams.Builder defaultSubscriptionBuilder(Customer customer, PaymentSource source) {
+    return defaultSubscriptionBuilder(customer, source, null);
+  }
 
+  public SubscriptionCreateParams.Builder defaultSubscriptionBuilder(Customer customer, PaymentSource source,
+      Integer autoCancelMonths) {
     Long cancelAt = null;
     if (autoCancelMonths != null) {
       Calendar future = Calendar.getInstance();
@@ -365,17 +354,28 @@ public class StripeClient {
       cancelAt = future.getTimeInMillis() / 1000;
     }
 
-    SubscriptionCreateParams.Item item = SubscriptionCreateParams.Item.builder().setPlan(plan.getId()).build();
-    SubscriptionCreateParams subscriptionParams = SubscriptionCreateParams.builder()
+    return SubscriptionCreateParams.builder()
         .setCustomer(customer.getId())
         .setDefaultSource(source.getId())
+        .setCancelAt(cancelAt);
+  }
+
+  public Subscription createSubscription(ProductCreateParams.Builder productBuilder,
+      PlanCreateParams.Builder planBuilder, SubscriptionCreateParams.Builder subscriptionBuilder) throws StripeException {
+    Product product = Product.create(productBuilder.build(), requestOptions);
+
+    PlanCreateParams planParams = planBuilder.setProduct(product.getId()).build();
+    Plan plan = Plan.create(planParams, requestOptions);
+
+    SubscriptionCreateParams.Item item = SubscriptionCreateParams.Item.builder().setPlan(plan.getId()).build();
+    SubscriptionCreateParams subscriptionParams = subscriptionBuilder
         .addItem(item)
-        .setCancelAt(cancelAt)
-        .setMetadata(subscriptionMetadata)
         .build();
     return Subscription.create(subscriptionParams, requestOptions);
   }
 
+  // TODO: merge this with the other plan creation, but it needs tested since it will affect LJI/TER/DR!
+  //  Currently used by updateSubscriptionAmount only.
   public Plan createPlan(double dollarAmount, String currencyCode, String frequency) throws StripeException {
     frequency = frequency.toLowerCase(Locale.ROOT);
     if ("week".equalsIgnoreCase(frequency)) {
