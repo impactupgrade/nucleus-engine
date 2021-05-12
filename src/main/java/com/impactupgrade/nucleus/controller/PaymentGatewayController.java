@@ -60,11 +60,11 @@ public class PaymentGatewayController {
 //    }
   }
 
-  @Path("/update-recurring-donation-amount")
+  @Path("/update-recurring-donation")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response updateRecurringDonationAmount(
+  public Response updateRecurringDonation(
       @BeanParam ManageDonationFormData formData,
       @Context HttpServletRequest request
   ) throws Exception {

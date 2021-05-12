@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.client;
 
 import com.google.common.collect.Iterables;
+import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -31,6 +32,9 @@ import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionUpdateParams;
+import com.stripe.param.common.EmptyParam;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -305,7 +309,45 @@ public class StripeClient {
     } else {
       log.info("paused subscription {} indefinitely", subscription.getId());
     }
+  }
 
+  public void resumeSubscription(String subscriptionId, Calendar resumeOnDate) throws StripeException, ParseException {
+    Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
+
+    if (resumeOnDate != null) {
+      log.info("resuming subscription {} on {}...", subscription.getId(), resumeOnDate.getTime());
+
+      SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
+      pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
+      pauseBuilder.setResumesAt(resumeOnDate.getTimeInMillis() / 1000);
+
+      SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(pauseBuilder.build()).build();
+      subscription.update(params, requestOptions);
+      subscription.update(params, requestOptions);
+    } else {
+      log.info("resuming subscription {} immediately...", subscription.getId());
+
+      SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(EmptyParam.EMPTY).build();
+      subscription.update(params, requestOptions);
+    }
+  }
+
+  public void updateSubscriptionPaymentMethod(String subscriptionId, String paymentMethodToken) throws StripeException {
+    Subscription subscription = getSubscription(subscriptionId);
+    String customerId = subscription.getCustomer();
+    log.info("updating customer {} payment method on subscription {}...", customerId, subscriptionId);
+
+    // add source to customer
+    Customer customer = getCustomer(customerId);
+    PaymentSource newSource = updateCustomerSource(customer, paymentMethodToken);
+
+    // set source as defaultSource for subscription
+    SubscriptionUpdateParams subscriptionParams = SubscriptionUpdateParams.builder()
+        .setDefaultSource(newSource.getId())
+        .build();
+    subscription.update(subscriptionParams, requestOptions);
+
+    log.info("updated customer {} payment method on subscription {}", customerId, subscriptionId);
   }
 
   public Customer updateCustomer(Customer customer, Map<String, String> customerMetadata) throws StripeException {
