@@ -19,7 +19,6 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 
 import javax.servlet.DispatcherType;
-import java.net.URL;
 import java.util.EnumSet;
 
 public class App {
@@ -66,18 +65,7 @@ public class App {
 
     context.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
 
-    // TODO: Move DS assets to nucleus-core and allow the superclass to provide them to the context?
-
-    // static resources
-    ClassLoader cl = App.class.getClassLoader();
-    // get a reference to any resource in the static dir
-    URL staticFileUrl = cl.getResource("static/test.txt");
-    // grab the absolute path of the static dir itself
-    String staticDirPath = staticFileUrl.toURI().resolve("./").normalize().toString();
-    // use that as the static resource base
-    context.setResourceBase(staticDirPath);
-
-    // needed primarily to serve the static content
+    // needed primarily to serve any static content or unique servlets from extension projects
     ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
     context.addServlet(defaultServlet, "/");
 
@@ -92,7 +80,6 @@ public class App {
     soapServlet.setForcedPath("soap");
     context.addServlet(soapServlet, "/soap/*");
     Bus bus = cxf.getBus();
-//    setBus(bus);
     BusFactory.setDefaultBus(bus);
 
     getEnvironment().registerServlets(context);

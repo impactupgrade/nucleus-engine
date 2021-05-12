@@ -84,12 +84,12 @@ public class Environment {
   /**
    * Allow orgs to add custom Controllers, etc.
    */
-  public void registerAPIControllers(ResourceConfig apiConfig) {}
+  public void registerAPIControllers(ResourceConfig apiConfig) throws Exception {}
 
   /**
    * Allow orgs to add completely-custom servlets (CXF, etc.)
    */
-  public void registerServlets(ServletContextHandler context) {}
+  public void registerServlets(ServletContextHandler context) throws Exception {}
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // UTILITY
