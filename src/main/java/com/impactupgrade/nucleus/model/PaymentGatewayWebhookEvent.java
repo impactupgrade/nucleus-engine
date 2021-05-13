@@ -26,6 +26,7 @@ public class PaymentGatewayWebhookEvent {
   
   protected final Environment env;
   protected final RequestEnvironment requestEnv;
+  protected final MetadataRetriever metadataRetriever;
 
   // determined by event
   protected String campaignId;
@@ -73,6 +74,7 @@ public class PaymentGatewayWebhookEvent {
   public PaymentGatewayWebhookEvent(Environment env, RequestEnvironment requestEnv) {
     this.env = env;
     this.requestEnv = requestEnv;
+    metadataRetriever = new MetadataRetriever(requestEnv);
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
@@ -120,8 +122,7 @@ public class PaymentGatewayWebhookEvent {
 
     transactionDescription = stripeCharge.getDescription();
 
-    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer);
-    processMetadata(metadataRetriever);
+    metadataRetriever.stripeCharge(stripeCharge).stripeCustomer(stripeCustomer);
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
@@ -168,8 +169,7 @@ public class PaymentGatewayWebhookEvent {
 
     transactionDescription = stripePaymentIntent.getDescription();
 
-    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer);
-    processMetadata(metadataRetriever);
+    metadataRetriever.stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer);
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -312,8 +312,7 @@ public class PaymentGatewayWebhookEvent {
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
-    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer);
-    processMetadata(metadataRetriever);
+    metadataRetriever.stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer);
 
     // TODO: We could shift this to MetadataRetriever, but odds are we're the only ones setting it...
     subscriptionDescription = stripeSubscription.getMetadata().get("description");
@@ -452,25 +451,59 @@ public class PaymentGatewayWebhookEvent {
     subscriptionNextDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
   }
 
-  private void processMetadata(MetadataRetriever metadataRetriever) {
-    String accountId = metadataRetriever.getMetadataValue(env.config().metadataKeys.account);
-    String campaignId = metadataRetriever.getMetadataValue(env.config().metadataKeys.campaign);
-    String contactId = metadataRetriever.getMetadataValue(env.config().metadataKeys.contact);
-    String recordTypeId = metadataRetriever.getMetadataValue(env.config().metadataKeys.recordType);
+  // DO NOT LET THESE BE AUTO-GENERATED, ALLOWING METADATARETRIEVER TO PROVIDE DEFAULTS
 
-    // Only set the values if the new retrieval was not empty! This allows us to define fallbacks...
-    if (!Strings.isNullOrEmpty(accountId)) {
-      this.primaryCrmAccountId = accountId;
+  public String getPrimaryCrmAccountId() {
+    if (Strings.isNullOrEmpty(primaryCrmAccountId)) {
+      return metadataRetriever.getMetadataValue(env.config().metadataKeys.account);
     }
-    if (!Strings.isNullOrEmpty(campaignId)) {
-      this.campaignId = campaignId;
+    return primaryCrmAccountId;
+  }
+
+  public void setPrimaryCrmAccountId(String primaryCrmAccountId) {
+    this.primaryCrmAccountId = primaryCrmAccountId;
+  }
+
+  public String getPrimaryCrmContactId() {
+    if (Strings.isNullOrEmpty(primaryCrmContactId)) {
+      return metadataRetriever.getMetadataValue(env.config().metadataKeys.contact);
     }
-    if (!Strings.isNullOrEmpty(contactId)) {
-      this.primaryCrmContactId = contactId;
+    return primaryCrmContactId;
+  }
+
+  public void setPrimaryCrmContactId(String primaryCrmContactId) {
+    this.primaryCrmContactId = primaryCrmContactId;
+  }
+
+  public String getPrimaryCrmRecurringDonationId() {
+    // TODO: should we support looking up metadata on the Subscription?
+    return primaryCrmRecurringDonationId;
+  }
+
+  public void setPrimaryCrmRecurringDonationId(String primaryCrmRecurringDonationId) {
+    this.primaryCrmRecurringDonationId = primaryCrmRecurringDonationId;
+  }
+
+  public String getPrimaryCrmRecordTypeId() {
+    if (Strings.isNullOrEmpty(primaryCrmRecordTypeId)) {
+      return metadataRetriever.getMetadataValue(env.config().metadataKeys.recordType);
     }
-    if (!Strings.isNullOrEmpty(recordTypeId)) {
-      this.primaryCrmRecordTypeId = recordTypeId;
+    return primaryCrmRecordTypeId;
+  }
+
+  public void setPrimaryCrmRecordTypeId(String primaryCrmRecordTypeId) {
+    this.primaryCrmRecordTypeId = primaryCrmRecordTypeId;
+  }
+
+  public String getCampaignId() {
+    if (Strings.isNullOrEmpty(campaignId)) {
+      return metadataRetriever.getMetadataValue(env.config().metadataKeys.campaign);
     }
+    return campaignId;
+  }
+
+  public MetadataRetriever getMetadataRetriever() {
+    return metadataRetriever;
   }
 
   // TRANSIENT
@@ -498,14 +531,6 @@ public class PaymentGatewayWebhookEvent {
 
   public RequestEnvironment getRequestEnv() {
     return requestEnv;
-  }
-
-  public String getCampaignId() {
-    return campaignId;
-  }
-
-  public void setCampaignId(String campaignId) {
-    this.campaignId = campaignId;
   }
 
   public String getCity() {
@@ -762,38 +787,6 @@ public class PaymentGatewayWebhookEvent {
 
   public void setZip(String zip) {
     this.zip = zip;
-  }
-
-  public String getPrimaryCrmAccountId() {
-    return primaryCrmAccountId;
-  }
-
-  public void setPrimaryCrmAccountId(String primaryCrmAccountId) {
-    this.primaryCrmAccountId = primaryCrmAccountId;
-  }
-
-  public String getPrimaryCrmContactId() {
-    return primaryCrmContactId;
-  }
-
-  public void setPrimaryCrmContactId(String primaryCrmContactId) {
-    this.primaryCrmContactId = primaryCrmContactId;
-  }
-
-  public String getPrimaryCrmRecordTypeId() {
-    return primaryCrmRecordTypeId;
-  }
-
-  public void setPrimaryCrmRecordTypeId(String primaryCrmRecordTypeId) {
-    this.primaryCrmRecordTypeId = primaryCrmRecordTypeId;
-  }
-
-  public String getPrimaryCrmRecurringDonationId() {
-    return primaryCrmRecurringDonationId;
-  }
-
-  public void setPrimaryCrmRecurringDonationId(String primaryCrmRecurringDonationId) {
-    this.primaryCrmRecurringDonationId = primaryCrmRecurringDonationId;
   }
 
   public String getDepositId() {

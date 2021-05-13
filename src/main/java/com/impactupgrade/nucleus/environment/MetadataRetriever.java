@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 // TODO: PaymentSpring? Or keep that in LJI/TER and hope it goes away?
 // TODO: Move to the paymentgateway package and make it abstract?
@@ -55,6 +56,10 @@ public class MetadataRetriever {
   public MetadataRetriever stripeCustomer(Customer stripeCustomer) {
     this.stripeCustomer = stripeCustomer;
     return this;
+  }
+
+  public String getMetadataValue(String metadataKey) {
+    return getMetadataValue(Set.of(metadataKey));
   }
 
   public String getMetadataValue(Collection<String> metadataKeys) {
