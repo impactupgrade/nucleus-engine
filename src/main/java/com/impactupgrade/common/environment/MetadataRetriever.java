@@ -46,7 +46,7 @@ public class MetadataRetriever {
     return this;
   }
 
-  public String getMetadataValue(String[] metadataKeys) {
+  public String getMetadataValue(String... metadataKeys) {
     String metadataValue = null;
 
     for (String metadataKey : metadataKeys) {

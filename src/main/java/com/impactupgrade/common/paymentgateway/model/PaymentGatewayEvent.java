@@ -26,6 +26,7 @@ public class PaymentGatewayEvent {
   
   protected final Environment env;
   protected final RequestEnvironment requestEnv;
+  protected final MetadataRetriever metadataRetriever;
 
   // determined by event
   protected String campaignId;
@@ -72,6 +73,7 @@ public class PaymentGatewayEvent {
   public PaymentGatewayEvent(Environment env, RequestEnvironment requestEnv) {
     this.env = env;
     this.requestEnv = requestEnv;
+    metadataRetriever = new MetadataRetriever(requestEnv);
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
@@ -118,8 +120,7 @@ public class PaymentGatewayEvent {
 
     transactionDescription = stripeCharge.getDescription();
 
-    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeCharge(stripeCharge).stripeCustomer(stripeCustomer);
-    processMetadata(metadataRetriever);
+    metadataRetriever.stripeCharge(stripeCharge).stripeCustomer(stripeCustomer);
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
@@ -165,8 +166,7 @@ public class PaymentGatewayEvent {
 
     transactionDescription = stripePaymentIntent.getDescription();
 
-    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer);
-    processMetadata(metadataRetriever);
+    metadataRetriever.stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer);
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -310,8 +310,7 @@ public class PaymentGatewayEvent {
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
-    MetadataRetriever metadataRetriever = new MetadataRetriever(requestEnv).stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer);
-    processMetadata(metadataRetriever);
+    metadataRetriever.stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer);
 
     // TODO: We could shift this to MetadataRetriever, but odds are we're the only ones setting it...
     subscriptionDescription = stripeSubscription.getMetadata().get("description");
@@ -449,31 +448,13 @@ public class PaymentGatewayEvent {
     subscriptionStartDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
     subscriptionNextDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
   }
-
-  private void processMetadata(MetadataRetriever metadataRetriever) {
-    String accountId = metadataRetriever.getMetadataValue(env.accountMetadataKeys());
-    String campaignId = metadataRetriever.getMetadataValue(env.campaignMetadataKeys());
-    String contactId = metadataRetriever.getMetadataValue(env.contactMetadataKeys());
-    String recordTypeId = metadataRetriever.getMetadataValue(env.recordTypeMetadataKeys());
-
-    // Only set the values if the new retrieval was not empty! This allows us to define fallbacks...
-    if (!Strings.isNullOrEmpty(accountId)) {
-      this.primaryCrmAccountId = accountId;
-    }
-    if (!Strings.isNullOrEmpty(campaignId)) {
-      this.campaignId = campaignId;
-    }
-    if (!Strings.isNullOrEmpty(contactId)) {
-      this.primaryCrmContactId = contactId;
-    }
-    if (!Strings.isNullOrEmpty(recordTypeId)) {
-      this.primaryCrmRecordTypeId = recordTypeId;
-    }
-  }
   
   // CONTEXT SET WITHIN PROCESSING STEPS *OR* FROM EVENT METADATA
 
   public String getPrimaryCrmAccountId() {
+    if (Strings.isNullOrEmpty(primaryCrmAccountId)) {
+      return metadataRetriever.getMetadataValue(env.accountMetadataKeys());
+    }
     return primaryCrmAccountId;
   }
 
@@ -482,6 +463,9 @@ public class PaymentGatewayEvent {
   }
 
   public String getPrimaryCrmContactId() {
+    if (Strings.isNullOrEmpty(primaryCrmContactId)) {
+      return metadataRetriever.getMetadataValue(env.contactMetadataKeys());
+    }
     return primaryCrmContactId;
   }
 
@@ -490,6 +474,7 @@ public class PaymentGatewayEvent {
   }
 
   public String getPrimaryCrmRecurringDonationId() {
+    // TODO: should we support looking up metadata on the Subscription?
     return primaryCrmRecurringDonationId;
   }
 
@@ -498,6 +483,9 @@ public class PaymentGatewayEvent {
   }
 
   public String getPrimaryCrmRecordTypeId() {
+    if (Strings.isNullOrEmpty(primaryCrmRecordTypeId)) {
+      return metadataRetriever.getMetadataValue(env.recordTypeMetadataKeys());
+    }
     return primaryCrmRecordTypeId;
   }
 
@@ -521,6 +509,17 @@ public class PaymentGatewayEvent {
     this.depositDate = depositDate;
   }
 
+  public String getCampaignId() {
+    if (Strings.isNullOrEmpty(campaignId)) {
+      return metadataRetriever.getMetadataValue(env.campaignMetadataKeys());
+    }
+    return campaignId;
+  }
+
+  public MetadataRetriever getMetadataRetriever() {
+    return metadataRetriever;
+  }
+
   // TRANSIENT
 
   public boolean isTransactionRecurring() {
@@ -541,10 +540,6 @@ public class PaymentGatewayEvent {
 
   public RequestEnvironment getRequestEnv() {
     return requestEnv;
-  }
-
-  public String getCampaignId() {
-    return campaignId;
   }
 
   public String getCity() {
