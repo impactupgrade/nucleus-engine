@@ -119,8 +119,8 @@ public class StripeClient {
     Map<String, Object> params = new HashMap<>();
     params.put("limit", 100);
     Map<String, Object> createdParams = new HashMap<>();
-    createdParams.put("gte", startDate);
-    createdParams.put("lte", endDate);
+    createdParams.put("gte", startDate.getTime() / 1000);
+    createdParams.put("lte", endDate.getTime() / 1000);
     params.put("created", createdParams);
 
     List<String> expandList = new ArrayList<>();
@@ -135,8 +135,8 @@ public class StripeClient {
     Map<String, Object> params = new HashMap<>();
     params.put("limit", 100);
     Map<String, Object> createdParams = new HashMap<>();
-    createdParams.put("gte", startDate);
-    createdParams.put("lte", endDate);
+    createdParams.put("gte", startDate.getTime() / 1000);
+    createdParams.put("lte", endDate.getTime() / 1000);
     params.put("created", createdParams);
     params.put("type", eventType);
 
