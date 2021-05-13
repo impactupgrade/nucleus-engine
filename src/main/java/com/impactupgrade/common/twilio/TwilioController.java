@@ -5,11 +5,11 @@ import com.google.common.base.Strings;
 import com.impactupgrade.common.crm.hubspot.HubSpotClientFactory;
 import com.impactupgrade.common.security.SecurityUtil;
 import com.impactupgrade.common.util.Utils;
-import com.impactupgrade.integration.hubspot.builder.ContactBuilder;
-import com.impactupgrade.integration.hubspot.exception.DuplicateContactException;
-import com.impactupgrade.integration.hubspot.exception.HubSpotException;
-import com.impactupgrade.integration.hubspot.model.Contact;
-import com.impactupgrade.integration.hubspot.model.ContactArray;
+import com.impactupgrade.integration.hubspot.v1.builder.ContactBuilder;
+import com.impactupgrade.integration.hubspot.v1.exception.DuplicateContactException;
+import com.impactupgrade.integration.hubspot.v1.exception.HubSpotException;
+import com.impactupgrade.integration.hubspot.v1.model.Contact;
+import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.twiml.MessagingResponse;
@@ -66,7 +66,7 @@ public class TwilioController {
     Runnable thread = () -> {
       for (Long listId : listIds) {
         log.info("retrieving contacts from list {}", listId);
-        ContactArray contactArray = HubSpotClientFactory.client().lists().getContactsInList(listId);
+        ContactArray contactArray = HubSpotClientFactory.client().contactList().getContactsInList(listId);
         log.info("found {} contacts in list {}", contactArray.getContacts().size(), listId);
         contactArray.getContacts().stream()
             .filter(c -> c.getProperties().getPhone() != null)
@@ -138,7 +138,7 @@ public class TwilioController {
     // Twilio Studio flow has some flavors that assume the contact is already in HS, so only the PN (From) will be
     // provided. Other flows allow email to be optional.
     Contact contact = null;
-    ContactArray contacts = HubSpotClientFactory.client().contacts().search(from);
+    ContactArray contacts = HubSpotClientFactory.client().contact().search(from);
     if (contacts.getContacts().isEmpty()) {
       // Didn't exist, so attempt to create it.
       ContactBuilder contactBuilder = new ContactBuilder()
@@ -152,7 +152,7 @@ public class TwilioController {
       }
 
       try {
-        contact = HubSpotClientFactory.client().contacts().insert(contactBuilder);
+        contact = HubSpotClientFactory.client().contact().insert(contactBuilder);
         log.info("created HubSpot contact {}", contact.getVid());
       } catch (DuplicateContactException e) {
         // likely due to an email collision...
@@ -186,7 +186,7 @@ public class TwilioController {
         contactBuilder.email(email);
       }
       if (update) {
-        HubSpotClientFactory.client().contacts().updateById(contactBuilder, contact.getVid() + "");
+        HubSpotClientFactory.client().contact().updateById(contactBuilder, contact.getVid() + "");
       }
     }
 
@@ -264,7 +264,7 @@ public class TwilioController {
       }
     }
     // note that HubSpot auto-prevents duplicate entries in lists
-    HubSpotClientFactory.client().lists().addContactToList(hsListId, contactVid);
+    HubSpotClientFactory.client().contactList().addContactToList(hsListId, contactVid);
     log.info("added HubSpot contact {} to list {}", contactVid, hsListId);
   }
 

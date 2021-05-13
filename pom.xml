@@ -7,19 +7,13 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>hub-parent</artifactId>
-    <version>1.0.10.Final</version>
+    <version>1.0.11.Final</version>
   </parent>
 
   <artifactId>hub-common</artifactId>
-  <version>3.0.17-SNAPSHOT</version>
+  <version>3.0.17.Final</version>
 
   <dependencies>
-    <!-- TODO: needed to update hub-parent, but not wanting to upgrade the HS code and retest, so stick with this for now -->
-    <dependency>
-      <groupId>com.impactupgrade.integration</groupId>
-      <artifactId>hubspot-java-client</artifactId>
-      <version>1.0.6.Final</version>
-    </dependency>
     <!-- TODO: move to hub-parent -->
     <dependency>
       <groupId>org.json</groupId>
