@@ -11,7 +11,7 @@
   </parent>
 
   <artifactId>hub-common</artifactId>
-  <version>3.0.16.Final</version>
+  <version>3.0.17-SNAPSHOT</version>
 
   <dependencies>
     <!-- TODO: needed to update hub-parent, but not wanting to upgrade the HS code and retest, so stick with this for now -->
