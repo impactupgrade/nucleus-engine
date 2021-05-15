@@ -7,11 +7,11 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>hub-parent</artifactId>
-    <version>1.0.11.Final</version>
+    <version>1.0.12.Final</version>
   </parent>
 
   <artifactId>hub-common</artifactId>
-  <version>3.1.2-SNAPSHOT</version>
+  <version>3.1.2.Final</version>
 
   <build>
     <plugins>
