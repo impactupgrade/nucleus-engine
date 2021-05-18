@@ -210,20 +210,13 @@ public class HubSpotCrmService implements CrmService {
     deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     // Do NOT set subscriptionId! In getRecurringDonation, we search by that and expect only the RD to be returned.
 
-    // TODO: Waiting to hear back from Josh about multi-currency support. The following was from LJI's SFDC support.
-    // Will need something similar, in general.
-//    if (paymentGatewayEvent.getTransactionOriginalCurrency() != null) {
-//      // set the custom fields related for international donation
-//      deal.setField("Original_Amount__c", paymentGatewayEvent.getTransactionOriginalAmountInDollars());
-//      deal.setField("Original_Currency__c", paymentGatewayEvent.getTransactionOriginalCurrency());
-//      deal.setField("Converted_Amount__c", paymentGatewayEvent.getTransactionAmountInDollars());
-//      deal.setField("Converted_Currency__c", "usd");
-//      deal.setField("Exchange_Rate__c", paymentGatewayEvent.getTransactionExchangeRate());
-//    } else {
-      deal.setAmount(paymentGatewayEvent.getTransactionAmountInDollars());
-//      deal.setAmountInCompanyCurrency(paymentGatewayEvent.getTransactionAmountInDollars());
-//      deal.setField("Original_Currency__c", "usd");
-//    }
+    deal.setAmount(paymentGatewayEvent.getTransactionAmountInDollars());
+    if (paymentGatewayEvent.getTransactionOriginalCurrency() != null) {
+      // set the custom fields related for international donation
+      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayAmountOriginal, paymentGatewayEvent.getTransactionOriginalAmountInDollars());
+      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayAmountOriginalCurrency, paymentGatewayEvent.getTransactionOriginalCurrency());
+      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayAmountExchangeRate, paymentGatewayEvent.getTransactionExchangeRate());
+    }
   }
 
   @Override

@@ -78,6 +78,10 @@ public class EnvironmentConfig {
   public static class HubspotCRMFieldDefinitions extends CRMFieldDefinitions {
     // TODO: Although this one is specifically for a HS shortcoming (no deal-to-deal association)...
     public String recurringDonationDealId = "";
+    // SFDC has its own currency conversion setup on Opportunity, but HS' is statically defined. Use custom props...
+    public String paymentGatewayAmountOriginal = "";
+    public String paymentGatewayAmountOriginalCurrency = "";
+    public String paymentGatewayAmountExchangeRate = "";
   }
 
   // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's

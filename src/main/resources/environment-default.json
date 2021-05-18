@@ -54,6 +54,9 @@
       "paymentGatewayDepositId": "payment_gateway_deposit_id",
       "paymentGatewayDepositDate": "payment_gateway_deposit_date",
       "paymentGatewayDepositNetAmount": "payment_gateway_deposit_net_amount",
+      "paymentGatewayAmountOriginal": "payment_gateway_amount_original",
+      "paymentGatewayAmountOriginalCurrency": "payment_gateway_amount_original_currency",
+      "paymentGatewayAmountExchangeRate": "payment_gateway_amount_exchange_rate",
       "recurringDonationDealId": "recurring_donation_deal_id"
     },
     "defaultSmsOptInList": ""
