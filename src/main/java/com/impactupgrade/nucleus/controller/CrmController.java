@@ -15,6 +15,7 @@ import org.glassfish.jersey.media.multipart.FormDataParam;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -79,7 +80,7 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImport(
-      @FormDataParam("google-sheet-url") String gsheetUrl,
+      @FormParam("google-sheet-url") String gsheetUrl,
       @Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
 

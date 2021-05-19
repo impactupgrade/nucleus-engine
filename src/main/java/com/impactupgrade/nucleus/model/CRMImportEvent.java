@@ -148,6 +148,9 @@ public class CRMImportEvent {
   }
 
   private static BigDecimal getAmount(Map<String, String> data, String columnName) {
+    if (!data.containsKey(columnName)) {
+      return null;
+    }
     return new BigDecimal(data.get(columnName).replace("$", "").replace(",", "")
         .trim()).setScale(2, RoundingMode.CEILING);
   }
