@@ -55,6 +55,7 @@ public class App {
     apiConfig.register(MultiPartFeature.class);
 
     apiConfig.register(getEnvironment().backupController());
+    apiConfig.register(getEnvironment().crmController());
     apiConfig.register(getEnvironment().paymentGatewayController());
     apiConfig.register(getEnvironment().paymentSpringController());
     apiConfig.register(getEnvironment().sfdcController());

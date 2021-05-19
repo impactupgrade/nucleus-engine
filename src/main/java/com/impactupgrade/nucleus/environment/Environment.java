@@ -3,6 +3,7 @@ package com.impactupgrade.nucleus.environment;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.controller.BackupController;
+import com.impactupgrade.nucleus.controller.CrmController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
 import com.impactupgrade.nucleus.controller.PaymentSpringController;
 import com.impactupgrade.nucleus.controller.SfdcController;
@@ -42,6 +43,7 @@ public class Environment {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public BackupController backupController() { return new BackupController(); }
+  public CrmController crmController() { return new CrmController(this); }
   public PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(this); }
   public PaymentSpringController paymentSpringController() { return new PaymentSpringController(this); }
   public SfdcController sfdcController() { return new SfdcController(this); }

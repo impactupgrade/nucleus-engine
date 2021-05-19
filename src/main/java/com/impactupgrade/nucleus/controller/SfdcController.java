@@ -66,6 +66,7 @@ public class SfdcController {
    *
    * TODO: Document the specific column headers we're supporting!
    */
+  // TODO: Make this generic through CrmController?
   @Path("/bulk-update")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -156,6 +157,7 @@ public class SfdcController {
     }
   }
 
+  // TODO: Make this generic through CrmController?
   @Path("/bulk-delete")
   @POST
   @Consumes(MediaType.MULTIPART_FORM_DATA)
