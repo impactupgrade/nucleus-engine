@@ -1,6 +1,5 @@
 package com.impactupgrade.common.crm;
 
-import com.impactupgrade.common.crm.model.CrmDonation;
 import com.impactupgrade.common.paymentgateway.model.PaymentGatewayEvent;
 
 public class AggregateCrmDestinationService implements CrmDestinationService {
@@ -18,10 +17,10 @@ public class AggregateCrmDestinationService implements CrmDestinationService {
 
 
   @Override
-  public void updateDonation(CrmDonation donation) throws Exception {
-    crmPrimaryService.updateDonation(donation);
+  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    crmPrimaryService.insertDonationReattempt(paymentGatewayEvent);
     for (CrmDestinationService crmService : crmSecondaryServices) {
-      crmService.updateDonation(donation);
+      crmService.insertDonationReattempt(paymentGatewayEvent);
     }
   }
 

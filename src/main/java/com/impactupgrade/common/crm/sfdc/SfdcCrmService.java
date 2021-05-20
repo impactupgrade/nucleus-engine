@@ -49,13 +49,14 @@ public class SfdcCrmService implements CrmSourceService, CrmDestinationService {
   }
 
   @Override
-  public void updateDonation(CrmDonation donation) throws Exception {
+  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
+
     SObject sObject = new SObject("Opportunity");
-    sObject.setId(donation.getId());
+    sObject.setId(existingDonation.getId());
 
     // TODO: duplicates setOpportunityFields -- may need to rethink the breakdown
-    if (donation.isSuccessful()) {
-      // TODO: If LJI/TER end up being the only ones using this, default it to Closed Won
+    if (existingDonation.isPosted()) {
       sObject.setField("StageName", "Posted");
     } else {
       sObject.setField("StageName", "Failed Attempt");
