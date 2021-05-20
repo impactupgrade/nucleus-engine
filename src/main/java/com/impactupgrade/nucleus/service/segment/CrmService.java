@@ -23,6 +23,7 @@ public interface CrmService {
   String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
+  void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   void refundDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
@@ -31,7 +32,6 @@ public interface CrmService {
   String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
   void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception;
 
-  void updateDonation(CrmDonation donation) throws Exception;
   void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
   void processImport(List<CRMImportEvent> importEvents) throws Exception;

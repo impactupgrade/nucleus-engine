@@ -14,16 +14,13 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
-import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -74,13 +71,14 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateDonation(CrmDonation donation) throws Exception {
+  public void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
+
     SObject sObject = new SObject("Opportunity");
-    sObject.setId(donation.getId());
+    sObject.setId(existingDonation.getId());
 
     // TODO: duplicates setOpportunityFields -- may need to rethink the breakdown
-    if (donation.isSuccessful()) {
-      // TODO: If LJI/TER end up being the only ones using this, default it to Closed Won
+    if (existingDonation.isPosted()) {
       sObject.setField("StageName", "Posted");
     } else {
       sObject.setField("StageName", "Failed Attempt");

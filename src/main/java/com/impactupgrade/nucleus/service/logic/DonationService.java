@@ -30,18 +30,15 @@ public class DonationService {
     Optional<CrmDonation> existingDonation = crmService.getDonation(paymentGatewayEvent);
 
     if (existingDonation.isPresent()) {
-      if (!existingDonation.get().isSuccessful() && paymentGatewayEvent.isTransactionSuccess()) {
-        // The donation originally failed, but then the *same charge* was retried and succeeded. IE, Stripe will
-        // sometimes retry a failure within the same Charge, or allow donors to do that if they're in Stripe Checkout.
-        // It won't come across as a separate Charge, but keep the original. Update it!
-        log.info("found existing CRM donation {} using transaction {}, but in a failed state; marking it as successful...",
+      if (!existingDonation.get().isPosted()) {
+        // allow updates to non-posted transactions occur, especially to catch cases where it initially failed is reattempted and succeeds
+        log.info("found existing CRM donation {} using transaction {}, but in a non-posted state; updating it with the reattempt...",
             existingDonation.get().getId(), paymentGatewayEvent.getTransactionId());
-        existingDonation.get().setSuccessful(true);
-        crmService.updateDonation(existingDonation.get());
+        crmService.insertDonationReattempt(paymentGatewayEvent);
         return;
       }
-      // donation already exists in the CRM with the transactionId - do not process the donation
-      log.info("found existing CRM donation {} using transaction {}; skipping creation...",
+      // posted donation already exists in the CRM with the transactionId - do not process the donation
+      log.info("found existing, posted CRM donation {} using transaction {}; skipping creation...",
           existingDonation.get().getId(), paymentGatewayEvent.getTransactionId());
       return;
     }

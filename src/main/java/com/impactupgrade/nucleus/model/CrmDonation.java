@@ -3,11 +3,11 @@ package com.impactupgrade.nucleus.model;
 public class CrmDonation {
 
   private String id;
-  private boolean successful;
+  private boolean posted;
 
-  public CrmDonation(String id, boolean successful) {
+  public CrmDonation(String id, boolean posted) {
     this.id = id;
-    this.successful = successful;
+    this.posted = posted;
   }
 
   public String getId() {
@@ -18,11 +18,11 @@ public class CrmDonation {
     this.id = id;
   }
 
-  public boolean isSuccessful() {
-    return successful;
+  public boolean isPosted() {
+    return posted;
   }
 
-  public void setSuccessful(boolean successful) {
-    this.successful = successful;
+  public void setPosted(boolean posted) {
+    this.posted = posted;
   }
 }

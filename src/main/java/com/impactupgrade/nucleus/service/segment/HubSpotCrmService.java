@@ -107,7 +107,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateDonation(CrmDonation donation) throws Exception {
+  public void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     // TODO
   }
 
