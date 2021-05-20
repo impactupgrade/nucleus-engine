@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
+import com.impactupgrade.nucleus.service.segment.BloomerangCrmService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.HubSpotCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -67,6 +68,8 @@ public class Environment {
       return new SfdcCrmService(this);
     } else if ("hubspot".equalsIgnoreCase(platformName)) {
       return new HubSpotCrmService(this);
+    } else if ("bloomerang".equalsIgnoreCase(platformName)) {
+      return new BloomerangCrmService(this);
     }
 
     log.error("NOT IMPLEMENTED");
