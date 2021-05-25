@@ -61,7 +61,6 @@ public class MessagingService {
       smsOptIn = Utils.checkboxToBool(__smsOptIn);
     }
 
-    String contactId;
     if (crmContact == null) {
       // Didn't exist, so attempt to create it.
       CrmContact newCrmContact = new CrmContact();
@@ -73,12 +72,10 @@ public class MessagingService {
       newCrmContact.emailOptIn = emailOptIn;
       newCrmContact.smsOptIn = smsOptIn;
 
-      contactId = crmService.insertContact(newCrmContact);
-      newCrmContact.id = contactId;
+      crmContact.id = crmService.insertContact(newCrmContact);
     } else {
       // Existed, so use it
-      contactId = crmContact.id;
-      log.info("contact already existed in CRM: {}", contactId);
+      log.info("contact already existed in CRM: {}", crmContact.id);
 
       CrmContact updateCrmContact = new CrmContact(crmContact.id);
 
