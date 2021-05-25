@@ -36,7 +36,7 @@ public class StripeToSfdcIT extends AbstractIT {
     Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
-    assertEquals("Integration Tester", account.getField("Name"));
+    assertEquals("Tester Household", account.getField("Name"));
     assertEquals("13022 Redding Drive", account.getField("BillingStreet"));
     assertEquals("Fort Wayne", account.getField("BillingCity"));
     assertEquals("IN", account.getField("BillingState"));

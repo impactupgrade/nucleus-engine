@@ -8,10 +8,10 @@ import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -77,8 +77,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getAccountsByName(String name) throws ConnectionException, InterruptedException {
+    String escapedName = name.replaceAll("'", "\\\\'");
     // Note the formal greeting -- super important, as that's often used in numerous imports/exports
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.config().salesforce.customQueryFields.account) + " from account where name like '" + name + "' or npo02__Formal_Greeting__c='" + name + "'";
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.config().salesforce.customQueryFields.account) + " from account where name like '%" + escapedName + "%' or npo02__Formal_Greeting__c='%" + escapedName + "%'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }

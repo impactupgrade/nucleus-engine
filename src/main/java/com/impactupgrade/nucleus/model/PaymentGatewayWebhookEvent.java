@@ -29,21 +29,14 @@ public class PaymentGatewayWebhookEvent {
   protected final MetadataRetriever metadataRetriever;
 
   // determined by event
+  protected CrmAccount crmAccount = new CrmAccount();
+  protected CrmContact crmContact = new CrmContact();
   protected String campaignId;
-  protected String city;
-  protected String country;
   protected String customerId;
   protected String depositTransactionId;
-  protected String email;
-  protected String firstName;
-  protected String fullName;
   protected String gatewayName;
-  protected String lastName;
   protected String paymentMethod;
-  protected String phone;
   protected String refundId;
-  protected String state;
-  protected String street;
   protected Double subscriptionAmountInDollars;
   protected String subscriptionCurrency;
   protected String subscriptionDescription;
@@ -61,13 +54,10 @@ public class PaymentGatewayWebhookEvent {
   protected String transactionOriginalCurrency;
   protected boolean transactionCurrencyConverted;
   protected boolean transactionSuccess;
-  protected String zip;
 
   // context set within processing steps OR pulled from event metadata
-  protected String primaryCrmAccountId;
-  protected String primaryCrmContactId;
-  protected String primaryCrmRecordTypeId;
-  protected String primaryCrmRecurringDonationId;
+  protected String crmDonationRecordTypeId;
+  protected String crmRecurringDonationId;
   protected String depositId;
   protected Calendar depositDate;
 
@@ -197,18 +187,19 @@ public class PaymentGatewayWebhookEvent {
 
     initStripeCustomerName(stripeCustomer, stripeMetadataBackup);
 
-    email = stripeCustomer.getEmail();
-    phone = stripeCustomer.getPhone();
+    crmContact.email = stripeCustomer.getEmail();
+    crmContact.phone = stripeCustomer.getPhone();
 
+    CrmAddress crmAddress = new CrmAddress();
     if (stripeCustomer.getAddress() != null) {
-      city = stripeCustomer.getAddress().getCity();
-      country = stripeCustomer.getAddress().getCountry();
-      state = stripeCustomer.getAddress().getState();
-      street = stripeCustomer.getAddress().getLine1();
+      crmAddress.city = stripeCustomer.getAddress().getCity();
+      crmAddress.country = stripeCustomer.getAddress().getCountry();
+      crmAddress.state = stripeCustomer.getAddress().getState();
+      crmAddress.street = stripeCustomer.getAddress().getLine1();
       if (!Strings.isNullOrEmpty(stripeCustomer.getAddress().getLine2())) {
-        street += ", " + stripeCustomer.getAddress().getLine2();
+        crmAddress.street += ", " + stripeCustomer.getAddress().getLine2();
       }
-      zip = stripeCustomer.getAddress().getPostalCode();
+      crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
     } else {
       // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
       // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
@@ -217,16 +208,19 @@ public class PaymentGatewayWebhookEvent {
           .map(s -> (Card) s)
           .findFirst()
           .ifPresent(stripeCard -> {
-            city = stripeCard.getAddressCity();
-            country = stripeCard.getAddressCountry();
-            state = stripeCard.getAddressState();
-            street = stripeCard.getAddressLine1();
+            crmAddress.city = stripeCard.getAddressCity();
+            crmAddress.country = stripeCard.getAddressCountry();
+            crmAddress.state = stripeCard.getAddressState();
+            crmAddress.street = stripeCard.getAddressLine1();
             if (!Strings.isNullOrEmpty(stripeCard.getAddressLine2())) {
-              street += ", " + stripeCard.getAddressLine2();
+              crmAddress.street += ", " + stripeCard.getAddressLine2();
             }
-            zip = stripeCard.getAddressZip();
+            crmAddress.postalCode = stripeCard.getAddressZip();
           });
     }
+
+    crmAccount.address = crmAddress;
+    crmContact.address = crmAddress;
   }
 
   // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
@@ -234,56 +228,56 @@ public class PaymentGatewayWebhookEvent {
   // names in metadata on the Charge or Subscription. Madness. But let's be helpful...
   protected void initStripeCustomerName(Customer stripeCustomer, MetadataStore<?> stripeMetadataBackup) {
     // For the full name, start with Customer name. Generally this is populated, but a few vendors don't always do it.
-    fullName = stripeCustomer.getName();
+    crmAccount.name = stripeCustomer.getName();
     // If that didn't work, look in the metadata. We've seen variations of "customer" or "full" name used.
-    if (Strings.isNullOrEmpty(fullName)) {
-      fullName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+    if (Strings.isNullOrEmpty(crmAccount.name)) {
+      crmAccount.name = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
     // If that still didn't work, look in the backup metadata (typically a charge or subscription).
-    if (Strings.isNullOrEmpty(fullName)) {
-      fullName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+    if (Strings.isNullOrEmpty(crmAccount.name)) {
+      crmAccount.name = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
     // Now do first name, again using metadata.
-    firstName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+    crmContact.firstName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.contains("first") && key.contains("name");
     }).findFirst().map(Map.Entry::getValue).orElse(null);
-    if (Strings.isNullOrEmpty(firstName)) {
-      firstName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+    if (Strings.isNullOrEmpty(crmContact.firstName)) {
+      crmContact.firstName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("first") && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
     // And now the last name.
-    lastName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+    crmContact.lastName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.contains("last") && key.contains("name");
     }).findFirst().map(Map.Entry::getValue).orElse(null);
-    if (Strings.isNullOrEmpty(lastName)) {
-      lastName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+    if (Strings.isNullOrEmpty(crmContact.lastName)) {
+      crmContact.lastName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("last") && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
     // If we still don't have a first/last name, but do have full name, fall back to using a split.
-    if (Strings.isNullOrEmpty(lastName) && !Strings.isNullOrEmpty(fullName)) {
-      String[] split = Utils.fullNameToFirstLast(fullName);
-      firstName = split[0];
-      lastName = split[1];
+    if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(crmAccount.name)) {
+      String[] split = Utils.fullNameToFirstLast(crmAccount.name);
+      crmContact.firstName = split[0];
+      crmContact.lastName = split[1];
     }
 
     // If we still don't have a full name, but do have a first and last, combine them.
-    if (Strings.isNullOrEmpty(fullName) && !Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
-      fullName = firstName + " " + lastName;
+    if (Strings.isNullOrEmpty(crmAccount.name) && !Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(crmContact.lastName)) {
+      crmAccount.name = crmContact.firstName + " " + crmContact.lastName;
     }
   }
 
@@ -329,14 +323,18 @@ public class PaymentGatewayWebhookEvent {
 
     initPaymentSpringCustomer(paymentSpringTransaction, paymentSpringCustomer);
 
-    city = paymentSpringTransaction.getCity();
-    country = paymentSpringTransaction.getCountry();
-    state = paymentSpringTransaction.getState();
-    street = paymentSpringTransaction.getAddress1();
+    CrmAddress crmAddress = new CrmAddress();
+    crmAddress.city = paymentSpringTransaction.getCity();
+    crmAddress.country = paymentSpringTransaction.getCountry();
+    crmAddress.state = paymentSpringTransaction.getState();
+    crmAddress.street = paymentSpringTransaction.getAddress1();
     if (!Strings.isNullOrEmpty(paymentSpringTransaction.getAddress2())) {
-      street += ", " + paymentSpringTransaction.getAddress2();
+      crmAddress.street += ", " + paymentSpringTransaction.getAddress2();
     }
-    zip = paymentSpringTransaction.getZip();
+    crmAddress.postalCode = paymentSpringTransaction.getZip();
+
+    crmAccount.address = crmAddress;
+    crmContact.address = crmAddress;
 
     transactionDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
 
@@ -373,30 +371,30 @@ public class PaymentGatewayWebhookEvent {
     // transaction event, other times it's not and you need the Customer, and we can't figure out the reason.
     // To be safe, always check both. And don't assume it's on the Customer either. Madness.
 
-    email = paymentSpringTransaction.getEmail();
-    firstName = paymentSpringTransaction.getFirstName();
-    lastName = paymentSpringTransaction.getLastName();
-    phone = paymentSpringTransaction.getPhone();
+    crmContact.email = paymentSpringTransaction.getEmail();
+    crmContact.firstName = paymentSpringTransaction.getFirstName();
+    crmContact.lastName = paymentSpringTransaction.getLastName();
+    crmContact.phone = paymentSpringTransaction.getPhone();
 
     if (paymentSpringCustomer.isPresent()) {
       customerId = paymentSpringCustomer.get().getId();
 
-      if (Strings.isNullOrEmpty(email)) {
-        email = paymentSpringCustomer.get().getEmail();
+      if (Strings.isNullOrEmpty(crmContact.email)) {
+        crmContact.email = paymentSpringCustomer.get().getEmail();
       }
-      if (Strings.isNullOrEmpty(firstName)) {
-        firstName = paymentSpringCustomer.get().getFirstName();
+      if (Strings.isNullOrEmpty(crmContact.firstName)) {
+        crmContact.firstName = paymentSpringCustomer.get().getFirstName();
       }
-      if (Strings.isNullOrEmpty(lastName)) {
-        lastName = paymentSpringCustomer.get().getLastName();
+      if (Strings.isNullOrEmpty(crmContact.lastName)) {
+        crmContact.lastName = paymentSpringCustomer.get().getLastName();
       }
-      if (Strings.isNullOrEmpty(phone)) {
-        phone = paymentSpringCustomer.get().getPhone();
+      if (Strings.isNullOrEmpty(crmContact.phone)) {
+        crmContact.phone = paymentSpringCustomer.get().getPhone();
       }
     }
 
     // As an extra "Why not?", PS sometimes leaves off the name from everything but the Card Owner/Account Houlder.
-    if (Strings.isNullOrEmpty(firstName) && Strings.isNullOrEmpty(lastName)) {
+    if (Strings.isNullOrEmpty(crmContact.firstName) && Strings.isNullOrEmpty(crmContact.lastName)) {
       String[] split = new String[0];
       if (!Strings.isNullOrEmpty(paymentSpringTransaction.getCardOwnerName())) {
         split = paymentSpringTransaction.getCardOwnerName().split(" ");
@@ -404,12 +402,10 @@ public class PaymentGatewayWebhookEvent {
         split = paymentSpringTransaction.getAccountHolderName().split(" ");
       }
       if (split.length == 2) {
-        firstName = split[0];
-        lastName = split[1];
+        crmContact.firstName = split[0];
+        crmContact.lastName = split[1];
       }
     }
-
-    fullName = firstName + " " + lastName;
 
     // Furthering the madness, staff can't manually change the campaign on a subscription, only the customer.
     // So check the customer *first* and let it override the subscription.
@@ -453,46 +449,46 @@ public class PaymentGatewayWebhookEvent {
 
   // DO NOT LET THESE BE AUTO-GENERATED, ALLOWING METADATARETRIEVER TO PROVIDE DEFAULTS
 
-  public String getPrimaryCrmAccountId() {
-    if (Strings.isNullOrEmpty(primaryCrmAccountId)) {
+  public String getCrmAccountId() {
+    if (Strings.isNullOrEmpty(crmAccount.id)) {
       return metadataRetriever.getMetadataValue(env.config().metadataKeys.account);
     }
-    return primaryCrmAccountId;
+    return crmAccount.id;
   }
 
-  public void setPrimaryCrmAccountId(String primaryCrmAccountId) {
-    this.primaryCrmAccountId = primaryCrmAccountId;
+  public void setCrmAccountId(String crmAccountId) {
+    crmAccount.id = crmAccountId;
   }
 
-  public String getPrimaryCrmContactId() {
-    if (Strings.isNullOrEmpty(primaryCrmContactId)) {
+  public String getCrmContactId() {
+    if (Strings.isNullOrEmpty(crmContact.id)) {
       return metadataRetriever.getMetadataValue(env.config().metadataKeys.contact);
     }
-    return primaryCrmContactId;
+    return crmContact.id;
   }
 
-  public void setPrimaryCrmContactId(String primaryCrmContactId) {
-    this.primaryCrmContactId = primaryCrmContactId;
+  public void setCrmContactId(String crmContactId) {
+    crmContact.id = crmContactId;
   }
 
-  public String getPrimaryCrmRecurringDonationId() {
+  public String getCrmRecurringDonationId() {
     // TODO: should we support looking up metadata on the Subscription?
-    return primaryCrmRecurringDonationId;
+    return crmRecurringDonationId;
   }
 
-  public void setPrimaryCrmRecurringDonationId(String primaryCrmRecurringDonationId) {
-    this.primaryCrmRecurringDonationId = primaryCrmRecurringDonationId;
+  public void setCrmRecurringDonationId(String crmRecurringDonationId) {
+    this.crmRecurringDonationId = crmRecurringDonationId;
   }
 
-  public String getPrimaryCrmRecordTypeId() {
-    if (Strings.isNullOrEmpty(primaryCrmRecordTypeId)) {
+  public String getDonationCrmRecordTypeId() {
+    if (Strings.isNullOrEmpty(crmDonationRecordTypeId)) {
       return metadataRetriever.getMetadataValue(env.config().metadataKeys.recordType);
     }
-    return primaryCrmRecordTypeId;
+    return crmDonationRecordTypeId;
   }
 
-  public void setPrimaryCrmRecordTypeId(String primaryCrmRecordTypeId) {
-    this.primaryCrmRecordTypeId = primaryCrmRecordTypeId;
+  public void setDonationCrmRecordTypeId(String crmDonationRecordTypeId) {
+    this.crmDonationRecordTypeId = crmDonationRecordTypeId;
   }
 
   public String getCampaignId() {
@@ -533,20 +529,20 @@ public class PaymentGatewayWebhookEvent {
     return requestEnv;
   }
 
-  public String getCity() {
-    return city;
+  public CrmAccount getCrmAccount() {
+    return crmAccount;
   }
 
-  public void setCity(String city) {
-    this.city = city;
+  public void setCrmAccount(CrmAccount crmAccount) {
+    this.crmAccount = crmAccount;
   }
 
-  public String getCountry() {
-    return country;
+  public CrmContact getCrmContact() {
+    return crmContact;
   }
 
-  public void setCountry(String country) {
-    this.country = country;
+  public void setCrmContact(CrmContact crmContact) {
+    this.crmContact = crmContact;
   }
 
   public String getCustomerId() {
@@ -565,44 +561,12 @@ public class PaymentGatewayWebhookEvent {
     this.depositTransactionId = depositTransactionId;
   }
 
-  public String getEmail() {
-    return email;
-  }
-
-  public void setEmail(String email) {
-    this.email = email;
-  }
-
-  public String getFirstName() {
-    return firstName;
-  }
-
-  public void setFirstName(String firstName) {
-    this.firstName = firstName;
-  }
-
-  public String getFullName() {
-    return fullName;
-  }
-
-  public void setFullName(String fullName) {
-    this.fullName = fullName;
-  }
-
   public String getGatewayName() {
     return gatewayName;
   }
 
   public void setGatewayName(String gatewayName) {
     this.gatewayName = gatewayName;
-  }
-
-  public String getLastName() {
-    return lastName;
-  }
-
-  public void setLastName(String lastName) {
-    this.lastName = lastName;
   }
 
   public String getPaymentMethod() {
@@ -613,36 +577,12 @@ public class PaymentGatewayWebhookEvent {
     this.paymentMethod = paymentMethod;
   }
 
-  public String getPhone() {
-    return phone;
-  }
-
-  public void setPhone(String phone) {
-    this.phone = phone;
-  }
-
   public String getRefundId() {
     return refundId;
   }
 
   public void setRefundId(String refundId) {
     this.refundId = refundId;
-  }
-
-  public String getState() {
-    return state;
-  }
-
-  public void setState(String state) {
-    this.state = state;
-  }
-
-  public String getStreet() {
-    return street;
-  }
-
-  public void setStreet(String street) {
-    this.street = street;
   }
 
   public Double getSubscriptionAmountInDollars() {
@@ -781,14 +721,6 @@ public class PaymentGatewayWebhookEvent {
     this.transactionSuccess = transactionSuccess;
   }
 
-  public String getZip() {
-    return zip;
-  }
-
-  public void setZip(String zip) {
-    this.zip = zip;
-  }
-
   public String getDepositId() {
     return depositId;
   }
@@ -811,17 +743,17 @@ public class PaymentGatewayWebhookEvent {
   public String toString() {
     return "PaymentGatewayEvent{" +
 
-        ", firstName='" + firstName + '\'' +
-        ", lastName='" + lastName + '\'' +
-        ", fullName='" + fullName + '\'' +
-        ", email='" + email + '\'' +
-        ", phone='" + phone + '\'' +
+        "fullName='" + crmAccount.name + '\'' +
+        ", firstName='" + crmContact.firstName + '\'' +
+        ", lastName='" + crmContact.lastName + '\'' +
+        ", email='" + crmContact.email + '\'' +
+        ", phone='" + crmContact.phone + '\'' +
 
-        ", street='" + street + '\'' +
-        ", city='" + city + '\'' +
-        ", state='" + state + '\'' +
-        ", zip='" + zip + '\'' +
-        ", country='" + country + '\'' +
+        ", street='" + crmContact.address.street + '\'' +
+        ", city='" + crmContact.address.city + '\'' +
+        ", state='" + crmContact.address.state + '\'' +
+        ", zip='" + crmContact.address.postalCode + '\'' +
+        ", country='" + crmContact.address.country + '\'' +
 
         ", gatewayName='" + gatewayName + '\'' +
         ", paymentMethod='" + paymentMethod + '\'' +
@@ -848,10 +780,10 @@ public class PaymentGatewayWebhookEvent {
         ", subscriptionStartDate=" + subscriptionStartDate +
         ", subscriptionNextDate=" + subscriptionNextDate +
 
-        ", primaryCrmAccountId='" + primaryCrmAccountId + '\'' +
-        ", primaryCrmContactId='" + primaryCrmContactId + '\'' +
-        ", primaryCrmRecordTypeId='" + primaryCrmRecordTypeId + '\'' +
-        ", primaryCrmRecurringDonationId='" + primaryCrmRecurringDonationId +
+        ", primaryCrmAccountId='" + crmAccount.id + '\'' +
+        ", primaryCrmContactId='" + crmContact.id + '\'' +
+        ", primaryCrmRecordTypeId='" + crmDonationRecordTypeId + '\'' +
+        ", primaryCrmRecurringDonationId='" + crmRecurringDonationId +
         '}';
   }
 }

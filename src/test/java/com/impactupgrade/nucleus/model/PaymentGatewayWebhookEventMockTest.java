@@ -24,9 +24,9 @@ public class PaymentGatewayWebhookEventMockTest extends AbstractMockTest {
       charge.setMetadata(Collections.emptyMap());
       event.initStripeCustomerName(customer, charge);
 
-      assertEquals("Brett Meyer The First", event.getFullName());
-      assertEquals("Brett", event.getFirstName());
-      assertEquals("Meyer The First", event.getLastName());
+      assertEquals("Brett Meyer The First", event.getCrmAccount().name);
+      assertEquals("Brett", event.crmContact.firstName);
+      assertEquals("Meyer The First", event.crmContact.lastName);
     }
   }
 }

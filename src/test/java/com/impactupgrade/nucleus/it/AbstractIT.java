@@ -15,9 +15,8 @@ import org.junit.jupiter.api.TestInstance;
 
 import javax.ws.rs.core.Application;
 import java.util.List;
-import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -68,10 +67,9 @@ public class AbstractIT extends JerseyTest {
   protected void deleteSfdcRecords(String email) throws Exception {
     SfdcClient sfdcClient = getEnv().sfdcClient();
 
-    Optional<SObject> existingContact = sfdcClient.getContactByEmail(email);
-    if (existingContact.isPresent()) {
-      String accountId = existingContact.get().getField("AccountId").toString();
-      Optional<SObject> existingAccount = sfdcClient.getAccountById(accountId);
+    List<SObject> existingAccounts = sfdcClient.getAccountsByName("Tester");
+    for (SObject existingAccount : existingAccounts) {
+      String accountId = existingAccount.getId();
 
       List<SObject> existingOpps = sfdcClient.getDonationsByAccountId(accountId);
       for (SObject existingOpp : existingOpps) {
@@ -83,11 +81,10 @@ public class AbstractIT extends JerseyTest {
         sfdcClient.delete(existingRD);
       }
 
-      sfdcClient.delete(existingContact.get());
-      sfdcClient.delete(existingAccount.get());
+      sfdcClient.delete(existingAccount);
     }
 
     // ensure we're actually clean
-    assertFalse(sfdcClient.getContactByEmail(email).isPresent());
+    assertEquals(0, sfdcClient.getAccountsByName("Tester").size());
   }
 }

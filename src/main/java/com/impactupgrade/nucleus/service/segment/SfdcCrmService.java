@@ -7,12 +7,13 @@ import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
@@ -88,41 +89,65 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertAccount(CrmAccount crmAccount) throws Exception {
     SObject account = new SObject("Account");
-    setAccountFields(account, paymentGatewayEvent);
+    setAccountFields(account, crmAccount);
     return sfdcClient.insert(account).getId();
   }
 
-  protected void setAccountFields(SObject account, PaymentGatewayWebhookEvent paymentGatewayEvent) {
-    account.setField("Name", paymentGatewayEvent.getFullName());
+  protected void setAccountFields(SObject account, CrmAccount crmAccount) {
+    account.setField("Name", crmAccount.name);
 
-    account.setField("BillingStreet", paymentGatewayEvent.getStreet());
-    account.setField("BillingCity", paymentGatewayEvent.getCity());
-    account.setField("BillingState", paymentGatewayEvent.getState());
-    account.setField("BillingPostalCode", paymentGatewayEvent.getZip());
-    account.setField("BillingCountry", paymentGatewayEvent.getCountry());
+    account.setField("BillingStreet", crmAccount.address.street);
+    account.setField("BillingCity", crmAccount.address.city);
+    account.setField("BillingState", crmAccount.address.state);
+    account.setField("BillingPostalCode", crmAccount.address.postalCode);
+    account.setField("BillingCountry", crmAccount.address.country);
   }
 
   @Override
-  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertContact(CrmContact crmContact) throws Exception {
     SObject contact = new SObject("Contact");
-    setContactFields(contact, paymentGatewayEvent);
+    setContactFields(contact, crmContact);
     return sfdcClient.insert(contact).getId();
   }
 
-  protected void setContactFields(SObject contact, PaymentGatewayWebhookEvent paymentGatewayEvent) {
-    contact.setField("AccountId", paymentGatewayEvent.getPrimaryCrmAccountId());
-    contact.setField("FirstName", paymentGatewayEvent.getFirstName());
-    contact.setField("LastName", paymentGatewayEvent.getLastName());
-    contact.setField("Email", paymentGatewayEvent.getEmail());
-    contact.setField("MobilePhone", paymentGatewayEvent.getPhone());
+  @Override
+  public void updateContact(CrmContact crmContact) throws Exception {
+    SObject contact = new SObject("Contact");
+    contact.setId(crmContact.id);
+    setContactFields(contact, crmContact);
+    sfdcClient.update(contact);
+  }
+
+  @Override
+  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    SObject campaignMember = new SObject("CampaignMember");
+    campaignMember.setField("ContactId", crmContact.id);
+    campaignMember.setField("CampaignId", campaignId);
+    // TODO: Necessary to set the contact's name and address? Hopefully SFDC does that automatically.
+    sfdcClient.insert(campaignMember);
+  }
+
+  protected void setContactFields(SObject contact, CrmContact crmContact) {
+    contact.setField("AccountId", crmContact.accountId);
+    contact.setField("FirstName", crmContact.firstName);
+    contact.setField("LastName", crmContact.lastName);
+    contact.setField("Email", crmContact.email);
+    contact.setField("MobilePhone", crmContact.phone);
+
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.emailOptIn) && crmContact.emailOptIn != null && crmContact.emailOptIn) {
+      contact.setField(env.config().salesforce.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
+    }
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.smsOptIn) && crmContact.smsOptIn != null && crmContact.smsOptIn) {
+      contact.setField(env.config().salesforce.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
+    }
   }
 
   @Override
   public String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     Optional<SObject> campaign = getCampaignOrDefault(paymentGatewayEvent);
-    String recurringDonationId = paymentGatewayEvent.getPrimaryCrmRecurringDonationId();
+    String recurringDonationId = paymentGatewayEvent.getCrmRecurringDonationId();
 
     if (!Strings.isNullOrEmpty(recurringDonationId)) {
       // get the next pledged donation from the recurring donation
@@ -164,7 +189,7 @@ public class SfdcCrmService implements CrmService {
       PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     SObject opportunity = new SObject("Opportunity");
 
-    opportunity.setField("AccountId", paymentGatewayEvent.getPrimaryCrmAccountId());
+    opportunity.setField("AccountId", paymentGatewayEvent.getCrmAccountId());
     // TODO: Shouldn't this be doing ContactId?
     opportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
 
@@ -198,7 +223,7 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("Description", paymentGatewayEvent.getTransactionDescription());
 
     // purely a default, but we generally expect this to be overridden
-    opportunity.setField("Name", paymentGatewayEvent.getFullName() + " Donation");
+    opportunity.setField("Name", paymentGatewayEvent.getCrmAccount().name + " Donation");
   }
 
   @Override
@@ -267,7 +292,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     // TODO: Assign to contact if available? Can only do one or the other -- see DR.
-    recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getPrimaryCrmAccountId());
+    recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getCrmAccountId());
     recurringDonation.setField("Npe03__Amount__c", paymentGatewayEvent.getSubscriptionAmountInDollars());
     recurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
     recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
@@ -278,7 +303,7 @@ public class SfdcCrmService implements CrmService {
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(paymentGatewayEvent).map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
-    recurringDonation.setField("Name", paymentGatewayEvent.getFullName() + " Recurring Donation");
+    recurringDonation.setField("Name", paymentGatewayEvent.getCrmAccount().name + " Recurring Donation");
   }
 
   @Override
@@ -361,18 +386,22 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
-    SObject contact = new SObject("Contact");
-    contact.setField("FirstName", messagingWebhookEvent.getFirstName());
-    contact.setField("LastName", messagingWebhookEvent.getLastName());
-    contact.setField("Email", messagingWebhookEvent.getEmail());
-    contact.setField("MobilePhone", messagingWebhookEvent.getPhone());
-    return sfdcClient.insert(contact).getId();
+  public void addContactToList(CrmContact crmContact, String listId) throws Exception {
+    // likely not relevant in SFDC
   }
 
   @Override
-  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
-    // TODO: Different for every org, so allow it to be overridden. But, we should start shifting all this to env.json
+  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
+    SObject opportunity = new SObject("Opportunity");
+    opportunity.setField("RecordTypeId", opportunityEvent.getRecordTypeId());
+    opportunity.setField("Name", opportunityEvent.getName());
+    opportunity.setField("npsp__Primary_Contact__c", opportunityEvent.getCrmContact().id);
+    opportunity.setField("CloseDate", Calendar.getInstance());
+    // TODO: Good enough for now, but likely needs to be customized.
+    opportunity.setField("StageName", "Pledged");
+    opportunity.setField("OwnerId", opportunityEvent.getOwnerId());
+    opportunity.setField("CampaignId", opportunityEvent.getCampaignId());
+    return sfdcClient.insert(opportunity).getId();
   }
 
   @Override
@@ -538,10 +567,23 @@ public class SfdcCrmService implements CrmService {
     return sObject.map(this::toCrmCampaign);
   }
 
+  // TODO: starting to feel like we need an object mapper lib...
+
   protected CrmContact toCrmContact(SObject sObject) {
-    String id = sObject.getId();
-    String accountId = sObject.getField("AccountId").toString();
-    return new CrmContact(id, accountId);
+    // TODO: likely enough, but may need the rest of the fields
+    CrmContact crmContact = new CrmContact();
+    crmContact.id = sObject.getId();
+    crmContact.accountId = sObject.getField("AccountId").toString();
+    if (sObject.getField("FirstName") != null) {
+      crmContact.firstName = sObject.getField("FirstName").toString();
+    }
+    if (sObject.getField("LastName") != null) {
+      crmContact.lastName = sObject.getField("LastName").toString();
+    }
+    if (sObject.getField("Email") != null) {
+      crmContact.email = sObject.getField("Email").toString();
+    }
+    return crmContact;
   }
 
   protected Optional<CrmContact> toCrmContact(Optional<SObject> sObject) {
