@@ -15,11 +15,12 @@ import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -56,9 +57,14 @@ public class HubSpotCrmService implements CrmService {
     }
 
     Contact result = results.getResults().get(0);
-    String id = result.getId();
-    String accountId = result.getProperties().getAssociatedcompanyid();
-    return Optional.of(new CrmContact(id, accountId));
+    // TODO: likely enough, but may need the rest of the fields
+    CrmContact crmContact = new CrmContact();
+    crmContact.id = result.getId();
+    crmContact.accountId = result.getProperties().getAssociatedcompanyid();
+    crmContact.firstName = result.getProperties().getFirstname();
+    crmContact.lastName = result.getProperties().getLastname();
+    crmContact.email = result.getProperties().getEmail();
+    return Optional.of(crmContact);
   }
 
   @Override
@@ -72,9 +78,14 @@ public class HubSpotCrmService implements CrmService {
     }
 
     Contact result = results.getResults().get(0);
-    String id = result.getId();
-    String accountId = result.getProperties().getAssociatedcompanyid();
-    return Optional.of(new CrmContact(id, accountId));
+    // TODO: likely enough, but may need the rest of the fields
+    CrmContact crmContact = new CrmContact();
+    crmContact.id = result.getId();
+    crmContact.accountId = result.getProperties().getAssociatedcompanyid();
+    crmContact.firstName = result.getProperties().getFirstname();
+    crmContact.lastName = result.getProperties().getLastname();
+    crmContact.email = result.getProperties().getEmail();
+    return Optional.of(crmContact);
   }
 
   @Override
@@ -129,37 +140,57 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertAccount(CrmAccount crmAccount) throws Exception {
     CompanyProperties account = new CompanyProperties();
-    setAccountFields(account, paymentGatewayEvent);
+    setAccountFields(account, crmAccount);
     Company response = hsClient.company().insert(account);
     return response == null ? null : response.getId();
   }
 
-  protected void setAccountFields(CompanyProperties account, PaymentGatewayWebhookEvent paymentGatewayEvent) {
-    account.setName(paymentGatewayEvent.getFullName());
+  protected void setAccountFields(CompanyProperties account, CrmAccount crmAccount) {
+    account.setName(crmAccount.name);
 
-    account.setAddress(paymentGatewayEvent.getStreet());
-    account.setCity(paymentGatewayEvent.getCity());
-    account.setState(paymentGatewayEvent.getState());
-    account.setZip(paymentGatewayEvent.getZip());
-    account.setCountry(paymentGatewayEvent.getCountry());
+    account.setAddress(crmAccount.address.street);
+    account.setCity(crmAccount.address.city);
+    account.setState(crmAccount.address.state);
+    account.setZip(crmAccount.address.postalCode);
+    account.setCountry(crmAccount.address.country);
   }
 
   @Override
-  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertContact(CrmContact crmContact) throws Exception {
     ContactProperties contact = new ContactProperties();
-    setContactFields(contact, paymentGatewayEvent);
+    setContactFields(contact, crmContact);
     Contact response = hsClient.contact().insert(contact);
     return response == null ? null : response.getId();
   }
 
-  protected void setContactFields(ContactProperties contact, PaymentGatewayWebhookEvent paymentGatewayEvent) {
-    contact.setAssociatedcompanyid(paymentGatewayEvent.getPrimaryCrmAccountId());
-    contact.setFirstname(paymentGatewayEvent.getFirstName());
-    contact.setLastname(paymentGatewayEvent.getLastName());
-    contact.setEmail(paymentGatewayEvent.getEmail());
-    contact.setMobilePhone(paymentGatewayEvent.getPhone());
+  @Override
+  public void updateContact(CrmContact crmContact) throws Exception {
+    // TODO: test with Twilio flows
+    ContactProperties contact = new ContactProperties();
+    setContactFields(contact, crmContact);
+    hsClient.contact().update(crmContact.id, contact);
+  }
+
+  @Override
+  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    // TODO
+  }
+
+  protected void setContactFields(ContactProperties contact, CrmContact crmContact) {
+    contact.setAssociatedcompanyid(crmContact.accountId);
+    contact.setFirstname(crmContact.firstName);
+    contact.setLastname(crmContact.lastName);
+    contact.setEmail(crmContact.email);
+    contact.setMobilePhone(crmContact.phone);
+
+    if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
+      contact.getCustomProperties().put(env.config().hubspot.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
+    }
+    if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
+      contact.getCustomProperties().put(env.config().hubspot.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
+    }
   }
 
   @Override
@@ -178,8 +209,8 @@ public class HubSpotCrmService implements CrmService {
 //            "deal_to_deal");
 //        hsClient.association().insert(recurringDonationAssociation);
       }
-      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getPrimaryCrmAccountId());
-      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getPrimaryCrmContactId());
+      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccountId());
+      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContactId());
 
       return response.getId();
     } else {
@@ -199,10 +230,10 @@ public class HubSpotCrmService implements CrmService {
 
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDescription(paymentGatewayEvent.getTransactionDescription());
-    deal.setDealname("Donation: " + paymentGatewayEvent.getFullName());
+    deal.setDealname("Donation: " + paymentGatewayEvent.getCrmAccount().name);
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
-      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getPrimaryCrmRecurringDonationId());
+      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getCrmRecurringDonationId());
     }
 
     deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
@@ -268,8 +299,8 @@ public class HubSpotCrmService implements CrmService {
 
     Deal response = hsClient.deal().insert(deal);
     if (response != null) {
-      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getPrimaryCrmAccountId());
-      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getPrimaryCrmContactId());
+      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccountId());
+      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContactId());
 
       return response.getId();
     } else {
@@ -287,7 +318,7 @@ public class HubSpotCrmService implements CrmService {
     deal.setRecurringRevenueAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
     deal.setRecurringRevenueDealType("NEW_BUSINESS");
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
-    deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getFullName());
+    deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmAccount().name);
 
     deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
     deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
@@ -317,20 +348,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
-    ContactProperties contact = new ContactProperties();
-    contact.setFirstname(messagingWebhookEvent.getFirstName());
-    contact.setLastname(messagingWebhookEvent.getLastName());
-    contact.setEmail(messagingWebhookEvent.getEmail());
-    contact.setPhone(messagingWebhookEvent.getPhone());
-    contact.setMobilePhone(messagingWebhookEvent.getPhone());
-    Contact response = hsClient.contact().insert(contact);
-    return response == null ? null : response.getId();
-  }
-
-  @Override
-  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
-    String listId = messagingWebhookEvent.getListId();
+  public void addContactToList(CrmContact crmContact, String listId) throws Exception {
     if (Strings.isNullOrEmpty(listId)) {
       String defaultListId = env.config().hubspot.defaultSmsOptInList;
       if (Strings.isNullOrEmpty(defaultListId)) {
@@ -343,8 +361,14 @@ public class HubSpotCrmService implements CrmService {
     }
     // note that HubSpot auto-prevents duplicate entries in lists
     // TODO: shift to V3
-    HubSpotClientFactory.v1Client().contactList().addContactToList(Long.parseLong(listId), Long.parseLong(messagingWebhookEvent.getCrmContactId()));
-    log.info("added HubSpot contact {} to list {}", messagingWebhookEvent.getCrmContactId(), listId);
+    HubSpotClientFactory.v1Client().contactList().addContactToList(Long.parseLong(listId), Long.parseLong(crmContact.id));
+    log.info("added HubSpot contact {} to list {}", crmContact.id, listId);
+  }
+
+  @Override
+  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
+    // TODO
+    return null;
   }
 
   @Override

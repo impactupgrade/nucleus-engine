@@ -5,9 +5,11 @@ import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
@@ -51,9 +53,11 @@ public class TwilioController {
   }
 
   private final MessagingService messagingService;
+  private final CrmService crmService;
 
   public TwilioController(Environment env) {
     messagingService = env.messagingService();
+    crmService = env.crmService();
   }
 
   @Path("/outbound/hubspot-list")
@@ -102,10 +106,6 @@ public class TwilioController {
    * This webhook serves multiple purposes. It can be used directly on a Twilio number, receiving standard From/Body
    * pairs as texts are received. It can also be used by Twilio Studio flows, Twilio Functions, etc. for more complex
    * interactions. Try to make use of the standard form params whenever possible to maintain the overlap!
-   *
-   * @param from
-   * @param message
-   * @return
    */
   @Path("/inbound/sms/signup")
   @POST
@@ -113,17 +113,21 @@ public class TwilioController {
   @Produces(MediaType.APPLICATION_XML)
   public Response inboundSignup(
       @FormParam("From") String from,
-      @FormParam("Body") String message,
       @FormParam("FirstName") String firstName,
       @FormParam("LastName") String lastName,
       @FormParam("FullName") String fullName,
       @FormParam("Email") String email,
+      @FormParam("EmailOptIn") String emailOptIn,
+      @FormParam("SmsOptIn") String smsOptIn,
       @FormParam("ListId") String listId,
-      @FormParam("HubSpotListId") @Deprecated Long hsListId
+      @FormParam("HubSpotListId") @Deprecated Long hsListId,
+      @FormParam("CampaignId") String campaignId,
+      @FormParam("OpportunityName") String opportunityName,
+      @FormParam("OpportunityRecordTypeId") String opportunityRecordTypeId,
+      @FormParam("OpportunityOwnerId") String opportunityOwnerId
   ) throws Exception {
-    log.info("from={} message={}", from, message);
-    log.info("other fields: firstName={}, lastName={}, fullName={}, email={}, hsListId={}",
-        firstName, lastName, fullName, email, hsListId);
+    log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={}",
+        from, firstName, lastName, fullName, email, emailOptIn, smsOptIn, listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId);
 
     if (!Strings.isNullOrEmpty(fullName)) {
       String[] split = Utils.fullNameToFirstLast(fullName);
@@ -131,17 +135,33 @@ public class TwilioController {
       lastName = split[1];
     }
 
-    MessagingWebhookEvent event = new MessagingWebhookEvent();
-    event.setPhone(from);
-    event.setFirstName(firstName);
-    event.setLastName(lastName);
-    event.setEmail(email);
     if (hsListId != null && hsListId > 0) {
-      event.setListId(hsListId + "");
-    } else {
-      event.setListId(listId);
+      listId = hsListId + "";
     }
-    messagingService.signup(event);
+
+    CrmContact crmContact = messagingService.processContact(
+        from,
+        firstName,
+        lastName,
+        email,
+        emailOptIn,
+        smsOptIn
+    );
+    if (!Strings.isNullOrEmpty(campaignId)) {
+      crmService.addContactToCampaign(crmContact, campaignId);
+    }
+    if (!Strings.isNullOrEmpty(listId)) {
+      crmService.addContactToList(crmContact, listId);
+    }
+    if (!Strings.isNullOrEmpty(opportunityName)) {
+      OpportunityEvent oppEvent = new OpportunityEvent();
+      oppEvent.setName(opportunityName);
+      oppEvent.setRecordTypeId(opportunityRecordTypeId);
+      oppEvent.setOwnerId(opportunityOwnerId);
+      oppEvent.setCrmContact(crmContact);
+      oppEvent.setCampaignId(campaignId);
+      crmService.insertOpportunity(oppEvent);
+    }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
     MessagingResponse response = new MessagingResponse.Builder().build();

@@ -14,7 +14,7 @@ public class EnvironmentIT extends Environment {
   public SfdcClient sfdcClient() {
     // https://impactupgrade-dev-ed.lightning.force.com
     // technically "production" since we're using a developer education account
-    return new SfdcClient(this, "brett@impactupgrade.com", "?-s~X{\"zzW])\"-4}XuJN932Z53KTCp97coeL50ER", SfdcClient.AUTH_URL_PRODUCTION);
+    return new SfdcClient(this, "brett@impactupgrade.com", "nnferQqWq6MaEw8aUEohrLWiJN5OIpgpejBeCH7m3", SfdcClient.AUTH_URL_PRODUCTION);
   }
 
   @Override

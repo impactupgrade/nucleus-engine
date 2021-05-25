@@ -53,12 +53,12 @@ public class DonationService {
         // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
         // first donation do it in order to prevent timing issues.
         String recurringDonationId = crmService.insertRecurringDonation(paymentGatewayEvent);
-        paymentGatewayEvent.setPrimaryCrmRecurringDonationId(recurringDonationId);
+        paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
       } else {
         String recurringDonationId = recurringDonation.get().id();
         log.info("found CRM recurring donation {} using subscriptionId {}",
             recurringDonationId, paymentGatewayEvent.getSubscriptionId());
-        paymentGatewayEvent.setPrimaryCrmRecurringDonationId(recurringDonationId);
+        paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
       }
     }
 

@@ -7,11 +7,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -65,7 +66,7 @@ public class BloomerangCrmService implements CrmService {
   public Optional<CrmContact> getContactByEmail(String email) throws Exception {
     if (Strings.isNullOrEmpty(email)) {
       // assume anonymous
-      return Optional.of(new CrmContact(anonymousId, null));
+      return Optional.of(new CrmContact(anonymousId));
     }
 
     ConstituentSearchResults constituentSearchResults = null;
@@ -79,7 +80,7 @@ public class BloomerangCrmService implements CrmService {
     if (constituentSearchResults != null && constituentSearchResults.results.length > 0
         && constituentSearchResults.results[0] != null) {
       // TODO: no accounts in Bloomerang, so this might need addressed upstream if the accountId doesn't exist
-      return Optional.of(new CrmContact(constituentSearchResults.results[0].id + "", null));
+      return Optional.of(new CrmContact(constituentSearchResults.results[0].id + ""));
     } else {
       return Optional.empty();
     }
@@ -121,44 +122,44 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertAccount(CrmAccount crmAccount) throws Exception {
     // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
     return null;
   }
 
   @Override
-  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertContact(CrmContact crmContact) throws Exception {
     Constituent constituent = new Constituent();
-    constituent.firstName = paymentGatewayEvent.getFirstName();
-    constituent.lastName = paymentGatewayEvent.getLastName();
+    constituent.firstName = crmContact.firstName;
+    constituent.lastName = crmContact.lastName;
     // TODO
 //    constituent.customFields = customFields;
     String body = mapper.writeValueAsString(constituent);
 
     constituent = mapper.readValue(post(POST_CONSTITUENT, body), Constituent.class);
 
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getEmail())) {
+    if (!Strings.isNullOrEmpty(crmContact.email)) {
       final Email constituentEmail = new Email();
       constituentEmail.accountId = constituent.id;
-      constituentEmail.value = paymentGatewayEvent.getEmail();
+      constituentEmail.value = crmContact.email;
       body = mapper.writeValueAsString(constituentEmail);
       post(POST_EMAIL, body);
     }
 
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getPhone())) {
+    if (!Strings.isNullOrEmpty(crmContact.phone)) {
       final Phone constituentPhone = new Phone();
       constituentPhone.accountId = constituent.id;
-      constituentPhone.number = paymentGatewayEvent.getPhone();
+      constituentPhone.number = crmContact.phone;
       post(POST_PHONE, mapper.writeValueAsString(constituentPhone));
     }
 
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getStreet())) {
+    if (!Strings.isNullOrEmpty(crmContact.address.street)) {
       final Address constituentAddress = new Address();
       constituentAddress.accountId = constituent.id;
-      constituentAddress.street = paymentGatewayEvent.getStreet();
-      constituentAddress.city = paymentGatewayEvent.getCity();
-      constituentAddress.state = paymentGatewayEvent.getState();
-      constituentAddress.zip = paymentGatewayEvent.getZip();
+      constituentAddress.street = crmContact.address.street;
+      constituentAddress.city = crmContact.address.city;
+      constituentAddress.state = crmContact.address.state;
+      constituentAddress.zip = crmContact.address.postalCode;
       post(POST_ADDRESS, mapper.writeValueAsString(constituentAddress));
     }
 
@@ -166,9 +167,19 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public void updateContact(CrmContact crmContact) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     Donation donation = new Donation();
-    donation.accountId = Integer.parseInt(paymentGatewayEvent.getPrimaryCrmContactId());
+    donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContactId());
     donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
     donation.date = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
 
@@ -181,7 +192,7 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     RecurringDonation donation = new RecurringDonation();
-    donation.setAccountId(Integer.parseInt(paymentGatewayEvent.getPrimaryCrmContactId()));
+    donation.setAccountId(Integer.parseInt(paymentGatewayEvent.getCrmContactId()));
     donation.setAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
     donation.setDate(new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime()));
 
@@ -207,17 +218,17 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public void smsSignup(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
   public void processImport(List<CRMImportEvent> importEvents) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void addContactToList(CrmContact crmContact, String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

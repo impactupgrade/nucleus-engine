@@ -1,4 +1,23 @@
 package com.impactupgrade.nucleus.model;
 
-public record CrmContact(String id, String accountId) {
+public class CrmContact {
+  public String id;
+  public String accountId;
+
+  public String firstName;
+  public String lastName;
+
+  public String email;
+  public String phone;
+
+  public Boolean emailOptIn;
+  public Boolean smsOptIn;
+
+  public CrmAddress address = new CrmAddress();
+
+  public CrmContact() {}
+
+  public CrmContact(String id) {
+    this.id = id;
+  }
 }

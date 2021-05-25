@@ -3,12 +3,10 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.Optional;
 
 public class MessagingService {
 
@@ -20,49 +18,89 @@ public class MessagingService {
     crmService = env.crmService();
   }
 
-  public void signup(MessagingWebhookEvent event) throws Exception {
-    // First, look for an existing contact based off the phone number. Important to use the PN since the
+  public CrmContact processContact(
+      String phone,
+      String firstName,
+      String lastName,
+      String email,
+      String __emailOptIn,
+      String __smsOptIn
+  ) throws Exception {
+    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
+    phone = phone.replace("+1", "");
+
+    // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
+    if (email != null && !email.contains("@")) {
+      email = null;
+      __emailOptIn = null;
+    }
+
+    // First, look for an existing contact. Important to fall back on the PN since the
     // Twilio Studio flow has some flavors that assume the contact is already in the CRM, so only the PN (From) will be
     // provided. Other flows allow email to be optional.
-    Optional<CrmContact> crmContact = crmService.getContactByPhone(event.getPhone());
+    CrmContact crmContact = null;
+    if (!Strings.isNullOrEmpty(email) && !"no".equalsIgnoreCase(email)) {
+      crmContact = crmService.getContactByEmail(email).orElse(null);
+    }
+    if (crmContact == null) {
+      crmContact = crmService.getContactByPhone(phone).orElse(null);
+    }
+
+    // if the flow didn't include an explicit email opt-in process, safe to assume it's fine
+    boolean emailOptIn;
+    if (Strings.isNullOrEmpty(__emailOptIn)) {
+      emailOptIn = true;
+    } else {
+      emailOptIn = Utils.checkboxToBool(__emailOptIn);
+    }
+    // if the flow didn't include an explicit sms opt-in process, NOT safe to assume
+    boolean smsOptIn;
+    if (Strings.isNullOrEmpty(__smsOptIn)) {
+      smsOptIn = false;
+    } else {
+      smsOptIn = Utils.checkboxToBool(__smsOptIn);
+    }
+
     String contactId;
-    if (crmContact.isEmpty()) {
+    if (crmContact == null) {
       // Didn't exist, so attempt to create it.
-      contactId = crmService.insertContact(event);
+      CrmContact newCrmContact = new CrmContact();
+      newCrmContact.phone = phone;
+      newCrmContact.firstName = firstName;
+      newCrmContact.lastName = lastName;
+      newCrmContact.email = email;
+
+      newCrmContact.emailOptIn = emailOptIn;
+      newCrmContact.smsOptIn = smsOptIn;
+
+      contactId = crmService.insertContact(newCrmContact);
+      newCrmContact.id = contactId;
     } else {
       // Existed, so use it
-      contactId = crmContact.get().id();
+      contactId = crmContact.id;
       log.info("contact already existed in CRM: {}", contactId);
+
+      CrmContact updateCrmContact = new CrmContact(crmContact.id);
+
+      if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
+        log.info("contact {} missing firstName; updating it...", crmContact.id);
+        updateCrmContact.firstName = firstName;
+      }
+      if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
+        log.info("contact {} missing lastName; updating it...", crmContact.id);
+        updateCrmContact.lastName = lastName;
+      }
+      if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
+        log.info("contact {} missing email; updating it...", crmContact.id);
+        updateCrmContact.email = email;
+      }
+
+      updateCrmContact.emailOptIn = emailOptIn;
+      updateCrmContact.smsOptIn = smsOptIn;
+
+      crmService.updateContact(updateCrmContact);
     }
 
-    // TODO: update logic from old TwilioController -- needs broken down into CrmService updates
-//    boolean update = false;
-//    ContactBuilder contactBuilder = new ContactBuilder();
-//    if ((contact.getProperties().getFirstname() == null || Strings.isNullOrEmpty(contact.getProperties().getFirstname().getValue()))
-//        && !Strings.isNullOrEmpty(firstName)) {
-//      log.info("contact {} missing firstName; updating it...", contact.getVid());
-//      update = true;
-//      contactBuilder.firstName(firstName);
-//    }
-//    if ((contact.getProperties().getLastname() == null || Strings.isNullOrEmpty(contact.getProperties().getLastname().getValue()))
-//        && !Strings.isNullOrEmpty(lastName)) {
-//      log.info("contact {} missing lastName; updating it...", contact.getVid());
-//      update = true;
-//      contactBuilder.lastName(lastName);
-//    }
-//    if ((contact.getProperties().getEmail() == null || Strings.isNullOrEmpty(contact.getProperties().getEmail().getValue()))
-//        && !Strings.isNullOrEmpty(email)) {
-//      log.info("contact {} missing email; updating it...", contact.getVid());
-//      update = true;
-//      contactBuilder.email(email);
-//    }
-//    if (update) {
-//      HubSpotClientFactory.client().contacts().updateById(contactBuilder, contact.getVid() + "");
-//    }
-
-    if (!Strings.isNullOrEmpty(contactId)) {
-      event.setCrmContactId(contactId);
-      crmService.smsSignup(event);
-    }
+    return crmContact;
   }
 }
