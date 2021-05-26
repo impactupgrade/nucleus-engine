@@ -13,6 +13,15 @@
   <artifactId>hub-common</artifactId>
   <version>3.2.2-SNAPSHOT</version>
 
+  <dependencies>
+    <!-- TODO: hub-parent update -->
+    <dependency>
+      <groupId>com.impactupgrade.integration</groupId>
+      <artifactId>paymentspring-java-client</artifactId>
+      <version>1.0.7.Final</version>
+    </dependency>
+  </dependencies>
+
   <build>
     <plugins>
       <plugin>

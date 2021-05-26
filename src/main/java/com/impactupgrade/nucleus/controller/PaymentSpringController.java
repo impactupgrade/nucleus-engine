@@ -8,12 +8,12 @@ import com.impactupgrade.integration.paymentspring.model.Customer;
 import com.impactupgrade.integration.paymentspring.model.Event;
 import com.impactupgrade.integration.paymentspring.model.Subscription;
 import com.impactupgrade.integration.paymentspring.model.Transaction;
-import com.impactupgrade.integration.paymentspring.model.TransactionList;
 import com.impactupgrade.nucleus.client.PaymentSpringClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
+import com.sforce.soap.partner.sobject.SObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,6 +27,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +43,7 @@ public class PaymentSpringController {
 
   private static final Logger log = LogManager.getLogger(PaymentSpringController.class);
 
+  private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Environment env;
@@ -88,41 +90,7 @@ public class PaymentSpringController {
         switch (event.getEventResource()) {
           case "transaction":
             Transaction transaction = objectMapper.readValue(event.getPayloadJson().toString(), Transaction.class);
-            log.info("found transaction {}", transaction.getId());
-
-            Optional<Customer> transactionCustomer;
-            if (Strings.isNullOrEmpty(transaction.getCustomerId())) {
-              transactionCustomer = Optional.empty();
-            } else {
-              transactionCustomer = Optional.of(PaymentSpringClientFactory.client().customers().getById(transaction.getCustomerId()));
-              log.info("found customer {}", transactionCustomer.get().getId());
-            }
-
-            Optional<Subscription> transactionSubscription;
-            if (!transaction.getMetadata().containsKey("plan_id")
-                || Strings.isNullOrEmpty(transaction.getMetadata().get("plan_id"))) {
-              transactionSubscription = Optional.empty();
-            } else {
-              String transactionPlanId = transaction.getMetadata().get("plan_id");
-              transactionSubscription = Optional.of(PaymentSpringClientFactory.client().subscriptions().getByPlanId(
-                  transactionPlanId, transaction.getCustomerId()));
-              log.info("found subscription {}", transactionSubscription.get().getId());
-            }
-
-            paymentGatewayEvent.initPaymentSpring(transaction, transactionCustomer, transactionSubscription);
-
-            switch (event.getEventType()) {
-              case "created" -> {
-                donorService.processAccount(paymentGatewayEvent);
-                donationService.createDonation(paymentGatewayEvent);
-              }
-              case "failed" -> {
-                donorService.processAccount(paymentGatewayEvent);
-                donationService.createDonation(paymentGatewayEvent);
-              }
-              case "refunded" -> donationService.refundDonation(paymentGatewayEvent);
-              default -> log.info("unhandled PaymentSpring transaction event type: {}", event.getEventType());
-            }
+            processTransaction(event, transaction, paymentGatewayEvent);
             break;
           case "subscription":
             switch (event.getEventType()) {
@@ -155,16 +123,54 @@ public class PaymentSpringController {
 
     return Response.status(200).build();
   }
-  private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+  private void processTransaction(Event event, Transaction transaction, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    log.info("found transaction {}", transaction.getId());
+
+    Optional<Customer> transactionCustomer;
+    if (Strings.isNullOrEmpty(transaction.getCustomerId())) {
+      transactionCustomer = Optional.empty();
+    } else {
+      transactionCustomer = Optional.of(PaymentSpringClientFactory.client().customers().getById(transaction.getCustomerId()));
+      log.info("found customer {}", transactionCustomer.get().getId());
+    }
+
+    Optional<Subscription> transactionSubscription;
+    if (!transaction.getMetadata().containsKey("plan_id")
+        || Strings.isNullOrEmpty(transaction.getMetadata().get("plan_id"))) {
+      transactionSubscription = Optional.empty();
+    } else {
+      String transactionPlanId = transaction.getMetadata().get("plan_id");
+      transactionSubscription = Optional.of(PaymentSpringClientFactory.client().subscriptions().getByPlanId(
+          transactionPlanId, transaction.getCustomerId()));
+      log.info("found subscription {}", transactionSubscription.get().getId());
+    }
+
+    paymentGatewayEvent.initPaymentSpring(transaction, transactionCustomer, transactionSubscription);
+
+    switch (event.getEventType()) {
+      case "created" -> {
+        donorService.processAccount(paymentGatewayEvent);
+        donationService.createDonation(paymentGatewayEvent);
+      }
+      case "failed" -> {
+        donorService.processAccount(paymentGatewayEvent);
+        donationService.createDonation(paymentGatewayEvent);
+      }
+      case "refunded" -> donationService.refundDonation(paymentGatewayEvent);
+      default -> log.info("unhandled PaymentSpring transaction event type: {}", event.getEventType());
+    }
+  }
 
   @Path("/failed-transactions")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response failedTransactions(@FormParam("start_date") String startDate, @FormParam("end_date") String endDate) {
-    List<Transaction> failedTransactions = getFailedTransactions(startDate, endDate, 100, 1);
     // Sort failed transactions list by created datetime
-    List<Transaction> sortedList = failedTransactions.stream()
+    List<Transaction> sortedList = PaymentSpringClientFactory.client().transactions().getTransactionsBetweenDates(startDate, endDate).stream()
+        // Grab only the failed transactions from list
+        .filter(t -> t.getAmountFailed() > 0)
         .sorted(Comparator.comparing(Transaction::getCreatedAt).reversed())
         .collect(Collectors.toList());
 
@@ -173,23 +179,36 @@ public class PaymentSpringController {
     return Response.ok().entity(jsonList).type(MediaType.APPLICATION_JSON).build();
   }
 
-  private List<Transaction> getFailedTransactions(String startDate, String endDate, int limit, int page) {
-    // Initial list of transactions for current page
-    TransactionList transactions = PaymentSpringClientFactory.client().transactions().getTransactionsBetweenDates(startDate, endDate, limit, page);
-    List<Transaction> failedTransactions = transactions.getList();
+  // TODO: To be wrapped in a REST call for the UI to kick off, etc.
+  public void verifyAndReplayPaymentSpringCharges(String startDate, String endDate, Environment.RequestEnvironment requestEnv) {
+    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+    List<Transaction> charges = PaymentSpringClientFactory.client().transactions().getTransactionsBetweenDates(startDate, endDate);
+    int count = 0;
+    for (Transaction charge : charges) {
+//      if (!charge.getStatus().equalsIgnoreCase("succeeded")) {
+//        continue;
+//      }
 
-    // Number of pages needed
-    int totalResults = transactions.getMeta().getTotalResults();
-    int totalPages = (totalResults / limit) + 1;
+      count++;
 
-    // Grab only the failed transactions from list
-    failedTransactions = failedTransactions.stream().filter(t -> t.getAmountFailed() > 0).collect(Collectors.toList());
+      try {
+        String chargeId = charge.getId();
+        Optional<SObject> opportunity = Optional.empty();
+        if (!Strings.isNullOrEmpty(chargeId)) {
+          // TODO: Needs pulled to CrmService
+          opportunity = env.sfdcClient().getDonationByTransactionId(chargeId);
+        }
 
-    // If more pages need to get all possible results, recursive call
-    if (page <= totalPages) {
-      failedTransactions.addAll(getFailedTransactions(startDate, endDate, limit, page + 1));
+        if (opportunity.isEmpty()) {
+          System.out.println("(" + count + ") MISSING: " + chargeId + " " + SDF.format(charge.getCreatedAt()));
+
+          Event event = new Event();
+          event.setEventType("created");
+          processTransaction(event, charge, new PaymentGatewayWebhookEvent(env, requestEnv));
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
-
-    return failedTransactions;
   }
 }
