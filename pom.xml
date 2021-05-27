@@ -20,6 +20,12 @@
       <artifactId>paymentspring-java-client</artifactId>
       <version>1.0.7.Final</version>
     </dependency>
+    <!-- TODO: currently Brett's fork -->
+    <dependency>
+      <groupId>com.ecwid</groupId>
+      <artifactId>maleorang</artifactId>
+      <version>3.0-0.9.7</version>
+    </dependency>
   </dependencies>
 
   <build>

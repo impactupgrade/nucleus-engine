@@ -1,28 +1,26 @@
-//package com.impactupgrade.nucleus.client;
-//
-//import com.ecwid.maleorang.MailchimpException;
-//import com.ecwid.maleorang.method.v3_0.lists.members.DeletePermanentMemberMethod;
-//import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
-//import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
-//import com.impactupgrade.sfdc.DRSFDCClient;
-//import com.sforce.soap.enterprise.sobject.fnsf.Account;
-//import com.sforce.soap.partner.sobject.SObject;
-//import com.sforce.ws.ConnectionException;
-//
-//import java.io.IOException;
-//import java.util.Date;
-//import java.util.Optional;
-//
-//// TODO: Some sample code to get an MC client started. This was a little one-off, but reusable and could eventually
-//// be a part of the new MC sync app.
-//public class MailchimpClient {
-//
-//  // TODO: env var
-//  private static final com.ecwid.maleorang.MailchimpClient CLIENT = new com.ecwid.maleorang.MailchimpClient("65302c33e410295ee4128e309a91aa54-us8");
-//
+package com.impactupgrade.nucleus.client;
+
+import com.ecwid.maleorang.MailchimpException;
+import com.sforce.ws.ConnectionException;
+
+import java.io.IOException;
+import java.util.Date;
+
+// TODO: Some sample code to get an MC client started. This was a little one-off, but reusable and could eventually
+// be a part of the new MC sync app.
+public class MailchimpClient {
+
+  // TODO: env var
+  private static final com.ecwid.maleorang.MailchimpClient CLIENT = new com.ecwid.maleorang.MailchimpClient("TODO");
+
 //  private static final DRSFDCClient sfdcClient = new DRSFDCClient();
-//
-//  public void findSpamContacts(Date sinceDate) throws IOException, MailchimpException, ConnectionException, InterruptedException {
+
+  // TODO: Levi! Go forth!
+//  public List<String> getAudienceMemberEmails(String audienceId) {
+//    // TODO
+//  }
+
+  public void findSpamContacts(Date sinceDate) throws IOException, MailchimpException, ConnectionException, InterruptedException {
 //    // TODO: 39dcb0514a == US Marketing
 //    GetMembersMethod getMembersMethod = new GetMembersMethod("39dcb0514a");
 //    // TODO: Max is 1000, but that timed out
@@ -45,18 +43,21 @@
 //        System.out.println("[" + count + " of " + size + "]");
 //      }
 //    }
-//  }
-//
-////  public static void main(String[] args) throws IOException, MailchimpException, ConnectionException, InterruptedException {
-////    Calendar c = Calendar.getInstance();
-////    c.set(Calendar.YEAR, 2020);
-////    c.set(Calendar.MONTH, 11);
-////    c.set(Calendar.DATE, 1);
-////    c.set(Calendar.HOUR, 0);
-////    c.set(Calendar.MINUTE, 0);
-////    c.set(Calendar.SECOND, 0);
-////    c.set(Calendar.MILLISECOND, 0);
-////
-////    new MailchimpClient().findSpamContacts(c.getTime());
-////  }
-//}
+  }
+
+  public static void main(String[] args) throws IOException, MailchimpException, ConnectionException, InterruptedException {
+//    Calendar c = Calendar.getInstance();
+//    c.set(Calendar.YEAR, 2020);
+//    c.set(Calendar.MONTH, 11);
+//    c.set(Calendar.DATE, 1);
+//    c.set(Calendar.HOUR, 0);
+//    c.set(Calendar.MINUTE, 0);
+//    c.set(Calendar.SECOND, 0);
+//    c.set(Calendar.MILLISECOND, 0);
+
+//    List<String> emails = new MailchimpClient().getAudienceMemberEmails("TODO");
+//    for (String email : emails) {
+//      System.out.println(email);
+//    }
+  }
+}
