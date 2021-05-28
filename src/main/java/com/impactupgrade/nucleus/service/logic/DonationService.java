@@ -111,9 +111,14 @@ public class DonationService {
       return;
     }
 
-    crmService.updateRecurringDonation(manageDonationEvent);
     manageDonationEvent.setSubscriptionId(crmService.getSubscriptionId(manageDonationEvent));
-    paymentGatewayService.updateSubscription(manageDonationEvent);
+    if (manageDonationEvent.getCancelDonation()) {
+      crmService.closeRecurringDonation(manageDonationEvent);
+      paymentGatewayService.cancelSubscription(manageDonationEvent);
+    } else {
+      crmService.updateRecurringDonation(manageDonationEvent);
+      paymentGatewayService.updateSubscription(manageDonationEvent);
+    }
   }
 
   public void chargeDeposited(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {

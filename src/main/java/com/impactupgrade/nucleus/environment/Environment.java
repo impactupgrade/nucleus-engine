@@ -18,6 +18,8 @@ import com.impactupgrade.nucleus.service.segment.HubSpotCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SfdcCrmService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
+import java.util.Optional;
+import javax.ws.rs.core.MultivaluedMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -109,6 +111,10 @@ public class Environment {
     return new RequestEnvironment(request);
   }
 
+  public RequestEnvironment newRequestEnvironment(HttpServletRequest request, MultivaluedMap<String, String> otherContext) {
+    return new RequestEnvironment(request, otherContext);
+  }
+
   /**
    * Much like Environment, this allows context-specific info to be set *per request*. Examples: SaaS flexibility,
    * orgs that have multiple keys within them (DR FNs), etc.
@@ -121,9 +127,15 @@ public class Environment {
   public static class RequestEnvironment {
 
     protected final HttpServletRequest request;
+    protected MultivaluedMap<String, String> otherContext = null;
 
     protected RequestEnvironment(HttpServletRequest request) {
       this.request = request;
+    }
+
+    protected RequestEnvironment(HttpServletRequest request, MultivaluedMap<String, String> otherContext) {
+      this.request = request;
+      this.otherContext = otherContext;
     }
 
     // TODO: How to do this without being vendor-specific?

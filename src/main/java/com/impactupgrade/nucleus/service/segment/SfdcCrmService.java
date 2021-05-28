@@ -323,9 +323,30 @@ public class SfdcCrmService implements CrmService {
     sfdcClient.update(toUpdate);
   }
 
+  @Override
+  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getDonationId());
+      return;
+    }
+
+    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    toUpdate.setId(recurringDonation.get().id());
+    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
+    setRecurringDonationFieldsForClose(toUpdate, manageDonationEvent);
+    sfdcClient.update(toUpdate);
+  }
+
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
   protected void setRecurringDonationFieldsForClose(SObject recurringDonation,
       PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  }
+
+  // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
+  protected void setRecurringDonationFieldsForClose(SObject recurringDonation,
+      ManageDonationEvent manageDonationEvent) throws Exception {
   }
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to pause

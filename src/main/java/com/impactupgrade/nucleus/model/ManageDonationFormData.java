@@ -5,14 +5,15 @@ import javax.ws.rs.FormParam;
 
 public class ManageDonationFormData {
 
-  @FormParam("rd-id") String recurringDonationId;
-  @FormParam("amount") Optional<Double> amount;
-  @FormParam("pause-donation") Optional<Boolean> pauseDonation;
-  @FormParam("pause-donation-until") Optional<String> pauseDonationUntilDate;
-  @FormParam("resume-donation") Optional<Boolean> resumeDonation;
-  @FormParam("resume-donation-on") Optional<String> resumeDonationOnDate;
-  @FormParam("next-payment-date") Optional<String> nextPaymentDate;
-  @FormParam("stripe-token") Optional<String> stripeToken;
+  @FormParam("rd_id") String recurringDonationId;
+  @FormParam("amount") Optional<String> amount;
+  @FormParam("pause_donation") Optional<Boolean> pauseDonation;
+  @FormParam("pause_donation_until") Optional<String> pauseDonationUntilDate;
+  @FormParam("resume_donation") Optional<Boolean> resumeDonation;
+  @FormParam("resume_donation_on") Optional<String> resumeDonationOnDate;
+  @FormParam("next_payment_date") Optional<String> nextPaymentDate;
+  @FormParam("cancel_donation") Optional<Boolean> cancelDonation;
+  @FormParam("stripe_token") Optional<String> stripeToken;
 
   @Override
   public String toString() {
@@ -24,6 +25,7 @@ public class ManageDonationFormData {
         ",\n resumeDonation=" + resumeDonation +
         ",\n resumeDonationOnDate=" + resumeDonationOnDate +
         ",\n nextPaymentDate=" + nextPaymentDate +
+        ",\n cancelDonation=" + cancelDonation +
         ",\n stripeToken=" + stripeToken +
         ",\n}";
   }
