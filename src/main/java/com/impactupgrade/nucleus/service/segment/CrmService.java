@@ -35,6 +35,7 @@ public interface CrmService {
   void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   void closeRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
+  void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
   Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
   String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception;

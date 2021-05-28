@@ -127,6 +127,10 @@ public class BloomerangCrmService implements CrmService {
     return null;
   }
 
+  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
   @Override
   public String insertContact(CrmContact crmContact) throws Exception {
     Constituent constituent = new Constituent();

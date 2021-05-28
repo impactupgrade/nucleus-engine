@@ -147,6 +147,10 @@ public class HubSpotCrmService implements CrmService {
     return response == null ? null : response.getId();
   }
 
+  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO
+  }
+
   protected void setAccountFields(CompanyProperties account, CrmAccount crmAccount) {
     account.setName(crmAccount.name);
 

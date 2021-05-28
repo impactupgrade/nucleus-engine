@@ -7,4 +7,5 @@ import java.text.ParseException;
 public interface PaymentGatewayService {
 
   void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException;
+  void cancelSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException;
 }

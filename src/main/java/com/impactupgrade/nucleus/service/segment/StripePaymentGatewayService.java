@@ -37,4 +37,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       stripeClient.updateSubscriptionPaymentMethod(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getStripeToken());
     }
   }
+
+  @Override
+  public void cancelSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
+    StripeClient stripeClient = manageDonationEvent.getRequestEnv().stripeClient();
+    stripeClient.cancelSubscription(manageDonationEvent.getSubscriptionId());
+  }
 }

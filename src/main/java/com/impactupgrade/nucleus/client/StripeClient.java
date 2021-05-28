@@ -30,6 +30,7 @@ import com.stripe.param.PaymentSourceCollectionCreateParams;
 import com.stripe.param.PayoutListParams;
 import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
+import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.common.EmptyParam;
@@ -107,7 +108,9 @@ public class StripeClient {
 
   public void cancelSubscription(String id) throws StripeException {
     log.info("cancelling subscription {}...", id);
-    Subscription.retrieve(id, requestOptions).cancel();
+    // TODO: set prorate/invoice_now params? Is this even needed?
+    SubscriptionCancelParams params = SubscriptionCancelParams.builder().build();
+    Subscription.retrieve(id, requestOptions).cancel(params, requestOptions);
     log.info("cancelled subscription {}", id);
   }
 

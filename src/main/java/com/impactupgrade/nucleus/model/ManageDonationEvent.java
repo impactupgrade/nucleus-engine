@@ -18,6 +18,7 @@ public class ManageDonationEvent {
   protected Calendar resumeDonationOnDate;
   protected Boolean resumeDonation;
   protected Calendar nextPaymentDate;
+  protected Boolean cancelDonation;
   protected String stripeToken;
 
   public ManageDonationEvent(Environment.RequestEnvironment requestEnv) {
@@ -27,14 +28,16 @@ public class ManageDonationEvent {
   public ManageDonationEvent(Environment.RequestEnvironment requestEnv, ManageDonationFormData formData) throws ParseException {
     this.requestEnv = requestEnv;
     this.setDonationId(formData.recurringDonationId);
-    if (formData.stripeToken.isPresent()) this.stripeToken = formData.stripeToken.get();
+    formData.stripeToken.ifPresent(s -> this.stripeToken = s);
 
-    if (formData.amount.isPresent()) this.amount = formData.amount.get();
-    if (formData.pauseDonation.isPresent()) this.pauseDonation = formData.pauseDonation.get() == true;
+    if (!Strings.isNullOrEmpty(formData.amount.get())) this.amount = Double.parseDouble(formData.amount.get());
     if (formData.pauseDonationUntilDate.isPresent()) this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
-    if (formData.resumeDonation.isPresent()) this.resumeDonation = formData.resumeDonation.get() == true;
     if (formData.resumeDonationOnDate.isPresent()) this.resumeDonationOnDate = Utils.getCalendarFromDateString(formData.resumeDonationOnDate.get());
-    if (formData.nextPaymentDate.isPresent()) this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
+    if (!Strings.isNullOrEmpty(formData.nextPaymentDate.get())) this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
+
+    this.pauseDonation = formData.pauseDonation.isPresent() && formData.pauseDonation.get();
+    this.resumeDonation = formData.resumeDonation.isPresent() && formData.resumeDonation.get();
+    this.cancelDonation = formData.cancelDonation.isPresent() && formData.cancelDonation.get();
   }
 
   // ACCESSORS
@@ -73,6 +76,10 @@ public class ManageDonationEvent {
 
   public void setNextPaymentDate(Calendar nextPaymentDate) { this.nextPaymentDate = nextPaymentDate; }
 
+  public Boolean getCancelDonation() { return this.cancelDonation; }
+
+  public void setCancelDonation(Boolean cancelDonation) { this.cancelDonation = cancelDonation; }
+
   public String getStripeToken() { return this.stripeToken; }
 
   public void setStripeToken(String stripeToken) { this.stripeToken = stripeToken; }
@@ -87,6 +94,7 @@ public class ManageDonationEvent {
         ",\n resumeDonation: " + this.resumeDonation +
         ",\n resumeDonationOnDate: " + this.resumeDonationOnDate +
         ",\n nextPaymentDate: " + this.nextPaymentDate +
+        ",\n cancelDonation: " + this.cancelDonation +
         ",\n stripeToken: " + this.stripeToken +
         ",\n }";
   }
