@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2021 3River Development LLC, DBA Impact Upgrade. All rights reserved.
+ */
+
 package com.impactupgrade.nucleus.client;
 
 import com.impactupgrade.integration.hubspot.v1.HubSpotV1Client;
