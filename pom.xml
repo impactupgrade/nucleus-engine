@@ -17,6 +17,20 @@
   <artifactId>nucleus-common</artifactId>
   <version>3.2.2-SNAPSHOT</version>
 
+  <name>Nonprofit Nucleus: Common</name>
+  <url>https://www.impactupgrade.com/nonprofit-nucleus</url>
+  <organization>
+    <name>Impact Upgrade</name>
+    <url>https://www.impactupgrade.com</url>
+  </organization>
+  <licenses>
+    <license>
+      <name>PolyForm Noncommercial License 1.0.0</name>
+      <url>https://polyformproject.org/licenses/noncommercial/1.0.0/</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <dependencies>
     <!-- TODO: nucleus-parent update -->
     <dependency>
