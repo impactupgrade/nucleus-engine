@@ -252,7 +252,7 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    // TODO: Might be helpful to do something like this further upstream, preventing unnecessary processing in hub-common
+    // TODO: Might be helpful to do something like this further upstream, preventing unnecessary processing in nucleus-common
     Optional<SObject> opportunity = sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
     if (opportunity.isPresent()) {
       // Only do this if the field definitions are given in env.json, otherwise assume this method will be overridden.

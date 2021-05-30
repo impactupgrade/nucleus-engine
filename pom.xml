@@ -6,25 +6,25 @@
 
   <parent>
     <groupId>com.impactupgrade</groupId>
-    <artifactId>hub-parent</artifactId>
-    <version>1.0.12.Final</version>
+    <artifactId>nucleus-parent</artifactId>
+    <version>1.0.13-SNAPSHOT</version>
   </parent>
 
-  <artifactId>hub-common</artifactId>
+  <artifactId>nucleus-common</artifactId>
   <version>3.2.2-SNAPSHOT</version>
 
   <dependencies>
-    <!-- TODO: hub-parent update -->
+    <!-- TODO: nucleus-parent update -->
     <dependency>
       <groupId>com.impactupgrade.integration</groupId>
       <artifactId>paymentspring-java-client</artifactId>
       <version>1.0.7.Final</version>
     </dependency>
-    <!-- TODO: currently Brett's fork -->
+    <!-- TODO: use Brett's fork (3.0-0.9.7) -->
     <dependency>
       <groupId>com.ecwid</groupId>
       <artifactId>maleorang</artifactId>
-      <version>3.0-0.9.7</version>
+      <version>3.0-0.9.6</version>
     </dependency>
   </dependencies>
 
