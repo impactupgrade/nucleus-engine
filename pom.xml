@@ -15,7 +15,7 @@
   </parent>
 
   <artifactId>nucleus-common</artifactId>
-  <version>3.2.2.Final</version>
+  <version>3.2.3-SNAPSHOT</version>
 
   <name>Nonprofit Nucleus: Common</name>
   <url>https://www.impactupgrade.com/nonprofit-nucleus</url>
