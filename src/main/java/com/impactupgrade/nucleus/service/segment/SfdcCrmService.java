@@ -579,6 +579,8 @@ public class SfdcCrmService implements CrmService {
         }
     );
 
+
+
     for (int i = 0; i < importEvents.size(); i++) {
       CrmImportEvent importEvent = importEvents.get(i);
 
@@ -682,6 +684,17 @@ public class SfdcCrmService implements CrmService {
     sfdcClient.batchUpdate(accountUpdates.toArray());
     sfdcClient.batchUpdate(oppUpdates.toArray());
   }
+
+  @Override
+  public List<CrmContact> getContactsSince(Calendar calendar) throws Exception {
+    return sfdcClient.getContactsSinceDate(calendar).stream().map(sF -> toCrmContact(sF)).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<CrmContact> getDonorsSince(Calendar calendar) throws Exception{
+    return sfdcClient.getDonorsSinceDate(calendar).stream().map(sF -> toCrmContact(sF)).collect(Collectors.toList());
+  }
+
 
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());

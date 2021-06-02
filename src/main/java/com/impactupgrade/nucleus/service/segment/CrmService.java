@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
+import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 
@@ -96,6 +97,13 @@ public interface CrmService extends SegmentService {
 
   // TODO: potentially a performance issue for long-term donors
   List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // EMAIL SYNC
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  List <CrmContact> getContactsSince(Calendar calendar) throws Exception;
+  List<CrmContact> getDonorsSince(Calendar calendar) throws Exception; //TODO Implement (look for donations then get the contacts in implementation)
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS

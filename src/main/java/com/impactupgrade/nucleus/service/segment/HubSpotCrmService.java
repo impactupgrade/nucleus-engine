@@ -35,6 +35,8 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -589,6 +591,24 @@ public class HubSpotCrmService implements CrmService {
         CrmAccount.Type.HOUSEHOLD,
         company
     );
+  }
+
+  @Override
+  public List<CrmContact> getContactsSince(Calendar calendar) throws Exception {
+    String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
+
+    Filter[] filters = new Filter[]{new Filter("lastmodifieddate", "gt", dateString)}; //TODO lastmodifieddate vs notes last updated
+    ContactResults results = hsClient.contact().search(filters, getCustomPropertyNames());
+
+    return results.getResults().stream().map(c -> toCrmContact(c)).collect(Collectors.toList());
+
+  }
+
+  @Override
+  public List<CrmContact> getDonorsSince(Calendar calendar) throws Exception{
+    String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
+
+    return null;
   }
 
   protected CrmContact toCrmContact(Contact contact) {

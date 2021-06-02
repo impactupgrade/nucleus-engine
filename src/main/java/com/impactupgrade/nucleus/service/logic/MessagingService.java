@@ -78,6 +78,7 @@ public class MessagingService {
 
       opportunityEvent.setCrmContact(crmContact);
 
+
       crmContact.id = crmService.insertContact(opportunityEvent);
     } else {
       // Existed, so use it
@@ -89,6 +90,7 @@ public class MessagingService {
 
       opportunityEvent.getCrmContact().emailOptIn = emailOptIn;
       opportunityEvent.getCrmContact().smsOptIn = smsOptIn;
+
 
       if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
         log.info("contact {} missing firstName; updating it...", crmContact.id);
