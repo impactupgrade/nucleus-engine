@@ -11,11 +11,11 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>nucleus-parent</artifactId>
-    <version>1.0.13-SNAPSHOT</version>
+    <version>1.0.13.Final</version>
   </parent>
 
   <artifactId>nucleus-common</artifactId>
-  <version>3.2.2-SNAPSHOT</version>
+  <version>3.2.2.Final</version>
 
   <name>Nonprofit Nucleus: Common</name>
   <url>https://www.impactupgrade.com/nonprofit-nucleus</url>

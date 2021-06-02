@@ -97,12 +97,14 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO: for now, naively assume the record doesn't exist and allow it to be created
+    return Optional.empty();
   }
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO: for now, naively assume the record doesn't exist and allow it to be created
+    return Optional.empty();
   }
 
   @Override
@@ -171,6 +173,8 @@ public class BloomerangCrmService implements CrmService {
       post(POST_ADDRESS, mapper.writeValueAsString(constituentAddress));
     }
 
+    log.info("inserted constituent {}", constituent.id);
+
     return constituent.id + "";
   }
 
@@ -194,6 +198,8 @@ public class BloomerangCrmService implements CrmService {
     String body = mapper.writeValueAsString(donation);
     donation = mapper.readValue(post(POST_DONATION, body), Donation.class);
 
+    log.info("inserted donation {}", donation.id);
+
     return donation.id + "";
   }
 
@@ -206,6 +212,8 @@ public class BloomerangCrmService implements CrmService {
 
     String body = mapper.writeValueAsString(donation);
     donation = mapper.readValue(post(POST_RECURRINGDONATION, body), RecurringDonation.class);
+
+    log.info("inserted recurring donation {}", donation.id);
 
     return donation.id + "";
   }
