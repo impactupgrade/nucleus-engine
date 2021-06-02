@@ -273,6 +273,16 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> getContactsSince(Calendar calendar) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public List<CrmContact> getDonorsSince(Calendar calendar) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public void addContactToList(CrmContact crmContact, String listId) throws Exception {
     throw new RuntimeException("not implemented");
   }
@@ -332,6 +342,7 @@ public class BloomerangCrmService implements CrmService {
 
     return writer.toString();
   }
+
 
   public static class Constituent {
     @JsonIgnore

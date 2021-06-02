@@ -1,0 +1,18 @@
+POST http://localhost:9000/api/mailchimp/webhook
+Content-Type: application/x-www-form-urlencoded
+
+{"action":"unsub",
+"reason":"manual",
+"id":"b2d8bd9cf8",
+"email":"llehman2022@manchester.edu",
+"email_type":"html",
+"ip_opt":"162.211.36.40",
+"web_id":"547261734",
+"merges":{"EMAIL":"llehman2022@manchester.edu","FNAME":"Star","LNAME":"Student","ADDRESS":{"addr1":"604 E COLLEGE AVE","addr2":"BOX #1077","city":"NORTH MANCHESTER","state":"IN","zip":"46962-1276","country":"US"},
+"PHONE":"",
+"BIRTHDAY":"",
+"INTERESTS":"Bowser Fighting",
+"GROUPINGS":[{"id":"22234","unique_id":"ec520e9e16","name":"Interests","groups":"Bowser Fighting"}]},
+"list_id":"025143d6d8"}
+
+###

@@ -10,7 +10,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -145,6 +147,13 @@ public class EnvironmentConfig {
 
   public static class Twilio extends Platform {
     public String senderPn = "";
+  }
+
+  public Mailchimp mailchimp = new Mailchimp();
+
+  public class Mailchimp {
+    public Map<String,String> lists = new HashMap<>(); //map name - listID
+    public Map<String,String> groups = new HashMap<>(); //map name - groupID
   }
 
   public Backblaze backblaze = new Backblaze();

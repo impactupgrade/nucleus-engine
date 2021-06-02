@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus;
 import com.impactupgrade.nucleus.controller.BackupController;
 import com.impactupgrade.nucleus.controller.CrmController;
 import com.impactupgrade.nucleus.controller.DonationFormController;
+import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
@@ -74,6 +75,7 @@ public class App {
     apiConfig.register(sfdcController());
     apiConfig.register(stripeController());
     apiConfig.register(twilioController());
+    apiConfig.register(mailchimpController());
 
     registerAPIControllers(apiConfig);
 
@@ -124,4 +126,5 @@ public class App {
   protected SfdcController sfdcController() { return new SfdcController(envFactory()); }
   protected StripeController stripeController() { return new StripeController(envFactory()); }
   protected TwilioController twilioController() { return new TwilioController(envFactory()); }
+  protected MailchimpController mailchimpController() {return new MailchimpController(envFactory());}
 }
