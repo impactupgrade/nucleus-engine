@@ -33,6 +33,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmContact> getContactByPhone(String phone) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
+  void updateAccount(CrmAccount crmAccount) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;

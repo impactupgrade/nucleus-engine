@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
@@ -114,6 +115,7 @@ public class StripeController {
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge);
           env.donorService().processAccount(paymentGatewayEvent);
+          env.donorService().updateAccountAddress(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
         }
       }
@@ -123,6 +125,7 @@ public class StripeController {
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent);
         env.donorService().processAccount(paymentGatewayEvent);
+        env.donorService().updateAccountAddress(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
       case "charge.failed" -> {

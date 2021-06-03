@@ -186,6 +186,13 @@ public class HubSpotCrmService implements CrmService {
     return response == null ? null : response.getId();
   }
 
+  @Override
+  public void updateAccount(CrmAccount crmAccount) throws Exception {
+    CompanyProperties company = new CompanyProperties();
+    setAccountFields(company, crmAccount);
+    hsClient.company().update(crmAccount.id, company);
+  }
+
   protected void setAccountFields(CompanyProperties account, CrmAccount crmAccount) {
     account.setName(crmAccount.name);
 

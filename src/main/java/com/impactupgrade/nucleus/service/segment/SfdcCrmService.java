@@ -55,14 +55,12 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    return toCrmAccount(sfdcClient.getAccountById(id));
   }
 
   @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    return toCrmContact(sfdcClient.getContactById(id));
   }
 
   @Override
@@ -154,14 +152,24 @@ public class SfdcCrmService implements CrmService {
     return sfdcClient.insert(account).getId();
   }
 
+  @Override
+  public void updateAccount(CrmAccount crmAccount) throws Exception {
+    SObject account = new SObject("Account");
+    account.setId(crmAccount.id);
+    setAccountFields(account, crmAccount);
+    sfdcClient.update(account);
+  }
+
   protected void setAccountFields(SObject account, CrmAccount crmAccount) {
     account.setField("Name", crmAccount.name);
 
-    account.setField("BillingStreet", crmAccount.address.street);
-    account.setField("BillingCity", crmAccount.address.city);
-    account.setField("BillingState", crmAccount.address.state);
-    account.setField("BillingPostalCode", crmAccount.address.postalCode);
-    account.setField("BillingCountry", crmAccount.address.country);
+    if (crmAccount.address != null) {
+      account.setField("BillingStreet", crmAccount.address.street);
+      account.setField("BillingCity", crmAccount.address.city);
+      account.setField("BillingState", crmAccount.address.state);
+      account.setField("BillingPostalCode", crmAccount.address.postalCode);
+      account.setField("BillingCountry", crmAccount.address.country);
+    }
   }
 
   @Override
@@ -194,6 +202,13 @@ public class SfdcCrmService implements CrmService {
     contact.setField("LastName", crmContact.lastName);
     contact.setField("Email", crmContact.email);
     contact.setField("MobilePhone", crmContact.mobilePhone);
+    if (crmContact.address != null) {
+      contact.setField("MailingStreet", crmContact.address.street);
+      contact.setField("MailingCity", crmContact.address.city);
+      contact.setField("MailingState", crmContact.address.state);
+      contact.setField("MailingPostalCode", crmContact.address.postalCode);
+      contact.setField("MailingCountry", crmContact.address.country);
+    }
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
@@ -813,15 +828,45 @@ public class SfdcCrmService implements CrmService {
     return sObject.map(this::toCrmCampaign);
   }
 
-  // TODO: starting to feel like we need an object mapper lib...
-
-  protected CrmContact toCrmContact(SObject sObject) {
+  protected CrmAccount toCrmAccount(SObject sObject) {
     CrmAddress crmAddress = new CrmAddress(
         (String) sObject.getField("BillingStreet"),
         (String) sObject.getField("BillingCity"),
         (String) sObject.getField("BillingState"),
         (String) sObject.getField("BillingPostalCode"),
         (String) sObject.getField("BillingCountry")
+    );
+
+    Calendar firstDonationDate = null;
+    try {
+      firstDonationDate = Utils.getCalendarFromDateString(sObject.getField("env.getConfig().salesforce.fieldDefinitions.firstDonationDate").toString());
+    } catch (ParseException e) {
+      log.warn("unable to parse date", e);
+    }
+
+    return new CrmAccount(
+        sObject.getId(),
+        (String) sObject.getField("Name"),
+        crmAddress,
+        (Integer) sObject.getField(env.getConfig().salesforce.fieldDefinitions.donationCount),
+        (Double) sObject.getField(env.getConfig().salesforce.fieldDefinitions.donationTotal),
+        firstDonationDate
+    );
+  }
+
+  protected Optional<CrmAccount> toCrmAccount(Optional<SObject> sObject) {
+    return sObject.map(this::toCrmAccount);
+  }
+
+  // TODO: starting to feel like we need an object mapper lib...
+
+  protected CrmContact toCrmContact(SObject sObject) {
+    CrmAddress crmAddress = new CrmAddress(
+        (String) sObject.getField("MailingStreet"),
+        (String) sObject.getField("MailingCity"),
+        (String) sObject.getField("MailingState"),
+        (String) sObject.getField("MailingPostalCode"),
+        (String) sObject.getField("MailingCountry")
     );
 
     CrmContact.PreferredPhone preferredPhone = null;

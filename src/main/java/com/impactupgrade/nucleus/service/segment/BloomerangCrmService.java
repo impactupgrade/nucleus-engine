@@ -167,6 +167,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public void updateAccount(CrmAccount crmAccount) throws Exception {
+    // TODO
+  }
+
+  @Override
   public String insertContact(CrmContact crmContact) throws Exception {
     Constituent constituent = new Constituent();
     constituent.firstName = crmContact.firstName;

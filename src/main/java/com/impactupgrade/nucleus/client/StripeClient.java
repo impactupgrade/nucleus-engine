@@ -19,6 +19,7 @@ import com.stripe.model.Event;
 import com.stripe.model.EventCollection;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentMethod;
 import com.stripe.model.PaymentSource;
 import com.stripe.model.Payout;
 import com.stripe.model.Plan;

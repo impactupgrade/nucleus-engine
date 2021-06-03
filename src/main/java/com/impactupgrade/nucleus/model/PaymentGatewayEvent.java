@@ -7,12 +7,14 @@ package com.impactupgrade.nucleus.model;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.Utils;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Address;
 import com.stripe.model.BalanceTransaction;
-import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
@@ -124,7 +126,7 @@ public class PaymentGatewayEvent {
 
     // Always do this last! We need all the metadata context to fill out the customer details.
     addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
-    initStripeCustomer(stripeCustomer);
+    initStripeCustomer(stripeCustomer, Optional.of(stripeCharge.getBillingDetails().getAddress()));
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
@@ -175,7 +177,8 @@ public class PaymentGatewayEvent {
 
     // Always do this last! We need all the metadata context to fill out the customer details.
     addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
-    initStripeCustomer(stripeCustomer);
+    Optional<Address> address = stripePaymentIntent.getCharges().getData().stream().findFirst().map(c -> c.getBillingDetails().getAddress());
+    initStripeCustomer(stripeCustomer, address);
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -198,7 +201,7 @@ public class PaymentGatewayEvent {
     initStripeSubscription(stripeSubscription, stripeCustomer);
 
     // Always do this last! We need all the metadata context to fill out the customer details.
-    initStripeCustomer(Optional.of(stripeCustomer));
+    initStripeCustomer(Optional.of(stripeCustomer), Optional.empty());
   }
 
   protected void initStripeCommon() {
@@ -207,7 +210,7 @@ public class PaymentGatewayEvent {
     paymentMethod = "credit card";
   }
 
-  protected void initStripeCustomer(Optional<Customer> __stripeCustomer) {
+  protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<Address> transactionBillingAddress) {
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
@@ -227,23 +230,15 @@ public class PaymentGatewayEvent {
           crmAddress.street += ", " + stripeCustomer.getAddress().getLine2();
         }
         crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
-      } else {
-        // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
-        // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
-        stripeCustomer.getSources().getData().stream()
-            .filter(s -> s instanceof Card)
-            .map(s -> (Card) s)
-            .findFirst()
-            .ifPresent(stripeCard -> {
-              crmAddress.city = stripeCard.getAddressCity();
-              crmAddress.country = stripeCard.getAddressCountry();
-              crmAddress.state = stripeCard.getAddressState();
-              crmAddress.street = stripeCard.getAddressLine1();
-              if (!Strings.isNullOrEmpty(stripeCard.getAddressLine2())) {
-                crmAddress.street += ", " + stripeCard.getAddressLine2();
-              }
-              crmAddress.postalCode = stripeCard.getAddressZip();
-            });
+      } else if (transactionBillingAddress.isPresent()) {
+        crmAddress.city = transactionBillingAddress.get().getCity();
+        crmAddress.country = transactionBillingAddress.get().getCountry();
+        crmAddress.state = transactionBillingAddress.get().getState();
+        crmAddress.street = transactionBillingAddress.get().getLine1();
+        if (!Strings.isNullOrEmpty(transactionBillingAddress.get().getLine2())) {
+          crmAddress.street += ", " + transactionBillingAddress.get().getLine2();
+        }
+        crmAddress.postalCode = transactionBillingAddress.get().getPostalCode();
       }
 
       crmAccount.address = crmAddress;
