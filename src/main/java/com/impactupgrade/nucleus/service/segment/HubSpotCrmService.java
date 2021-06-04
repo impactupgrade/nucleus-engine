@@ -277,6 +277,7 @@ public class HubSpotCrmService implements CrmService {
     deal.setDealstage(env.config().hubspot.donationPipeline.refundedStageId);
 
     deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
+    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
   }
 
   @Override
