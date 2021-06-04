@@ -215,7 +215,7 @@ public class StripeController {
             log.info("found charge {}", charge.getId());
 
             // TODO: Better way to do this? Plus, ultimately need to process them in some way since the initial charge
-            // will show fees, but the reversal refund sends back the full amount.
+            //  will show fees, but the reversal refund sends back the full amount.
             if (Strings.isNullOrEmpty(charge.getCustomer())) {
               log.info("skipping charge {}; no customer, so likely a reversal refund", charge.getId());
               continue;

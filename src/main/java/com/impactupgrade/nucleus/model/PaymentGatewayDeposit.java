@@ -35,19 +35,19 @@ public class PaymentGatewayDeposit {
     return ledgers.values().stream().map(l -> l.gross).reduce(0.0, Double::sum);
   }
 
-  public double getNet() {
-    return ledgers.values().stream().map(l -> l.net).reduce(0.0, Double::sum);
-  }
+  public double getNet() { return ledgers.values().stream().map(l -> l.net).reduce(0.0, Double::sum); }
 
   public double getFees() {
-    return getGross() - getNet();
+    return ledgers.values().stream().map(l -> l.fees).reduce(0.0, Double::sum);
   }
+
+  public double getRefunds() { return ledgers.values().stream().map(l -> l.refunds).reduce(0.0, Double::sum); }
 
   public Map<String, Ledger> getLedgers() {
     return ledgers;
   }
 
-  public void addTransaction(double gross, double net, String parentCampaignId, String parentCampaignName,
+  public void addTransaction(double gross, double net, double fee, double refund, String parentCampaignId, String parentCampaignName,
       String campaignId, String campaignName) {
     if (!ledgers.containsKey(parentCampaignId)) {
       Ledger ledger = new Ledger();
@@ -62,11 +62,15 @@ public class PaymentGatewayDeposit {
 
     ledgers.get(parentCampaignId).gross += gross;
     ledgers.get(parentCampaignId).net += net;
+    ledgers.get(parentCampaignId).fees += fee;
+    ledgers.get(parentCampaignId).refunds += refund;
     ledgers.get(parentCampaignId).subLedgers.get(campaignId).gross += gross;
     ledgers.get(parentCampaignId).subLedgers.get(campaignId).net += net;
+    ledgers.get(parentCampaignId).subLedgers.get(campaignId).fees += fee;
+    ledgers.get(parentCampaignId).subLedgers.get(campaignId).refunds += refund;
   }
 
-  public void addTransaction(double gross, double net, String campaignId, String campaignName) {
+  public void addTransaction(double gross, double net, double fee, double refund, String campaignId, String campaignName) {
     if (!ledgers.containsKey(campaignId)) {
       Ledger ledger = new Ledger();
       ledger.campaignName = campaignName;
@@ -75,12 +79,16 @@ public class PaymentGatewayDeposit {
 
     ledgers.get(campaignId).gross += gross;
     ledgers.get(campaignId).net += net;
+    ledgers.get(campaignId).fees += fee;
+    ledgers.get(campaignId).refunds += refund;
   }
 
   public static class Ledger {
     private String campaignName;
     private double gross = 0.0;
     private double net = 0.0;
+    private double fees = 0.0;
+    private double refunds = 0.0;
     private final Map<String, Ledger> subLedgers = new HashMap<>();
 
     public String getCampaignName() {
@@ -96,8 +104,10 @@ public class PaymentGatewayDeposit {
     }
 
     public double getFees() {
-      return gross - net;
+      return fees;
     }
+
+    public double getRefunds() { return refunds; }
 
     public Map<String, Ledger> getSubLedgers() {
       return subLedgers;

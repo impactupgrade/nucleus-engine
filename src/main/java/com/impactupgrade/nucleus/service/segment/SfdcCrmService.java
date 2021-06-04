@@ -250,6 +250,9 @@ public class SfdcCrmService implements CrmService {
     if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
       opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
     }
+    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayRefundDate)) {
+      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
+    }
     // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
   }

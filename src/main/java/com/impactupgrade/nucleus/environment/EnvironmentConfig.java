@@ -102,6 +102,7 @@ public class EnvironmentConfig {
     public String paymentGatewayCustomerId = "";
     public String paymentGatewaySubscriptionId = "";
     public String paymentGatewayRefundId = "";
+    public String paymentGatewayRefundDate = "";
     public String paymentGatewayDepositId = "";
     public String paymentGatewayDepositDate = "";
     public String paymentGatewayDepositNetAmount = "";

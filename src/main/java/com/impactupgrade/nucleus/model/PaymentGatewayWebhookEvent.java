@@ -41,6 +41,7 @@ public class PaymentGatewayWebhookEvent {
   protected String gatewayName;
   protected String paymentMethod;
   protected String refundId;
+  protected Calendar refundDate;
   protected Double subscriptionAmountInDollars;
   protected String subscriptionCurrency;
   protected String subscriptionDescription;
@@ -171,6 +172,13 @@ public class PaymentGatewayWebhookEvent {
 
     refundId = stripeRefund.getId();
     transactionId = stripeRefund.getCharge();
+
+    if (stripeRefund.getCreated() != null) {
+      refundDate = Calendar.getInstance();
+      refundDate.setTimeInMillis(stripeRefund.getCreated() * 1000);
+    } else {
+      refundDate = Calendar.getInstance();
+    }
   }
 
   public void initStripe(Subscription stripeSubscription, Customer stripeCustomer) {
@@ -588,6 +596,12 @@ public class PaymentGatewayWebhookEvent {
   public void setRefundId(String refundId) {
     this.refundId = refundId;
   }
+
+  public Calendar getRefundDate() {
+    return refundDate;
+  }
+
+  public void setRefundDate(Calendar refundDate) { this.refundDate = refundDate; }
 
   public Double getSubscriptionAmountInDollars() {
     return subscriptionAmountInDollars;
