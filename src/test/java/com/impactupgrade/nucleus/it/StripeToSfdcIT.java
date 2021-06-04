@@ -23,7 +23,8 @@ public class StripeToSfdcIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    deleteSfdcRecords("team+integration+tester@impactupgrade.com");
+    deleteSfdcAccounts();
+    deleteSfdcDonation("pi_1ImrOLHAwJOu5brrpQ71F1G9");
 
     // play a Stripe webhook, captured directly from our Stripe account itself
     String json = Resources.toString(Resources.getResource("stripe-charge-success.json"), StandardCharsets.UTF_8);
@@ -40,7 +41,7 @@ public class StripeToSfdcIT extends AbstractIT {
     Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
-    assertEquals("Tester Household", account.getField("Name"));
+    assertEquals("Integration Tester", account.getField("Name"));
     assertEquals("13022 Redding Drive", account.getField("BillingStreet"));
     assertEquals("Fort Wayne", account.getField("BillingCity"));
     assertEquals("IN", account.getField("BillingState"));

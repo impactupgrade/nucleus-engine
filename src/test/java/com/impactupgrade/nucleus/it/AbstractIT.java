@@ -19,8 +19,10 @@ import org.junit.jupiter.api.TestInstance;
 
 import javax.ws.rs.core.Application;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -68,7 +70,7 @@ public class AbstractIT extends JerseyTest {
     return new EnvironmentIT();
   }
 
-  protected void deleteSfdcRecords(String email) throws Exception {
+  protected void deleteSfdcAccounts() throws Exception {
     SfdcClient sfdcClient = getEnv().sfdcClient();
 
     List<SObject> existingAccounts = sfdcClient.getAccountsByName("Tester");
@@ -90,5 +92,29 @@ public class AbstractIT extends JerseyTest {
 
     // ensure we're actually clean
     assertEquals(0, sfdcClient.getAccountsByName("Tester").size());
+  }
+
+  protected void deleteSfdcDonation(String transactionId) throws Exception {
+    SfdcClient sfdcClient = getEnv().sfdcClient();
+
+    Optional<SObject> existingDonation = sfdcClient.getDonationByTransactionId(transactionId);
+    if (existingDonation.isPresent()) {
+      sfdcClient.delete(existingDonation.get());
+    }
+
+    // ensure we're actually clean
+    assertTrue(sfdcClient.getDonationByTransactionId(transactionId).isEmpty());
+  }
+
+  protected void deleteSfdcRecurringDonation(String subscriptionId) throws Exception {
+    SfdcClient sfdcClient = getEnv().sfdcClient();
+
+    Optional<SObject> existingRD = sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId);
+    if (existingRD.isPresent()) {
+      sfdcClient.delete(existingRD.get());
+    }
+
+    // ensure we're actually clean
+    assertTrue(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId).isEmpty());
   }
 }

@@ -470,6 +470,7 @@ public class PaymentGatewayWebhookEvent {
 
   public void setCrmAccountId(String crmAccountId) {
     crmAccount.id = crmAccountId;
+    crmContact.accountId = crmAccountId;
   }
 
   public String getCrmContactId() {

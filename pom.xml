@@ -15,7 +15,7 @@
   </parent>
 
   <artifactId>nucleus-common</artifactId>
-  <version>3.2.3-SNAPSHOT</version>
+  <version>3.2.3.Final</version>
 
   <name>Nonprofit Nucleus: Common</name>
   <url>https://www.impactupgrade.com/nonprofit-nucleus</url>
@@ -38,11 +38,16 @@
       <artifactId>paymentspring-java-client</artifactId>
       <version>1.0.7.Final</version>
     </dependency>
-    <!-- TODO: use Brett's fork (3.0-0.9.7) -->
     <dependency>
       <groupId>com.ecwid</groupId>
       <artifactId>maleorang</artifactId>
       <version>3.0-0.9.6</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.jetbrains.kotlin</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
