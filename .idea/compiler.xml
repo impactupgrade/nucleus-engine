@@ -7,10 +7,12 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="hub-common" />
+        <module name="nucleus-common" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="hub-common" target="15" />
+      <module name="nucleus-common" target="15" />
     </bytecodeTargetLevel>
   </component>
 </project>

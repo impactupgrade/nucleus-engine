@@ -11,7 +11,7 @@
   </parent>
 
   <artifactId>hub-common</artifactId>
-  <version>3.0.19-SNAPSHOT</version>
+  <version>3.0.19.Final</version>
 
   <dependencies>
     <!-- TODO: move to hub-parent -->
