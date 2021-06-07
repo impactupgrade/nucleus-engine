@@ -19,8 +19,7 @@ public class EmailUtil {
 
   private static final String SMTP_SERVER = "smtp.sendgrid.net";
   private static final String SMTP_USERNAME = "apikey";
-  // TODO: Using the 3RiverDev account, but should we spin this off?
-  private static final String SMTP_PASSWORD = "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";
+  private static final String SMTP_PASSWORD = System.getenv("SENDGRID_KEY");
 
   private static final Properties props = new Properties();
   static {
