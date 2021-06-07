@@ -5,7 +5,9 @@
 package com.impactupgrade.nucleus.it;
 
 import com.impactupgrade.nucleus.client.SfdcClient;
-import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.controller.StripeController;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.environment.ProcessContextFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -28,11 +30,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AbstractIT extends JerseyTest {
 
+  protected static ProcessContext processContext = new ProcessContextIT();
+
   // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
   // do not name this setUp()
   @BeforeAll
   public void before() throws Exception {
     super.setUp();
+
+    ProcessContextFactory.SUPPLIER = () -> processContext;
+
     TestUtil.SKIP_NEW_THREADS = true;
   }
   // do not name this tearDown()
@@ -49,29 +56,18 @@ public class AbstractIT extends JerseyTest {
     enable(TestProperties.LOG_TRAFFIC);
     enable(TestProperties.DUMP_ENTITY);
 
-    Environment env = getEnv();
-
     ResourceConfig apiConfig = new ResourceConfig();
 
     apiConfig.register(new SecurityExceptionMapper());
     apiConfig.register(MultiPartFeature.class);
 
-    apiConfig.register(env.stripeController());
-    try {
-      env.registerAPIControllers(apiConfig);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    apiConfig.register(new StripeController());
 
     return apiConfig;
   }
 
-  protected Environment getEnv() {
-    return new EnvironmentIT();
-  }
-
   protected void deleteSfdcAccounts() throws Exception {
-    SfdcClient sfdcClient = getEnv().sfdcClient();
+    SfdcClient sfdcClient = processContext.sfdcClient();
 
     List<SObject> existingAccounts = sfdcClient.getAccountsByName("Tester");
     for (SObject existingAccount : existingAccounts) {
@@ -95,7 +91,7 @@ public class AbstractIT extends JerseyTest {
   }
 
   protected void deleteSfdcDonation(String transactionId) throws Exception {
-    SfdcClient sfdcClient = getEnv().sfdcClient();
+    SfdcClient sfdcClient = processContext.sfdcClient();
 
     Optional<SObject> existingDonation = sfdcClient.getDonationByTransactionId(transactionId);
     if (existingDonation.isPresent()) {
@@ -107,7 +103,7 @@ public class AbstractIT extends JerseyTest {
   }
 
   protected void deleteSfdcRecurringDonation(String subscriptionId) throws Exception {
-    SfdcClient sfdcClient = getEnv().sfdcClient();
+    SfdcClient sfdcClient = processContext.sfdcClient();
 
     Optional<SObject> existingRD = sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId);
     if (existingRD.isPresent()) {

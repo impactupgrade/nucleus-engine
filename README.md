@@ -21,7 +21,7 @@ Nucleus is broken down into a set of layers, containing a mix of abstract logic 
 
 The layers, somewhat resembling an MVC pattern:
 
-- **Environment:** Defines configurations and context specific to a nonprofit, such as the platform vendors and unique data.
+- **Environment:** Defines configurations and processContext specific to a nonprofit, such as the platform vendors and unique data.
 - **Controllers:** Endpoints receiving REST API calls, SOAP API calls, or webhook events. These come from a mix of third party platforms, portals, or other integration/automation focused web apps (ex: full-service Donor Portals).
 - **Services:**
     - **Logic:**

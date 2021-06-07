@@ -9,15 +9,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
-import com.impactupgrade.nucleus.model.CrmAccount;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.model.crm.CrmContact;
+import com.impactupgrade.nucleus.model.crm.CrmDonation;
+import com.impactupgrade.nucleus.model.crm.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.event.CrmImportEvent;
+import com.impactupgrade.nucleus.model.event.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.event.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.event.OpportunityEvent;
+import com.impactupgrade.nucleus.model.event.PaymentGatewayWebhookEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -52,15 +52,15 @@ public class BloomerangCrmService implements CrmService {
   private static final String POST_DONATION = BLOOMERANG_URL + "Donation";
   private static final String POST_RECURRINGDONATION = BLOOMERANG_URL + "RecurringDonation";
 
-  private final String apiKey;
-  private final String anonymousId;
-  protected final Environment env;
-  private final ObjectMapper mapper;
+  protected final String apiKey;
+  protected final String anonymousId;
+  protected final ProcessContext processContext;
+  protected final ObjectMapper mapper;
 
-  public BloomerangCrmService(Environment env) {
+  public BloomerangCrmService(ProcessContext processContext) {
     this.apiKey = System.getenv("BLOOMERANG_API_KEY");
     this.anonymousId = System.getenv("BLOOMERANG_ANONYMOUS_ID");
-    this.env = env;
+    this.processContext = processContext;
 
     mapper = new ObjectMapper();
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -128,7 +128,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(CrmAccount crmAccount) throws Exception {
+  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
     // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
     return null;
   }
@@ -138,7 +138,16 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(CrmContact crmContact) throws Exception {
+  public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
+    return insertContact(messagingWebhookEvent.getCrmContact());
+  }
+
+  @Override
+  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    return insertContact(paymentGatewayEvent.getCrmContact());
+  }
+
+  private String insertContact(CrmContact crmContact) throws Exception {
     Constituent constituent = new Constituent();
     constituent.firstName = crmContact.firstName;
     constituent.lastName = crmContact.lastName;
@@ -179,7 +188,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public void updateContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
@@ -234,7 +243,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CRMImportEvent> importEvents) throws Exception {
+  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

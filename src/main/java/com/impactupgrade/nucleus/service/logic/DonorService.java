@@ -5,9 +5,9 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.model.crm.CrmContact;
+import com.impactupgrade.nucleus.model.event.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,12 +18,12 @@ public class DonorService {
 
   private static final Logger log = LogManager.getLogger(DonorService.class);
 
-  private final Environment env;
-  private final CrmService crmService;
+  protected final ProcessContext processContext;
+  protected final CrmService crmService;
 
-  public DonorService(Environment env) {
-    this.env = env;
-    crmService = env.crmService();
+  public DonorService(ProcessContext processContext) {
+    this.processContext = processContext;
+    crmService = processContext.crmService();
   }
 
   public void processAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -56,10 +56,10 @@ public class DonorService {
         paymentGatewayEvent.getCrmContact().email);
 
     // create new Household Account
-    String accountId = crmService.insertAccount(paymentGatewayEvent.getCrmAccount());
+    String accountId = crmService.insertAccount(paymentGatewayEvent);
     paymentGatewayEvent.setCrmAccountId(accountId);
     // create new Contact
-    String contactId = crmService.insertContact(paymentGatewayEvent.getCrmContact());
+    String contactId = crmService.insertContact(paymentGatewayEvent);
     paymentGatewayEvent.setCrmContactId(contactId);
   }
 }

@@ -4,10 +4,10 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.environment.ProcessContextFactory;
+import com.impactupgrade.nucleus.model.event.CrmImportEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -23,7 +23,6 @@ import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
@@ -37,12 +36,6 @@ public class CrmController {
 
   private static final Logger log = LogManager.getLogger(CrmController.class.getName());
 
-  private final CrmService crmService;
-
-  public CrmController(Environment env) {
-    crmService = env.crmService();
-  }
-
   @Path("/bulk-import/file")
   @POST
   @Consumes(MediaType.MULTIPART_FORM_DATA)
@@ -50,8 +43,9 @@ public class CrmController {
   public Response bulkImport(
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
+      @javax.ws.rs.core.Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -68,8 +62,8 @@ public class CrmController {
           data.add(csvRecord.toMap());
         }
 
-        List<CRMImportEvent> importEvents = CRMImportEvent.fromGeneric(data);
-        crmService.processImport(importEvents);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
+        processContext.crmService().processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -85,14 +79,15 @@ public class CrmController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImport(
       @FormParam("google-sheet-url") String gsheetUrl,
-      @Context HttpServletRequest request) {
+      @javax.ws.rs.core.Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     Runnable thread = () -> {
       try {
         List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-        List<CRMImportEvent> importEvents = CRMImportEvent.fromGeneric(data);
-        crmService.processImport(importEvents);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
+        processContext.crmService().processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -110,8 +105,9 @@ public class CrmController {
   public Response bulkImportFBFundraisers(
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
+      @javax.ws.rs.core.Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -128,8 +124,8 @@ public class CrmController {
           data.add(csvRecord.toMap());
         }
 
-        List<CRMImportEvent> importEvents = CRMImportEvent.fromFBFundraiser(data);
-        crmService.processImport(importEvents);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
+        processContext.crmService().processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }

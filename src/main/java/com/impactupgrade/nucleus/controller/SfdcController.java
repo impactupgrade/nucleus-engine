@@ -5,10 +5,8 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.client.SfdcBulkClient;
-import com.impactupgrade.nucleus.client.SfdcClient;
-import com.impactupgrade.nucleus.client.SfdcMetadataClient;
-import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.environment.ProcessContextFactory;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -27,7 +25,6 @@ import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.BufferedWriter;
@@ -46,18 +43,6 @@ import java.util.Optional;
 public class SfdcController {
 
   private static final Logger log = LogManager.getLogger(SfdcController.class.getName());
-
-  protected final Environment env;
-  protected final SfdcClient sfdcClient;
-  protected final SfdcMetadataClient sfdcMetadataClient;
-  protected final SfdcBulkClient sfdcBulkClient;
-
-  public SfdcController(Environment env) {
-    this.env = env;
-    sfdcClient = env.sfdcClient();
-    sfdcMetadataClient = new SfdcMetadataClient(env);
-    sfdcBulkClient = new SfdcBulkClient(env);
-  }
 
   /**
    * Bulk update records using the given GSheet.
@@ -78,9 +63,10 @@ public class SfdcController {
   public Response bulkUpdate(
       @FormParam("google-sheet-url") String url,
       @FormParam("optional-field-column-name") String optionalFieldColumnName,
-      @Context HttpServletRequest request
+      @javax.ws.rs.core.Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -88,7 +74,7 @@ public class SfdcController {
 
         // cache all users by name
         // TODO: Terrible idea for any SF instance with a large number of users -- filter to non-guest only?
-        List<SObject> users = sfdcClient.getActiveUsers();
+        List<SObject> users = processContext.sfdcClient().getActiveUsers();
         Map<String, String> userNameToId = new HashMap<>();
         for (SObject user : users) {
           userNameToId.put(user.getField("FirstName") + " " + user.getField("LastName"), user.getId());
@@ -100,12 +86,12 @@ public class SfdcController {
 
           log.info("processing row {} of {}: {}", i + 1, data.size(), row);
 
-          bulkUpdate("Account", row, userNameToId, optionalFieldColumnName);
-          bulkUpdate("Contact", row, userNameToId, optionalFieldColumnName);
+          bulkUpdate("Account", row, userNameToId, optionalFieldColumnName, processContext);
+          bulkUpdate("Contact", row, userNameToId, optionalFieldColumnName, processContext);
         }
 
         // update anything left in the batch queues
-        sfdcClient.batchFlush();
+        processContext.sfdcClient().batchFlush();
       } catch (Exception e) {
         log.error("bulkUpdate failed", e);
       }
@@ -116,7 +102,7 @@ public class SfdcController {
   }
 
   private void bulkUpdate(String type, Map<String, String> row, Map<String, String> userNameToId,
-      String optionalFieldColumnName) throws InterruptedException {
+      String optionalFieldColumnName, ProcessContext processContext) throws InterruptedException {
     String id = row.get(type + " ID").trim();
     if (Strings.nullToEmpty(id).trim().isEmpty()) {
       // TODO: if ID is not included, support first retrieving by name, etc.
@@ -157,7 +143,7 @@ public class SfdcController {
         }
       }
 
-      sfdcClient.batchUpdate(sObject);
+      processContext.sfdcClient().batchUpdate(sObject);
     }
   }
 
@@ -170,8 +156,9 @@ public class SfdcController {
       @FormDataParam("google-sheet-url") String gsheetUrl,
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
+      @javax.ws.rs.core.Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -205,9 +192,9 @@ public class SfdcController {
           String opportunityId = row.get("Opportunity ID");
           SObject opportunity = new SObject("Opportunity");
           opportunity.setId(opportunityId);
-          sfdcClient.batchDelete(opportunity);
+          processContext.sfdcClient().batchDelete(opportunity);
         }
-        sfdcClient.batchFlush();;
+        processContext.sfdcClient().batchFlush();;
       } catch (Exception e) {
         log.error("bulkDelete failed", e);
       }
@@ -230,14 +217,15 @@ public class SfdcController {
       @FormParam("globalPicklistApiName") String globalPicklistApiName,
       @FormParam("value") String newValue,
       @FormParam("recordTypeFieldApiNames") List<String> recordTypeFieldApiNames,
-      @Context HttpServletRequest request
+      @javax.ws.rs.core.Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       try {
-        sfdcMetadataClient.addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
+        processContext.sfdcMetadataClient().addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
         log.info("FINISHED: {}", globalPicklistApiName);
       } catch (Exception e) {
         log.error("{} failed", globalPicklistApiName, e);
@@ -258,9 +246,10 @@ public class SfdcController {
   public Response iwave(
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request
+      @javax.ws.rs.core.Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
@@ -311,7 +300,7 @@ public class SfdcController {
             log.info("processing row {}: {}", counter++, email);
 
             if (!Strings.isNullOrEmpty(email)) {
-              Optional<SObject> contact = sfdcClient.getContactByEmail(email);
+              Optional<SObject> contact = processContext.sfdcClient().getContactByEmail(email);
               if (contact.isPresent()) {
                 // SF expects date in yyyy-MM-dd'T'HH:mm:ss.SSS'Z, but iWave gives yyyy-MM-dd HH:mm
                 Date date = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(csvRecord.get("Date Scored"));
@@ -345,7 +334,7 @@ public class SfdcController {
           }
         }
 
-        sfdcBulkClient.uploadIWaveFile(combinedFile.toFile());
+        processContext.sfdcBulkClient().uploadIWaveFile(combinedFile.toFile());
         log.info("FINISHED: iwave");
       } catch (Exception e) {
         log.error("iwave update failed", e);
@@ -366,14 +355,15 @@ public class SfdcController {
   public Response windfall(
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request
+      @javax.ws.rs.core.Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    ProcessContext processContext = ProcessContextFactory.init(request);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       try {
-        sfdcBulkClient.uploadWindfallFile(file);
+        processContext.sfdcBulkClient().uploadWindfallFile(file);
         log.info("FINISHED: windfall");
       } catch (Exception e) {
         log.error("Windfall update failed", e);

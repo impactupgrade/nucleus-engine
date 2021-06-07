@@ -1,7 +1,14 @@
 {
   "platforms": {
-    "crm": "",
-    "paymentGateway": ""
+    "crm": {
+      "name": "",
+      "key": ""
+    },
+    "paymentGateway": {
+      "name": "",
+      "key": "",
+      "publicKey": ""
+    }
   },
 
   "metadataKeys": {

@@ -31,7 +31,7 @@ public class StripeToSfdcIT extends AbstractIT {
     Response response = target("/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-    SfdcClient sfdcClient = getEnv().sfdcClient();
+    SfdcClient sfdcClient = processContext.sfdcClient();
 
     // verify DonorService -> SfdcCrmService
     Optional<SObject> contactO = sfdcClient.getContactByEmail("team+integration+tester@impactupgrade.com");

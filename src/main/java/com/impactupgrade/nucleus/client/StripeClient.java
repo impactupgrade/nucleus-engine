@@ -5,7 +5,6 @@
 package com.impactupgrade.nucleus.client;
 
 import com.google.common.collect.Iterables;
-import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -39,12 +38,11 @@ import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.common.EmptyParam;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.text.DecimalFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -61,6 +59,10 @@ public class StripeClient {
   protected static final String SDF = "MM/dd/yy hh:mm";
 
   protected final RequestOptions requestOptions;
+
+  public StripeClient() {
+    this(System.getenv("STRIPE_KEY"));
+  }
 
   public StripeClient(String apiKey) {
     requestOptions = RequestOptions.builder().setApiKey(apiKey).build();

@@ -16,16 +16,17 @@ import com.impactupgrade.integration.hubspot.v3.DealResults;
 import com.impactupgrade.integration.hubspot.v3.Filter;
 import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
+import com.impactupgrade.nucleus.environment.ProcessContext;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
-import com.impactupgrade.nucleus.model.CrmAccount;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.event.CrmImportEvent;
+import com.impactupgrade.nucleus.model.crm.CrmAccount;
+import com.impactupgrade.nucleus.model.crm.CrmContact;
+import com.impactupgrade.nucleus.model.crm.CrmDonation;
+import com.impactupgrade.nucleus.model.crm.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.event.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.event.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.event.OpportunityEvent;
+import com.impactupgrade.nucleus.model.event.PaymentGatewayWebhookEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -43,11 +44,11 @@ public class HubSpotCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 
-  protected final Environment env;
+  protected final ProcessContext processContext;
   protected final HubSpotV3Client hsClient;
 
-  public HubSpotCrmService(Environment env) {
-    this.env = env;
+  public HubSpotCrmService(ProcessContext processContext) {
+    this.processContext = processContext;
     hsClient = HubSpotClientFactory.v3Client();
   }
 
@@ -94,7 +95,7 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
+    Filter[] filters = new Filter[]{new Filter(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
     DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
@@ -103,13 +104,13 @@ public class HubSpotCrmService implements CrmService {
 
     Deal result = results.getResults().get(0);
     String id = result.getId();
-    boolean successful = env.config().hubspot.donationPipeline.successStageId.equalsIgnoreCase(result.getProperties().getDealstage());
+    boolean successful = processContext.getEnv().hubspot.donationPipeline.successStageId.equalsIgnoreCase(result.getProperties().getDealstage());
     return Optional.of(new CrmDonation(id, successful));
   }
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    Filter[] filters = new Filter[]{new Filter(env.config().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId())};
+    Filter[] filters = new Filter[]{new Filter(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId())};
     DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
@@ -144,9 +145,9 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(CrmAccount crmAccount) throws Exception {
+  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     CompanyProperties account = new CompanyProperties();
-    setAccountFields(account, crmAccount);
+    setAccountFields(account, paymentGatewayEvent.getCrmAccount());
     Company response = hsClient.company().insert(account);
     return response == null ? null : response.getId();
   }
@@ -166,7 +167,16 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(CrmContact crmContact) throws Exception {
+  public String insertContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
+    return insertContact(messagingWebhookEvent.getCrmContact());
+  }
+
+  @Override
+  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    return insertContact(paymentGatewayEvent.getCrmContact());
+  }
+
+  private String insertContact(CrmContact crmContact) throws Exception {
     ContactProperties contact = new ContactProperties();
     setContactFields(contact, crmContact);
     Contact response = hsClient.contact().insert(contact);
@@ -174,11 +184,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public void updateContact(MessagingWebhookEvent messagingWebhookEvent) throws Exception {
     // TODO: test with Twilio flows
     ContactProperties contact = new ContactProperties();
-    setContactFields(contact, crmContact);
-    hsClient.contact().update(crmContact.id, contact);
+    setContactFields(contact, messagingWebhookEvent.getCrmContact());
+    hsClient.contact().update(messagingWebhookEvent.getCrmContact().id, contact);
   }
 
   @Override
@@ -194,10 +204,10 @@ public class HubSpotCrmService implements CrmService {
     contact.setMobilePhone(crmContact.phone);
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      contact.getCustomProperties().put(env.config().hubspot.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
+      contact.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
     }
     if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      contact.getCustomProperties().put(env.config().hubspot.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
+      contact.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
     }
   }
 
@@ -229,11 +239,11 @@ public class HubSpotCrmService implements CrmService {
   protected void setDonationFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
-    deal.setPipeline(env.config().hubspot.donationPipeline.id);
+    deal.setPipeline(processContext.getEnv().hubspot.donationPipeline.id);
     if (paymentGatewayEvent.isTransactionSuccess()) {
-      deal.setDealstage(env.config().hubspot.donationPipeline.successStageId);
+      deal.setDealstage(processContext.getEnv().hubspot.donationPipeline.successStageId);
     } else {
-      deal.setDealstage(env.config().hubspot.donationPipeline.failedStageId);
+      deal.setDealstage(processContext.getEnv().hubspot.donationPipeline.failedStageId);
     }
 
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
@@ -241,20 +251,20 @@ public class HubSpotCrmService implements CrmService {
     deal.setDealname("Donation: " + paymentGatewayEvent.getCrmAccount().name);
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
-      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getCrmRecurringDonationId());
+      deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getCrmRecurringDonationId());
     }
 
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     // Do NOT set subscriptionId! In getRecurringDonation, we search by that and expect only the RD to be returned.
 
     deal.setAmount(paymentGatewayEvent.getTransactionAmountInDollars());
     if (paymentGatewayEvent.getTransactionOriginalCurrency() != null) {
       // set the custom fields related for international donation
-      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayAmountOriginal, paymentGatewayEvent.getTransactionOriginalAmountInDollars());
-      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayAmountOriginalCurrency, paymentGatewayEvent.getTransactionOriginalCurrency());
-      deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayAmountExchangeRate, paymentGatewayEvent.getTransactionExchangeRate());
+      deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayAmountOriginal, paymentGatewayEvent.getTransactionOriginalAmountInDollars());
+      deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayAmountOriginalCurrency, paymentGatewayEvent.getTransactionOriginalCurrency());
+      deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayAmountExchangeRate, paymentGatewayEvent.getTransactionExchangeRate());
     }
   }
 
@@ -274,10 +284,10 @@ public class HubSpotCrmService implements CrmService {
   }
 
   protected void setDonationRefundFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    deal.setDealstage(env.config().hubspot.donationPipeline.refundedStageId);
+    deal.setDealstage(processContext.getEnv().hubspot.donationPipeline.refundedStageId);
 
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
   }
 
   @Override
@@ -292,9 +302,9 @@ public class HubSpotCrmService implements CrmService {
     }
 
     DealProperties deal = new DealProperties();
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
 
     hsClient.deal().update(donation.get().getId(), deal);
   }
@@ -320,8 +330,8 @@ public class HubSpotCrmService implements CrmService {
   protected void setRecurringDonationFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
-    deal.setPipeline(env.config().hubspot.recurringDonationPipeline.id);
-    deal.setDealstage(env.config().hubspot.recurringDonationPipeline.openStageId);
+    deal.setPipeline(processContext.getEnv().hubspot.recurringDonationPipeline.id);
+    deal.setDealstage(processContext.getEnv().hubspot.recurringDonationPipeline.openStageId);
 
     // TODO: Assumed to be monthly. If quarterly/yearly support needed, will need a custom field + divide the gift into the monthly rate.
     deal.setRecurringRevenueAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
@@ -329,9 +339,9 @@ public class HubSpotCrmService implements CrmService {
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmAccount().name);
 
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
-    deal.getCustomProperties().put(env.config().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
+    deal.getCustomProperties().put(processContext.getEnv().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
   }
 
   @Override
@@ -359,7 +369,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public void addContactToList(CrmContact crmContact, String listId) throws Exception {
     if (Strings.isNullOrEmpty(listId)) {
-      String defaultListId = env.config().hubspot.defaultSmsOptInList;
+      String defaultListId = processContext.getEnv().hubspot.defaultSmsOptInList;
       if (Strings.isNullOrEmpty(defaultListId)) {
         log.info("explicit HubSpot list ID not provided; skipping the list insert...");
         return;
@@ -381,15 +391,15 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CRMImportEvent> importEvents) throws Exception {
+  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
     // TODO
   }
 
   // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.
   private List<String> getCustomPropertyNames() {
-    return Arrays.stream(EnvironmentConfig.CRMFieldDefinitions.class.getFields()).map(f -> {
+    return Arrays.stream(Environment.CRMFieldDefinitions.class.getFields()).map(f -> {
       try {
-        return f.get(env.config().hubspot.fieldDefinitions).toString();
+        return f.get(processContext.getEnv().hubspot.fieldDefinitions).toString();
       } catch (IllegalAccessException e) {
         log.error("failed to retrieve custom fields from schema", e);
         return "";

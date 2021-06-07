@@ -5,22 +5,27 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.client.StripeClient;
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.model.event.ManageDonationEvent;
 import com.stripe.exception.StripeException;
-import java.text.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.text.ParseException;
 
 public class StripePaymentGatewayService implements PaymentGatewayService {
 
   private static final Logger log = LogManager.getLogger(StripePaymentGatewayService.class);
 
-  public StripePaymentGatewayService(Environment env) {}
+  protected final ProcessContext processContext;
+
+  public StripePaymentGatewayService(ProcessContext processContext) {
+    this.processContext = processContext;
+  }
 
   @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {
-    StripeClient stripeClient = manageDonationEvent.getRequestEnv().stripeClient();
+    StripeClient stripeClient = processContext.stripeClient();
     if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
       stripeClient.updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
     }
@@ -44,7 +49,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   @Override
   public void cancelSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
-    StripeClient stripeClient = manageDonationEvent.getRequestEnv().stripeClient();
+    StripeClient stripeClient = processContext.stripeClient();
     stripeClient.cancelSubscription(manageDonationEvent.getSubscriptionId());
   }
 }

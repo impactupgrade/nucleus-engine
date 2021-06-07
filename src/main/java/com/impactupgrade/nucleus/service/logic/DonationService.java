@@ -4,11 +4,11 @@
 
 package com.impactupgrade.nucleus.service.logic;
 
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.model.crm.CrmDonation;
+import com.impactupgrade.nucleus.model.crm.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.event.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.event.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
@@ -20,14 +20,14 @@ public class DonationService {
 
   private static final Logger log = LogManager.getLogger(DonationService.class.getName());
 
-  private final Environment env;
-  private final CrmService crmService;
-  private final PaymentGatewayService paymentGatewayService;
+  protected final ProcessContext processContext;
+  protected final CrmService crmService;
+  protected final PaymentGatewayService paymentGatewayService;
 
-  public DonationService(Environment env) {
-    this.env = env;
-    crmService = env.crmService();
-    paymentGatewayService = env.paymentGatewayService();
+  public DonationService(ProcessContext processContext) {
+    this.processContext = processContext;
+    crmService = processContext.crmService();
+    paymentGatewayService = processContext.paymentGatewayService();
   }
 
   public void createDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {

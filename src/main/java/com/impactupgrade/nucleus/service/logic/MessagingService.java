@@ -5,8 +5,9 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.model.crm.CrmContact;
+import com.impactupgrade.nucleus.model.event.MessagingWebhookEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
@@ -16,13 +17,14 @@ public class MessagingService {
 
   private static final Logger log = LogManager.getLogger(MessagingService.class);
 
-  private final CrmService crmService;
+  protected final CrmService crmService;
 
-  public MessagingService(Environment env) {
-    crmService = env.crmService();
+  public MessagingService(ProcessContext processContext) {
+    crmService = processContext.crmService();
   }
 
   public CrmContact processContact(
+      MessagingWebhookEvent messagingWebhookEvent,
       String phone,
       String firstName,
       String lastName,
@@ -67,39 +69,38 @@ public class MessagingService {
 
     if (crmContact == null) {
       // Didn't exist, so attempt to create it.
-      CrmContact newCrmContact = new CrmContact();
-      newCrmContact.phone = phone;
-      newCrmContact.firstName = firstName;
-      newCrmContact.lastName = lastName;
-      newCrmContact.email = email;
+      messagingWebhookEvent.getCrmContact().phone = phone;
+      messagingWebhookEvent.getCrmContact().firstName = firstName;
+      messagingWebhookEvent.getCrmContact().lastName = lastName;
+      messagingWebhookEvent.getCrmContact().email = email;
 
-      newCrmContact.emailOptIn = emailOptIn;
-      newCrmContact.smsOptIn = smsOptIn;
+      messagingWebhookEvent.getCrmContact().emailOptIn = emailOptIn;
+      messagingWebhookEvent.getCrmContact().smsOptIn = smsOptIn;
 
-      crmContact.id = crmService.insertContact(newCrmContact);
+      crmContact.id = crmService.insertContact(messagingWebhookEvent);
     } else {
       // Existed, so use it
       log.info("contact already existed in CRM: {}", crmContact.id);
 
-      CrmContact updateCrmContact = new CrmContact(crmContact.id);
+      messagingWebhookEvent.setCrmContact(crmContact);
 
       if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
         log.info("contact {} missing firstName; updating it...", crmContact.id);
-        updateCrmContact.firstName = firstName;
+        messagingWebhookEvent.getCrmContact().firstName = firstName;
       }
       if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
         log.info("contact {} missing lastName; updating it...", crmContact.id);
-        updateCrmContact.lastName = lastName;
+        messagingWebhookEvent.getCrmContact().lastName = lastName;
       }
       if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
         log.info("contact {} missing email; updating it...", crmContact.id);
-        updateCrmContact.email = email;
+        messagingWebhookEvent.getCrmContact().email = email;
       }
 
-      updateCrmContact.emailOptIn = emailOptIn;
-      updateCrmContact.smsOptIn = smsOptIn;
+      messagingWebhookEvent.getCrmContact().emailOptIn = emailOptIn;
+      messagingWebhookEvent.getCrmContact().smsOptIn = smsOptIn;
 
-      crmService.updateContact(updateCrmContact);
+      crmService.updateContact(messagingWebhookEvent);
     }
 
     return crmContact;

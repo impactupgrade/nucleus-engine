@@ -8,12 +8,12 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.environment.ProcessContextFactory;
+import com.impactupgrade.nucleus.model.crm.CrmContact;
+import com.impactupgrade.nucleus.model.event.MessagingWebhookEvent;
+import com.impactupgrade.nucleus.model.event.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.logic.MessagingService;
-import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
@@ -54,14 +54,6 @@ public class TwilioController {
     if (!Strings.isNullOrEmpty(System.getenv("TWILIO_ACCOUNTSID"))) {
       Twilio.init(System.getenv("TWILIO_ACCOUNTSID"), System.getenv("TWILIO_AUTHTOKEN"));
     }
-  }
-
-  private final MessagingService messagingService;
-  private final CrmService crmService;
-
-  public TwilioController(Environment env) {
-    messagingService = env.messagingService();
-    crmService = env.crmService();
   }
 
   @Path("/outbound/hubspot-list")
@@ -128,10 +120,14 @@ public class TwilioController {
       @FormParam("CampaignId") String campaignId,
       @FormParam("OpportunityName") String opportunityName,
       @FormParam("OpportunityRecordTypeId") String opportunityRecordTypeId,
-      @FormParam("OpportunityOwnerId") String opportunityOwnerId
+      @FormParam("OpportunityOwnerId") String opportunityOwnerId,
+      @Context HttpServletRequest request
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={}",
         from, firstName, lastName, fullName, email, emailOptIn, smsOptIn, listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId);
+
+    ProcessContext processContext = ProcessContextFactory.init(request);
+    MessagingWebhookEvent messagingWebhookEvent = new MessagingWebhookEvent();
 
     if (!Strings.isNullOrEmpty(fullName)) {
       String[] split = Utils.fullNameToFirstLast(fullName);
@@ -143,7 +139,8 @@ public class TwilioController {
       listId = hsListId + "";
     }
 
-    CrmContact crmContact = messagingService.processContact(
+    CrmContact crmContact = processContext.messagingService().processContact(
+        messagingWebhookEvent,
         from,
         firstName,
         lastName,
@@ -152,10 +149,10 @@ public class TwilioController {
         smsOptIn
     );
     if (!Strings.isNullOrEmpty(campaignId)) {
-      crmService.addContactToCampaign(crmContact, campaignId);
+      processContext.crmService().addContactToCampaign(crmContact, campaignId);
     }
     if (!Strings.isNullOrEmpty(listId)) {
-      crmService.addContactToList(crmContact, listId);
+      processContext.crmService().addContactToList(crmContact, listId);
     }
     if (!Strings.isNullOrEmpty(opportunityName)) {
       OpportunityEvent oppEvent = new OpportunityEvent();
@@ -164,7 +161,7 @@ public class TwilioController {
       oppEvent.setOwnerId(opportunityOwnerId);
       oppEvent.setCrmContact(crmContact);
       oppEvent.setCampaignId(campaignId);
-      crmService.insertOpportunity(oppEvent);
+      processContext.crmService().insertOpportunity(oppEvent);
     }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.

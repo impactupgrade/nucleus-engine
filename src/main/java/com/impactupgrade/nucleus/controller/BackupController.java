@@ -32,6 +32,8 @@ public class BackupController {
 
   private static final Logger log = LogManager.getLogger(BackupController.class);
 
+  // TODO: Config must shift to env.json
+
   private static final String SFDC_USERNAME = System.getenv("SFDC_USERNAME");
   private static final String SFDC_PASSWORD = System.getenv("SFDC_PASSWORD");
   private static final String SFDC_URL = System.getenv("SFDC_URL");

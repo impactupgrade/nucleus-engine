@@ -4,14 +4,10 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.environment.ProcessContextFactory;
 import com.impactupgrade.nucleus.model.ManageDonationFormData;
+import com.impactupgrade.nucleus.model.event.ManageDonationEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.logic.DonationService;
-import com.impactupgrade.nucleus.service.segment.CrmService;
-
-import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,11 +15,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
-import javax.ws.rs.core.Form;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -31,16 +27,6 @@ import javax.ws.rs.core.Response;
 public class PaymentGatewayController {
 
   private static final Logger log = LogManager.getLogger(PaymentGatewayController.class);
-
-  protected final Environment env;
-  protected final CrmService crmService;
-  protected final DonationService donationService;
-
-  public PaymentGatewayController(Environment env) {
-    this.env = env;
-    crmService = env.crmService();
-    donationService = env.donationService();
-  }
 
   // TODO: Rethink this method. I'm not excited about getRecurringDonation having to return the gateway-specific
   // subscriptionId -- might be better to instead have the UI/caller pass that info to us...
@@ -71,15 +57,13 @@ public class PaymentGatewayController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response updateRecurringDonation(
-      @BeanParam ManageDonationFormData formData,      // collected form data for event
-      Form rawFormData,                                // raw form data
+      @BeanParam ManageDonationFormData formData,
+      Form rawFormData,
       @Context HttpServletRequest request
   ) throws Exception {
     SecurityUtil.verifyApiKey(request);
-    final Environment.RequestEnvironment requestEnv = env.newRequestEnvironment(request, rawFormData.asMap());
-
-    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv, formData);
-    donationService.updateRecurringDonation(manageDonationEvent);
+    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(formData);
+    ProcessContextFactory.init(request).donationService().updateRecurringDonation(manageDonationEvent);
 
     return Response.status(200).build();
   }

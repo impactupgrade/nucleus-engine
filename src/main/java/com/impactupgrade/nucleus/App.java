@@ -4,7 +4,13 @@
 
 package com.impactupgrade.nucleus;
 
-import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.controller.BackupController;
+import com.impactupgrade.nucleus.controller.CrmController;
+import com.impactupgrade.nucleus.controller.PaymentGatewayController;
+import com.impactupgrade.nucleus.controller.PaymentSpringController;
+import com.impactupgrade.nucleus.controller.SfdcController;
+import com.impactupgrade.nucleus.controller.StripeController;
+import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
@@ -29,8 +35,6 @@ public class App {
 
   // $PORT env var provided by Heroku
   private static final int PORT = Integer.parseInt(System.getenv("PORT"));
-
-  private final Environment __defaultEnv = new Environment();
 
   protected void start() throws Exception {
     Server server = new Server();
@@ -58,15 +62,15 @@ public class App {
     apiConfig.register(new SecurityExceptionMapper());
     apiConfig.register(MultiPartFeature.class);
 
-    apiConfig.register(getEnvironment().backupController());
-    apiConfig.register(getEnvironment().crmController());
-    apiConfig.register(getEnvironment().paymentGatewayController());
-    apiConfig.register(getEnvironment().paymentSpringController());
-    apiConfig.register(getEnvironment().sfdcController());
-    apiConfig.register(getEnvironment().stripeController());
-    apiConfig.register(getEnvironment().twilioController());
+    apiConfig.register(backupController());
+    apiConfig.register(crmController());
+    apiConfig.register(paymentGatewayController());
+    apiConfig.register(paymentSpringController());
+    apiConfig.register(sfdcController());
+    apiConfig.register(stripeController());
+    apiConfig.register(twilioController());
 
-    getEnvironment().registerAPIControllers(apiConfig);
+    registerAPIControllers(apiConfig);
 
     context.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
 
@@ -87,10 +91,25 @@ public class App {
     Bus bus = cxf.getBus();
     BusFactory.setDefaultBus(bus);
 
-    getEnvironment().registerServlets(context);
+    registerServlets(context);
   }
 
-  protected Environment getEnvironment() {
-    return __defaultEnv;
-  }
+  /**
+   * Allow orgs to add custom Controllers, etc.
+   */
+  protected void registerAPIControllers(ResourceConfig apiConfig) throws Exception {}
+
+  /**
+   * Allow orgs to add completely-custom servlets (CXF, etc.)
+   */
+  protected void registerServlets(ServletContextHandler context) throws Exception {}
+
+  // Allow orgs to override specific controllers.
+  protected BackupController backupController() { return new BackupController(); }
+  protected CrmController crmController() { return new CrmController(); }
+  protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(); }
+  protected PaymentSpringController paymentSpringController() { return new PaymentSpringController(); }
+  protected SfdcController sfdcController() { return new SfdcController(); }
+  protected StripeController stripeController() { return new StripeController(); }
+  protected TwilioController twilioController() { return new TwilioController(); }
 }

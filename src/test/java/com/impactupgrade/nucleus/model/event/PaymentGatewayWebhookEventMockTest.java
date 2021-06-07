@@ -2,10 +2,10 @@
  * Copyright (c) 2021 3River Development LLC, DBA Impact Upgrade. All rights reserved.
  */
 
-package com.impactupgrade.nucleus.model;
+package com.impactupgrade.nucleus.model.event;
 
 import com.impactupgrade.nucleus.AbstractMockTest;
-import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.ProcessContext;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import org.junit.jupiter.api.Test;
@@ -18,9 +18,9 @@ public class PaymentGatewayWebhookEventMockTest extends AbstractMockTest {
 
   @Test
   public void testInitStripeCustomerName() {
-    Environment env = new DefaultEnvironment();
+    ProcessContext env = new DefaultProcessContext();
     {
-      PaymentGatewayWebhookEvent event = new PaymentGatewayWebhookEvent(env, env.newRequestEnvironment(null));
+      PaymentGatewayWebhookEvent event = new PaymentGatewayWebhookEvent(env);
       Customer customer = new Customer();
       customer.setName("Brett Meyer The First");
       customer.setMetadata(Collections.emptyMap());

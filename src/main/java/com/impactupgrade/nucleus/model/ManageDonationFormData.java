@@ -4,20 +4,20 @@
 
 package com.impactupgrade.nucleus.model;
 
-import java.util.Optional;
 import javax.ws.rs.FormParam;
+import java.util.Optional;
 
 public class ManageDonationFormData {
 
-  @FormParam("rd_id") String recurringDonationId;
-  @FormParam("amount") Optional<String> amount;
-  @FormParam("pause_donation") Optional<Boolean> pauseDonation;
-  @FormParam("pause_donation_until") Optional<String> pauseDonationUntilDate;
-  @FormParam("resume_donation") Optional<Boolean> resumeDonation;
-  @FormParam("resume_donation_on") Optional<String> resumeDonationOnDate;
-  @FormParam("next_payment_date") Optional<String> nextPaymentDate;
-  @FormParam("cancel_donation") Optional<Boolean> cancelDonation;
-  @FormParam("stripe_token") Optional<String> stripeToken;
+  @FormParam("rd_id") public String recurringDonationId;
+  @FormParam("amount") public Optional<String> amount;
+  @FormParam("pause_donation") public Optional<Boolean> pauseDonation;
+  @FormParam("pause_donation_until") public Optional<String> pauseDonationUntilDate;
+  @FormParam("resume_donation") public Optional<Boolean> resumeDonation;
+  @FormParam("resume_donation_on") public Optional<String> resumeDonationOnDate;
+  @FormParam("next_payment_date") public Optional<String> nextPaymentDate;
+  @FormParam("cancel_donation") public Optional<Boolean> cancelDonation;
+  @FormParam("stripe_token") public Optional<String> stripeToken;
 
   @Override
   public String toString() {

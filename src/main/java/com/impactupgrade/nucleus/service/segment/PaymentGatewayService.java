@@ -4,7 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.event.ManageDonationEvent;
 import com.stripe.exception.StripeException;
 import java.text.ParseException;
 

@@ -2,18 +2,17 @@
  * Copyright (c) 2021 3River Development LLC, DBA Impact Upgrade. All rights reserved.
  */
 
-package com.impactupgrade.nucleus.model;
+package com.impactupgrade.nucleus.model.event;
 
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.ManageDonationFormData;
 import com.impactupgrade.nucleus.util.Utils;
+
 import java.text.ParseException;
 import java.util.Calendar;
 
 public class ManageDonationEvent {
-  protected final Environment.RequestEnvironment requestEnv;
-
   protected String donationId;
   protected Double amount;
   protected String subscriptionId;
@@ -25,12 +24,7 @@ public class ManageDonationEvent {
   protected Boolean cancelDonation;
   protected String stripeToken;
 
-  public ManageDonationEvent(Environment.RequestEnvironment requestEnv) {
-    this.requestEnv = requestEnv;
-  }
-
-  public ManageDonationEvent(Environment.RequestEnvironment requestEnv, ManageDonationFormData formData) throws ParseException {
-    this.requestEnv = requestEnv;
+  public ManageDonationEvent(ManageDonationFormData formData) throws ParseException {
     this.setDonationId(formData.recurringDonationId);
     formData.stripeToken.ifPresent(s -> this.stripeToken = s);
 
@@ -45,8 +39,6 @@ public class ManageDonationEvent {
   }
 
   // ACCESSORS
-
-  public Environment.RequestEnvironment getRequestEnv() { return this.requestEnv; }
 
   public String getDonationId() { return this.donationId; }
 

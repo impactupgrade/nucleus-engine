@@ -6,8 +6,8 @@ package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.AbstractMockTest;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.environment.ProcessContext;
+import com.impactupgrade.nucleus.model.event.PaymentGatewayWebhookEvent;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentSourceCollection;
@@ -26,15 +26,16 @@ public class StripeControllerMockTest extends AbstractMockTest {
 
   @Test
   public void testCustomCampaignMetadata() throws Exception {
-    EnvironmentConfig envConfig = new EnvironmentConfig();
-    envConfig.metadataKeys.campaign = Set.of("sf_campaign", "Designation Code");
-    Environment env = new DefaultEnvironment() {
+    // TODO: Needs wired into the new paradigm
+    Environment env = new Environment();
+    env.metadataKeys.campaign = Set.of("sf_campaign", "Designation Code");
+    ProcessContext processContext = new DefaultProcessContext() {
       @Override
-      public EnvironmentConfig config() {
-        return envConfig;
+      public Environment getEnv() {
+        return env;
       }
     };
-    StripeController stripeController = new StripeController(env);
+    StripeController stripeController = new StripeController();
 
     Customer customer = new Customer();
     customer.setId("customer_1");
@@ -55,7 +56,8 @@ public class StripeControllerMockTest extends AbstractMockTest {
     Map<String, String> chargeMetadata = Map.of("Designation Code", "campaign_1");
     charge.setMetadata(chargeMetadata);
 
-    stripeController.processEvent("charge.succeeded", charge, new DefaultRequestEnvironment(null));
+    PaymentGatewayWebhookEvent event = new PaymentGatewayWebhookEvent(processContext);
+    stripeController.processEvent("charge.succeeded", charge, event);
 
     ArgumentCaptor<PaymentGatewayWebhookEvent> argumentCaptor = ArgumentCaptor.forClass(PaymentGatewayWebhookEvent.class);
     verify(donationServiceMock).createDonation(argumentCaptor.capture());
