@@ -115,6 +115,10 @@ public class DonationService {
       return;
     }
 
+    if (manageDonationEvent.getDonationId() == null) {
+      manageDonationEvent.setDonationId(recurringDonation.get().id());
+    }
+
     manageDonationEvent.setSubscriptionId(crmService.getSubscriptionId(manageDonationEvent));
     if (manageDonationEvent.getCancelDonation()) {
       crmService.closeRecurringDonation(manageDonationEvent);

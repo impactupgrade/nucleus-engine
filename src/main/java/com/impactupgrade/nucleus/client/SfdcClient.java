@@ -321,6 +321,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  public Optional<SObject> getRecurringDonationByName(String name) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.config().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where name='" + name + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
+
   public Optional<SObject> getRecurringDonationBySubscriptionId(String subscriptionId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId + " = '" + subscriptionId + "'";
     LoggingUtil.verbose(log, query);
