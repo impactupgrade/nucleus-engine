@@ -4,10 +4,9 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
-import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
@@ -21,18 +20,17 @@ public interface CrmService {
   Optional<CrmContact> getContactByEmail(String email) throws Exception;
   Optional<CrmContact> getContactByPhone(String phone) throws Exception;
 
-  // Most flows need to create some common record types. Let's try to keep these generic whenever possible!
-  String insertAccount(CrmAccount crmAccount) throws Exception;
-  String insertContact(CrmContact crmContact) throws Exception;
-  void updateContact(CrmContact crmContact) throws Exception;
-
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
 
+  String insertContact(OpportunityEvent opportunityEvent) throws Exception;
+  void updateContact(OpportunityEvent opportunityEvent) throws Exception;
   String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception;
 
   Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
+  String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
+  String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
   void refundDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;

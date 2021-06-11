@@ -132,6 +132,7 @@ public class TwilioController {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={}",
         from, firstName, lastName, fullName, email, emailOptIn, smsOptIn, listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId);
     Environment env = envFactory.init(request);
+    OpportunityEvent opportunityEvent = new OpportunityEvent(env);
 
     if (!Strings.isNullOrEmpty(fullName)) {
       String[] split = Utils.fullNameToFirstLast(fullName);
@@ -144,6 +145,7 @@ public class TwilioController {
     }
 
     CrmContact crmContact = env.messagingService().processContact(
+        opportunityEvent,
         from,
         firstName,
         lastName,

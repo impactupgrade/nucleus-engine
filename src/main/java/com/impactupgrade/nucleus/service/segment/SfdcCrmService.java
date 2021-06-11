@@ -93,9 +93,9 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(CrmAccount crmAccount) throws Exception {
+  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
     SObject account = new SObject("Account");
-    setAccountFields(account, crmAccount);
+    setAccountFields(account, paymentGatewayWebhookEvent.getCrmAccount());
     return sfdcClient.insert(account).getId();
   }
 
@@ -110,17 +110,24 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(CrmContact crmContact) throws Exception {
+  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
     SObject contact = new SObject("Contact");
-    setContactFields(contact, crmContact);
+    setContactFields(contact, paymentGatewayWebhookEvent.getCrmContact());
     return sfdcClient.insert(contact).getId();
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public String insertContact(OpportunityEvent opportunityEvent) throws Exception {
     SObject contact = new SObject("Contact");
-    contact.setId(crmContact.id);
-    setContactFields(contact, crmContact);
+    setContactFields(contact, opportunityEvent.getCrmContact());
+    return sfdcClient.insert(contact).getId();
+  }
+
+  @Override
+  public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
+    SObject contact = new SObject("Contact");
+    contact.setId(opportunityEvent.getCrmContact().id);
+    setContactFields(contact, opportunityEvent.getCrmContact());
     sfdcClient.update(contact);
   }
 

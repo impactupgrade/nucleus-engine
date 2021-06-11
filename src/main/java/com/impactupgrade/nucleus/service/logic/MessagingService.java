@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
@@ -23,6 +24,7 @@ public class MessagingService {
   }
 
   public CrmContact processContact(
+      OpportunityEvent opportunityEvent,
       String phone,
       String firstName,
       String lastName,
@@ -76,30 +78,32 @@ public class MessagingService {
       newCrmContact.emailOptIn = emailOptIn;
       newCrmContact.smsOptIn = smsOptIn;
 
-      crmContact.id = crmService.insertContact(newCrmContact);
+      opportunityEvent.setCrmContact(newCrmContact);
+
+      crmContact.id = crmService.insertContact(opportunityEvent);
     } else {
       // Existed, so use it
       log.info("contact already existed in CRM: {}", crmContact.id);
 
-      CrmContact updateCrmContact = new CrmContact(crmContact.id);
+      opportunityEvent.setCrmContact(crmContact);
 
       if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
         log.info("contact {} missing firstName; updating it...", crmContact.id);
-        updateCrmContact.firstName = firstName;
+        opportunityEvent.getCrmContact().firstName = firstName;
       }
       if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
         log.info("contact {} missing lastName; updating it...", crmContact.id);
-        updateCrmContact.lastName = lastName;
+        opportunityEvent.getCrmContact().lastName = lastName;
       }
       if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
         log.info("contact {} missing email; updating it...", crmContact.id);
-        updateCrmContact.email = email;
+        opportunityEvent.getCrmContact().email = email;
       }
 
-      updateCrmContact.emailOptIn = emailOptIn;
-      updateCrmContact.smsOptIn = smsOptIn;
+      opportunityEvent.getCrmContact().emailOptIn = emailOptIn;
+      opportunityEvent.getCrmContact().smsOptIn = smsOptIn;
 
-      crmService.updateContact(updateCrmContact);
+      crmService.updateContact(opportunityEvent);
     }
 
     return crmContact;

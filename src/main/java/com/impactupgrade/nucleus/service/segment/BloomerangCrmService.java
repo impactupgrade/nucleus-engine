@@ -10,10 +10,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
@@ -128,7 +127,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(CrmAccount crmAccount) throws Exception {
+  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
     // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
     return null;
   }
@@ -138,7 +137,16 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(CrmContact crmContact) throws Exception {
+  public String insertContact(OpportunityEvent opportunityEvent) throws Exception {
+    return insertContact(opportunityEvent.getCrmContact());
+  }
+
+  @Override
+  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+    return insertContact(paymentGatewayEvent.getCrmContact());
+  }
+
+  private String insertContact(CrmContact crmContact) throws Exception {
     Constituent constituent = new Constituent();
     constituent.firstName = crmContact.firstName;
     constituent.lastName = crmContact.lastName;
@@ -179,7 +187,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

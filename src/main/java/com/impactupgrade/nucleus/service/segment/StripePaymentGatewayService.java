@@ -17,11 +17,14 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   private static final Logger log = LogManager.getLogger(StripePaymentGatewayService.class);
 
-  public StripePaymentGatewayService(Environment env) {}
+  private final StripeClient stripeClient;
+
+  public StripePaymentGatewayService(Environment env) {
+    stripeClient = env.stripeClient();
+  }
 
   @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {
-    StripeClient stripeClient = manageDonationEvent.getEnv().stripeClient();
     if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
       stripeClient.updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
     }
@@ -45,7 +48,6 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   @Override
   public void cancelSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
-    StripeClient stripeClient = manageDonationEvent.getEnv().stripeClient();
     stripeClient.cancelSubscription(manageDonationEvent.getSubscriptionId());
   }
 }

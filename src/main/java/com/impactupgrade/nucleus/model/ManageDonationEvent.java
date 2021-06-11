@@ -47,10 +47,6 @@ public class ManageDonationEvent {
 
   // ACCESSORS
 
-  public Environment getEnv() {
-    return env;
-  }
-
   public String getDonationId() { return this.donationId; }
 
   public void setDonationId(String donationId) { this.donationId = donationId; }

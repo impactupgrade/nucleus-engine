@@ -56,10 +56,10 @@ public class DonorService {
         paymentGatewayEvent.getCrmContact().email);
 
     // create new Household Account
-    String accountId = crmService.insertAccount(paymentGatewayEvent.getCrmAccount());
+    String accountId = crmService.insertAccount(paymentGatewayEvent);
     paymentGatewayEvent.setCrmAccountId(accountId);
     // create new Contact
-    String contactId = crmService.insertContact(paymentGatewayEvent.getCrmContact());
+    String contactId = crmService.insertContact(paymentGatewayEvent);
     paymentGatewayEvent.setCrmContactId(contactId);
   }
 }

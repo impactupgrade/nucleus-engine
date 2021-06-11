@@ -20,10 +20,6 @@ public class OpportunityEvent {
     this.env = env;
   }
 
-  public Environment getEnv() {
-    return env;
-  }
-
   public CrmContact getCrmContact() {
     return crmContact;
   }

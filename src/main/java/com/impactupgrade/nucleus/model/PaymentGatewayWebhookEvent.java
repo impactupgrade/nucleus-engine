@@ -531,10 +531,6 @@ public class PaymentGatewayWebhookEvent {
   // GETTERS/SETTERS
   // Note that we allow setters here, as orgs sometimes need to override the values based on custom logic.
 
-  public Environment getEnv() {
-    return env;
-  }
-
   public CrmAccount getCrmAccount() {
     return crmAccount;
   }

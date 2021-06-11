@@ -144,9 +144,9 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(CrmAccount crmAccount) throws Exception {
+  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
     CompanyProperties account = new CompanyProperties();
-    setAccountFields(account, crmAccount);
+    setAccountFields(account, paymentGatewayWebhookEvent.getCrmAccount());
     Company response = hsClient.company().insert(account);
     return response == null ? null : response.getId();
   }
@@ -166,7 +166,16 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(CrmContact crmContact) throws Exception {
+  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
+    return insertContact(paymentGatewayWebhookEvent.getCrmContact());
+  }
+
+  @Override
+  public String insertContact(OpportunityEvent opportunityEvent) throws Exception {
+    return insertContact(opportunityEvent.getCrmContact());
+  }
+
+  private String insertContact(CrmContact crmContact) throws Exception {
     ContactProperties contact = new ContactProperties();
     setContactFields(contact, crmContact);
     Contact response = hsClient.contact().insert(contact);
@@ -174,11 +183,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
     // TODO: test with Twilio flows
     ContactProperties contact = new ContactProperties();
-    setContactFields(contact, crmContact);
-    hsClient.contact().update(crmContact.id, contact);
+    setContactFields(contact, opportunityEvent.getCrmContact());
+    hsClient.contact().update(opportunityEvent.getCrmContact().id, contact);
   }
 
   @Override
