@@ -118,8 +118,6 @@ public class EnvironmentConfig {
     public String smsOptIn = "";
   }
 
-  public String currency = "";
-
   public static EnvironmentConfig init() {
     try (
         InputStream jsonDefault = Thread.currentThread().getContextClassLoader()

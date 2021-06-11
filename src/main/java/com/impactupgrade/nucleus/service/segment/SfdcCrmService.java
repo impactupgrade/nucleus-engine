@@ -200,7 +200,7 @@ public class SfdcCrmService implements CrmService {
       PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     SObject opportunity = new SObject("Opportunity");
 
-    opportunity.setField("AccountId", paymentGatewayEvent.getCrmAccountId());
+    opportunity.setField("AccountId", paymentGatewayEvent.getCrmAccount().id);
     // TODO: Shouldn't this be doing ContactId?
     opportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
 
@@ -306,7 +306,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     // TODO: Assign to contact if available? Can only do one or the other -- see DR.
-    recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getCrmAccountId());
+    recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getCrmAccount().id);
     recurringDonation.setField("Npe03__Amount__c", paymentGatewayEvent.getSubscriptionAmountInDollars());
     recurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
     recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");

@@ -199,7 +199,7 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     Donation donation = new Donation();
-    donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContactId());
+    donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
     donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
     donation.date = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
 
@@ -214,7 +214,7 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     RecurringDonation donation = new RecurringDonation();
-    donation.setAccountId(Integer.parseInt(paymentGatewayEvent.getCrmContactId()));
+    donation.setAccountId(Integer.parseInt(paymentGatewayEvent.getCrmContact().id));
     donation.setAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
     donation.setDate(new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime()));
 

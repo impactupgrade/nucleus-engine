@@ -99,7 +99,7 @@ public class PaymentGatewayWebhookEvent {
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
-    if (env.getConfig().currency.equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
+    if (env.getCurrency().equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
@@ -146,7 +146,7 @@ public class PaymentGatewayWebhookEvent {
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
-    if (env.getConfig().currency.equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
+    if (env.getCurrency().equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
@@ -458,11 +458,16 @@ public class PaymentGatewayWebhookEvent {
 
   // DO NOT LET THESE BE AUTO-GENERATED, ALLOWING METADATARETRIEVER TO PROVIDE DEFAULTS
 
-  public String getCrmAccountId() {
+  public CrmAccount getCrmAccount() {
+    // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmAccount.id)) {
-      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.account);
+      crmAccount.id = metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.account);
     }
-    return crmAccount.id;
+    return crmAccount;
+  }
+
+  public void setCrmAccount(CrmAccount crmAccount) {
+    this.crmAccount = crmAccount;
   }
 
   public void setCrmAccountId(String crmAccountId) {
@@ -470,11 +475,16 @@ public class PaymentGatewayWebhookEvent {
     crmContact.accountId = crmAccountId;
   }
 
-  public String getCrmContactId() {
+  public CrmContact getCrmContact() {
+    // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmContact.id)) {
-      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.contact);
+      crmContact.id = metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.contact);
     }
-    return crmContact.id;
+    return crmContact;
+  }
+
+  public void setCrmContact(CrmContact crmContact) {
+    this.crmContact = crmContact;
   }
 
   public void setCrmContactId(String crmContactId) {
@@ -530,22 +540,6 @@ public class PaymentGatewayWebhookEvent {
 
   // GETTERS/SETTERS
   // Note that we allow setters here, as orgs sometimes need to override the values based on custom logic.
-
-  public CrmAccount getCrmAccount() {
-    return crmAccount;
-  }
-
-  public void setCrmAccount(CrmAccount crmAccount) {
-    this.crmAccount = crmAccount;
-  }
-
-  public CrmContact getCrmContact() {
-    return crmContact;
-  }
-
-  public void setCrmContact(CrmContact crmContact) {
-    this.crmContact = crmContact;
-  }
 
   public String getCustomerId() {
     return customerId;

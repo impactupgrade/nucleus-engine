@@ -226,8 +226,8 @@ public class HubSpotCrmService implements CrmService {
 //            "deal_to_deal");
 //        hsClient.association().insert(recurringDonationAssociation);
       }
-      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccountId());
-      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContactId());
+      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccount().id);
+      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContact().id);
 
       return response.getId();
     } else {
@@ -317,8 +317,8 @@ public class HubSpotCrmService implements CrmService {
 
     Deal response = hsClient.deal().insert(deal);
     if (response != null) {
-      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccountId());
-      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContactId());
+      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccount().id);
+      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContact().id);
 
       return response.getId();
     } else {
