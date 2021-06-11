@@ -33,8 +33,10 @@ public class Environment {
 
   public static class Platform {
     public String name = "";
-    public String key = "";
+    public String username = "";
+    public String password = "";
     public String publicKey = "";
+    public String secretKey = "";
   }
 
   public MetadataKeys metadataKeys = new MetadataKeys();

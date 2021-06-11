@@ -21,6 +21,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 
 /**
@@ -40,11 +41,11 @@ public class ProcessContext {
 
   // Whenever possible, we focus on being configuration-driven using one, large JSON file.
   // But this is limited to static config. Anything dynamic instead happens at the superclass level.
-  Environment env = Environment.init();
+  protected Environment env = Environment.init();
 
   // Additional context, if available.
-  HttpServletRequest request = null;
-  MultivaluedMap<String, String> otherContext = null;
+  protected HttpServletRequest request = null;
+  protected MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
 
   // package-private, allowing only the factory to init
   protected ProcessContext() {}

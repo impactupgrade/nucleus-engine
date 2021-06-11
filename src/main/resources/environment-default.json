@@ -1,13 +1,10 @@
 {
   "platforms": {
     "crm": {
-      "name": "",
-      "key": ""
+      "name": ""
     },
     "paymentGateway": {
-      "name": "",
-      "key": "",
-      "publicKey": ""
+      "name": ""
     }
   },
 
