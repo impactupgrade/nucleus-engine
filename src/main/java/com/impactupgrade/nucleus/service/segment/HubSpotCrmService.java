@@ -18,7 +18,7 @@ import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -381,7 +381,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CRMImportEvent> importEvents) throws Exception {
+  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
     // TODO
   }
 

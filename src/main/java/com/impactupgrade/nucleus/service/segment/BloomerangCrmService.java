@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -234,7 +234,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CRMImportEvent> importEvents) throws Exception {
+  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

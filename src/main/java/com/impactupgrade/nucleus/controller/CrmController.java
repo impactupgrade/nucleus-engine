@@ -5,7 +5,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
@@ -68,7 +68,7 @@ public class CrmController {
           data.add(csvRecord.toMap());
         }
 
-        List<CRMImportEvent> importEvents = CRMImportEvent.fromGeneric(data);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
         crmService.processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
@@ -91,7 +91,7 @@ public class CrmController {
     Runnable thread = () -> {
       try {
         List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-        List<CRMImportEvent> importEvents = CRMImportEvent.fromGeneric(data);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
         crmService.processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
@@ -128,7 +128,7 @@ public class CrmController {
           data.add(csvRecord.toMap());
         }
 
-        List<CRMImportEvent> importEvents = CRMImportEvent.fromFBFundraiser(data);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
         crmService.processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);

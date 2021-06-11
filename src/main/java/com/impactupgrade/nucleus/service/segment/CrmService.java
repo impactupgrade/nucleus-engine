@@ -4,7 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
-import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -45,5 +45,5 @@ public interface CrmService {
   String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception;
   void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
-  void processImport(List<CRMImportEvent> importEvents) throws Exception;
+  void processImport(List<CrmImportEvent> importEvents) throws Exception;
 }

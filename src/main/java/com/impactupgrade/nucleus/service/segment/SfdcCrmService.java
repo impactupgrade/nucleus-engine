@@ -10,7 +10,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CRMImportEvent;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -433,7 +433,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CRMImportEvent> importEvents) throws Exception {
+  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
     // hold a map of campaigns so we don't have to visit them each time
     LoadingCache<String, Optional<SObject>> campaignCache = CacheBuilder.newBuilder().build(
         new CacheLoader<>() {
@@ -446,7 +446,7 @@ public class SfdcCrmService implements CrmService {
     );
 
     for (int i = 0; i < importEvents.size(); i++) {
-      CRMImportEvent importEvent = importEvents.get(i);
+      CrmImportEvent importEvent = importEvents.get(i);
 
       log.info("processing row {} of {}: {}", i + 2, importEvents.size() + 1, importEvent);
 
@@ -520,7 +520,7 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
-  protected void setBulkImportContactFields(SObject contact, CRMImportEvent importEvent) {
+  protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());
     contact.setField("FirstName", importEvent.getFirstName());
     contact.setField("LastName", importEvent.getLastName());
@@ -535,7 +535,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setBulkImportOpportunityFields(SObject opportunity, SObject contact,
-      LoadingCache<String, Optional<SObject>> campaignCache, CRMImportEvent importEvent) throws ConnectionException, InterruptedException, ParseException, ExecutionException {
+      LoadingCache<String, Optional<SObject>> campaignCache, CrmImportEvent importEvent) throws ConnectionException, InterruptedException, ParseException, ExecutionException {
     opportunity.setField("AccountId", contact.getField("AccountId"));
     opportunity.setField("ContactId", contact.getId());
     if (!Strings.isNullOrEmpty(importEvent.getOpportunityRecordTypeId())) {
