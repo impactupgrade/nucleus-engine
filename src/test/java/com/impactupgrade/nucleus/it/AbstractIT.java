@@ -5,7 +5,9 @@
 package com.impactupgrade.nucleus.it;
 
 import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -49,19 +51,19 @@ public class AbstractIT extends JerseyTest {
     enable(TestProperties.LOG_TRAFFIC);
     enable(TestProperties.DUMP_ENTITY);
 
-    Environment env = getEnv();
-
     ResourceConfig apiConfig = new ResourceConfig();
 
     apiConfig.register(new SecurityExceptionMapper());
     apiConfig.register(MultiPartFeature.class);
 
-    apiConfig.register(env.stripeController());
-    try {
-      env.registerAPIControllers(apiConfig);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    EnvironmentFactory envFactory = new EnvironmentFactory() {
+      @Override
+      protected Environment newEnv() {
+        return getEnv();
+      }
+    };
+
+    apiConfig.register(new StripeController(envFactory));
 
     return apiConfig;
   }

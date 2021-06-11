@@ -5,9 +5,9 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -37,10 +37,10 @@ public class CrmController {
 
   private static final Logger log = LogManager.getLogger(CrmController.class.getName());
 
-  private final CrmService crmService;
+  protected final EnvironmentFactory envFactory;
 
-  public CrmController(Environment env) {
-    crmService = env.crmService();
+  public CrmController(EnvironmentFactory envFactory) {
+    this.envFactory = envFactory;
   }
 
   @Path("/bulk-import/file")
@@ -52,6 +52,7 @@ public class CrmController {
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -68,8 +69,8 @@ public class CrmController {
           data.add(csvRecord.toMap());
         }
 
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
-        crmService.processImport(importEvents);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
+        env.crmService().processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -87,12 +88,13 @@ public class CrmController {
       @FormParam("google-sheet-url") String gsheetUrl,
       @Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
       try {
         List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
-        crmService.processImport(importEvents);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
+        env.crmService().processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -112,6 +114,7 @@ public class CrmController {
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -128,8 +131,8 @@ public class CrmController {
           data.add(csvRecord.toMap());
         }
 
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
-        crmService.processImport(importEvents);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data, env);
+        env.crmService().processImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }

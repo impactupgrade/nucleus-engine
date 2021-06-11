@@ -7,7 +7,6 @@ package com.impactupgrade.nucleus.model;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.MetadataRetriever;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.Environment.RequestEnvironment;
 import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
@@ -29,7 +28,6 @@ import java.util.Optional;
 public class PaymentGatewayWebhookEvent {
   
   protected final Environment env;
-  protected final RequestEnvironment requestEnv;
   protected final MetadataRetriever metadataRetriever;
 
   // determined by event
@@ -66,10 +64,9 @@ public class PaymentGatewayWebhookEvent {
   protected String depositId;
   protected Calendar depositDate;
 
-  public PaymentGatewayWebhookEvent(Environment env, RequestEnvironment requestEnv) {
+  public PaymentGatewayWebhookEvent(Environment env) {
     this.env = env;
-    this.requestEnv = requestEnv;
-    metadataRetriever = new MetadataRetriever(requestEnv);
+    metadataRetriever = new MetadataRetriever(env);
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
@@ -102,7 +99,7 @@ public class PaymentGatewayWebhookEvent {
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
-    if (requestEnv.currency().equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
+    if (env.getConfig().currency.equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
@@ -149,7 +146,7 @@ public class PaymentGatewayWebhookEvent {
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
-    if (requestEnv.currency().equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
+    if (env.getConfig().currency.equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
@@ -463,7 +460,7 @@ public class PaymentGatewayWebhookEvent {
 
   public String getCrmAccountId() {
     if (Strings.isNullOrEmpty(crmAccount.id)) {
-      return metadataRetriever.getMetadataValue(env.config().metadataKeys.account);
+      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.account);
     }
     return crmAccount.id;
   }
@@ -475,7 +472,7 @@ public class PaymentGatewayWebhookEvent {
 
   public String getCrmContactId() {
     if (Strings.isNullOrEmpty(crmContact.id)) {
-      return metadataRetriever.getMetadataValue(env.config().metadataKeys.contact);
+      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.contact);
     }
     return crmContact.id;
   }
@@ -495,7 +492,7 @@ public class PaymentGatewayWebhookEvent {
 
   public String getDonationCrmRecordTypeId() {
     if (Strings.isNullOrEmpty(crmDonationRecordTypeId)) {
-      return metadataRetriever.getMetadataValue(env.config().metadataKeys.recordType);
+      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.recordType);
     }
     return crmDonationRecordTypeId;
   }
@@ -506,7 +503,7 @@ public class PaymentGatewayWebhookEvent {
 
   public String getCampaignId() {
     if (Strings.isNullOrEmpty(campaignId)) {
-      return metadataRetriever.getMetadataValue(env.config().metadataKeys.campaign);
+      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.campaign);
     }
     return campaignId;
   }
@@ -536,10 +533,6 @@ public class PaymentGatewayWebhookEvent {
 
   public Environment getEnv() {
     return env;
-  }
-
-  public RequestEnvironment getRequestEnv() {
-    return requestEnv;
   }
 
   public CrmAccount getCrmAccount() {

@@ -27,8 +27,16 @@ public class EnvironmentConfig {
   public Platforms platforms = new Platforms();
 
   public static class Platforms {
-    public String crm = "";
-    public String paymentGateway = "";
+    public Platform crm = new Platform();
+    public Platform paymentGateway = new Platform();
+  }
+
+  public static class Platform {
+    public String name = "";
+    public String username = "";
+    public String password = "";
+    public String publicKey = "";
+    public String secretKey = "";
   }
 
   public MetadataKeys metadataKeys = new MetadataKeys();
@@ -109,6 +117,8 @@ public class EnvironmentConfig {
     public String emailOptIn = "";
     public String smsOptIn = "";
   }
+
+  public String currency = "";
 
   public static EnvironmentConfig init() {
     try (

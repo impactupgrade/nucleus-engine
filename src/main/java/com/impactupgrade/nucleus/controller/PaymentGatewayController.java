@@ -5,13 +5,10 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.ManageDonationFormData;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.logic.DonationService;
-import com.impactupgrade.nucleus.service.segment.CrmService;
-
-import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,11 +16,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
-import javax.ws.rs.core.Form;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -32,14 +29,10 @@ public class PaymentGatewayController {
 
   private static final Logger log = LogManager.getLogger(PaymentGatewayController.class);
 
-  protected final Environment env;
-  protected final CrmService crmService;
-  protected final DonationService donationService;
+  protected final EnvironmentFactory envFactory;
 
-  public PaymentGatewayController(Environment env) {
-    this.env = env;
-    crmService = env.crmService();
-    donationService = env.donationService();
+  public PaymentGatewayController(EnvironmentFactory envFactory) {
+    this.envFactory = envFactory;
   }
 
   // TODO: Rethink this method. I'm not excited about getRecurringDonation having to return the gateway-specific
@@ -76,10 +69,10 @@ public class PaymentGatewayController {
       @Context HttpServletRequest request
   ) throws Exception {
     SecurityUtil.verifyApiKey(request);
-    final Environment.RequestEnvironment requestEnv = env.newRequestEnvironment(request, rawFormData.asMap());
+    Environment env = envFactory.init(request, rawFormData.asMap());
 
-    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(requestEnv, formData);
-    donationService.updateRecurringDonation(manageDonationEvent);
+    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(formData, env);
+    env.donationService().updateRecurringDonation(manageDonationEvent);
 
     return Response.status(200).build();
   }

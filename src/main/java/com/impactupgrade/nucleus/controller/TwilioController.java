@@ -9,11 +9,10 @@ import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.logic.MessagingService;
-import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
@@ -56,12 +55,10 @@ public class TwilioController {
     }
   }
 
-  private final MessagingService messagingService;
-  private final CrmService crmService;
+  protected final EnvironmentFactory envFactory;
 
-  public TwilioController(Environment env) {
-    messagingService = env.messagingService();
-    crmService = env.crmService();
+  public TwilioController(EnvironmentFactory envFactory) {
+    this.envFactory = envFactory;
   }
 
   @Path("/outbound/hubspot-list")
@@ -70,6 +67,7 @@ public class TwilioController {
   public Response outboundToHubSpotList(@FormParam("list-id") List<Long> listIds, @FormParam("message") String message,
       @Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
 
@@ -128,10 +126,12 @@ public class TwilioController {
       @FormParam("CampaignId") String campaignId,
       @FormParam("OpportunityName") String opportunityName,
       @FormParam("OpportunityRecordTypeId") String opportunityRecordTypeId,
-      @FormParam("OpportunityOwnerId") String opportunityOwnerId
+      @FormParam("OpportunityOwnerId") String opportunityOwnerId,
+      @Context HttpServletRequest request
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={}",
         from, firstName, lastName, fullName, email, emailOptIn, smsOptIn, listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId);
+    Environment env = envFactory.init(request);
 
     if (!Strings.isNullOrEmpty(fullName)) {
       String[] split = Utils.fullNameToFirstLast(fullName);
@@ -143,7 +143,7 @@ public class TwilioController {
       listId = hsListId + "";
     }
 
-    CrmContact crmContact = messagingService.processContact(
+    CrmContact crmContact = env.messagingService().processContact(
         from,
         firstName,
         lastName,
@@ -152,19 +152,19 @@ public class TwilioController {
         smsOptIn
     );
     if (!Strings.isNullOrEmpty(campaignId)) {
-      crmService.addContactToCampaign(crmContact, campaignId);
+      env.crmService().addContactToCampaign(crmContact, campaignId);
     }
     if (!Strings.isNullOrEmpty(listId)) {
-      crmService.addContactToList(crmContact, listId);
+      env.crmService().addContactToList(crmContact, listId);
     }
     if (!Strings.isNullOrEmpty(opportunityName)) {
-      OpportunityEvent oppEvent = new OpportunityEvent();
+      OpportunityEvent oppEvent = new OpportunityEvent(env);
       oppEvent.setName(opportunityName);
       oppEvent.setRecordTypeId(opportunityRecordTypeId);
       oppEvent.setOwnerId(opportunityOwnerId);
       oppEvent.setCrmContact(crmContact);
       oppEvent.setCampaignId(campaignId);
-      crmService.insertOpportunity(oppEvent);
+      env.crmService().insertOpportunity(oppEvent);
     }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
@@ -190,8 +190,11 @@ public class TwilioController {
       @FormParam("From") String from,
       @FormParam("To") String to,
       @FormParam("Digits") String digits,
-      @QueryParam("owner") String owner) {
+      @QueryParam("owner") String owner,
+      @Context HttpServletRequest request
+  ) {
     log.info("from={} owner={}", from, owner);
+    Environment env = envFactory.init(request);
 
     String xml;
 

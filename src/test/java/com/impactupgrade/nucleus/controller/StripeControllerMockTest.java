@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.controller;
 import com.impactupgrade.nucleus.AbstractMockTest;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -30,11 +31,17 @@ public class StripeControllerMockTest extends AbstractMockTest {
     envConfig.metadataKeys.campaign = Set.of("sf_campaign", "Designation Code");
     Environment env = new DefaultEnvironment() {
       @Override
-      public EnvironmentConfig config() {
+      public EnvironmentConfig getConfig() {
         return envConfig;
       }
     };
-    StripeController stripeController = new StripeController(env);
+    EnvironmentFactory envFactory = new EnvironmentFactory() {
+      @Override
+      protected Environment newEnv() {
+        return env;
+      }
+    };
+    StripeController stripeController = new StripeController(envFactory);
 
     Customer customer = new Customer();
     customer.setId("customer_1");
@@ -55,7 +62,7 @@ public class StripeControllerMockTest extends AbstractMockTest {
     Map<String, String> chargeMetadata = Map.of("Designation Code", "campaign_1");
     charge.setMetadata(chargeMetadata);
 
-    stripeController.processEvent("charge.succeeded", charge, new DefaultRequestEnvironment(null));
+    stripeController.processEvent("charge.succeeded", charge, env);
 
     ArgumentCaptor<PaymentGatewayWebhookEvent> argumentCaptor = ArgumentCaptor.forClass(PaymentGatewayWebhookEvent.class);
     verify(donationServiceMock).createDonation(argumentCaptor.capture());

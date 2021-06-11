@@ -8,9 +8,10 @@ import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.stripe.exception.StripeException;
-import java.text.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.text.ParseException;
 
 public class StripePaymentGatewayService implements PaymentGatewayService {
 
@@ -20,7 +21,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {
-    StripeClient stripeClient = manageDonationEvent.getRequestEnv().stripeClient();
+    StripeClient stripeClient = manageDonationEvent.getEnv().stripeClient();
     if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
       stripeClient.updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
     }
@@ -44,7 +45,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   @Override
   public void cancelSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
-    StripeClient stripeClient = manageDonationEvent.getRequestEnv().stripeClient();
+    StripeClient stripeClient = manageDonationEvent.getEnv().stripeClient();
     stripeClient.cancelSubscription(manageDonationEvent.getSubscriptionId());
   }
 }

@@ -20,7 +20,7 @@ public class PaymentGatewayWebhookEventMockTest extends AbstractMockTest {
   public void testInitStripeCustomerName() {
     Environment env = new DefaultEnvironment();
     {
-      PaymentGatewayWebhookEvent event = new PaymentGatewayWebhookEvent(env, env.newRequestEnvironment(null));
+      PaymentGatewayWebhookEvent event = new PaymentGatewayWebhookEvent(env);
       Customer customer = new Customer();
       customer.setName("Brett Meyer The First");
       customer.setMetadata(Collections.emptyMap());

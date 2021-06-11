@@ -5,10 +5,8 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.client.SfdcBulkClient;
-import com.impactupgrade.nucleus.client.SfdcClient;
-import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -47,16 +45,10 @@ public class SfdcController {
 
   private static final Logger log = LogManager.getLogger(SfdcController.class.getName());
 
-  protected final Environment env;
-  protected final SfdcClient sfdcClient;
-  protected final SfdcMetadataClient sfdcMetadataClient;
-  protected final SfdcBulkClient sfdcBulkClient;
+  protected final EnvironmentFactory envFactory;
 
-  public SfdcController(Environment env) {
-    this.env = env;
-    sfdcClient = env.sfdcClient();
-    sfdcMetadataClient = new SfdcMetadataClient(env);
-    sfdcBulkClient = new SfdcBulkClient(env);
+  public SfdcController(EnvironmentFactory envFactory) {
+    this.envFactory = envFactory;
   }
 
   /**
@@ -81,6 +73,7 @@ public class SfdcController {
       @Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -88,7 +81,7 @@ public class SfdcController {
 
         // cache all users by name
         // TODO: Terrible idea for any SF instance with a large number of users -- filter to non-guest only?
-        List<SObject> users = sfdcClient.getActiveUsers();
+        List<SObject> users = env.sfdcClient().getActiveUsers();
         Map<String, String> userNameToId = new HashMap<>();
         for (SObject user : users) {
           userNameToId.put(user.getField("FirstName") + " " + user.getField("LastName"), user.getId());
@@ -100,12 +93,12 @@ public class SfdcController {
 
           log.info("processing row {} of {}: {}", i + 1, data.size(), row);
 
-          bulkUpdate("Account", row, userNameToId, optionalFieldColumnName);
-          bulkUpdate("Contact", row, userNameToId, optionalFieldColumnName);
+          bulkUpdate("Account", row, userNameToId, optionalFieldColumnName, env);
+          bulkUpdate("Contact", row, userNameToId, optionalFieldColumnName, env);
         }
 
         // update anything left in the batch queues
-        sfdcClient.batchFlush();
+        env.sfdcClient().batchFlush();
       } catch (Exception e) {
         log.error("bulkUpdate failed", e);
       }
@@ -116,7 +109,7 @@ public class SfdcController {
   }
 
   private void bulkUpdate(String type, Map<String, String> row, Map<String, String> userNameToId,
-      String optionalFieldColumnName) throws InterruptedException {
+      String optionalFieldColumnName, Environment env) throws InterruptedException {
     String id = row.get(type + " ID").trim();
     if (Strings.nullToEmpty(id).trim().isEmpty()) {
       // TODO: if ID is not included, support first retrieving by name, etc.
@@ -157,7 +150,7 @@ public class SfdcController {
         }
       }
 
-      sfdcClient.batchUpdate(sObject);
+      env.sfdcClient().batchUpdate(sObject);
     }
   }
 
@@ -172,6 +165,7 @@ public class SfdcController {
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
       try {
@@ -205,9 +199,9 @@ public class SfdcController {
           String opportunityId = row.get("Opportunity ID");
           SObject opportunity = new SObject("Opportunity");
           opportunity.setId(opportunityId);
-          sfdcClient.batchDelete(opportunity);
+          env.sfdcClient().batchDelete(opportunity);
         }
-        sfdcClient.batchFlush();;
+        env.sfdcClient().batchFlush();;
       } catch (Exception e) {
         log.error("bulkDelete failed", e);
       }
@@ -233,11 +227,12 @@ public class SfdcController {
       @Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       try {
-        sfdcMetadataClient.addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
+        env.sfdcMetadataClient().addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
         log.info("FINISHED: {}", globalPicklistApiName);
       } catch (Exception e) {
         log.error("{} failed", globalPicklistApiName, e);
@@ -261,6 +256,7 @@ public class SfdcController {
       @Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
@@ -311,7 +307,7 @@ public class SfdcController {
             log.info("processing row {}: {}", counter++, email);
 
             if (!Strings.isNullOrEmpty(email)) {
-              Optional<SObject> contact = sfdcClient.getContactByEmail(email);
+              Optional<SObject> contact = env.sfdcClient().getContactByEmail(email);
               if (contact.isPresent()) {
                 // SF expects date in yyyy-MM-dd'T'HH:mm:ss.SSS'Z, but iWave gives yyyy-MM-dd HH:mm
                 Date date = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(csvRecord.get("Date Scored"));
@@ -345,7 +341,7 @@ public class SfdcController {
           }
         }
 
-        sfdcBulkClient.uploadIWaveFile(combinedFile.toFile());
+        env.sfdcBulkClient().uploadIWaveFile(combinedFile.toFile());
         log.info("FINISHED: iwave");
       } catch (Exception e) {
         log.error("iwave update failed", e);
@@ -369,11 +365,12 @@ public class SfdcController {
       @Context HttpServletRequest request
   ) {
     SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       try {
-        sfdcBulkClient.uploadWindfallFile(file);
+        env.sfdcBulkClient().uploadWindfallFile(file);
         log.info("FINISHED: windfall");
       } catch (Exception e) {
         log.error("Windfall update failed", e);

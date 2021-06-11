@@ -6,7 +6,6 @@ package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.StripeClient;
-import com.impactupgrade.nucleus.environment.Environment.RequestEnvironment;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -36,8 +35,8 @@ public class MetadataRetriever {
   private Subscription stripeSubscription = null;
   private Customer stripeCustomer = null;
 
-  public MetadataRetriever(RequestEnvironment requestEnv) {
-    stripeClient = requestEnv.stripeClient();
+  public MetadataRetriever(Environment env) {
+    stripeClient = env.stripeClient();
   }
 
   public MetadataRetriever rawContext(String k, String v) {

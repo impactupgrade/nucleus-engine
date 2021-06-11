@@ -14,9 +14,8 @@ import com.impactupgrade.integration.paymentspring.model.Subscription;
 import com.impactupgrade.integration.paymentspring.model.Transaction;
 import com.impactupgrade.nucleus.client.PaymentSpringClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
-import com.impactupgrade.nucleus.service.logic.DonationService;
-import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,14 +49,10 @@ public class PaymentSpringController {
   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  private final Environment env;
-  private final DonorService donorService;
-  private final DonationService donationService;
+  protected final EnvironmentFactory envFactory;
 
-  public PaymentSpringController(Environment env) {
-    this.env = env;
-    donorService = env.donorService();
-    donationService = env.donationService();
+  public PaymentSpringController(EnvironmentFactory envFactory) {
+    this.envFactory = envFactory;
   }
 
   /**
@@ -73,6 +68,7 @@ public class PaymentSpringController {
     // PaymentSpring is so bloody difficult to replay. For now, as we're fixing issues, always log the raw requests.
 //    LoggingUtil.verbose(log, json);
     log.info(json);
+    Environment env = envFactory.init(request);
 
     Event event;
     try {
@@ -89,12 +85,12 @@ public class PaymentSpringController {
       log.info("received event {}: {}", event.getEventResource(), event.getEventType());
 
       try {
-        PaymentGatewayWebhookEvent paymentGatewayEvent = new PaymentGatewayWebhookEvent(env, env.newRequestEnvironment(request));
+        PaymentGatewayWebhookEvent paymentGatewayEvent = new PaymentGatewayWebhookEvent(env);
 
         switch (event.getEventResource()) {
           case "transaction":
             Transaction transaction = objectMapper.readValue(event.getPayloadJson().toString(), Transaction.class);
-            processTransaction(event, transaction, paymentGatewayEvent);
+            processTransaction(event, transaction, paymentGatewayEvent, env);
             break;
           case "subscription":
             switch (event.getEventType()) {
@@ -109,7 +105,7 @@ public class PaymentSpringController {
 
                 paymentGatewayEvent.initPaymentSpring(subscription);
 
-                donationService.closeRecurringDonation(paymentGatewayEvent);
+                env.donationService().closeRecurringDonation(paymentGatewayEvent);
                 break;
               default:
                 log.info("unhandled PaymentSpring subscription event type: {}", event.getEventType());
@@ -128,7 +124,8 @@ public class PaymentSpringController {
     return Response.status(200).build();
   }
 
-  private void processTransaction(Event event, Transaction transaction, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  private void processTransaction(Event event, Transaction transaction, PaymentGatewayWebhookEvent paymentGatewayEvent,
+      Environment env) throws Exception {
     log.info("found transaction {}", transaction.getId());
 
     Optional<Customer> transactionCustomer;
@@ -154,14 +151,14 @@ public class PaymentSpringController {
 
     switch (event.getEventType()) {
       case "created" -> {
-        donorService.processAccount(paymentGatewayEvent);
-        donationService.createDonation(paymentGatewayEvent);
+        env.donorService().processAccount(paymentGatewayEvent);
+        env.donationService().createDonation(paymentGatewayEvent);
       }
       case "failed" -> {
-        donorService.processAccount(paymentGatewayEvent);
-        donationService.createDonation(paymentGatewayEvent);
+        env.donorService().processAccount(paymentGatewayEvent);
+        env.donationService().createDonation(paymentGatewayEvent);
       }
-      case "refunded" -> donationService.refundDonation(paymentGatewayEvent);
+      case "refunded" -> env.donationService().refundDonation(paymentGatewayEvent);
       default -> log.info("unhandled PaymentSpring transaction event type: {}", event.getEventType());
     }
   }
@@ -184,7 +181,7 @@ public class PaymentSpringController {
   }
 
   // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-  public void verifyAndReplayPaymentSpringCharges(String startDate, String endDate, Environment.RequestEnvironment requestEnv) {
+  public void verifyAndReplayPaymentSpringCharges(String startDate, String endDate, Environment env) {
     SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
     List<Transaction> charges = PaymentSpringClientFactory.client().transactions().getTransactionsBetweenDates(startDate, endDate);
     int count = 0;
@@ -208,7 +205,7 @@ public class PaymentSpringController {
 
           Event event = new Event();
           event.setEventType("created");
-          processTransaction(event, charge, new PaymentGatewayWebhookEvent(env, requestEnv));
+          processTransaction(event, charge, new PaymentGatewayWebhookEvent(env), env);
         }
       } catch (Exception e) {
         e.printStackTrace();

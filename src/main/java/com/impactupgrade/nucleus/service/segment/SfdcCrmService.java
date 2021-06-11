@@ -140,11 +140,11 @@ public class SfdcCrmService implements CrmService {
     contact.setField("Email", crmContact.email);
     contact.setField("MobilePhone", crmContact.phone);
 
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.emailOptIn) && crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      contact.setField(env.config().salesforce.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn) && crmContact.emailOptIn != null && crmContact.emailOptIn) {
+      contact.setField(env.getConfig().salesforce.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
     }
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.smsOptIn) && crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      contact.setField(env.config().salesforce.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.smsOptIn) && crmContact.smsOptIn != null && crmContact.smsOptIn) {
+      contact.setField(env.getConfig().salesforce.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
     }
   }
 
@@ -203,14 +203,14 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setOpportunityFields(SObject opportunity, Optional<SObject> campaign, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayName)) {
-      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayName)) {
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
     }
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayTransactionId)) {
-      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId)) {
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
     }
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
-      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     }
 
     // check to see if this was a failed payment attempt and set the StageName accordingly
@@ -247,11 +247,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setOpportunityRefundFields(SObject opportunity, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
-      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
     }
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayRefundDate)) {
-      opportunity.setField(env.config().salesforce.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate)) {
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
     }
     // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
@@ -263,13 +263,13 @@ public class SfdcCrmService implements CrmService {
     Optional<SObject> opportunity = sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
     if (opportunity.isPresent()) {
       // Only do this if the field definitions are given in env.json, otherwise assume this method will be overridden.
-      if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayDepositId)
-          && opportunity.get().getField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)
+          && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
         SObject opportunityUpdate = new SObject("Opportunity");
         opportunityUpdate.setId(opportunity.get().getId());
-        opportunityUpdate.setField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-        opportunityUpdate.setField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-        opportunityUpdate.setField(env.config().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
         sfdcClient.update(opportunityUpdate);
       } else {
         log.info("skipping {}; already marked with deposit info", opportunity.get().getId());
@@ -288,14 +288,14 @@ public class SfdcCrmService implements CrmService {
    * Set any necessary fields on an RD before it's inserted.
    */
   protected void setRecurringDonationFields(SObject recurringDonation, Optional<SObject> campaign, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayName)) {
-      recurringDonation.setField(env.config().salesforce.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayName)) {
+      recurringDonation.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
     }
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId)) {
-      recurringDonation.setField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId)) {
+      recurringDonation.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
     }
-    if (!Strings.isNullOrEmpty(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
-      recurringDonation.setField(env.config().salesforce.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
+      recurringDonation.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     }
 
     // TODO: Assign to contact if available? Can only do one or the other -- see DR.
@@ -574,7 +574,7 @@ public class SfdcCrmService implements CrmService {
         ? Optional.empty() : sfdcClient.getCampaignById(paymentGatewayEvent.getCampaignId());
 
     if (campaign.isEmpty()) {
-      String defaultCampaignId = env.config().salesforce.defaultCampaignId;
+      String defaultCampaignId = env.getConfig().salesforce.defaultCampaignId;
       if (Strings.isNullOrEmpty(defaultCampaignId)) {
         log.info("campaign {} not found, but no default provided", paymentGatewayEvent.getCampaignId());
       } else {
@@ -636,7 +636,7 @@ public class SfdcCrmService implements CrmService {
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
     String id = sObject.getId();
     String accountId = (String) sObject.getField("npe03__Organization__c");
-    String subscriptionId = (String) sObject.getField(env.config().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
+    String subscriptionId = (String) sObject.getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
     return new CrmRecurringDonation(id, accountId, subscriptionId, amount);
   }

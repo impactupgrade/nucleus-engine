@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Joiner;
+import com.impactupgrade.nucleus.environment.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,6 +22,8 @@ import java.util.stream.Collectors;
 public class CrmImportEvent {
 
   private static final Logger log = LogManager.getLogger(CrmImportEvent.class.getName());
+
+  protected final Environment env;
 
   private final Map<String, String> raw;
 
@@ -52,16 +55,17 @@ public class CrmImportEvent {
   private String opportunityStageName;
   private String opportunityTerminal;
 
-  public CrmImportEvent(Map<String, String> raw) {
+  public CrmImportEvent(Map<String, String> raw, Environment env) {
     this.raw = raw;
+    this.env = env;
   }
 
-  public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromGeneric).collect(Collectors.toList());
+  public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data, Environment env) {
+    return data.stream().map(d -> fromGeneric(d, env)).collect(Collectors.toList());
   }
 
-  public static CrmImportEvent fromGeneric(Map<String, String> data) {
-    CrmImportEvent importEvent = new CrmImportEvent(data);
+  public static CrmImportEvent fromGeneric(Map<String, String> data, Environment env) {
+    CrmImportEvent importEvent = new CrmImportEvent(data, env);
 
     importEvent.city = data.get("City");
     importEvent.country = data.get("Country");
@@ -106,13 +110,13 @@ public class CrmImportEvent {
     return importEvent;
   }
 
-  public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromFBFundraiser).collect(Collectors.toList());
+  public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data, Environment env) {
+    return data.stream().map(d -> fromFBFundraiser(d, env)).collect(Collectors.toList());
   }
 
   // Taken from a sample CSV export from STS's Jan-Feb 2021 FB fundraisers.
-  public static CrmImportEvent fromFBFundraiser(Map<String, String> data) {
-    CrmImportEvent importEvent = new CrmImportEvent(data);
+  public static CrmImportEvent fromFBFundraiser(Map<String, String> data, Environment env) {
+    CrmImportEvent importEvent = new CrmImportEvent(data, env);
 
     // Note: commented-out fields were deemed not needed, for now
 //    importEvent. = data.get("Charge Time");

@@ -1,7 +1,11 @@
 {
   "platforms": {
-    "crm": "",
-    "paymentGateway": ""
+    "crm": {
+      "name": ""
+    },
+    "paymentGateway": {
+      "name": ""
+    }
   },
 
   "metadataKeys": {

@@ -1,7 +1,11 @@
 {
   "platforms": {
-    "crm": "salesforce",
-    "paymentGateway": "stripe"
+    "crm": {
+      "name": "salesforce"
+    },
+    "paymentGateway": {
+      "name": "stripe"
+    }
   },
 
   "salesforce": {

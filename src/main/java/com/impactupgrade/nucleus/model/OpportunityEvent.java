@@ -4,12 +4,25 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.impactupgrade.nucleus.environment.Environment;
+
 public class OpportunityEvent {
+
+  protected final Environment env;
+
   private CrmContact crmContact;
   private String name;
   private String recordTypeId;
   private String ownerId;
   private String campaignId;
+
+  public OpportunityEvent(Environment env) {
+    this.env = env;
+  }
+
+  public Environment getEnv() {
+    return env;
+  }
 
   public CrmContact getCrmContact() {
     return crmContact;

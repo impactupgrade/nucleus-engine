@@ -12,7 +12,8 @@ import java.text.ParseException;
 import java.util.Calendar;
 
 public class ManageDonationEvent {
-  protected final Environment.RequestEnvironment requestEnv;
+
+  protected final Environment env;
 
   protected String donationId;
   protected Double amount;
@@ -25,12 +26,12 @@ public class ManageDonationEvent {
   protected Boolean cancelDonation;
   protected String stripeToken;
 
-  public ManageDonationEvent(Environment.RequestEnvironment requestEnv) {
-    this.requestEnv = requestEnv;
+  public ManageDonationEvent(Environment env) {
+    this.env = env;
   }
 
-  public ManageDonationEvent(Environment.RequestEnvironment requestEnv, ManageDonationFormData formData) throws ParseException {
-    this.requestEnv = requestEnv;
+  public ManageDonationEvent(ManageDonationFormData formData, Environment env) throws ParseException {
+    this.env = env;
     this.setDonationId(formData.recurringDonationId);
     formData.stripeToken.ifPresent(s -> this.stripeToken = s);
 
@@ -46,7 +47,9 @@ public class ManageDonationEvent {
 
   // ACCESSORS
 
-  public Environment.RequestEnvironment getRequestEnv() { return this.requestEnv; }
+  public Environment getEnv() {
+    return env;
+  }
 
   public String getDonationId() { return this.donationId; }
 
