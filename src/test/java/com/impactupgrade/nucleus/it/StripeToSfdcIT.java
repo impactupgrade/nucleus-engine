@@ -23,15 +23,14 @@ public class StripeToSfdcIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    deleteSfdcAccounts();
-    deleteSfdcDonation("pi_1ImrOLHAwJOu5brrpQ71F1G9");
+    clearSfdc();
 
     // play a Stripe webhook, captured directly from our Stripe account itself
     String json = Resources.toString(Resources.getResource("stripe-charge-success.json"), StandardCharsets.UTF_8);
-    Response response = target("/stripe/webhook").request().post(Entity.json(json));
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-    SfdcClient sfdcClient = getEnv().sfdcClient();
+    SfdcClient sfdcClient = env().sfdcClient();
 
     // verify DonorService -> SfdcCrmService
     Optional<SObject> contactO = sfdcClient.getContactByEmail("team+integration+tester@impactupgrade.com");

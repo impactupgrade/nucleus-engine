@@ -37,7 +37,7 @@ public class StripeControllerMockTest extends AbstractMockTest {
     };
     EnvironmentFactory envFactory = new EnvironmentFactory() {
       @Override
-      protected Environment newEnv() {
+      public Environment newEnv() {
         return env;
       }
     };

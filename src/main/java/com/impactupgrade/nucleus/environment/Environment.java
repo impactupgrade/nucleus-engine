@@ -23,6 +23,9 @@ import org.apache.logging.log4j.Logger;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Every action within Nucleus is kicked off by either an HTTP Request or a manual script. This class
@@ -40,22 +43,38 @@ public class Environment {
   private static final Logger log = LogManager.getLogger(Environment.class);
 
   // Whenever possible, we focus on being configuration-driven using one, large JSON file.
-  protected final EnvironmentConfig config = EnvironmentConfig.init();
+  private final EnvironmentConfig config = EnvironmentConfig.init();
 
   // Additional context, if available.
-  protected HttpServletRequest request = null;
-  protected MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
+  // It seems odd to track URI and headers separately, rather than simply storing HttpServletRequest itself.
+  // However, many (most?) frameworks don't allow aspects of request to be accessed over and over. Due to the mechanics,
+  // some only allow it to be streamed once.
+  private String uri = null;
+  private final Map<String, String> headers = new HashMap<>();
+  private MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
 
   public EnvironmentConfig getConfig() {
     return config;
   }
 
-  public HttpServletRequest getRequest() {
-    return request;
+  public void setRequest(HttpServletRequest request) {
+    if (request != null) {
+      uri = request.getRequestURI();
+
+      Enumeration<String> headerNames = request.getHeaderNames();
+      while (headerNames.hasMoreElements()) {
+        String headerName = headerNames.nextElement();
+        headers.put(headerName, request.getHeader(headerName));
+      }
+    }
   }
 
-  public void setRequest(HttpServletRequest request) {
-    this.request = request;
+  public String getUri() {
+    return uri;
+  }
+
+  public Map<String, String> getHeaders() {
+    return headers;
   }
 
   public MultivaluedMap<String, String> getOtherContext() {

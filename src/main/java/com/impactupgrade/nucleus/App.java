@@ -35,9 +35,9 @@ import java.util.EnumSet;
 public class App {
 
   // $PORT env var provided by Heroku
-  private static final int PORT = Integer.parseInt(System.getenv("PORT"));
+  private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
-  protected void start() throws Exception {
+  public void start() throws Exception {
     Server server = new Server();
 
     final ServerConnector httpConnector = new ServerConnector(server);
@@ -98,7 +98,7 @@ public class App {
   /**
    * Allow orgs to wire in their custom implementations of Environment.
    */
-  public EnvironmentFactory environmentFactory() {
+  public EnvironmentFactory envFactory() {
     return new EnvironmentFactory();
   }
 
@@ -114,10 +114,10 @@ public class App {
 
   // Allow orgs to override specific controllers.
   protected BackupController backupController() { return new BackupController(); }
-  protected CrmController crmController() { return new CrmController(environmentFactory()); }
-  protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(environmentFactory()); }
-  protected PaymentSpringController paymentSpringController() { return new PaymentSpringController(environmentFactory()); }
-  protected SfdcController sfdcController() { return new SfdcController(environmentFactory()); }
-  protected StripeController stripeController() { return new StripeController(environmentFactory()); }
-  protected TwilioController twilioController() { return new TwilioController(environmentFactory()); }
+  protected CrmController crmController() { return new CrmController(envFactory()); }
+  protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory()); }
+  protected PaymentSpringController paymentSpringController() { return new PaymentSpringController(envFactory()); }
+  protected SfdcController sfdcController() { return new SfdcController(envFactory()); }
+  protected StripeController stripeController() { return new StripeController(envFactory()); }
+  protected TwilioController twilioController() { return new TwilioController(envFactory()); }
 }

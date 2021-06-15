@@ -4,38 +4,50 @@
 
 package com.impactupgrade.nucleus.it;
 
+import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
-import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
+import org.glassfish.jersey.test.external.ExternalTestContainerFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 
 import javax.ws.rs.core.Application;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class AbstractIT extends JerseyTest {
+public abstract class AbstractIT extends JerseyTest {
+
+  static {
+    System.setProperty("jersey.test.host", "localhost");
+    System.setProperty("jersey.config.test.container.port", "9009");
+  }
+
+  protected AbstractIT() {
+    super(new ExternalTestContainerFactory());
+  }
+
+  private final App app = getApp();
 
   // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
   // do not name this setUp()
   @BeforeAll
   public void before() throws Exception {
-    super.setUp();
     TestUtil.SKIP_NEW_THREADS = true;
+
+    app.start();
+
+    super.setUp();
   }
   // do not name this tearDown()
   @AfterAll
@@ -43,48 +55,53 @@ public class AbstractIT extends JerseyTest {
     super.tearDown();
   }
 
-  // TODO: Might be better to start App directly and use JerseyTest's external container, but the embedded Jetty
-  //  test container is good enough for now...
-  // TODO: If we do keep this, how to configure the test container to use the /api root?
   @Override
   protected Application configure() {
     enable(TestProperties.LOG_TRAFFIC);
     enable(TestProperties.DUMP_ENTITY);
-
-    ResourceConfig apiConfig = new ResourceConfig();
-
-    apiConfig.register(new SecurityExceptionMapper());
-    apiConfig.register(MultiPartFeature.class);
-
-    EnvironmentFactory envFactory = new EnvironmentFactory() {
-      @Override
-      protected Environment newEnv() {
-        return getEnv();
-      }
-    };
-
-    apiConfig.register(new StripeController(envFactory));
-
-    return apiConfig;
+    // This seems stupid, but I can't figure out how to get Jersey's test framework to skip config if using
+    // the external container. They likely do it this way in case a test needs to add a custom controller.
+    return new ResourceConfig();
   }
 
-  protected Environment getEnv() {
+  protected App getApp() {
+    return new App() {
+      @Override
+      public EnvironmentFactory envFactory() {
+        return new EnvironmentFactory() {
+          @Override
+          public Environment newEnv() {
+            return env();
+          }
+        };
+      }
+    };
+  }
+
+  protected Environment env() {
     return new EnvironmentIT();
   }
 
-  protected void deleteSfdcAccounts() throws Exception {
-    SfdcClient sfdcClient = getEnv().sfdcClient();
+  // Unlike App.java, let tests decide what they want to keep.
+  protected void registerAPIControllers(ResourceConfig apiConfig, EnvironmentFactory envFactory) {
+    apiConfig.register(new StripeController(envFactory));
+  }
 
-    List<SObject> existingAccounts = sfdcClient.getAccountsByName("Tester");
+  protected void clearSfdc() throws Exception {
+    clearSfdcByName("Tester");
+  }
+
+  protected void clearSfdcByName(String name) throws Exception {
+    SfdcClient sfdcClient = env().sfdcClient();
+
+    List<SObject> existingAccounts = sfdcClient.getAccountsByName(name);
     for (SObject existingAccount : existingAccounts) {
-      String accountId = existingAccount.getId();
-
-      List<SObject> existingOpps = sfdcClient.getDonationsByAccountId(accountId);
+      List<SObject> existingOpps = sfdcClient.getDonationsByAccountId(existingAccount.getId());
       for (SObject existingOpp : existingOpps) {
         sfdcClient.delete(existingOpp);
       }
 
-      List<SObject> existingRDs = sfdcClient.getRecurringDonationsByAccountId(accountId);
+      List<SObject> existingRDs = sfdcClient.getRecurringDonationsByAccountId(existingAccount.getId());
       for (SObject existingRD : existingRDs) {
         sfdcClient.delete(existingRD);
       }
@@ -93,30 +110,6 @@ public class AbstractIT extends JerseyTest {
     }
 
     // ensure we're actually clean
-    assertEquals(0, sfdcClient.getAccountsByName("Tester").size());
-  }
-
-  protected void deleteSfdcDonation(String transactionId) throws Exception {
-    SfdcClient sfdcClient = getEnv().sfdcClient();
-
-    Optional<SObject> existingDonation = sfdcClient.getDonationByTransactionId(transactionId);
-    if (existingDonation.isPresent()) {
-      sfdcClient.delete(existingDonation.get());
-    }
-
-    // ensure we're actually clean
-    assertTrue(sfdcClient.getDonationByTransactionId(transactionId).isEmpty());
-  }
-
-  protected void deleteSfdcRecurringDonation(String subscriptionId) throws Exception {
-    SfdcClient sfdcClient = getEnv().sfdcClient();
-
-    Optional<SObject> existingRD = sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId);
-    if (existingRD.isPresent()) {
-      sfdcClient.delete(existingRD.get());
-    }
-
-    // ensure we're actually clean
-    assertTrue(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId).isEmpty());
+    assertEquals(0, sfdcClient.getAccountsByName(name).size());
   }
 }
