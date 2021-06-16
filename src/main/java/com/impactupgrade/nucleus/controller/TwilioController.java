@@ -23,6 +23,9 @@ import com.twilio.twiml.voice.Gather;
 import com.twilio.twiml.voice.Redirect;
 import com.twilio.twiml.voice.Say;
 import com.twilio.type.PhoneNumber;
+import java.util.Arrays;
+import javax.ws.rs.core.Form;
+import javax.ws.rs.core.MultivaluedMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -217,6 +220,43 @@ public class TwilioController {
     MessagingResponse response = new MessagingResponse.Builder().build();
 
     return Response.ok().entity(response.toXml()).build();
+  }
+
+  /**
+   * This webhook serves as a more generic catch-all endpoint for inbound messages from Twilio.
+   */
+  @Path("/inbound/sms/catchall")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_XML)
+  public Response inboundKeyword(
+      Form rawFormData,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    MultivaluedMap<String, String> smsData = rawFormData.asMap();
+
+    Environment env = envFactory.init(request);
+
+    List<String> optInKeywords = Arrays.asList("START", "UNSTOP", "YES");
+    List<String> optOutKeywords = Arrays.asList("STOP", "STOPALL", "CANCEL", "END", "QUIT", "UNSUBSCRIBE");
+
+    String from = smsData.get("From").get(0);
+    if (smsData.containsKey("Body")) {
+      String body = smsData.get("Body").get(0).trim();
+      if (optInKeywords.contains(body.toUpperCase())) {
+//        log.info("opting in {} to sms...", from);
+        env.messagingService().processSmsOpt(from, "START");
+      } else if (optOutKeywords.contains(body.toUpperCase())) {
+//        log.info("opting out {} from sms...", from);
+        env.messagingService().processSmsOpt(from, "STOP");
+      }
+    }
+
+    // TODO: This builds TwiML, which we could later use to send back dynamic responses.
+//    MessagingResponse response = new MessagingResponse.Builder().build();
+//
+//    return Response.ok().entity(response.toXml()).build();
+    return Response.status(200).build();
   }
 
   /**

@@ -198,6 +198,16 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public void smsOptOutContact(CrmContact crmContact) {
+    // TODO
+  }
+
+  @Override
+  public void smsOptInContact(CrmContact crmContact) {
+    // TODO
+  }
+
+  @Override
   public String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     Donation donation = new Donation();
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
@@ -259,6 +269,11 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

@@ -150,6 +150,24 @@ public class SfdcCrmService implements CrmService {
     sfdcClient.insert(campaignMember);
   }
 
+  @Override
+  public void smsOptOutContact(CrmContact crmContact) throws InterruptedException {
+    SObject contact = new SObject("Contact");
+    contact.setId(crmContact.id);
+    contact.setField(env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
+    sfdcClient.update(contact);
+    log.info("opting contact {} out of sms...", crmContact.id);
+  }
+
+  @Override
+  public void smsOptInContact(CrmContact crmContact) throws InterruptedException {
+    SObject contact = new SObject("Contact");
+    contact.setId(crmContact.id);
+    contact.setField(env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
+    sfdcClient.update(contact);
+    log.info("opting in contact {} to sms ...", crmContact.id);
+  }
+
   protected void setContactFields(SObject contact, CrmContact crmContact) {
     contact.setField("AccountId", crmContact.accountId);
     contact.setField("FirstName", crmContact.firstName);
@@ -454,6 +472,11 @@ public class SfdcCrmService implements CrmService {
     else {
       return toCrmContact(sfdcClient.getContactsByOpportunityName(listId));
     }
+  }
+
+  @Override
+  public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
+    // likely not relevant in SFDC
   }
 
   @Override

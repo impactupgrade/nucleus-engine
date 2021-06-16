@@ -127,4 +127,23 @@ public class MessagingService {
       crmService.addContactToList(crmContact, listId);
     }
   }
+
+  public void processSmsOpt(
+      String phone,
+      String optOutType
+  ) throws Exception {
+    // First, look for an existing contact with the PN
+    CrmContact crmContact = crmService.getContactByPhone(phone).orElse(null);
+    if (crmContact != null) {
+      if (optOutType.equalsIgnoreCase("STOP")) {
+        // opt out
+        crmService.smsOptOutContact(crmContact);
+      } else if (optOutType.equalsIgnoreCase("START")) {
+        // opt in
+        crmService.smsOptInContact(crmContact);
+      }
+    } else {
+      log.info("unable to find a CRM contact with phone number {}", phone);
+    }
+  }
 }

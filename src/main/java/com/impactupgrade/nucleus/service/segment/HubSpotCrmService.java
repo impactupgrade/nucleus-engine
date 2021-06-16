@@ -60,6 +60,8 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
+    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
+    phone = phone.replace("+1", "");
     // TODO: also need to include mobilephone
     return findContact("phone", "EQ", phone);
   }
@@ -178,6 +180,18 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
     // TODO
+  }
+
+  @Override
+  public void smsOptOutContact(CrmContact crmContact) throws Exception {
+    removeContactFromList(crmContact, null);
+    log.info("opting HubSpot contact {} out of sms...", crmContact.id);
+  }
+
+  @Override
+  public void smsOptInContact(CrmContact crmContact) throws Exception {
+    addContactToList(crmContact, null);
+    log.info("opting HubSpot contact {} in to sms...", crmContact.id);
   }
 
   protected void setContactFields(ContactProperties contact, CrmContact crmContact) {
@@ -372,6 +386,24 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
     throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
+    if (Strings.isNullOrEmpty(listId)) {
+      String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
+      if (Strings.isNullOrEmpty(defaultListId)) {
+        log.info("explicit HubSpot list ID not provided; skipping the list removal...");
+        return;
+      } else {
+        log.info("explicit HubSpot list ID not provided; using the default {}", defaultListId);
+        listId = defaultListId;
+      }
+
+      // TODO: shift to V3
+      HubSpotClientFactory.v1Client().contactList().removeContactFromList(Long.parseLong(listId), Long.parseLong(crmContact.id));
+      log.info("removed HubSpot contact {} from list {}", crmContact.id, listId);
+    }
   }
 
   @Override
