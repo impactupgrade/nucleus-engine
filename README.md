@@ -11,7 +11,7 @@ Nucleus focuses on four key areas:
 3. Reducing risks, increasing security & privacy, and preventing fraud.
 4. Enabling nonprofit-specific concepts within commercial, industry-leading platforms.
 
-# Nonprofit Nucleus: Common
+# Nonprofit Nucleus: Engine
 
 Behind the scenes, Nucleus has a powerful and flexible engine that's able to talk to a wide variety of platforms. Unlike "plugins" in the marketplace, we take an external, API-driven approach that's highly customizable. It's 100% nonprofit specific -- everything you need and nothing you don't. And although "building block" platforms like Zapier and IFTTT have their place, Nucleus instead focuses on automating processes end-to-end, right out of the box.
 
