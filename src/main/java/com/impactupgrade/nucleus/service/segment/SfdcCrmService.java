@@ -69,10 +69,10 @@ public class SfdcCrmService implements CrmService {
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     if (!Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
-      log.info("attempting to retrieve contact by ID {}...", manageDonationEvent.getDonationId());
+      log.info("attempting to retrieve recurring donation by ID {}...", manageDonationEvent.getDonationId());
       return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(manageDonationEvent.getDonationId()));
     } else if (!Strings.isNullOrEmpty(manageDonationEvent.getDonationName())) {
-      log.info("attempting to retrieve contact by name {}...", manageDonationEvent.getDonationName());
+      log.info("attempting to retrieve recurring donation by name {}...", manageDonationEvent.getDonationName());
       return toCrmRecurringDonation(sfdcClient.getRecurringDonationByName(manageDonationEvent.getDonationName()));
     } else {
       return Optional.empty();
