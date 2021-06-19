@@ -66,8 +66,17 @@ public class SfdcCrmService implements CrmService {
     return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(paymentGatewayEvent.getSubscriptionId()));
   }
 
+  @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(manageDonationEvent.getDonationId()));
+    if (!Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
+      log.info("attempting to retrieve recurring donation by ID {}...", manageDonationEvent.getDonationId());
+      return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(manageDonationEvent.getDonationId()));
+    } else if (!Strings.isNullOrEmpty(manageDonationEvent.getDonationName())) {
+      log.info("attempting to retrieve recurring donation by name {}...", manageDonationEvent.getDonationName());
+      return toCrmRecurringDonation(sfdcClient.getRecurringDonationByName(manageDonationEvent.getDonationName()));
+    } else {
+      return Optional.empty();
+    }
   }
 
   @Override
@@ -502,7 +511,11 @@ public class SfdcCrmService implements CrmService {
     Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
 
     if (recurringDonation.isEmpty()) {
-      log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      if (Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
+        log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      } else {
+        log.warn("unable to find SFDC recurring donation using donationName {}", manageDonationEvent.getDonationName());
+      }
       return;
     }
 
@@ -642,6 +655,7 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
     String id = sObject.getId();
+    String name = (String) sObject.getField("Name");
     String accountId = (String) sObject.getField("npe03__Organization__c");
     String subscriptionId = (String) sObject.getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());

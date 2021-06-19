@@ -9,8 +9,9 @@ import javax.ws.rs.FormParam;
 
 public class ManageDonationFormData {
 
-  @FormParam("rd_id") String recurringDonationId;
-  @FormParam("amount") Optional<String> amount;
+  @FormParam("rd_id") Optional<String> recurringDonationId;
+  @FormParam("rd_name") Optional<String> recurringDonationName;
+  @FormParam("amount") Optional<Double> amount;
   @FormParam("pause_donation") Optional<Boolean> pauseDonation;
   @FormParam("pause_donation_until") Optional<String> pauseDonationUntilDate;
   @FormParam("resume_donation") Optional<Boolean> resumeDonation;
@@ -23,6 +24,7 @@ public class ManageDonationFormData {
   public String toString() {
     return "ManageDonationFormData{" +
         ",\n recurringDonationId='" + recurringDonationId +
+        ",\n recurringDonationName='" + recurringDonationName +
         ",\n amount=" + amount +
         ",\n pauseDonation=" + pauseDonation +
         ",\n pauseDonationUntilDate=" + pauseDonationUntilDate +
