@@ -69,16 +69,16 @@ public class MessagingService {
 
     if (crmContact == null) {
       // Didn't exist, so attempt to create it.
-      CrmContact newCrmContact = new CrmContact();
-      newCrmContact.phone = phone;
-      newCrmContact.firstName = firstName;
-      newCrmContact.lastName = lastName;
-      newCrmContact.email = email;
+      crmContact = new CrmContact();
+      crmContact.phone = phone;
+      crmContact.firstName = firstName;
+      crmContact.lastName = lastName;
+      crmContact.email = email;
 
-      newCrmContact.emailOptIn = emailOptIn;
-      newCrmContact.smsOptIn = smsOptIn;
+      crmContact.emailOptIn = emailOptIn;
+      crmContact.smsOptIn = smsOptIn;
 
-      opportunityEvent.setCrmContact(newCrmContact);
+      opportunityEvent.setCrmContact(crmContact);
 
       crmContact.id = crmService.insertContact(opportunityEvent);
     } else {
@@ -87,23 +87,35 @@ public class MessagingService {
 
       opportunityEvent.setCrmContact(crmContact);
 
-      if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
-        log.info("contact {} missing firstName; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().firstName = firstName;
-      }
-      if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
-        log.info("contact {} missing lastName; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().lastName = lastName;
-      }
-      if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
-        log.info("contact {} missing email; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().email = email;
-      }
+      boolean update = emailOptIn || smsOptIn;
 
       opportunityEvent.getCrmContact().emailOptIn = emailOptIn;
       opportunityEvent.getCrmContact().smsOptIn = smsOptIn;
 
-      crmService.updateContact(opportunityEvent);
+      if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
+        log.info("contact {} missing firstName; updating it...", crmContact.id);
+        opportunityEvent.getCrmContact().firstName = firstName;
+        update = true;
+      }
+      if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
+        log.info("contact {} missing lastName; updating it...", crmContact.id);
+        opportunityEvent.getCrmContact().lastName = lastName;
+        update = true;
+      }
+      if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
+        log.info("contact {} missing email; updating it...", crmContact.id);
+        opportunityEvent.getCrmContact().email = email;
+        update = true;
+      }
+      if (Strings.isNullOrEmpty(crmContact.phone) && !Strings.isNullOrEmpty(phone)) {
+        log.info("contact {} missing phone; updating it...", crmContact.id);
+        opportunityEvent.getCrmContact().phone = phone;
+        update = true;
+      }
+
+      if (update) {
+        crmService.updateContact(opportunityEvent);
+      }
     }
 
     return crmContact;

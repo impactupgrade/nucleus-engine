@@ -18,10 +18,10 @@ import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
@@ -32,6 +32,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -204,10 +205,10 @@ public class HubSpotCrmService implements CrmService {
     contact.setMobilephone(crmContact.phone);
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      contact.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, crmContact.emailOptIn, contact.getCustomProperties());
     }
     if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      contact.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
+      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, crmContact.smsOptIn, contact.getCustomProperties());
     }
   }
 
@@ -251,20 +252,20 @@ public class HubSpotCrmService implements CrmService {
     deal.setDealname("Donation: " + paymentGatewayEvent.getCrmAccount().name);
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
-      deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getCrmRecurringDonationId());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getCrmRecurringDonationId(), deal.getCustomProperties());
     }
 
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId());
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), deal.getCustomProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId(), deal.getCustomProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), deal.getCustomProperties());
     // Do NOT set subscriptionId! In getRecurringDonation, we search by that and expect only the RD to be returned.
 
     deal.setAmount(paymentGatewayEvent.getTransactionAmountInDollars());
     if (paymentGatewayEvent.getTransactionOriginalCurrency() != null) {
       // set the custom fields related for international donation
-      deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountOriginal, paymentGatewayEvent.getTransactionOriginalAmountInDollars());
-      deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountOriginalCurrency, paymentGatewayEvent.getTransactionOriginalCurrency());
-      deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountExchangeRate, paymentGatewayEvent.getTransactionExchangeRate());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountOriginal, paymentGatewayEvent.getTransactionOriginalAmountInDollars(), deal.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountOriginalCurrency, paymentGatewayEvent.getTransactionOriginalCurrency(), deal.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountExchangeRate, paymentGatewayEvent.getTransactionExchangeRate(), deal.getCustomProperties());
     }
   }
 
@@ -286,8 +287,8 @@ public class HubSpotCrmService implements CrmService {
   protected void setDonationRefundFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     deal.setDealstage(env.getConfig().hubspot.donationPipeline.refundedStageId);
 
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId(), deal.getCustomProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate(), deal.getCustomProperties());
   }
 
   @Override
@@ -302,9 +303,9 @@ public class HubSpotCrmService implements CrmService {
     }
 
     DealProperties deal = new DealProperties();
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId(), deal.getCustomProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate(), deal.getCustomProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars(), deal.getCustomProperties());
 
     hsClient.deal().update(donation.get().getId(), deal);
   }
@@ -339,9 +340,9 @@ public class HubSpotCrmService implements CrmService {
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmAccount().name);
 
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName());
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId());
-    deal.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), deal.getCustomProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId(), deal.getCustomProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), deal.getCustomProperties());
   }
 
   @Override
@@ -405,5 +406,15 @@ public class HubSpotCrmService implements CrmService {
         return "";
       }
     }).collect(Collectors.toList());
+  }
+
+  private void setProperty(String fieldName, Object value, Map<String, Object> customProperties) {
+    // Optional field names may not be configured in env.json, so ensure we actually have a name first...
+    // Likewise, don't set a null or empty value.
+    if (Strings.isNullOrEmpty(fieldName) || value == null) {
+      return;
+    }
+
+    customProperties.put(fieldName, value);
   }
 }
