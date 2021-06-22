@@ -200,7 +200,7 @@ public class HubSpotCrmService implements CrmService {
     contact.setFirstname(crmContact.firstName);
     contact.setLastname(crmContact.lastName);
     contact.setEmail(crmContact.email);
-    contact.setMobilePhone(crmContact.phone);
+    contact.setMobilephone(crmContact.phone);
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       contact.getCustomProperties().put(env.getConfig().hubspot.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
