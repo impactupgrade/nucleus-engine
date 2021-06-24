@@ -252,6 +252,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }

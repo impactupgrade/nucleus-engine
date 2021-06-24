@@ -386,6 +386,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     // TODO
     return null;

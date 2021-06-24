@@ -22,6 +22,7 @@ public interface CrmService {
 
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
+  List<CrmContact> getContactsFromList(String listId) throws Exception;
 
   String insertContact(OpportunityEvent opportunityEvent) throws Exception;
   void updateContact(OpportunityEvent opportunityEvent) throws Exception;

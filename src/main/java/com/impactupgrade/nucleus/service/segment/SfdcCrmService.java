@@ -29,6 +29,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 public class SfdcCrmService implements CrmService {
 
@@ -434,6 +435,27 @@ public class SfdcCrmService implements CrmService {
     // likely not relevant in SFDC
   }
 
+  /**
+   * SFDC does have a Reporting API that we could theoretically use to pull results, then have the Portal task simply
+   * feed us that Campaign ID. However, since reports are so open-ended, it'll be really tough to do that flexibly.
+   *
+   * For now, support two alternatives:
+   *
+   * - Campaign ID
+   * - Opportunity Name (explicit match)
+   */
+  @Override
+  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    // 701 is the Campaign ID prefix
+    if (listId.startsWith("701")) {
+      return toCrmContact(sfdcClient.getContactsByCampaignId(listId));
+    }
+    // otherwise, assume it's an explicit Opportunity name
+    else {
+      return toCrmContact(sfdcClient.getContactsByOpportunityName(listId));
+    }
+  }
+
   @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     SObject opportunity = new SObject("Opportunity");
@@ -631,11 +653,20 @@ public class SfdcCrmService implements CrmService {
     if (sObject.getField("Email") != null) {
       crmContact.email = sObject.getField("Email").toString();
     }
+    if (sObject.getField("Phone") != null) {
+      crmContact.phone = sObject.getField("Phone").toString();
+    }
     return crmContact;
   }
 
   protected Optional<CrmContact> toCrmContact(Optional<SObject> sObject) {
     return sObject.map(this::toCrmContact);
+  }
+
+  protected List<CrmContact> toCrmContact(List<SObject> sObjects) {
+    return sObjects.stream()
+        .map(this::toCrmContact)
+        .collect(Collectors.toList());
   }
 
   protected CrmDonation toCrmDonation(SObject sObject) {

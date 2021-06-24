@@ -61,6 +61,54 @@ public class TwilioController {
     this.envFactory = envFactory;
   }
 
+  @Path("/outbound/crm-list")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  public Response outboundToCrmList(@FormParam("list-id") List<String> listIds, @FormParam("message") String message,
+      @Context HttpServletRequest request) {
+    SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
+
+    log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
+
+    // takes a while, so spin it off as a new thread
+    Runnable thread = () -> {
+      for (String listId : listIds) {
+        try {
+          log.info("retrieving contacts from list {}", listId);
+          List<CrmContact> contacts = env.crmService().getContactsFromList(listId);
+          log.info("found {} contacts in list {}", contacts.size(), listId);
+          contacts.stream()
+              .filter(c -> c.phone != null)
+              .map(c -> c.phone)
+              .map(pn -> pn.replaceAll("[^0-9\\+]", ""))
+              .filter(pn -> !Strings.isNullOrEmpty(pn))
+              .forEach(pn -> {
+                try {
+                  Message twilioMessage = Message.creator(
+                      new PhoneNumber(pn),
+                      new PhoneNumber(TWILIO_SENDER_PN),
+                      message
+                  ).create();
+
+                  log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
+                      twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+                } catch (Exception e) {
+                  log.warn("message to {} failed", pn, e);
+                }
+              });
+        } catch (Exception e) {
+          log.warn("failed to retrieve contacts from list {}", listId, e);
+        }
+      }
+      log.info("FINISHED: outbound/crm-list");
+    };
+    new Thread(thread).start();
+
+    return Response.ok().build();
+  }
+
+  // TODO: Deprecate and replace with the above, moving this code to HubSpotCrmService.getContactsFromList
   @Path("/outbound/hubspot-list")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -96,8 +144,8 @@ public class TwilioController {
                 log.warn("message to {} failed", pn, e);
               }
             });
-        log.info("FINISHED: outbound/hubspot-list");
       }
+      log.info("FINISHED: outbound/hubspot-list");
     };
     new Thread(thread).start();
 
