@@ -92,7 +92,7 @@ public class SfdcCrmService implements CrmService {
     sObject.setId(existingDonation.getId());
 
     // TODO: duplicates setOpportunityFields -- may need to rethink the breakdown
-    if (existingDonation.isPosted()) {
+    if (paymentGatewayEvent.isTransactionSuccess()) {
       sObject.setField("StageName", "Posted");
     } else {
       sObject.setField("StageName", "Failed Attempt");
