@@ -23,6 +23,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
@@ -392,13 +393,17 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
-    // TODO
-    return null;
+    throw new RuntimeException("not implemented");
   }
 
   @Override
   public void processImport(List<CrmImportEvent> importEvents) throws Exception {
-    // TODO
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
+    throw new RuntimeException("not implemented");
   }
 
   // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.

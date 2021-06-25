@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
@@ -45,4 +46,5 @@ public interface CrmService {
   void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
   void processImport(List<CrmImportEvent> importEvents) throws Exception;
+  void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception;
 }

@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.controller;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.commons.csv.CSVFormat;
@@ -133,6 +134,67 @@ public class CrmController {
 
         List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data, env);
         env.crmService().processImport(importEvents);
+      } catch (Exception e) {
+        log.error("bulkImport failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
+  @Path("/bulk-update/file")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response bulkUpdate(
+      @FormDataParam("file") File file,
+      @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @Context HttpServletRequest request) {
+    SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
+
+    Runnable thread = () -> {
+      try {
+        CSVParser csvParser = CSVParser.parse(
+            file,
+            Charset.defaultCharset(),
+            CSVFormat.DEFAULT
+                .withFirstRecordAsHeader()
+                .withIgnoreHeaderCase()
+                .withTrim()
+        );
+        List<Map<String, String>> data = new ArrayList<>();
+        for (CSVRecord csvRecord : csvParser) {
+          data.add(csvRecord.toMap());
+        }
+
+        List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
+        env.crmService().processUpdate(updateEvents);
+      } catch (Exception e) {
+        log.error("bulkImport failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
+  @Path("/bulk-update/gsheet")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response bulkUpdate(
+      @FormParam("google-sheet-url") String gsheetUrl,
+      @Context HttpServletRequest request) {
+    SecurityUtil.verifyApiKey(request);
+    Environment env = envFactory.init(request);
+
+    Runnable thread = () -> {
+      try {
+        List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
+        List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
+        env.crmService().processUpdate(updateEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }

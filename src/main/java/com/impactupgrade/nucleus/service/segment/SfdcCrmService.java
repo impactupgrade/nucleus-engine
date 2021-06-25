@@ -10,12 +10,13 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
@@ -25,6 +26,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
@@ -471,6 +473,40 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      if (Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
+        log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      } else {
+        log.warn("unable to find SFDC recurring donation using donationName {}", manageDonationEvent.getDonationName());
+      }
+      return;
+    }
+
+    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    toUpdate.setId(manageDonationEvent.getDonationId());
+    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
+      toUpdate.setField("Npe03__Amount__c", manageDonationEvent.getAmount());
+      log.info("Updating Npe03__Amount__c to {}...", manageDonationEvent.getAmount());
+    }
+    if (manageDonationEvent.getNextPaymentDate() != null) {
+      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
+      log.info("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
+    }
+    sfdcClient.update(toUpdate);
+
+    if (manageDonationEvent.getPauseDonation() == true) {
+      pauseRecurringDonation(manageDonationEvent);
+    }
+
+    if (manageDonationEvent.getResumeDonation() == true) {
+      resumeRecurringDonation(manageDonationEvent);
+    }
+  }
+
+  @Override
   public void processImport(List<CrmImportEvent> importEvents) throws Exception {
     // hold a map of campaigns so we don't have to visit them each time
     LoadingCache<String, Optional<SObject>> campaignCache = CacheBuilder.newBuilder().build(
@@ -529,37 +565,68 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+  @Override
+  public void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
+    // hold a map of campaigns so we don't have to visit them each time
+    LoadingCache<String, Optional<SObject>> campaignCache = CacheBuilder.newBuilder().build(
+        new CacheLoader<>() {
+          @Override
+          public Optional<SObject> load(String campaignId) throws ConnectionException, InterruptedException {
+            log.info("loading campaign {}", campaignId);
+            return sfdcClient.getCampaignById(campaignId);
+          }
+        }
+    );
 
-    if (recurringDonation.isEmpty()) {
-      if (Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
-        log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      } else {
-        log.warn("unable to find SFDC recurring donation using donationName {}", manageDonationEvent.getDonationName());
+    List<SObject> contactUpdates = new ArrayList<>();
+    List<SObject> accountUpdates = new ArrayList<>();
+    List<SObject> oppUpdates = new ArrayList<>();
+
+    for (int i = 0; i < updateEvents.size(); i++) {
+      CrmUpdateEvent updateEvent = updateEvents.get(i);
+
+      log.info("processing row {} of {}: {}", i + 2, updateEvents.size() + 1, updateEvent);
+
+      if (!Strings.isNullOrEmpty(updateEvent.getContactId())) {
+        Optional<SObject> existingContact = sfdcClient.getContactById(updateEvent.getContactId());
+        log.info("found contact for id {}: {}", updateEvent.getContactId(), existingContact.isPresent());
+
+        if (existingContact.isPresent()) {
+          SObject contact = new SObject("Contact");
+          contact.setId(updateEvent.getContactId());
+          setBulkUpdateContactFields(contact, updateEvent);
+          contactUpdates.add(contact);
+        }
       }
-      return;
+
+      if (!Strings.isNullOrEmpty(updateEvent.getAccountId())) {
+        Optional<SObject> existingAccount = sfdcClient.getAccountById(updateEvent.getAccountId());
+        log.info("found account for id {}: {}", updateEvent.getAccountId(), existingAccount.isPresent());
+
+        if (existingAccount.isPresent()) {
+          SObject account = new SObject("Account");
+          account.setId(updateEvent.getAccountId());
+          setBulkUpdateAccountFields(account, updateEvent);
+          accountUpdates.add(account);
+        }
+      }
+
+      if (!Strings.isNullOrEmpty(updateEvent.getOpportunityId())) {
+        Optional<SObject> existingOpp = sfdcClient.getDonationById(updateEvent.getOpportunityId());
+        log.info("found opp for id {}: {}", updateEvent.getOpportunityId(), existingOpp.isPresent());
+
+        if (existingOpp.isPresent()) {
+          SObject opp = new SObject("Opportunity");
+          opp.setId(updateEvent.getOpportunityId());
+          setBulkUpdateOpportunityFields(opp, updateEvent);
+          oppUpdates.add(opp);
+        }
+      }
     }
 
-    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(manageDonationEvent.getDonationId());
-    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
-      toUpdate.setField("Npe03__Amount__c", manageDonationEvent.getAmount());
-      log.info("Updating Npe03__Amount__c to {}...", manageDonationEvent.getAmount());
-    }
-    if (manageDonationEvent.getNextPaymentDate() != null) {
-      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
-      log.info("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
-    }
-    sfdcClient.update(toUpdate);
-
-    if (manageDonationEvent.getPauseDonation() == true) {
-      pauseRecurringDonation(manageDonationEvent);
-    }
-
-    if (manageDonationEvent.getResumeDonation() == true) {
-      resumeRecurringDonation(manageDonationEvent);
-    }
+    sfdcClient.batchUpdate(contactUpdates.toArray());
+    sfdcClient.batchUpdate(accountUpdates.toArray());
+    sfdcClient.batchUpdate(oppUpdates.toArray());
   }
 
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
@@ -574,6 +641,29 @@ public class SfdcCrmService implements CrmService {
     contact.setField("HomePhone", importEvent.getHomePhone());
     contact.setField("MobilePhone", importEvent.getMobilePhone());
     contact.setField("Email", importEvent.getEmail());
+  }
+
+  protected void setBulkUpdateContactFields(SObject contact, CrmUpdateEvent updateEvent) {
+    setField(contact, "OwnerId", updateEvent.getOwnerId());
+    setField(contact, "FirstName", updateEvent.getFirstName());
+    setField(contact, "LastName", updateEvent.getLastName());
+    setField(contact, "MailingStreet", updateEvent.getMailingStreet());
+    setField(contact, "MailingCity", updateEvent.getMailingCity());
+    setField(contact, "MailingState", updateEvent.getMailingState());
+    setField(contact, "MailingPostalCode", updateEvent.getMailingZip());
+    setField(contact, "MailingCountry", updateEvent.getMailingCountry());
+    setField(contact, "HomePhone", updateEvent.getHomePhone());
+    setField(contact, "MobilePhone", updateEvent.getMobilePhone());
+    setField(contact, "Email", updateEvent.getEmail());
+  }
+
+  protected void setBulkUpdateAccountFields(SObject account, CrmUpdateEvent updateEvent) {
+    setField(account, "OwnerId", updateEvent.getOwnerId());
+    setField(account, "BillingStreet", updateEvent.getBillingStreet());
+    setField(account, "BillingCity", updateEvent.getBillingCity());
+    setField(account, "BillingState", updateEvent.getBillingState());
+    setField(account, "BillingPostalCode", updateEvent.getBillingZip());
+    setField(account, "BillingCountry", updateEvent.getBillingCountry());
   }
 
   protected void setBulkImportOpportunityFields(SObject opportunity, SObject contact,
@@ -608,6 +698,38 @@ public class SfdcCrmService implements CrmService {
     String ownerId = opportunity.getField("OwnerId") == null ? null : opportunity.getField("OwnerId").toString();
     if (Strings.isNullOrEmpty(ownerId)) {
       opportunity.setField("OwnerId", importEvent.getOpportunityOwnerId());
+    }
+  }
+
+  protected void setBulkUpdateOpportunityFields(SObject opportunity, CrmUpdateEvent updateEvent)
+      throws ConnectionException, InterruptedException, ParseException, ExecutionException {
+    setField(opportunity, "AccountId", updateEvent.getAccountId());
+    setField(opportunity, "ContactId", updateEvent.getContactId());
+
+    if (!Strings.isNullOrEmpty(updateEvent.getOpportunityRecordTypeId())) {
+      setField(opportunity, "RecordTypeId", updateEvent.getOpportunityRecordTypeId());
+    } else if (!Strings.isNullOrEmpty(updateEvent.getOpportunityRecordTypeName())) {
+      SObject salesRecordType = sfdcClient.getRecordTypeByName(updateEvent.getOpportunityRecordTypeName()).get();
+      setField(opportunity, "RecordTypeId", salesRecordType.getId());
+    }
+    setField(opportunity, "Name", updateEvent.getOpportunityName());
+    setField(opportunity, "Description", updateEvent.getOpportunityDescription());
+    setField(opportunity, "Amount", updateEvent.getOpportunityAmount().doubleValue());
+    setField(opportunity, "StageName", updateEvent.getOpportunityStageName());
+    setField(opportunity, "CloseDate", updateEvent.getOpportunityDate());
+    setField(opportunity, "OwnerId", updateEvent.getOpportunityOwnerId());
+
+    if (!Strings.isNullOrEmpty(updateEvent.getOpportunityCampaignId())) {
+      setField(opportunity, "CampaignId", updateEvent.getOpportunityCampaignId());
+    } else if (!Strings.isNullOrEmpty(updateEvent.getOpportunityCampaignExternalRef())) {
+      Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getOpportunityCampaignExternalRef());
+      campaign.ifPresent(c -> setField(opportunity, "CampaignId", c.getId()));
+    }
+  }
+
+  protected void setField(SObject sObject, String name, Object value) {
+    if (value != null && !Strings.isNullOrEmpty(value.toString())) {
+      sObject.setField(name, value);
     }
   }
 
