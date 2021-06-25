@@ -15,7 +15,7 @@
   </parent>
 
   <artifactId>nucleus-engine</artifactId>
-  <version>3.3.5.Final</version>
+  <version>3.3.6-SNAPSHOT</version>
 
   <name>Nonprofit Nucleus: Engine</name>
   <url>https://www.impactupgrade.com/nonprofit-nucleus</url>
