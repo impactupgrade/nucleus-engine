@@ -11,7 +11,7 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>nucleus-parent</artifactId>
-    <version>1.0.18-SNAPSHOT</version>
+    <version>1.0.18.Final</version>
   </parent>
 
   <artifactId>nucleus-engine</artifactId>
