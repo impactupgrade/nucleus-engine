@@ -11,7 +11,7 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>nucleus-parent</artifactId>
-    <version>1.0.17.Final</version>
+    <version>1.0.18-SNAPSHOT</version>
   </parent>
 
   <artifactId>nucleus-engine</artifactId>
@@ -44,12 +44,6 @@
   </developers>
 
   <dependencies>
-    <!-- TODO: nucleus-parent update -->
-    <dependency>
-      <groupId>com.impactupgrade.integration</groupId>
-      <artifactId>paymentspring-java-client</artifactId>
-      <version>1.0.7.Final</version>
-    </dependency>
     <dependency>
       <groupId>com.ecwid</groupId>
       <artifactId>maleorang</artifactId>
@@ -165,7 +159,7 @@
     <!-- allow sonatype snapshots, primarily for open source SDKs from Impact Upgrade -->
     <repository>
       <id>oss.sonatype.org-snapshot</id>
-      <url>http://oss.sonatype.org/content/repositories/snapshots</url>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
       <releases>
         <enabled>false</enabled>
       </releases>
