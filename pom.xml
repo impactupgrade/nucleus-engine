@@ -11,14 +11,18 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>nucleus-parent</artifactId>
-    <version>1.0.16.Final</version>
+    <version>1.0.17.Final</version>
   </parent>
 
   <artifactId>nucleus-engine</artifactId>
   <version>3.3.6-SNAPSHOT</version>
 
   <name>Nonprofit Nucleus: Engine</name>
+  <description>TODO</description>
   <url>https://www.impactupgrade.com/nonprofit-nucleus</url>
+  <scm>
+    <url>https://github.com/impactupgrade/nucleus-engine</url>
+  </scm>
   <organization>
     <name>Impact Upgrade</name>
     <url>https://www.impactupgrade.com</url>
@@ -30,6 +34,14 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
+  <developers>
+    <developer>
+      <name>Brett Meyer</name>
+      <email>brett@impactupgrade.com</email>
+      <organization>Impact Upgrade</organization>
+      <organizationUrl>https://www.impactupgrade.com</organizationUrl>
+    </developer>
+  </developers>
 
   <dependencies>
     <!-- TODO: nucleus-parent update -->
@@ -92,25 +104,63 @@
         </plugins>
       </build>
     </profile>
+
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>ossrh</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>true</autoReleaseAfterClose>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 
-  <!--
-      Using https://gitlab.com/impact-upgrade/maven-repo as a private repo. Assumes you have the following in your ~/.m2/settings.xml:
-
-      <server>
-        <id>gitlab-maven</id>
-        <configuration>
-          <httpHeaders>
-            <property>
-              <name>Private-Token</name>
-              <value>YOUR TOKEN</value>
-            </property>
-          </httpHeaders>
-        </configuration>
-      </server>
-
-      Create your own token following https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token
-  -->
   <repositories>
     <!-- allow sonatype snapshots, primarily for open source SDKs from Impact Upgrade -->
     <repository>
@@ -123,19 +173,16 @@
         <enabled>true</enabled>
       </snapshots>
     </repository>
-    <repository>
-      <id>gitlab-maven</id>
-      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>
-    </repository>
   </repositories>
+
   <distributionManagement>
-    <repository>
-      <id>gitlab-maven</id>
-      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>
-    </repository>
     <snapshotRepository>
-      <id>gitlab-maven</id>
-      <url>https://gitlab.com/api/v4/projects/20274353/packages/maven</url>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
   </distributionManagement>
 </project>
