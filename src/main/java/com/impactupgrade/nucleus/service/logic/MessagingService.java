@@ -23,14 +23,16 @@ public class MessagingService {
     crmService = env.crmService();
   }
 
-  public CrmContact processContact(
+  public void processSignup(
       OpportunityEvent opportunityEvent,
       String phone,
       String firstName,
       String lastName,
       String email,
       String __emailOptIn,
-      String __smsOptIn
+      String __smsOptIn,
+      String campaignId,
+      String listId
   ) throws Exception {
     // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
     phone = phone.replace("+1", "");
@@ -118,6 +120,11 @@ public class MessagingService {
       }
     }
 
-    return crmContact;
+    if (!Strings.isNullOrEmpty(campaignId)) {
+      crmService.addContactToCampaign(crmContact, campaignId);
+    }
+    if (!Strings.isNullOrEmpty(listId)) {
+      crmService.addContactToList(crmContact, listId);
+    }
   }
 }

@@ -55,28 +55,17 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    Filter[] filters = new Filter[]{new Filter("email", "EQ", email)};
-    ContactResults results = hsClient.contact().search(filters, getCustomPropertyNames());
-
-    if (results == null || results.getTotal() == 0) {
-      return Optional.empty();
-    }
-
-    Contact result = results.getResults().get(0);
-    // TODO: likely enough, but may need the rest of the fields
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = result.getId();
-    crmContact.accountId = result.getProperties().getAssociatedcompanyid();
-    crmContact.firstName = result.getProperties().getFirstname();
-    crmContact.lastName = result.getProperties().getLastname();
-    crmContact.email = result.getProperties().getEmail();
-    return Optional.of(crmContact);
+    return findContact("email", "EQ", email);
   }
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
     // TODO: also need to include mobilephone
-    Filter[] filters = new Filter[]{new Filter("phone", "EQ", phone)};
+    return findContact("phone", "EQ", phone);
+  }
+
+  protected Optional<CrmContact> findContact(String propertyName, String operator, String value) throws Exception {
+    Filter[] filters = new Filter[]{new Filter(propertyName, operator, value)};
     ContactResults results = hsClient.contact().search(filters, getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
@@ -84,13 +73,7 @@ public class HubSpotCrmService implements CrmService {
     }
 
     Contact result = results.getResults().get(0);
-    // TODO: likely enough, but may need the rest of the fields
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = result.getId();
-    crmContact.accountId = result.getProperties().getAssociatedcompanyid();
-    crmContact.firstName = result.getProperties().getFirstname();
-    crmContact.lastName = result.getProperties().getLastname();
-    crmContact.email = result.getProperties().getEmail();
+    CrmContact crmContact = toCrmContact(result);
     return Optional.of(crmContact);
   }
 
@@ -404,6 +387,32 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
     throw new RuntimeException("not implemented");
+  }
+
+  protected CrmContact toCrmContact(Contact contact) {
+    // TODO: likely enough, but may need the rest of the fields
+    CrmContact crmContact = new CrmContact();
+    crmContact.id = contact.getId();
+    crmContact.accountId = contact.getProperties().getAssociatedcompanyid();
+    crmContact.firstName = contact.getProperties().getFirstname();
+    crmContact.lastName = contact.getProperties().getLastname();
+    crmContact.email = contact.getProperties().getEmail();
+    crmContact.phone = contact.getProperties().getPhone();
+    if (Strings.isNullOrEmpty(crmContact.phone)) {
+      // try the mobile, just in case
+      crmContact.phone = contact.getProperties().getMobilephone();
+    }
+    return crmContact;
+  }
+
+  protected Optional<CrmContact> toCrmContact(Optional<Contact> contact) {
+    return contact.map(this::toCrmContact);
+  }
+
+  protected List<CrmContact> toCrmContact(List<Contact> contacts) {
+    return contacts.stream()
+        .map(this::toCrmContact)
+        .collect(Collectors.toList());
   }
 
   // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.

@@ -11,11 +11,11 @@
   <parent>
     <groupId>com.impactupgrade</groupId>
     <artifactId>nucleus-parent</artifactId>
-    <version>1.0.18.Final</version>
+    <version>1.0.19.Final</version>
   </parent>
 
   <artifactId>nucleus-engine</artifactId>
-  <version>3.3.6-SNAPSHOT</version>
+  <version>3.3.6.Final</version>
 
   <name>Nonprofit Nucleus: Engine</name>
   <description>TODO</description>

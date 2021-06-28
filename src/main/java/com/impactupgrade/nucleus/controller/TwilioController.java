@@ -192,29 +192,25 @@ public class TwilioController {
       listId = hsListId + "";
     }
 
-    CrmContact crmContact = env.messagingService().processContact(
+    env.messagingService().processSignup(
         opportunityEvent,
         from,
         firstName,
         lastName,
         email,
         emailOptIn,
-        smsOptIn
+        smsOptIn,
+        campaignId,
+        listId
     );
-    if (!Strings.isNullOrEmpty(campaignId)) {
-      env.crmService().addContactToCampaign(crmContact, campaignId);
-    }
-    if (!Strings.isNullOrEmpty(listId)) {
-      env.crmService().addContactToList(crmContact, listId);
-    }
+
+    // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
     if (!Strings.isNullOrEmpty(opportunityName)) {
-      OpportunityEvent oppEvent = new OpportunityEvent(env);
-      oppEvent.setName(opportunityName);
-      oppEvent.setRecordTypeId(opportunityRecordTypeId);
-      oppEvent.setOwnerId(opportunityOwnerId);
-      oppEvent.setCrmContact(crmContact);
-      oppEvent.setCampaignId(campaignId);
-      env.crmService().insertOpportunity(oppEvent);
+      opportunityEvent.setName(opportunityName);
+      opportunityEvent.setRecordTypeId(opportunityRecordTypeId);
+      opportunityEvent.setOwnerId(opportunityOwnerId);
+      opportunityEvent.setCampaignId(campaignId);
+      env.crmService().insertOpportunity(opportunityEvent);
     }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
