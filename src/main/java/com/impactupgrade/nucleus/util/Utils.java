@@ -46,4 +46,13 @@ public class Utils {
     }
     return null;
   }
+
+  public static String cleanUnicode(String s) {
+    return s.replaceAll("[\\u2018\\u2019]", "'")
+        .replaceAll("[\\u201C\\u201D]", "\"")
+        .replaceAll("[\\u254C\\u254D\\u2013\\u2014]", "--")
+        .replaceAll("[\\u2026]", "...")
+        .replaceAll("&quot;", "\"")
+        .replaceAll("&#039;", "'");
+  }
 }
