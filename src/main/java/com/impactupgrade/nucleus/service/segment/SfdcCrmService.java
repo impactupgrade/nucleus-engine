@@ -91,17 +91,15 @@ public class SfdcCrmService implements CrmService {
   public void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
 
-    SObject sObject = new SObject("Opportunity");
-    sObject.setId(existingDonation.getId());
+    SObject opportunity = new SObject("Opportunity");
+    opportunity.setId(existingDonation.getId());
 
-    // TODO: duplicates setOpportunityFields -- may need to rethink the breakdown
-    if (paymentGatewayEvent.isTransactionSuccess()) {
-      sObject.setField("StageName", "Posted");
-    } else {
-      sObject.setField("StageName", "Failed Attempt");
-    }
+    // We need to set all fields again in order to tackle special cases. Ex: if this was a donation in a converted
+    // currency, that data won't be available until the transaction actually succeeds. However, note that we currently
+    // ignore the campaign -- no need to currently re-provide that side.
+    setOpportunityFields(opportunity, Optional.empty(), paymentGatewayEvent);
 
-    sfdcClient.update(sObject);
+    sfdcClient.update(opportunity);
   }
 
   @Override
