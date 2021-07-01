@@ -35,7 +35,6 @@ import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,109 +48,6 @@ public class SfdcController {
 
   public SfdcController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
-  }
-
-  /**
-   * Bulk update records using the given GSheet.
-   *
-   * Why not use the SF Bulk API? Great question! Although this is initially focused on SF, it may eventually shift
-   * to ownership within a variety of platforms. Keep the one-by-one flexibility, for now.
-   * 
-   * Additionally, using the normal SF API allows us to do things like base updates on non-ID fields, etc. That
-   * unfortunately isn't easily done with the Bulk API (or Data Loader) without jumping through hoops...
-   *
-   * TODO: Document the specific column headers we're supporting!
-   */
-  // TODO: Make this generic through CrmController?
-  @Path("/bulk-update")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.TEXT_PLAIN)
-  public Response bulkUpdate(
-      @FormParam("google-sheet-url") String url,
-      @FormParam("optional-field-column-name") String optionalFieldColumnName,
-      @Context HttpServletRequest request
-  ) {
-    SecurityUtil.verifyApiKey(request);
-    Environment env = envFactory.init(request);
-
-    Runnable thread = () -> {
-      try {
-        List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(url);
-
-        // cache all users by name
-        // TODO: Terrible idea for any SF instance with a large number of users -- filter to non-guest only?
-        List<SObject> users = env.sfdcClient().getActiveUsers();
-        Map<String, String> userNameToId = new HashMap<>();
-        for (SObject user : users) {
-          userNameToId.put(user.getField("FirstName") + " " + user.getField("LastName"), user.getId());
-          log.info("caching user {}: {} {}", user.getId(), user.getField("FirstName"), user.getField("LastName"));
-        }
-
-        for (int i = 0; i < data.size(); i++) {
-          Map<String, String> row = data.get(i);
-
-          log.info("processing row {} of {}: {}", i + 1, data.size(), row);
-
-          bulkUpdate("Account", row, userNameToId, optionalFieldColumnName, env);
-          bulkUpdate("Contact", row, userNameToId, optionalFieldColumnName, env);
-        }
-
-        // update anything left in the batch queues
-        env.sfdcClient().batchFlush();
-      } catch (Exception e) {
-        log.error("bulkUpdate failed", e);
-      }
-    };
-    new Thread(thread).start();
-
-    return Response.status(200).build();
-  }
-
-  private void bulkUpdate(String type, Map<String, String> row, Map<String, String> userNameToId,
-      String optionalFieldColumnName, Environment env) throws InterruptedException {
-    String id = row.get(type + " ID").trim();
-    if (Strings.nullToEmpty(id).trim().isEmpty()) {
-      // TODO: if ID is not included, support first retrieving by name, etc.
-      log.warn("blank ID; did not {}}", type);
-    } else {
-      SObject sObject = new SObject(type);
-      sObject.setId(id);
-
-      String newOwner = row.get("New " + type + " Owner").trim();
-      if (!Strings.nullToEmpty(newOwner).trim().isEmpty()) {
-        String newOwnerId = userNameToId.get(newOwner);
-        if (newOwnerId == null) {
-          log.warn("user ({}) not found in SFDC; did not update owner", newOwner);
-        } else {
-          sObject.setField("OwnerId", newOwnerId);
-        }
-      }
-
-      // If an optional field was provided, the column name will be Type + Field name. Ex: "Account Top_Donor__c".
-      // Make sure the column name starts with the SObject type we're working with!
-      if (optionalFieldColumnName != null && optionalFieldColumnName.startsWith(type)) {
-        String optionalFieldValue = row.get(optionalFieldColumnName).trim();
-        if (!Strings.nullToEmpty(optionalFieldValue).trim().isEmpty()) {
-          // strip the type from the beginning
-          String field = optionalFieldColumnName.replace(type + " ", "");
-
-          // special cases for the value
-          Object value;
-          if ("true".equalsIgnoreCase(optionalFieldValue)) {
-            value = true;
-          } else if ("false".equalsIgnoreCase(optionalFieldValue)) {
-            value = false;
-          } else {
-            value = optionalFieldValue;
-          }
-
-          sObject.setField(field, value);
-        }
-      }
-
-      env.sfdcClient().batchUpdate(sObject);
-    }
   }
 
   // TODO: Make this generic through CrmController?
