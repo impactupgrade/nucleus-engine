@@ -84,7 +84,7 @@ public class SfdcMetadataClient {
 	 * @throws ConnectionException
 	 */
 	public void addValueToPicklist(String globalPicklistApiName, String newValue, List<String> recordTypeFieldApiNames) throws ConnectionException {
-		log.info("adding {} {}", globalPicklistApiName, newValue);
+		log.info("{} adding {} {}", env.getCorrelationId(), globalPicklistApiName, newValue);
 
 		MetadataConnection metadataConn = metadataConn();
 
@@ -110,11 +110,11 @@ public class SfdcMetadataClient {
 		);
 
 		// update the global picklist
-		Arrays.stream(metadataConn.updateMetadata(new Metadata[]{globalValueSet})).forEach(log::info);
+		Arrays.stream(metadataConn.updateMetadata(new Metadata[]{globalValueSet})).forEach(r -> log.info("{} {}", env.getCorrelationId(), r));
 
-		log.info("added {} {} to GlobalValueSet {}", globalPicklistApiName, newValue, globalValueSet.getFullName());
+		log.info("{} added {} {} to GlobalValueSet {}", env.getCorrelationId(), globalPicklistApiName, newValue, globalValueSet.getFullName());
 
-		log.info("adding {} {} to all record types", globalPicklistApiName, newValue);
+		log.info("{} adding {} {} to all record types", env.getCorrelationId(), globalPicklistApiName, newValue);
 
 		// dynamically find all RecordTypes for each type of Object, then add the new value to each RecordType's list
 		ListMetadataQuery listMetadataQuery = new ListMetadataQuery();
@@ -128,13 +128,13 @@ public class SfdcMetadataClient {
 					|| "objects/npe03__Recurring_Donation__c.object".equalsIgnoreCase(fileProperties.getFileName())) {
 				for (Metadata metadata : metadataConn.readMetadata(RecordType.class.getSimpleName(), new String[]{fileProperties.getFullName()}).getRecords()) {
 					RecordType recordType = (RecordType) metadata;
-					log.info("checking record type record type {}/{} for the {} picklist", fileProperties.getFileName(), recordType.getFullName(), globalPicklistApiName);
+					log.info("{} checking record type record type {}/{} for the {} picklist", env.getCorrelationId(), fileProperties.getFileName(), recordType.getFullName(), globalPicklistApiName);
 					// find the picklist
 					for (RecordTypePicklistValue picklist : recordType.getPicklistValues()) {
 						// important to use contains and not equals here, as the name isn't 100% consistent across the RecordTypes
 						if (recordTypeFieldApiNames.stream().anyMatch(s -> picklist.getPicklist().contains(s))) {
 							if (Arrays.stream(picklist.getValues()).anyMatch(value -> value.getFullName().equals(newValue))) {
-								log.info("{} {} already in record type {}/{}; skipping...", globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
+								log.info("{} {} {} already in record type {}/{}; skipping...", env.getCorrelationId(), globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
 							} else {
 								// add the new value
 								List<PicklistValue> picklistValues = new ArrayList<>();
@@ -145,9 +145,9 @@ public class SfdcMetadataClient {
 								picklist.setValues(picklistValues.toArray(new PicklistValue[0]));
 
 								// update the record type, but only if we actually added something
-								Arrays.stream(metadataConn.updateMetadata(new Metadata[]{recordType})).forEach(log::info);
+								Arrays.stream(metadataConn.updateMetadata(new Metadata[]{recordType})).forEach(r -> log.info("{} {}", env.getCorrelationId(), r));
 
-								log.info("added {} {} to record type {}/{}", globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
+								log.info("{} added {} {} to record type {}/{}", env.getCorrelationId(), globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
 
 								break;
 							}
@@ -157,6 +157,6 @@ public class SfdcMetadataClient {
 			}
 		}
 
-		log.info("added {} {} to all contact/campaign/opportunity record types", globalPicklistApiName, newValue);
+		log.info("{} added {} {} to all contact/campaign/opportunity record types", env.getCorrelationId(), globalPicklistApiName, newValue);
 	}
 }

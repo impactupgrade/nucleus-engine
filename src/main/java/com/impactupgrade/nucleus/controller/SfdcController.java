@@ -82,14 +82,14 @@ public class SfdcController {
             data.add(csvRecord.toMap());
           }
         } else {
-          log.warn("no GSheet/CSV provided; skipping");
+          log.warn("{} no GSheet/CSV provided; skipping", env.getCorrelationId());
           return;
         }
 
         for (int i = 0; i < data.size(); i++) {
           Map<String, String> row = data.get(i);
 
-          log.info("processing row {} of {}: {}", i + 2, data.size() + 1, row);
+          log.info("{} processing row {} of {}: {}", env.getCorrelationId(), i + 2, data.size() + 1, row);
 
           // TODO: support others
           String opportunityId = row.get("Opportunity ID");
@@ -99,12 +99,12 @@ public class SfdcController {
         }
         env.sfdcClient().batchFlush();;
       } catch (Exception e) {
-        log.error("bulkDelete failed", e);
+        log.error("{} bulkDelete failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 
   /**
@@ -129,14 +129,14 @@ public class SfdcController {
     Runnable thread = () -> {
       try {
         env.sfdcMetadataClient().addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
-        log.info("FINISHED: {}", globalPicklistApiName);
+        log.info("{} FINISHED: {}", env.getCorrelationId(), globalPicklistApiName);
       } catch (Exception e) {
-        log.error("{} failed", globalPicklistApiName, e);
+        log.error("{} {} failed", env.getCorrelationId(), globalPicklistApiName, e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 
   /**
@@ -200,7 +200,7 @@ public class SfdcController {
           int counter = 1; // let the loop start with 2 to account for the CSV header
           for (CSVRecord csvRecord : csvParser) {
             String email = csvRecord.get("Email");
-            log.info("processing row {}: {}", counter++, email);
+            log.info("{} processing row {}: {}", env.getCorrelationId(), counter++, email);
 
             if (!Strings.isNullOrEmpty(email)) {
               Optional<SObject> contact = env.sfdcClient().getContactByEmail(email);
@@ -231,21 +231,21 @@ public class SfdcController {
                     csvRecord.get("RFM Monetary Rating")
                 );
               } else {
-                log.warn("Could not find contact: {}", email);
+                log.warn("{} Could not find contact: {}", env.getCorrelationId(), email);
               }
             }
           }
         }
 
         env.sfdcBulkClient().uploadIWaveFile(combinedFile.toFile());
-        log.info("FINISHED: iwave");
+        log.info("{} FINISHED: iwave", env.getCorrelationId());
       } catch (Exception e) {
-        log.error("iwave update failed", e);
+        log.error("{} iwave update failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 
   /**
@@ -267,13 +267,13 @@ public class SfdcController {
     Runnable thread = () -> {
       try {
         env.sfdcBulkClient().uploadWindfallFile(file);
-        log.info("FINISHED: windfall");
+        log.info("{} FINISHED: windfall", env.getCorrelationId());
       } catch (Exception e) {
-        log.error("Windfall update failed", e);
+        log.error("{} Windfall update failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 }

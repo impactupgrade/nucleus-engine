@@ -75,9 +75,9 @@ public class TwilioController {
     Runnable thread = () -> {
       for (String listId : listIds) {
         try {
-          log.info("retrieving contacts from list {}", listId);
+          log.info("{} retrieving contacts from list {}", env.getCorrelationId(), listId);
           List<CrmContact> contacts = env.crmService().getContactsFromList(listId);
-          log.info("found {} contacts in list {}", contacts.size(), listId);
+          log.info("{} found {} contacts in list {}", env.getCorrelationId(), contacts.size(), listId);
           contacts.stream()
               .filter(c -> c.phone != null)
               .map(c -> c.phone)
@@ -91,21 +91,21 @@ public class TwilioController {
                       message
                   ).create();
 
-                  log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
-                      twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+                  log.info("{} sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
+                      env.getCorrelationId(), twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
                 } catch (Exception e) {
-                  log.warn("message to {} failed", pn, e);
+                  log.warn("{} message to {} failed", env.getCorrelationId(), pn, e);
                 }
               });
         } catch (Exception e) {
-          log.warn("failed to retrieve contacts from list {}", listId, e);
+          log.warn("{} failed to retrieve contacts from list {}", env.getCorrelationId(), listId, e);
         }
       }
-      log.info("FINISHED: outbound/crm-list");
+      log.info("{} FINISHED: outbound/crm-list", env.getCorrelationId());
     };
     new Thread(thread).start();
 
-    return Response.ok().build();
+    return Response.ok().entity(env.getCorrelationId()).build();
   }
 
   // TODO: Deprecate and replace with the above, moving this code to HubSpotCrmService.getContactsFromList
@@ -122,9 +122,9 @@ public class TwilioController {
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       for (Long listId : listIds) {
-        log.info("retrieving contacts from list {}", listId);
+        log.info("{} retrieving contacts from list {}", env.getCorrelationId(), listId);
         ContactArray contactArray = HubSpotClientFactory.v1Client().contactList().getContactsInList(listId);
-        log.info("found {} contacts in list {}", contactArray.getContacts().size(), listId);
+        log.info("{} found {} contacts in list {}", env.getCorrelationId(), contactArray.getContacts().size(), listId);
         contactArray.getContacts().stream()
             .filter(c -> c.getProperties().getPhone() != null)
             .map(c -> c.getProperties().getPhone().getValue())
@@ -138,18 +138,18 @@ public class TwilioController {
                     message
                 ).create();
 
-                log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
-                    twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+                log.info("{} sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
+                    env.getCorrelationId(), twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
               } catch (Exception e) {
-                log.warn("message to {} failed", pn, e);
+                log.warn("{} message to {} failed", env.getCorrelationId(), pn, e);
               }
             });
       }
-      log.info("FINISHED: outbound/hubspot-list");
+      log.info("{} FINISHED: outbound/hubspot-list", env.getCorrelationId());
     };
     new Thread(thread).start();
 
-    return Response.ok().build();
+    return Response.ok().entity(env.getCorrelationId()).build();
   }
 
   /**

@@ -73,12 +73,12 @@ public class CrmController {
         List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
         env.crmService().processImport(importEvents);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
+        log.error("{} bulkImport failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 
   @Path("/bulk-import/gsheet")
@@ -97,12 +97,12 @@ public class CrmController {
         List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
         env.crmService().processImport(importEvents);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
+        log.error("{} bulkImport failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 
   // TODO: Wasn't ultimately used by STS, and needs further testing, but keeping it for now...
@@ -135,12 +135,12 @@ public class CrmController {
         List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data, env);
         env.crmService().processImport(importEvents);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
+        log.error("{} bulkImport failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 
   @Path("/bulk-update/file")
@@ -172,12 +172,12 @@ public class CrmController {
         List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
         env.crmService().processUpdate(updateEvents);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
+        log.error("{} bulkImport failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 
   @Path("/bulk-update/gsheet")
@@ -196,11 +196,11 @@ public class CrmController {
         List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
         env.crmService().processUpdate(updateEvents);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
+        log.error("{} bulkImport failed", env.getCorrelationId(), e);
       }
     };
     new Thread(thread).start();
 
-    return Response.status(200).build();
+    return Response.status(200).entity(env.getCorrelationId()).build();
   }
 }

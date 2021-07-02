@@ -520,7 +520,7 @@ public class SfdcCrmService implements CrmService {
     for (int i = 0; i < importEvents.size(); i++) {
       CrmImportEvent importEvent = importEvents.get(i);
 
-      log.info("processing row {} of {}: {}", i + 2, importEvents.size() + 1, importEvent);
+      log.info("{} processing row {} of {}: {}", env.getCorrelationId(), i + 2, importEvents.size() + 1, importEvent);
 
       String email = importEvent.getEmail();
       String firstName = importEvent.getFirstName();
@@ -528,17 +528,17 @@ public class SfdcCrmService implements CrmService {
 
       // First try to get contact by email
       Optional<SObject> existingContact = sfdcClient.getContactByEmail(email);
-      log.info("found contact for email {}: {}", email, existingContact.isPresent());
+      log.info("{} found contact for email {}: {}", env.getCorrelationId(), email, existingContact.isPresent());
 
       // If none by email, get contact by name
       if (existingContact.isEmpty()) {
         List<SObject> existingContacts = sfdcClient.getContactsByName(firstName, lastName, importEvent.getRaw());
 
-        log.info("number of contacts for name {} {}: {}", firstName, lastName, existingContacts.size());
+        log.info("{} number of contacts for name {} {}: {}", env.getCorrelationId(), firstName, lastName, existingContacts.size());
 
         if (existingContacts.size() > 1) {
           // To be safe, let's skip this row for now and deal with it manually...
-          log.warn("SKIPPING row due to multiple contacts found!");
+          log.warn("{} SKIPPING row due to multiple contacts found!", env.getCorrelationId());
           break;
         } else {
           existingContact = existingContacts.stream().findFirst();
@@ -583,11 +583,11 @@ public class SfdcCrmService implements CrmService {
     for (int i = 0; i < updateEvents.size(); i++) {
       CrmUpdateEvent updateEvent = updateEvents.get(i);
 
-      log.info("processing row {} of {}: {}", i + 2, updateEvents.size() + 1, updateEvent);
+      log.info("{} processing row {} of {}: {}", env.getCorrelationId(), i + 2, updateEvents.size() + 1, updateEvent);
 
       if (!Strings.isNullOrEmpty(updateEvent.getContactId())) {
         Optional<SObject> existingContact = sfdcClient.getContactById(updateEvent.getContactId());
-        log.info("found contact for id {}: {}", updateEvent.getContactId(), existingContact.isPresent());
+        log.info("{} found contact for id {}: {}", env.getCorrelationId(), updateEvent.getContactId(), existingContact.isPresent());
 
         if (existingContact.isPresent()) {
           SObject contact = new SObject("Contact");
@@ -599,7 +599,7 @@ public class SfdcCrmService implements CrmService {
 
       if (!Strings.isNullOrEmpty(updateEvent.getAccountId())) {
         Optional<SObject> existingAccount = sfdcClient.getAccountById(updateEvent.getAccountId());
-        log.info("found account for id {}: {}", updateEvent.getAccountId(), existingAccount.isPresent());
+        log.info("{} found account for id {}: {}", env.getCorrelationId(), updateEvent.getAccountId(), existingAccount.isPresent());
 
         if (existingAccount.isPresent()) {
           SObject account = new SObject("Account");
@@ -611,7 +611,7 @@ public class SfdcCrmService implements CrmService {
 
       if (!Strings.isNullOrEmpty(updateEvent.getOpportunityId())) {
         Optional<SObject> existingOpp = sfdcClient.getDonationById(updateEvent.getOpportunityId());
-        log.info("found opp for id {}: {}", updateEvent.getOpportunityId(), existingOpp.isPresent());
+        log.info("{} found opp for id {}: {}", env.getCorrelationId(), updateEvent.getOpportunityId(), existingOpp.isPresent());
 
         if (existingOpp.isPresent()) {
           SObject opp = new SObject("Opportunity");

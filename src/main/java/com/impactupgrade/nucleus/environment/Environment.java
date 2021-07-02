@@ -26,6 +26,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Every action within Nucleus is kicked off by either an HTTP Request or a manual script. This class
@@ -52,6 +53,8 @@ public class Environment {
   private String uri = null;
   private final Map<String, String> headers = new HashMap<>();
   private MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
+
+  private final String correlationId = UUID.randomUUID().toString();
 
   public EnvironmentConfig getConfig() {
     return config;
@@ -83,6 +86,10 @@ public class Environment {
 
   public void setOtherContext(MultivaluedMap<String, String> otherContext) {
     this.otherContext = otherContext;
+  }
+
+  public String getCorrelationId() {
+    return correlationId;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
