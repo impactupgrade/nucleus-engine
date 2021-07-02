@@ -37,6 +37,10 @@ public class App {
   // $PORT env var provided by Heroku
   private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
+  public static void main(String... args) throws Exception {
+    new App().start();
+  }
+
   public void start() throws Exception {
     Server server = new Server();
 
