@@ -170,10 +170,14 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
-    // TODO: test with Twilio flows
+    updateContact(opportunityEvent.getCrmContact());
+  }
+
+  @Override
+  public void updateContact(CrmContact crmContact) throws Exception {
     ContactProperties contact = new ContactProperties();
-    setContactFields(contact, opportunityEvent.getCrmContact());
-    hsClient.contact().update(opportunityEvent.getCrmContact().id, contact);
+    setContactFields(contact, crmContact);
+    hsClient.contact().update(crmContact.id, contact);
   }
 
   @Override
@@ -181,19 +185,7 @@ public class HubSpotCrmService implements CrmService {
     // TODO
   }
 
-  @Override
-  public void smsOptOutContact(CrmContact crmContact) throws Exception {
-    removeContactFromList(crmContact, null);
-    log.info("opting HubSpot contact {} out of sms...", crmContact.id);
-  }
-
-  @Override
-  public void smsOptInContact(CrmContact crmContact) throws Exception {
-    addContactToList(crmContact, null);
-    log.info("opting HubSpot contact {} in to sms...", crmContact.id);
-  }
-
-  protected void setContactFields(ContactProperties contact, CrmContact crmContact) {
+  protected void setContactFields(ContactProperties contact, CrmContact crmContact) throws Exception {
     crmContact.phone = normalizePhoneNumber(crmContact.phone);
 
     contact.setAssociatedcompanyid(crmContact.accountId);
@@ -204,10 +196,33 @@ public class HubSpotCrmService implements CrmService {
     contact.setMobilephone(crmContact.phone);
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, crmContact.emailOptIn, contact.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, true, contact.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, false, contact.getCustomProperties());
     }
+    if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, false, contact.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, true, contact.getCustomProperties());
+    }
+
     if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, crmContact.smsOptIn, contact.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, true, contact.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, false, contact.getCustomProperties());
+
+      String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
+      if (!Strings.isNullOrEmpty(defaultListId)) {
+        log.info("opting into the default HubSpot list: {}", defaultListId);
+        addContactToList(crmContact, defaultListId);
+      }
+    }
+    if (crmContact.smsOptOut != null && crmContact.smsOptOut) {
+      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, false, contact.getCustomProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, true, contact.getCustomProperties());
+
+      String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
+      if (!Strings.isNullOrEmpty(defaultListId)) {
+        log.info("opting out of the default HubSpot list: {}", defaultListId);
+        removeContactFromList(crmContact, defaultListId);
+      }
     }
   }
 
@@ -368,16 +383,6 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public void addContactToList(CrmContact crmContact, String listId) throws Exception {
-    if (Strings.isNullOrEmpty(listId)) {
-      String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
-      if (Strings.isNullOrEmpty(defaultListId)) {
-        log.info("explicit HubSpot list ID not provided; skipping the list insert...");
-        return;
-      } else {
-        log.info("explicit HubSpot list ID not provided; using the default {}", defaultListId);
-        listId = defaultListId;
-      }
-    }
     // note that HubSpot auto-prevents duplicate entries in lists
     // TODO: shift to V3
     HubSpotClientFactory.v1Client().contactList().addContactToList(Long.parseLong(listId), Long.parseLong(crmContact.id));
@@ -413,12 +418,12 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
+  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
   @Override
-  public void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
+  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

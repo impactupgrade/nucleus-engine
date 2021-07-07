@@ -26,9 +26,6 @@ public interface CrmService {
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
 
-  void smsOptOutContact(CrmContact crmContact) throws Exception;
-  void smsOptInContact(CrmContact crmContact) throws Exception;
-
   String insertContact(OpportunityEvent opportunityEvent) throws Exception;
   void updateContact(OpportunityEvent opportunityEvent) throws Exception;
   String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception;
@@ -49,6 +46,11 @@ public interface CrmService {
   String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception;
   void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
-  void processImport(List<CrmImportEvent> importEvents) throws Exception;
-  void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception;
+  void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
+  void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception;
+
+  // Generally speaking, we emphasize the methods, above, that accept a specific type of event, giving organizations
+  // the ability to customize processing based on unique context. But we also allow generic versions where they make
+  // sense. Many of the above implementations will ultimately call these (DRY).
+  void updateContact(CrmContact crmContact) throws Exception;
 }

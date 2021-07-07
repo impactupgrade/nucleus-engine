@@ -135,9 +135,14 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
+    updateContact(opportunityEvent.getCrmContact());
+  }
+
+  @Override
+  public void updateContact(CrmContact crmContact) throws Exception {
     SObject contact = new SObject("Contact");
-    contact.setId(opportunityEvent.getCrmContact().id);
-    setContactFields(contact, opportunityEvent.getCrmContact());
+    contact.setId(crmContact.id);
+    setContactFields(contact, crmContact);
     sfdcClient.update(contact);
   }
 
@@ -150,24 +155,6 @@ public class SfdcCrmService implements CrmService {
     sfdcClient.insert(campaignMember);
   }
 
-  @Override
-  public void smsOptOutContact(CrmContact crmContact) throws InterruptedException {
-    SObject contact = new SObject("Contact");
-    contact.setId(crmContact.id);
-    contact.setField(env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
-    sfdcClient.update(contact);
-    log.info("opting contact {} out of sms...", crmContact.id);
-  }
-
-  @Override
-  public void smsOptInContact(CrmContact crmContact) throws InterruptedException {
-    SObject contact = new SObject("Contact");
-    contact.setId(crmContact.id);
-    contact.setField(env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
-    sfdcClient.update(contact);
-    log.info("opting in contact {} to sms ...", crmContact.id);
-  }
-
   protected void setContactFields(SObject contact, CrmContact crmContact) {
     contact.setField("AccountId", crmContact.accountId);
     contact.setField("FirstName", crmContact.firstName);
@@ -175,11 +162,22 @@ public class SfdcCrmService implements CrmService {
     contact.setField("Email", crmContact.email);
     contact.setField("MobilePhone", crmContact.phone);
 
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn) && crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      contact.setField(env.getConfig().salesforce.fieldDefinitions.emailOptIn, crmContact.emailOptIn);
+    if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptIn, true);
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptOut, false);
     }
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.smsOptIn) && crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      contact.setField(env.getConfig().salesforce.fieldDefinitions.smsOptIn, crmContact.smsOptIn);
+    if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptIn, false);
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptOut, true);
+    }
+
+    if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptIn, true);
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptOut, false);
+    }
+    if (crmContact.smsOptOut != null && crmContact.smsOptOut) {
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptIn, false);
+      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptOut, true);
     }
   }
 
@@ -528,7 +526,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
+  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     // hold a map of campaigns so we don't have to visit them each time
     LoadingCache<String, Optional<SObject>> campaignCache = CacheBuilder.newBuilder().build(
         new CacheLoader<>() {
@@ -587,7 +585,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
+  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
     // hold a map of campaigns so we don't have to visit them each time
     LoadingCache<String, Optional<SObject>> campaignCache = CacheBuilder.newBuilder().build(
         new CacheLoader<>() {
@@ -749,7 +747,9 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setField(SObject sObject, String name, Object value) {
-    if (value != null && !Strings.isNullOrEmpty(value.toString())) {
+    // Optional field names may not be configured in env.json, so ensure we actually have a name first...
+    // Likewise, don't set a null or empty value.
+    if (!Strings.isNullOrEmpty(name) && value != null && !Strings.isNullOrEmpty(value.toString())) {
       sObject.setField(name, value);
     }
   }

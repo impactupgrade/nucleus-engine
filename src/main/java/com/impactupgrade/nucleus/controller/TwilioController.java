@@ -23,9 +23,6 @@ import com.twilio.twiml.voice.Gather;
 import com.twilio.twiml.voice.Redirect;
 import com.twilio.twiml.voice.Say;
 import com.twilio.type.PhoneNumber;
-import java.util.Arrays;
-import javax.ws.rs.core.Form;
-import javax.ws.rs.core.MultivaluedMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,8 +34,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -156,8 +156,7 @@ public class TwilioController {
   }
 
   /**
-   * This webhook serves multiple purposes. It can be used directly on a Twilio number, receiving standard From/Body
-   * pairs as texts are received. It can also be used by Twilio Studio flows, Twilio Functions, etc. for more complex
+   * This webhook is to be used by Twilio Studio flows, Twilio Functions, etc. for more complex
    * interactions. Try to make use of the standard form params whenever possible to maintain the overlap!
    */
   @Path("/inbound/sms/signup")
@@ -218,18 +217,17 @@ public class TwilioController {
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
     MessagingResponse response = new MessagingResponse.Builder().build();
-
     return Response.ok().entity(response.toXml()).build();
   }
 
   /**
    * This webhook serves as a more generic catch-all endpoint for inbound messages from Twilio.
    */
-  @Path("/inbound/sms/catchall")
+  @Path("/inbound/sms/webhook")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_XML)
-  public Response inboundKeyword(
+  public Response inboundWebhook(
       Form rawFormData,
       @Context HttpServletRequest request
   ) throws Exception {
@@ -237,26 +235,23 @@ public class TwilioController {
 
     Environment env = envFactory.init(request);
 
-    List<String> optInKeywords = Arrays.asList("START", "UNSTOP", "YES");
+    List<String> optInKeywords = Arrays.asList("START", "UNSTOP", "YES", "SUBSCRIBE", "RESTART");
     List<String> optOutKeywords = Arrays.asList("STOP", "STOPALL", "CANCEL", "END", "QUIT", "UNSUBSCRIBE");
 
     String from = smsData.get("From").get(0);
     if (smsData.containsKey("Body")) {
       String body = smsData.get("Body").get(0).trim();
+      // Super important to do direct matches, and not a String contains! Many of the keywords could be accidentally used out of context.
       if (optInKeywords.contains(body.toUpperCase())) {
-//        log.info("opting in {} to sms...", from);
-        env.messagingService().processSmsOpt(from, "START");
+        env.messagingService().optIn(from);
       } else if (optOutKeywords.contains(body.toUpperCase())) {
-//        log.info("opting out {} from sms...", from);
-        env.messagingService().processSmsOpt(from, "STOP");
+        env.messagingService().optOut(from);
       }
     }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
-//    MessagingResponse response = new MessagingResponse.Builder().build();
-//
-//    return Response.ok().entity(response.toXml()).build();
-    return Response.status(200).build();
+    MessagingResponse response = new MessagingResponse.Builder().build();
+    return Response.ok().entity(response.toXml()).build();
   }
 
   /**

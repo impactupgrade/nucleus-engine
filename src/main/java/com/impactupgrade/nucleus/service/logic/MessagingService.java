@@ -120,25 +120,34 @@ public class MessagingService {
     if (!Strings.isNullOrEmpty(campaignId)) {
       crmService.addContactToCampaign(crmContact, campaignId);
     }
+
     if (!Strings.isNullOrEmpty(listId)) {
       crmService.addContactToList(crmContact, listId);
     }
   }
 
-  public void processSmsOpt(
-      String phone,
-      String optOutType
-  ) throws Exception {
+  public void optIn(String phone) throws Exception {
     // First, look for an existing contact with the PN
     CrmContact crmContact = crmService.getContactByPhone(phone).orElse(null);
     if (crmContact != null) {
-      if (optOutType.equalsIgnoreCase("STOP")) {
-        // opt out
-        crmService.smsOptOutContact(crmContact);
-      } else if (optOutType.equalsIgnoreCase("START")) {
-        // opt in
-        crmService.smsOptInContact(crmContact);
-      }
+      log.info("opting {} ({}) into sms...", crmContact.id, phone);
+      crmContact.smsOptIn = true;
+      crmContact.smsOptOut = false;
+      crmService.updateContact(crmContact);
+    } else {
+      // TODO: There MIGHT be value in processing this as a signup and inserting the Contact...
+      log.info("unable to find a CRM contact with phone number {}", phone);
+    }
+  }
+
+  public void optOut(String phone) throws Exception {
+    // First, look for an existing contact with the PN
+    CrmContact crmContact = crmService.getContactByPhone(phone).orElse(null);
+    if (crmContact != null) {
+      log.info("opting {} ({}) out of sms...", crmContact.id, phone);
+      crmContact.smsOptIn = false;
+      crmContact.smsOptOut = true;
+      crmService.updateContact(crmContact);
     } else {
       log.info("unable to find a CRM contact with phone number {}", phone);
     }

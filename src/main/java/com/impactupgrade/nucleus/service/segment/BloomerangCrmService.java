@@ -193,18 +193,13 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+  public void updateContact(CrmContact crmContact) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
   @Override
-  public void smsOptOutContact(CrmContact crmContact) {
-    // TODO
-  }
-
-  @Override
-  public void smsOptInContact(CrmContact crmContact) {
-    // TODO
+  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    throw new RuntimeException("not implemented");
   }
 
   @Override
@@ -253,12 +248,12 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void processImport(List<CrmImportEvent> importEvents) throws Exception {
+  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
   @Override
-  public void processUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
+  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

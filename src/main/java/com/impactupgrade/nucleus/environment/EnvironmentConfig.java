@@ -115,7 +115,9 @@ public class EnvironmentConfig {
     public String paymentGatewayDepositDate = "";
     public String paymentGatewayDepositNetAmount = "";
     public String emailOptIn = "";
+    public String emailOptOut = "";
     public String smsOptIn = "";
+    public String smsOptOut = "";
   }
 
   public static EnvironmentConfig init() {
