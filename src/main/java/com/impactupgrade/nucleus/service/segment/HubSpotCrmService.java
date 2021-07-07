@@ -60,8 +60,7 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
-    phone = phone.replace("+1", "");
+    phone = normalizePhoneNumber(phone);
     // TODO: also need to include mobilephone
     return findContact("phone", "EQ", phone);
   }
@@ -195,6 +194,8 @@ public class HubSpotCrmService implements CrmService {
   }
 
   protected void setContactFields(ContactProperties contact, CrmContact crmContact) {
+    crmContact.phone = normalizePhoneNumber(crmContact.phone);
+
     contact.setAssociatedcompanyid(crmContact.accountId);
     contact.setFirstname(crmContact.firstName);
     contact.setLastname(crmContact.lastName);
@@ -467,5 +468,10 @@ public class HubSpotCrmService implements CrmService {
     }
 
     customProperties.put(fieldName, value);
+  }
+
+  private String normalizePhoneNumber(String phone) {
+    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
+    return phone.replace("+1", "");
   }
 }

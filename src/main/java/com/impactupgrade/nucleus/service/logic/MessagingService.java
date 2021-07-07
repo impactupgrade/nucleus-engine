@@ -34,9 +34,6 @@ public class MessagingService {
       String campaignId,
       String listId
   ) throws Exception {
-    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
-    phone = phone.replace("+1", "");
-
     // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
     if (email != null && !email.contains("@")) {
       email = null;
