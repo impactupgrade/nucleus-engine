@@ -40,6 +40,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * This service provides the ability to send outbound messages through Twilio, as well as be positioned
@@ -232,6 +233,8 @@ public class TwilioController {
       @Context HttpServletRequest request
   ) throws Exception {
     MultivaluedMap<String, String> smsData = rawFormData.asMap();
+
+    log.info(smsData.entrySet().stream().map(e -> e.getKey() + "=" + String.join(",", e.getValue())).collect(Collectors.joining(" ")));
 
     Environment env = envFactory.init(request);
 
