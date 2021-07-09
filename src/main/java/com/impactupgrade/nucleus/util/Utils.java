@@ -4,6 +4,8 @@
 
 package com.impactupgrade.nucleus.util;
 
+import com.google.common.base.Strings;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -48,6 +50,10 @@ public class Utils {
   }
 
   public static String cleanUnicode(String s) {
+    if (Strings.isNullOrEmpty(s)) {
+      return s;
+    }
+
     return s.replaceAll("[\\u2018\\u2019]", "'")
         .replaceAll("[\\u201C\\u201D]", "\"")
         .replaceAll("[\\u254C\\u254D\\u2013\\u2014]", "--")

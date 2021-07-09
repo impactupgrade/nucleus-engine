@@ -15,7 +15,7 @@
   </parent>
 
   <artifactId>nucleus-engine</artifactId>
-  <version>3.3.9-SNAPSHOT</version>
+  <version>3.3.9.Final</version>
 
   <name>Nonprofit Nucleus: Engine</name>
   <description>TODO</description>
