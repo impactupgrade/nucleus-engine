@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
+import com.impactupgrade.nucleus.service.segment.CrmOpportunityService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
@@ -18,9 +19,11 @@ public class MessagingService {
   private static final Logger log = LogManager.getLogger(MessagingService.class);
 
   private final CrmService crmService;
+  private final CrmOpportunityService crmOpportunityService;
 
   public MessagingService(Environment env) {
     crmService = env.crmService();
+    crmOpportunityService = env.crmOpportunityService();
   }
 
   public void processSignup(
@@ -68,7 +71,7 @@ public class MessagingService {
     if (crmContact == null) {
       // Didn't exist, so attempt to create it.
       crmContact = new CrmContact();
-      crmContact.phone = phone;
+      crmContact.mobilePhone = phone;
       crmContact.firstName = firstName;
       crmContact.lastName = lastName;
       crmContact.email = email;
@@ -78,7 +81,7 @@ public class MessagingService {
 
       opportunityEvent.setCrmContact(crmContact);
 
-      crmContact.id = crmService.insertContact(opportunityEvent);
+      crmContact.id = crmOpportunityService.insertContact(opportunityEvent);
     } else {
       // Existed, so use it
       log.info("contact already existed in CRM: {}", crmContact.id);
@@ -105,14 +108,14 @@ public class MessagingService {
         opportunityEvent.getCrmContact().email = email;
         update = true;
       }
-      if (Strings.isNullOrEmpty(crmContact.phone) && !Strings.isNullOrEmpty(phone)) {
-        log.info("contact {} missing phone; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().phone = phone;
+      if (Strings.isNullOrEmpty(crmContact.mobilePhone) && !Strings.isNullOrEmpty(phone)) {
+        log.info("contact {} missing mobilePhone; updating it...", crmContact.id);
+        opportunityEvent.getCrmContact().mobilePhone = phone;
         update = true;
       }
 
       if (update) {
-        crmService.updateContact(opportunityEvent);
+        crmOpportunityService.updateContact(opportunityEvent);
       }
     }
 

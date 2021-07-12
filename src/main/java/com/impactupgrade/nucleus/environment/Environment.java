@@ -12,7 +12,10 @@ import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.segment.BloomerangCrmService;
+import com.impactupgrade.nucleus.service.segment.CrmNewDonationService;
+import com.impactupgrade.nucleus.service.segment.CrmOpportunityService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.CrmUpdateDonationService;
 import com.impactupgrade.nucleus.service.segment.HubSpotCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SfdcCrmService;
@@ -114,6 +117,42 @@ public class Environment {
     } else if ("bloomerang".equalsIgnoreCase(platformName)) {
       return new BloomerangCrmService(this);
     }
+
+    throw new RuntimeException("not implemented");
+  }
+  public CrmNewDonationService crmNewDonationService() {
+    String platformName = config.platforms.crm.name;
+    if ("salesforce".equalsIgnoreCase(platformName)) {
+      return new SfdcCrmService(this);
+    } else if ("hubspot".equalsIgnoreCase(platformName)) {
+      return new HubSpotCrmService(this);
+    } else if ("bloomerang".equalsIgnoreCase(platformName)) {
+      return new BloomerangCrmService(this);
+    }
+
+    throw new RuntimeException("not implemented");
+  }
+  public CrmUpdateDonationService crmUpdateDonationService() {
+    String platformName = config.platforms.crm.name;
+    if ("salesforce".equalsIgnoreCase(platformName)) {
+      return new SfdcCrmService(this);
+    }/* else if ("hubspot".equalsIgnoreCase(platformName)) {
+      return new HubSpotCrmService(this);
+    } else if ("bloomerang".equalsIgnoreCase(platformName)) {
+      return new BloomerangCrmService(this);
+    }*/
+
+    throw new RuntimeException("not implemented");
+  }
+  public CrmOpportunityService crmOpportunityService() {
+    String platformName = config.platforms.crm.name;
+    if ("salesforce".equalsIgnoreCase(platformName)) {
+      return new SfdcCrmService(this);
+    } else if ("hubspot".equalsIgnoreCase(platformName)) {
+      return new HubSpotCrmService(this);
+    }/* else if ("bloomerang".equalsIgnoreCase(platformName)) {
+      return new BloomerangCrmService(this);
+    }*/
 
     throw new RuntimeException("not implemented");
   }

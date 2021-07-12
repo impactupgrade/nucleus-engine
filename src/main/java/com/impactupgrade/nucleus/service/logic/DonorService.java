@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.service.segment.CrmNewDonationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,10 +21,12 @@ public class DonorService {
 
   private final Environment env;
   private final CrmService crmService;
+  private final CrmNewDonationService crmNewDonationService;
 
   public DonorService(Environment env) {
     this.env = env;
     crmService = env.crmService();
+    crmNewDonationService = env.crmNewDonationService();
   }
 
   public void processAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -56,10 +59,10 @@ public class DonorService {
         paymentGatewayEvent.getCrmContact().email);
 
     // create new Household Account
-    String accountId = crmService.insertAccount(paymentGatewayEvent);
+    String accountId = crmNewDonationService.insertAccount(paymentGatewayEvent);
     paymentGatewayEvent.setCrmAccountId(accountId);
     // create new Contact
-    String contactId = crmService.insertContact(paymentGatewayEvent);
+    String contactId = crmNewDonationService.insertContact(paymentGatewayEvent);
     paymentGatewayEvent.setCrmContactId(contactId);
   }
 }

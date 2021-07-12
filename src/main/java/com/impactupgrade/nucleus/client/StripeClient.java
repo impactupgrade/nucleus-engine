@@ -5,7 +5,6 @@
 package com.impactupgrade.nucleus.client;
 
 import com.google.common.collect.Iterables;
-import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -39,8 +38,6 @@ import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.common.EmptyParam;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -323,7 +320,7 @@ public class StripeClient {
     }
   }
 
-  public void resumeSubscription(String subscriptionId, Calendar resumeOnDate) throws StripeException, ParseException {
+  public void resumeSubscription(String subscriptionId, Calendar resumeOnDate) throws StripeException {
     Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
 
     if (resumeOnDate != null) {
@@ -428,8 +425,7 @@ public class StripeClient {
     return Subscription.create(subscriptionParams, requestOptions);
   }
 
-  // TODO: merge this with the other plan creation, but it needs tested since it will affect LJI/TER/DR!
-  //  Currently used by updateSubscriptionAmount only.
+  // TODO: merge this with the other plan creation, but it needs tested since it will affect at least LJI DP.
   public Plan createPlan(double dollarAmount, String currencyCode, String frequency) throws StripeException {
     frequency = frequency.toLowerCase(Locale.ROOT);
     if ("week".equalsIgnoreCase(frequency)) {

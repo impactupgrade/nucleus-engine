@@ -24,7 +24,7 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import org.apache.logging.log4j.LogManager;
@@ -37,11 +37,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.HOME;
+import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.MOBILE;
+import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.WORK;
+
 // TODO: At the moment, this assumes field definitions are always present in env.json! However, if situations come up
 //  similar to SFDC where that won't be the case (ex: LJI/TER's split between payment gateway fields), this will need
 //  sanity checks like we have in SfdcCrmService.
 
-public class HubSpotCrmService implements CrmService {
+public class HubSpotCrmService implements CrmService, CrmNewDonationService, CrmOpportunityService {
 
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 
@@ -51,6 +55,18 @@ public class HubSpotCrmService implements CrmService {
   public HubSpotCrmService(Environment env) {
     this.env = env;
     hsClient = HubSpotClientFactory.v3Client();
+  }
+
+  @Override
+  public Optional<CrmAccount> getAccountById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<CrmContact> getContactById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
   }
 
   @Override
@@ -79,6 +95,36 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
+  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public Optional<CrmUser> getUserById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
     Filter[] filters = new Filter[]{new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
     DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
@@ -89,8 +135,16 @@ public class HubSpotCrmService implements CrmService {
 
     Deal result = results.getResults().get(0);
     String id = result.getId();
-    boolean successful = env.getConfig().hubspot.donationPipeline.successStageId.equalsIgnoreCase(result.getProperties().getDealstage());
-    return Optional.of(new CrmDonation(id, successful));
+    String paymentGatewayName = (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, result.getProperties().getCustomProperties());
+    CrmDonation.Status status;
+    if (env.getConfig().hubspot.donationPipeline.successStageId.equalsIgnoreCase(result.getProperties().getDealstage())) {
+      status = CrmDonation.Status.SUCCESSFUL;
+    } else if (env.getConfig().hubspot.donationPipeline.failedStageId.equalsIgnoreCase(result.getProperties().getDealstage())) {
+      status = CrmDonation.Status.FAILED;
+    } else {
+      status = CrmDonation.Status.PENDING;
+    }
+    return Optional.of(new CrmDonation(id, paymentGatewayName, status));
   }
 
   @Override
@@ -113,32 +167,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
-    return null;
-  }
-
-  @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
-  }
-
-  @Override
   public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
     CompanyProperties account = new CompanyProperties();
     setAccountFields(account, paymentGatewayWebhookEvent.getCrmAccount());
     Company response = hsClient.company().insert(account);
     return response == null ? null : response.getId();
-  }
-
-  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
   }
 
   protected void setAccountFields(CompanyProperties account, CrmAccount crmAccount) {
@@ -152,25 +185,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
-    return insertContact(paymentGatewayWebhookEvent.getCrmContact());
-  }
-
-  @Override
-  public String insertContact(OpportunityEvent opportunityEvent) throws Exception {
-    return insertContact(opportunityEvent.getCrmContact());
-  }
-
-  private String insertContact(CrmContact crmContact) throws Exception {
+  public String insertContact(CrmContact crmContact) throws Exception {
     ContactProperties contact = new ContactProperties();
     setContactFields(contact, crmContact);
     Contact response = hsClient.contact().insert(contact);
     return response == null ? null : response.getId();
-  }
-
-  @Override
-  public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
-    updateContact(opportunityEvent.getCrmContact());
   }
 
   @Override
@@ -186,15 +205,26 @@ public class HubSpotCrmService implements CrmService {
   }
 
   protected void setContactFields(ContactProperties contact, CrmContact crmContact) throws Exception {
-    crmContact.phone = normalizePhoneNumber(crmContact.phone);
-
     contact.setAssociatedcompanyid(crmContact.accountId);
     contact.setFirstname(crmContact.firstName);
     contact.setLastname(crmContact.lastName);
     contact.setEmail(crmContact.email);
-    contact.setPhone(crmContact.phone);
-    contact.setMobilephone(crmContact.phone);
+    // TODO: home and work phones are customer to LJI, but we may want to add this as a customization in env.json
+//    contact.setHomephone(crmContact.homePhone);
+    contact.setMobilephone(crmContact.mobilePhone);
+//    contact.setWorkphone(crmContact.workPhone);
+    if (crmContact.preferredPhone == HOME) {
+      contact.setPhone(crmContact.homePhone);
+//      contact.setPreferredPhone("Home");
+    } else if (crmContact.preferredPhone == MOBILE) {
+      contact.setPhone(crmContact.mobilePhone);
+//      contact.setPreferredPhone("Mobile");
+    } else if (crmContact.preferredPhone == WORK) {
+      contact.setPhone(crmContact.workPhone);
+//      contact.setPreferredPhone("Work");
+    }
 
+    // TODO: add/remove in default lists?
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, true, contact.getCustomProperties());
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, false, contact.getCustomProperties());
@@ -295,7 +325,7 @@ public class HubSpotCrmService implements CrmService {
     DealProperties deal = new DealProperties();
     setDonationRefundFields(deal, paymentGatewayEvent);
 
-    hsClient.deal().update(donation.get().getId(), deal);
+    hsClient.deal().update(donation.get().id(), deal);
   }
 
   protected void setDonationRefundFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -321,7 +351,7 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate(), deal.getCustomProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars(), deal.getCustomProperties());
 
-    hsClient.deal().update(donation.get().getId(), deal);
+    hsClient.deal().update(donation.get().id(), deal);
   }
 
   @Override
@@ -435,11 +465,9 @@ public class HubSpotCrmService implements CrmService {
     crmContact.firstName = contact.getProperties().getFirstname();
     crmContact.lastName = contact.getProperties().getLastname();
     crmContact.email = contact.getProperties().getEmail();
-    crmContact.phone = contact.getProperties().getPhone();
-    if (Strings.isNullOrEmpty(crmContact.phone)) {
-      // try the mobile, just in case
-      crmContact.phone = contact.getProperties().getMobilephone();
-    }
+    // TODO: ditto -- need the breakdown of phones here
+    crmContact.mobilePhone = contact.getProperties().getMobilephone();
+    crmContact.ownerId = null; // TODO
     return crmContact;
   }
 
@@ -463,6 +491,15 @@ public class HubSpotCrmService implements CrmService {
         return "";
       }
     }).collect(Collectors.toList());
+  }
+
+  protected Object getProperty(String fieldName, Map<String, Object> customProperties) {
+    // Optional field names may not be configured in env.json, so ensure we actually have a name first...
+    if (Strings.isNullOrEmpty(fieldName)) {
+      return null;
+    }
+
+    return customProperties.get(fieldName);
   }
 
   protected void setProperty(String fieldName, Object value, Map<String, Object> customProperties) {

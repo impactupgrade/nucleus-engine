@@ -4,53 +4,45 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.CrmUser;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface CrmService {
 
+  // TODO: As we gain more granular search methods, we should instead think through general purpose options
+  //  that take filter as arguments (or a Search object).
+
+  Optional<CrmAccount> getAccountById(String id) throws Exception;
+
+  Optional<CrmContact> getContactById(String id) throws Exception;
   Optional<CrmContact> getContactByEmail(String email) throws Exception;
   Optional<CrmContact> getContactByPhone(String phone) throws Exception;
+
+  List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception;
+  // TODO: potentially a performance issue for long-term donors
+  List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception;
+
+  Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
+  List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception;
+
+  Optional<CrmUser> getUserById(String id) throws Exception;
+
+  String insertContact(CrmContact crmContact) throws Exception;
+  void updateContact(CrmContact crmContact) throws Exception;
 
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
 
-  String insertContact(OpportunityEvent opportunityEvent) throws Exception;
-  void updateContact(OpportunityEvent opportunityEvent) throws Exception;
-  String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception;
-
-  Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void refundDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void closeRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
-
-  Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
-  String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception;
-  void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
-
   void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
   void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception;
-
-  // Generally speaking, we emphasize the methods, above, that accept a specific type of event, giving organizations
-  // the ability to customize processing based on unique context. But we also allow generic versions where they make
-  // sense. Many of the above implementations will ultimately call these (DRY).
-  void updateContact(CrmContact crmContact) throws Exception;
 }
