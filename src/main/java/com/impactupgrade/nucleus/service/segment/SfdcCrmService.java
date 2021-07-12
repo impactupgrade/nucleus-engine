@@ -17,6 +17,7 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
+import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
@@ -33,7 +34,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-public class SfdcCrmService implements CrmService {
+public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpdateDonationService, CrmOpportunityService {
 
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
 
@@ -43,6 +44,18 @@ public class SfdcCrmService implements CrmService {
   public SfdcCrmService(Environment env) {
     this.env = env;
     sfdcClient = env.sfdcClient();
+  }
+
+  @Override
+  public Optional<CrmAccount> getAccountById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<CrmContact> getContactById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
   }
 
   @Override
@@ -57,6 +70,36 @@ public class SfdcCrmService implements CrmService {
       return Optional.empty();
     }
     return Optional.of(toCrmContact(contacts.get(0)));
+  }
+
+  @Override
+  public List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
+  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public Optional<CrmUser> getUserById(String id) throws Exception {
+    // TODO
+    return Optional.empty();
   }
 
   @Override
@@ -92,7 +135,7 @@ public class SfdcCrmService implements CrmService {
     CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
 
     SObject opportunity = new SObject("Opportunity");
-    opportunity.setId(existingDonation.getId());
+    opportunity.setId(existingDonation.id());
 
     // We need to set all fields again in order to tackle special cases. Ex: if this was a donation in a converted
     // currency, that data won't be available until the transaction actually succeeds. However, note that we currently
@@ -120,22 +163,10 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertContact(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
+  public String insertContact(CrmContact crmContact) throws Exception {
     SObject contact = new SObject("Contact");
-    setContactFields(contact, paymentGatewayWebhookEvent.getCrmContact());
+    setContactFields(contact, crmContact);
     return sfdcClient.insert(contact).getId();
-  }
-
-  @Override
-  public String insertContact(OpportunityEvent opportunityEvent) throws Exception {
-    SObject contact = new SObject("Contact");
-    setContactFields(contact, opportunityEvent.getCrmContact());
-    return sfdcClient.insert(contact).getId();
-  }
-
-  @Override
-  public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
-    updateContact(opportunityEvent.getCrmContact());
   }
 
   @Override
@@ -160,7 +191,7 @@ public class SfdcCrmService implements CrmService {
     contact.setField("FirstName", crmContact.firstName);
     contact.setField("LastName", crmContact.lastName);
     contact.setField("Email", crmContact.email);
-    contact.setField("MobilePhone", crmContact.phone);
+    contact.setField("MobilePhone", crmContact.mobilePhone);
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptIn, true);
@@ -273,7 +304,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     SObject opportunity = new SObject("Opportunity");
-    opportunity.setId(donation.get().getId());
+    opportunity.setId(donation.get().id());
     setOpportunityRefundFields(opportunity, paymentGatewayEvent);
 
     sfdcClient.update(opportunity);
@@ -746,6 +777,15 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
+  protected Object getField(SObject sObject, String name) {
+    // Optional field names may not be configured in env.json, so ensure we actually have a name first...
+    if (Strings.isNullOrEmpty(name)) {
+      return null;
+    }
+
+    return sObject.getField(name);
+  }
+
   protected void setField(SObject sObject, String name, Object value) {
     // Optional field names may not be configured in env.json, so ensure we actually have a name first...
     // Likewise, don't set a null or empty value.
@@ -796,9 +836,10 @@ public class SfdcCrmService implements CrmService {
     if (sObject.getField("Email") != null) {
       crmContact.email = sObject.getField("Email").toString();
     }
-    if (sObject.getField("Phone") != null) {
-      crmContact.phone = sObject.getField("Phone").toString();
+    if (sObject.getField("MobilePhone") != null) {
+      crmContact.mobilePhone = sObject.getField("MobilePhone").toString();
     }
+    crmContact.ownerId = sObject.getField("OwnerId").toString();
     return crmContact;
   }
 
@@ -814,13 +855,21 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmDonation toCrmDonation(SObject sObject) {
     String id = sObject.getId();
+    String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
 
     // TODO: yuck -- allow subclasses to more easily define custom mappers?
-    Object statusO = sObject.getField("StageName");
-    String status = statusO == null ? null : statusO.toString();
-    boolean successful = "Posted".equalsIgnoreCase(status) || "Closed Won".equalsIgnoreCase(status);
+    Object statusNameO = sObject.getField("StageName");
+    String statusName = statusNameO == null ? "" : statusNameO.toString();
+    CrmDonation.Status status;
+    if ("Posted".equalsIgnoreCase(statusName) || "Closed Won".equalsIgnoreCase(statusName)) {
+      status = CrmDonation.Status.SUCCESSFUL;
+    } else if (statusName.contains("fail") || statusName.contains("Fail")) {
+      status = CrmDonation.Status.FAILED;
+    } else {
+      status = CrmDonation.Status.PENDING;
+    }
 
-    return new CrmDonation(id, successful);
+    return new CrmDonation(id, paymentGatewayName, status);
   }
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {
@@ -829,11 +878,11 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
     String id = sObject.getId();
-    String name = (String) sObject.getField("Name");
-    String accountId = (String) sObject.getField("npe03__Organization__c");
-    String subscriptionId = (String) sObject.getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
+    String subscriptionId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
+    String customerId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
+    String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
-    return new CrmRecurringDonation(id, accountId, subscriptionId, amount);
+    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName);
   }
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {

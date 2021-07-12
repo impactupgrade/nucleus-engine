@@ -197,7 +197,7 @@ public class PaymentGatewayWebhookEvent {
     initStripeCustomerName(stripeCustomer, stripeMetadataBackup);
 
     crmContact.email = stripeCustomer.getEmail();
-    crmContact.phone = stripeCustomer.getPhone();
+    crmContact.mobilePhone = stripeCustomer.getPhone();
 
     CrmAddress crmAddress = new CrmAddress();
     if (stripeCustomer.getAddress() != null) {
@@ -383,7 +383,7 @@ public class PaymentGatewayWebhookEvent {
     crmContact.email = paymentSpringTransaction.getEmail();
     crmContact.firstName = paymentSpringTransaction.getFirstName();
     crmContact.lastName = paymentSpringTransaction.getLastName();
-    crmContact.phone = paymentSpringTransaction.getPhone();
+    crmContact.mobilePhone = paymentSpringTransaction.getPhone();
 
     if (paymentSpringCustomer.isPresent()) {
       customerId = paymentSpringCustomer.get().getId();
@@ -397,8 +397,8 @@ public class PaymentGatewayWebhookEvent {
       if (Strings.isNullOrEmpty(crmContact.lastName)) {
         crmContact.lastName = paymentSpringCustomer.get().getLastName();
       }
-      if (Strings.isNullOrEmpty(crmContact.phone)) {
-        crmContact.phone = paymentSpringCustomer.get().getPhone();
+      if (Strings.isNullOrEmpty(crmContact.mobilePhone)) {
+        crmContact.mobilePhone = paymentSpringCustomer.get().getPhone();
       }
     }
 
@@ -749,7 +749,7 @@ public class PaymentGatewayWebhookEvent {
         ", firstName='" + crmContact.firstName + '\'' +
         ", lastName='" + crmContact.lastName + '\'' +
         ", email='" + crmContact.email + '\'' +
-        ", phone='" + crmContact.phone + '\'' +
+        ", mobilePhone='" + crmContact.mobilePhone + '\'' +
 
         ", street='" + crmContact.address.street + '\'' +
         ", city='" + crmContact.address.city + '\'' +

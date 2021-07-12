@@ -4,29 +4,9 @@
 
 package com.impactupgrade.nucleus.model;
 
-public class CrmDonation {
+public record CrmDonation(String id, String paymentGatewayName, Status status) {
 
-  private String id;
-  private boolean posted;
-
-  public CrmDonation(String id, boolean posted) {
-    this.id = id;
-    this.posted = posted;
-  }
-
-  public String getId() {
-    return id;
-  }
-
-  public void setId(String id) {
-    this.id = id;
-  }
-
-  public boolean isPosted() {
-    return posted;
-  }
-
-  public void setPosted(boolean posted) {
-    this.posted = posted;
+  public enum Status {
+    PENDING, SUCCESSFUL, FAILED
   }
 }

@@ -4,9 +4,10 @@
 
 package com.impactupgrade.nucleus.model;
 
-public record CrmRecurringDonation(String id, String accountId, String subscriptionId, Double amount) {
+public record CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount, String paymentGatewayName) {
 
+    // TODO: Why allow this?
     public CrmRecurringDonation(String id) {
-        this(id, null, null, null);
+        this(id, null, null, null, null);
     }
 }
