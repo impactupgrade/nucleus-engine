@@ -454,7 +454,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.
-  private List<String> getCustomPropertyNames() {
+  protected List<String> getCustomPropertyNames() {
     return Arrays.stream(EnvironmentConfig.CRMFieldDefinitions.class.getFields()).map(f -> {
       try {
         return f.get(env.getConfig().hubspot.fieldDefinitions).toString();
@@ -465,7 +465,7 @@ public class HubSpotCrmService implements CrmService {
     }).collect(Collectors.toList());
   }
 
-  private void setProperty(String fieldName, Object value, Map<String, Object> customProperties) {
+  protected void setProperty(String fieldName, Object value, Map<String, Object> customProperties) {
     // Optional field names may not be configured in env.json, so ensure we actually have a name first...
     // Likewise, don't set a null or empty value.
     if (Strings.isNullOrEmpty(fieldName) || value == null) {
@@ -475,7 +475,7 @@ public class HubSpotCrmService implements CrmService {
     customProperties.put(fieldName, value);
   }
 
-  private String normalizePhoneNumber(String phone) {
+  protected String normalizePhoneNumber(String phone) {
     // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
     return phone.replace("+1", "");
   }

@@ -37,7 +37,6 @@ public class MessagingService {
     // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
     if (email != null && !email.contains("@")) {
       email = null;
-      __emailOptIn = null;
     }
 
     // First, look for an existing contact. Important to fall back on the PN since the
@@ -51,17 +50,17 @@ public class MessagingService {
       crmContact = crmService.getContactByPhone(phone).orElse(null);
     }
 
-    // if the flow didn't include an explicit email opt-in process, safe to assume it's fine
+    // if the flow didn't include an explicit email opt-in process, safe to assume it's fine if email is present
     boolean emailOptIn;
     if (Strings.isNullOrEmpty(__emailOptIn)) {
-      emailOptIn = true;
+      emailOptIn = email != null && email.contains("@");
     } else {
       emailOptIn = Utils.checkboxToBool(__emailOptIn);
     }
-    // if the flow didn't include an explicit sms opt-in process, NOT safe to assume
+    // if the flow didn't include an explicit sms opt-in process, we assume this was a general-purpose signup process and opt-in was a given
     boolean smsOptIn;
     if (Strings.isNullOrEmpty(__smsOptIn)) {
-      smsOptIn = false;
+      smsOptIn = true;
     } else {
       smsOptIn = Utils.checkboxToBool(__smsOptIn);
     }
