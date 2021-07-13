@@ -26,7 +26,9 @@
       "paymentGatewayDepositDate": "",
       "paymentGatewayDepositNetAmount": "",
       "emailOptIn": "",
-      "smsOptIn": ""
+      "emailOptOut": "",
+      "smsOptIn": "",
+      "smsOptOut": ""
     },
     "customQueryFields": {
       "account": [],
@@ -65,7 +67,9 @@
       "paymentGatewayAmountExchangeRate": "payment_gateway_amount_exchange_rate",
       "recurringDonationDealId": "recurring_donation_deal_id",
       "emailOptIn": "",
-      "smsOptIn": ""
+      "emailOptOut": "",
+      "smsOptIn": "",
+      "smsOptOut": ""
     },
     "defaultSmsOptInList": ""
   }
