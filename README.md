@@ -81,10 +81,6 @@ With technology constantly changing, don't try to figure it all out on your own.
 - **Evaluate** - We look for ways to simplify your processes and untangle digital messes.
 - **Partner Together** - We are with you every step of the way, executing the plan and attacking new challenges as they arise.
 
-## License
-
-Licensed under the PolyForm Noncommercial License 1.0.0. In its simplest form, The license grants nonprofits and individuals the right to run, modify, and distribute Nonprofit Nucleus, restricted to noncommercial purposes. See LICENSE.md for details.
-
 ## Copyright
 
 Copyright 3River Development LLC, DBA Impact Upgrade. All rights reserved.
