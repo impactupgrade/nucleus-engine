@@ -132,7 +132,7 @@ public class MetadataRetriever {
 
     if (metadataValue != null) {
       // IMPORTANT: The designation code is copy/pasted by a human and we've had issues with whitespace. Strip it!
-      metadataValue = metadataValue.replaceAll("[^A-Za-z0-9_-]", "");
+      metadataValue = metadataValue.trim();
     }
 
     return metadataValue;
