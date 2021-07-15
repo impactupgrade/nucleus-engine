@@ -4,7 +4,7 @@
 
 package com.impactupgrade.nucleus.model;
 
-public record CrmDonation(String id, String paymentGatewayName, Status status) {
+public record CrmDonation(String id, String name, Double amount, String paymentGatewayName, Status status) {
 
   public enum Status {
     PENDING, SUCCESSFUL, FAILED

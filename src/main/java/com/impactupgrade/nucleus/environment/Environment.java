@@ -136,9 +136,9 @@ public class Environment {
     String platformName = config.platforms.crm.name;
     if ("salesforce".equalsIgnoreCase(platformName)) {
       return new SfdcCrmService(this);
-    }/* else if ("hubspot".equalsIgnoreCase(platformName)) {
+    } else if ("hubspot".equalsIgnoreCase(platformName)) {
       return new HubSpotCrmService(this);
-    } else if ("bloomerang".equalsIgnoreCase(platformName)) {
+    }/* else if ("bloomerang".equalsIgnoreCase(platformName)) {
       return new BloomerangCrmService(this);
     }*/
 
