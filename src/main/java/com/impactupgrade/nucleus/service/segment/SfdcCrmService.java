@@ -869,7 +869,7 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
       status = CrmDonation.Status.PENDING;
     }
 
-    return new CrmDonation(id, paymentGatewayName, status);
+    return new CrmDonation(id, (String) sObject.getField("Name"), (Double) sObject.getField("Amount"), paymentGatewayName, status);
   }
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {

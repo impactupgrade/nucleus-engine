@@ -25,6 +25,7 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import org.apache.logging.log4j.LogManager;
@@ -32,6 +33,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +47,7 @@ import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.WORK;
 //  similar to SFDC where that won't be the case (ex: LJI/TER's split between payment gateway fields), this will need
 //  sanity checks like we have in SfdcCrmService.
 
-public class HubSpotCrmService implements CrmService, CrmNewDonationService, CrmOpportunityService {
+public class HubSpotCrmService implements CrmService, CrmNewDonationService, CrmUpdateDonationService, CrmOpportunityService {
 
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 
@@ -59,14 +61,16 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
 
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    Company company = hsClient.company().read(id, getCustomPropertyNames());
+    CrmAccount crmAccount = toCrmAccount(company);
+    return Optional.of(crmAccount);
   }
 
   @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    Contact contact = hsClient.contact().read(id, getCustomPropertyNames());
+    CrmContact crmContact = toCrmContact(contact);
+    return Optional.of(crmContact);
   }
 
   @Override
@@ -96,31 +100,32 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
 
   @Override
   public List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception {
-    // TODO
-    return null;
+    // TODO: will need to add query-by-association to HS lib
+    return Collections.emptyList();
   }
 
   @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
-    // TODO
-    return null;
+    // TODO: will need to add query-by-association to HS lib
+    return Collections.emptyList();
   }
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    Deal deal = hsClient.deal().read(id, getCustomPropertyNames());
+    CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
+    return Optional.of(crmRecurringDonation);
   }
 
   @Override
   public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    // TODO
-    return null;
+    // TODO: will need to add query-by-association to HS lib
+    return Collections.emptyList();
   }
 
   @Override
   public Optional<CrmUser> getUserById(String id) throws Exception {
-    // TODO
+    // TODO: will need to add User support to HS lib, if even possible
     return Optional.empty();
   }
 
@@ -144,7 +149,7 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     } else {
       status = CrmDonation.Status.PENDING;
     }
-    return Optional.of(new CrmDonation(id, paymentGatewayName, status));
+    return Optional.of(new CrmDonation(id, result.getProperties().getDealname(), result.getProperties().getAmount(), paymentGatewayName, status));
   }
 
   @Override
@@ -412,6 +417,28 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
   }
 
   @Override
+  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
+  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO
+  }
+
+  @Override
+  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO
+  }
+
+  @Override
   public void addContactToList(CrmContact crmContact, String listId) throws Exception {
     // note that HubSpot auto-prevents duplicate entries in lists
     // TODO: shift to V3
@@ -457,6 +484,18 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     throw new RuntimeException("not implemented");
   }
 
+  protected CrmAccount toCrmAccount(Company company) {
+    CrmAccount crmAccount = new CrmAccount();
+    crmAccount.id = company.getId();
+    crmAccount.name = company.getProperties().getName();
+    crmAccount.address.street = company.getProperties().getAddress();
+    crmAccount.address.city = company.getProperties().getCity();
+    crmAccount.address.state = company.getProperties().getState();
+    crmAccount.address.postalCode = company.getProperties().getZip();
+    crmAccount.address.country = company.getProperties().getCountry();
+    return crmAccount;
+  }
+
   protected CrmContact toCrmContact(Contact contact) {
     // TODO: likely enough, but may need the rest of the fields
     CrmContact crmContact = new CrmContact();
@@ -469,6 +508,16 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     crmContact.mobilePhone = contact.getProperties().getMobilephone();
     crmContact.ownerId = null; // TODO
     return crmContact;
+  }
+
+  protected CrmRecurringDonation toCrmRecurringDonation(Deal deal) {
+    return new CrmRecurringDonation(
+        deal.getId(),
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getCustomProperties()),
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getCustomProperties()),
+        deal.getProperties().getAmount(),
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getCustomProperties())
+    );
   }
 
   protected Optional<CrmContact> toCrmContact(Optional<Contact> contact) {
