@@ -166,13 +166,13 @@ public class TwilioController {
   @Produces(MediaType.APPLICATION_XML)
   public Response inboundSignup(
       @FormParam("From") String from,
-      @FormParam("FirstName") String firstName,
-      @FormParam("LastName") String lastName,
+      @FormParam("FirstName") String __firstName,
+      @FormParam("LastName") String __lastName,
       @FormParam("FullName") String fullName,
       @FormParam("Email") String email,
       @FormParam("EmailOptIn") String emailOptIn,
       @FormParam("SmsOptIn") String smsOptIn,
-      @FormParam("ListId") String listId,
+      @FormParam("ListId") String __listId,
       @FormParam("HubSpotListId") @Deprecated Long hsListId,
       @FormParam("CampaignId") String campaignId,
       @FormParam("OpportunityName") String opportunityName,
@@ -181,40 +181,55 @@ public class TwilioController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={}",
-        from, firstName, lastName, fullName, email, emailOptIn, smsOptIn, listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId);
+        from, __firstName, __lastName, fullName, email, emailOptIn, smsOptIn, __listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId);
     Environment env = envFactory.init(request);
     OpportunityEvent opportunityEvent = new OpportunityEvent(env);
 
+    String firstName;
+    String lastName;
     if (!Strings.isNullOrEmpty(fullName)) {
       String[] split = Utils.fullNameToFirstLast(fullName);
       firstName = split[0];
       lastName = split[1];
+    } else {
+      firstName = __firstName;
+      lastName = __lastName;
     }
 
+    String listId;
     if (hsListId != null && hsListId > 0) {
       listId = hsListId + "";
+    } else {
+      listId = __listId;
     }
 
-    env.messagingService().processSignup(
-        opportunityEvent,
-        from,
-        firstName,
-        lastName,
-        email,
-        emailOptIn,
-        smsOptIn,
-        campaignId,
-        listId
-    );
+    Runnable thread = () -> {
+      try {
+        env.messagingService().processSignup(
+            opportunityEvent,
+            from,
+            firstName,
+            lastName,
+            email,
+            emailOptIn,
+            smsOptIn,
+            campaignId,
+            listId
+        );
 
-    // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
-    if (!Strings.isNullOrEmpty(opportunityName)) {
-      opportunityEvent.setName(opportunityName);
-      opportunityEvent.setRecordTypeId(opportunityRecordTypeId);
-      opportunityEvent.setOwnerId(opportunityOwnerId);
-      opportunityEvent.setCampaignId(campaignId);
-      env.crmService().insertOpportunity(opportunityEvent);
-    }
+        // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
+        if (!Strings.isNullOrEmpty(opportunityName)) {
+          opportunityEvent.setName(opportunityName);
+          opportunityEvent.setRecordTypeId(opportunityRecordTypeId);
+          opportunityEvent.setOwnerId(opportunityOwnerId);
+          opportunityEvent.setCampaignId(campaignId);
+          env.crmService().insertOpportunity(opportunityEvent);
+        }
+      } catch (Exception e) {
+        log.warn("inbound SMS signup failed", e);
+      }
+    };
+    new Thread(thread).start();
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
     MessagingResponse response = new MessagingResponse.Builder().build();
