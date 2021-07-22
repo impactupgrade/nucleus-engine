@@ -479,4 +479,189 @@ public class HubSpotCrmService implements CrmService {
     // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
     return phone.replace("+1", "");
   }
+
+  // TODO: leaving this here in case it's helpful for eventual bulk import support
+//  public static void main(String[] args) throws IOException, InterruptedException {
+//    HubSpotV3Client hsV3Client = HubSpotClientFactory.v3Client();
+//    HubSpotV1Client hsV1Client = HubSpotClientFactory.v1Client();
+//
+//    CSVParser csvParser = CSVParser.parse(
+//        new File("/home/brmeyer/Downloads/Impact Upgrade contacts 2021-07-17 19-27.csv"),
+//        Charset.defaultCharset(),
+//        CSVFormat.DEFAULT
+//            .withFirstRecordAsHeader()
+//            .withIgnoreHeaderCase()
+//            .withTrim()
+//    );
+//    for (CSVRecord csvRecord : csvParser) {
+//      try {
+//        Map<String, String> data = csvRecord.toMap();
+//
+//        Filter[] filters = new Filter[]{new Filter("close_lead_id", "EQ", data.get("lead_id"))};
+//        CompanyResults companies = hsV3Client.company().search(filters, Collections.emptyList());
+//        Company company = companies.getResults().get(0);
+//
+//        ContactProperties contactProperties = new ContactProperties();
+//        contactProperties.setAssociatedcompanyid(company.getId());
+//        contactProperties.getCustomProperties().put("close_contact_id", data.get("id"));
+//        contactProperties.setFirstname(data.get("first_name"));
+//        contactProperties.setFirstname(data.get("last_name"));
+//        contactProperties.getCustomProperties().put("jobtitle", data.get("title"));
+//        contactProperties.setPhone(data.get("primary_phone"));
+//        contactProperties.setEmail(data.get("primary_email"));
+//
+//        System.out.println(company.getProperties().getName() + ": " + contactProperties.getEmail());
+//        Thread.sleep(200);
+//
+//        hsV3Client.contact().insert(contactProperties);
+//      } catch (Exception e) {
+//        e.printStackTrace();
+//      }
+//    }
+//
+//    HttpAuthenticationFeature auth = HttpAuthenticationFeature.basic("api_66jMEXUK2CAyVwuNs3v7Rj.6FUfLAGSGRA3QGfICQw8Px", "");
+//    int offset = 0;
+//    boolean hasMore = true;
+//    while (hasMore) {
+//      try {
+//        Client client = ClientBuilder.newClient().register(auth);
+//        WebTarget webTarget = client.target("https://api.close.com/api/v1/activity/note/?_skip=" + offset + "&_limit=10");
+//        Invocation.Builder invocationBuilder = webTarget.request(MediaType.TEXT_PLAIN);
+//        Response response = invocationBuilder.get();
+//        String json = response.readEntity(String.class);
+//        Gson gson = new GsonBuilder().create();
+//        NoteResponse noteResponse = gson.fromJson(json, NoteResponse.class);
+//
+//        for (Note note : noteResponse.data) {
+//          try {
+//            Filter[] filters = new Filter[]{new Filter("close_lead_id", "EQ", note.lead_id)};
+//            CompanyResults companies = hsV3Client.company().search(filters, Collections.emptyList());
+//            Company company = companies.getResults().get(0);
+//
+//            System.out.println(offset + " " + note.lead_id + " " + company.getId() + ": " + note.note + " " + note.date_created);
+//
+//            EngagementRequest engagementRequest = new EngagementRequest();
+//            Engagement engagement = new Engagement();
+//            engagement.setType("NOTE");
+//            engagementRequest.setEngagement(engagement);
+//            EngagementAssociations associations = new EngagementAssociations();
+//            associations.setCompanyIds(List.of(Long.parseLong(company.getId())));
+//            engagementRequest.setAssociations(associations);
+//            EngagementNoteMetadata metadata = new EngagementNoteMetadata();
+//            metadata.setBody(note.date_created + ": " + note.note);
+//            engagementRequest.setMetadata(metadata);
+//            hsV1Client.engagement().insert(engagementRequest);
+//
+//            Thread.sleep(200);
+//          } catch (Exception e2) {
+//            e2.printStackTrace();
+//          }
+//        }
+//
+//        hasMore = noteResponse.has_more;
+//        offset += 10;
+//      } catch (Exception e1) {
+//        e1.printStackTrace();;
+//      }
+//    }
+//
+//    HttpAuthenticationFeature auth = HttpAuthenticationFeature.basic("api_66jMEXUK2CAyVwuNs3v7Rj.6FUfLAGSGRA3QGfICQw8Px", "");
+//    int offset = 0;
+//    boolean hasMore = true;
+//    while (hasMore) {
+//      try {
+//        Client client = ClientBuilder.newClient().register(auth);
+//        WebTarget webTarget = client.target("https://api.close.com/api/v1/activity/call/?_skip=" + offset + "&_limit=10");
+//        Invocation.Builder invocationBuilder = webTarget.request(MediaType.TEXT_PLAIN);
+//        Response response = invocationBuilder.get();
+//        String json = response.readEntity(String.class);
+//        Gson gson = new GsonBuilder().create();
+//        CallResponse callResponse = gson.fromJson(json, CallResponse.class);
+//
+//        for (Call call : callResponse.data) {
+//          try {
+//            if (Strings.isNullOrEmpty(call.lead_id)) {
+//              continue;
+//            }
+//            Filter[] filters = new Filter[]{new Filter("close_lead_id", "EQ", call.lead_id)};
+//            CompanyResults companies = hsV3Client.company().search(filters, Collections.emptyList());
+//            Company company = companies.getResults().get(0);
+//
+//            System.out.println(offset + " " + call.lead_id + " " + company.getId() + ": " + call.note + " " + call.date_created);
+//
+//            EngagementRequest engagementRequest = new EngagementRequest();
+//            Engagement engagement = new Engagement();
+//            engagement.setType("NOTE");
+//            engagementRequest.setEngagement(engagement);
+//            EngagementAssociations associations = new EngagementAssociations();
+//            associations.setCompanyIds(List.of(Long.parseLong(company.getId())));
+//            engagementRequest.setAssociations(associations);
+//            EngagementNoteMetadata metadata = new EngagementNoteMetadata();
+//            metadata.setBody("CALLED " + call.date_created + ": " + call.note);
+//            engagementRequest.setMetadata(metadata);
+//            hsV1Client.engagement().insert(engagementRequest);
+//
+//            Thread.sleep(200);
+//          } catch (Exception e2) {
+//            e2.printStackTrace();
+//          }
+//        }
+//
+//        hasMore = callResponse.has_more;
+//        offset += 10;
+//      } catch (Exception e1) {
+//        e1.printStackTrace();;
+//      }
+//    }
+//
+//    CSVParser csvParser = CSVParser.parse(
+//        new File("/home/brmeyer/Downloads/Impact Upgrade contacts 2021-07-17 19-27.csv"),
+//        Charset.defaultCharset(),
+//        CSVFormat.DEFAULT
+//            .withFirstRecordAsHeader()
+//            .withIgnoreHeaderCase()
+//            .withTrim()
+//    );
+//    for (CSVRecord csvRecord : csvParser) {
+//      try {
+//        Map<String, String> data = csvRecord.toMap();
+//
+//        Filter[] filters = new Filter[]{new Filter("email", "EQ", data.get("primary_email"))};
+//        ContactResults contacts = hsV3Client.contact().search(filters, Collections.emptyList());
+//        Contact contact = contacts.getResults().get(0);
+//
+//        ContactProperties update = new ContactProperties();
+//        update.setFirstname(data.get("first_name"));
+//        update.setLastname(data.get("last_name"));
+//
+//        hsV3Client.contact().update(contact.getId(), update);
+//
+//        Thread.sleep(200);
+//      } catch (Exception e) {
+//        e.printStackTrace();
+//      }
+//    }
+//  }
+//
+//  public static class NoteResponse {
+//    public List<Note> data;
+//    public Boolean has_more;
+//  }
+//
+//  public static class Note {
+//    public String note;
+//    public String date_created;
+//    public String lead_id;
+//  }
+//
+//  public static class CallResponse {
+//    public List<Call> data;
+//    public Boolean has_more;
+//  }
+//
+//  public static class Call {
+//    public String note;
+//    public String date_created;
+//    public String lead_id;
+//  }
 }
