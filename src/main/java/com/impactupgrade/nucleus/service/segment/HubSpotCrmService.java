@@ -19,6 +19,7 @@ import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
@@ -161,9 +162,14 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
       return Optional.empty();
     }
 
-    Deal result = results.getResults().get(0);
-    String id = result.getId();
-    return Optional.of(new CrmRecurringDonation(id));
+    Deal deal = results.getResults().get(0);
+    return Optional.of(new CrmRecurringDonation(
+        deal.getId(),
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getCustomProperties()),
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getCustomProperties()),
+        deal.getProperties().getAmount(),
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getCustomProperties())
+    ));
   }
 
   @Override
@@ -407,7 +413,7 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     DealProperties deal = new DealProperties();
     setRecurringDonationFieldsForClose(deal, paymentGatewayEvent);
 
-    hsClient.deal().update(recurringDonation.get().id(), deal);
+    hsClient.deal().update(recurringDonation.get().id, deal);
   }
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
@@ -485,29 +491,51 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
   }
 
   protected CrmAccount toCrmAccount(Company company) {
-    CrmAccount crmAccount = new CrmAccount();
-    crmAccount.id = company.getId();
-    crmAccount.name = company.getProperties().getName();
-    crmAccount.address.street = company.getProperties().getAddress();
-    crmAccount.address.city = company.getProperties().getCity();
-    crmAccount.address.state = company.getProperties().getState();
-    crmAccount.address.postalCode = company.getProperties().getZip();
-    crmAccount.address.country = company.getProperties().getCountry();
-    return crmAccount;
+    CrmAddress crmAddress = new CrmAddress(
+        company.getProperties().getAddress(),
+        company.getProperties().getCity(),
+        company.getProperties().getState(),
+        company.getProperties().getZip(),
+        company.getProperties().getCountry()
+    );
+
+    return new CrmAccount(
+        company.getId(),
+        company.getProperties().getName(),
+        crmAddress
+    );
   }
 
   protected CrmContact toCrmContact(Contact contact) {
-    // TODO: likely enough, but may need the rest of the fields
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = contact.getId();
-    crmContact.accountId = contact.getProperties().getAssociatedcompanyid();
-    crmContact.firstName = contact.getProperties().getFirstname();
-    crmContact.lastName = contact.getProperties().getLastname();
-    crmContact.email = contact.getProperties().getEmail();
-    // TODO: ditto -- need the breakdown of phones here
-    crmContact.mobilePhone = contact.getProperties().getMobilephone();
-    crmContact.ownerId = null; // TODO
-    return crmContact;
+    CrmAddress crmAddress = new CrmAddress(
+        contact.getProperties().getAddress(),
+        contact.getProperties().getCity(),
+        contact.getProperties().getState(),
+        contact.getProperties().getZip(),
+        contact.getProperties().getCountry()
+    );
+
+    // TODO
+    CrmContact.PreferredPhone preferredPhone = null;
+
+    return new CrmContact(
+        contact.getId(),
+        contact.getProperties().getAssociatedcompanyid(),
+        contact.getProperties().getFirstname(),
+        contact.getProperties().getLastname(),
+        contact.getProperties().getEmail(),
+        // TODO: need the breakdown of phones here
+        null,
+        contact.getProperties().getMobilephone(),
+        null,
+        preferredPhone,
+        crmAddress,
+        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, contact.getProperties().getCustomProperties()),
+        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, contact.getProperties().getCustomProperties()),
+        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getCustomProperties()),
+        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getCustomProperties()),
+        contact.getProperties().getOwnerId()
+    );
   }
 
   protected CrmRecurringDonation toCrmRecurringDonation(Deal deal) {

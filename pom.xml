@@ -38,6 +38,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>com.impactupgrade.integration</groupId>
+      <artifactId>hubspot-java-client</artifactId>
+      <version>2.0.2-SNAPSHOT</version>
+    </dependency>
+    <dependency>
       <groupId>com.ecwid</groupId>
       <artifactId>maleorang</artifactId>
       <version>3.0-0.9.6</version>

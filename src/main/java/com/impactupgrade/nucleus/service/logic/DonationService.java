@@ -62,7 +62,7 @@ public class DonationService {
         String recurringDonationId = crmNewDonationService.insertRecurringDonation(paymentGatewayEvent);
         paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
       } else {
-        String recurringDonationId = recurringDonation.get().id();
+        String recurringDonationId = recurringDonation.get().id;
         log.info("found CRM recurring donation {} using subscriptionId {}",
             recurringDonationId, paymentGatewayEvent.getSubscriptionId());
         paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
@@ -119,7 +119,7 @@ public class DonationService {
     }
 
     if (manageDonationEvent.getDonationId() == null) {
-      manageDonationEvent.setDonationId(recurringDonation.get().id());
+      manageDonationEvent.setDonationId(recurringDonation.get().id);
     }
 
     manageDonationEvent.setSubscriptionId(crmUpdateDonationService.getSubscriptionId(manageDonationEvent));
