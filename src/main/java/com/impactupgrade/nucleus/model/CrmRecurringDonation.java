@@ -4,10 +4,28 @@
 
 package com.impactupgrade.nucleus.model;
 
-public record CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount, String paymentGatewayName) {
+public class CrmRecurringDonation {
 
-    // TODO: Why allow this?
-    public CrmRecurringDonation(String id) {
-        this(id, null, null, null, null);
-    }
+  public String id;
+  public String subscriptionId;
+  public String customerId;
+  public Double amount;
+  public String paymentGatewayName;
+
+  public CrmRecurringDonation() {}
+
+  // A few cases where we only care about existence and require only the id.
+  public CrmRecurringDonation(String id) {
+    this.id = id;
+  }
+
+  // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
+  public CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount,
+      String paymentGatewayName) {
+    this.id = id;
+    this.subscriptionId = subscriptionId;
+    this.customerId = customerId;
+    this.amount = amount;
+    this.paymentGatewayName = paymentGatewayName;
+  }
 }

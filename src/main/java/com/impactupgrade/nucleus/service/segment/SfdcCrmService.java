@@ -11,6 +11,7 @@ import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -30,6 +31,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -194,21 +196,21 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
     contact.setField("MobilePhone", crmContact.mobilePhone);
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptIn, true);
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptOut, false);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
     }
     if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptIn, false);
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.emailOptOut, true);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
     }
 
     if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptIn, true);
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptOut, false);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, false);
     }
     if (crmContact.smsOptOut != null && crmContact.smsOptOut) {
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptIn, false);
-      setField(contact, env.getConfig().hubspot.fieldDefinitions.smsOptOut, true);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
   }
 
@@ -388,7 +390,7 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
     }
 
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(recurringDonation.get().id());
+    toUpdate.setId(recurringDonation.get().id);
     toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
     setRecurringDonationFieldsForClose(toUpdate, paymentGatewayEvent);
     sfdcClient.update(toUpdate);
@@ -404,7 +406,7 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
     }
 
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(recurringDonation.get().id());
+    toUpdate.setId(recurringDonation.get().id);
     toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
     setRecurringDonationFieldsForClose(toUpdate, manageDonationEvent);
     sfdcClient.update(toUpdate);
@@ -823,24 +825,37 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
   // TODO: starting to feel like we need an object mapper lib...
 
   protected CrmContact toCrmContact(SObject sObject) {
-    // TODO: likely enough, but may need the rest of the fields
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = sObject.getId();
-    crmContact.accountId = sObject.getField("AccountId").toString();
-    if (sObject.getField("FirstName") != null) {
-      crmContact.firstName = sObject.getField("FirstName").toString();
+    CrmAddress crmAddress = new CrmAddress(
+        (String) sObject.getField("BillingStreet"),
+        (String) sObject.getField("BillingCity"),
+        (String) sObject.getField("BillingState"),
+        (String) sObject.getField("BillingPostalCode"),
+        (String) sObject.getField("BillingCountry")
+    );
+
+    CrmContact.PreferredPhone preferredPhone = null;
+    if (sObject.getField("npe01__preferredphone__c") != null) {
+      String s = (String) sObject.getField("npe01__preferredphone__c");
+      preferredPhone = CrmContact.PreferredPhone.valueOf(s.toUpperCase(Locale.ROOT));
     }
-    if (sObject.getField("LastName") != null) {
-      crmContact.lastName = sObject.getField("LastName").toString();
-    }
-    if (sObject.getField("Email") != null) {
-      crmContact.email = sObject.getField("Email").toString();
-    }
-    if (sObject.getField("MobilePhone") != null) {
-      crmContact.mobilePhone = sObject.getField("MobilePhone").toString();
-    }
-    crmContact.ownerId = sObject.getField("OwnerId").toString();
-    return crmContact;
+
+    return new CrmContact(
+        sObject.getId(),
+        (String) sObject.getField("AccountId"),
+        (String) sObject.getField("FirstName"),
+        (String) sObject.getField("LastName"),
+        (String) sObject.getField("Email"),
+        (String) sObject.getField("HomePhone"),
+        (String) sObject.getField("MobilePhone"),
+        (String) sObject.getField("npe01__workphone__c"),
+        preferredPhone,
+        crmAddress,
+        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptIn),
+        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptOut),
+        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
+        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
+        (String) sObject.getField("OwnerId")
+    );
   }
 
   protected Optional<CrmContact> toCrmContact(Optional<SObject> sObject) {
