@@ -16,9 +16,10 @@ public class ManageDonationEvent {
   protected final Environment env;
 
   protected String donationId;
+  // TODO: donationName is likely DR-specific (their unique, incrementing identifiers) -- pull to dr-nucleus?
   protected String donationName;
-  protected Double amount;
   protected String subscriptionId;
+  protected Double amount;
   protected Calendar pauseDonationUntilDate;
   protected Boolean pauseDonation;
   protected Calendar resumeDonationOnDate;
