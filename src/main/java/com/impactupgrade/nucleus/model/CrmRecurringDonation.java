@@ -6,11 +6,17 @@ package com.impactupgrade.nucleus.model;
 
 public class CrmRecurringDonation {
 
+  public enum Frequency {
+    WEEKLY, MONTHLY, QUARTERLY, YEARLY
+  }
+
   public String id;
   public String subscriptionId;
   public String customerId;
   public Double amount;
   public String paymentGatewayName;
+  public Boolean active;
+  public Frequency frequency;
 
   public CrmRecurringDonation() {}
 
@@ -21,11 +27,13 @@ public class CrmRecurringDonation {
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount,
-      String paymentGatewayName) {
+      String paymentGatewayName, Boolean active, Frequency frequency) {
     this.id = id;
     this.subscriptionId = subscriptionId;
     this.customerId = customerId;
     this.amount = amount;
     this.paymentGatewayName = paymentGatewayName;
+    this.active = active;
+    this.frequency = frequency;
   }
 }

@@ -28,7 +28,10 @@
       "emailOptIn": "",
       "emailOptOut": "",
       "smsOptIn": "",
-      "smsOptOut": ""
+      "smsOptOut": "",
+      "donationCount": "",
+      "donationTotal": "",
+      "firstDonationDate": ""
     },
     "customQueryFields": {
       "account": [],
@@ -69,7 +72,10 @@
       "emailOptIn": "",
       "emailOptOut": "",
       "smsOptIn": "",
-      "smsOptOut": ""
+      "smsOptOut": "",
+      "donationCount": "",
+      "donationTotal": "",
+      "firstDonationDate": ""
     },
     "defaultSmsOptInList": ""
   }
