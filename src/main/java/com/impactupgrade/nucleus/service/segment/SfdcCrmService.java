@@ -133,11 +133,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws ConnectionException, InterruptedException {
-    return sfdcClient.getSubscriptionId(manageDonationEvent.getDonationId());
-  }
-
-  @Override
   public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
 

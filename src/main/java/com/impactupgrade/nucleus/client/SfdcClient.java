@@ -352,12 +352,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
-  public String getSubscriptionId(String recurringDonationId) throws ConnectionException, InterruptedException {
-    String query = "select " + env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId + " from npe03__Recurring_Donation__c where id='" + recurringDonationId + "'";
-    LoggingUtil.verbose(log, query);
-    return (String) querySingle(query).get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
-  }
-
   public void refreshRecurringDonation(String donationId) throws ConnectionException {
     // TODO: set up 'FORCE_URL' env var and the appropriate apex enpoint for orgs so they this will work
     log.info("refreshing opportunities on {}...", donationId);

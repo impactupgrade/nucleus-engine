@@ -294,11 +294,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }

@@ -119,7 +119,7 @@ public class DonationService {
       manageDonationEvent.setDonationId(recurringDonation.get().id);
     }
 
-    manageDonationEvent.setSubscriptionId(crmService.getSubscriptionId(manageDonationEvent));
+    manageDonationEvent.setSubscriptionId(recurringDonation.get().subscriptionId);
     if (manageDonationEvent.getCancelDonation()) {
       crmService.closeRecurringDonation(manageDonationEvent);
       paymentGatewayService.closeSubscription(manageDonationEvent);

@@ -425,24 +425,104 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
-    return null;
+    return getRecurringDonationById(manageDonationEvent.getDonationId());
   }
 
   @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
+    // TODO: duplicates nearly all of SfdcCrmService...
+
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      if (Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
+        log.warn("unable to find HS recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      } else {
+        log.warn("unable to find HS recurring donation using donationName {}", manageDonationEvent.getDonationName());
+      }
+      return;
+    }
+
+    DealProperties dealProperties = new DealProperties();
+    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
+      dealProperties.setAmount(manageDonationEvent.getAmount());
+      log.info("Updating amount to {}...", manageDonationEvent.getAmount());
+    }
+    if (manageDonationEvent.getNextPaymentDate() != null) {
+      // TODO
+    }
+    hsClient.deal().update(manageDonationEvent.getDonationId(), dealProperties);
+
+    if (manageDonationEvent.getPauseDonation() == true) {
+      pauseRecurringDonation(manageDonationEvent);
+    }
+
+    if (manageDonationEvent.getResumeDonation() == true) {
+      resumeRecurringDonation(manageDonationEvent);
+    }
   }
 
   @Override
   public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find HS recurring donation using donationId {}",
+          manageDonationEvent.getDonationId());
+      return;
+    }
+
+    DealProperties dealProperties = new DealProperties();
+    setRecurringDonationFieldsForClose(dealProperties, manageDonationEvent);
+
+    hsClient.deal().update(recurringDonation.get().id, dealProperties);
+  }
+
+  // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
+  protected void setRecurringDonationFieldsForClose(DealProperties deal,
+      ManageDonationEvent manageDonationEvent) throws Exception {
+  }
+
+  // Give orgs an opportunity to set anything else that's unique to them, prior to pause
+  protected void setRecurringDonationFieldsForPause(DealProperties deal,
+      ManageDonationEvent manageDonationEvent) throws Exception {
+  }
+
+  // Give orgs an opportunity to set anything else that's unique to them, prior to resume
+  protected void setRecurringDonationFieldsForResume(DealProperties deal,
+      ManageDonationEvent manageDonationEvent) throws Exception {
+  }
+
+  public void pauseRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find HS recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      return;
+    }
+
+    DealProperties dealProperties = new DealProperties();
+    dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
+    // TODO: Close reason?
+
+    if (manageDonationEvent.getPauseDonationUntilDate() == null) {
+      log.info("pausing {} indefinitely...", manageDonationEvent.getDonationId());
+    } else {
+      log.info("pausing {} until {}...", manageDonationEvent.getDonationId(), manageDonationEvent.getPauseDonationUntilDate().getTime());
+    }
+    setRecurringDonationFieldsForPause(dealProperties, manageDonationEvent);
+    hsClient.deal().update(manageDonationEvent.getDonationId(), dealProperties);
+  }
+
+  public void resumeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
+
+    if (recurringDonation.isEmpty()) {
+      log.warn("unable to find HS recurring donation using donationId {}", manageDonationEvent.getDonationId());
+      return;
+    }
+
+    // TODO: Likely a new Deal with type/dates set appropriately
   }
 
   @Override
