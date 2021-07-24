@@ -118,6 +118,9 @@ public class EnvironmentConfig {
     public String emailOptOut = "";
     public String smsOptIn = "";
     public String smsOptOut = "";
+    public String donationCount = "";
+    public String donationTotal = "";
+    public String firstDonationDate = "";
   }
 
   public static EnvironmentConfig init() {

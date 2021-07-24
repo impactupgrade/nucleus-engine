@@ -137,7 +137,7 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
     CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
 
     SObject opportunity = new SObject("Opportunity");
-    opportunity.setId(existingDonation.id());
+    opportunity.setId(existingDonation.id);
 
     // We need to set all fields again in order to tackle special cases. Ex: if this was a donation in a converted
     // currency, that data won't be available until the transaction actually succeeds. However, note that we currently
@@ -306,7 +306,7 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
     }
 
     SObject opportunity = new SObject("Opportunity");
-    opportunity.setId(donation.get().id());
+    opportunity.setId(donation.get().id);
     setOpportunityRefundFields(opportunity, paymentGatewayEvent);
 
     sfdcClient.update(opportunity);
@@ -884,7 +884,8 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
       status = CrmDonation.Status.PENDING;
     }
 
-    return new CrmDonation(id, (String) sObject.getField("Name"), (Double) sObject.getField("Amount"), paymentGatewayName, status);
+    return new CrmDonation(id, (String) sObject.getField("Name"), (Double) sObject.getField("Amount"),
+        paymentGatewayName, status, (Calendar) sObject.getField("CloseDate"));
   }
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {
@@ -897,7 +898,9 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
     String customerId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
     String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
-    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName);
+    boolean active = "Open".equalsIgnoreCase(sObject.getField("Npe03__Open_Ended_Status__c").toString());
+    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.valueOf(sObject.getField("Npe03__Installment_Period__c").toString());
+    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, active, frequency);
   }
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {

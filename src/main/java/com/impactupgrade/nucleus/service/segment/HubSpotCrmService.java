@@ -150,7 +150,8 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     } else {
       status = CrmDonation.Status.PENDING;
     }
-    return Optional.of(new CrmDonation(id, result.getProperties().getDealname(), result.getProperties().getAmount(), paymentGatewayName, status));
+    return Optional.of(new CrmDonation(id, result.getProperties().getDealname(), result.getProperties().getAmount(),
+        paymentGatewayName, status, result.getProperties().getClosedate()));
   }
 
   @Override
@@ -163,13 +164,7 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     }
 
     Deal deal = results.getResults().get(0);
-    return Optional.of(new CrmRecurringDonation(
-        deal.getId(),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getCustomProperties()),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getCustomProperties()),
-        deal.getProperties().getAmount(),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getCustomProperties())
-    ));
+    return Optional.of(toCrmRecurringDonation(deal));
   }
 
   @Override
@@ -336,7 +331,7 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     DealProperties deal = new DealProperties();
     setDonationRefundFields(deal, paymentGatewayEvent);
 
-    hsClient.deal().update(donation.get().id(), deal);
+    hsClient.deal().update(donation.get().id, deal);
   }
 
   protected void setDonationRefundFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -362,7 +357,7 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate(), deal.getCustomProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars(), deal.getCustomProperties());
 
-    hsClient.deal().update(donation.get().id(), deal);
+    hsClient.deal().update(donation.get().id, deal);
   }
 
   @Override
@@ -502,7 +497,10 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     return new CrmAccount(
         company.getId(),
         company.getProperties().getName(),
-        crmAddress
+        crmAddress,
+        (Integer) getProperty(env.getConfig().hubspot.fieldDefinitions.donationCount, company.getProperties().getCustomProperties()),
+        (Double) getProperty(env.getConfig().hubspot.fieldDefinitions.donationTotal, company.getProperties().getCustomProperties()),
+        (Calendar) getProperty(env.getConfig().hubspot.fieldDefinitions.firstDonationDate, company.getProperties().getCustomProperties())
     );
   }
 
@@ -544,7 +542,9 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getCustomProperties()),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getCustomProperties()),
         deal.getProperties().getAmount(),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getCustomProperties())
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getCustomProperties()),
+        deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
+        CrmRecurringDonation.Frequency.MONTHLY // HubSpot supports monthly only, currently
     );
   }
 
