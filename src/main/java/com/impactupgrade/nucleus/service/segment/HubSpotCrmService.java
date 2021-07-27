@@ -163,11 +163,18 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public String insertAccount(CrmAccount crmAccount) throws Exception {
     CompanyProperties account = new CompanyProperties();
-    setAccountFields(account, paymentGatewayEvent.getCrmAccount());
+    setAccountFields(account, crmAccount);
     Company response = hsClient.company().insert(account);
     return response == null ? null : response.getId();
+  }
+
+  @Override
+  public void updateAccount(CrmAccount crmAccount) throws Exception {
+    CompanyProperties account = new CompanyProperties();
+    setAccountFields(account, crmAccount);
+    hsClient.company().update(crmAccount.id, account);
   }
 
   protected void setAccountFields(CompanyProperties account, CrmAccount crmAccount) {
@@ -569,6 +576,8 @@ public class HubSpotCrmService implements CrmService {
         company.getId(),
         company.getProperties().getName(),
         crmAddress,
+        // TODO: Differentiate between Household and Organization?
+        CrmAccount.Type.HOUSEHOLD,
         (Integer) getProperty(env.getConfig().hubspot.fieldDefinitions.donationCount, company.getProperties().getCustomProperties()),
         (Double) getProperty(env.getConfig().hubspot.fieldDefinitions.donationTotal, company.getProperties().getCustomProperties()),
         (Calendar) getProperty(env.getConfig().hubspot.fieldDefinitions.firstDonationDate, company.getProperties().getCustomProperties())
