@@ -4,7 +4,7 @@
 
 package com.impactupgrade.nucleus.client;
 
-import com.ecwid.maleorang.MailchimpException;
+//import com.ecwid.maleorang.MailchimpException;
 import com.sforce.ws.ConnectionException;
 
 import java.io.IOException;
@@ -15,7 +15,7 @@ import java.util.Date;
 public class MailchimpClient {
 
   // TODO: env var
-  private static final com.ecwid.maleorang.MailchimpClient CLIENT = new com.ecwid.maleorang.MailchimpClient("TODO");
+//  private static final com.ecwid.maleorang.MailchimpClient CLIENT = new com.ecwid.maleorang.MailchimpClient("TODO");
 
 //  private static final DRSFDCClient sfdcClient = new DRSFDCClient();
 
@@ -24,7 +24,7 @@ public class MailchimpClient {
 //    // TODO
 //  }
 
-  public void findSpamContacts(Date sinceDate) throws IOException, MailchimpException, ConnectionException, InterruptedException {
+  public void findSpamContacts(Date sinceDate) throws IOException, ConnectionException, InterruptedException {
 //    // TODO: 39dcb0514a == US Marketing
 //    GetMembersMethod getMembersMethod = new GetMembersMethod("39dcb0514a");
 //    // TODO: Max is 1000, but that timed out
@@ -49,7 +49,7 @@ public class MailchimpClient {
 //    }
   }
 
-  public static void main(String[] args) throws IOException, MailchimpException, ConnectionException, InterruptedException {
+  public static void main(String[] args) throws IOException, ConnectionException, InterruptedException {
 //    Calendar c = Calendar.getInstance();
 //    c.set(Calendar.YEAR, 2020);
 //    c.set(Calendar.MONTH, 11);

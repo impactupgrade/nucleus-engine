@@ -5,6 +5,8 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
+import com.impactupgrade.integration.hubspot.v1.model.HasValue;
 import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
 import com.impactupgrade.integration.hubspot.v3.Contact;
@@ -449,7 +451,8 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
 
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
-    throw new RuntimeException("not implemented");
+    ContactArray contactArray = HubSpotClientFactory.v1Client().contactList().getContactsInList(Long.parseLong(listId));
+    return toCrmContact(contactArray);
   }
 
   @Override
@@ -536,6 +539,50 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
     );
   }
 
+  protected Optional<CrmContact> toCrmContact(Optional<Contact> contact) {
+    return contact.map(this::toCrmContact);
+  }
+
+  protected List<CrmContact> toCrmContact(List<Contact> contacts) {
+    return contacts.stream()
+        .map(this::toCrmContact)
+        .collect(Collectors.toList());
+  }
+
+  // V1 option, temporarily
+  protected CrmContact toCrmContact(com.impactupgrade.integration.hubspot.v1.model.Contact contact) {
+    // TODO: Data missing from our Java client's v1 flavor, but this list is ultimately needed
+    //  for simple use cases like outbound messages.
+    return new CrmContact(
+        contact.getVid() + "",
+        null,
+        null,
+        null,
+        null,
+        getValue(contact.getProperties().getPhone()),
+        getValue(contact.getProperties().getMobilePhone()),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+    );
+  }
+
+  private String getValue(HasValue<String> value) {
+    return value == null ? null : value.getValue();
+  }
+
+  // V1 option, temporarily
+  protected List<CrmContact> toCrmContact(ContactArray contactArray) {
+    return contactArray.getContacts().stream()
+        .map(this::toCrmContact)
+        .collect(Collectors.toList());
+  }
+
   protected CrmRecurringDonation toCrmRecurringDonation(Deal deal) {
     return new CrmRecurringDonation(
         deal.getId(),
@@ -546,16 +593,6 @@ public class HubSpotCrmService implements CrmService, CrmNewDonationService, Crm
         deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
         CrmRecurringDonation.Frequency.MONTHLY // HubSpot supports monthly only, currently
     );
-  }
-
-  protected Optional<CrmContact> toCrmContact(Optional<Contact> contact) {
-    return contact.map(this::toCrmContact);
-  }
-
-  protected List<CrmContact> toCrmContact(List<Contact> contacts) {
-    return contacts.stream()
-        .map(this::toCrmContact)
-        .collect(Collectors.toList());
   }
 
   // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.

@@ -6,8 +6,6 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
-import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -15,6 +13,7 @@ import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.Twilio;
+import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
@@ -80,22 +79,39 @@ public class TwilioController {
           List<CrmContact> contacts = env.crmService().getContactsFromList(listId);
           log.info("found {} contacts in list {}", contacts.size(), listId);
           contacts.stream()
-              .filter(c -> c.mobilePhone != null)
-              .map(c -> c.mobilePhone)
-              .map(pn -> pn.replaceAll("[^0-9\\+]", ""))
-              .filter(pn -> !Strings.isNullOrEmpty(pn))
-              .forEach(pn -> {
+              .filter(c -> c.mobilePhone != null || c.homePhone != null)
+              .forEach(c -> {
                 try {
-                  Message twilioMessage = Message.creator(
-                      new PhoneNumber(pn),
-                      new PhoneNumber(TWILIO_SENDER_PN),
-                      message
-                  ).create();
+                  String pn = c.mobilePhone;
+                  if (Strings.isNullOrEmpty(pn)) {
+                    // Just in case...
+                    pn = c.homePhone;
+                  }
+                  pn = pn.replaceAll("[^0-9\\+]", "");
 
-                  log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
-                      twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+                  if (!Strings.isNullOrEmpty(pn)) {
+                    Message twilioMessage = Message.creator(
+                        new PhoneNumber(pn),
+                        new PhoneNumber(TWILIO_SENDER_PN),
+                        message
+                    ).create();
+
+                    log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
+                        twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+                  }
+                } catch (ApiException e1) {
+                  if (e1.getCode() == 21610) {
+                    log.info("message to {} failed due to blacklist; updating contact in CRM", c.mobilePhone);
+                    try {
+                      env.messagingService().optOut(c);
+                    } catch (Exception e2) {
+                      log.error("CRM contact update failed", e2);
+                    }
+                  } else {
+                    log.warn("message to {} failed", c.mobilePhone, e1);
+                  }
                 } catch (Exception e) {
-                  log.warn("message to {} failed", pn, e);
+                  log.warn("message to {} failed", c.mobilePhone, e);
                 }
               });
         } catch (Exception e) {
@@ -103,50 +119,6 @@ public class TwilioController {
         }
       }
       log.info("FINISHED: outbound/crm-list");
-    };
-    new Thread(thread).start();
-
-    return Response.ok().build();
-  }
-
-  // TODO: Deprecate and replace with the above, moving this code to HubSpotCrmService.getContactsFromList
-  @Path("/outbound/hubspot-list")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response outboundToHubSpotList(@FormParam("list-id") List<Long> listIds, @FormParam("message") String message,
-      @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
-    Environment env = envFactory.init(request);
-
-    log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
-
-    // takes a while, so spin it off as a new thread
-    Runnable thread = () -> {
-      for (Long listId : listIds) {
-        log.info("retrieving contacts from list {}", listId);
-        ContactArray contactArray = HubSpotClientFactory.v1Client().contactList().getContactsInList(listId);
-        log.info("found {} contacts in list {}", contactArray.getContacts().size(), listId);
-        contactArray.getContacts().stream()
-            .filter(c -> c.getProperties().getPhone() != null)
-            .map(c -> c.getProperties().getPhone().getValue())
-            .map(pn -> pn.replaceAll("[^0-9\\+]", ""))
-            .filter(pn -> !Strings.isNullOrEmpty(pn))
-            .forEach(pn -> {
-              try {
-                Message twilioMessage = Message.creator(
-                    new PhoneNumber(pn),
-                    new PhoneNumber(TWILIO_SENDER_PN),
-                    message
-                ).create();
-
-                log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
-                    twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
-              } catch (Exception e) {
-                log.warn("message to {} failed", pn, e);
-              }
-            });
-      }
-      log.info("FINISHED: outbound/hubspot-list");
     };
     new Thread(thread).start();
 
@@ -245,7 +217,7 @@ public class TwilioController {
       @Context HttpServletRequest request
   ) throws Exception {
     // TODO: Disabling this, for now. If Twilio handles the global opt-out, we don't receive these webhook hits.
-    //  And for clients like RL, we don't want to handle this hear at all, as SMC needs to receive them.
+    //  And for clients like RL, we don't want to handle this here at all, as SMC needs to receive them.
 //    MultivaluedMap<String, String> smsData = rawFormData.asMap();
 //
 //    log.info(smsData.entrySet().stream().map(e -> e.getKey() + "=" + String.join(",", e.getValue())).collect(Collectors.joining(" ")));
@@ -329,7 +301,7 @@ public class TwilioController {
 
   // TODO: Temporary method to prototype an MMS replacement of the mobile app. In the future,
   // this can be molded into an API...
-//  public void mmsDemo(String to) {
+  public static void main(String[] args) {
 //    Message.creator(
 //        new PhoneNumber(to),
 //        new PhoneNumber("+12607862676"),
@@ -363,9 +335,9 @@ public class TwilioController {
 //    }
 //
 //    Message.creator(
-//        new PhoneNumber(to),
-//        new PhoneNumber("+12607862676"),
-//        "Finally, a call to action. Learn more about how we’re working to rescue the enslaved: https://www.destinyrescue.org/us/what-we-do/rescue/"
+//        new PhoneNumber("+12603495732"),
+//        new PhoneNumber("+17272737283"),
+//        "Finally, a call to action. Learn more about how we’re working to rescue the enslaved: https://www.somewebsite.com/action"
 //    ).create();
-//  }
+  }
 }

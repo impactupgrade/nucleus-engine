@@ -146,12 +146,16 @@ public class MessagingService {
     // First, look for an existing contact with the PN
     CrmContact crmContact = crmService.getContactByPhone(phone).orElse(null);
     if (crmContact != null) {
-      log.info("opting {} ({}) out of sms...", crmContact.id, phone);
-      crmContact.smsOptIn = false;
-      crmContact.smsOptOut = true;
-      crmService.updateContact(crmContact);
+      optOut(crmContact);
     } else {
       log.info("unable to find a CRM contact with phone number {}", phone);
     }
+  }
+
+  public void optOut(CrmContact crmContact) throws Exception {
+    log.info("opting {} ({}) out of sms...", crmContact.id, crmContact.mobilePhone);
+    crmContact.smsOptIn = false;
+    crmContact.smsOptOut = true;
+    crmService.updateContact(crmContact);
   }
 }
