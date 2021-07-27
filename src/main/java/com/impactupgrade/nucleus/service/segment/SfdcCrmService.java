@@ -55,14 +55,12 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    return toCrmAccount(sfdcClient.getAccountById(id));
   }
 
   @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    return toCrmContact(sfdcClient.getContactById(id));
   }
 
   @Override
@@ -77,6 +75,21 @@ public class SfdcCrmService implements CrmService {
       return Optional.empty();
     }
     return Optional.of(toCrmContact(contacts.get(0)));
+  }
+
+  @Override
+  public String insertAccount(CrmAccount crmAccount) throws Exception {
+    SObject account = new SObject("Account");
+    setAccountFields(account, crmAccount);
+    return sfdcClient.insert(account).getId();
+  }
+
+  @Override
+  public void updateAccount(CrmAccount crmAccount) throws Exception {
+    SObject account = new SObject("Account");
+    account.setId(crmAccount.id);
+    setAccountFields(account, crmAccount);
+    sfdcClient.update(account);
   }
 
   @Override
@@ -145,13 +158,6 @@ public class SfdcCrmService implements CrmService {
     setOpportunityFields(opportunity, Optional.empty(), paymentGatewayEvent);
 
     sfdcClient.update(opportunity);
-  }
-
-  @Override
-  public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    SObject account = new SObject("Account");
-    setAccountFields(account, paymentGatewayEvent.getCrmAccount());
-    return sfdcClient.insert(account).getId();
   }
 
   protected void setAccountFields(SObject account, CrmAccount crmAccount) {
@@ -822,6 +828,32 @@ public class SfdcCrmService implements CrmService {
   }
 
   // TODO: starting to feel like we need an object mapper lib...
+
+  protected CrmAccount toCrmAccount(SObject sObject) {
+    CrmAddress crmAddress = new CrmAddress(
+        (String) sObject.getField("BillingStreet"),
+        (String) sObject.getField("BillingCity"),
+        (String) sObject.getField("BillingState"),
+        (String) sObject.getField("BillingPostalCode"),
+        (String) sObject.getField("BillingCountry")
+    );
+
+    return new CrmAccount(
+        sObject.getId(),
+        (String) sObject.getField("Name"),
+        crmAddress,
+        // TODO: Differentiate between Household and Organization. Customize record type IDs through env.json?
+        CrmAccount.Type.HOUSEHOLD,
+        (Integer) getField(sObject, env.getConfig().salesforce.fieldDefinitions.donationCount),
+        (Double) getField(sObject, env.getConfig().salesforce.fieldDefinitions.donationTotal),
+        // TODO: this might need converted from a string
+        (Calendar) getField(sObject, env.getConfig().salesforce.fieldDefinitions.firstDonationDate)
+    );
+  }
+
+  protected Optional<CrmAccount> toCrmAccount(Optional<SObject> sObject) {
+    return sObject.map(this::toCrmAccount);
+  }
 
   protected CrmContact toCrmContact(SObject sObject) {
     CrmAddress crmAddress = new CrmAddress(

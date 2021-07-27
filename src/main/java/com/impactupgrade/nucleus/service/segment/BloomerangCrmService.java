@@ -161,9 +161,14 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public String insertAccount(CrmAccount crmAccount) throws Exception {
     // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
     return null;
+  }
+
+  @Override
+  public void updateAccount(CrmAccount crmAccount) throws Exception {
+    // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
   }
 
   @Override
