@@ -898,8 +898,8 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
     String customerId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
     String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
-    boolean active = "Open".equalsIgnoreCase(sObject.getField("Npe03__Open_Ended_Status__c").toString());
-    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.valueOf(sObject.getField("Npe03__Installment_Period__c").toString());
+    boolean active = "Open".equalsIgnoreCase(sObject.getField("npe03__Open_Ended_Status__c").toString());
+    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.valueOf(sObject.getField("npe03__Installment_Period__c").toString().toUpperCase(Locale.ROOT));
     return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, active, frequency);
   }
 
