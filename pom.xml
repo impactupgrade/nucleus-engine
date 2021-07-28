@@ -15,7 +15,7 @@
   </parent>
 
   <artifactId>nucleus-engine</artifactId>
-  <version>3.4.0-beta-3</version>
+  <version>3.4.0-beta-4</version>
 
   <name>Nonprofit Nucleus: Engine</name>
   <description>TODO</description>
@@ -37,10 +37,11 @@
   </developers>
 
   <dependencies>
+    <!-- TODO: upgrade in nucleus-parent -->
     <dependency>
       <groupId>com.impactupgrade.integration</groupId>
       <artifactId>hubspot-java-client</artifactId>
-      <version>2.0.2-SNAPSHOT</version>
+      <version>2.0.2.Final</version>
     </dependency>
 <!--    <dependency>-->
 <!--      <groupId>com.ecwid</groupId>-->
