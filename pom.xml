@@ -37,11 +37,11 @@
   </developers>
 
   <dependencies>
-    <!-- TODO: upgrade in nucleus-parent -->
+    <!-- TODO: upgrade in nucleus-parent, but temporarily using SNAPSHOT until I can sign and release -->
     <dependency>
       <groupId>com.impactupgrade.integration</groupId>
       <artifactId>hubspot-java-client</artifactId>
-      <version>2.0.2.Final</version>
+      <version>2.0.3-SNAPSHOT</version>
     </dependency>
 <!--    <dependency>-->
 <!--      <groupId>com.ecwid</groupId>-->
