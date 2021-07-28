@@ -114,14 +114,8 @@
 
     <server>
       <id>github</id>
-      <configuration>
-        <httpHeaders>
-          <property>
-            <name>YOUR USERNAME</name>
-            <value>YOUR TOKEN</value>
-          </property>
-        </httpHeaders>
-      </configuration>
+      <username>YOUR USERNAME</username>
+      <password>YOUR TOKEN</password>
     </server>
 
     Create your own token here: https://github.com/settings/tokens/new. Enable the "write:packages" scope.
