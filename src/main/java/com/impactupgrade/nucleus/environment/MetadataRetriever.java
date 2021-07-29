@@ -131,7 +131,8 @@ public class MetadataRetriever {
     }
 
     if (metadataValue != null) {
-      // IMPORTANT: The designation code is copy/pasted by a human and we've had issues with whitespace. Strip it!
+      // IMPORTANT: The designation code is copy/pasted by a human and we've had issues with whitespace. Strip it! But note that sometimes it's something like a non-breaking space char (pasted from a doc?), so convert that to a standard space first.
+      metadataValue = metadataValue.replaceAll("[\\h+]", " ");
       metadataValue = metadataValue.trim();
     }
 
