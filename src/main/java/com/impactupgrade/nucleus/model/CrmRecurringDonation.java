@@ -4,10 +4,36 @@
 
 package com.impactupgrade.nucleus.model;
 
+import java.util.List;
+import java.util.Locale;
+
 public class CrmRecurringDonation {
 
   public enum Frequency {
-    WEEKLY, MONTHLY, QUARTERLY, YEARLY
+    WEEKLY(List.of("weekly", "week")),
+    MONTHLY(List.of("monthly", "month")),
+    QUARTERLY(List.of("quarterly", "quarter")),
+    YEARLY(List.of("yearly", "year"));
+
+    private final List<String> names;
+
+    Frequency(List<String> names) {
+      this.names = names;
+    }
+
+    public static Frequency fromName(String name) {
+      if (WEEKLY.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return WEEKLY;
+      }
+      if (QUARTERLY.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return QUARTERLY;
+      }
+      if (YEARLY.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return YEARLY;
+      }
+      // default to monthly
+      return MONTHLY;
+    }
   }
 
   public String id;
