@@ -22,6 +22,7 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
@@ -871,6 +872,13 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
   protected CrmDonation toCrmDonation(SObject sObject) {
     String id = sObject.getId();
     String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
+    Double amount = Double.valueOf(sObject.getField("Amount").toString());
+    Calendar closeDate = null;
+    try {
+      closeDate = Utils.getCalendarFromDateString(sObject.getField("CloseDate").toString());
+    } catch (ParseException e) {
+      log.warn("unable to parse date", e);
+    }
 
     // TODO: yuck -- allow subclasses to more easily define custom mappers?
     Object statusNameO = sObject.getField("StageName");
@@ -884,8 +892,8 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
       status = CrmDonation.Status.PENDING;
     }
 
-    return new CrmDonation(id, (String) sObject.getField("Name"), Double.valueOf(sObject.getField("Amount").toString()),
-        paymentGatewayName, status, (Calendar) sObject.getField("CloseDate"));
+    return new CrmDonation(id, (String) sObject.getField("Name"), amount,
+        paymentGatewayName, status, closeDate);
   }
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {

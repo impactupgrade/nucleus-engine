@@ -43,8 +43,7 @@ public class Utils {
   public static Calendar getCalendarFromDateString(String date) throws ParseException {
     if (date != null && !date.isEmpty()) {
       Date localDate = new SimpleDateFormat("yyyy-MM-dd").parse(date);
-      Calendar calendar = new Calendar.Builder().setInstant(localDate.getTime()).build();
-      return calendar;
+      return new Calendar.Builder().setInstant(localDate.getTime()).build();
     }
     return null;
   }
