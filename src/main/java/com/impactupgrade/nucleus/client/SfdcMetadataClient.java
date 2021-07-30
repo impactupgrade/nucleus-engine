@@ -71,8 +71,8 @@ public class SfdcMetadataClient {
 	 */
 	public SfdcMetadataClient(Environment env) {
 		this.env = env;
-		this.username = System.getenv("SFDC_USERNAME");
-		this.password = System.getenv("SFDC_PASSWORD");
+		this.username = env.getConfig().salesforce.username;
+		this.password = env.getConfig().salesforce.password;
 	}
 
 	/**

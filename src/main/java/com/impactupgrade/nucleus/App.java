@@ -117,7 +117,7 @@ public class App {
   public void registerServlets(ServletContextHandler context) throws Exception {}
 
   // Allow orgs to override specific controllers.
-  protected BackupController backupController() { return new BackupController(); }
+  protected BackupController backupController() { return new BackupController(envFactory()); }
   protected CrmController crmController() { return new CrmController(envFactory()); }
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory()); }
   protected PaymentSpringController paymentSpringController() { return new PaymentSpringController(envFactory()); }

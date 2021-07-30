@@ -60,8 +60,8 @@ public class BloomerangCrmService implements CrmService {
   private final ObjectMapper mapper;
 
   public BloomerangCrmService(Environment env) {
-    this.apiKey = System.getenv("BLOOMERANG_API_KEY");
-    this.anonymousId = System.getenv("BLOOMERANG_ANONYMOUS_ID");
+    this.apiKey = env.getConfig().bloomerang.secretKey;
+    this.anonymousId = env.getConfig().bloomerang.anonymousId;
     this.env = env;
 
     mapper = new ObjectMapper();

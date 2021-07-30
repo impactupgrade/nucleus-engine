@@ -52,8 +52,8 @@ public class CrmController {
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     Runnable thread = () -> {
       try {
@@ -88,8 +88,8 @@ public class CrmController {
   public Response bulkImport(
       @FormParam("google-sheet-url") String gsheetUrl,
       @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     Runnable thread = () -> {
       try {
@@ -114,8 +114,8 @@ public class CrmController {
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     Runnable thread = () -> {
       try {
@@ -151,8 +151,8 @@ public class CrmController {
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     Runnable thread = () -> {
       try {
@@ -187,8 +187,8 @@ public class CrmController {
   public Response bulkUpdate(
       @FormParam("google-sheet-url") String gsheetUrl,
       @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     Runnable thread = () -> {
       try {

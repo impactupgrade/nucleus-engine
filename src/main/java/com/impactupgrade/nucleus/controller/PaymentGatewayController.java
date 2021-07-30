@@ -43,8 +43,8 @@ public class PaymentGatewayController {
       Form rawFormData,                                // raw form data
       @Context HttpServletRequest request
   ) throws Exception {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request, rawFormData.asMap());
+    SecurityUtil.verifyApiKey(env);
 
     ManageDonationEvent manageDonationEvent = new ManageDonationEvent(formData, env);
     env.donationService().updateRecurringDonation(manageDonationEvent);

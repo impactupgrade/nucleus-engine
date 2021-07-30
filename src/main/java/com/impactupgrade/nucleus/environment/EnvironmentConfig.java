@@ -24,6 +24,8 @@ public class EnvironmentConfig {
 
   // NOTE: We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
 
+  public String apiKey = "";
+
   // Some flows will select a CRM by name, when appropriate (especially if kicked off by the Portal).
   // Other flows may be specific to one CRM or another, depending on the org. MOST will only have one, in which case
   // primary should be set to true. But some will have a split of something like Salesforce for donors and HubSpot for
@@ -46,6 +48,7 @@ public class EnvironmentConfig {
     public String password = "";
   }
 
+  public Platform paymentSpring = new Platform();
   public Platform stripe = new Platform();
 
   // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
@@ -75,21 +78,11 @@ public class EnvironmentConfig {
     public String firstDonationDate = "";
   }
 
-  public Salesforce salesforce = new Salesforce();
+  public Bloomerang bloomerang = new Bloomerang();
 
-  public static class Salesforce extends Platform {
-    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
-    public SalesforceCustomFields customQueryFields = new SalesforceCustomFields();
-    public String defaultCampaignId = "";
-
-    public static class SalesforceCustomFields {
-      public Set<String> account = new HashSet<>();
-      public Set<String> campaign = new HashSet<>();
-      public Set<String> contact = new HashSet<>();
-      public Set<String> donation = new HashSet<>();
-      public Set<String> recurringDonation = new HashSet<>();
-      public Set<String> user = new HashSet<>();
-    }
+  // For now, don't actually need the CRMFieldDefinitions...
+  public static class Bloomerang extends Platform {
+    public String anonymousId = "";
   }
 
   public Hubspot hubspot = new Hubspot();
@@ -121,6 +114,44 @@ public class EnvironmentConfig {
     public String paymentGatewayAmountOriginal = "";
     public String paymentGatewayAmountOriginalCurrency = "";
     public String paymentGatewayAmountExchangeRate = "";
+  }
+
+  public Salesforce salesforce = new Salesforce();
+
+  public static class Salesforce extends Platform {
+    public String url = "";
+    public String forceUrl = "";
+
+    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
+    public SalesforceCustomFields customQueryFields = new SalesforceCustomFields();
+    public String defaultCampaignId = "";
+
+    public static class SalesforceCustomFields {
+      public Set<String> account = new HashSet<>();
+      public Set<String> campaign = new HashSet<>();
+      public Set<String> contact = new HashSet<>();
+      public Set<String> donation = new HashSet<>();
+      public Set<String> recurringDonation = new HashSet<>();
+      public Set<String> user = new HashSet<>();
+    }
+  }
+
+  public Twilio twilio = new Twilio();
+
+  public static class Twilio extends Platform {
+    public String senderPn = "";
+  }
+
+  public Backblaze backblaze = new Backblaze();
+
+  public static class Backblaze extends Platform {
+    public String bucketId = "";
+  }
+
+  public Recaptcha recaptcha = new Recaptcha();
+
+  public static class Recaptcha {
+    public String siteSecret = "";
   }
 
   public MetadataKeys metadataKeys = new MetadataKeys();

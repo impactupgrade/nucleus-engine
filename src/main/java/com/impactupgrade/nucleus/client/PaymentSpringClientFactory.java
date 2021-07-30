@@ -5,13 +5,11 @@
 package com.impactupgrade.nucleus.client;
 
 import com.impactupgrade.integration.paymentspring.PaymentSpringClient;
+import com.impactupgrade.nucleus.environment.Environment;
 
 public class PaymentSpringClientFactory {
 
-  private static final String API_KEY = System.getenv("PAYMENTSPRING_KEY");
-  private static final PaymentSpringClient CLIENT = new PaymentSpringClient(API_KEY);
-
-  public static PaymentSpringClient client() {
-    return CLIENT;
+  public static PaymentSpringClient client(Environment env) {
+    return new PaymentSpringClient(env.getConfig().paymentSpring.secretKey);
   }
 }

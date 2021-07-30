@@ -59,7 +59,7 @@ public class HubSpotCrmService implements CrmService {
 
   public HubSpotCrmService(Environment env) {
     this.env = env;
-    hsClient = HubSpotClientFactory.v3Client();
+    hsClient = HubSpotClientFactory.v3Client(env);
   }
 
   @Override
@@ -445,13 +445,13 @@ public class HubSpotCrmService implements CrmService {
   public void addContactToList(CrmContact crmContact, String listId) throws Exception {
     // note that HubSpot auto-prevents duplicate entries in lists
     // TODO: shift to V3
-    HubSpotClientFactory.v1Client().contactList().addContactToList(Long.parseLong(listId), Long.parseLong(crmContact.id));
+    HubSpotClientFactory.v1Client(env).contactList().addContactToList(Long.parseLong(listId), Long.parseLong(crmContact.id));
     log.info("added HubSpot contact {} to list {}", crmContact.id, listId);
   }
 
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
-    ContactArray contactArray = HubSpotClientFactory.v1Client().contactList().getContactsInList(Long.parseLong(listId));
+    ContactArray contactArray = HubSpotClientFactory.v1Client(env).contactList().getContactsInList(Long.parseLong(listId));
     return toCrmContact(contactArray);
   }
 
@@ -468,7 +468,7 @@ public class HubSpotCrmService implements CrmService {
       }
 
       // TODO: shift to V3
-      HubSpotClientFactory.v1Client().contactList().removeContactFromList(Long.parseLong(listId), Long.parseLong(crmContact.id));
+      HubSpotClientFactory.v1Client(env).contactList().removeContactFromList(Long.parseLong(listId), Long.parseLong(crmContact.id));
       log.info("removed HubSpot contact {} from list {}", crmContact.id, listId);
     }
   }

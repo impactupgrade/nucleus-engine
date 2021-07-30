@@ -60,8 +60,8 @@ public class SfdcController {
       @FormDataParam("file") File file,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     Runnable thread = () -> {
       try {
@@ -122,8 +122,8 @@ public class SfdcController {
       @FormParam("recordTypeFieldApiNames") List<String> recordTypeFieldApiNames,
       @Context HttpServletRequest request
   ) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
@@ -151,8 +151,8 @@ public class SfdcController {
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request
   ) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
@@ -260,8 +260,8 @@ public class SfdcController {
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request
   ) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {

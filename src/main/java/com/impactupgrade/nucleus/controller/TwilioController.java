@@ -12,8 +12,8 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.Utils;
-import com.twilio.Twilio;
 import com.twilio.exception.ApiException;
+import com.twilio.http.TwilioRestClient;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
@@ -47,14 +47,6 @@ public class TwilioController {
 
   private static final Logger log = LogManager.getLogger(TwilioController.class);
 
-  private static final String TWILIO_SENDER_PN = System.getenv("TWILIO_SENDER_PN");
-
-  static {
-    if (!Strings.isNullOrEmpty(System.getenv("TWILIO_ACCOUNTSID"))) {
-      Twilio.init(System.getenv("TWILIO_ACCOUNTSID"), System.getenv("TWILIO_AUTHTOKEN"));
-    }
-  }
-
   protected final EnvironmentFactory envFactory;
 
   public TwilioController(EnvironmentFactory envFactory) {
@@ -66,8 +58,8 @@ public class TwilioController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   public Response outboundToCrmList(@FormParam("list-id") List<String> listIds, @FormParam("message") String message,
       @Context HttpServletRequest request) {
-    SecurityUtil.verifyApiKey(request);
     Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
 
     log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
 
@@ -90,9 +82,13 @@ public class TwilioController {
                   pn = pn.replaceAll("[^0-9\\+]", "");
 
                   if (!Strings.isNullOrEmpty(pn)) {
+                    TwilioRestClient restClient = new TwilioRestClient.Builder(
+                        env.getConfig().twilio.publicKey,
+                        env.getConfig().twilio.secretKey
+                    ).build();
                     Message twilioMessage = Message.creator(
                         new PhoneNumber(pn),
-                        new PhoneNumber(TWILIO_SENDER_PN),
+                        new PhoneNumber(env.getConfig().twilio.senderPn),
                         message
                     ).create();
 

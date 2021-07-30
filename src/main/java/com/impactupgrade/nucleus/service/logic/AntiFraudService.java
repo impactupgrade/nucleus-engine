@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.environment.Environment;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
@@ -21,9 +22,14 @@ public class AntiFraudService {
 
   private static Logger log = LoggerFactory.getLogger(AntiFraudService.class);
 
-  private static final String RECAPTCHA_SITE_SECRET = System.getenv("RECAPTCHA_SITE_SECRET");
   private static final String RECAPTCHA_SITE_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
   private static final double MIN_SCORE = 0.5;
+
+  private final Environment env;
+
+  public AntiFraudService(Environment env) {
+    this.env = env;
+  }
 
   public boolean isRecaptchaTokenValid(String recaptchaToken) throws IOException {
     if (Strings.isNullOrEmpty(recaptchaToken)) {
@@ -33,7 +39,7 @@ public class AntiFraudService {
 
     URL url = new URL(RECAPTCHA_SITE_VERIFY_URL);
     StringBuilder postData = new StringBuilder();
-    addParam(postData, "secret", RECAPTCHA_SITE_SECRET);
+    addParam(postData, "secret", env.getConfig().recaptcha.siteSecret);
     addParam(postData, "response", recaptchaToken);
 
     // TODO: Taken from https://github.com/googlecodelabs/recaptcha-codelab/blob/master/final/src/main/java/com/example/feedback/FeedbackServlet.java, but this could be cleaned up...

@@ -64,8 +64,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public SfdcClient(Environment env) {
     this(
         env,
-        System.getenv("SFDC_USERNAME"),
-        System.getenv("SFDC_PASSWORD")
+        env.getConfig().salesforce.username,
+        env.getConfig().salesforce.password
     );
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -364,7 +364,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String data = "{\"recurringDonationId\": \"" + donationId + "\"}";
     String sessionId = login().getSessionId();
 
-    String sfdcEndpoint = System.getenv("force_url") + "/services/apexrest/refreshrecurringdonation";
+    String sfdcEndpoint = env.getConfig().salesforce.forceUrl + "/services/apexrest/refreshrecurringdonation";
 
     Response response = HttpClient.postJson(data, sessionId, sfdcEndpoint);
     log.info("SFDC refresh recurring donation response: {}", response.getStatus());

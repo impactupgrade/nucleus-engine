@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.client.PaymentSpringClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -132,7 +133,7 @@ public class PaymentSpringController {
     if (Strings.isNullOrEmpty(transaction.getCustomerId())) {
       transactionCustomer = Optional.empty();
     } else {
-      transactionCustomer = Optional.of(PaymentSpringClientFactory.client().customers().getById(transaction.getCustomerId()));
+      transactionCustomer = Optional.of(PaymentSpringClientFactory.client(env).customers().getById(transaction.getCustomerId()));
       log.info("found customer {}", transactionCustomer.get().getId());
     }
 
@@ -142,7 +143,7 @@ public class PaymentSpringController {
       transactionSubscription = Optional.empty();
     } else {
       String transactionPlanId = transaction.getMetadata().get("plan_id");
-      transactionSubscription = Optional.of(PaymentSpringClientFactory.client().subscriptions().getByPlanId(
+      transactionSubscription = Optional.of(PaymentSpringClientFactory.client(env).subscriptions().getByPlanId(
           transactionPlanId, transaction.getCustomerId()));
       log.info("found subscription {}", transactionSubscription.get().getId());
     }
@@ -167,9 +168,16 @@ public class PaymentSpringController {
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response failedTransactions(@FormParam("start_date") String startDate, @FormParam("end_date") String endDate) {
+  public Response failedTransactions(
+      @FormParam("start_date") String startDate,
+      @FormParam("end_date") String endDate,
+      @Context HttpServletRequest request
+  ) {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
     // Sort failed transactions list by created datetime
-    List<Transaction> sortedList = PaymentSpringClientFactory.client().transactions().getTransactionsBetweenDates(startDate, endDate).stream()
+    List<Transaction> sortedList = PaymentSpringClientFactory.client(env).transactions().getTransactionsBetweenDates(startDate, endDate).stream()
         // Grab only the failed transactions from list
         .filter(t -> t.getAmountFailed() > 0)
         .sorted(Comparator.comparing(Transaction::getCreatedAt).reversed())
@@ -183,7 +191,7 @@ public class PaymentSpringController {
   // TODO: To be wrapped in a REST call for the UI to kick off, etc.
   public void verifyAndReplayPaymentSpringCharges(String startDate, String endDate, Environment env) {
     SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-    List<Transaction> charges = PaymentSpringClientFactory.client().transactions().getTransactionsBetweenDates(startDate, endDate);
+    List<Transaction> charges = PaymentSpringClientFactory.client(env).transactions().getTransactionsBetweenDates(startDate, endDate);
     int count = 0;
     for (Transaction charge : charges) {
 //      if (!charge.getStatus().equalsIgnoreCase("succeeded")) {
