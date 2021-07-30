@@ -22,12 +22,10 @@ public class DonationService {
 
   private final Environment env;
   private final CrmService crmService;
-  private final PaymentGatewayService paymentGatewayService;
 
   public DonationService(Environment env) {
     this.env = env;
-    crmService = env.crmService();
-    paymentGatewayService = env.paymentGatewayService();
+    crmService = env.crmService(env.getConfig().crmDonations);
   }
 
   public void createDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -114,6 +112,8 @@ public class DonationService {
       log.warn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getDonationId());
       return;
     }
+
+    PaymentGatewayService paymentGatewayService = env.paymentGatewayService(recurringDonation.get().paymentGatewayName);
 
     if (manageDonationEvent.getDonationId() == null) {
       manageDonationEvent.setDonationId(recurringDonation.get().id);

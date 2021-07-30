@@ -76,7 +76,7 @@ public class TwilioController {
       for (String listId : listIds) {
         try {
           log.info("retrieving contacts from list {}", listId);
-          List<CrmContact> contacts = env.crmService().getContactsFromList(listId);
+          List<CrmContact> contacts = env.crmService(env.getConfig().crmMessaging).getContactsFromList(listId);
           log.info("found {} contacts in list {}", contacts.size(), listId);
           contacts.stream()
               .filter(c -> c.mobilePhone != null || c.homePhone != null)
@@ -192,7 +192,7 @@ public class TwilioController {
           opportunityEvent.setRecordTypeId(opportunityRecordTypeId);
           opportunityEvent.setOwnerId(opportunityOwnerId);
           opportunityEvent.setCampaignId(campaignId);
-          env.crmService().insertOpportunity(opportunityEvent);
+          env.crmService(env.getConfig().crmMessaging).insertOpportunity(opportunityEvent);
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);

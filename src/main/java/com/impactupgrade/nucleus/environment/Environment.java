@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.environment;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
@@ -25,6 +26,7 @@ import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -91,41 +93,55 @@ public class Environment {
   // Yes, we could use Spring/ServiceRegistry/OSGi. But holding off on frameworks until we absolutely need them...
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // logic services
   public DonationService donationService() { return new DonationService(this); }
   public DonorService donorService() { return new DonorService(this); }
-
   public MessagingService messagingService() { return new MessagingService(this); }
 
+  /*
+  return config.platforms.crm.stream()
+        .filter(crm -> crm.name.equalsIgnoreCase(key))
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("not implemented"));
+   */
+
+  // segment services
+  public CrmService crmService(String name) {
+    if (Strings.isNullOrEmpty(name)) {
+      if (Strings.isNullOrEmpty(config.crmPrimary)) {
+        throw new RuntimeException("define a crmPrimary in environment.json");
+      }
+
+      // by default, always use the primary
+      return crmService(config.crmPrimary);
+    } else {
+      name = name.toLowerCase(Locale.ROOT);
+      if ("bloomerang".equalsIgnoreCase(name)) {
+        return new BloomerangCrmService(this);
+      } else if ("hubspot".equalsIgnoreCase(name)) {
+        return new HubSpotCrmService(this);
+      } else if ("salesforce".equalsIgnoreCase(name)) {
+        return new SfdcCrmService(this);
+      }
+
+      throw new RuntimeException("crm not found: " + name);
+    }
+  }
+  public PaymentGatewayService paymentGatewayService(String name) {
+    name = name.toLowerCase(Locale.ROOT);
+    if ("stripe".equalsIgnoreCase(name)) {
+      return new StripePaymentGatewayService(this);
+    }
+
+    throw new RuntimeException("paymentGateway not found: " + name);
+  }
+
+  // vendor clients
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password) { return new SfdcClient(this, username, password); }
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
-  // TODO: shift to env.json
-  public StripeClient stripeClient() {
-    return new StripeClient(System.getenv("STRIPE_KEY"));
-  }
-
-  public CrmService crmService() {
-    String platformName = config.platforms.crm.name;
-    if ("salesforce".equalsIgnoreCase(platformName)) {
-      return new SfdcCrmService(this);
-    } else if ("hubspot".equalsIgnoreCase(platformName)) {
-      return new HubSpotCrmService(this);
-    } else if ("bloomerang".equalsIgnoreCase(platformName)) {
-      return new BloomerangCrmService(this);
-    }
-
-    throw new RuntimeException("not implemented");
-  }
-
-  public PaymentGatewayService paymentGatewayService() {
-    String platformName = config.platforms.paymentGateway.name;
-    if ("stripe".equalsIgnoreCase(platformName)) {
-      return new StripePaymentGatewayService(this);
-    }
-
-    throw new RuntimeException("not implemented");
-  }
+  public StripeClient stripeClient() { return new StripeClient(this); }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DYNAMIC CONFIRMATION

@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.client;
 
 import com.google.common.collect.Iterables;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -55,12 +56,10 @@ public class StripeClient {
 
   private static final Logger log = LogManager.getLogger(StripeClient.class.getName());
 
-  protected static final String SDF = "MM/dd/yy hh:mm";
-
   protected final RequestOptions requestOptions;
 
-  public StripeClient(String apiKey) {
-    requestOptions = RequestOptions.builder().setApiKey(apiKey).build();
+  public StripeClient(Environment env) {
+    requestOptions = RequestOptions.builder().setApiKey(env.getConfig().stripe.secretKey).build();
   }
 
   public StripeClient(RequestOptions requestOptions) {

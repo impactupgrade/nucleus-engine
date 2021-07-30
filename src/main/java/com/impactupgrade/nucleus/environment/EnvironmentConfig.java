@@ -22,35 +22,62 @@ public class EnvironmentConfig {
 
   private static final Logger log = LogManager.getLogger(EnvironmentConfig.class.getName());
 
-  // We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
+  // NOTE: We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
 
-  public Platforms platforms = new Platforms();
-
-  public static class Platforms {
-    public Platform crm = new Platform();
-    public Platform paymentGateway = new Platform();
-  }
+  // Some flows will select a CRM by name, when appropriate (especially if kicked off by the Portal).
+  // Other flows may be specific to one CRM or another, depending on the org. MOST will only have one, in which case
+  // primary should be set to true. But some will have a split of something like Salesforce for donors and HubSpot for
+  // marketing, the latter used for SMS/email. In that case, primary is still treated as the default, but individual
+  // flows can be overridden.
+  // TODO: Currently, if no override, we'll simply grab the "primary" from the list. In the future, likely after
+  //  Camel is introduced, this will change to instead allow a flow to be run multiple times, one per CRM. Ex: we may
+  //  want to push donations to multiple CRMs at once.
+  public String crmPrimary = "";
+  public String crmDonations = "";
+  public String crmMessaging = "";
 
   public static class Platform {
-    public String name = "";
-    public String username = "";
-    public String password = "";
+    // if keys
     public String publicKey = "";
     public String secretKey = "";
+
+    // if basic auth
+    public String username = "";
+    public String password = "";
   }
 
-  public MetadataKeys metadataKeys = new MetadataKeys();
+  public Platform stripe = new Platform();
 
-  public static class MetadataKeys {
-    public Set<String> account = new HashSet<>();
-    public Set<String> campaign = new HashSet<>();
-    public Set<String> contact = new HashSet<>();
-    public Set<String> recordType = new HashSet<>();
+  // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
+  //  not often the case! Ex: LJI and TER have separate sets of fields for Stripe vs. PaymentSpring vs. Paypal. For now,
+  //  methods that need these fields most be overridden case by case in order to tweak the query to check for all the
+  //  possible variations. In the future, we should look to make these definitions gateway-specific, but it will take
+  //  significant refactoring. It'd be easy enough to do a map lookup, using the gateway name, if we know it ahead of
+  //  time (payment gateway webhook controllers, etc). But in some cases, we don't! Ex: PaymentGatewayService isn't
+  //  currently told ahead of time what gateway to expect, so that wouldn't know which set of these fields to grab.
+  //  Needs careful thought...
+  public static class CRMFieldDefinitions {
+    public String paymentGatewayName = "";
+    public String paymentGatewayTransactionId = "";
+    public String paymentGatewayCustomerId = "";
+    public String paymentGatewaySubscriptionId = "";
+    public String paymentGatewayRefundId = "";
+    public String paymentGatewayRefundDate = "";
+    public String paymentGatewayDepositId = "";
+    public String paymentGatewayDepositDate = "";
+    public String paymentGatewayDepositNetAmount = "";
+    public String emailOptIn = "";
+    public String emailOptOut = "";
+    public String smsOptIn = "";
+    public String smsOptOut = "";
+    public String donationCount = "";
+    public String donationTotal = "";
+    public String firstDonationDate = "";
   }
 
   public Salesforce salesforce = new Salesforce();
 
-  public static class Salesforce {
+  public static class Salesforce extends Platform {
     public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
     public SalesforceCustomFields customQueryFields = new SalesforceCustomFields();
     public String defaultCampaignId = "";
@@ -67,7 +94,7 @@ public class EnvironmentConfig {
 
   public Hubspot hubspot = new Hubspot();
 
-  public static class Hubspot {
+  public static class Hubspot extends Platform {
     public HubSpotDonationPipeline donationPipeline = new HubSpotDonationPipeline();
     public HubSpotRecurringDonationPipeline recurringDonationPipeline = new HubSpotRecurringDonationPipeline();
     public HubspotCRMFieldDefinitions fieldDefinitions = new HubspotCRMFieldDefinitions();
@@ -96,31 +123,13 @@ public class EnvironmentConfig {
     public String paymentGatewayAmountExchangeRate = "";
   }
 
-  // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
-  //  not often the case! Ex: LJI and TER have separate sets of fields for Stripe vs. PaymentSpring vs. Paypal. For now,
-  //  methods that need these fields most be overridden case by case in order to tweak the query to check for all the
-  //  possible variations. In the future, we should look to make these definitions gateway-specific, but it will take
-  //  significant refactoring. It'd be easy enough to do a map lookup, using the gateway name, if we know it ahead of
-  //  time (payment gateway webhook controllers, etc). But in some cases, we don't! Ex: PaymentGatewayService isn't
-  //  currently told ahead of time what gateway to expect, so that wouldn't know which set of these fields to grab.
-  //  Needs careful thought...
-  public static class CRMFieldDefinitions {
-    public String paymentGatewayName = "";
-    public String paymentGatewayTransactionId = "";
-    public String paymentGatewayCustomerId = "";
-    public String paymentGatewaySubscriptionId = "";
-    public String paymentGatewayRefundId = "";
-    public String paymentGatewayRefundDate = "";
-    public String paymentGatewayDepositId = "";
-    public String paymentGatewayDepositDate = "";
-    public String paymentGatewayDepositNetAmount = "";
-    public String emailOptIn = "";
-    public String emailOptOut = "";
-    public String smsOptIn = "";
-    public String smsOptOut = "";
-    public String donationCount = "";
-    public String donationTotal = "";
-    public String firstDonationDate = "";
+  public MetadataKeys metadataKeys = new MetadataKeys();
+
+  public static class MetadataKeys {
+    public Set<String> account = new HashSet<>();
+    public Set<String> campaign = new HashSet<>();
+    public Set<String> contact = new HashSet<>();
+    public Set<String> recordType = new HashSet<>();
   }
 
   public static EnvironmentConfig init() {

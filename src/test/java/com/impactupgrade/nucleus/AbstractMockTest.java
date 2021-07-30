@@ -28,7 +28,7 @@ public abstract class AbstractMockTest {
   public class DefaultEnvironment extends Environment {
 
     @Override
-    public CrmService crmService() {
+    public CrmService crmService(String name) {
       return crmServiceMock;
     }
 
