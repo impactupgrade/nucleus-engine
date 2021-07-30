@@ -620,17 +620,6 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
 
   @Override
   public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-    // hold a map of campaigns so we don't have to visit them each time
-    LoadingCache<String, Optional<SObject>> campaignCache = CacheBuilder.newBuilder().build(
-        new CacheLoader<>() {
-          @Override
-          public Optional<SObject> load(String campaignId) throws ConnectionException, InterruptedException {
-            log.info("loading campaign {}", campaignId);
-            return sfdcClient.getCampaignById(campaignId);
-          }
-        }
-    );
-
     List<SObject> contactUpdates = new ArrayList<>();
     List<SObject> accountUpdates = new ArrayList<>();
     List<SObject> oppUpdates = new ArrayList<>();
@@ -720,7 +709,7 @@ public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpd
   }
 
   protected void setBulkImportOpportunityFields(SObject opportunity, SObject contact,
-      LoadingCache<String, Optional<SObject>> campaignCache, CrmImportEvent importEvent) throws ConnectionException, InterruptedException, ParseException, ExecutionException {
+      LoadingCache<String, Optional<SObject>> campaignCache, CrmImportEvent importEvent) throws ConnectionException, InterruptedException, ExecutionException {
     opportunity.setField("AccountId", contact.getField("AccountId"));
     opportunity.setField("ContactId", contact.getId());
     if (!Strings.isNullOrEmpty(importEvent.getOpportunityRecordTypeId())) {
