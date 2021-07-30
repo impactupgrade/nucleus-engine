@@ -6,6 +6,9 @@ package com.impactupgrade.nucleus.model;
 
 import com.impactupgrade.nucleus.environment.Environment;
 
+/**
+ * Non-donation opportunities, such as volunteer and interest form signups. Generally results in a Contact + Opportunity.
+ */
 public class OpportunityEvent {
 
   protected final Environment env;

@@ -37,7 +37,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-public class SfdcCrmService implements CrmService, CrmNewDonationService, CrmUpdateDonationService, CrmOpportunityService {
+public class SfdcCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
 

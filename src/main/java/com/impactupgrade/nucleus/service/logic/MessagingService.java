@@ -8,7 +8,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.service.segment.CrmOpportunityService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
@@ -19,11 +18,9 @@ public class MessagingService {
   private static final Logger log = LogManager.getLogger(MessagingService.class);
 
   private final CrmService crmService;
-  private final CrmOpportunityService crmOpportunityService;
 
   public MessagingService(Environment env) {
     crmService = env.crmService();
-    crmOpportunityService = env.crmOpportunityService();
   }
 
   public void processSignup(
@@ -81,7 +78,7 @@ public class MessagingService {
 
       opportunityEvent.setCrmContact(crmContact);
 
-      crmContact.id = crmOpportunityService.insertContact(opportunityEvent);
+      crmContact.id = crmService.insertContact(opportunityEvent);
     } else {
       // Existed, so use it
       log.info("contact already existed in CRM: {}", crmContact.id);
@@ -115,7 +112,7 @@ public class MessagingService {
       }
 
       if (update) {
-        crmOpportunityService.updateContact(opportunityEvent);
+        crmService.updateContact(opportunityEvent);
       }
     }
 

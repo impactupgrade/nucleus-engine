@@ -192,7 +192,7 @@ public class TwilioController {
           opportunityEvent.setRecordTypeId(opportunityRecordTypeId);
           opportunityEvent.setOwnerId(opportunityOwnerId);
           opportunityEvent.setCampaignId(campaignId);
-          env.crmOpportunityService().insertOpportunity(opportunityEvent);
+          env.crmService().insertOpportunity(opportunityEvent);
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);

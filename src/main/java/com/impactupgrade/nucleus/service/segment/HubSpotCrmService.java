@@ -50,7 +50,7 @@ import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.WORK;
 //  similar to SFDC where that won't be the case (ex: LJI/TER's split between payment gateway fields), this will need
 //  sanity checks like we have in SfdcCrmService.
 
-public class HubSpotCrmService implements CrmService, CrmNewDonationService, CrmUpdateDonationService, CrmOpportunityService {
+public class HubSpotCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 

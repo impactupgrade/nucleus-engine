@@ -47,7 +47,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   }
 
   @Override
-  public void cancelSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
+  public void closeSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
     stripeClient.cancelSubscription(manageDonationEvent.getSubscriptionId());
   }
 }

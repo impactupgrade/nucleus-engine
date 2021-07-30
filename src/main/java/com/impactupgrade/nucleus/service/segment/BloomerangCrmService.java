@@ -17,6 +17,8 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -39,7 +41,7 @@ import java.util.Optional;
 // TODO: Copies from the old C1 code. Needs cleaned up and rethought...
 // TODO: If needs expand, make this into an open source client lib
 
-public class BloomerangCrmService implements CrmService, CrmNewDonationService {
+public class BloomerangCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(BloomerangCrmService.class);
 
@@ -279,6 +281,31 @@ public class BloomerangCrmService implements CrmService, CrmNewDonationService {
 
   @Override
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public String getSubscriptionId(ManageDonationEvent manageDonationEvent) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
