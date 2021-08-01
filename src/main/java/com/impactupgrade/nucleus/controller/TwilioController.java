@@ -90,7 +90,7 @@ public class TwilioController {
                         new PhoneNumber(pn),
                         new PhoneNumber(env.getConfig().twilio.senderPn),
                         message
-                    ).create();
+                    ).create(restClient);
 
                     log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
                         twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
