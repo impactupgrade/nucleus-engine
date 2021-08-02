@@ -29,7 +29,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
@@ -41,7 +46,7 @@ import java.util.List;
  * as the Twilio webhook to receive inbound messages and events.
  */
 @Controller
-@Path("/twilio")
+@Path("/api/twilio")
 public class TwilioController {
 
   private static final Logger log = LogManager.getLogger(TwilioController.class);

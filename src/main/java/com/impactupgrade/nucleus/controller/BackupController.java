@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Controller
-@Path("/backup")
+@Path("/api/backup")
 public class BackupController {
 
   private static final Logger log = LogManager.getLogger(BackupController.class);

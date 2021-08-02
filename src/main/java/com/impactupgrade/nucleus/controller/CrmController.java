@@ -20,7 +20,11 @@ import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
@@ -30,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 @Controller
-@Path("/crm")
+@Path("/api/crm")
 public class CrmController {
 
   private static final Logger log = LogManager.getLogger(CrmController.class.getName());

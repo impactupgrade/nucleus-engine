@@ -16,7 +16,17 @@ import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.exception.StripeException;
-import com.stripe.model.*;
+import com.stripe.model.BalanceTransaction;
+import com.stripe.model.Charge;
+import com.stripe.model.Customer;
+import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.Invoice;
+import com.stripe.model.PaymentIntent;
+import com.stripe.model.Payout;
+import com.stripe.model.Refund;
+import com.stripe.model.StripeObject;
+import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Controller;
@@ -38,7 +48,7 @@ import java.util.Optional;
  * Portal UI.
  */
 @Controller
-@Path("/stripe")
+@Path("/api/stripe")
 public class StripeController {
 
   private static final Logger log = LogManager.getLogger(StripeController.class);
