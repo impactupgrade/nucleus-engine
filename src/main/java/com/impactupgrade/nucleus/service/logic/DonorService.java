@@ -11,19 +11,22 @@ import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Service
 public class DonorService {
 
   private static final Logger log = LogManager.getLogger(DonorService.class);
 
-  private final Environment env;
-  private final CrmService crmService;
+  protected final Environment env;
+  protected final CrmService crmService;
 
-  public DonorService(Environment env) {
+  public DonorService(Environment env, @Qualifier("donations") CrmService crmService) {
     this.env = env;
-    crmService = env.crmService(env.getConfig().crmDonations);
+    this.crmService = crmService;
   }
 
   public void processAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {

@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -18,6 +19,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
+@Service
 public class AntiFraudService {
 
   private static Logger log = LoggerFactory.getLogger(AntiFraudService.class);
@@ -25,7 +27,7 @@ public class AntiFraudService {
   private static final String RECAPTCHA_SITE_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
   private static final double MIN_SCORE = 0.5;
 
-  private final Environment env;
+  protected final Environment env;
 
   public AntiFraudService(Environment env) {
     this.env = env;

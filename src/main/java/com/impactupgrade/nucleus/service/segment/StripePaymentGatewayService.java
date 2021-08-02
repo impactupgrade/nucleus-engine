@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.stripe.exception.StripeException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.text.ParseException;
 
@@ -17,11 +18,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   private static final Logger log = LogManager.getLogger(StripePaymentGatewayService.class);
 
-  private final StripeClient stripeClient;
-
-  public StripePaymentGatewayService(Environment env) {
-    stripeClient = env.stripeClient();
-  }
+  @Autowired
+  protected Environment env;
+  @Autowired
+  protected StripeClient stripeClient;
 
   @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {

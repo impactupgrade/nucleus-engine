@@ -6,10 +6,14 @@ package com.impactupgrade.nucleus.client;
 
 import com.impactupgrade.integration.paymentspring.PaymentSpringClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-public class PaymentSpringClientFactory {
+@Configuration
+public class PaymentSpringClientConfig {
 
-  public static PaymentSpringClient client(Environment env) {
+  @Bean
+  public PaymentSpringClient paymentspringClient(Environment env) {
     return new PaymentSpringClient(env.getConfig().paymentSpring.secretKey);
   }
 }

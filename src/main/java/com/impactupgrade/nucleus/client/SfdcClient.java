@@ -14,6 +14,8 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Service
 public class SfdcClient extends SFDCPartnerAPIClient {
 
   private static final Logger log = LogManager.getLogger(SfdcClient.class.getName());
@@ -61,6 +64,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     );
   }
 
+  @Autowired
   public SfdcClient(Environment env) {
     this(
         env,

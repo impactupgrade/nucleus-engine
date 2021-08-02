@@ -64,9 +64,9 @@ public class PaymentGatewayWebhookEvent {
   protected String depositId;
   protected Calendar depositDate;
 
-  public PaymentGatewayWebhookEvent(Environment env) {
+  public PaymentGatewayWebhookEvent(Environment env, MetadataRetriever metadataRetriever) {
     this.env = env;
-    metadataRetriever = new MetadataRetriever(env);
+    this.metadataRetriever = metadataRetriever;
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted

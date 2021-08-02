@@ -7,10 +7,11 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
+import com.impactupgrade.nucleus.service.logic.MessagingService;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
 import com.twilio.http.TwilioRestClient;
@@ -24,14 +25,11 @@ import com.twilio.twiml.voice.Say;
 import com.twilio.type.PhoneNumber;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Controller;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
@@ -42,23 +40,26 @@ import java.util.List;
  * This service provides the ability to send outbound messages through Twilio, as well as be positioned
  * as the Twilio webhook to receive inbound messages and events.
  */
+@Controller
 @Path("/twilio")
 public class TwilioController {
 
   private static final Logger log = LogManager.getLogger(TwilioController.class);
 
-  protected final EnvironmentFactory envFactory;
+  protected final Environment env;
+  protected final CrmService crmService;
+  protected final MessagingService messagingService;
 
-  public TwilioController(EnvironmentFactory envFactory) {
-    this.envFactory = envFactory;
+  public TwilioController(Environment env, @Qualifier("messaging") CrmService crmService, MessagingService messagingService) {
+    this.env = env;
+    this.crmService = crmService;
+    this.messagingService = messagingService;
   }
 
   @Path("/outbound/crm-list")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response outboundToCrmList(@FormParam("list-id") List<String> listIds, @FormParam("message") String message,
-      @Context HttpServletRequest request) {
-    Environment env = envFactory.init(request);
+  public Response outboundToCrmList(@FormParam("list-id") List<String> listIds, @FormParam("message") String message) {
     SecurityUtil.verifyApiKey(env);
 
     log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
@@ -68,7 +69,7 @@ public class TwilioController {
       for (String listId : listIds) {
         try {
           log.info("retrieving contacts from list {}", listId);
-          List<CrmContact> contacts = env.crmService(env.getConfig().crmMessaging).getContactsFromList(listId);
+          List<CrmContact> contacts = crmService.getContactsFromList(listId);
           log.info("found {} contacts in list {}", contacts.size(), listId);
           contacts.stream()
               .filter(c -> c.mobilePhone != null || c.homePhone != null)
@@ -99,7 +100,7 @@ public class TwilioController {
                   if (e1.getCode() == 21610) {
                     log.info("message to {} failed due to blacklist; updating contact in CRM", c.mobilePhone);
                     try {
-                      env.messagingService().optOut(c);
+                      messagingService.optOut(c);
                     } catch (Exception e2) {
                       log.error("CRM contact update failed", e2);
                     }
@@ -142,12 +143,10 @@ public class TwilioController {
       @FormParam("CampaignId") String campaignId,
       @FormParam("OpportunityName") String opportunityName,
       @FormParam("OpportunityRecordTypeId") String opportunityRecordTypeId,
-      @FormParam("OpportunityOwnerId") String opportunityOwnerId,
-      @Context HttpServletRequest request
+      @FormParam("OpportunityOwnerId") String opportunityOwnerId
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={}",
         from, __firstName, __lastName, fullName, email, emailOptIn, smsOptIn, __listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId);
-    Environment env = envFactory.init(request);
     OpportunityEvent opportunityEvent = new OpportunityEvent(env);
 
     String firstName;
@@ -170,7 +169,7 @@ public class TwilioController {
 
     Runnable thread = () -> {
       try {
-        env.messagingService().processSignup(
+        messagingService.processSignup(
             opportunityEvent,
             from,
             firstName,
@@ -188,7 +187,7 @@ public class TwilioController {
           opportunityEvent.setRecordTypeId(opportunityRecordTypeId);
           opportunityEvent.setOwnerId(opportunityOwnerId);
           opportunityEvent.setCampaignId(campaignId);
-          env.crmService(env.getConfig().crmMessaging).insertOpportunity(opportunityEvent);
+          crmService.insertOpportunity(opportunityEvent);
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);
@@ -228,9 +227,9 @@ public class TwilioController {
 //      String body = smsData.get("Body").get(0).trim();
 //      // Super important to do direct matches, and not a String contains! Many of the keywords could be accidentally used out of context.
 //      if (optInKeywords.contains(body.toUpperCase())) {
-//        env.messagingService().optIn(from);
+//        messagingService.optIn(from);
 //      } else if (optOutKeywords.contains(body.toUpperCase())) {
-//        env.messagingService().optOut(from);
+//        messagingService.optOut(from);
 //      }
 //    }
 
@@ -256,11 +255,9 @@ public class TwilioController {
       @FormParam("From") String from,
       @FormParam("To") String to,
       @FormParam("Digits") String digits,
-      @QueryParam("owner") String owner,
-      @Context HttpServletRequest request
+      @QueryParam("owner") String owner
   ) {
     log.info("from={} owner={}", from, owner);
-    Environment env = envFactory.init(request);
 
     String xml;
 

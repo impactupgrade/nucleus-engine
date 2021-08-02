@@ -14,32 +14,31 @@ import com.backblaze.b2.client.structures.B2UploadFileRequest;
 import com.backblaze.b2.client.structures.B2UploadListener;
 import com.backblaze.b2.util.B2ExecutorUtils;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
+import org.springframework.stereotype.Controller;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@Controller
 @Path("/backup")
 public class BackupController {
 
   private static final Logger log = LogManager.getLogger(BackupController.class);
 
-  protected final EnvironmentFactory envFactory;
+  protected final Environment env;
 
-  public BackupController(EnvironmentFactory envFactory) {
-    this.envFactory = envFactory;
+  public BackupController(Environment env) {
+    this.env = env;
   }
 
   /**
@@ -48,9 +47,8 @@ public class BackupController {
    */
   @GET
   @Path("/weekly")
-  public Response weekly(@Context HttpServletRequest request) {
+  public Response weekly() {
     log.info("backing up all platforms");
-    Environment env = envFactory.init(request);
 
     // some of the tasks (like Backblaze B2) can multi-thread and process in parallel, so create
     // an executor pool for the whole setup to run off of

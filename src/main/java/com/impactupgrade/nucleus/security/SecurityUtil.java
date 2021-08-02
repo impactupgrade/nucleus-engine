@@ -12,7 +12,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 public class SecurityUtil {
 
   public static void verifyApiKey(Environment env) throws SecurityException {
-    String apikey = env.getHeaders().get("APIKEY");
+    String apikey = env.getHeader("APIKEY");
     if (!env.getConfig().apiKey.equalsIgnoreCase(apikey)) {
       throw new SecurityException();
     }

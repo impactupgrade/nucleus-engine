@@ -12,15 +12,20 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
+@Service
 public class MessagingService {
 
   private static final Logger log = LogManager.getLogger(MessagingService.class);
 
-  private final CrmService crmService;
+  protected final Environment env;
+  protected final CrmService crmService;
 
-  public MessagingService(Environment env) {
-    crmService = env.crmService(env.getConfig().crmMessaging);
+public MessagingService(Environment env, @Qualifier("messaging") CrmService crmService) {
+    this.env = env;
+    this.crmService = crmService;
   }
 
   public void processSignup(

@@ -35,8 +35,8 @@ public class MetadataRetriever {
   private Subscription stripeSubscription = null;
   private Customer stripeCustomer = null;
 
-  public MetadataRetriever(Environment env) {
-    stripeClient = env.stripeClient();
+  public MetadataRetriever(StripeClient stripeClient) {
+    this.stripeClient = stripeClient;
   }
 
   public MetadataRetriever rawContext(String k, String v) {

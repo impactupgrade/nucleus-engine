@@ -13,19 +13,25 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Service
 public class DonationService {
 
   private static final Logger log = LogManager.getLogger(DonationService.class.getName());
 
-  private final Environment env;
-  private final CrmService crmService;
+  protected final Environment env;
+  protected final CrmService crmService;
+  protected final BeanFactory beanFactory;
 
-  public DonationService(Environment env) {
+  public DonationService(Environment env, @Qualifier("donations") CrmService crmService, BeanFactory beanFactory) {
     this.env = env;
-    crmService = env.crmService(env.getConfig().crmDonations);
+    this.crmService = crmService;
+    this.beanFactory = beanFactory;
   }
 
   public void createDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
@@ -113,7 +119,8 @@ public class DonationService {
       return;
     }
 
-    PaymentGatewayService paymentGatewayService = env.paymentGatewayService(recurringDonation.get().paymentGatewayName);
+    PaymentGatewayService paymentGatewayService = beanFactory.getBean(
+            recurringDonation.get().paymentGatewayName, PaymentGatewayService.class);
 
     if (manageDonationEvent.getDonationId() == null) {
       manageDonationEvent.setDonationId(recurringDonation.get().id);

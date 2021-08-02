@@ -41,6 +41,8 @@ import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.common.EmptyParam;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -52,12 +54,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+@Service
 public class StripeClient {
 
   private static final Logger log = LogManager.getLogger(StripeClient.class.getName());
 
   protected final RequestOptions requestOptions;
 
+  @Autowired
   public StripeClient(Environment env) {
     requestOptions = RequestOptions.builder().setApiKey(env.getConfig().stripe.secretKey).build();
   }

@@ -5,8 +5,10 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.SfdcBulkClient;
+import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -18,14 +20,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.springframework.stereotype.Controller;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.BufferedWriter;
@@ -33,21 +30,25 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
+@Controller
 @Path("/sfdc")
 public class SfdcController {
 
   private static final Logger log = LogManager.getLogger(SfdcController.class.getName());
 
-  protected final EnvironmentFactory envFactory;
+  protected final Environment env;
+  protected final SfdcClient sfdcClient;
+  protected final SfdcBulkClient sfdcBulkClient;
+  protected final SfdcMetadataClient sfdcMetadataClient;
 
-  public SfdcController(EnvironmentFactory envFactory) {
-    this.envFactory = envFactory;
+  public SfdcController(Environment env, SfdcClient sfdcClient, SfdcBulkClient sfdcBulkClient,
+          SfdcMetadataClient sfdcMetadataClient) {
+    this.env = env;
+    this.sfdcClient = sfdcClient;
+    this.sfdcBulkClient = sfdcBulkClient;
+    this.sfdcMetadataClient = sfdcMetadataClient;
   }
 
   // TODO: Make this generic through CrmController?
@@ -58,9 +59,7 @@ public class SfdcController {
   public Response bulkDelete(
       @FormDataParam("google-sheet-url") String gsheetUrl,
       @FormDataParam("file") File file,
-      @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
-    Environment env = envFactory.init(request);
+      @FormDataParam("file") FormDataContentDisposition fileDisposition) {
     SecurityUtil.verifyApiKey(env);
 
     Runnable thread = () -> {
@@ -95,9 +94,9 @@ public class SfdcController {
           String opportunityId = row.get("Opportunity ID");
           SObject opportunity = new SObject("Opportunity");
           opportunity.setId(opportunityId);
-          env.sfdcClient().batchDelete(opportunity);
+          sfdcClient.batchDelete(opportunity);
         }
-        env.sfdcClient().batchFlush();;
+        sfdcClient.batchFlush();;
       } catch (Exception e) {
         log.error("bulkDelete failed", e);
       }
@@ -119,16 +118,14 @@ public class SfdcController {
   public Response addValueToPicklist(
       @FormParam("globalPicklistApiName") String globalPicklistApiName,
       @FormParam("value") String newValue,
-      @FormParam("recordTypeFieldApiNames") List<String> recordTypeFieldApiNames,
-      @Context HttpServletRequest request
+      @FormParam("recordTypeFieldApiNames") List<String> recordTypeFieldApiNames
   ) {
-    Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       try {
-        env.sfdcMetadataClient().addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
+        sfdcMetadataClient.addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
         log.info("FINISHED: {}", globalPicklistApiName);
       } catch (Exception e) {
         log.error("{} failed", globalPicklistApiName, e);
@@ -148,10 +145,8 @@ public class SfdcController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response iwave(
       @FormDataParam("file") File file,
-      @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request
+      @FormDataParam("file") FormDataContentDisposition fileDisposition
   ) {
-    Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     // takes a while, so spin it off as a new thread
@@ -203,7 +198,7 @@ public class SfdcController {
             log.info("processing row {}: {}", counter++, email);
 
             if (!Strings.isNullOrEmpty(email)) {
-              Optional<SObject> contact = env.sfdcClient().getContactByEmail(email);
+              Optional<SObject> contact = sfdcClient.getContactByEmail(email);
               if (contact.isPresent()) {
                 // SF expects date in yyyy-MM-dd'T'HH:mm:ss.SSS'Z, but iWave gives yyyy-MM-dd HH:mm
                 Date date = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(csvRecord.get("Date Scored"));
@@ -237,7 +232,7 @@ public class SfdcController {
           }
         }
 
-        env.sfdcBulkClient().uploadIWaveFile(combinedFile.toFile());
+        sfdcBulkClient.uploadIWaveFile(combinedFile.toFile());
         log.info("FINISHED: iwave");
       } catch (Exception e) {
         log.error("iwave update failed", e);
@@ -257,16 +252,14 @@ public class SfdcController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response windfall(
       @FormDataParam("file") File file,
-      @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request
+      @FormDataParam("file") FormDataContentDisposition fileDisposition
   ) {
-    Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       try {
-        env.sfdcBulkClient().uploadWindfallFile(file);
+        sfdcBulkClient.uploadWindfallFile(file);
         log.info("FINISHED: windfall");
       } catch (Exception e) {
         log.error("Windfall update failed", e);

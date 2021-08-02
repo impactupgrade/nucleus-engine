@@ -5,53 +5,29 @@
 package com.impactupgrade.nucleus.client;
 
 import com.impactupgrade.nucleus.environment.Environment;
-import com.sforce.soap.metadata.Connector;
-import com.sforce.soap.metadata.CustomValue;
-import com.sforce.soap.metadata.FileProperties;
-import com.sforce.soap.metadata.GlobalValueSet;
-import com.sforce.soap.metadata.ListMetadataQuery;
-import com.sforce.soap.metadata.Metadata;
-import com.sforce.soap.metadata.MetadataConnection;
-import com.sforce.soap.metadata.PicklistValue;
-import com.sforce.soap.metadata.ReadResult;
-import com.sforce.soap.metadata.RecordType;
-import com.sforce.soap.metadata.RecordTypePicklistValue;
+import com.sforce.soap.metadata.*;
 import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.annotation.RequestScope;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 /**
  * Wraps the SFDC Metadata SOAP API.
  */
+@Service
+@RequestScope
 public class SfdcMetadataClient {
 
 	private static final Logger log = LogManager.getLogger(SfdcMetadataClient.class.getName());
 
 	protected final Environment env;
-	private final String username;
-	private final String password;
-
-	// Keep it simple and build on-demand, since this is rarely used! But if caching is needed, see the
-	// approach in SFDCPartnerAPIClient.
-	public MetadataConnection metadataConn() throws ConnectionException {
-		ConnectorConfig metadataConfig = new ConnectorConfig();
-		metadataConfig.setUsername(username);
-		metadataConfig.setPassword(password);
-		// Oh, Salesforce. We must call the login endpoint to obtain the metadataServerUrl and sessionId.
-		// No idea why this isn't generated as a part of the connection, like Enterprise WSDL does it...
-		LoginResult loginResult = env.sfdcClient(username, password).login();
-		metadataConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
-		metadataConfig.setSessionId(loginResult.getSessionId());
-		return Connector.newConnection(metadataConfig);
-	}
+	protected final MetadataConnection metadataConn;
 
 	/**
 	 * We need to support logging in on an as-needed basis, rather than always using a single user. QBWC sends a specific
@@ -60,19 +36,34 @@ public class SfdcMetadataClient {
 	 * @param username
 	 * @param password
 	 */
-	public SfdcMetadataClient(Environment env, String username, String password) {
+	public SfdcMetadataClient(Environment env, String username, String password) throws ConnectionException {
 		this.env = env;
-		this.username = username;
-		this.password = password;
+		this.metadataConn = metadataConn(username, password);
 	}
 
 	/**
 	 * Log in using the default account.
 	 */
-	public SfdcMetadataClient(Environment env) {
+	@Autowired
+	public SfdcMetadataClient(Environment env) throws ConnectionException {
 		this.env = env;
-		this.username = env.getConfig().salesforce.username;
-		this.password = env.getConfig().salesforce.password;
+		this.metadataConn = metadataConn(env.getConfig().salesforce.username, env.getConfig().salesforce.password);
+	}
+
+	// Keep it simple and build on-demand, since this is rarely used! But if caching is needed, see the
+	// approach in SFDCPartnerAPIClient.
+	private MetadataConnection metadataConn(String username, String password) throws ConnectionException {
+		ConnectorConfig metadataConfig = new ConnectorConfig();
+		metadataConfig.setUsername(username);
+		metadataConfig.setPassword(password);
+		// Oh, Salesforce. We must call the login endpoint to obtain the metadataServerUrl and sessionId.
+		// No idea why this isn't generated as a part of the connection, like Enterprise WSDL does it...
+		// TODO: Ignoring beans here and hitting our default impl directly, assuming a simple login like this won't
+		//  ever need to be customized.
+		LoginResult loginResult = new SfdcClient(env, username, password).login();
+		metadataConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
+		metadataConfig.setSessionId(loginResult.getSessionId());
+		return Connector.newConnection(metadataConfig);
 	}
 
 	/**
@@ -85,8 +76,6 @@ public class SfdcMetadataClient {
 	 */
 	public void addValueToPicklist(String globalPicklistApiName, String newValue, List<String> recordTypeFieldApiNames) throws ConnectionException {
 		log.info("adding {} {}", globalPicklistApiName, newValue);
-
-		MetadataConnection metadataConn = metadataConn();
 
 		// fetch the picklist (called a GlobalValueSet in the API)
 		ReadResult globalValueSetResult = metadataConn.readMetadata(GlobalValueSet.class.getSimpleName(), new String[]{globalPicklistApiName});

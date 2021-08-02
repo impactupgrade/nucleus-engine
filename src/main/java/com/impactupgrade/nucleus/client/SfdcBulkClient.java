@@ -12,23 +12,12 @@ import com.sforce.ws.ConnectorConfig;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.annotation.RequestScope;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Wraps the SFDC Bulk API, primarily to upload and import bulk data (ex: Windfall).
@@ -36,20 +25,19 @@ import java.util.Set;
  * Taken and adapted from:
  * https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_code_walkthrough.htm
  */
+@Service
+@RequestScope
 public class SfdcBulkClient {
 
   private static final Logger log = LogManager.getLogger(SfdcBulkClient.class.getName());
 
   protected final Environment env;
+  protected final BulkConnection bulkConn;
 
-  public SfdcBulkClient(Environment env) {
+  public SfdcBulkClient(Environment env, SfdcClient sfdcClient) throws AsyncApiException, ConnectionException {
     this.env = env;
-  }
 
-  // Keep it simple and build on-demand, since this is rarely used! But if caching is needed, see the
-  // approach in SFDCPartnerAPIClient.
-  private BulkConnection bulkConn() throws ConnectionException, AsyncApiException {
-    LoginResult loginResult = env.sfdcClient().login();
+    LoginResult loginResult = sfdcClient.login();
 
     ConnectorConfig bulkConfig = new ConnectorConfig();
     bulkConfig.setSessionId(loginResult.getSessionId());
@@ -63,7 +51,7 @@ public class SfdcBulkClient {
     // ideally we'd use gzip for large files, but likely overkill right now
     bulkConfig.setCompression(false);
     bulkConfig.setTraceMessage(false);
-    return new BulkConnection(bulkConfig);
+    bulkConn = new BulkConnection(bulkConfig);
   }
 
   public void ownerTransfer(String oldOwnerId, String newOwnerId, String object, String... whereClauses)
@@ -80,8 +68,6 @@ public class SfdcBulkClient {
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("sfdc/ownertransfer_spec.csv")
     ) {
-      BulkConnection bulkConn = bulkConn();
-
       JobInfo queryJob = createJob(object, OperationEnum.query, bulkConn);
       BatchInfo queryBatchInfo = bulkConn.createBatchFromStream(queryJob, queryIS);
       closeJob(queryJob.getId(), bulkConn);
@@ -141,8 +127,6 @@ public class SfdcBulkClient {
             .getResourceAsStream("sfdc/windfall_spec.csv");
         InputStream contactFileInputStream = new FileInputStream(contactFile)
     ) {
-      BulkConnection bulkConn = bulkConn();
-
       JobInfo job = createJob("Contact", OperationEnum.update, bulkConn);
 
       uploadSpec(job, specFileInputStream, bulkConn);
@@ -160,8 +144,6 @@ public class SfdcBulkClient {
             .getResourceAsStream("sfdc/iwave_spec.csv");
         InputStream iwaveFileInputStream = new FileInputStream(iwaveFile)
     ) {
-      BulkConnection bulkConn = bulkConn();
-
       JobInfo job = createJob("Contact", OperationEnum.update, bulkConn);
 
       uploadSpec(job, specFileInputStream, bulkConn);
