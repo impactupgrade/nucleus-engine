@@ -20,7 +20,7 @@ public class MessagingService {
   private final CrmService crmService;
 
   public MessagingService(Environment env) {
-    crmService = env.crmService(env.getConfig().crmMessaging);
+    crmService = env.messagingCrmService();
   }
 
   public void processSignup(

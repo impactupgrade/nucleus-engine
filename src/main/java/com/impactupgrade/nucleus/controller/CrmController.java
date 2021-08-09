@@ -71,7 +71,7 @@ public class CrmController {
         }
 
         List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
-        env.crmService(env.getConfig().crmPrimary).processBulkImport(importEvents);
+        env.primaryCrmService().processBulkImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -95,7 +95,7 @@ public class CrmController {
       try {
         List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
         List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
-        env.crmService(env.getConfig().crmPrimary).processBulkImport(importEvents);
+        env.primaryCrmService().processBulkImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -133,7 +133,7 @@ public class CrmController {
         }
 
         List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data, env);
-        env.crmService(env.getConfig().crmPrimary).processBulkImport(importEvents);
+        env.primaryCrmService().processBulkImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -170,7 +170,7 @@ public class CrmController {
         }
 
         List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
-        env.crmService(env.getConfig().crmPrimary).processBulkUpdate(updateEvents);
+        env.primaryCrmService().processBulkUpdate(updateEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }
@@ -194,7 +194,7 @@ public class CrmController {
       try {
         List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
         List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
-        env.crmService(env.getConfig().crmPrimary).processBulkUpdate(updateEvents);
+        env.primaryCrmService().processBulkUpdate(updateEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
       }

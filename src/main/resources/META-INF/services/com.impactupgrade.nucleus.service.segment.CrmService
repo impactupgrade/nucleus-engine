@@ -1,0 +1,3 @@
+com.impactupgrade.nucleus.service.segment.BloomerangCrmService
+com.impactupgrade.nucleus.service.segment.HubSpotCrmService
+com.impactupgrade.nucleus.service.segment.SfdcCrmService

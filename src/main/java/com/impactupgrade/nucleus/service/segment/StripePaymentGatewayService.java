@@ -17,9 +17,13 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   private static final Logger log = LogManager.getLogger(StripePaymentGatewayService.class);
 
-  private final StripeClient stripeClient;
+  private StripeClient stripeClient;
 
-  public StripePaymentGatewayService(Environment env) {
+  @Override
+  public String name() { return "stripe"; }
+
+  @Override
+  public void init(Environment env) {
     stripeClient = env.stripeClient();
   }
 
