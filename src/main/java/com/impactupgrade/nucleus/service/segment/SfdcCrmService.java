@@ -41,10 +41,14 @@ public class SfdcCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
 
-  protected final Environment env;
-  protected final SfdcClient sfdcClient;
+  protected Environment env;
+  protected SfdcClient sfdcClient;
 
-  public SfdcCrmService(Environment env) {
+  @Override
+  public String name() { return "salesforce"; }
+
+  @Override
+  public void init(Environment env) {
     this.env = env;
     sfdcClient = env.sfdcClient();
   }

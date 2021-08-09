@@ -54,12 +54,16 @@ public class BloomerangCrmService implements CrmService {
   private static final String POST_DONATION = BLOOMERANG_URL + "Donation";
   private static final String POST_RECURRINGDONATION = BLOOMERANG_URL + "RecurringDonation";
 
-  private final String apiKey;
-  private final String anonymousId;
-  protected final Environment env;
-  private final ObjectMapper mapper;
+  private String apiKey;
+  private String anonymousId;
+  protected Environment env;
+  private ObjectMapper mapper;
 
-  public BloomerangCrmService(Environment env) {
+  @Override
+  public String name() { return "bloomerang"; }
+
+  @Override
+  public void init(Environment env) {
     this.apiKey = env.getConfig().bloomerang.secretKey;
     this.anonymousId = env.getConfig().bloomerang.anonymousId;
     this.env = env;

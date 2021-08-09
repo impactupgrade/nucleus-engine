@@ -25,7 +25,7 @@ public class DonationService {
 
   public DonationService(Environment env) {
     this.env = env;
-    crmService = env.crmService(env.getConfig().crmDonations);
+    crmService = env.donationsCrmService();
   }
 
   public void createDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {

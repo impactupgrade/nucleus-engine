@@ -12,12 +12,9 @@ import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
-import com.impactupgrade.nucleus.service.segment.BloomerangCrmService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import com.impactupgrade.nucleus.service.segment.HubSpotCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
-import com.impactupgrade.nucleus.service.segment.SfdcCrmService;
-import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
+import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,8 +23,10 @@ import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Locale;
+import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 /**
  * Every action within Nucleus is kicked off by either an HTTP Request or a manual script. This class
@@ -94,49 +93,71 @@ public class Environment {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // logic services
+
   public DonationService donationService() { return new DonationService(this); }
   public DonorService donorService() { return new DonorService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
 
-  /*
-  return config.platforms.crm.stream()
-        .filter(crm -> crm.name.equalsIgnoreCase(key))
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("not implemented"));
-   */
-
   // segment services
-  public CrmService crmService(String name) {
+
+  public CrmService crmService(final String name) {
     if (Strings.isNullOrEmpty(name)) {
-      if (Strings.isNullOrEmpty(config.crmPrimary)) {
-        throw new RuntimeException("define a crmPrimary in environment.json");
-      }
-
-      // by default, always use the primary
-      return crmService(config.crmPrimary);
+      return primaryCrmService();
     } else {
-      name = name.toLowerCase(Locale.ROOT);
-      if ("bloomerang".equalsIgnoreCase(name)) {
-        return new BloomerangCrmService(this);
-      } else if ("hubspot".equalsIgnoreCase(name)) {
-        return new HubSpotCrmService(this);
-      } else if ("salesforce".equalsIgnoreCase(name)) {
-        return new SfdcCrmService(this);
-      }
-
-      throw new RuntimeException("crm not found: " + name);
+      return segmentService(name, CrmService.class);
     }
   }
-  public PaymentGatewayService paymentGatewayService(String name) {
-    name = name.toLowerCase(Locale.ROOT);
-    if ("stripe".equalsIgnoreCase(name)) {
-      return new StripePaymentGatewayService(this);
+
+  public CrmService primaryCrmService() {
+    if (Strings.isNullOrEmpty(config.crmPrimary)) {
+      throw new RuntimeException("define a crmPrimary in environment.json");
     }
 
-    throw new RuntimeException("paymentGateway not found: " + name);
+    // by default, always use the primary
+    return crmService(config.crmPrimary);
+  }
+
+  public CrmService donationsCrmService() {
+    return crmService(getConfig().crmDonations);
+  }
+
+  public CrmService messagingCrmService() {
+    return crmService(getConfig().crmMessaging);
+  }
+
+  public List<CrmService> allCrmServices() {
+    return segmentServices(CrmService.class);
+  }
+
+  public PaymentGatewayService paymentGatewayService(String name) {
+    return segmentService(name, PaymentGatewayService.class);
+  }
+
+  public List<PaymentGatewayService> allPaymentGatewayService() {
+    return segmentServices(PaymentGatewayService.class);
+  }
+
+  private <T extends SegmentService> T segmentService(final String name, Class<T> clazz) {
+    ServiceLoader<T> loader = java.util.ServiceLoader.load(clazz);
+    T segmentService = loader.stream()
+        .map(ServiceLoader.Provider::get)
+        .filter(service -> name.equalsIgnoreCase(service.name()))
+        // TODO: not sure if we'll need to somehow filter by custom overrides first, or if that will happen naturally due to CL order
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("segment service not found: " + name));
+    segmentService.init(this);
+    return segmentService;
+  }
+
+  private <T extends SegmentService> List<T> segmentServices(Class<T> clazz) {
+    ServiceLoader<T> loader = java.util.ServiceLoader.load(clazz);
+    return loader.stream()
+        .map(ServiceLoader.Provider::get)
+        .collect(Collectors.toList());
   }
 
   // vendor clients
+
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password) { return new SfdcClient(this, username, password); }
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }

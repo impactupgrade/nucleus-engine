@@ -18,7 +18,7 @@ import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
 import java.util.List;
 import java.util.Optional;
 
-public interface CrmService {
+public interface CrmService extends SegmentService {
 
   // TODO: As we gain more granular search methods, we should instead think through general purpose options
   //  that take filter as arguments (or a Search object).

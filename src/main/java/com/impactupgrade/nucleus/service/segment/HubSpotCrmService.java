@@ -54,10 +54,14 @@ public class HubSpotCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 
-  protected final Environment env;
-  protected final HubSpotV3Client hsClient;
+  protected Environment env;
+  protected HubSpotV3Client hsClient;
 
-  public HubSpotCrmService(Environment env) {
+  @Override
+  public String name() { return "hubspot"; }
+
+  @Override
+  public void init(Environment env) {
     this.env = env;
     hsClient = HubSpotClientFactory.v3Client(env);
   }
