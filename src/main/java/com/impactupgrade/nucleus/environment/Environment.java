@@ -89,8 +89,10 @@ public class Environment {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // REGISTRY
   // Provides a simple registry of services, clients, etc. to allow subprojects to override concepts as needed!
-  // Yes, we could use Spring/ServiceRegistry/OSGi. But holding off on frameworks until we absolutely need them...
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // TODO: Logic services and vendor clients could eventually move to ServiceLoader as well, but it's currently
+  //  less of an issue since there's only one impl each and there are currently no need for interfaces.
 
   // logic services
 
@@ -142,7 +144,7 @@ public class Environment {
     T segmentService = loader.stream()
         .map(ServiceLoader.Provider::get)
         .filter(service -> name.equalsIgnoreCase(service.name()))
-        // TODO: not sure if we'll need to somehow filter by custom overrides first, or if that will happen naturally due to CL order
+        // Custom overrides will appear first naturally due to CL order!
         .findFirst()
         .orElseThrow(() -> new RuntimeException("segment service not found: " + name));
     segmentService.init(this);
@@ -163,14 +165,4 @@ public class Environment {
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
   public StripeClient stripeClient() { return new StripeClient(this); }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // DYNAMIC CONFIRMATION
-  // Most configuration is static and should be in environment.json. However, some pieces are dynamic and depend on
-  // processing context. Allow organization to override these at the request level.
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public String getCurrency() {
-    return "usd";
-  }
 }

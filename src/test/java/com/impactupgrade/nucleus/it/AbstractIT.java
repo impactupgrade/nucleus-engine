@@ -6,9 +6,7 @@ package com.impactupgrade.nucleus.it;
 
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
-import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -65,26 +63,11 @@ public abstract class AbstractIT extends JerseyTest {
   }
 
   protected App getApp() {
-    return new App() {
-      @Override
-      public EnvironmentFactory envFactory() {
-        return new EnvironmentFactory() {
-          @Override
-          public Environment newEnv() {
-            return env();
-          }
-        };
-      }
-    };
+    return new App();
   }
 
   protected Environment env() {
-    return new EnvironmentIT();
-  }
-
-  // Unlike App.java, let tests decide what they want to keep.
-  protected void registerAPIControllers(ResourceConfig apiConfig, EnvironmentFactory envFactory) {
-    apiConfig.register(new StripeController(envFactory));
+    return app.envFactory().newEnv();
   }
 
   protected void clearSfdc() throws Exception {

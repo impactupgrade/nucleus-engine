@@ -119,6 +119,7 @@ public class EnvironmentConfig {
   public Salesforce salesforce = new Salesforce();
 
   public static class Salesforce extends Platform {
+    public boolean sandbox = false;
     public String url = "";
     public String forceUrl = "";
 
@@ -163,12 +164,16 @@ public class EnvironmentConfig {
     public Set<String> recordType = new HashSet<>();
   }
 
+  public String currency = "";
+
   public static EnvironmentConfig init() {
     try (
         InputStream jsonDefault = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("environment-default.json");
         InputStream jsonOrg = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("environment.json")
+            .getResourceAsStream("environment.json");
+        InputStream jsonOrgIntegrationTest = Thread.currentThread().getContextClassLoader()
+            .getResourceAsStream("environment-it.json")
     ) {
       ObjectMapper mapper = new ObjectMapper();
       // Allows nested objects, collections, etc. to be merged together.
@@ -178,6 +183,9 @@ public class EnvironmentConfig {
       // Then override specific properties with anything that's in env.json, if there is one.
       if (jsonOrg != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrg);
+      }
+      if (jsonOrgIntegrationTest != null) {
+        mapper.readerForUpdating(envConfig).readValue(jsonOrgIntegrationTest);
       }
       return envConfig;
     } catch (IOException e) {
