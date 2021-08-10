@@ -42,11 +42,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected final Environment env;
 
-  public SfdcClient(Environment env, String username, String password, String authUrl) {
+  public SfdcClient(Environment env, String username, String password, boolean isSandbox) {
     super(
         username,
         password,
-        authUrl,
+        isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION,
         20 // objects are massive, so toning down the batch sizes
     );
     this.env = env;
@@ -57,7 +57,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         env,
         username,
         password,
-        AUTH_URL
+        env.getConfig().salesforce.sandbox
     );
   }
 
@@ -65,7 +65,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     this(
         env,
         env.getConfig().salesforce.username,
-        env.getConfig().salesforce.password
+        env.getConfig().salesforce.password,
+        env.getConfig().salesforce.sandbox
     );
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
