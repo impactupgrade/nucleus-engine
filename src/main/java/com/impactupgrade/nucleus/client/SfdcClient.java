@@ -8,7 +8,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -25,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class SfdcClient extends SFDCPartnerAPIClient {
 
@@ -227,27 +225,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
-  public List<SObject> getContactsSinceDate(Calendar calendar) throws ConnectionException, InterruptedException {
+  public List<SObject> getContactsUpdatedSince(Calendar calendar) throws ConnectionException, InterruptedException {
     String dateString = new SimpleDateFormat("yyyy-MM-dd").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where lastmodifieddate >= " + dateString + " BY name";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where lastmodifieddate >= " + dateString;
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
-  public List<SObject> getDonorIdsSinceDate(Calendar calendar) throws ConnectionException, InterruptedException {
+  public List<SObject> getDonorContactsSince(Calendar calendar) throws ConnectionException, InterruptedException {
     String dateString = new SimpleDateFormat("yyyy-MM-dd").format(calendar.getTime());
-    String query = "select ContactId from Opportunity where created_date >= " + dateString;
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateString + ")";
     LoggingUtil.verbose(log, query);
     return queryList(query);
-  }
-
-  public List<SObject> getDonorsSinceDate(Calendar calendar) throws ConnectionException, InterruptedException {
-    List<String> contactIds = getDonorIdsSinceDate(calendar).stream().map(c -> (String) c.getField("ContactId")).distinct().collect(Collectors.toList());
-    List<SObject> contacts = new ArrayList<>();
-    for(String id : contactIds){
-      contacts.add(getContactById(id).get());
-    }
-    return contacts;
   }
 
   public List<SObject> searchContacts(String firstName, String lastName, String email, String phone, String address)

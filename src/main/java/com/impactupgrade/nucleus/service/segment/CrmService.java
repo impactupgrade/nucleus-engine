@@ -102,8 +102,8 @@ public interface CrmService extends SegmentService {
   // EMAIL SYNC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  List <CrmContact> getContactsSince(Calendar calendar) throws Exception;
-  List<CrmContact> getDonorsSince(Calendar calendar) throws Exception; //TODO Implement (look for donations then get the contacts in implementation)
+  List <CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception;
+  List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS

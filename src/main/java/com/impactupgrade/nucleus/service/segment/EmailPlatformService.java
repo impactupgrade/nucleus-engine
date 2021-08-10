@@ -3,27 +3,27 @@ package com.impactupgrade.nucleus.service.segment;
 import com.impactupgrade.nucleus.model.CrmContact;
 
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface EmailPlatformService {
+public interface EmailPlatformService extends SegmentService {
 
-  List<String> getEmailsInList(String listName) throws Exception;
   List<CrmContact> getListOfContacts(String listName) throws Exception;
 
   Optional<CrmContact> getContactByEmail(String listName, String email) throws Exception;
 
-  List<String> getContactGroups(CrmContact crmContact, String listName) throws Exception;
+  Collection<String> getContactGroupIds(String listName, CrmContact crmContact) throws Exception;
 
   List<String> getContactTags(String listName, CrmContact crmContact) throws Exception;
 
-  void addContactToList(CrmContact crmContact, String listName) throws Exception;
+  void addContactToList(String listName, CrmContact crmContact) throws Exception;
 
-  void updateContact(CrmContact contact, String listName) throws Exception;
+  void updateContact(String listName, CrmContact crmContact) throws Exception;
 
-  void unsubscribeContact(String email, String listName) throws Exception;
+  void removeContactFromList(String listName, String email) throws Exception;
 
-  void addContactToGroup(CrmContact crmContact, String listId, String groupName) throws Exception;
+  void addContactToGroup(String listName, CrmContact crmContact, String groupName) throws Exception;
 
   void addTagToContact(String listName, CrmContact crmContact, String tag) throws Exception;
 

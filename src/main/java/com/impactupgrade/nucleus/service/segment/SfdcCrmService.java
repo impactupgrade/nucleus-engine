@@ -31,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -686,13 +687,13 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsSince(Calendar calendar) throws Exception {
-    return sfdcClient.getContactsSinceDate(calendar).stream().map(sF -> toCrmContact(sF)).collect(Collectors.toList());
+  public List<CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception {
+    return sfdcClient.getContactsUpdatedSince(calendar).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
-  public List<CrmContact> getDonorsSince(Calendar calendar) throws Exception{
-    return sfdcClient.getDonorsSinceDate(calendar).stream().map(sF -> toCrmContact(sF)).collect(Collectors.toList());
+  public List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception{
+    return sfdcClient.getDonorContactsSince(calendar).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
 
@@ -895,6 +896,7 @@ public class SfdcCrmService implements CrmService {
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
         (String) sObject.getField("OwnerId"),
+        Collections.emptyList(),
         sObject
     );
   }
