@@ -1,29 +1,53 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
-import net.bytebuddy.asm.Advice;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.time.LocalDate;
+import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Response;
 import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
 
+@Path("/email")
 public class EmailController {
 
-  private final Environment env;
-  private final Calendar lastSync = Calendar.getInstance();
-  private final int syncLength = 3;
+  private static final Logger log = LogManager.getLogger(EmailController.class);
 
-  public EmailController(Environment env){
-    this.env = env;
-    lastSync.add(Calendar.DATE, (0 - syncLength));;
+  protected final EnvironmentFactory envFactory;
+
+  public EmailController(EnvironmentFactory envFactory) {
+    this.envFactory = envFactory;
   }
 
-  public void syncCRMContacts() throws Exception {
-    env.emailPlatformService().syncNewContacts(lastSync);
-    env.emailPlatformService().syncNewDonors(lastSync);
-  }
+  // TODO: wire to cron
+  @GET
+  @Path("/daily")
+  public Response dailySync(@Context HttpServletRequest request) throws Exception {
+    Environment env = envFactory.init(request);
+    Calendar lastSync = Calendar.getInstance();
+    // run daily, but setting this high to catch previous misses
+    int syncDays = 3;
+    lastSync.add(Calendar.DATE, -syncDays);
 
+    Runnable thread = () -> {
+      // TODO: Each EmailPlatformService currently queries the CRM on its own. Should instead query first here, then
+      //  pass the results down.
+      for (EmailPlatformService emailPlatformService : env.allEmailPlatformServices()) {
+        try {
+          emailPlatformService.syncNewContacts(lastSync);
+          emailPlatformService.syncNewDonors(lastSync);
+        } catch (Exception e) {
+          log.error("dailySync failed", e);
+        }
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.ok().build();
+  }
 }

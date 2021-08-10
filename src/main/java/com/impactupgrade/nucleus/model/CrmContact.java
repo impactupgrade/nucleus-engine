@@ -5,7 +5,6 @@
 package com.impactupgrade.nucleus.model;
 
 import java.util.List;
-import java.util.Map;
 
 public class CrmContact {
 
@@ -29,7 +28,7 @@ public class CrmContact {
   public Boolean smsOptOut;
   public String ownerId;
   public String notes;
-  public List<String> groups;
+  public List<String> emailGroups;
   public Object rawObject;
 
   public CrmContact() {}
@@ -42,7 +41,7 @@ public class CrmContact {
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmContact(String id, String accountId, String firstName, String lastName, String email, String homePhone,
       String mobilePhone, String workPhone, PreferredPhone preferredPhone, CrmAddress address,
-      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, List<String> groups,
+      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, List<String> emailGroups,
       Object rawObject) {
     this.id = id;
     this.accountId = accountId;
@@ -59,7 +58,7 @@ public class CrmContact {
     this.smsOptIn = smsOptIn;
     this.smsOptOut = smsOptOut;
     this.ownerId = ownerId;
-    this.groups = groups;
+    this.emailGroups = emailGroups;
     this.rawObject = rawObject;
   }
 }

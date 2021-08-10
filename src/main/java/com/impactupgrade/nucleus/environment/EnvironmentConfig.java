@@ -151,9 +151,9 @@ public class EnvironmentConfig {
 
   public Mailchimp mailchimp = new Mailchimp();
 
-  public class Mailchimp {
-    public Map<String,String> lists = new HashMap<>(); //map name - listID
-    public Map<String,String> groups = new HashMap<>(); //map name - groupID
+  public static class Mailchimp extends Platform {
+    public Map<String, String> lists = new HashMap<>(); // <ID, Name>
+    public Map<String, String> groups = new HashMap<>(); // <ID, Name>
   }
 
   public Backblaze backblaze = new Backblaze();

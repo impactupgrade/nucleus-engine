@@ -12,6 +12,7 @@ import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
 import com.impactupgrade.integration.hubspot.v3.Contact;
 import com.impactupgrade.integration.hubspot.v3.ContactProperties;
+import com.impactupgrade.integration.hubspot.v3.ContactResults;
 import com.impactupgrade.integration.hubspot.v3.Deal;
 import com.impactupgrade.integration.hubspot.v3.DealProperties;
 import com.impactupgrade.integration.hubspot.v3.DealResults;
@@ -36,7 +37,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -594,21 +594,19 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsSince(Calendar calendar) throws Exception {
+  public List<CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception {
     String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
 
-    Filter[] filters = new Filter[]{new Filter("lastmodifieddate", "gt", dateString)}; //TODO lastmodifieddate vs notes last updated
-    ContactResults results = hsClient.contact().search(filters, getCustomPropertyNames());
+    List<Filter> filters = List.of(new Filter("lastmodifieddate", "gte", dateString));
+    ContactResults results = hsClient.contact().search(filters, getCustomFieldNames());
 
-    return results.getResults().stream().map(c -> toCrmContact(c)).collect(Collectors.toList());
+    return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
 
   }
 
   @Override
-  public List<CrmContact> getDonorsSince(Calendar calendar) throws Exception{
-    String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
-
-    return null;
+  public List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception {
+    throw new RuntimeException("not implemented");
   }
 
   protected CrmContact toCrmContact(Contact contact) {
@@ -640,6 +638,8 @@ public class HubSpotCrmService implements CrmService {
         (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
         (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
         contact.getProperties().getOwnerId(),
+        // TODO: email groups
+        Collections.emptyList(),
         contact
     );
   }
@@ -674,6 +674,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         null,
         null,
+        Collections.emptyList(),
         null
     );
   }

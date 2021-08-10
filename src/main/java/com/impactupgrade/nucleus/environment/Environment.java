@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.logging.log4j.LogManager;
@@ -134,6 +135,14 @@ public class Environment {
   public List<PaymentGatewayService> allPaymentGatewayServices() {
     // TODO: Filter by payment gateways actually configured in env.json
     return segmentServices(PaymentGatewayService.class);
+  }
+
+  public EmailPlatformService emailPlatformService(String name) {
+    return segmentService(name, EmailPlatformService.class);
+  }
+
+  public List<EmailPlatformService> allEmailPlatformServices() {
+    return segmentServices(EmailPlatformService.class);
   }
 
   private <T extends SegmentService> T segmentService(final String name, Class<T> clazz) {
