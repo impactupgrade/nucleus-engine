@@ -24,6 +24,7 @@ public class EnvironmentConfig {
 
   // NOTE: We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
 
+  // TODO: Rethink this -- it's already in the DB
   public String apiKey = "";
 
   // Some flows will select a CRM by name, when appropriate (especially if kicked off by the Portal).
@@ -160,6 +161,7 @@ public class EnvironmentConfig {
   public static class MetadataKeys {
     public Set<String> account = new HashSet<>();
     public Set<String> campaign = new HashSet<>();
+    public Set<String> fund = new HashSet<>();
     public Set<String> contact = new HashSet<>();
     public Set<String> recordType = new HashSet<>();
   }

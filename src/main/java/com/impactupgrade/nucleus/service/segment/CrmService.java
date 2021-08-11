@@ -13,7 +13,7 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,19 +44,19 @@ public interface CrmService extends SegmentService {
   // DONATION EVENTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  String insertAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
+  String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   // We allow custom impls, but most orgs only insert the CrmContact, so do that as a default.
-  default String insertContact(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  default String insertContact(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return insertContact(paymentGatewayEvent.getCrmContact());
   }
-  Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void refundDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
-  void closeRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception;
+  Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // RECURRING DONATION MANAGEMENT EVENTS

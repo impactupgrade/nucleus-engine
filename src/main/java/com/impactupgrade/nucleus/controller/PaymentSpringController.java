@@ -15,7 +15,7 @@ import com.impactupgrade.integration.paymentspring.model.Transaction;
 import com.impactupgrade.nucleus.client.PaymentSpringClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.logging.log4j.LogManager;
@@ -86,7 +86,7 @@ public class PaymentSpringController {
       log.info("received event {}: {}", event.getEventResource(), event.getEventType());
 
       try {
-        PaymentGatewayWebhookEvent paymentGatewayEvent = new PaymentGatewayWebhookEvent(env);
+        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
 
         switch (event.getEventResource()) {
           case "transaction":
@@ -125,7 +125,7 @@ public class PaymentSpringController {
     return Response.status(200).build();
   }
 
-  private void processTransaction(Event event, Transaction transaction, PaymentGatewayWebhookEvent paymentGatewayEvent,
+  private void processTransaction(Event event, Transaction transaction, PaymentGatewayEvent paymentGatewayEvent,
       Environment env) throws Exception {
     log.info("found transaction {}", transaction.getId());
 
@@ -213,7 +213,7 @@ public class PaymentSpringController {
 
           Event event = new Event();
           event.setEventType("created");
-          processTransaction(event, charge, new PaymentGatewayWebhookEvent(env), env);
+          processTransaction(event, charge, new PaymentGatewayEvent(env), env);
         }
       } catch (Exception e) {
         e.printStackTrace();

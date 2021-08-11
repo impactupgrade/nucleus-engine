@@ -30,7 +30,7 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -137,7 +137,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Filter[] filters = new Filter[]{new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
     DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
@@ -161,7 +161,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Filter[] filters = new Filter[]{new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId())};
     DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
 
@@ -174,14 +174,14 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO
   }
 
   @Override
-  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
+  public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     CompanyProperties account = new CompanyProperties();
-    setAccountFields(account, paymentGatewayWebhookEvent.getCrmAccount());
+    setAccountFields(account, paymentGatewayEvent.getCrmAccount());
     Company response = hsClient.company().insert(account);
     return response == null ? null : response.getId();
   }
@@ -269,7 +269,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
     DealProperties deal = new DealProperties();
@@ -293,7 +293,7 @@ public class HubSpotCrmService implements CrmService {
     }
   }
 
-  protected void setDonationFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  protected void setDonationFields(DealProperties deal, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
     deal.setPipeline(env.getConfig().hubspot.donationPipeline.id);
@@ -326,7 +326,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void refundDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = getDonation(paymentGatewayEvent);
 
     if (donation.isEmpty()) {
@@ -340,7 +340,7 @@ public class HubSpotCrmService implements CrmService {
     hsClient.deal().update(donation.get().id, deal);
   }
 
-  protected void setDonationRefundFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  protected void setDonationRefundFields(DealProperties deal, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     deal.setDealstage(env.getConfig().hubspot.donationPipeline.refundedStageId);
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId(), deal.getCustomProperties());
@@ -348,7 +348,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: Break out a set-fields method? Or just allow this whole thing to be overridden?
 
     Optional<CrmDonation> donation = getDonation(paymentGatewayEvent);
@@ -367,7 +367,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
     DealProperties deal = new DealProperties();
@@ -384,7 +384,7 @@ public class HubSpotCrmService implements CrmService {
     }
   }
 
-  protected void setRecurringDonationFields(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  protected void setRecurringDonationFields(DealProperties deal, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: campaign
 
     deal.setPipeline(env.getConfig().hubspot.recurringDonationPipeline.id);
@@ -402,7 +402,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {
@@ -418,7 +418,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
-  protected void setRecurringDonationFieldsForClose(DealProperties deal, PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  protected void setRecurringDonationFieldsForClose(DealProperties deal, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     deal.setRecurringRevenueInactiveDate(Calendar.getInstance());
     deal.setRecurringRevenueInactiveReason("CHURNED");
   }

@@ -7,7 +7,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,7 +26,7 @@ public class DonorService {
     crmService = env.donationsCrmService();
   }
 
-  public void processAccount(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void processAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // attempt to find a Contact using the email
 
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)

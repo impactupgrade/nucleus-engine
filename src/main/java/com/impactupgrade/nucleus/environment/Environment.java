@@ -127,15 +127,12 @@ public class Environment {
     return crmService(getConfig().crmMessaging);
   }
 
-  public List<CrmService> allCrmServices() {
-    return segmentServices(CrmService.class);
-  }
-
   public PaymentGatewayService paymentGatewayService(String name) {
     return segmentService(name, PaymentGatewayService.class);
   }
 
-  public List<PaymentGatewayService> allPaymentGatewayService() {
+  public List<PaymentGatewayService> allPaymentGatewayServices() {
+    // TODO: Filter by payment gateways actually configured in env.json
     return segmentServices(PaymentGatewayService.class);
   }
 
@@ -154,7 +151,11 @@ public class Environment {
   private <T extends SegmentService> List<T> segmentServices(Class<T> clazz) {
     ServiceLoader<T> loader = java.util.ServiceLoader.load(clazz);
     return loader.stream()
-        .map(ServiceLoader.Provider::get)
+        .map(p -> {
+          T segmentService = p.get();
+          segmentService.init(this);
+          return segmentService;
+        })
         .collect(Collectors.toList());
   }
 
