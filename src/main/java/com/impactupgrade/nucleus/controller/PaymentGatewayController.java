@@ -8,13 +8,16 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.ManageDonationFormData;
+import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.security.SecurityUtil;
+import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -22,6 +25,10 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 @Path("/paymentgateway")
 public class PaymentGatewayController {
@@ -32,6 +39,37 @@ public class PaymentGatewayController {
 
   public PaymentGatewayController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
+  }
+
+  /**
+   * Provides a list of deposits into checking accounts, powered by all supported payment gateways. Aggregates
+   * each deposit's unrestricted vs. restricted giving (sometimes determined by campaign metadata) using net received.
+   */
+  @Path("/deposits")
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response deposits(
+      @FormParam("start") String start,
+      @FormParam("end") String end,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    Date startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+    Date endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+
+    List<PaymentGatewayService> paymentGatewayServices = env.allPaymentGatewayServices();
+    List<PaymentGatewayDeposit> deposits = new ArrayList<>();
+
+    for (PaymentGatewayService paymentGatewayService : paymentGatewayServices) {
+      // TODO: This will be in date order, but grouped by payment gateway. Likely ok, but maybe needs grouped by date?
+      deposits.addAll(paymentGatewayService.getDeposits(startDate, endDate));
+      // TODO: At this point, all we have is what was stored in Stripe. SOME clients will have their funds/campaigns
+      //  there. Others will need that backfilled from the CRM. Loop through them all and do so?
+    }
+
+    return Response.status(200).entity(deposits).build();
   }
 
   @Path("/update-recurring-donation")

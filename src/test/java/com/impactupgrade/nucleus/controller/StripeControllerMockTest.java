@@ -8,7 +8,7 @@ import com.impactupgrade.nucleus.AbstractMockTest;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentSourceCollection;
@@ -64,9 +64,9 @@ public class StripeControllerMockTest extends AbstractMockTest {
 
     stripeController.processEvent("charge.succeeded", charge, env);
 
-    ArgumentCaptor<PaymentGatewayWebhookEvent> argumentCaptor = ArgumentCaptor.forClass(PaymentGatewayWebhookEvent.class);
+    ArgumentCaptor<PaymentGatewayEvent> argumentCaptor = ArgumentCaptor.forClass(PaymentGatewayEvent.class);
     verify(donationServiceMock).createDonation(argumentCaptor.capture());
-    PaymentGatewayWebhookEvent paymentGatewayEvent = argumentCaptor.getValue();
-    assertEquals("campaign_1", paymentGatewayEvent.getCampaignId());
+    PaymentGatewayEvent paymentGatewayEvent = argumentCaptor.getValue();
+    assertEquals("campaign_1", paymentGatewayEvent.getMetadataValue(envConfig.metadataKeys.campaign));
   }
 }

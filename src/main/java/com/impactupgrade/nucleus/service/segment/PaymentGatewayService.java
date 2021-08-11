@@ -5,11 +5,15 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.stripe.exception.StripeException;
-import java.text.ParseException;
+import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
+
+import java.util.Date;
+import java.util.List;
 
 public interface PaymentGatewayService extends SegmentService {
 
-  void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException;
-  void closeSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException;
+  List<PaymentGatewayDeposit> getDeposits(Date startDate, Date endDate) throws Exception;
+
+  void updateSubscription(ManageDonationEvent manageDonationEvent) throws Exception;
+  void closeSubscription(ManageDonationEvent manageDonationEvent) throws Exception;
 }

@@ -4,8 +4,12 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.google.common.base.Strings;
+
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PaymentGatewayDeposit {
@@ -41,59 +45,76 @@ public class PaymentGatewayDeposit {
     return ledgers.values().stream().map(l -> l.fees).reduce(0.0, Double::sum);
   }
 
-  public double getRefunds() { return ledgers.values().stream().map(l -> l.refunds).reduce(0.0, Double::sum); }
+//  public double getRefunds() { return ledgers.values().stream().map(l -> l.refunds).reduce(0.0, Double::sum); }
 
   public Map<String, Ledger> getLedgers() {
     return ledgers;
   }
 
-  public void addTransaction(double gross, double net, double fee, double refund, String parentCampaignId, String parentCampaignName,
-      String campaignId, String campaignName) {
-    if (!ledgers.containsKey(parentCampaignId)) {
-      Ledger ledger = new Ledger();
-      ledger.campaignName = parentCampaignName;
-      ledgers.put(parentCampaignId, ledger);
-    }
-    if (!ledgers.get(parentCampaignId).subLedgers.containsKey(campaignId)) {
-      Ledger ledger = new Ledger();
-      ledger.campaignName = campaignName;
-      ledgers.get(parentCampaignId).subLedgers.put(campaignId, ledger);
+  // TODO: Will need to rethink the following, since hierarchies of funds was somewhat of a TER-specific concept.
+
+//  public void addTransaction(double gross, double net, double fee, double refund, String parentFund, String fund) {
+//    if (!ledgers.containsKey(parentFund)) {
+//      Ledger ledger = new Ledger();
+//      ledgers.put(parentFund, ledger);
+//    }
+//    if (!ledgers.get(parentFund).subLedgers.containsKey(fund)) {
+//      Ledger ledger = new Ledger();
+//      ledgers.get(parentFund).subLedgers.put(fund, ledger);
+//    }
+//
+//    ledgers.get(parentFund).gross += gross;
+//    ledgers.get(parentFund).net += net;
+//    ledgers.get(parentFund).fees += fee;
+//    ledgers.get(parentFund).refunds += refund;
+//    ledgers.get(parentFund).subLedgers.get(fund).gross += gross;
+//    ledgers.get(parentFund).subLedgers.get(fund).net += net;
+//    ledgers.get(parentFund).subLedgers.get(fund).fees += fee;
+//    ledgers.get(parentFund).subLedgers.get(fund).refunds += refund;
+//  }
+//
+//  public void addTransaction(double gross, double net, double fee, double refund, String fund) {
+//    if (Strings.isNullOrEmpty(fund)) {
+//      fund = "General";
+//    }
+//
+//    if (!ledgers.containsKey(fund)) {
+//      Ledger ledger = new Ledger();
+//      ledgers.put(fund, ledger);
+//    }
+//
+//    ledgers.get(fund).gross += gross;
+//    ledgers.get(fund).net += net;
+//    ledgers.get(fund).fees += fee;
+//    ledgers.get(fund).refunds += refund;
+//  }
+
+  // TODO: Should PaymentGatewayEvent have some concept of fund within it?
+  public void addTransaction(PaymentGatewayEvent transaction, String fund) {
+    if (Strings.isNullOrEmpty(fund)) {
+      fund = "General";
     }
 
-    ledgers.get(parentCampaignId).gross += gross;
-    ledgers.get(parentCampaignId).net += net;
-    ledgers.get(parentCampaignId).fees += fee;
-    ledgers.get(parentCampaignId).refunds += refund;
-    ledgers.get(parentCampaignId).subLedgers.get(campaignId).gross += gross;
-    ledgers.get(parentCampaignId).subLedgers.get(campaignId).net += net;
-    ledgers.get(parentCampaignId).subLedgers.get(campaignId).fees += fee;
-    ledgers.get(parentCampaignId).subLedgers.get(campaignId).refunds += refund;
-  }
-
-  public void addTransaction(double gross, double net, double fee, double refund, String campaignId, String campaignName) {
-    if (!ledgers.containsKey(campaignId)) {
+    if (!ledgers.containsKey(fund)) {
       Ledger ledger = new Ledger();
-      ledger.campaignName = campaignName;
-      ledgers.put(campaignId, ledger);
+      ledgers.put(fund, ledger);
     }
 
-    ledgers.get(campaignId).gross += gross;
-    ledgers.get(campaignId).net += net;
-    ledgers.get(campaignId).fees += fee;
-    ledgers.get(campaignId).refunds += refund;
+    ledgers.get(fund).transactions.add(transaction);
+    ledgers.get(fund).gross += transaction.transactionAmountInDollars;
+    ledgers.get(fund).net += transaction.transactionNetAmountInDollars;
+    ledgers.get(fund).fees += (transaction.transactionAmountInDollars - transaction.transactionNetAmountInDollars);
+//    ledgers.get(fund).refunds += refund;
   }
 
   public static class Ledger {
-    private String campaignName;
     private double gross = 0.0;
     private double net = 0.0;
     private double fees = 0.0;
-    private double refunds = 0.0;
-    private final Map<String, Ledger> subLedgers = new HashMap<>();
+//    private double refunds = 0.0;
+    private List<PaymentGatewayEvent> transactions = new ArrayList<>();
 
-    public String getCampaignName() {
-      return campaignName;
-    }
+    private final Map<String, Ledger> subLedgers = new HashMap<>();
 
     public double getGross() {
       return gross;
@@ -107,10 +128,14 @@ public class PaymentGatewayDeposit {
       return fees;
     }
 
-    public double getRefunds() { return refunds; }
+//    public double getRefunds() { return refunds; }
 
     public Map<String, Ledger> getSubLedgers() {
       return subLedgers;
+    }
+
+    public List<PaymentGatewayEvent> getTransactions() {
+      return transactions;
     }
   }
 }

@@ -19,7 +19,7 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -144,24 +144,24 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmDonation> getDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: for now, naively assume the record doesn't exist and allow it to be created
     return Optional.empty();
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: for now, naively assume the record doesn't exist and allow it to be created
     return Optional.empty();
   }
 
   @Override
-  public void insertDonationReattempt(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
   @Override
-  public String insertAccount(PaymentGatewayWebhookEvent paymentGatewayWebhookEvent) throws Exception {
+  public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
     return null;
   }
@@ -219,7 +219,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Donation donation = new Donation();
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
     donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
@@ -234,7 +234,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     RecurringDonation donation = new RecurringDonation();
     donation.setAccountId(Integer.parseInt(paymentGatewayEvent.getCrmContact().id));
     donation.setAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
@@ -249,17 +249,17 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void refundDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
   @Override
-  public void insertDonationDeposit(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
   @Override
-  public void closeRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

@@ -8,7 +8,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayWebhookEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
@@ -28,7 +28,7 @@ public class DonationService {
     crmService = env.donationsCrmService();
   }
 
-  public void createDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> existingDonation = crmService.getDonation(paymentGatewayEvent);
 
     if (existingDonation.isPresent()) {
@@ -67,7 +67,7 @@ public class DonationService {
     crmService.insertDonation(paymentGatewayEvent);
   }
 
-  public void refundDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = crmService.getDonation(paymentGatewayEvent);
 
     // make sure that a donation was found and that only 1 donation was found
@@ -80,7 +80,7 @@ public class DonationService {
     }
   }
 
-  public void processSubscription(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void processSubscription(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {
@@ -93,7 +93,7 @@ public class DonationService {
     }
   }
 
-  public void closeRecurringDonation(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {
@@ -129,7 +129,7 @@ public class DonationService {
     }
   }
 
-  public void chargeDeposited(PaymentGatewayWebhookEvent paymentGatewayEvent) throws Exception {
+  public void chargeDeposited(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = crmService.getDonation(paymentGatewayEvent);
 
     if (donation.isEmpty()) {

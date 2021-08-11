@@ -5,7 +5,6 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.environment.MetadataRetriever;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.model.BalanceTransaction;
@@ -13,27 +12,29 @@ import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
-import com.stripe.model.MetadataStore;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class PaymentGatewayWebhookEvent {
-  
+public class PaymentGatewayEvent {
+
   protected final Environment env;
-  protected final MetadataRetriever metadataRetriever;
 
   // determined by event
   protected CrmAccount crmAccount = new CrmAccount();
   protected CrmContact crmContact = new CrmContact();
-  protected String campaignId;
   protected String customerId;
   protected String depositTransactionId;
   protected String gatewayName;
@@ -57,31 +58,35 @@ public class PaymentGatewayWebhookEvent {
   protected String transactionOriginalCurrency;
   protected boolean transactionCurrencyConverted;
   protected boolean transactionSuccess;
+  protected String transactionUrl;
 
   // context set within processing steps OR pulled from event metadata
-  protected String crmDonationRecordTypeId;
   protected String crmRecurringDonationId;
   protected String depositId;
   protected Calendar depositDate;
 
-  public PaymentGatewayWebhookEvent(Environment env) {
+  // Maps holding metadata content. We need to split these up in order to define an ordered hierarchy of values.
+  private Map<String, String> contextMetadata = new HashMap<>();
+  private Map<String, String> transactionMetadata = new HashMap<>();
+  private Map<String, String> subscriptionMetadata = new HashMap<>();
+  private Map<String, String> customerMetadata = new HashMap<>();
+
+  public PaymentGatewayEvent(Environment env) {
     this.env = env;
-    metadataRetriever = new MetadataRetriever(env);
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
   // into forms and contain NBSP characters :(
 
-  public void initStripe(Charge stripeCharge, Customer stripeCustomer,
+  public void initStripe(Charge stripeCharge, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     initStripeCommon();
-    initStripeCustomer(stripeCustomer, stripeCharge);
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
     // first donation do it in order to prevent timing issues.
     if (stripeInvoice.isPresent() && !Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
-      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer);
+      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer.get());
     }
 
     if (stripeCharge.getCreated() != null) {
@@ -95,6 +100,7 @@ public class PaymentGatewayWebhookEvent {
     transactionDescription = stripeCharge.getDescription();
     transactionId = stripeCharge.getId();
     transactionSuccess = !"failed".equalsIgnoreCase(stripeCharge.getStatus());
+    transactionUrl = "https://dashboard.stripe.com/charges/" + stripeCharge.getId();
 
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
@@ -114,19 +120,22 @@ public class PaymentGatewayWebhookEvent {
 
     transactionDescription = stripeCharge.getDescription();
 
-    metadataRetriever.stripeCharge(stripeCharge).stripeCustomer(stripeCustomer);
+    addMetadata(stripeCharge.getMetadata(), transactionMetadata);
+
+    // Always do this last! We need all the metadata context to fill out the customer details.
+    addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
+    initStripeCustomer(stripeCustomer);
   }
 
-  public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
+  public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     initStripeCommon();
-    initStripeCustomer(stripeCustomer, stripePaymentIntent);
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
     // first donation do it in order to prevent timing issues.
     if (stripeInvoice.isPresent() && !Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
-      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer);
+      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer.get());
     }
 
     if (stripePaymentIntent.getCreated() != null) {
@@ -142,6 +151,7 @@ public class PaymentGatewayWebhookEvent {
     // note this is different than a charge, which uses !"failed" -- intents have multiple phases of "didn't work",
     // so explicitly search for succeeded
     transactionSuccess = "succeeded".equalsIgnoreCase(stripePaymentIntent.getStatus());
+    transactionUrl = "https://dashboard.stripe.com/payments/" + stripePaymentIntent.getId();
 
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
@@ -161,7 +171,11 @@ public class PaymentGatewayWebhookEvent {
 
     transactionDescription = stripePaymentIntent.getDescription();
 
-    metadataRetriever.stripePaymentIntent(stripePaymentIntent).stripeCustomer(stripeCustomer);
+    addMetadata(stripePaymentIntent.getMetadata(), transactionMetadata);
+
+    // Always do this last! We need all the metadata context to fill out the customer details.
+    addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
+    initStripeCustomer(stripeCustomer);
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -180,9 +194,11 @@ public class PaymentGatewayWebhookEvent {
 
   public void initStripe(Subscription stripeSubscription, Customer stripeCustomer) {
     initStripeCommon();
-    initStripeCustomer(stripeCustomer, stripeSubscription);
 
     initStripeSubscription(stripeSubscription, stripeCustomer);
+
+    // Always do this last! We need all the metadata context to fill out the customer details.
+    initStripeCustomer(Optional.of(stripeCustomer));
   }
 
   protected void initStripeCommon() {
@@ -191,87 +207,101 @@ public class PaymentGatewayWebhookEvent {
     paymentMethod = "credit card";
   }
 
-  protected void initStripeCustomer(Customer stripeCustomer, MetadataStore<?> stripeMetadataBackup) {
-    customerId = stripeCustomer.getId();
+  protected void initStripeCustomer(Optional<Customer> __stripeCustomer) {
+    if (__stripeCustomer.isPresent()) {
+      Customer stripeCustomer = __stripeCustomer.get();
 
-    initStripeCustomerName(stripeCustomer, stripeMetadataBackup);
+      customerId = stripeCustomer.getId();
 
-    crmContact.email = stripeCustomer.getEmail();
-    crmContact.mobilePhone = stripeCustomer.getPhone();
+      crmContact.email = stripeCustomer.getEmail();
 
-    CrmAddress crmAddress = new CrmAddress();
-    if (stripeCustomer.getAddress() != null) {
-      crmAddress.city = stripeCustomer.getAddress().getCity();
-      crmAddress.country = stripeCustomer.getAddress().getCountry();
-      crmAddress.state = stripeCustomer.getAddress().getState();
-      crmAddress.street = stripeCustomer.getAddress().getLine1();
-      if (!Strings.isNullOrEmpty(stripeCustomer.getAddress().getLine2())) {
-        crmAddress.street += ", " + stripeCustomer.getAddress().getLine2();
+      crmContact.mobilePhone = stripeCustomer.getPhone();
+
+      CrmAddress crmAddress = new CrmAddress();
+      if (stripeCustomer.getAddress() != null) {
+        crmAddress.city = stripeCustomer.getAddress().getCity();
+        crmAddress.country = stripeCustomer.getAddress().getCountry();
+        crmAddress.state = stripeCustomer.getAddress().getState();
+        crmAddress.street = stripeCustomer.getAddress().getLine1();
+        if (!Strings.isNullOrEmpty(stripeCustomer.getAddress().getLine2())) {
+          crmAddress.street += ", " + stripeCustomer.getAddress().getLine2();
+        }
+        crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
+      } else {
+        // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
+        // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
+        stripeCustomer.getSources().getData().stream()
+            .filter(s -> s instanceof Card)
+            .map(s -> (Card) s)
+            .findFirst()
+            .ifPresent(stripeCard -> {
+              crmAddress.city = stripeCard.getAddressCity();
+              crmAddress.country = stripeCard.getAddressCountry();
+              crmAddress.state = stripeCard.getAddressState();
+              crmAddress.street = stripeCard.getAddressLine1();
+              if (!Strings.isNullOrEmpty(stripeCard.getAddressLine2())) {
+                crmAddress.street += ", " + stripeCard.getAddressLine2();
+              }
+              crmAddress.postalCode = stripeCard.getAddressZip();
+            });
       }
-      crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
-    } else {
-      // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
-      // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
-      stripeCustomer.getSources().getData().stream()
-          .filter(s -> s instanceof Card)
-          .map(s -> (Card) s)
-          .findFirst()
-          .ifPresent(stripeCard -> {
-            crmAddress.city = stripeCard.getAddressCity();
-            crmAddress.country = stripeCard.getAddressCountry();
-            crmAddress.state = stripeCard.getAddressState();
-            crmAddress.street = stripeCard.getAddressLine1();
-            if (!Strings.isNullOrEmpty(stripeCard.getAddressLine2())) {
-              crmAddress.street += ", " + stripeCard.getAddressLine2();
-            }
-            crmAddress.postalCode = stripeCard.getAddressZip();
-          });
+
+      crmAccount.address = crmAddress;
+      crmContact.address = crmAddress;
     }
 
-    crmAccount.address = crmAddress;
-    crmContact.address = crmAddress;
+    initStripeCustomerName(__stripeCustomer);
+
+    if (Strings.isNullOrEmpty(crmContact.email)) {
+      crmContact.email = getAllMetadata().entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return (key.contains("email"));
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
   }
 
   // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
   // Some donation forms and vendors use true Customer names, others use metadata on Customer, other still only put
   // names in metadata on the Charge or Subscription. Madness. But let's be helpful...
-  protected void initStripeCustomerName(Customer stripeCustomer, MetadataStore<?> stripeMetadataBackup) {
+  protected void initStripeCustomerName(Optional<Customer> stripeCustomer) {
+    Map<String, String> metadata = getAllMetadata();
+
     // For the full name, start with Customer name. Generally this is populated, but a few vendors don't always do it.
-    crmAccount.name = stripeCustomer.getName();
+    crmAccount.name = stripeCustomer.map(Customer::getName).orElse(null);
     // If that didn't work, look in the metadata. We've seen variations of "customer" or "full" name used.
     if (Strings.isNullOrEmpty(crmAccount.name)) {
-      crmAccount.name = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+      crmAccount.name = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
     // If that still didn't work, look in the backup metadata (typically a charge or subscription).
     if (Strings.isNullOrEmpty(crmAccount.name)) {
-      crmAccount.name = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+      crmAccount.name = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
     // Now do first name, again using metadata.
-    crmContact.firstName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+    crmContact.firstName = metadata.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.contains("first") && key.contains("name");
     }).findFirst().map(Map.Entry::getValue).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.firstName)) {
-      crmContact.firstName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+      crmContact.firstName = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("first") && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
     // And now the last name.
-    crmContact.lastName = stripeCustomer.getMetadata().entrySet().stream().filter(e -> {
+    crmContact.lastName = metadata.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.contains("last") && key.contains("name");
     }).findFirst().map(Map.Entry::getValue).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.lastName)) {
-      crmContact.lastName = stripeMetadataBackup.getMetadata().entrySet().stream().filter(e -> {
+      crmContact.lastName = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("last") && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
@@ -315,7 +345,8 @@ public class PaymentGatewayWebhookEvent {
     subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
     subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
-    metadataRetriever.stripeSubscription(stripeSubscription).stripeCustomer(stripeCustomer);
+    addMetadata(stripeSubscription.getMetadata(), subscriptionMetadata);
+    addMetadata(stripeCustomer.getMetadata(), customerMetadata);
 
     // TODO: We could shift this to MetadataRetriever, but odds are we're the only ones setting it...
     subscriptionDescription = stripeSubscription.getMetadata().get("description");
@@ -415,26 +446,6 @@ public class PaymentGatewayWebhookEvent {
         crmContact.lastName = split[1];
       }
     }
-
-    // Furthering the madness, staff can't manually change the campaign on a subscription, only the customer.
-    // So check the customer *first* and let it override the subscription.
-    if (paymentSpringCustomer.isPresent()) {
-      campaignId = paymentSpringCustomer.get().getMetadata().get("sf_campaign_id");
-      // some appear to be using "campaign", so try that too (SMH)
-      if (Strings.isNullOrEmpty(campaignId)) {
-        campaignId = paymentSpringCustomer.get().getMetadata().get("campaign");
-      }
-    }
-    if (Strings.isNullOrEmpty(campaignId)) {
-      campaignId = paymentSpringTransaction.getMetadata().get("sf_campaign_id");
-      // some appear to be using "campaign", so try that too (SMH)
-      if (Strings.isNullOrEmpty(campaignId)) {
-        campaignId = paymentSpringTransaction.getMetadata().get("campaign");
-      }
-    }
-    if (campaignId != null) {
-      campaignId = campaignId.replaceAll("[^A-Za-z0-9]", "");
-    }
   }
 
   protected void initPaymentSpringSubscription(
@@ -456,12 +467,61 @@ public class PaymentGatewayWebhookEvent {
     subscriptionNextDate = getTransactionDate(paymentSpringTransaction.getCreatedAt());
   }
 
+  private void addMetadata(Map<String, String> newEntries, Map<String, String> currentEntries) {
+    if (newEntries != null) {
+      currentEntries.putAll(newEntries);
+    }
+  }
+
+  public String getMetadataValue(String metadataKey) {
+    return getMetadataValue(Set.of(metadataKey));
+  }
+
+  public String getMetadataValue(Collection<String> metadataKeys) {
+    String metadataValue = null;
+
+    for (String metadataKey : metadataKeys) {
+      // Always start with the raw context and let it trump everything else.
+      if (contextMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(contextMetadata.get(metadataKey))) {
+        metadataValue = contextMetadata.get(metadataKey);
+      } else if (transactionMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(transactionMetadata.get(metadataKey))) {
+        metadataValue = transactionMetadata.get(metadataKey);
+      } else if (subscriptionMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(subscriptionMetadata.get(metadataKey))) {
+        metadataValue = subscriptionMetadata.get(metadataKey);
+      } else if (customerMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(customerMetadata.get(metadataKey))) {
+        metadataValue = customerMetadata.get(metadataKey);
+      }
+    }
+
+    if (metadataValue != null) {
+      // IMPORTANT: The keys and values are sometimes copy/pasted by a human and we've had issues with whitespace.
+      // Strip it! But note that sometimes it's something like a non-breaking space char (pasted from a doc?),
+      // so convert that to a standard space first.
+      metadataValue = metadataValue.replaceAll("[\\h+]", " ");
+      metadataValue = metadataValue.trim();
+    }
+
+    return metadataValue;
+  }
+
+  private Map<String, String> getAllMetadata() {
+    // In order!
+    return Stream.of(contextMetadata, transactionMetadata, subscriptionMetadata, customerMetadata)
+        .flatMap(map -> map.entrySet().stream())
+        .collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            // If there's a duplicate key, always keep the first! We define the order of precedence, above.
+            (v1, v2) -> v1
+        ));
+  }
+
   // DO NOT LET THESE BE AUTO-GENERATED, ALLOWING METADATARETRIEVER TO PROVIDE DEFAULTS
 
   public CrmAccount getCrmAccount() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmAccount.id)) {
-      crmAccount.id = metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.account);
+      crmAccount.id = getMetadataValue(env.getConfig().metadataKeys.account);
     }
     return crmAccount;
   }
@@ -478,7 +538,7 @@ public class PaymentGatewayWebhookEvent {
   public CrmContact getCrmContact() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmContact.id)) {
-      crmContact.id = metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.contact);
+      crmContact.id = getMetadataValue(env.getConfig().metadataKeys.contact);
     }
     return crmContact;
   }
@@ -498,28 +558,6 @@ public class PaymentGatewayWebhookEvent {
 
   public void setCrmRecurringDonationId(String crmRecurringDonationId) {
     this.crmRecurringDonationId = crmRecurringDonationId;
-  }
-
-  public String getDonationCrmRecordTypeId() {
-    if (Strings.isNullOrEmpty(crmDonationRecordTypeId)) {
-      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.recordType);
-    }
-    return crmDonationRecordTypeId;
-  }
-
-  public void setDonationCrmRecordTypeId(String crmDonationRecordTypeId) {
-    this.crmDonationRecordTypeId = crmDonationRecordTypeId;
-  }
-
-  public String getCampaignId() {
-    if (Strings.isNullOrEmpty(campaignId)) {
-      return metadataRetriever.getMetadataValue(env.getConfig().metadataKeys.campaign);
-    }
-    return campaignId;
-  }
-
-  public MetadataRetriever getMetadataRetriever() {
-    return metadataRetriever;
   }
 
   // TRANSIENT
@@ -723,6 +761,14 @@ public class PaymentGatewayWebhookEvent {
     this.transactionSuccess = transactionSuccess;
   }
 
+  public String getTransactionUrl() {
+    return transactionUrl;
+  }
+
+  public void setTransactionUrl(String transactionUrl) {
+    this.transactionUrl = transactionUrl;
+  }
+
   public String getDepositId() {
     return depositId;
   }
@@ -763,7 +809,6 @@ public class PaymentGatewayWebhookEvent {
         ", customerId='" + customerId + '\'' +
         ", transactionId='" + transactionId + '\'' +
         ", subscriptionId='" + subscriptionId + '\'' +
-        ", campaignId='" + campaignId + '\'' +
 
         ", transactionDate=" + transactionDate +
         ", transactionSuccess=" + transactionSuccess +
@@ -774,6 +819,7 @@ public class PaymentGatewayWebhookEvent {
         ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
         ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
         ", transactionCurrencyConverted='" + transactionCurrencyConverted + '\'' +
+        ", transactionUrl=" + transactionUrl +
 
         ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
         ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
@@ -784,7 +830,6 @@ public class PaymentGatewayWebhookEvent {
 
         ", primaryCrmAccountId='" + crmAccount.id + '\'' +
         ", primaryCrmContactId='" + crmContact.id + '\'' +
-        ", primaryCrmRecordTypeId='" + crmDonationRecordTypeId + '\'' +
         ", primaryCrmRecurringDonationId='" + crmRecurringDonationId +
         '}';
   }
