@@ -31,6 +31,6 @@ jobs:
       uses: whelk-io/maven-settings-xml-action@v18
       with:
         servers: '[{ "id": "github", "username": "impactupgrade-github", "password": "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" }]'
-        output_file: .m2/settings.xml
+        output_file: ~/.m2/settings.xml
     - name: Build with Maven
       run: mvn --update-snapshots clean verify -P it,sandbox
