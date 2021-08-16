@@ -35,7 +35,8 @@ The layers, somewhat resembling an MVC pattern:
 
 ## Tech Stack
 
-- Java 15 (preview features), soon upgrading to 16
+- Java 16
+- standard Java service interfaces (ServiceLoader), primarily driving SegmentServices and a nonprofit's ability to override them
 - Jetty (embedded)
 - Jersey (REST)
 - Apache CXF (SOAP)
