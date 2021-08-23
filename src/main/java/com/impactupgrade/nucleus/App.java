@@ -7,7 +7,6 @@ package com.impactupgrade.nucleus;
 import com.impactupgrade.nucleus.controller.BackupController;
 import com.impactupgrade.nucleus.controller.CrmController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
-import com.impactupgrade.nucleus.controller.PaymentSpringController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
@@ -70,7 +69,6 @@ public class App {
     apiConfig.register(backupController());
     apiConfig.register(crmController());
     apiConfig.register(paymentGatewayController());
-    apiConfig.register(paymentSpringController());
     apiConfig.register(sfdcController());
     apiConfig.register(stripeController());
     apiConfig.register(twilioController());
@@ -120,7 +118,6 @@ public class App {
   protected BackupController backupController() { return new BackupController(envFactory()); }
   protected CrmController crmController() { return new CrmController(envFactory()); }
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory()); }
-  protected PaymentSpringController paymentSpringController() { return new PaymentSpringController(envFactory()); }
   protected SfdcController sfdcController() { return new SfdcController(envFactory()); }
   protected StripeController stripeController() { return new StripeController(envFactory()); }
   protected TwilioController twilioController() { return new TwilioController(envFactory()); }

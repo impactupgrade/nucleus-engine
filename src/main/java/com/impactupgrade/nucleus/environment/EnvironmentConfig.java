@@ -49,7 +49,6 @@ public class EnvironmentConfig {
     public String password = "";
   }
 
-  public Platform paymentSpring = new Platform();
   public Platform stripe = new Platform();
 
   // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
