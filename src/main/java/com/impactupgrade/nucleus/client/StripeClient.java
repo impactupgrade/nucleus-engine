@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.client;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.stripe.exception.InvalidRequestException;
@@ -50,7 +51,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 public class StripeClient {
 
@@ -90,13 +90,12 @@ public class StripeClient {
     return Customer.retrieve(id, customerParams, requestOptions);
   }
 
-  public Optional<Customer> getCustomerByEmail(String email) throws StripeException {
+  public List<Customer> getCustomersByEmail(String email) throws StripeException {
     CustomerListParams customerParams = CustomerListParams.builder()
         .setEmail(email)
         .addExpand("data.sources")
-        .setLimit(1L)
         .build();
-    return Customer.list(customerParams, requestOptions).getData().stream().findFirst();
+    return Customer.list(customerParams, requestOptions).getData();
   }
 
   public PaymentIntent getPaymentIntent(String id) throws StripeException {
@@ -380,8 +379,9 @@ public class StripeClient {
   }
 
   public ProductCreateParams.Builder defaultProductBuilder(Customer customer, long amountInCents, String currency) {
+    String name = Strings.isNullOrEmpty(customer.getName()) ? customer.getEmail() : customer.getName();
     return ProductCreateParams.builder()
-        .setName(customer.getName() + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)");
+        .setName(name + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)");
   }
 
   public PlanCreateParams.Builder defaultPlanBuilder(long amountInCents, String currency) {
