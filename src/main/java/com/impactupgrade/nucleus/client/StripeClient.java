@@ -38,6 +38,7 @@ import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.SubscriptionCreateParams;
+import com.stripe.param.SubscriptionListParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.common.EmptyParam;
 import org.apache.logging.log4j.LogManager;
@@ -108,6 +109,11 @@ public class StripeClient {
 
   public Subscription getSubscription(String id) throws StripeException {
     return Subscription.retrieve(id, requestOptions);
+  }
+
+  public List<Subscription> getActiveSubscriptionsFromCustomer(String customerId) throws StripeException {
+    SubscriptionListParams params = SubscriptionListParams.builder().setCustomer(customerId).build();
+    return Subscription.list(params, requestOptions).getData();
   }
 
   public void cancelSubscription(String id) throws StripeException {
