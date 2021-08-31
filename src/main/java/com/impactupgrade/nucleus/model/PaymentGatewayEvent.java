@@ -53,7 +53,8 @@ public class PaymentGatewayEvent {
   protected Calendar transactionDate;
   protected String transactionDescription;
   protected Double transactionExchangeRate;
-  protected String transactionId;
+  protected String transactionId; // ex: Stripe PaymentIntent ID, or the Charge ID if this was a simple Charge API use
+  protected String transactionSecondaryId; // ex: Stripe Charge ID if this was the Payment Intent API
   protected Double transactionOriginalAmountInDollars;
   protected String transactionOriginalCurrency;
   protected boolean transactionCurrencyConverted;
@@ -148,6 +149,7 @@ public class PaymentGatewayEvent {
     stripeBalanceTransaction.ifPresent(balanceTransaction -> depositTransactionId = balanceTransaction.getId());
     transactionDescription = stripePaymentIntent.getDescription();
     transactionId = stripePaymentIntent.getId();
+    transactionSecondaryId = stripePaymentIntent.getCharges().getData().stream().findFirst().map(Charge::getId).orElse(null);
     // note this is different than a charge, which uses !"failed" -- intents have multiple phases of "didn't work",
     // so explicitly search for succeeded
     transactionSuccess = "succeeded".equalsIgnoreCase(stripePaymentIntent.getStatus());
@@ -473,6 +475,10 @@ public class PaymentGatewayEvent {
     }
   }
 
+  public void addMetadata(String key, String value) {
+    contextMetadata.put(key, value);
+  }
+
   public String getMetadataValue(String metadataKey) {
     return getMetadataValue(Set.of(metadataKey));
   }
@@ -729,6 +735,14 @@ public class PaymentGatewayEvent {
     this.transactionId = transactionId;
   }
 
+  public String getTransactionSecondaryId() {
+    return transactionSecondaryId;
+  }
+
+  public void setTransactionSecondaryId(String transactionSecondaryId) {
+    this.transactionSecondaryId = transactionSecondaryId;
+  }
+
   public Double getTransactionOriginalAmountInDollars() {
     return transactionOriginalAmountInDollars;
   }
@@ -808,6 +822,7 @@ public class PaymentGatewayEvent {
 
         ", customerId='" + customerId + '\'' +
         ", transactionId='" + transactionId + '\'' +
+        ", transactionSecondaryId='" + transactionSecondaryId + '\'' +
         ", subscriptionId='" + subscriptionId + '\'' +
 
         ", transactionDate=" + transactionDate +
