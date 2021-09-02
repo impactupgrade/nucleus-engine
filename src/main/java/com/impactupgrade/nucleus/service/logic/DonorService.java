@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -61,5 +62,20 @@ public class DonorService {
     // create new Contact
     String contactId = crmService.insertContact(paymentGatewayEvent);
     paymentGatewayEvent.setCrmContactId(contactId);
+  }
+
+  public void processContactFormSignup(ContactFormData formData) throws Exception {
+    CrmContact formCrmContact = formData.toCrmContact();
+
+    Optional<CrmContact> crmContact = crmService.getContactByEmail(formCrmContact.email);
+    if (!crmContact.isPresent()) {
+      log.info("unable to find CRM contact using email {}; creating new account and contact", formCrmContact.email);
+      // create new contact
+      log.info("inserting contact {}", formCrmContact.toString());
+      crmService.insertContact(formCrmContact);
+    } else {
+      log.info("found existing CRM account {} and contact {} using email {}", crmContact.get().accountId, crmContact.get().id, formCrmContact.email);
+      return;
+    }
   }
 }
