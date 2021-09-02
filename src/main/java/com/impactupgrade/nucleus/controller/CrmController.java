@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
@@ -19,6 +20,7 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
@@ -200,6 +202,19 @@ public class CrmController {
       }
     };
     new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
+  @Path("/contact-form")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response contactForm(@BeanParam ContactFormData formData, @Context HttpServletRequest request) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    env.donorService().processContactFormSignup(formData);
 
     return Response.status(200).build();
   }

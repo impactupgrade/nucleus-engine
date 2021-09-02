@@ -25,6 +25,7 @@ public class CrmContact {
   public Boolean smsOptIn;
   public Boolean smsOptOut;
   public String ownerId;
+  public String notes;
 
   public CrmContact() {}
 
