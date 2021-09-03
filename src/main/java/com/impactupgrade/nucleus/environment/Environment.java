@@ -9,8 +9,8 @@ import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
+import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
-import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -97,7 +97,7 @@ public class Environment {
   // logic services
 
   public DonationService donationService() { return new DonationService(this); }
-  public DonorService donorService() { return new DonorService(this); }
+  public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
 
   // segment services

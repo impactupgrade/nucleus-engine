@@ -113,7 +113,7 @@ public class StripeController {
           log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge);
-          env.donorService().processAccount(paymentGatewayEvent);
+          env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
         }
       }
@@ -122,7 +122,7 @@ public class StripeController {
         log.info("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent);
-        env.donorService().processAccount(paymentGatewayEvent);
+        env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
       case "charge.failed" -> {
@@ -133,7 +133,7 @@ public class StripeController {
           log.info("charge {} is part of an intent; skipping...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge);
-          env.donorService().processAccount(paymentGatewayEvent);
+          env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
         }
       }
@@ -142,7 +142,7 @@ public class StripeController {
         log.info("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent);
-        env.donorService().processAccount(paymentGatewayEvent);
+        env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
       case "charge.refunded" -> {
@@ -182,7 +182,7 @@ public class StripeController {
           // TODO: Move to StripePaymentGatewayService?
           PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
           paymentGatewayEvent.initStripe(subscription, createdSubscriptionCustomer);
-          env.donorService().processAccount(paymentGatewayEvent);
+          env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().processSubscription(paymentGatewayEvent);
         } else {
           log.info("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");

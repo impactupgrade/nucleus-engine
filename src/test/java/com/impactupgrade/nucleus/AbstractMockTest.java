@@ -7,8 +7,8 @@ package com.impactupgrade.nucleus;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
-import com.impactupgrade.nucleus.service.logic.DonorService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -19,7 +19,7 @@ public abstract class AbstractMockTest {
 
   // TODO: Do these need reset after each test method, or does Mockito/Junit do that automatically?
   @Mock protected DonationService donationServiceMock;
-  @Mock protected DonorService donorServiceMock;
+  @Mock protected ContactService contactServiceMock;
   @Mock protected SfdcClient sfdcClientMock;
   @Mock protected CrmService crmServiceMock;
 
@@ -38,8 +38,8 @@ public abstract class AbstractMockTest {
     }
 
     @Override
-    public DonorService donorService() {
-      return donorServiceMock;
+    public ContactService contactService() {
+      return contactServiceMock;
     }
 
     @Override

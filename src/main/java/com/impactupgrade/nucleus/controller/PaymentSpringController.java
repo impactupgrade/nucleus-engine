@@ -152,11 +152,11 @@ public class PaymentSpringController {
 
     switch (event.getEventType()) {
       case "created" -> {
-        env.donorService().processAccount(paymentGatewayEvent);
+        env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
       case "failed" -> {
-        env.donorService().processAccount(paymentGatewayEvent);
+        env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
       case "refunded" -> env.donationService().refundDonation(paymentGatewayEvent);
