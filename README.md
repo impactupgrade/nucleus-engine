@@ -26,7 +26,7 @@ The layers, somewhat resembling an MVC pattern:
 - **Services:**
     - **Logic:**
         - "Logic" services handle a distinct unit of business logic in an abstract way. This could be how to handle a new donor/donation, what to do with an incoming SMS, etc. -- all agnostic to the specific vendors.
-        - Operates against an abstract data model. Ex: DonorService (create contact records if the donor doesn't already exist) and DonationService (handle the actual transaction and recurring subscription).
+        - Operates against an abstract data model. Ex: ContactService (create contact records if the donor doesn't already exist) and DonationService (handle the actual transaction and recurring subscription).
     - **Segment:**
         - A "segment" is essentially a vertical or category of platforms used in the nonprofit arena. These include CRMs, payment gateways, messaging services, etc.
         - Defines a common interface that must be implemented for a specific vendor to be a part of a segment and available for workflows. An example of this is `CrmService`, which defines how a specific CRM acts as the primary source-of-truth for donor and donation data.

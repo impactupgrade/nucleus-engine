@@ -15,19 +15,19 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Optional;
 
-public class DonorService {
+public class ContactService {
 
-  private static final Logger log = LogManager.getLogger(DonorService.class);
+  private static final Logger log = LogManager.getLogger(ContactService.class);
 
   private final Environment env;
   private final CrmService crmService;
 
-  public DonorService(Environment env) {
+  public ContactService(Environment env) {
     this.env = env;
     crmService = env.donationsCrmService();
   }
 
-  public void processAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void processDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // attempt to find a Contact using the email
 
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)
@@ -64,7 +64,7 @@ public class DonorService {
     paymentGatewayEvent.setCrmContactId(contactId);
   }
 
-  public void processContactFormSignup(ContactFormData formData) throws Exception {
+  public void processContactForm(ContactFormData formData) throws Exception {
     CrmContact formCrmContact = formData.toCrmContact();
 
     Optional<CrmContact> crmContact = crmService.getContactByEmail(formCrmContact.email);

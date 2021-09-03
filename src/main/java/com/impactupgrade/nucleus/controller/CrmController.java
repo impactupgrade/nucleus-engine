@@ -214,7 +214,7 @@ public class CrmController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    env.donorService().processContactFormSignup(formData);
+    env.contactService().processContactForm(formData);
 
     return Response.status(200).build();
   }

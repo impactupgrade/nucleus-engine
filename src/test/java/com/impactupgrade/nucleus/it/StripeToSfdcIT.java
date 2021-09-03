@@ -32,7 +32,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
     SfdcClient sfdcClient = env().sfdcClient();
 
-    // verify DonorService -> SfdcCrmService
+    // verify ContactService -> SfdcCrmService
     Optional<SObject> contactO = sfdcClient.getContactByEmail("team+integration+tester@impactupgrade.com");
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
