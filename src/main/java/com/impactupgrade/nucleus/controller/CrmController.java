@@ -212,7 +212,7 @@ public class CrmController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response contactForm(@BeanParam ContactFormData formData, @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
-    SecurityUtil.verifyApiKey(env);
+    // no auth
 
     env.contactService().processContactForm(formData);
 

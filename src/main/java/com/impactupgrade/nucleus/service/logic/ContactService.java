@@ -68,14 +68,13 @@ public class ContactService {
     CrmContact formCrmContact = formData.toCrmContact();
 
     Optional<CrmContact> crmContact = crmService.getContactByEmail(formCrmContact.email);
-    if (!crmContact.isPresent()) {
+    if (crmContact.isEmpty()) {
       log.info("unable to find CRM contact using email {}; creating new account and contact", formCrmContact.email);
       // create new contact
       log.info("inserting contact {}", formCrmContact.toString());
       crmService.insertContact(formCrmContact);
     } else {
       log.info("found existing CRM account {} and contact {} using email {}", crmContact.get().accountId, crmContact.get().id, formCrmContact.email);
-      return;
     }
   }
 }
