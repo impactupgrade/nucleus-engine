@@ -11,7 +11,6 @@ import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
 import com.impactupgrade.integration.hubspot.v3.Contact;
 import com.impactupgrade.integration.hubspot.v3.ContactProperties;
-import com.impactupgrade.integration.hubspot.v3.ContactResults;
 import com.impactupgrade.integration.hubspot.v3.Deal;
 import com.impactupgrade.integration.hubspot.v3.DealProperties;
 import com.impactupgrade.integration.hubspot.v3.DealResults;
@@ -82,27 +81,12 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    return findContact("email", "EQ", email);
+    return hsClient.contact().searchByEmail(email, getCustomPropertyNames()).getResults().stream().findFirst().map(this::toCrmContact);
   }
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    phone = normalizePhoneNumber(phone);
-    // TODO: also need to include mobilephone
-    return findContact("phone", "EQ", phone);
-  }
-
-  protected Optional<CrmContact> findContact(String propertyName, String operator, String value) throws Exception {
-    Filter[] filters = new Filter[]{new Filter(propertyName, operator, value)};
-    ContactResults results = hsClient.contact().search(filters, getCustomPropertyNames());
-
-    if (results == null || results.getTotal() == 0) {
-      return Optional.empty();
-    }
-
-    Contact result = results.getResults().get(0);
-    CrmContact crmContact = toCrmContact(result);
-    return Optional.of(crmContact);
+    return hsClient.contact().searchByPhone(phone, getCustomPropertyNames()).getResults().stream().findFirst().map(this::toCrmContact);
   }
 
   @Override
@@ -138,8 +122,8 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Filter[] filters = new Filter[]{new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId())};
-    DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
+    Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId());
+    DealResults results = hsClient.deal().search(List.of(filter), getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -162,8 +146,8 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Filter[] filters = new Filter[]{new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId())};
-    DealResults results = hsClient.deal().search(filters, getCustomPropertyNames());
+    Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId());
+    DealResults results = hsClient.deal().search(List.of(filter), getCustomPropertyNames());
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -708,11 +692,6 @@ public class HubSpotCrmService implements CrmService {
     }
 
     customProperties.put(fieldName, value);
-  }
-
-  protected String normalizePhoneNumber(String phone) {
-    // Hubspot doesn't seem to support country codes when phone numbers are used to search. Strip it off.
-    return phone.replace("+1", "");
   }
 
   // TODO: leaving this here in case it's helpful for eventual bulk import support
