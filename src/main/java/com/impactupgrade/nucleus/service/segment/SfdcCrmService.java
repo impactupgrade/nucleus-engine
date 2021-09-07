@@ -194,7 +194,9 @@ public class SfdcCrmService implements CrmService {
     contact.setField("LastName", crmContact.lastName);
     contact.setField("Email", crmContact.email);
     contact.setField("MobilePhone", crmContact.mobilePhone);
-    contact.setField("Npe01__PreferredPhone__c", crmContact.preferredPhone.toString());
+    if (crmContact.preferredPhone != null) {
+      contact.setField("Npe01__PreferredPhone__c", crmContact.preferredPhone.toString());
+    }
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
