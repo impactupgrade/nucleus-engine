@@ -1,0 +1,163 @@
+{
+  "id": "evt_3JWulhHAwJOu5brr1tqBHnIQ",
+  "object": "event",
+  "api_version": "2020-08-27",
+  "created": 1630984482,
+  "data": {
+    "object": {
+      "id": "ch_3JWulhHAwJOu5brr1EEbHa4z",
+      "object": "charge",
+      "amount": 10492,
+      "amount_captured": 10492,
+      "amount_refunded": 0,
+      "application": "ca_8EWYbbIrLgMorBWVOFdsZK8vLKHhZYCs",
+      "application_fee": null,
+      "application_fee_amount": 157,
+      "balance_transaction": "txn_3JWulhHAwJOu5brr1R93nl3E",
+      "billing_details": {
+        "address": {
+          "city": null,
+          "country": null,
+          "line1": null,
+          "line2": null,
+          "postal_code": "46814",
+          "state": null
+        },
+        "email": null,
+        "name": "team+integration+tester@impactupgrade.com",
+        "phone": null
+      },
+      "calculated_statement_descriptor": "IMPACT UPGRADE",
+      "captured": true,
+      "created": 1630984481,
+      "currency": "usd",
+      "customer": null,
+      "description": "One-Time Payment, $100; $4.92 in fees paid",
+      "destination": null,
+      "dispute": null,
+      "disputed": false,
+      "failure_code": null,
+      "failure_message": null,
+      "fraud_details": {
+      },
+      "invoice": null,
+      "livemode": false,
+      "metadata": {
+        "Custom Donations Id": "95d0c115-79f6-44f7-ae14-c9bdfb3ec73b",
+        "Giving Form": "Test Form (1988)",
+        "FeesPaid": "4.92",
+        "Email Opted In": "False",
+        "Donor Email": "team+integration+tester@impactupgrade.com",
+        "First Name": "Integration",
+        "Last Name": "Tester",
+        "Street Address": "13022 Redding Drive",
+        "City": "Fort Wayne",
+        "State": "IN",
+        "Postal Code": "46814",
+        "Country": "US",
+        "Phone Number": "260-349-5732",
+        "Fee to Service Account": "$1.57"
+      },
+      "on_behalf_of": null,
+      "order": null,
+      "outcome": {
+        "network_status": "approved_by_network",
+        "reason": null,
+        "risk_level": "normal",
+        "risk_score": 34,
+        "seller_message": "Payment complete.",
+        "type": "authorized"
+      },
+      "paid": true,
+      "payment_intent": null,
+      "payment_method": "card_1JWulhHAwJOu5brrv6BasheG",
+      "payment_method_details": {
+        "card": {
+          "brand": "visa",
+          "checks": {
+            "address_line1_check": null,
+            "address_postal_code_check": "pass",
+            "cvc_check": "pass"
+          },
+          "country": "US",
+          "exp_month": 12,
+          "exp_year": 2022,
+          "fingerprint": "WHTBeQ5HmOeHlWfu",
+          "funding": "credit",
+          "installments": null,
+          "last4": "4242",
+          "network": "visa",
+          "three_d_secure": null,
+          "wallet": null
+        },
+        "type": "card"
+      },
+      "receipt_email": null,
+      "receipt_number": null,
+      "receipt_url": "https://pay.stripe.com/receipts/acct_1Imqu3HAwJOu5brr/ch_3JWulhHAwJOu5brr1EEbHa4z/rcpt_KBHKtaB0RmvsuDLelDmOIkyMmelWQVM",
+      "refunded": false,
+      "refunds": {
+        "object": "list",
+        "data": [
+        ],
+        "has_more": false,
+        "total_count": 0,
+        "url": "/v1/charges/ch_3JWulhHAwJOu5brr1EEbHa4z/refunds"
+      },
+      "review": null,
+      "shipping": {
+        "address": {
+          "city": "Fort Wayne",
+          "country": "US",
+          "line1": "13022 Redding Drive",
+          "line2": null,
+          "postal_code": "46814",
+          "state": "IN"
+        },
+        "carrier": null,
+        "name": "Integration Tester",
+        "phone": "260-349-5732",
+        "tracking_number": null
+      },
+      "source": {
+        "id": "card_1JWulhHAwJOu5brrv6BasheG",
+        "object": "card",
+        "address_city": null,
+        "address_country": null,
+        "address_line1": null,
+        "address_line1_check": null,
+        "address_line2": null,
+        "address_state": null,
+        "address_zip": "46814",
+        "address_zip_check": "pass",
+        "brand": "Visa",
+        "country": "US",
+        "customer": null,
+        "cvc_check": "pass",
+        "dynamic_last4": null,
+        "exp_month": 12,
+        "exp_year": 2022,
+        "fingerprint": "WHTBeQ5HmOeHlWfu",
+        "funding": "credit",
+        "last4": "4242",
+        "metadata": {
+        },
+        "name": "team+integration+tester@impactupgrade.com",
+        "tokenization_method": null
+      },
+      "source_transfer": null,
+      "statement_descriptor": null,
+      "statement_descriptor_suffix": null,
+      "status": "succeeded",
+      "transfer_data": null,
+      "transfer_group": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_nCDSTHINrrx4oG",
+    "idempotency_key": "42b73b47-4d18-4b34-97da-bcc707320807"
+  },
+  "type": "charge.succeeded"
+}

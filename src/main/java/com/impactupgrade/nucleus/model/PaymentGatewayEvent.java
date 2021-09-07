@@ -216,50 +216,21 @@ public class PaymentGatewayEvent {
       customerId = stripeCustomer.getId();
 
       crmContact.email = stripeCustomer.getEmail();
-
       crmContact.mobilePhone = stripeCustomer.getPhone();
-
-      CrmAddress crmAddress = new CrmAddress();
-      if (stripeCustomer.getAddress() != null) {
-        crmAddress.city = stripeCustomer.getAddress().getCity();
-        crmAddress.country = stripeCustomer.getAddress().getCountry();
-        crmAddress.state = stripeCustomer.getAddress().getState();
-        crmAddress.street = stripeCustomer.getAddress().getLine1();
-        if (!Strings.isNullOrEmpty(stripeCustomer.getAddress().getLine2())) {
-          crmAddress.street += ", " + stripeCustomer.getAddress().getLine2();
-        }
-        crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
-      } else {
-        // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
-        // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
-        stripeCustomer.getSources().getData().stream()
-            .filter(s -> s instanceof Card)
-            .map(s -> (Card) s)
-            .findFirst()
-            .ifPresent(stripeCard -> {
-              crmAddress.city = stripeCard.getAddressCity();
-              crmAddress.country = stripeCard.getAddressCountry();
-              crmAddress.state = stripeCard.getAddressState();
-              crmAddress.street = stripeCard.getAddressLine1();
-              if (!Strings.isNullOrEmpty(stripeCard.getAddressLine2())) {
-                crmAddress.street += ", " + stripeCard.getAddressLine2();
-              }
-              crmAddress.postalCode = stripeCard.getAddressZip();
-            });
-      }
-
-      crmAccount.address = crmAddress;
-      crmContact.address = crmAddress;
-    }
-
-    initStripeCustomerName(__stripeCustomer);
-
-    if (Strings.isNullOrEmpty(crmContact.email)) {
+    } else {
       crmContact.email = getAllMetadata().entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("email"));
       }).findFirst().map(Map.Entry::getValue).orElse(null);
+      // TODO: Do we need to break this down into the different phone numbers?
+      crmContact.mobilePhone = getAllMetadata().entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return (key.contains("phone"));
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
+
+    initStripeCustomerName(__stripeCustomer);
+    initStripeAddress(__stripeCustomer);
   }
 
   // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
@@ -320,6 +291,68 @@ public class PaymentGatewayEvent {
     if (Strings.isNullOrEmpty(crmAccount.name) && !Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(crmContact.lastName)) {
       crmAccount.name = crmContact.firstName + " " + crmContact.lastName;
     }
+  }
+
+  protected void initStripeAddress(Optional<Customer> __stripeCustomer) {
+    CrmAddress crmAddress = new CrmAddress();
+
+    if (__stripeCustomer.isPresent()) {
+      Customer stripeCustomer = __stripeCustomer.get();
+      if (stripeCustomer.getAddress() != null) {
+        crmAddress.street = stripeCustomer.getAddress().getLine1();
+        if (!Strings.isNullOrEmpty(stripeCustomer.getAddress().getLine2())) {
+          crmAddress.street += ", " + stripeCustomer.getAddress().getLine2();
+        }
+        crmAddress.city = stripeCustomer.getAddress().getCity();
+        crmAddress.state = stripeCustomer.getAddress().getState();
+        crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
+        crmAddress.country = stripeCustomer.getAddress().getCountry();
+      } else {
+        // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
+        // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
+        stripeCustomer.getSources().getData().stream()
+            .filter(s -> s instanceof Card)
+            .map(s -> (Card) s)
+            .findFirst()
+            .ifPresent(stripeCard -> {
+              crmAddress.street = stripeCard.getAddressLine1();
+              if (!Strings.isNullOrEmpty(stripeCard.getAddressLine2())) {
+                crmAddress.street += ", " + stripeCard.getAddressLine2();
+              }
+              crmAddress.city = stripeCard.getAddressCity();
+              crmAddress.state = stripeCard.getAddressState();
+              crmAddress.postalCode = stripeCard.getAddressZip();
+              crmAddress.country = stripeCard.getAddressCountry();
+            });
+      }
+    } else {
+      Map<String, String> metadata = getAllMetadata();
+
+      // TODO: The stream and filter are getting repetitive (see initStripeCustomerName as well). DRY it up
+      crmAddress.street = metadata.entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return key.contains("street");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      crmAddress.city = metadata.entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return key.contains("city");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      crmAddress.state = metadata.entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return key.contains("state");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      crmAddress.postalCode = metadata.entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return key.contains("postal") || key.contains("zip");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      crmAddress.country = metadata.entrySet().stream().filter(e -> {
+        String key = e.getKey().toLowerCase(Locale.ROOT);
+        return key.contains("country");
+      }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+
+    crmAccount.address = crmAddress;
+    crmContact.address = crmAddress;
   }
 
   // Keep stripeCustomer, even though we don't use it here -- needed in subclasses.
