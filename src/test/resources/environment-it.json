@@ -3,7 +3,7 @@
 
   "salesforce": {
     "username": "brett@impactupgrade.com",
-    "password": "nnferQqWq6MaEw8aUEohrLWiJN5OIpgpejBeCH7m3",
+    "password": "rAhWCPFCSL79986eGPmNSzS7VTpe2WjJvhBOHy0tT",
 
     "fieldDefinitions": {
       "paymentGatewayName": "Payment_Gateway_Name__c",
@@ -20,7 +20,7 @@
       "campaign": [],
       "contact": [],
       "donation": ["Payment_Gateway_Name__c", "Payment_Gateway_Transaction_Id__c", "Payment_Gateway_Customer_Id__c"],
-      "recurringDonation": ["Payment_Gateway_Subscription_Id__c"],
+      "recurringDonation": ["Payment_Gateway_Name__c", "Payment_Gateway_Subscription_Id__c", "Payment_Gateway_Customer_Id__c"],
       "user": []
     },
     "defaultCampaignId": ""

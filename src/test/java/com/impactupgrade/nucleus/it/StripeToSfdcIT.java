@@ -66,4 +66,6 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));
   }
+
+  // TODO: subscription
 }
