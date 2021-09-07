@@ -18,6 +18,7 @@ public class OpportunityEvent {
   private String recordTypeId;
   private String ownerId;
   private String campaignId;
+  private String notes;
 
   public OpportunityEvent(Environment env) {
     this.env = env;
@@ -61,5 +62,13 @@ public class OpportunityEvent {
 
   public void setCampaignId(String campaignId) {
     this.campaignId = campaignId;
+  }
+
+  public String getNotes() {
+    return notes;
+  }
+
+  public void setNotes(String notes) {
+    this.notes = notes;
   }
 }

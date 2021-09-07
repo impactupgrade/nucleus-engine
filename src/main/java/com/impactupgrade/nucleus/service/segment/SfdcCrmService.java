@@ -528,6 +528,7 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("StageName", "Pledged");
     opportunity.setField("OwnerId", opportunityEvent.getOwnerId());
     opportunity.setField("CampaignId", opportunityEvent.getCampaignId());
+    opportunity.setField("Description", opportunityEvent.getNotes());
     return sfdcClient.insert(opportunity).getId();
   }
 
