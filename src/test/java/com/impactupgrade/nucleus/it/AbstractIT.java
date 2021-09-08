@@ -36,6 +36,7 @@ public abstract class AbstractIT extends JerseyTest {
   static {
     System.setProperty("jersey.test.host", "localhost");
     System.setProperty("jersey.config.test.container.port", "9009");
+    System.setProperty("nucleus.integration.test", "true");
   }
 
   protected AbstractIT() {

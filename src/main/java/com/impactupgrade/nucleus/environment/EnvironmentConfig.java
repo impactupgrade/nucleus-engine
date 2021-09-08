@@ -167,6 +167,8 @@ public class EnvironmentConfig {
 
   public String currency = "";
 
+  private static final boolean isIntegrationTest = "true".equalsIgnoreCase(System.getProperty("nucleus.integration.test"));
+
   public static EnvironmentConfig init() {
     try (
         InputStream jsonDefault = Thread.currentThread().getContextClassLoader()
@@ -185,9 +187,12 @@ public class EnvironmentConfig {
       if (jsonOrg != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrg);
       }
-      if (jsonOrgIntegrationTest != null) {
+
+      // IMPORTANT: Gate with the system property, set by AbstractIT, otherwise this file gets picked up by Heroku!
+      if (isIntegrationTest && jsonOrgIntegrationTest != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrgIntegrationTest);
       }
+
       return envConfig;
     } catch (IOException e) {
       log.error("Unable to read environment JSON files! Exiting...", e);
