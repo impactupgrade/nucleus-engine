@@ -5,7 +5,9 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,17 +29,17 @@ public class CrmImportEvent {
 
   private final Map<String, String> raw;
 
-  private String city;
-  private String country;
-  private String email;
   private String firstName;
-  private String homePhone;
   private String lastName;
+  private String email;
+  private String homePhone;
   private String mobilePhone;
-  private String ownerId;
-  private String state;
   private String street;
+  private String city;
+  private String state;
+  private String country;
   private String zip;
+  private String ownerId;
 
   private boolean optInEmail;
   private boolean optInSms;
@@ -116,43 +118,54 @@ public class CrmImportEvent {
 
   // Taken from a sample CSV export from STS's Jan-Feb 2021 FB fundraisers.
   public static CrmImportEvent fromFBFundraiser(Map<String, String> data, Environment env) {
-    CrmImportEvent importEvent = new CrmImportEvent(data, env);
+//  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
+    if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
+      CrmImportEvent importEvent = new CrmImportEvent(data, env);
 
-    // Note: commented-out fields were deemed not needed, for now
-//    importEvent. = data.get("Charge Time");
+//    TODO: support for initial amount, any fees, and net amount
 //    importEvent. = data.get("Donation Amount");
 //    importEvent. = data.get("FB Fee");
-    importEvent.opportunityAmount = getAmount(data, "Net Payout Amount");
-//    importEvent. = data.get("Payout Currency");
-//    importEvent. = data.get("Sender Currency");
-//    importEvent. = data.get("Tax Amount");
-//    importEvent. = data.get("Tax USD Amount");
-//    importEvent. = data.get("Charge Action Type");
-    try {
-      importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Charge Date")));
-    } catch (ParseException e) {
-      log.warn("failed to parse date", e);
+//    importEvent. = getAmount(data, "Net Payout Amount");
+      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
+
+//      TODO: support for different currencies will likely be needed in the future
+//      importEvent. = data.get("Payout Currency");
+//      importEvent. = data.get("Sender Currency");
+      if (data.get("Fundraiser Type").contains("Fundraiser")) {
+        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Title");
+      } else if (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) {
+        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Title") + " (" + data.get("Fundraiser Type") + ")";
+      } else {
+        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Type");
+      }
+      try {
+        importEvent.opportunityDate = Calendar.getInstance();
+        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Charge Date")));
+      } catch (ParseException e) {
+        log.warn("failed to parse date", e);
+      }
+
+      importEvent.firstName = Utils.nameToTitleCase(data.get("First Name"));
+      importEvent.lastName = Utils.nameToTitleCase(data.get("Last Name"));
+      importEvent.email = data.get("Email Address");
+      importEvent.opportunitySource = (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) ? data.get("Fundraiser Title") : data.get("Fundraiser Type");
+      importEvent.opportunityTerminal = data.get("Payment Processor");
+      importEvent.opportunityStageName = "Posted";
+
+      List<String> description = new ArrayList<>();
+      description.add("Fundraiser Title: " + data.get("Fundraiser Title"));
+      description.add("Fundraiser Type: " + data.get("Fundraiser Type"));
+      description.add("Campaign Owner Name: " + data.get("Campaign Owner Name"));
+      description.add("Campaign ID: " + data.get("Campaign ID"));
+      description.add("Permalink: " + data.get("Permalink"));
+      description.add("Payment ID: " + data.get("Payment ID"));
+      description.add("Source Name: " + data.get("Source Name"));
+      importEvent.opportunityDescription = Joiner.on("\n").join(description);
+
+      return importEvent;
+    } else {
+      return null;
     }
-    importEvent.firstName = data.get("First Name");
-    importEvent.lastName = data.get("Last Name");
-    importEvent.email = data.get("Email Address");
-//    importEvent. = data.get("Charity ID");
-    importEvent.opportunitySource = data.get("Fundraiser Title");
-    importEvent.opportunityTerminal = data.get("Payment Processor");
-//    importEvent. = data.get("Matching Donation");
-//    importEvent. = data.get("Charge Time PT");
-
-    List<String> description = new ArrayList<>();
-    description.add("Fundraiser Title: " + data.get("Fundraiser Title"));
-    description.add("Fundraiser Type: " + data.get("Fundraiser Type"));
-    description.add("Campaign Owner Name: " + data.get("Campaign Owner Name"));
-    description.add("Campaign ID: " + data.get("Campaign ID"));
-    description.add("Permalink: " + data.get("Permalink"));
-    description.add("Payment ID: " + data.get("Payment ID"));
-    description.add("Source Name: " + data.get("Source Name"));
-    importEvent.opportunityDescription = Joiner.on("\n").join(description);
-
-    return importEvent;
   }
 
   private static BigDecimal getAmount(Map<String, String> data, String columnName) {

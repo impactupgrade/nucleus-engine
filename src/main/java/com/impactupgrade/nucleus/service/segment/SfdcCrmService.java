@@ -589,8 +589,13 @@ public class SfdcCrmService implements CrmService {
       String lastName = importEvent.getLastName();
 
       // First try to get contact by email
-      Optional<SObject> existingContact = sfdcClient.getContactByEmail(email);
-      log.info("found contact for email {}: {}", email, existingContact.isPresent());
+      // Some import events (ie. FB fundraisers) don't provide an email,
+      // so create the empty object first and try only if email is provided
+      Optional<SObject> existingContact = Optional.empty();
+      if (!Strings.isNullOrEmpty(importEvent.getEmail())) {
+        existingContact = sfdcClient.getContactByEmail(email);
+        log.info("found contact for email {}: {}", email, existingContact.isPresent());
+      }
 
       // If none by email, get contact by name
       if (existingContact.isEmpty()) {

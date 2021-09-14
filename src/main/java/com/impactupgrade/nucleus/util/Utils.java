@@ -5,11 +5,14 @@
 package com.impactupgrade.nucleus.util;
 
 import com.google.common.base.Strings;
+import com.sun.xml.ws.util.StringUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Utils {
 
@@ -24,6 +27,15 @@ public class Utils {
       lastName = fullName.replace(firstName, "").trim();
     }
     return new String[]{firstName, lastName};
+  }
+
+  public static String nameToTitleCase(String name) {
+    // primarily for reformatting/capitalizing names
+    // handles spaces and hyphens
+    // Ex. first name bill smith-jones -> Bill Smith-Jones
+    return Stream.of(name.trim().split("((?<=[-\\s])|(?=[-\\s]))"))
+            .map(x -> StringUtils.capitalize(x))
+            .collect(Collectors.joining());
   }
 
   public static boolean checkboxToBool(String checkboxValue) {
