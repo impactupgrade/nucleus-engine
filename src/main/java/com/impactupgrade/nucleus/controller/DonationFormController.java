@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.controller;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -38,8 +39,11 @@ import java.util.Optional;
 
 import static com.impactupgrade.nucleus.util.Utils.emptyStringToNull;
 
-
+// TODO: Way too much business logic in here. Pull some of to the logic services?
+// TODO: Refactor for PaymentGatewayService instead of StripeClient?
+// TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 // TODO: Square this up with DS?
+
 @Path("/donation")
 public class DonationFormController {
 
@@ -88,10 +92,6 @@ public class DonationFormController {
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // CRM
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      // TODO: Needs refactored to use the generic CRM concepts.
-      // TODO: Refactor for PaymentGatewayService instead of StripeClient?
-      // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 
       CrmService crmService = env.donationsCrmService();
       StripeClient stripeClient = env.stripeClient();
@@ -350,9 +350,13 @@ public class DonationFormController {
         customerMetadata
     );
 
-    String currency = env.getConfig().currency;
+    String currency = formData.getCurrency();
+    if (Strings.isNullOrEmpty(currency)) {
+      currency = env.getConfig().currency;
+    }
 
     if (formData.isRecurring()) {
+      // TODO: check frequency and support monthly vs. quarterly vs. yearly?
       Map<String, String> subscriptionMetadata = new HashMap<>();
       subscriptionMetadata.put("campaign", formData.getCampaignId());
       subscriptionMetadata.put("description", formData.getNotes());

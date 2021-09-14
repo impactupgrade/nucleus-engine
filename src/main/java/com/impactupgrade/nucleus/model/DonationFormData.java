@@ -21,7 +21,7 @@ public class DonationFormData {
   // TODO: Business Donations coming soon.
 
   @FormParam("campaign_id") private String campaignId;
-  @FormParam("donation_type") private String donationType; // onetime or monthly
+  @FormParam("frequency") private String frequency; // onetime, monthly, quarterly, yearly
   @FormParam("donation_amount") private Double amount;
 //  @FormParam("giving_as") private String givingAs;
   @FormParam("first_name") private String firstName;
@@ -46,6 +46,8 @@ public class DonationFormData {
   @FormParam("stripe_token") private String stripeCCToken;
   @FormParam("stripe_bank_account_token") private String stripeACHToken;
   @FormParam("donation_note") private String notes;
+  // although we fall back to env.json defaults, allow explicit overrides
+  @FormParam("currency") private String currency;
 
   @FormParam("g-recaptcha-response") private String recaptchaToken;
 
@@ -95,7 +97,7 @@ public class DonationFormData {
 //  }
 
   public boolean isRecurring() {
-    return "monthly".equalsIgnoreCase(donationType);
+    return !"onetime".equalsIgnoreCase(frequency);
   }
 
   public String getAmountFormatted() {
@@ -166,7 +168,7 @@ public class DonationFormData {
   public String toString() {
     return "DonationFormData{" +
         "campaignId='" + campaignId + '\'' +
-        ", donationType='" + donationType + '\'' +
+        ", frequency='" + frequency + '\'' +
         ", amount=" + amount +
 //        ", givingAs='" + givingAs + '\'' +
         ", firstName='" + firstName + '\'' +
@@ -188,6 +190,7 @@ public class DonationFormData {
         ", billingZip='" + billingZip + '\'' +
         ", billingCountry='" + billingCountry + '\'' +
         ", notes='" + notes + '\'' +
+        ", currency='" + currency + '\'' +
         ", timestamp=" + timestamp +
         '}';
   }
@@ -204,12 +207,12 @@ public class DonationFormData {
     this.campaignId = campaignId;
   }
 
-  public String getDonationType() {
-    return donationType;
+  public String getFrequency() {
+    return frequency;
   }
 
-  public void setDonationType(String donationType) {
-    this.donationType = donationType;
+  public void setFrequency(String frequency) {
+    this.frequency = frequency;
   }
 
   public Double getAmount() {
@@ -394,6 +397,14 @@ public class DonationFormData {
 
   public void setNotes(String notes) {
     this.notes = notes;
+  }
+
+  public String getCurrency() {
+    return currency;
+  }
+
+  public void setCurrency(String currency) {
+    this.currency = currency;
   }
 
   public String getRecaptchaToken() {

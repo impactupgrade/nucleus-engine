@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus;
 
 import com.impactupgrade.nucleus.controller.BackupController;
 import com.impactupgrade.nucleus.controller.CrmController;
+import com.impactupgrade.nucleus.controller.DonationFormController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
@@ -68,6 +69,7 @@ public class App {
 
     apiConfig.register(backupController());
     apiConfig.register(crmController());
+    apiConfig.register(donationFormController());
     apiConfig.register(paymentGatewayController());
     apiConfig.register(sfdcController());
     apiConfig.register(stripeController());
@@ -117,6 +119,7 @@ public class App {
   // Allow orgs to override specific controllers.
   protected BackupController backupController() { return new BackupController(envFactory()); }
   protected CrmController crmController() { return new CrmController(envFactory()); }
+  protected DonationFormController donationFormController() { return new DonationFormController(envFactory()); }
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory()); }
   protected SfdcController sfdcController() { return new SfdcController(envFactory()); }
   protected StripeController stripeController() { return new StripeController(envFactory()); }
