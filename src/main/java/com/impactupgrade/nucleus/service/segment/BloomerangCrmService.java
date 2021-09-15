@@ -114,12 +114,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception {
-    // TODO
-    return null;
-  }
-
-  @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     // TODO
     return null;

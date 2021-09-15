@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.integration.hubspot.v1.model.HasValue;
+import com.impactupgrade.integration.hubspot.v3.AssociationSearchResults;
 import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
 import com.impactupgrade.integration.hubspot.v3.Contact;
@@ -15,10 +16,10 @@ import com.impactupgrade.integration.hubspot.v3.Deal;
 import com.impactupgrade.integration.hubspot.v3.DealProperties;
 import com.impactupgrade.integration.hubspot.v3.DealResults;
 import com.impactupgrade.integration.hubspot.v3.Filter;
+import com.impactupgrade.integration.hubspot.v3.HasId;
 import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -33,7 +34,6 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +56,10 @@ public class HubSpotCrmService implements CrmService {
   protected Environment env;
   protected HubSpotV3Client hsClient;
 
+  protected List<String> companyFields;
+  protected List<String> contactFields;
+  protected List<String> dealFields;
+
   @Override
   public String name() { return "hubspot"; }
 
@@ -63,47 +67,46 @@ public class HubSpotCrmService implements CrmService {
   public void init(Environment env) {
     this.env = env;
     hsClient = HubSpotClientFactory.v3Client(env);
+
+    companyFields = env.getConfig().hubspot.customQueryFields.company.stream().toList();
+    contactFields = env.getConfig().hubspot.customQueryFields.contact.stream().toList();
+    dealFields = env.getConfig().hubspot.customQueryFields.deal.stream().toList();
   }
 
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    Company company = hsClient.company().read(id, getCustomPropertyNames());
+    Company company = hsClient.company().read(id, companyFields);
     CrmAccount crmAccount = toCrmAccount(company);
     return Optional.of(crmAccount);
   }
 
   @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
-    Contact contact = hsClient.contact().read(id, getCustomPropertyNames());
+    Contact contact = hsClient.contact().read(id, contactFields);
     CrmContact crmContact = toCrmContact(contact);
     return Optional.of(crmContact);
   }
 
   @Override
   public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    return hsClient.contact().searchByEmail(email, getCustomPropertyNames()).getResults().stream().findFirst().map(this::toCrmContact);
+    return hsClient.contact().searchByEmail(email, contactFields).getResults().stream().findFirst().map(this::toCrmContact);
   }
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    return hsClient.contact().searchByPhone(phone, getCustomPropertyNames()).getResults().stream().findFirst().map(this::toCrmContact);
-  }
-
-  @Override
-  public List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception {
-    // TODO: will need to add query-by-association to HS lib
-    return Collections.emptyList();
+    return hsClient.contact().searchByPhone(phone, contactFields).getResults().stream().findFirst().map(this::toCrmContact);
   }
 
   @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
-    // TODO: will need to add query-by-association to HS lib
-    return Collections.emptyList();
+    AssociationSearchResults associations = hsClient.association().search("company", accountId, "deal");
+    List<String> dealIds = associations.getResults().stream().flatMap(r -> r.getTo().stream()).map(HasId::getId).collect(Collectors.toList());
+    return toCrmDonation(hsClient.deal().batchRead(dealIds, dealFields).getResults());
   }
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    Deal deal = hsClient.deal().read(id, getCustomPropertyNames());
+    Deal deal = hsClient.deal().read(id, dealFields);
     CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
     return Optional.of(crmRecurringDonation);
   }
@@ -123,7 +126,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId());
-    DealResults results = hsClient.deal().search(List.of(filter), getCustomPropertyNames());
+    DealResults results = hsClient.deal().search(List.of(filter), dealFields);
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -147,7 +150,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId());
-    DealResults results = hsClient.deal().search(List.of(filter), getCustomPropertyNames());
+    DealResults results = hsClient.deal().search(List.of(filter), dealFields);
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -578,9 +581,7 @@ public class HubSpotCrmService implements CrmService {
         crmAddress,
         // TODO: Differentiate between Household and Organization?
         CrmAccount.Type.HOUSEHOLD,
-        (Integer) getProperty(env.getConfig().hubspot.fieldDefinitions.donationCount, company.getProperties().getCustomProperties()),
-        (Double) getProperty(env.getConfig().hubspot.fieldDefinitions.donationTotal, company.getProperties().getCustomProperties()),
-        (Calendar) getProperty(env.getConfig().hubspot.fieldDefinitions.firstDonationDate, company.getProperties().getCustomProperties())
+        company
     );
   }
 
@@ -660,6 +661,32 @@ public class HubSpotCrmService implements CrmService {
         .collect(Collectors.toList());
   }
 
+  protected List<CrmDonation> toCrmDonation(List<Deal> deals) {
+    return deals.stream()
+        .map(this::toCrmDonation)
+        .collect(Collectors.toList());
+  }
+
+  protected CrmDonation toCrmDonation(Deal deal) {
+    String paymentGatewayName = (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getCustomProperties());
+    CrmDonation.Status status;
+    if (env.getConfig().hubspot.donationPipeline.successStageId.equalsIgnoreCase(deal.getProperties().getDealstage())) {
+      status = CrmDonation.Status.SUCCESSFUL;
+    } else if (env.getConfig().hubspot.donationPipeline.failedStageId.equalsIgnoreCase(deal.getProperties().getDealstage())) {
+      status = CrmDonation.Status.FAILED;
+    } else {
+      status = CrmDonation.Status.PENDING;
+    }
+    return new CrmDonation(
+        deal.getId(),
+        deal.getProperties().getDealname(),
+        deal.getProperties().getAmount(),
+        paymentGatewayName,
+        status,
+        deal.getProperties().getClosedate()
+    );
+  }
+
   protected CrmRecurringDonation toCrmRecurringDonation(Deal deal) {
     return new CrmRecurringDonation(
         deal.getId(),
@@ -670,18 +697,6 @@ public class HubSpotCrmService implements CrmService {
         deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
         CrmRecurringDonation.Frequency.MONTHLY // HubSpot supports monthly only, currently
     );
-  }
-
-  // The HubSpot API will ignore irrelevant properties for specific objects, so just include everything we're expecting.
-  protected List<String> getCustomPropertyNames() {
-    return Arrays.stream(EnvironmentConfig.CRMFieldDefinitions.class.getFields()).map(f -> {
-      try {
-        return f.get(env.getConfig().hubspot.fieldDefinitions).toString();
-      } catch (IllegalAccessException e) {
-        log.error("failed to retrieve custom fields from schema", e);
-        return "";
-      }
-    }).collect(Collectors.toList());
   }
 
   protected Object getProperty(String fieldName, Map<String, Object> customProperties) {

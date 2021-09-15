@@ -93,12 +93,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception {
-    // TODO
-    return null;
-  }
-
-  @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     // TODO
     return null;
@@ -844,10 +838,7 @@ public class SfdcCrmService implements CrmService {
         crmAddress,
         // TODO: Differentiate between Household and Organization. Customize record type IDs through env.json?
         CrmAccount.Type.HOUSEHOLD,
-        (Integer) getField(sObject, env.getConfig().salesforce.fieldDefinitions.donationCount),
-        (Double) getField(sObject, env.getConfig().salesforce.fieldDefinitions.donationTotal),
-        // TODO: this might need converted from a string
-        (Calendar) getField(sObject, env.getConfig().salesforce.fieldDefinitions.firstDonationDate)
+        sObject
     );
   }
 

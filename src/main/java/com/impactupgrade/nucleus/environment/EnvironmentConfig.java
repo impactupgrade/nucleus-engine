@@ -73,9 +73,6 @@ public class EnvironmentConfig {
     public String emailOptOut = "";
     public String smsOptIn = "";
     public String smsOptOut = "";
-    public String donationCount = "";
-    public String donationTotal = "";
-    public String firstDonationDate = "";
   }
 
   public Bloomerang bloomerang = new Bloomerang();
@@ -91,6 +88,7 @@ public class EnvironmentConfig {
     public HubSpotDonationPipeline donationPipeline = new HubSpotDonationPipeline();
     public HubSpotRecurringDonationPipeline recurringDonationPipeline = new HubSpotRecurringDonationPipeline();
     public HubspotCRMFieldDefinitions fieldDefinitions = new HubspotCRMFieldDefinitions();
+    public HubspotCustomFields customQueryFields = new HubspotCustomFields();
     public String defaultSmsOptInList = "";
 
     public static class HubSpotDonationPipeline {
@@ -104,6 +102,12 @@ public class EnvironmentConfig {
       public String id = "";
       public String openStageId = "";
       public String closedStageId = "";
+    }
+
+    public static class HubspotCustomFields {
+      public Set<String> company = new HashSet<>();
+      public Set<String> contact = new HashSet<>();
+      public Set<String> deal = new HashSet<>();
     }
   }
 

@@ -4,8 +4,6 @@
 
 package com.impactupgrade.nucleus.model;
 
-import java.util.Calendar;
-
 public class CrmAccount {
 
   public enum Type {
@@ -16,10 +14,7 @@ public class CrmAccount {
   public String name;
   public CrmAddress address;
   public Type type;
-
-  public Integer donationCount;
-  public Double donationTotal;
-  public Calendar firstDonationDate;
+  public Object rawObject;
 
   public CrmAccount() {}
 
@@ -29,14 +24,11 @@ public class CrmAccount {
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmAccount(String id, String name, CrmAddress address, Type type, Integer donationCount, Double donationTotal,
-      Calendar firstDonationDate) {
+  public CrmAccount(String id, String name, CrmAddress address, Type type, Object rawObject) {
     this.id = id;
     this.name = name;
     this.address = address;
     this.type = type;
-    this.donationCount = donationCount;
-    this.donationTotal = donationTotal;
-    this.firstDonationDate = firstDonationDate;
+    this.rawObject = rawObject;
   }
 }

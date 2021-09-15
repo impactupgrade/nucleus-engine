@@ -4,10 +4,11 @@
 
 package com.impactupgrade.nucleus.it;
 
-import com.impactupgrade.integration.hubspot.v3.AssociationResults;
 import com.impactupgrade.integration.hubspot.v3.AssociationSearchResult;
+import com.impactupgrade.integration.hubspot.v3.AssociationSearchResults;
 import com.impactupgrade.integration.hubspot.v3.Company;
 import com.impactupgrade.integration.hubspot.v3.CompanyResults;
+import com.impactupgrade.integration.hubspot.v3.HasId;
 import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
@@ -116,14 +117,18 @@ public abstract class AbstractIT extends JerseyTest {
     CompanyResults existingAccounts = hsClient.company().searchByName(name, Collections.emptyList());
     for (Company existingAccount : existingAccounts.getResults()) {
       // will find transactional deals AND recurring deals
-      AssociationResults existingOpps = hsClient.association().search("company", existingAccount.getId(), "deal");
-      for (AssociationSearchResult existingOpp : existingOpps.getTo()) {
-        hsClient.deal().delete(existingOpp.getId());
+      AssociationSearchResults existingOpps = hsClient.association().search("company", existingAccount.getId(), "deal");
+      for (AssociationSearchResult existingOpp : existingOpps.getResults()) {
+        for (HasId to : existingOpp.getTo()) {
+          hsClient.deal().delete(to.getId());
+        }
       }
 
-      AssociationResults contacts = hsClient.association().search("company", existingAccount.getId(), "contact");
-      for (AssociationSearchResult contact : contacts.getTo()) {
-        hsClient.contact().delete(contact.getId());
+      AssociationSearchResults contacts = hsClient.association().search("company", existingAccount.getId(), "contact");
+      for (AssociationSearchResult contact : contacts.getResults()) {
+        for (HasId to : contact.getTo()) {
+          hsClient.contact().delete(to.getId());
+        }
       }
 
       hsClient.company().delete(existingAccount.getId());

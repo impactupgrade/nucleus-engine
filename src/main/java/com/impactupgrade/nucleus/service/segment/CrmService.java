@@ -96,7 +96,6 @@ public interface CrmService extends SegmentService {
 
   // TODO: potentially a performance issue for long-term donors
   List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception;
-  List<CrmDonation> getLastMonthDonationsByAccountId(String accountId) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS
