@@ -32,6 +32,11 @@ public class AntiFraudService {
   }
 
   public boolean isRecaptchaTokenValid(String recaptchaToken) throws IOException {
+    if (Strings.isNullOrEmpty(env.getConfig().recaptcha.siteSecret)) {
+      log.info("recaptcha: disabled");
+      return true;
+    }
+
     if (Strings.isNullOrEmpty(recaptchaToken)) {
       log.info("recaptcha: null or empty recaptchaToken");
       return false;

@@ -344,6 +344,9 @@ public class DonationFormController {
       customerMetadata.put("account_id", formData.getCrmAccountId());
 //    }
     customerMetadata.put("contact_id", formData.getCrmContactId());
+    if (formData.getCustomMetadataCustomer() != null) {
+      customerMetadata.putAll(formData.getCustomMetadataCustomer());
+    }
     // TODO: only if needed
     stripeClient.updateCustomer(
         stripeCustomer,
@@ -360,6 +363,9 @@ public class DonationFormController {
       Map<String, String> subscriptionMetadata = new HashMap<>();
       subscriptionMetadata.put("campaign", formData.getCampaignId());
       subscriptionMetadata.put("description", formData.getNotes());
+      if (formData.getCustomMetadataSubscription() != null) {
+        subscriptionMetadata.putAll(formData.getCustomMetadataSubscription());
+      }
       ProductCreateParams.Builder productBuilder = stripeClient.defaultProductBuilder(stripeCustomer, formData.getAmountInCents(), currency);
       PlanCreateParams.Builder planBuilder = stripeClient.defaultPlanBuilder(formData.getAmountInCents(), currency);
       SubscriptionCreateParams.Builder subscriptionBuilder = stripeClient.defaultSubscriptionBuilder(stripeCustomer, stripeSource)
@@ -369,6 +375,9 @@ public class DonationFormController {
     } else {
       Map<String, String> chargeMetadata = new HashMap<>();
       chargeMetadata.put("campaign", formData.getCampaignId());
+      if (formData.getCustomMetadataCharge() != null) {
+        chargeMetadata.putAll(formData.getCustomMetadataCharge());
+      }
       ChargeCreateParams.Builder chargeBuilder = stripeClient.defaultChargeBuilder(
           stripeCustomer,
           stripeSource,

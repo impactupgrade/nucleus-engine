@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import javax.ws.rs.FormParam;
 import java.text.DecimalFormat;
 import java.util.Calendar;
+import java.util.Map;
 
 public class DonationFormData {
 
@@ -51,6 +52,10 @@ public class DonationFormData {
 
   @FormParam("g-recaptcha-response") private String recaptchaToken;
 
+  @FormParam("custom-metadata-customer") private Map<String, String> customMetadataCustomer;
+  @FormParam("custom-metadata-subscription") private Map<String, String> customMetadataSubscription;
+  @FormParam("custom-metadata-charge") private Map<String, String> customMetadataCharge;
+
   private final Calendar timestamp;
 
   // Helpers (transient) set as we process the donation
@@ -67,8 +72,8 @@ public class DonationFormData {
 
   // TODO: Move to AntiFraudService?
   public boolean isFraudAttempt() {
+    // We're getting some bots sending the form with no payment details.
     if (!isStripe() && !isIntegrationTest()) {
-      // We're getting some bots sending the form with no payment details.
       log.info("blocking a bad request: no payment details");
       return true;
     } else if (Strings.isNullOrEmpty(firstName) || Strings.isNullOrEmpty(lastName)
@@ -80,11 +85,10 @@ public class DonationFormData {
     } else if (Strings.isNullOrEmpty(email) || !EmailValidator.getInstance().isValid(email) || email.contains("example.com")) {
       log.info("blocking a bad request: email");
       return true;
-    // Note: City is not required since it's technically "Suburb" for AU/NZ, which is optional.
-    } else if (Strings.isNullOrEmpty(billingAddress)
-        || Strings.isNullOrEmpty(billingState) || Strings.isNullOrEmpty(billingZip)
+    // Note: Don't require address (optional in many forms), but sanity check it if provided.
+    } else if (!Strings.isNullOrEmpty(billingAddress)
         // Real creative.
-        || billingAddress.contains("<street>") || billingAddress.contains("<Street>")) {
+        && (billingAddress.contains("<street>") || billingAddress.contains("<Street>"))) {
       log.info("blocking a bad request: address");
       return true;
     }
@@ -413,6 +417,30 @@ public class DonationFormData {
 
   public void setRecaptchaToken(String recaptchaToken) {
     this.recaptchaToken = recaptchaToken;
+  }
+
+  public Map<String, String> getCustomMetadataCustomer() {
+    return customMetadataCustomer;
+  }
+
+  public void setCustomMetadataCustomer(Map<String, String> customMetadataCustomer) {
+    this.customMetadataCustomer = customMetadataCustomer;
+  }
+
+  public Map<String, String> getCustomMetadataSubscription() {
+    return customMetadataSubscription;
+  }
+
+  public void setCustomMetadataSubscription(Map<String, String> customMetadataSubscription) {
+    this.customMetadataSubscription = customMetadataSubscription;
+  }
+
+  public Map<String, String> getCustomMetadataCharge() {
+    return customMetadataCharge;
+  }
+
+  public void setCustomMetadataCharge(Map<String, String> customMetadataCharge) {
+    this.customMetadataCharge = customMetadataCharge;
   }
 
   public Calendar getTimestamp() {
