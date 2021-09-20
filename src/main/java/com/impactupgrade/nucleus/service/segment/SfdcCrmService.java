@@ -881,7 +881,8 @@ public class SfdcCrmService implements CrmService {
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptOut),
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
-        (String) sObject.getField("OwnerId")
+        (String) sObject.getField("OwnerId"),
+        sObject
     );
   }
 
@@ -919,7 +920,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     return new CrmDonation(id, (String) sObject.getField("Name"), amount,
-        paymentGatewayName, status, closeDate);
+        paymentGatewayName, status, closeDate, sObject);
   }
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {
@@ -934,7 +935,7 @@ public class SfdcCrmService implements CrmService {
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
     boolean active = "Open".equalsIgnoreCase(sObject.getField("npe03__Open_Ended_Status__c").toString());
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(sObject.getField("npe03__Installment_Period__c").toString());
-    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, active, frequency);
+    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, active, frequency, sObject);
   }
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {

@@ -14,6 +14,7 @@ public class CrmDonation {
   public String paymentGatewayName;
   public Status status;
   public Calendar closeDate;
+  public Object rawObject;
 
   public enum Status {
     PENDING, SUCCESSFUL, FAILED
@@ -28,12 +29,13 @@ public class CrmDonation {
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmDonation(String id, String name, Double amount, String paymentGatewayName, Status status,
-      Calendar closeDate) {
+      Calendar closeDate, Object rawObject) {
     this.id = id;
     this.name = name;
     this.amount = amount;
     this.paymentGatewayName = paymentGatewayName;
     this.status = status;
     this.closeDate = closeDate;
+    this.rawObject = rawObject;
   }
 }

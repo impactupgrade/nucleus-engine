@@ -26,6 +26,7 @@ public class CrmContact {
   public Boolean smsOptOut;
   public String ownerId;
   public String notes;
+  public Object rawObject;
 
   public CrmContact() {}
 
@@ -37,7 +38,8 @@ public class CrmContact {
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmContact(String id, String accountId, String firstName, String lastName, String email, String homePhone,
       String mobilePhone, String workPhone, PreferredPhone preferredPhone, CrmAddress address,
-      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId) {
+      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId,
+      Object rawObject) {
     this.id = id;
     this.accountId = accountId;
     this.firstName = firstName;
@@ -53,5 +55,6 @@ public class CrmContact {
     this.smsOptIn = smsOptIn;
     this.smsOptOut = smsOptOut;
     this.ownerId = ownerId;
+    this.rawObject = rawObject;
   }
 }
