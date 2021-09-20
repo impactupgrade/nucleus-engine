@@ -483,4 +483,7 @@ public class StripeClient {
     return plan;
   }
 
+  public RequestOptions getRequestOptions() {
+    return requestOptions;
+  }
 }
