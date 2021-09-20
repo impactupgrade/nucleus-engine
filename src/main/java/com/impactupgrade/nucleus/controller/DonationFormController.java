@@ -34,6 +34,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -115,7 +116,8 @@ public class DonationFormController {
 //          if (formData.isStripe()) {
 //            // Attempt/validate *before* creating the new records!
 //            stripeCustomer = createStripeCustomer(formData, env);
-//            stripePaymentSource = stripeCustomer.getSources().getData().get(0);
+//            List<PaymentSource> stripePaymentSources = stripeCustomer.getSources().getData();
+//            stripePaymentSource = stripePaymentSources.get(stripePaymentSources.size() - 1);
 //          }
 //
 //          bizAccountId = createBusinessAccount(formData, env);
@@ -129,8 +131,8 @@ public class DonationFormController {
 //
 //          if (formData.isStripe()) {
 //            stripeCustomer = createStripeCustomer(formData, env);
-//            stripePaymentSource = stripeCustomer.getSources().getData().get(0);
-//            log.info("created Stripe Customer {}", stripeCustomer.getId());
+//            List<PaymentSource> stripePaymentSources = stripeCustomer.getSources().getData();
+//            stripePaymentSource = stripePaymentSources.get(stripePaymentSources.size() - 1);
 //          }
 //
 //          updateBusinessAccount(formData, env);
@@ -170,9 +172,9 @@ public class DonationFormController {
 
           if (formData.isStripe()) {
             // Attempt/validate *before* creating the new records!
-            stripeCustomer = createStripeCustomer(formData, env);
-            stripePaymentSource = stripeCustomer.getSources().getData().get(0);
-            log.info("created Stripe Customer {}", stripeCustomer.getId());
+            stripeCustomer = getOrCreateStripeCustomer(formData, env);
+            List<PaymentSource> stripePaymentSources = stripeCustomer.getSources().getData();
+            stripePaymentSource = stripePaymentSources.get(stripePaymentSources.size() - 1);
           }
 
           String accountId = createHouseholdAccount(formData, env);
@@ -188,13 +190,14 @@ public class DonationFormController {
               formData.getCrmContactId(), formData.getCrmAccountId(), formData.getEmail());
 
           if (formData.isStripe()) {
-            stripeCustomer = createStripeCustomer(formData, env);
-            stripePaymentSource = stripeCustomer.getSources().getData().get(0);
-            log.info("created Stripe Customer {}", stripeCustomer.getId());
+            stripeCustomer = getOrCreateStripeCustomer(formData, env);
+            List<PaymentSource> stripePaymentSources = stripeCustomer.getSources().getData();
+            stripePaymentSource = stripePaymentSources.get(stripePaymentSources.size() - 1);
           }
 
-          updateHouseholdAccount(formData, env);
-          updateHouseholdContact(formData, env);
+          // TODO: updates currently fail in HS due to a PATCH + HTTP lib issue in the HS lib
+//          updateHouseholdAccount(formData, env);
+//          updateHouseholdContact(formData, env);
         }
 //      }
 
@@ -321,15 +324,30 @@ public class DonationFormController {
     env.donationsCrmService().updateContact(contact);
   }
 
-  private Customer createStripeCustomer(DonationFormData formData, Environment env) throws StripeException {
+  private Customer getOrCreateStripeCustomer(DonationFormData formData, Environment env) throws StripeException {
     StripeClient stripeClient = env.stripeClient();
-    CustomerCreateParams.Builder customerBuilder = stripeClient.defaultCustomerBuilder(
-        formData.getCustomerName(),
-        formData.getCustomerEmail(),
-        formData.getStripeToken()
-    );
-    Customer customer = stripeClient.createCustomer(customerBuilder);
-    log.info("created Stripe Customer {}", customer.getId());
+
+    Customer customer = null;
+
+    // TODO: Also check by customerId, if the field is configured in env.json?
+    if (!Strings.isNullOrEmpty(formData.getCustomerEmail())) {
+      customer = stripeClient.getCustomerByEmail(formData.getCustomerEmail()).orElse(null);
+      if (customer != null) {
+        log.info("found Stripe Customer {}", customer.getId());
+        stripeClient.updateCustomerSource(customer, formData.getStripeToken());
+        log.info("updated payment source on Stripe Customer {}", customer.getId());
+      }
+    }
+    if (customer == null) {
+      CustomerCreateParams.Builder customerBuilder = stripeClient.defaultCustomerBuilder(
+          formData.getCustomerName(),
+          formData.getCustomerEmail(),
+          formData.getStripeToken()
+      );
+      customer = stripeClient.createCustomer(customerBuilder);
+      log.info("created Stripe Customer {}", customer.getId());
+    }
+
     return customer;
   }
 

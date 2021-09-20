@@ -47,11 +47,13 @@ import org.apache.logging.log4j.Logger;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 public class StripeClient {
 
@@ -97,6 +99,11 @@ public class StripeClient {
         .addExpand("data.sources")
         .build();
     return Customer.list(customerParams, requestOptions).getData();
+  }
+
+  public Optional<Customer> getCustomerByEmail(String email) throws StripeException {
+    // If there are multiple, use the oldest.
+    return getCustomersByEmail(email).stream().min(Comparator.comparing(Customer::getCreated));
   }
 
   public PaymentIntent getPaymentIntent(String id) throws StripeException {
@@ -262,6 +269,13 @@ public class StripeClient {
         return existingCard;
       }
     }
+
+    // we have a new source, so update it as the default
+
+    CustomerUpdateParams customerParams = CustomerUpdateParams.builder()
+        .setDefaultSource(newSource.getId())
+        .build();
+    customer.update(customerParams, requestOptions);
 
     return newSource;
   }
