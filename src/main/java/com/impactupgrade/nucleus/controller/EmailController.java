@@ -39,8 +39,8 @@ public class EmailController {
       //  pass the results down.
       for (EmailPlatformService emailPlatformService : env.allEmailPlatformServices()) {
         try {
-          emailPlatformService.syncNewContacts(lastSync);
-          emailPlatformService.syncNewDonors(lastSync);
+          emailPlatformService.syncContacts(lastSync);
+          emailPlatformService.syncDonors(lastSync);
         } catch (Exception e) {
           log.error("dailySync failed", e);
         }

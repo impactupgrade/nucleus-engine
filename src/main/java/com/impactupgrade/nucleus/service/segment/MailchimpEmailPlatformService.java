@@ -62,9 +62,9 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   }
 
   @Override
-  public void updateContact(String listName, CrmContact contact) throws Exception{
+  public void upsertContact(String listName, CrmContact crmContact) throws Exception{
     String listId = getListIdFromName(listName);
-    mailchimpClient.updateContact(listId, toMcMemberInfo(contact));
+    mailchimpClient.upsertContact(listId, toMcMemberInfo(crmContact));
   }
 
   @Override
@@ -80,13 +80,6 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   }
 
   @Override
-  public void addContactToGroup(String listName, CrmContact crmContact, String groupName) throws Exception {
-    String listId = getListIdFromName(listName);
-    String groupId = getGroupIdFromName(groupName);
-    mailchimpClient.addContactToGroup(listId, crmContact.email, groupId);
-  }
-
-  @Override
   public List<String> getContactTags(String listName, CrmContact crmContact) throws Exception {
     String listId = getListIdFromName(listName);
     return mailchimpClient.getContactTags(listId, crmContact.email);
@@ -99,13 +92,21 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   }
 
   @Override
-  public void syncNewContacts(Calendar calendar) throws Exception {
-    //crmService.getContactsSince(calendar).forEach(c -> updateContact(c,"listname")); //todo figure out list name & exceptions
+  public void syncContacts(Calendar since) throws Exception {
+    List <CrmContact> contacts = crmService.getContactsUpdatedSince(since);
+    for (CrmContact contact : contacts) {
+      // TODO: Should the list name be configurable?
+      upsertContact("Marketing", contact);
+    }
   }
 
   @Override
-  public void syncNewDonors(Calendar calendar) throws Exception {
-    //crmService.getDonorsSince(calendar).forEach(c -> updateContact(c,"listname")); //todo figure out list name & exceptions
+  public void syncDonors(Calendar since) throws Exception {
+    List <CrmContact> contacts = crmService.getDonorContactsSince(since);
+    for (CrmContact contact : contacts) {
+      // TODO: Should the list name be configurable?
+      upsertContact("Donors", contact);
+    }
   }
 
   /**
@@ -144,7 +145,7 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     contact.emailOptIn = SUBSCRIBED.equalsIgnoreCase(member.status);
     contact.address = toCrmAddress((Map<String, Object>) member.merge_fields.mapping.get(ADDRESS));
     // TODO
-//    contact.groups = getContactGroupIDs(contact.listName, contact.email);
+//    contact.emailGroups = getContactGroupIDs(contact.listName, contact.email);
     return contact;
   }
 
@@ -171,8 +172,9 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, contact.mobilePhone);
     mcContact.mapping.put(ADDRESS, toMcAddress(contact.address));
     mcContact.status = contact.emailOptIn ? SUBSCRIBED : UNSUBSCRIBED;
-    List<String> groupIds = contact.emailGroups.stream().map(this::getGroupIdFromName).collect(Collectors.toList());
 
+    List<String> groupIds = contact.emailGroups.stream().map(this::getGroupIdFromName).collect(Collectors.toList());
+    // TODO: Does this deselect what's no longer subscribed to in MC?
     MailchimpObject groupMap = new MailchimpObject();
     groupIds.forEach(id -> groupMap.mapping.put(id, true));
     mcContact.interests = groupMap;
