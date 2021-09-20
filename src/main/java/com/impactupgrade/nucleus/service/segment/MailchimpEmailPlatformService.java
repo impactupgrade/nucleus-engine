@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.testng.util.Strings;
 
 import java.util.Calendar;
 import java.util.Collection;
@@ -50,27 +51,24 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   }
 
   @Override
-  public List<CrmContact> getListOfContacts(String listName) throws Exception {
+  public List<CrmContact> getListMembers(String listName) throws Exception {
     String listId = getListIdFromName(listName);
-    return mailchimpClient.getContactList(listId).stream().map(this::toCrmContact).collect(Collectors.toList());
+    return mailchimpClient.getListMembers(listId).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
-  public void addContactToList(String listName, CrmContact crmContact) throws Exception {
-    String listId = getListIdFromName(listName);
-    mailchimpClient.addContactToList(listId, crmContact.email);
+  public void upsertContact(String listName, CrmContact crmContact) throws Exception {
+    if (!Strings.isNullOrEmpty(crmContact.email)) {
+      log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, listName);
+      String listId = getListIdFromName(listName);
+      mailchimpClient.upsertContact(listId, toMcMemberInfo(crmContact));
+    }
   }
 
   @Override
-  public void upsertContact(String listName, CrmContact crmContact) throws Exception{
+  public void unsubscribeContact(String email, String listName) throws Exception {
     String listId = getListIdFromName(listName);
-    mailchimpClient.upsertContact(listId, toMcMemberInfo(crmContact));
-  }
-
-  @Override
-  public void removeContactFromList(String email, String listName) throws Exception {
-    String listId = getListIdFromName(listName);
-    mailchimpClient.removeContactFromList(listId, email);
+    mailchimpClient.unsubscribeContact(listId, email);
   }
 
   @Override
@@ -137,7 +135,6 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     }
 
     CrmContact contact = new CrmContact();
-    contact.id = member.id;
     contact.email = member.email_address;
     contact.firstName = (String) member.merge_fields.mapping.get(FIRST_NAME);
     contact.lastName = (String) member.merge_fields.mapping.get(LAST_NAME);
@@ -165,13 +162,16 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     }
 
     MemberInfo mcContact = new MemberInfo();
-    mcContact.id = contact.id;
+    // TODO: This isn't correct, but we'll need a way to pull the existing MC contact ID? Or maybe it's never needed,
+    //  since updates use the email hash...
+//    mcContact.id = contact.id;
     mcContact.email_address = contact.email;
+    mcContact.merge_fields = new MailchimpObject();
     mcContact.merge_fields.mapping.put(FIRST_NAME, contact.firstName);
     mcContact.merge_fields.mapping.put(LAST_NAME, contact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, contact.mobilePhone);
     mcContact.mapping.put(ADDRESS, toMcAddress(contact.address));
-    mcContact.status = contact.emailOptIn ? SUBSCRIBED : UNSUBSCRIBED;
+    mcContact.status = contact.canReceiveEmail() ? SUBSCRIBED : UNSUBSCRIBED;
 
     List<String> groupIds = contact.emailGroups.stream().map(this::getGroupIdFromName).collect(Collectors.toList());
     // TODO: Does this deselect what's no longer subscribed to in MC?

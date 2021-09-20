@@ -226,15 +226,15 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getContactsUpdatedSince(Calendar calendar) throws ConnectionException, InterruptedException {
-    String dateString = new SimpleDateFormat("yyyy-MM-dd").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where lastmodifieddate >= " + dateString;
+    String dateTimeString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where LastModifiedDate >= " + dateTimeString;
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
   public List<SObject> getDonorContactsSince(Calendar calendar) throws ConnectionException, InterruptedException {
-    String dateString = new SimpleDateFormat("yyyy-MM-dd").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateString + ")";
+    String dateTimeString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateTimeString + " and Amount >= 0.0)";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }

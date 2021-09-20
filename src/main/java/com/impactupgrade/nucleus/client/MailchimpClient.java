@@ -11,6 +11,8 @@ import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.impactupgrade.nucleus.environment.Environment;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,6 +21,8 @@ import java.util.stream.Collectors;
 
 
 public class MailchimpClient {
+
+  private static final Logger log = LogManager.getLogger(MailchimpClient.class);
 
   public static final String SUBSCRIBED = "subscribed";
   public static final String UNSUBSCRIBED = "unsubscribed";
@@ -44,28 +48,25 @@ public class MailchimpClient {
     return client.execute(getMemberMethod);
   }
 
-  // TODO: TEST THIS
-  public void upsertContact(String listId, MemberInfo contact) throws IOException, MailchimpException {
-    EditMemberMethod editMemberMethod = new EditMemberMethod.Update(listId, contact.email_address);
-    editMemberMethod.mapping.putAll(contact.mapping);
-    editMemberMethod.interests.mapping.putAll(contact.interests.mapping);
-    client.execute(editMemberMethod);
+  public void upsertContact(String listId, MemberInfo contact) throws IOException {
+    try {
+      EditMemberMethod.CreateOrUpdate upsertMemberMethod = new EditMemberMethod.CreateOrUpdate(listId, contact.email_address);
+      upsertMemberMethod.status_if_new = contact.status;
+      upsertMemberMethod.mapping.putAll(contact.mapping);
+      upsertMemberMethod.interests.mapping.putAll(contact.interests.mapping);
+      client.execute(upsertMemberMethod);
+    } catch (MailchimpException e) {
+      log.warn("Mailchimp upsertContact failed: {}", e.description);
+    }
   }
 
-  public List<MemberInfo> getContactList(String listId) throws IOException, MailchimpException {
+  public List<MemberInfo> getListMembers(String listId) throws IOException, MailchimpException {
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
     GetMembersMethod.Response getMemberResponse = client.execute(getMembersMethod);
     return getMemberResponse.members;
   }
 
-  // TODO: Why is this only adding the email address? Shouldn't it be the whole CrmContact?
-  public void addContactToList(String listId, String email) throws IOException, MailchimpException {
-    EditMemberMethod editMemberMethod = new EditMemberMethod.Create(listId, email);
-    editMemberMethod.status = SUBSCRIBED;
-    client.execute(editMemberMethod);
-  }
-
-  public void removeContactFromList(String listId, String email) throws IOException, MailchimpException {
+  public void unsubscribeContact(String listId, String email) throws IOException, MailchimpException {
     EditMemberMethod editMemberMethod = new EditMemberMethod.Update(listId, email);
     editMemberMethod.status = UNSUBSCRIBED;
     client.execute(editMemberMethod);

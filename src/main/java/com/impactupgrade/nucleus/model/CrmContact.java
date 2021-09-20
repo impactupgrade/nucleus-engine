@@ -61,4 +61,19 @@ public class CrmContact {
     this.emailGroups = emailGroups;
     this.rawObject = rawObject;
   }
+
+  /**
+   * True if the contact may receive email, false if not. Unlike SMS, the CANSPAM act does not require explicit opt-in.
+   * If something GDPR-like comes about in the US, that will change. But for now, we can default to True.
+   * If the org has an emailOptIn field defined and it has a value, use that as the priority. Otherwise,
+   * check emailOptOut. If neither are defined, default to True.
+   */
+  public boolean canReceiveEmail() {
+    if (emailOptIn != null) {
+      return emailOptIn;
+    } else if (emailOptOut != null) {
+      return !emailOptOut;
+    }
+    return true;
+  }
 }
