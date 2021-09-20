@@ -413,7 +413,10 @@ public class StripeClient {
     return SubscriptionCreateParams.builder()
         .setCustomer(customer.getId())
         .setDefaultSource(source.getId())
-        .setCancelAt(cancelAt);
+        .setCancelAt(cancelAt)
+        // fail immediately if zip/cvc fails, just like a onetime charge -- default is to allow
+        // incomplete invoices, which doesn't give immediate donor feedback
+        .setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.ERROR_IF_INCOMPLETE);
   }
 
   public Subscription createSubscription(ProductCreateParams.Builder productBuilder,
