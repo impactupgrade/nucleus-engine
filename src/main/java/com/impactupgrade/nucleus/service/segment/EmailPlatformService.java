@@ -10,25 +10,20 @@ import java.util.Optional;
 public interface EmailPlatformService extends SegmentService {
 
   List<CrmContact> getListOfContacts(String listName) throws Exception;
-
   Optional<CrmContact> getContactByEmail(String listName, String email) throws Exception;
 
+  // TODO: May not need these, but keep for now.
   Collection<String> getContactGroupIds(String listName, CrmContact crmContact) throws Exception;
-
   List<String> getContactTags(String listName, CrmContact crmContact) throws Exception;
 
   void addContactToList(String listName, CrmContact crmContact) throws Exception;
-
-  void updateContact(String listName, CrmContact crmContact) throws Exception;
-
+  // TODO: Would this ever be used? Only thing I can think of is if a contact is manually marked as unsubscribed in the
+  //  CRM. But that could flow through upsertContact.
   void removeContactFromList(String listName, String email) throws Exception;
 
-  void addContactToGroup(String listName, CrmContact crmContact, String groupName) throws Exception;
-
+  void upsertContact(String listName, CrmContact crmContact) throws Exception;
   void addTagToContact(String listName, CrmContact crmContact, String tag) throws Exception;
 
-  void syncNewContacts(Calendar calendar) throws Exception;
-
-  void syncNewDonors(Calendar calendar) throws Exception;
-
+  void syncContacts(Calendar since) throws Exception;
+  void syncDonors(Calendar since) throws Exception;
 }

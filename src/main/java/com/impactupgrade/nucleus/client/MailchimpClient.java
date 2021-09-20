@@ -45,9 +45,10 @@ public class MailchimpClient {
   }
 
   // TODO: TEST THIS
-  public void updateContact(String listId, MemberInfo contact) throws IOException, MailchimpException {
+  public void upsertContact(String listId, MemberInfo contact) throws IOException, MailchimpException {
     EditMemberMethod editMemberMethod = new EditMemberMethod.Update(listId, contact.email_address);
     editMemberMethod.mapping.putAll(contact.mapping);
+    editMemberMethod.interests.mapping.putAll(contact.interests.mapping);
     client.execute(editMemberMethod);
   }
 
@@ -57,9 +58,7 @@ public class MailchimpClient {
     return getMemberResponse.members;
   }
 
-  /**
-   * Add a contact to a list. Will only add them as an email address in the list.
-   */
+  // TODO: Why is this only adding the email address? Shouldn't it be the whole CrmContact?
   public void addContactToList(String listId, String email) throws IOException, MailchimpException {
     EditMemberMethod editMemberMethod = new EditMemberMethod.Create(listId, email);
     editMemberMethod.status = SUBSCRIBED;
@@ -72,34 +71,20 @@ public class MailchimpClient {
     client.execute(editMemberMethod);
   }
 
-  public void addContactToGroup(String listId, String contactEmail, String groupId) throws IOException, MailchimpException {
-    EditMemberMethod editMemberMethod = new EditMemberMethod.Update(listId, contactEmail);
-    editMemberMethod.interests = getContactInfo(listId, contactEmail).interests;
-    // TODO: This will only replace the entry if it already exists, right? Need more of an upsert?
-    editMemberMethod.interests.mapping.replace(groupId, true);
-    client.execute(editMemberMethod);
-  }
-
-  public void addContactToGroups(String listId, String contactEmail, List<String> groupNames) throws IOException, MailchimpException {
-    for (String name : groupNames) {
-      addContactToGroup(listId, contactEmail, name);
-    }
-  }
-
-  // TODO: test
+  // TODO: TEST THIS
   public Set<String> getContactGroupIds(String listId, String contactEmail) throws IOException, MailchimpException {
     MemberInfo contact = getContactInfo(listId, contactEmail);
     return contact.interests.mapping.keySet();
   }
 
-  // TODO Test this
+  // TODO: TEST THIS
   public List<String> getContactTags(String listId, String contactEmail) throws IOException, MailchimpException {
     MemberInfo member = getContactInfo(listId, contactEmail);
     List<MailchimpObject> tags = (List<MailchimpObject>) member.mapping.get(TAGS);
     return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toList());
   }
 
-  //TODO: TEST
+  // TODO: TEST THIS
   public void addTag(String listId, String contactEmail, String tagName) throws IOException, MailchimpException {
     MailchimpObject newTag = new MailchimpObject();
     newTag.mapping.put(TAG_STATUS, TAG_ACTIVE);
@@ -111,7 +96,7 @@ public class MailchimpClient {
     client.execute(editMemberMethod);
   }
 
-  //TODO: TEST
+  // TODO: TEST THIS
   public void removeTag(String listId, String contactEmail, String tagName) throws IOException, MailchimpException {
     MailchimpObject tag = new MailchimpObject();
     tag.mapping.put(TAG_STATUS, TAG_INACTIVE);
