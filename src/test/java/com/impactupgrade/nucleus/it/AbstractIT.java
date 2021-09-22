@@ -4,12 +4,12 @@
 
 package com.impactupgrade.nucleus.it;
 
-import com.impactupgrade.integration.hubspot.v3.AssociationSearchResult;
-import com.impactupgrade.integration.hubspot.v3.AssociationSearchResults;
-import com.impactupgrade.integration.hubspot.v3.Company;
-import com.impactupgrade.integration.hubspot.v3.CompanyResults;
-import com.impactupgrade.integration.hubspot.v3.HasId;
-import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
+import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResult;
+import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResults;
+import com.impactupgrade.integration.hubspot.crm.v3.Company;
+import com.impactupgrade.integration.hubspot.crm.v3.CompanyResults;
+import com.impactupgrade.integration.hubspot.crm.v3.HasId;
+import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.client.SfdcClient;
@@ -112,7 +112,7 @@ public abstract class AbstractIT extends JerseyTest {
   }
 
   protected void clearHubspotByName(String name) throws Exception {
-    HubSpotV3Client hsClient = HubSpotClientFactory.v3Client(env());
+    HubSpotCrmV3Client hsClient = HubSpotClientFactory.crmV3Client(env());
 
     CompanyResults existingAccounts = hsClient.company().searchByName(name, Collections.emptyList());
     for (Company existingAccount : existingAccounts.getResults()) {

@@ -87,6 +87,7 @@ public class EnvironmentConfig {
   public Hubspot hubspot = new Hubspot();
 
   public static class Hubspot extends Platform {
+    public String portalId = "";
     public HubSpotDonationPipeline donationPipeline = new HubSpotDonationPipeline();
     public HubSpotRecurringDonationPipeline recurringDonationPipeline = new HubSpotRecurringDonationPipeline();
     public HubspotCRMFieldDefinitions fieldDefinitions = new HubspotCRMFieldDefinitions();

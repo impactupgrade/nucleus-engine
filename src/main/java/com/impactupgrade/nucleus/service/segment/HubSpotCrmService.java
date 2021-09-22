@@ -7,18 +7,18 @@ package com.impactupgrade.nucleus.service.segment;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.integration.hubspot.v1.model.HasValue;
-import com.impactupgrade.integration.hubspot.v3.AssociationSearchResults;
-import com.impactupgrade.integration.hubspot.v3.Company;
-import com.impactupgrade.integration.hubspot.v3.CompanyProperties;
-import com.impactupgrade.integration.hubspot.v3.Contact;
-import com.impactupgrade.integration.hubspot.v3.ContactProperties;
-import com.impactupgrade.integration.hubspot.v3.ContactResults;
-import com.impactupgrade.integration.hubspot.v3.Deal;
-import com.impactupgrade.integration.hubspot.v3.DealProperties;
-import com.impactupgrade.integration.hubspot.v3.DealResults;
-import com.impactupgrade.integration.hubspot.v3.Filter;
-import com.impactupgrade.integration.hubspot.v3.HasId;
-import com.impactupgrade.integration.hubspot.v3.HubSpotV3Client;
+import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResults;
+import com.impactupgrade.integration.hubspot.crm.v3.Company;
+import com.impactupgrade.integration.hubspot.crm.v3.CompanyProperties;
+import com.impactupgrade.integration.hubspot.crm.v3.Contact;
+import com.impactupgrade.integration.hubspot.crm.v3.ContactProperties;
+import com.impactupgrade.integration.hubspot.crm.v3.ContactResults;
+import com.impactupgrade.integration.hubspot.crm.v3.Deal;
+import com.impactupgrade.integration.hubspot.crm.v3.DealProperties;
+import com.impactupgrade.integration.hubspot.crm.v3.DealResults;
+import com.impactupgrade.integration.hubspot.crm.v3.Filter;
+import com.impactupgrade.integration.hubspot.crm.v3.HasId;
+import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -59,7 +59,7 @@ public class HubSpotCrmService implements CrmService {
   private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 
   protected Environment env;
-  protected HubSpotV3Client hsClient;
+  protected HubSpotCrmV3Client hsClient;
 
   protected Set<String> companyFields;
   protected Set<String> contactFields;
@@ -71,7 +71,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public void init(Environment env) {
     this.env = env;
-    hsClient = HubSpotClientFactory.v3Client(env);
+    hsClient = HubSpotClientFactory.crmV3Client(env);
 
     companyFields = getCustomFieldNames();
     companyFields.addAll(env.getConfig().hubspot.customQueryFields.company.stream().toList());
@@ -762,7 +762,7 @@ public class HubSpotCrmService implements CrmService {
 
   // TODO: leaving this here in case it's helpful for eventual bulk import support
 //  public static void main(String[] args) throws IOException, InterruptedException {
-//    HubSpotV3Client hsV3Client = HubSpotClientFactory.v3Client();
+//    HubSpotCrmV3Client hsV3Client = HubSpotClientFactory.v3Client();
 //    HubSpotV1Client hsV1Client = HubSpotClientFactory.v1Client();
 //
 //    CSVParser csvParser = CSVParser.parse(

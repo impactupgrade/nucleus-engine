@@ -50,7 +50,7 @@ public class DonationFormController {
 
   private static final Logger log = LogManager.getLogger(DonationFormController.class);
 
-  private final EnvironmentFactory envFactory;
+  protected final EnvironmentFactory envFactory;
 
   public DonationFormController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
