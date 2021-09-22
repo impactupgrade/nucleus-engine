@@ -62,7 +62,6 @@ public class ContactService {
     // create new Contact
     String contactId = crmService.insertContact(paymentGatewayEvent);
     paymentGatewayEvent.setCrmContactId(contactId);
-
   }
 
   public void processContactForm(ContactFormData formData) throws Exception {

@@ -5,7 +5,6 @@ import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmAccount;
-import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.DonationFormData;
 import com.impactupgrade.nucleus.service.logic.AntiFraudService;
@@ -236,7 +235,6 @@ public class DonationFormController {
 
     // If it's a biz donation, this will all be the biz billing info and we shouldn't set it on the individual.
 //    if (!formData.isBusiness()) {
-      account.address = new CrmAddress();
       account.address.street = formData.getFullBillingAddress();
       account.address.city = formData.getBillingCity();
       account.address.state = formData.getBillingState();
@@ -249,7 +247,6 @@ public class DonationFormController {
   private void updateHouseholdAccount(DonationFormData formData, Environment env) throws Exception {
     CrmAccount account = new CrmAccount();
     account.id = formData.getCrmAccountId();
-    account.address = new CrmAddress();
     account.address.street = emptyStringToNull(formData.getFullBillingAddress());
     account.address.city = emptyStringToNull(formData.getBillingCity());
     account.address.state = emptyStringToNull(formData.getBillingState());
@@ -297,7 +294,6 @@ public class DonationFormController {
     contact.mobilePhone = formData.getPhone();
 
     // If it's a biz donation, this will all be the biz billing info and we shouldn't set it on the individual.
-    contact.address = new CrmAddress();
     contact.address.street = formData.getFullBillingAddress();
     contact.address.city = formData.getBillingCity();
     contact.address.state = formData.getBillingState();
@@ -314,7 +310,6 @@ public class DonationFormController {
     contact.id = formData.getCrmContactId();
     contact.mobilePhone = emptyStringToNull(formData.getPhone());
 
-    contact.address = new CrmAddress();
     contact.address.street = emptyStringToNull(formData.getFullBillingAddress());
     contact.address.city = emptyStringToNull(formData.getBillingCity());
     contact.address.state = emptyStringToNull(formData.getBillingState());

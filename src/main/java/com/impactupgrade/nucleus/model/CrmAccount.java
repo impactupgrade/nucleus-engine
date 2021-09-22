@@ -12,7 +12,7 @@ public class CrmAccount {
 
   public String id;
   public String name;
-  public CrmAddress address;
+  public CrmAddress address = new CrmAddress();
   public Type type;
   public Object rawObject;
 

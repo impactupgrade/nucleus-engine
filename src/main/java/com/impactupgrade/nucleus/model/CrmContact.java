@@ -21,7 +21,7 @@ public class CrmContact {
   public String mobilePhone;
   public String workPhone;
   public PreferredPhone preferredPhone;
-  public CrmAddress address;
+  public CrmAddress address = new CrmAddress();
   public Boolean emailOptIn;
   public Boolean emailOptOut;
   public Boolean smsOptIn;
