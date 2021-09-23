@@ -71,6 +71,7 @@ public class EnvironmentConfig {
     public String paymentGatewayDepositId = "";
     public String paymentGatewayDepositDate = "";
     public String paymentGatewayDepositNetAmount = "";
+    public String paymentGatewayDepositFee = "";
     public String emailOptIn = "";
     public String emailOptOut = "";
     public String smsOptIn = "";

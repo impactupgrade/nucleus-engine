@@ -191,6 +191,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           log.info("found intent {}", charge.getPaymentIntent());
           paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction));
         }
+
         paymentGatewayEvent.setDepositId(payout.getId());
         Calendar c = Calendar.getInstance();
         c.setTimeInMillis(payout.getArrivalDate() * 1000);

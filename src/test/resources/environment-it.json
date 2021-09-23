@@ -13,7 +13,8 @@
       "paymentGatewayRefundId": "",
       "paymentGatewayDepositId": "",
       "paymentGatewayDepositDate": "",
-      "paymentGatewayDepositNetAmount": ""
+      "paymentGatewayDepositNetAmount": "",
+      "paymentGatewayDepositFee": ""
     },
     "customQueryFields": {
       "account": [],

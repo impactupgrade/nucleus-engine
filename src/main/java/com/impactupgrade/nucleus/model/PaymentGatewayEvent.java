@@ -53,6 +53,7 @@ public class PaymentGatewayEvent {
   protected Calendar transactionDate;
   protected String transactionDescription;
   protected Double transactionExchangeRate;
+  protected Double transactionFeeInDollars;
   protected String transactionId; // ex: Stripe PaymentIntent ID, or the Charge ID if this was a simple Charge API use
   protected String transactionSecondaryId; // ex: Stripe Charge ID if this was the Payment Intent API
   protected Double transactionOriginalAmountInDollars;
@@ -97,15 +98,20 @@ public class PaymentGatewayEvent {
       transactionDate = Calendar.getInstance();
     }
 
-    stripeBalanceTransaction.ifPresent(balanceTransaction -> depositTransactionId = balanceTransaction.getId());
     transactionDescription = stripeCharge.getDescription();
     transactionId = stripeCharge.getId();
     transactionSuccess = !"failed".equalsIgnoreCase(stripeCharge.getStatus());
     transactionUrl = "https://dashboard.stripe.com/charges/" + stripeCharge.getId();
 
     transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
-    stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
+
+    stripeBalanceTransaction.ifPresent(bt -> {
+      depositTransactionId = bt.getId();
+      transactionNetAmountInDollars = bt.getNet() / 100.0;
+      transactionFeeInDollars = bt.getFee() / 100.0;
+    });
+
     if (env.getConfig().currency.equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
@@ -146,7 +152,6 @@ public class PaymentGatewayEvent {
       transactionDate = Calendar.getInstance();
     }
 
-    stripeBalanceTransaction.ifPresent(balanceTransaction -> depositTransactionId = balanceTransaction.getId());
     transactionDescription = stripePaymentIntent.getDescription();
     transactionId = stripePaymentIntent.getId();
     transactionSecondaryId = stripePaymentIntent.getCharges().getData().stream().findFirst().map(Charge::getId).orElse(null);
@@ -156,8 +161,14 @@ public class PaymentGatewayEvent {
     transactionUrl = "https://dashboard.stripe.com/payments/" + stripePaymentIntent.getId();
 
     transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
-    stripeBalanceTransaction.ifPresent(t -> transactionNetAmountInDollars = t.getNet() / 100.0);
     transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
+
+    stripeBalanceTransaction.ifPresent(bt -> {
+      depositTransactionId = bt.getId();
+      transactionNetAmountInDollars = bt.getNet() / 100.0;
+      transactionFeeInDollars = bt.getFee() / 100.0;
+    });
+
     if (env.getConfig().currency.equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
@@ -645,6 +656,14 @@ public class PaymentGatewayEvent {
     this.transactionExchangeRate = transactionExchangeRate;
   }
 
+  public Double getTransactionFeeInDollars() {
+    return transactionFeeInDollars;
+  }
+
+  public void setTransactionFeeInDollars(Double transactionFeeInDollars) {
+    this.transactionFeeInDollars = transactionFeeInDollars;
+  }
+
   public String getTransactionId() {
     return transactionId;
   }
@@ -749,6 +768,7 @@ public class PaymentGatewayEvent {
         ", transactionAmountInDollars=" + transactionAmountInDollars +
         ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
         ", transactionExchangeRate=" + transactionExchangeRate +
+        ", transactionFeeInDollars=" + transactionFeeInDollars +
         ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
         ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
         ", transactionCurrencyConverted='" + transactionCurrencyConverted + '\'' +
