@@ -195,7 +195,12 @@ public class PaymentGatewayEvent {
     initStripeCommon();
 
     refundId = stripeRefund.getId();
-    transactionId = stripeRefund.getCharge();
+    if (!Strings.isNullOrEmpty(stripeRefund.getPaymentIntent())) {
+      transactionId = stripeRefund.getPaymentIntent();
+      transactionSecondaryId = stripeRefund.getCharge();
+    } else {
+      transactionId = stripeRefund.getCharge();
+    }
 
     if (stripeRefund.getCreated() != null) {
       refundDate = Calendar.getInstance();

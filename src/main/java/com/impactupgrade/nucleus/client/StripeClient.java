@@ -24,6 +24,7 @@ import com.stripe.model.Payout;
 import com.stripe.model.Plan;
 import com.stripe.model.Product;
 import com.stripe.model.Refund;
+import com.stripe.model.RefundCollection;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.net.RequestOptions;
@@ -145,10 +146,29 @@ public class StripeClient {
 
     List<String> expandList = new ArrayList<>();
     expandList.add("data.payment_intent");
+    expandList.add("data.balance_transaction");
     params.put("expand", expandList);
 
     ChargeCollection chargeCollection = Charge.list(params, requestOptions);
     return chargeCollection.autoPagingIterable();
+  }
+
+  public Iterable<Refund> getAllRefunds(Date startDate, Date endDate) throws StripeException {
+    Map<String, Object> params = new HashMap<>();
+    params.put("limit", 100);
+    Map<String, Object> createdParams = new HashMap<>();
+    createdParams.put("gte", startDate.getTime() / 1000);
+    createdParams.put("lte", endDate.getTime() / 1000);
+    params.put("created", createdParams);
+
+    List<String> expandList = new ArrayList<>();
+    expandList.add("data.charge");
+    expandList.add("data.payment_intent");
+    expandList.add("data.balance_transaction");
+    params.put("expand", expandList);
+
+    RefundCollection refundCollection = Refund.list(params, requestOptions);
+    return refundCollection.autoPagingIterable();
   }
 
   public Iterable<Event> getAllEvents(String eventType, Date startDate, Date endDate) throws StripeException {

@@ -45,49 +45,49 @@ public class PaymentGatewayDeposit {
     return ledgers.values().stream().map(l -> l.fees).reduce(0.0, Double::sum);
   }
 
-//  public double getRefunds() { return ledgers.values().stream().map(l -> l.refunds).reduce(0.0, Double::sum); }
+  public double getRefunds() { return ledgers.values().stream().map(l -> l.refunds).reduce(0.0, Double::sum); }
 
   public Map<String, Ledger> getLedgers() {
     return ledgers;
   }
 
-  // TODO: Will need to rethink the following, since hierarchies of funds was somewhat of a TER-specific concept.
+  // TODO: May need to rethink the following, since hierarchies of funds was somewhat of a TER-specific concept.
 
-//  public void addTransaction(double gross, double net, double fee, double refund, String parentFund, String fund) {
-//    if (!ledgers.containsKey(parentFund)) {
-//      Ledger ledger = new Ledger();
-//      ledgers.put(parentFund, ledger);
-//    }
-//    if (!ledgers.get(parentFund).subLedgers.containsKey(fund)) {
-//      Ledger ledger = new Ledger();
-//      ledgers.get(parentFund).subLedgers.put(fund, ledger);
-//    }
-//
-//    ledgers.get(parentFund).gross += gross;
-//    ledgers.get(parentFund).net += net;
-//    ledgers.get(parentFund).fees += fee;
-//    ledgers.get(parentFund).refunds += refund;
-//    ledgers.get(parentFund).subLedgers.get(fund).gross += gross;
-//    ledgers.get(parentFund).subLedgers.get(fund).net += net;
-//    ledgers.get(parentFund).subLedgers.get(fund).fees += fee;
-//    ledgers.get(parentFund).subLedgers.get(fund).refunds += refund;
-//  }
-//
-//  public void addTransaction(double gross, double net, double fee, double refund, String fund) {
-//    if (Strings.isNullOrEmpty(fund)) {
-//      fund = "General";
-//    }
-//
-//    if (!ledgers.containsKey(fund)) {
-//      Ledger ledger = new Ledger();
-//      ledgers.put(fund, ledger);
-//    }
-//
-//    ledgers.get(fund).gross += gross;
-//    ledgers.get(fund).net += net;
-//    ledgers.get(fund).fees += fee;
-//    ledgers.get(fund).refunds += refund;
-//  }
+  public void addTransaction(double gross, double net, double fee, double refund, String parentFund, String fund) {
+    if (!ledgers.containsKey(parentFund)) {
+      Ledger ledger = new Ledger();
+      ledgers.put(parentFund, ledger);
+    }
+    if (!ledgers.get(parentFund).subLedgers.containsKey(fund)) {
+      Ledger ledger = new Ledger();
+      ledgers.get(parentFund).subLedgers.put(fund, ledger);
+    }
+
+    ledgers.get(parentFund).gross += gross;
+    ledgers.get(parentFund).net += net;
+    ledgers.get(parentFund).fees += fee;
+    ledgers.get(parentFund).refunds += refund;
+    ledgers.get(parentFund).subLedgers.get(fund).gross += gross;
+    ledgers.get(parentFund).subLedgers.get(fund).net += net;
+    ledgers.get(parentFund).subLedgers.get(fund).fees += fee;
+    ledgers.get(parentFund).subLedgers.get(fund).refunds += refund;
+  }
+
+  public void addTransaction(double gross, double net, double fee, double refund, String fund) {
+    if (Strings.isNullOrEmpty(fund)) {
+      fund = "General";
+    }
+
+    if (!ledgers.containsKey(fund)) {
+      Ledger ledger = new Ledger();
+      ledgers.put(fund, ledger);
+    }
+
+    ledgers.get(fund).gross += gross;
+    ledgers.get(fund).net += net;
+    ledgers.get(fund).fees += fee;
+    ledgers.get(fund).refunds += refund;
+  }
 
   // TODO: Should PaymentGatewayEvent have some concept of fund within it?
   public void addTransaction(PaymentGatewayEvent transaction, String fund) {
@@ -104,6 +104,9 @@ public class PaymentGatewayDeposit {
     ledgers.get(fund).gross += transaction.transactionAmountInDollars;
     ledgers.get(fund).net += transaction.transactionNetAmountInDollars;
     ledgers.get(fund).fees += (transaction.transactionAmountInDollars - transaction.transactionNetAmountInDollars);
+    // TODO: The above methods receive explicit refunds amount (see how TER hits the Stripe API to retrieve them).
+    //  We need to bake that same sort of concept into PaymentGatewayEvent. But also note that refunds are on a
+    //  different date compared to the original charge!
 //    ledgers.get(fund).refunds += refund;
   }
 
@@ -111,7 +114,7 @@ public class PaymentGatewayDeposit {
     private double gross = 0.0;
     private double net = 0.0;
     private double fees = 0.0;
-//    private double refunds = 0.0;
+    private double refunds = 0.0;
     private List<PaymentGatewayEvent> transactions = new ArrayList<>();
 
     private final Map<String, Ledger> subLedgers = new HashMap<>();
@@ -128,7 +131,7 @@ public class PaymentGatewayDeposit {
       return fees;
     }
 
-//    public double getRefunds() { return refunds; }
+    public double getRefunds() { return refunds; }
 
     public Map<String, Ledger> getSubLedgers() {
       return subLedgers;
