@@ -21,16 +21,14 @@ jobs:
       with:
         java-version: '16'
         distribution: 'adopt'
-    - name: maven-settings-xml-action
-      uses: whelk-io/maven-settings-xml-action@v18
-      with:
-        servers: '[{ "id": "github", "username": "impactupgrade-github", "password": "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" }]'
-        output_file: ~/.m2/settings.xml
     - name: Cache Maven packages
       uses: actions/cache@v2
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
+    - uses: s4u/maven-settings-action@v2.4.1
+      with:
+        servers: '[{ "id": "github", "username": "impactupgrade-github", "password": "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" }]'
     - name: Build with Maven
       run: mvn --update-snapshots clean verify -P it,sandbox
