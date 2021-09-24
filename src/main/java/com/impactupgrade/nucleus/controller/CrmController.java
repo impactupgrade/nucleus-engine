@@ -29,7 +29,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.File;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +51,7 @@ public class CrmController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImport(
-      @FormDataParam("file") File file,
+      @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
     Environment env = envFactory.init(request);
@@ -60,7 +60,7 @@ public class CrmController {
     Runnable thread = () -> {
       try {
         CSVParser csvParser = CSVParser.parse(
-            file,
+            inputStream,
             Charset.defaultCharset(),
             CSVFormat.DEFAULT
                 .withFirstRecordAsHeader()
@@ -107,13 +107,12 @@ public class CrmController {
     return Response.status(200).build();
   }
 
-  // TODO: Wasn't ultimately used by STS, and needs further testing, but keeping it for now...
   @Path("/bulk-import/fb-fundraisers")
   @POST
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImportFBFundraisers(
-      @FormDataParam("file") File file,
+      @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
     Environment env = envFactory.init(request);
@@ -122,7 +121,7 @@ public class CrmController {
     Runnable thread = () -> {
       try {
         CSVParser csvParser = CSVParser.parse(
-            file,
+            inputStream,
             Charset.defaultCharset(),
             CSVFormat.DEFAULT
                 .withFirstRecordAsHeader()
@@ -150,7 +149,7 @@ public class CrmController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkUpdate(
-      @FormDataParam("file") File file,
+      @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
     Environment env = envFactory.init(request);
@@ -159,7 +158,7 @@ public class CrmController {
     Runnable thread = () -> {
       try {
         CSVParser csvParser = CSVParser.parse(
-            file,
+            inputStream,
             Charset.defaultCharset(),
             CSVFormat.DEFAULT
                 .withFirstRecordAsHeader()

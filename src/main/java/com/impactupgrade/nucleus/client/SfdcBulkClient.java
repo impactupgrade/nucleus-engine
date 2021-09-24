@@ -130,16 +130,15 @@ public class SfdcBulkClient {
    * Upload the given contactFile (InputStream of a Windfall CSV) through the SFDC Bulk API, including our
    * customized iwave_spec.csv which provides CSV->SFDC field mappings.
    *
-   * @param contactFile
+   * @param contactFileInputStream
    * @throws AsyncApiException
    * @throws ConnectionException
    * @throws IOException
    */
-  public void uploadWindfallFile(File contactFile) throws AsyncApiException, ConnectionException, IOException {
+  public void uploadWindfallFile(InputStream contactFileInputStream) throws AsyncApiException, ConnectionException, IOException {
     try (
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("sfdc/windfall_spec.csv");
-        InputStream contactFileInputStream = new FileInputStream(contactFile)
     ) {
       BulkConnection bulkConn = bulkConn();
 

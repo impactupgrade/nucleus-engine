@@ -30,6 +30,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
@@ -57,7 +58,7 @@ public class SfdcController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkDelete(
       @FormDataParam("google-sheet-url") String gsheetUrl,
-      @FormDataParam("file") File file,
+      @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request) {
     Environment env = envFactory.init(request);
@@ -68,9 +69,9 @@ public class SfdcController {
         List<Map<String, String>> data;
         if (!Strings.isNullOrEmpty(gsheetUrl)) {
           data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-        } else if (file != null) {
+        } else if (inputStream != null) {
           CSVParser csvParser = CSVParser.parse(
-              file,
+              inputStream,
               Charset.defaultCharset(),
               CSVFormat.DEFAULT
                   .withFirstRecordAsHeader()
@@ -147,7 +148,7 @@ public class SfdcController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response iwave(
-      @FormDataParam("file") File file,
+      @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request
   ) {
@@ -164,7 +165,7 @@ public class SfdcController {
 
         try (
             CSVParser csvParser = CSVParser.parse(
-                file,
+                inputStream,
                 Charset.defaultCharset(),
                 CSVFormat.DEFAULT
                     .withFirstRecordAsHeader()
@@ -256,7 +257,7 @@ public class SfdcController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response windfall(
-      @FormDataParam("file") File file,
+      @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
       @Context HttpServletRequest request
   ) {
@@ -266,7 +267,7 @@ public class SfdcController {
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
       try {
-        env.sfdcBulkClient().uploadWindfallFile(file);
+        env.sfdcBulkClient().uploadWindfallFile(inputStream);
         log.info("FINISHED: windfall");
       } catch (Exception e) {
         log.error("Windfall update failed", e);
