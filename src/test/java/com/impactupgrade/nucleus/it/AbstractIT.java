@@ -59,6 +59,8 @@ public abstract class AbstractIT extends JerseyTest {
   // do not name this tearDown()
   @AfterAll
   public void after() throws Exception {
+    app.stop();
+
     super.tearDown();
   }
 

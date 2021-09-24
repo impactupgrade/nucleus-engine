@@ -2,13 +2,13 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.testng.util.Strings;
 
 import java.util.Calendar;
 import java.util.Collection;

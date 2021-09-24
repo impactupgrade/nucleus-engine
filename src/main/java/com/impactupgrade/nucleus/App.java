@@ -39,12 +39,10 @@ public class App {
   // $PORT env var provided by Heroku
   private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
-  public static void main(String... args) throws Exception {
-    new App().start();
-  }
+  private Server server = null;
 
   public void start() throws Exception {
-    Server server = new Server();
+    server = new Server();
 
     final ServerConnector httpConnector = new ServerConnector(server);
     httpConnector.setPort(PORT);
@@ -103,6 +101,10 @@ public class App {
     registerServlets(context);
   }
 
+  public void stop() throws Exception {
+    server.stop();
+  }
+
   /**
    * Allow orgs to wire in their custom implementations of Environment.
    */
@@ -130,4 +132,8 @@ public class App {
   protected StripeController stripeController() { return new StripeController(envFactory()); }
   protected TwilioController twilioController() { return new TwilioController(envFactory()); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory()); }
+
+  public static void main(String... args) throws Exception {
+    new App().start();
+  }
 }

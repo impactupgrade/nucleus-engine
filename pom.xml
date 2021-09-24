@@ -42,6 +42,12 @@
       <groupId>com.impactupgrade.integration</groupId>
       <artifactId>mailchimp-jvm-client</artifactId>
       <version>3.1.0-SNAPSHOT</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.testng</groupId>
+          <artifactId>testng</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <!-- TODO: upgrade in nucleus-parent, but temporarily using SNAPSHOT until I can sign and release -->
     <dependency>
