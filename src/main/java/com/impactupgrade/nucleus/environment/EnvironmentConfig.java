@@ -49,6 +49,14 @@ public class EnvironmentConfig {
     // if basic auth
     public String username = "";
     public String password = "";
+
+    // if OAuth
+    public String clientId = "";
+    public String clientSecret = "";
+    public String tokenServerUrl = "";
+
+    public String accessToken = "";
+    public String refreshToken = "";
   }
 
   public Platform stripe = new Platform();
@@ -169,6 +177,13 @@ public class EnvironmentConfig {
   public static class Recaptcha {
     public String siteSecret = "";
   }
+
+  public static class QuickBooks extends Platform {
+    public String realmId = "";
+    public String apiBaseUrl = "";
+  }
+
+  public QuickBooks quickbooks = new QuickBooks();
 
   public MetadataKeys metadataKeys = new MetadataKeys();
 
