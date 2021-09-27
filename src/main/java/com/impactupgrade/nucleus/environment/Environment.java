@@ -11,9 +11,11 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
+import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
+import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -113,6 +115,7 @@ public class Environment {
   public MessagingService messagingService() { return new MessagingService(this); }
   public NotificationService notificationService() { return new NotificationService(this); }
   public ScheduledJobService scheduledJobService(SessionFactory sessionFactory) { return new ScheduledJobService(this, sessionFactory); }
+  public AccountingService accountingService() { return new AccountingService(this); }
 
   // segment services
 
@@ -163,6 +166,10 @@ public class Environment {
 
   public List<EmailService> allEmailServices() {
     return segmentServices(EmailService.class);
+  }
+
+  public List<AccountingPlatformService> allAccountingPlatformServices() {
+    return segmentServices(AccountingPlatformService.class);
   }
 
   private <T extends SegmentService> T segmentService(final String name, Class<T> clazz) {
