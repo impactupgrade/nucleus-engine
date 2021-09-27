@@ -9,9 +9,11 @@ import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
+import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
+import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -100,6 +102,7 @@ public class Environment {
   public DonationService donationService() { return new DonationService(this); }
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
+  public AccountingService accountingService() { return new AccountingService(this); }
 
   // segment services
 
@@ -143,6 +146,10 @@ public class Environment {
 
   public List<EmailPlatformService> allEmailPlatformServices() {
     return segmentServices(EmailPlatformService.class);
+  }
+
+  public List<AccountingPlatformService> allAccountingPlatformServices() {
+    return segmentServices(AccountingPlatformService.class);
   }
 
   private <T extends SegmentService> T segmentService(final String name, Class<T> clazz) {
