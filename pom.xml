@@ -36,42 +36,8 @@
     </developer>
   </developers>
 
-  <dependencies>
-    <!-- TODO: upgrade in nucleus-parent -->
-    <dependency>
-      <groupId>com.impactupgrade.integration</groupId>
-      <artifactId>mailchimp-jvm-client</artifactId>
-      <version>3.1.0-SNAPSHOT</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.testng</groupId>
-          <artifactId>testng</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <!-- TODO: upgrade in nucleus-parent, but temporarily using SNAPSHOT until I can sign and release -->
-    <dependency>
-      <groupId>com.impactupgrade.integration</groupId>
-      <artifactId>hubspot-java-client</artifactId>
-      <version>2.1.0-SNAPSHOT</version>
-    </dependency>
-  </dependencies>
-
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>2.6</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>test-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
       <!-- Allows the example to be run via 'mvn compile exec:java' -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -84,71 +50,4 @@
       </plugin>
     </plugins>
   </build>
-
-  <profiles>
-    <profile>
-      <id>it</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-failsafe-plugin</artifactId>
-            <version>2.22.2</version>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>integration-test</goal>
-                  <goal>verify</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
-
-  <!--
-    Using https://github.com/impactupgrade/nucleus-parent/packages as a private repo. Assumes you have the following in your ~/.m2/settings.xml:
-
-    <server>
-      <id>github</id>
-      <username>YOUR USERNAME</username>
-      <password>YOUR TOKEN</password>
-    </server>
-
-    Create your own token here: https://github.com/settings/tokens/new. Enable the "write:packages" scope.
--->
-
-  <repositories>
-    <repository>
-      <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/*</url>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-    <!-- allow sonatype snapshots, primarily for open source SDKs from Impact Upgrade -->
-    <repository>
-      <id>oss.sonatype.org-snapshot</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
-    </snapshotRepository>
-    <repository>
-      <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
-    </repository>
-  </distributionManagement>
 </project>
