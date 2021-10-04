@@ -75,11 +75,11 @@
   <distributionManagement>
     <snapshotRepository>
       <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-parent</url>
+      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
     </snapshotRepository>
     <repository>
       <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-parent</url>
+      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
     </repository>
   </distributionManagement>
 </project>
