@@ -145,6 +145,7 @@ public class StripeClient {
     params.put("created", createdParams);
 
     List<String> expandList = new ArrayList<>();
+    expandList.add("data.customer");
     expandList.add("data.payment_intent");
     expandList.add("data.balance_transaction");
     params.put("expand", expandList);

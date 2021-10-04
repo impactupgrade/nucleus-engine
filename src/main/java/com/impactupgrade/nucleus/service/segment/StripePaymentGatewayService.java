@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayTransaction;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
@@ -24,7 +25,9 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class StripePaymentGatewayService implements PaymentGatewayService {
@@ -41,6 +44,48 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public void init(Environment env) {
     this.env = env;
     stripeClient = env.stripeClient();
+  }
+
+  @Override
+  public List<PaymentGatewayTransaction> getTransactions(Date startDate, Date endDate) throws Exception {
+    List<PaymentGatewayTransaction> transactions = new ArrayList<>();
+    Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+    for (Charge charge : charges) {
+      if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
+        // hasn't been deposited yet, so skip it
+        continue;
+      }
+
+      Calendar c = Calendar.getInstance();
+      c.setTimeInMillis(charge.getCreated() * 1000);
+
+      String address = null;
+      if (charge.getCustomerObject().getAddress() != null
+          && !Strings.isNullOrEmpty(charge.getCustomerObject().getAddress().getLine1())) {
+        // TODO: May need to format this differently...
+        address = charge.getCustomerObject().getAddress().toString();
+      }
+
+      Map<String, String> metadata = new HashMap<>();
+      metadata.putAll(charge.getMetadata());
+      metadata.putAll(charge.getCustomerObject().getMetadata());
+
+      PaymentGatewayTransaction transaction = new PaymentGatewayTransaction(
+          c,
+          charge.getAmount() / 100.0,
+          charge.getBalanceTransactionObject().getNet() / 100.0,
+          charge.getBalanceTransactionObject().getFee() / 100.0,
+          charge.getCustomerObject().getName(),
+          charge.getCustomerObject().getEmail(),
+          charge.getCustomerObject().getPhone(),
+          address,
+          "Stripe",
+          "https://dashboard.stripe.com/charges/" + charge.getId(),
+          metadata
+      );
+      transactions.add(transaction);
+    }
+    return transactions;
   }
 
   @Override
