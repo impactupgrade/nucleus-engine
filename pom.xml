@@ -51,14 +51,35 @@
     </plugins>
   </build>
 
+  <repositories>
+    <repository>
+      <id>github</id>
+      <url>https://maven.pkg.github.com/impactupgrade/*</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <!-- allow sonatype snapshots, primarily for open source SDKs from Impact Upgrade -->
+    <repository>
+      <id>oss.sonatype.org-snapshot</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
   <distributionManagement>
     <snapshotRepository>
       <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
+      <url>https://maven.pkg.github.com/impactupgrade/nucleus-parent</url>
     </snapshotRepository>
     <repository>
       <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
+      <url>https://maven.pkg.github.com/impactupgrade/nucleus-parent</url>
     </repository>
   </distributionManagement>
 </project>
