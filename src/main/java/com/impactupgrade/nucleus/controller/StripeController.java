@@ -14,6 +14,7 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.service.logic.FailedRequestService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.EmailUtil;
 import com.impactupgrade.nucleus.util.LoggingUtil;
@@ -32,6 +33,7 @@ import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.POST;
@@ -80,6 +82,10 @@ public class StripeController {
     // stripe-java uses GSON, so Jersey/Jackson won't work on its own
     Event event = Event.GSON.fromJson(json, Event.class);
 
+    // TODO: remove once done testing
+    FailedRequestService failedRequestService = env.failedRequestService();
+    failedRequestService.persist(event, Event::getId, JSONObject::new, "test");
+
     EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
     StripeObject stripeObject;
     if (dataObjectDeserializer.getObject().isPresent()) {
@@ -100,9 +106,11 @@ public class StripeController {
       Runnable thread = () -> {
         try {
           processEvent(event.getType(), stripeObject, env);
+          failedRequestService.delete(event, Event::getId);
         } catch (Exception e) {
           log.error("failed to process the Stripe event", e);
           // TODO: email notification?
+          failedRequestService.persist(event, Event::getId, JSONObject::new, e.getMessage());
         }
       };
       new Thread(thread).start();
