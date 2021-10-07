@@ -4,7 +4,7 @@ import java.util.Optional;
 
 public interface Dao<I, E> {
 
-    E create(E e, Optional<Long> ttl);
+    E create(E e);
 
     Optional<E> get(I id);
 

@@ -21,26 +21,12 @@ public class FailedRequestDao implements Dao<String, FailedRequest> {
     }
 
     @Override
-    public FailedRequest create(FailedRequest failedRequest, Optional<Long> ttl) {
+    public FailedRequest create(FailedRequest failedRequest) {
         final Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
         session.save(failedRequest);
         transaction.commit();
         session.close();
-
-//        session.getTransaction().begin();
-//
-//        Query query = session.createSQLQuery("INSERT INTO "
-//                + "request_payload(id, payload, created_at) "
-//                + "VALUES(:id, :json, :created_at)");
-//        query.setParameter("id", payload.id);
-//        query.setParameter("json", payload.json);
-//        query.setParameter("created_at", new Date());
-//        query.executeUpdate();
-//
-//        session.getTransaction().commit();
-//        session.close();
-
         return failedRequest;
     }
 
@@ -53,16 +39,6 @@ public class FailedRequestDao implements Dao<String, FailedRequest> {
         final Session session = sessionFactory.openSession();
         FailedRequest failedRequest = session.get(FailedRequest.class, id);
         session.close();
-
-//        session.getTransaction().begin();
-//        //Query q = session.createQuery("from Payload o where o.id = :id");
-//        Query q = session.createSQLQuery("SELECT * FROM request_payload " +
-//                "WHERE " +
-//                "id = :id");
-//        q.setParameter("id", id);
-//        Payload org = (Payload) q.getSingleResult();
-//        session.getTransaction().commit();
-
         return Optional.ofNullable(failedRequest);
     }
 
@@ -73,22 +49,6 @@ public class FailedRequestDao implements Dao<String, FailedRequest> {
         session.update(failedRequest);
         transaction.commit();
         session.close();
-
-//        session.getTransaction().begin();
-//        Query query = session.createSQLQuery("UPDATE request_payload "
-//                + "SET " +
-//                "id = :id, " +
-//                "payload = :json, " +
-//                "created_at = :created_at " +
-//                "WHERE " +
-//                "id = :id");
-//        query.setParameter("id", payload.id);
-//        query.setParameter("json", payload.json);
-//        query.setParameter("created_at", new Date());
-//        query.executeUpdate();
-//        session.getTransaction().commit();
-//        session.close();
-
         return failedRequest;
     }
 
@@ -100,25 +60,6 @@ public class FailedRequestDao implements Dao<String, FailedRequest> {
         session.delete(failedRequest);
         transaction.commit();
         session.close();
-
-//        Session session = sessionFactory.openSession();
-//        session.beginTransaction();
-//        session.delete(failedRequest);
-//        session.getTransaction().begin();
-//        Query query = session.createSQLQuery("UPDATE request_payload "
-//                + "SET " +
-//                "id = :id, " +
-//                "payload = :json, " +
-//                "created_at = :created_at " +
-//                "WHERE " +
-//                "id = :id");
-//        query.setParameter("id", payload.id);
-//        query.setParameter("json", payload.json);
-//        query.setParameter("created_at", new Date());
-//        query.executeUpdate();
-//        session.getTransaction().commit();
-//        session.close();
-
         return Optional.ofNullable(failedRequest);
     }
 }

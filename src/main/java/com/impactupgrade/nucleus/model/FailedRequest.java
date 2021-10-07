@@ -27,13 +27,4 @@ public class FailedRequest {
     @Column(name = "last_attempt_time")
     private Date lastAttemptTime;
 
-    //CREATE TABLE failed_request (
-    //	id varchar PRIMARY key,
-    //	payload text NOT NULL,
-    //  error_message varchar not null,
-    //	attempt_count int not null,
-    //	first_attempt_time timestamp NOT null,
-    //	last_attempt_time timestamp
-    //	);
-
 }
