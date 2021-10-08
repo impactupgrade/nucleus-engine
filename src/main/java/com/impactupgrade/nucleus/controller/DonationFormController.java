@@ -44,7 +44,7 @@ import static com.impactupgrade.nucleus.util.Utils.emptyStringToNull;
 // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 // TODO: Square this up with DS?
 
-@Path("/donation")
+@Path("/donate")
 public class DonationFormController {
 
   private static final Logger log = LogManager.getLogger(DonationFormController.class);
@@ -59,7 +59,6 @@ public class DonationFormController {
    * IMPORTANT: Although this method does a lot, it cannot be spun off into a new thread! The donation form
    * needs to receive any error messages from Stripe (invalid CVC, etc), so this must currently be sync!
    */
-  @Path("/donation-form")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.TEXT_PLAIN)

@@ -581,8 +581,6 @@ public class SfdcCrmService implements CrmService {
         }
     );
 
-
-
     for (int i = 0; i < importEvents.size(); i++) {
       CrmImportEvent importEvent = importEvents.get(i);
 
