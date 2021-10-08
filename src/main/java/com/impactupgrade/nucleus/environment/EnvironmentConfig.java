@@ -182,7 +182,8 @@ public class EnvironmentConfig {
 
   public String currency = "";
 
-  private static final boolean isIntegrationTest = "true".equalsIgnoreCase(System.getProperty("nucleus.integration.test"));
+  private static final boolean IS_PROD = "production".equalsIgnoreCase(System.getenv("PROFILE"));
+  private static final boolean IS_INTEGRATION_TEST = "true".equalsIgnoreCase(System.getProperty("nucleus.integration.test"));
 
   public static EnvironmentConfig init() {
     try (
@@ -190,6 +191,8 @@ public class EnvironmentConfig {
             .getResourceAsStream("environment-default.json");
         InputStream jsonOrg = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("environment.json");
+        InputStream jsonOrgSandbox = Thread.currentThread().getContextClassLoader()
+            .getResourceAsStream("environment-sandbox.json");
         InputStream jsonOrgIntegrationTest = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("environment-it.json")
     ) {
@@ -203,8 +206,12 @@ public class EnvironmentConfig {
         mapper.readerForUpdating(envConfig).readValue(jsonOrg);
       }
 
+      if (!IS_PROD && jsonOrgSandbox != null) {
+        mapper.readerForUpdating(envConfig).readValue(jsonOrgSandbox);
+      }
+
       // IMPORTANT: Gate with the system property, set by AbstractIT, otherwise this file gets picked up by Heroku!
-      if (isIntegrationTest && jsonOrgIntegrationTest != null) {
+      if (IS_INTEGRATION_TEST && jsonOrgIntegrationTest != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrgIntegrationTest);
       }
 
