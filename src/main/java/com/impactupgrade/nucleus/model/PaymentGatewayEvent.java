@@ -13,6 +13,7 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
@@ -131,7 +132,7 @@ public class PaymentGatewayEvent {
 
     // Always do this last! We need all the metadata context to fill out the customer details.
     addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
-    initStripeCustomer(stripeCustomer);
+    initStripeCustomer(stripeCustomer, Optional.ofNullable(stripeCharge.getBillingDetails()));
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
@@ -188,7 +189,7 @@ public class PaymentGatewayEvent {
 
     // Always do this last! We need all the metadata context to fill out the customer details.
     addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
-    initStripeCustomer(stripeCustomer);
+    initStripeCustomer(stripeCustomer, Optional.empty());
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -216,7 +217,7 @@ public class PaymentGatewayEvent {
     initStripeSubscription(stripeSubscription, stripeCustomer);
 
     // Always do this last! We need all the metadata context to fill out the customer details.
-    initStripeCustomer(Optional.of(stripeCustomer));
+    initStripeCustomer(Optional.of(stripeCustomer), Optional.empty());
   }
 
   protected void initStripeCommon() {
@@ -225,7 +226,7 @@ public class PaymentGatewayEvent {
     paymentMethod = "credit card";
   }
 
-  protected void initStripeCustomer(Optional<Customer> __stripeCustomer) {
+  protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
@@ -245,14 +246,14 @@ public class PaymentGatewayEvent {
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
-    initStripeCustomerName(__stripeCustomer);
+    initStripeCustomerName(__stripeCustomer, billingDetails);
     initStripeAddress(__stripeCustomer);
   }
 
   // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
   // Some donation forms and vendors use true Customer names, others use metadata on Customer, other still only put
   // names in metadata on the Charge or Subscription. Madness. But let's be helpful...
-  protected void initStripeCustomerName(Optional<Customer> stripeCustomer) {
+  protected void initStripeCustomerName(Optional<Customer> stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
     Map<String, String> metadata = getAllMetadata();
 
     // For the full name, start with Customer name. Generally this is populated, but a few vendors don't always do it.
@@ -270,6 +271,10 @@ public class PaymentGatewayEvent {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+    // And finally, the billing details, if nothing else.
+    if (Strings.isNullOrEmpty(crmAccount.name) && billingDetails.isPresent()) {
+      crmAccount.name = billingDetails.get().getName();
     }
 
     // Now do first name, again using metadata.
