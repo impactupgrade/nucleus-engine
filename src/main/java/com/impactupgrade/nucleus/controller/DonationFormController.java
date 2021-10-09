@@ -227,7 +227,7 @@ public class DonationFormController {
     return Response.status(200).build();
   }
 
-  private String createHouseholdAccount(DonationFormData formData, Environment env) throws Exception {
+  protected String createHouseholdAccount(DonationFormData formData, Environment env) throws Exception {
     CrmAccount account = new CrmAccount();
 
     account.name = formData.getLastName() + " Household";
@@ -243,7 +243,7 @@ public class DonationFormController {
 
     return env.donationsCrmService().insertAccount(account);  }
 
-  private void updateHouseholdAccount(DonationFormData formData, Environment env) throws Exception {
+  protected void updateHouseholdAccount(DonationFormData formData, Environment env) throws Exception {
     CrmAccount account = new CrmAccount();
     account.id = formData.getCrmAccountId();
     account.address.street = emptyStringToNull(formData.getFullBillingAddress());
@@ -255,7 +255,7 @@ public class DonationFormController {
     env.donationsCrmService().updateAccount(account);
   }
 
-//  private String createBusinessAccount(DonationFormData formData, Environment env) throws Exception {
+//  protected String createBusinessAccount(DonationFormData formData, Environment env) throws Exception {
 //    CrmAccount account = new CrmAccount();
 //
 //    account.name = formData.getBusinessName();
@@ -283,7 +283,7 @@ public class DonationFormController {
 //    env.donationsCrmService().updateAccount(account);
 //  }
 
-  private String createHouseholdContact(DonationFormData formData, Environment env) throws Exception {
+  protected String createHouseholdContact(DonationFormData formData, Environment env) throws Exception {
     CrmContact contact = new CrmContact();
     contact.accountId = formData.getCrmAccountId();
 
@@ -304,7 +304,7 @@ public class DonationFormController {
     return env.donationsCrmService().insertContact(contact);
   }
 
-  private void updateHouseholdContact(DonationFormData formData, Environment env) throws Exception {
+  protected void updateHouseholdContact(DonationFormData formData, Environment env) throws Exception {
     CrmContact contact = new CrmContact();
     contact.id = formData.getCrmContactId();
     contact.mobilePhone = emptyStringToNull(formData.getPhone());
@@ -318,7 +318,7 @@ public class DonationFormController {
     env.donationsCrmService().updateContact(contact);
   }
 
-  private Customer getOrCreateStripeCustomer(DonationFormData formData, Environment env) throws StripeException {
+  protected Customer getOrCreateStripeCustomer(DonationFormData formData, Environment env) throws StripeException {
     StripeClient stripeClient = env.stripeClient();
 
     Customer customer = null;
@@ -345,7 +345,7 @@ public class DonationFormController {
     return customer;
   }
 
-  private void processStripe(Customer stripeCustomer, PaymentSource stripeSource, DonationFormData formData,
+  protected void processStripe(Customer stripeCustomer, PaymentSource stripeSource, DonationFormData formData,
       StripeClient stripeClient, Environment env) throws StripeException {
     log.info("processing payment with Stripe");
 
