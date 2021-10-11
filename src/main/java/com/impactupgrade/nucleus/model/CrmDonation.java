@@ -4,6 +4,8 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Calendar;
 
 public class CrmDonation {
@@ -14,6 +16,8 @@ public class CrmDonation {
   public String paymentGatewayName;
   public Status status;
   public Calendar closeDate;
+
+  @JsonIgnore
   public Object rawObject;
 
   public enum Status {

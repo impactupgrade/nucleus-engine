@@ -4,6 +4,8 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.List;
 import java.util.Locale;
 
@@ -43,6 +45,8 @@ public class CrmRecurringDonation {
   public String paymentGatewayName;
   public Boolean active;
   public Frequency frequency;
+
+  @JsonIgnore
   public Object rawObject;
 
   public CrmRecurringDonation() {}

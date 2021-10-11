@@ -4,6 +4,8 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class CrmAccount {
 
   public enum Type {
@@ -14,6 +16,8 @@ public class CrmAccount {
   public String name;
   public CrmAddress address = new CrmAddress();
   public Type type;
+
+  @JsonIgnore
   public Object rawObject;
 
   public CrmAccount() {}

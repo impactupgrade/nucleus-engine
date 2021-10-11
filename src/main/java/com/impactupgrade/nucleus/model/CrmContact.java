@@ -4,6 +4,8 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.List;
 
 public class CrmContact {
@@ -29,6 +31,8 @@ public class CrmContact {
   public String ownerId;
   public String notes;
   public List<String> emailGroups;
+
+  @JsonIgnore
   public Object rawObject;
 
   public CrmContact() {}

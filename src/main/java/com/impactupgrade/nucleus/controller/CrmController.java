@@ -4,12 +4,15 @@
 
 package com.impactupgrade.nucleus.controller;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
+import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -23,9 +26,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -34,6 +39,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Path("/crm")
 public class CrmController {
@@ -44,6 +50,47 @@ public class CrmController {
 
   public CrmController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
+  }
+
+  /**
+   * Retrieves a contact from the primary CRM using a variety of optional parameters. For use in external integrations,
+   * like Twilio Studio's retrieval of the CRM's Contact ID by phone number.
+   */
+  @Path("/contact")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getContact(
+      @QueryParam("id") String id,
+      @QueryParam("email") String email,
+      @QueryParam("phone") String phone,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    CrmService crmService = env.primaryCrmService();
+
+    Optional<CrmContact> contact = Optional.empty();
+    if (!Strings.isNullOrEmpty(id)) {
+      log.info("searching id={}", id);
+      contact = crmService.getContactById(id);
+    } else if (!Strings.isNullOrEmpty(email)) {
+      log.info("searching email={}", email);
+      contact = crmService.getContactByEmail(email);
+    } else if (!Strings.isNullOrEmpty(phone)) {
+      log.info("searching phone={}", phone);
+      contact = crmService.getContactByPhone(phone);
+    } else {
+      log.warn("no search params provided");
+    }
+
+    if (contact.isPresent()) {
+      log.info("returning Contact {}", contact.get().id);
+      return Response.status(200).entity(contact.get()).build();
+    } else {
+      log.info("Contact not found");
+      return Response.status(404).build();
+    }
   }
 
   @Path("/bulk-import/file")
