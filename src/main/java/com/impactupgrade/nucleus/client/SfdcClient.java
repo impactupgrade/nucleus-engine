@@ -175,29 +175,21 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     // TODO: Will need to rework this section for international support
-    StringBuilder query = new StringBuilder("select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where ");
+
     phone = phone.replaceAll("[\\D.]", "");
-    if (phone.matches("\\d{10}")){
-      String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
-      query
-          .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR HomePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
-      LoggingUtil.verbose(log, query.toString());
-      return queryList(query.toString());
-    } else if (phone.matches("\\d{11}")) {
-      String[] phoneArr = {phone.substring(0, 1), phone.substring(1, 4), phone.substring(4, 7), phone.substring(7, 11)};
-      query
-          .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'")
-          .append(" OR HomePhone LIKE '").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'")
-          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'")
-          .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%").append(phoneArr[3]).append("%'");
-      LoggingUtil.verbose(log, query.toString());
-      return queryList(query.toString());
-    } else {
-      return Collections.emptyList();
+    if (phone.length() == 11) {
+      phone = phone.substring(1);
     }
+
+    String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
+
+    StringBuilder query = new StringBuilder("select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where ")
+        .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+        .append(" OR HomePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+        .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+        .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
+    LoggingUtil.verbose(log, query.toString());
+    return queryList(query.toString());
   }
 
   public List<SObject> getContactsByAddress(String street, String city, String state, String zip, String country) throws ConnectionException, InterruptedException {
