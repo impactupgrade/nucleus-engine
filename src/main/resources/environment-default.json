@@ -61,6 +61,8 @@
       "paymentGatewayAmountOriginalCurrency": "payment_gateway_amount_original_currency",
       "paymentGatewayAmountExchangeRate": "payment_gateway_amount_exchange_rate",
       "recurringDonationDealId": "recurring_donation_deal_id",
+      "recurringDonationFrequency": "frequency",
+      "recurringDonationRealAmount": "recurring_donation_real_amount",
       "emailOptIn": "",
       "emailOptOut": "",
       "smsOptIn": "",

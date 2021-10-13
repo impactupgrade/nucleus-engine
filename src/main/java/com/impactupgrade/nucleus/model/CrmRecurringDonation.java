@@ -15,7 +15,8 @@ public class CrmRecurringDonation {
     WEEKLY(List.of("weekly", "week")),
     MONTHLY(List.of("monthly", "month")),
     QUARTERLY(List.of("quarterly", "quarter")),
-    YEARLY(List.of("yearly", "year"));
+    YEARLY(List.of("yearly", "year")),
+    BIANNUALLY(List.of("biannually", "biannual"));
 
     private final List<String> names;
 
@@ -29,6 +30,9 @@ public class CrmRecurringDonation {
       }
       if (QUARTERLY.names.contains(name.toLowerCase(Locale.ROOT))) {
         return QUARTERLY;
+      }
+      if (BIANNUALLY.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return BIANNUALLY;
       }
       if (YEARLY.names.contains(name.toLowerCase(Locale.ROOT))) {
         return YEARLY;

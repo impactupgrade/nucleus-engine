@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -393,8 +394,6 @@ public class HubSpotCrmService implements CrmService {
     deal.setPipeline(env.getConfig().hubspot.recurringDonationPipeline.id);
     deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.openStageId);
 
-    // TODO: Assumed to be monthly. If quarterly/yearly support needed, will need a custom field + divide the gift into the monthly rate.
-    deal.setRecurringRevenueAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
     deal.setRecurringRevenueDealType("NEW_BUSINESS");
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmAccount().name);
@@ -402,6 +401,21 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), deal.getOtherProperties());
+
+    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(paymentGatewayEvent.getSubscriptionInterval());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency, frequency.name().toLowerCase(Locale.ROOT), deal.getOtherProperties());
+
+    double amount = paymentGatewayEvent.getSubscriptionAmountInDollars();
+    // HS doesn't support non-monthly intervals natively. So, we must divide the amount into a monthly rate for
+    // recurring revenue forecasts to work correctly. Ex: Quarterly gift of $90 becomes $30/month.
+    switch (frequency) {
+      case QUARTERLY -> amount = amount / 3.0;
+      case YEARLY ->  amount = amount / 12.0;
+      case BIANNUALLY -> amount = amount / 24.0;
+    }
+    deal.setRecurringRevenueAmount(amount);
+    // set the original amount as well, needed for display purposes
+    setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationRealAmount, paymentGatewayEvent.getSubscriptionAmountInDollars(), deal.getOtherProperties());
   }
 
   @Override
@@ -719,6 +733,9 @@ public class HubSpotCrmService implements CrmService {
   }
 
   protected CrmRecurringDonation toCrmRecurringDonation(Deal deal) {
+    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency, deal.getProperties().getOtherProperties()));
+
     return new CrmRecurringDonation(
         deal.getId(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getOtherProperties()),
@@ -726,7 +743,7 @@ public class HubSpotCrmService implements CrmService {
         deal.getProperties().getAmount(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties()),
         deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
-        CrmRecurringDonation.Frequency.MONTHLY, // HubSpot supports monthly only, currently
+        frequency,
         deal
     );
   }
