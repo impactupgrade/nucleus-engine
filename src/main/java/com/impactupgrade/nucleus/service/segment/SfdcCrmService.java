@@ -812,17 +812,23 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected Optional<SObject> getCampaignOrDefault(PaymentGatewayEvent paymentGatewayEvent) throws ConnectionException, InterruptedException {
-    String campaignId = paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.campaign);
-    
-    Optional<SObject> campaign = Strings.isNullOrEmpty(campaignId)
-        ? Optional.empty() : sfdcClient.getCampaignById(campaignId);
+    Optional<SObject> campaign = Optional.empty();
 
+    String campaignIdOrName = paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.campaign);
+    if (!Strings.isNullOrEmpty(campaignIdOrName)) {
+      if (campaignIdOrName.startsWith("701")) {
+        campaign = sfdcClient.getCampaignById(campaignIdOrName);
+      } else {
+        campaign = sfdcClient.getCampaignByName(campaignIdOrName);
+      }
+    }
+    
     if (campaign.isEmpty()) {
       String defaultCampaignId = env.getConfig().salesforce.defaultCampaignId;
       if (Strings.isNullOrEmpty(defaultCampaignId)) {
-        log.info("campaign {} not found, but no default provided", campaignId);
+        log.info("campaign {} not found, but no default provided", campaignIdOrName);
       } else {
-        log.info("campaign {} not found; using default: {}", campaignId, defaultCampaignId);
+        log.info("campaign {} not found; using default: {}", campaignIdOrName, defaultCampaignId);
         campaign = sfdcClient.getCampaignById(defaultCampaignId);
       }
     }

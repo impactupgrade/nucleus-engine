@@ -103,6 +103,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  public Optional<SObject> getCampaignByName(String campaignName) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign) + " from campaign where name = '" + campaignName + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
