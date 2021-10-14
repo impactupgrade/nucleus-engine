@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Strings;
 
 import java.util.List;
 import java.util.Locale;
@@ -25,20 +26,22 @@ public class CrmRecurringDonation {
     }
 
     public static Frequency fromName(String name) {
+      if (Strings.isNullOrEmpty(name)) {
+        return null;
+      }
+
       if (WEEKLY.names.contains(name.toLowerCase(Locale.ROOT))) {
         return WEEKLY;
-      }
-      if (QUARTERLY.names.contains(name.toLowerCase(Locale.ROOT))) {
+      } else if (QUARTERLY.names.contains(name.toLowerCase(Locale.ROOT))) {
         return QUARTERLY;
-      }
-      if (BIANNUALLY.names.contains(name.toLowerCase(Locale.ROOT))) {
+      } else if (BIANNUALLY.names.contains(name.toLowerCase(Locale.ROOT))) {
         return BIANNUALLY;
-      }
-      if (YEARLY.names.contains(name.toLowerCase(Locale.ROOT))) {
+      } else if (YEARLY.names.contains(name.toLowerCase(Locale.ROOT))) {
         return YEARLY;
+      } else {
+        // default to monthly
+        return MONTHLY;
       }
-      // default to monthly
-      return MONTHLY;
     }
   }
 
