@@ -273,7 +273,10 @@ public class PaymentGatewayEvent {
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
     // And finally, the billing details, if nothing else.
-    if (Strings.isNullOrEmpty(crmAccount.name) && billingDetails.isPresent()) {
+    if (Strings.isNullOrEmpty(crmAccount.name) && billingDetails.isPresent()
+        // Some vendors, like Custom Donations, may use email as the billing details name if no true name
+        // was available. Sanity check and skip if so...
+        && !billingDetails.get().getName().contains("@")) {
       crmAccount.name = billingDetails.get().getName();
     }
 
