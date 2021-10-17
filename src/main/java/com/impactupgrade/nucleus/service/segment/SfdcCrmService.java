@@ -17,6 +17,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -120,6 +121,43 @@ public class SfdcCrmService implements CrmService {
   public Optional<CrmUser> getUserById(String id) throws Exception {
     // TODO
     return Optional.empty();
+  }
+
+  @Override
+  public String insertTask(CrmTask crmTask) throws Exception {
+    SObject task = new SObject("Task");
+    setTaskFields(task, crmTask);
+    return sfdcClient.insert(task).getId();
+  }
+
+  protected void setTaskFields(SObject task, CrmTask crmTask) {
+    task.setField("WhoId", crmTask.targetId);
+    //task.setField("AccountId", crmTask.assignTo);
+    //message='Unable to create/update fields: AccountId.
+    // Please check the security settings of this field and verify that
+    // it is read/write for your profile or permission set.'
+    // statusCode='INVALID_FIELD_FOR_INSERT_UPDATE'
+
+    task.setField("Subject", crmTask.subject);
+    task.setField("Description", crmTask.description);
+
+    if (CrmTask.Status.TO_DO == crmTask.status) {
+      task.setField("Status", "Not Started");
+    } else if (CrmTask.Status.IN_PROGRESS == crmTask.status) {
+      task.setField("Status", "In Progress");
+    } else if (CrmTask.Status.DONE == crmTask.status) {
+      task.setField("Status", "Completed");
+    }
+
+    if (CrmTask.Priority.LOW == crmTask.priority) {
+      task.setField("Priority", "Low");
+    } else if (CrmTask.Priority.MEDIUM == crmTask.priority) {
+      task.setField("Priority", "Normal");
+    } else if (CrmTask.Priority.HIGH == crmTask.priority || CrmTask.Priority.CRITICAL == crmTask.priority) {
+      task.setField("Priority", "High");
+    }
+
+    task.setField("ActivityDate", crmTask.dueDate);
   }
 
   @Override
@@ -822,7 +860,7 @@ public class SfdcCrmService implements CrmService {
         campaign = sfdcClient.getCampaignByName(campaignIdOrName);
       }
     }
-    
+
     if (campaign.isEmpty()) {
       String defaultCampaignId = env.getConfig().salesforce.defaultCampaignId;
       if (Strings.isNullOrEmpty(defaultCampaignId)) {

@@ -53,6 +53,22 @@ public class EnvironmentConfig {
 
   public Platform stripe = new Platform();
 
+  public static class Notification {
+    public String from = "";
+    public Set<String> to = new HashSet<>();
+  }
+
+  public static class EmailNotification extends Notification {
+    public String subject = "";
+  }
+
+  public static class Notifications {
+    public EmailNotification email;
+    public Notification sms;
+  }
+
+  public Map<String, Notifications> notifications = new HashMap<>();
+
   // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
   //  not often the case! Ex: LJI and TER have separate sets of fields for Stripe vs. PaymentSpring vs. Paypal. For now,
   //  methods that need these fields most be overridden case by case in order to tweak the query to check for all the

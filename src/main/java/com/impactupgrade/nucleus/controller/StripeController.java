@@ -7,11 +7,11 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
+import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -33,6 +33,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -210,6 +213,79 @@ public class StripeController {
         for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
           env.donationService().chargeDeposited(paymentGatewayEvent);
         }
+      }
+      case "customer.source.expiring" -> {
+        // Occurs whenever a card or source will expire at the end of the month.
+        if (stripeObject instanceof Card) {
+          Card card = (Card) stripeObject;
+          log.info("found expiring card {}", card.getId());
+
+          String customerId = card.getCustomer();
+          Customer customer = env.stripeClient().getCustomer(customerId);
+          List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(card.getCustomer());
+          List<Subscription> affectedSubscriptions = new ArrayList<>();
+
+          for (Subscription subscription: activeSubscriptions) {
+            // ID of the default payment method for the subscription.
+            // It must belong to the customer associated with the subscription.
+            // This takes precedence over default_source.
+            String subspcriptionPaymentMethodId = subscription.getDefaultPaymentMethod();
+            if (Strings.isNullOrEmpty(subspcriptionPaymentMethodId)) {
+              subspcriptionPaymentMethodId = subscription.getDefaultSource();
+            }
+            // If neither are set, invoices will use the customer’s invoice_settings.default_payment_method
+            // or default_source.
+            if (Strings.isNullOrEmpty(subspcriptionPaymentMethodId)) {
+              subspcriptionPaymentMethodId = customer.getDefaultSource();
+            }
+            if (card.getId().equalsIgnoreCase(subspcriptionPaymentMethodId)) {
+              affectedSubscriptions.add(subscription);
+            }
+          }
+
+          for (Subscription subscription: affectedSubscriptions) {
+            //For each open subscription using that payment source,
+            //look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
+            Optional<CrmRecurringDonation> crmRecurringDonationOptional = env.donationsCrmService().getRecurringDonationById(subscription.getId());
+
+            if (crmRecurringDonationOptional.isPresent()) {
+              //For each RD, send a staff email notification + create a task
+              CrmRecurringDonation donation = crmRecurringDonationOptional.get();
+
+              // Email
+              EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get("stripe:customer.source.expiring");
+              String emailFrom = notifications.email.from;
+              String emailTo = String.join(",", notifications.email.to);
+              String subject = notifications.email.subject;
+              EmailUtil.sendEmail(
+                      subject,
+                      "Recurring donation" + donation.id + " is using card " + card.getId() + " that is about to expire!", // TODO: define message text
+                      "<html></html>",
+                      emailTo, emailFrom);
+              // SMS
+              //String fromPhoneNumber = notifications.sms.from;
+              //List<String> toPhoneNumbers = notifications.sms.to;
+              // TODO: send sms messages
+
+              // Task
+              LocalDate now = LocalDate.now();
+              LocalDate inAWeek = now.plusDays(7);
+              Date dueDate = Date.from(inAWeek.atStartOfDay().toInstant(ZoneOffset.UTC)); // TODO: define due date
+
+              String contactId = "XXX"; //TODO: get contact id for customer id
+              String accountId = "YYY"; //TODO: do we need this at all? get this from config?
+
+              env.primaryCrmService().insertTask(new CrmTask(
+                      contactId, accountId, "Card Expiring", "Contact payment card will expire soon!",
+                      CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));
+            }
+          }
+        } else {
+          log.info("found expiring payment source {}", ((PaymentSource) stripeObject).getId());
+        }
+
+
+
       }
       default -> log.info("unhandled Stripe webhook event type: {}", eventType);
     }
