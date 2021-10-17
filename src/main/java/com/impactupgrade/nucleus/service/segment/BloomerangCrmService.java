@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -141,6 +142,12 @@ public class BloomerangCrmService implements CrmService {
   public Optional<CrmUser> getUserById(String id) throws Exception {
     // TODO
     return Optional.empty();
+  }
+
+  @Override
+  public String insertTask(CrmTask crmTask) throws Exception {
+    // TODO:
+    return null;
   }
 
   @Override
