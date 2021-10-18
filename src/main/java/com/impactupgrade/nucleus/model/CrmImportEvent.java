@@ -152,11 +152,16 @@ public class CrmImportEvent {
       importEvent.opportunityTerminal = data.get("Payment Processor");
       importEvent.opportunityStageName = "Posted";
 
+      if (data.containsKey("CRM Campaign ID")) {
+        importEvent.opportunityCampaignId = data.get("CRM Campaign ID");
+      }
+
       List<String> description = new ArrayList<>();
       description.add("Fundraiser Title: " + data.get("Fundraiser Title"));
       description.add("Fundraiser Type: " + data.get("Fundraiser Type"));
       description.add("Campaign Owner Name: " + data.get("Campaign Owner Name"));
-      description.add("Campaign ID: " + data.get("Campaign ID"));
+      description.add("Facebook Campaign ID: " + data.get("Campaign ID"));
+      description.add("CRM Campaign ID: " + data.getOrDefault("CRM Campaign ID", "N/A"));
       description.add("Permalink: " + data.get("Permalink"));
       description.add("Payment ID: " + data.get("Payment ID"));
       description.add("Source Name: " + data.get("Source Name"));
