@@ -6,18 +6,24 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
+import com.impactupgrade.nucleus.util.EmailUtil;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
-import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentSource;
 import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
@@ -229,16 +235,16 @@ public class StripeController {
             // ID of the default payment method for the subscription.
             // It must belong to the customer associated with the subscription.
             // This takes precedence over default_source.
-            String subspcriptionPaymentMethodId = subscription.getDefaultPaymentMethod();
-            if (Strings.isNullOrEmpty(subspcriptionPaymentMethodId)) {
-              subspcriptionPaymentMethodId = subscription.getDefaultSource();
+            String subscriptionPaymentMethodId = subscription.getDefaultPaymentMethod();
+            if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
+              subscriptionPaymentMethodId = subscription.getDefaultSource();
             }
             // If neither are set, invoices will use the customer’s invoice_settings.default_payment_method
             // or default_source.
-            if (Strings.isNullOrEmpty(subspcriptionPaymentMethodId)) {
-              subspcriptionPaymentMethodId = customer.getDefaultSource();
+            if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
+              subscriptionPaymentMethodId = customer.getDefaultSource();
             }
-            if (card.getId().equalsIgnoreCase(subspcriptionPaymentMethodId)) {
+            if (card.getId().equalsIgnoreCase(subscriptionPaymentMethodId)) {
               affectedSubscriptions.add(subscription);
             }
           }
@@ -256,12 +262,13 @@ public class StripeController {
               EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get("stripe:customer.source.expiring");
               String emailFrom = notifications.email.from;
               String emailTo = String.join(",", notifications.email.to);
-              String subject = notifications.email.subject;
+              String emailSubject = notifications.email.subject;
               EmailUtil.sendEmail(
-                      subject,
-                      "Recurring donation" + donation.id + " is using card " + card.getId() + " that is about to expire!", // TODO: define message text
+                      emailSubject,
+                      "Recurring donation " + donation.id + " is using card " + card.getId() + " that is about to expire!", // TODO: define message text
                       "<html></html>",
                       emailTo, emailFrom);
+
               // SMS
               //String fromPhoneNumber = notifications.sms.from;
               //List<String> toPhoneNumbers = notifications.sms.to;
@@ -271,12 +278,13 @@ public class StripeController {
               LocalDate now = LocalDate.now();
               LocalDate inAWeek = now.plusDays(7);
               Date dueDate = Date.from(inAWeek.atStartOfDay().toInstant(ZoneOffset.UTC)); // TODO: define due date
+              String assignTo = notifications.task.assignTo;
+              String taskSubject = notifications.task.subject;
 
               String contactId = "XXX"; //TODO: get contact id for customer id
-              String accountId = "YYY"; //TODO: do we need this at all? get this from config?
 
               env.primaryCrmService().insertTask(new CrmTask(
-                      contactId, accountId, "Card Expiring", "Contact payment card will expire soon!",
+                      contactId, assignTo, taskSubject, "Contact payment card will expire soon!",
                       CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));
             }
           }

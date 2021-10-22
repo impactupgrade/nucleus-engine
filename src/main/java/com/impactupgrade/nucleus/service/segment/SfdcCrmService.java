@@ -132,12 +132,7 @@ public class SfdcCrmService implements CrmService {
 
   protected void setTaskFields(SObject task, CrmTask crmTask) {
     task.setField("WhoId", crmTask.targetId);
-    //task.setField("AccountId", crmTask.assignTo);
-    //message='Unable to create/update fields: AccountId.
-    // Please check the security settings of this field and verify that
-    // it is read/write for your profile or permission set.'
-    // statusCode='INVALID_FIELD_FOR_INSERT_UPDATE'
-
+    task.setField("OwnerId", crmTask.assignTo);
     task.setField("Subject", crmTask.subject);
     task.setField("Description", crmTask.description);
 
@@ -147,6 +142,9 @@ public class SfdcCrmService implements CrmService {
       task.setField("Status", "In Progress");
     } else if (CrmTask.Status.DONE == crmTask.status) {
       task.setField("Status", "Completed");
+    } else {
+      // default
+      task.setField("Status", "Not Started");
     }
 
     if (CrmTask.Priority.LOW == crmTask.priority) {
@@ -155,6 +153,8 @@ public class SfdcCrmService implements CrmService {
       task.setField("Priority", "Normal");
     } else if (CrmTask.Priority.HIGH == crmTask.priority || CrmTask.Priority.CRITICAL == crmTask.priority) {
       task.setField("Priority", "High");
+    } else {
+      task.setField("Priority", "Normal");
     }
 
     task.setField("ActivityDate", crmTask.dueDate);
