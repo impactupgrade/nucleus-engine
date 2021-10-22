@@ -3,7 +3,7 @@
 
   "salesforce": {
     "username": "vsydor@unstopables.com",
-    "password": "1231313",
+    "password": "razerPRO2015WHWWkOtg8XBL6t33XNGKfrxu",
 
     "fieldDefinitions": {
       "paymentGatewayName": "Payment_Gateway_Name__c",
@@ -26,6 +26,10 @@
     "defaultCampaignId": ""
   },
 
+  "stripe": {
+    "secretKey": "123"
+  },
+
   "notifications": {
     "stripe:customer.source.expiring": {
       "email": {
@@ -36,6 +40,10 @@
       "sms": {
         "from": "911",
         "to": ["922", "933", "944"]
+      },
+      "task": {
+        "assignTo": "0057Q000000M8FzQAK",
+        "subject": "card expiration notification"
       }
     }
   }
