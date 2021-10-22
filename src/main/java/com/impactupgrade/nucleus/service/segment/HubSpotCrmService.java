@@ -287,8 +287,12 @@ public class HubSpotCrmService implements CrmService {
 //            "deal_to_deal");
 //        hsClient.association().insert(recurringDonationAssociation);
       }
-      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccount().id);
-      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContact().id);
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
+        hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccount().id);
+      }
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+        hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContact().id);
+      }
 
       return response.getId();
     } else {
@@ -379,8 +383,12 @@ public class HubSpotCrmService implements CrmService {
 
     Deal response = hsClient.deal().insert(deal);
     if (response != null) {
-      hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccount().id);
-      hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContact().id);
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
+        hsClient.association().insert("deal", response.getId(), "company", paymentGatewayEvent.getCrmAccount().id);
+      }
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+        hsClient.association().insert("deal", response.getId(), "contact", paymentGatewayEvent.getCrmContact().id);
+      }
 
       return response.getId();
     } else {
