@@ -120,6 +120,12 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
+    // TODO
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     // TODO
     return Optional.empty();
@@ -134,12 +140,6 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public Optional<CrmUser> getUserById(String id) throws Exception {
     // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: for now, naively assume the record doesn't exist and allow it to be created
     return Optional.empty();
   }
 

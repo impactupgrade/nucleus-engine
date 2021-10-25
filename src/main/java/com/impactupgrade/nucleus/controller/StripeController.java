@@ -7,11 +7,11 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
-import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -231,17 +231,15 @@ public class StripeController {
       try {
         String paymentIntentId = charge.getPaymentIntent();
         String chargeId = charge.getId();
-        Optional<SObject> opportunity = Optional.empty();
+        Optional<CrmDonation> donation = Optional.empty();
         if (!Strings.isNullOrEmpty(paymentIntentId)) {
-          // TODO: Needs pulled to CrmService
-          opportunity = env.sfdcClient().getDonationByTransactionId(paymentIntentId);
+          donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
         }
-        if (opportunity.isEmpty()) {
-          // TODO: Needs pulled to CrmService
-          opportunity = env.sfdcClient().getDonationByTransactionId(chargeId);
+        if (donation.isEmpty()) {
+          donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
         }
 
-        if (opportunity.isEmpty()) {
+        if (donation.isEmpty()) {
           System.out.println("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
 
           if (Strings.isNullOrEmpty(paymentIntentId)) {

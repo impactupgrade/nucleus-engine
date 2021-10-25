@@ -100,6 +100,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationByTransactionId(transactionId));
+  }
+
+  @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     // TODO
     return Optional.empty();
@@ -115,11 +120,6 @@ public class SfdcCrmService implements CrmService {
   public Optional<CrmUser> getUserById(String id) throws Exception {
     // TODO
     return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    return toCrmDonation(sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId()));
   }
 
   @Override

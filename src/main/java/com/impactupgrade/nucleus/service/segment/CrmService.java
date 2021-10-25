@@ -45,6 +45,7 @@ public interface CrmService extends SegmentService {
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
+  Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception;
   Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
   List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception;
 
@@ -59,7 +60,9 @@ public interface CrmService extends SegmentService {
   default String insertContact(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return insertContact(paymentGatewayEvent.getCrmContact());
   }
-  Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  default Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    return getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
+  }
   String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;

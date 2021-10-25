@@ -114,27 +114,8 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    Deal deal = hsClient.deal().read(id, dealFields);
-    CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
-    return Optional.of(crmRecurringDonation);
-  }
-
-  @Override
-  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    // TODO: will need to add query-by-association to HS lib
-    return Collections.emptyList();
-  }
-
-  @Override
-  public Optional<CrmUser> getUserById(String id) throws Exception {
-    // TODO: will need to add User support to HS lib, if even possible
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", paymentGatewayEvent.getTransactionId());
+  public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
+    Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", transactionId);
     DealResults results = hsClient.deal().search(List.of(filter), dealFields);
 
     if (results == null || results.getTotal() == 0) {
@@ -154,6 +135,25 @@ public class HubSpotCrmService implements CrmService {
     }
     return Optional.of(new CrmDonation(id, result.getProperties().getDealname(), result.getProperties().getAmount(),
         paymentGatewayName, status, result.getProperties().getClosedate(), result));
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    Deal deal = hsClient.deal().read(id, dealFields);
+    CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
+    return Optional.of(crmRecurringDonation);
+  }
+
+  @Override
+  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
+    // TODO: will need to add query-by-association to HS lib
+    return Collections.emptyList();
+  }
+
+  @Override
+  public Optional<CrmUser> getUserById(String id) throws Exception {
+    // TODO: will need to add User support to HS lib, if even possible
+    return Optional.empty();
   }
 
   @Override
