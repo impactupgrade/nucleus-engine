@@ -91,6 +91,12 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
+    // TODO:
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     Contact contact = hsClient.contact().read(id, contactFields);
     CrmContact crmContact = toCrmContact(contact);
@@ -139,12 +145,6 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertTask(CrmTask crmTask) throws Exception {
-    // TODO:
-    return null;
-  }
-
-  @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     Deal deal = hsClient.deal().read(id, dealFields);
     CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
@@ -161,6 +161,12 @@ public class HubSpotCrmService implements CrmService {
   public Optional<CrmUser> getUserById(String id) throws Exception {
     // TODO: will need to add User support to HS lib, if even possible
     return Optional.empty();
+  }
+
+  @Override
+  public String insertTask(CrmTask crmTask) throws Exception {
+    // TODO:
+    return null;
   }
 
   @Override

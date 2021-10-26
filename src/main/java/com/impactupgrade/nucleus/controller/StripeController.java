@@ -8,6 +8,8 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
@@ -226,8 +228,7 @@ public class StripeController {
           Card card = (Card) stripeObject;
           log.info("found expiring card {}", card.getId());
 
-          String customerId = card.getCustomer();
-          Customer customer = env.stripeClient().getCustomer(customerId);
+          Customer customer = env.stripeClient().getCustomer(card.getCustomer());
           List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(card.getCustomer());
           List<Subscription> affectedSubscriptions = new ArrayList<>();
 
@@ -281,11 +282,22 @@ public class StripeController {
               String assignTo = notifications.task.assignTo;
               String taskSubject = notifications.task.subject;
 
-              String contactId = "XXX"; //TODO: get contact id for customer id
+              String targetId = null;
+              Optional<CrmAccount> crmAccountOptional = env.primaryCrmService().getAccountByCustomerId(card.getCustomer());
+              if (crmAccountOptional.isPresent()) {
+                targetId = crmAccountOptional.get().id;
+              } else {
+                Optional<CrmContact> crmContactOptional = env.primaryCrmService().getContactByEmail(customer.getEmail());
+                if (crmContactOptional.isPresent()) {
+                  targetId = crmAccountOptional.get().id;
+                }
+              }
 
-              env.primaryCrmService().insertTask(new CrmTask(
-                      contactId, assignTo, taskSubject, "Contact payment card will expire soon!",
-                      CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));
+              if (!Strings.isNullOrEmpty(targetId)) {
+                env.primaryCrmService().insertTask(new CrmTask(
+                        targetId, assignTo, taskSubject, "Contact payment card will expire soon!",
+                        CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));
+              }
             }
           }
         } else {

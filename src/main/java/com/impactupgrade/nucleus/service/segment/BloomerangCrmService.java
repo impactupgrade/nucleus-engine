@@ -80,6 +80,12 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
+    // TODO:
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     // TODO
     return Optional.empty();
