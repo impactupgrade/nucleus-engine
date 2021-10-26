@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -14,7 +15,6 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
-import com.twilio.http.TwilioRestClient;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
@@ -23,7 +23,6 @@ import com.twilio.twiml.voice.Dial;
 import com.twilio.twiml.voice.Gather;
 import com.twilio.twiml.voice.Redirect;
 import com.twilio.twiml.voice.Say;
-import com.twilio.type.PhoneNumber;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -64,6 +63,8 @@ public class TwilioController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
+    TwilioClient twilioClient = env.twilioClient();
+
     log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
 
     // takes a while, so spin it off as a new thread
@@ -85,15 +86,7 @@ public class TwilioController {
                   pn = pn.replaceAll("[^0-9\\+]", "");
 
                   if (!Strings.isNullOrEmpty(pn)) {
-                    TwilioRestClient restClient = new TwilioRestClient.Builder(
-                        env.getConfig().twilio.publicKey,
-                        env.getConfig().twilio.secretKey
-                    ).build();
-                    Message twilioMessage = Message.creator(
-                        new PhoneNumber(pn),
-                        new PhoneNumber(env.getConfig().twilio.senderPn),
-                        message
-                    ).create(restClient);
+                    Message twilioMessage = twilioClient.sendMessage(pn, message, null);
 
                     log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
                         twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());

@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
+import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
@@ -175,4 +176,5 @@ public class Environment {
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
   public StripeClient stripeClient() { return new StripeClient(this); }
+  public TwilioClient twilioClient() { return new TwilioClient(this); }
 }
