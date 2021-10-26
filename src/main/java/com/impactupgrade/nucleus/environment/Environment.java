@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
+import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.logging.log4j.LogManager;
@@ -114,7 +115,8 @@ public class Environment {
 
   public CrmService primaryCrmService() {
     if (Strings.isNullOrEmpty(config.crmPrimary)) {
-      throw new RuntimeException("define a crmPrimary in environment.json");
+      log.info("no CRM defined in env.json; defaulting to NoOpCrmService");
+      return new NoOpCrmService();
     }
 
     // by default, always use the primary
