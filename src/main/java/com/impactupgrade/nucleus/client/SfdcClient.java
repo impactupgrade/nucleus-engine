@@ -91,6 +91,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
+  public Optional<SObject> getAccountByCustomerId(String customerId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId + " = '" + customerId + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

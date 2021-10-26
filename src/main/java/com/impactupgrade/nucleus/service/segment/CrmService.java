@@ -32,6 +32,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmAccount> getAccountById(String id) throws Exception;
   // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
+  Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
   Optional<CrmContact> getContactById(String id) throws Exception;
   Optional<CrmContact> getContactByEmail(String email) throws Exception;
   Optional<CrmContact> getContactByPhone(String phone) throws Exception;
