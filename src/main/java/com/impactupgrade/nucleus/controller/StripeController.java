@@ -258,12 +258,14 @@ public class StripeController {
                 }
               }
 
-              env.notificationService().sendNotification(
-                  "Recurring Donation: Card Expiring",
-                  "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.<br/>Stripe Subscription: <a href=\"https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "\">https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "</a><br/>Recurring Donation: <a href=\"" + crmRecurringDonationOptional.get().crmUrl + "\">" + crmRecurringDonationOptional.get().crmUrl + "</a>",
-                  targetId,
-                  "donations:card-expiring"
-              );
+              if (!Strings.isNullOrEmpty(targetId)) {
+                env.notificationService().sendNotification(
+                    "Recurring Donation: Card Expiring",
+                    "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.<br/>Stripe Subscription: <a href=\"https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "\">https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "</a><br/>Recurring Donation: <a href=\"" + crmRecurringDonationOptional.get().crmUrl + "\">" + crmRecurringDonationOptional.get().crmUrl + "</a>",
+                    targetId,
+                    "donations:card-expiring"
+                );
+              }
             }
           }
         } else {
