@@ -5,8 +5,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
-import com.impactupgrade.integration.hubspot.v1.model.HasValue;
 import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResults;
 import com.impactupgrade.integration.hubspot.crm.v3.Company;
 import com.impactupgrade.integration.hubspot.crm.v3.CompanyProperties;
@@ -19,6 +17,13 @@ import com.impactupgrade.integration.hubspot.crm.v3.DealResults;
 import com.impactupgrade.integration.hubspot.crm.v3.Filter;
 import com.impactupgrade.integration.hubspot.crm.v3.HasId;
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
+import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
+import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
+import com.impactupgrade.integration.hubspot.v1.model.Engagement;
+import com.impactupgrade.integration.hubspot.v1.model.EngagementAssociations;
+import com.impactupgrade.integration.hubspot.v1.model.EngagementRequest;
+import com.impactupgrade.integration.hubspot.v1.model.EngagementTaskMetadata;
+import com.impactupgrade.integration.hubspot.v1.model.HasValue;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -62,6 +67,7 @@ public class HubSpotCrmService implements CrmService {
 
   protected Environment env;
   protected HubSpotCrmV3Client hsClient;
+  protected EngagementV1Client engagementClient;
 
   protected Set<String> companyFields;
   protected Set<String> contactFields;
@@ -74,6 +80,7 @@ public class HubSpotCrmService implements CrmService {
   public void init(Environment env) {
     this.env = env;
     hsClient = HubSpotClientFactory.crmV3Client(env);
+    engagementClient = HubSpotClientFactory.engagementV1Client(env);
 
     companyFields = getCustomFieldNames();
     companyFields.addAll(env.getConfig().hubspot.customQueryFields.company.stream().toList());
@@ -165,8 +172,42 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public String insertTask(CrmTask crmTask) throws Exception {
-    // TODO:
-    return null;
+    EngagementRequest engagementRequest = new EngagementRequest();
+    setTaskFields(engagementRequest, crmTask);
+    EngagementRequest response = engagementClient.insert(engagementRequest);
+    return response == null ? null : response.getId() + "";
+  }
+
+  protected void setTaskFields(EngagementRequest engagementRequest, CrmTask crmTask) {
+    Engagement engagement = new Engagement();
+    engagement.setActive(true);
+    engagement.setType("TASK");
+    engagement.setOwnerId(crmTask.assignTo);
+    engagementRequest.setEngagement(engagement);
+
+    EngagementAssociations associations = new EngagementAssociations();
+    try {
+      Long contactId = Long.parseLong(crmTask.targetId);
+      associations.setContactIds(List.of(contactId));
+    } catch (NumberFormatException nfe) {
+      throw new IllegalArgumentException("Failed to parse contact id from target id " + crmTask.targetId + " !");
+    }
+    engagementRequest.setAssociations(associations);
+
+    EngagementTaskMetadata metadata = new EngagementTaskMetadata();
+    metadata.setBody(crmTask.description);
+    if (CrmTask.Status.TO_DO == crmTask.status) {
+      metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
+    } else if (CrmTask.Status.IN_PROGRESS == crmTask.status) {
+      metadata.setStatus(EngagementTaskMetadata.Status.IN_PROGRESS);
+    } else if (CrmTask.Status.DONE == crmTask.status) {
+      metadata.setStatus(EngagementTaskMetadata.Status.COMPLETED);
+    } else {
+      // default
+      metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
+    }
+    metadata.setSubject(crmTask.subject);
+    engagementRequest.setMetadata(metadata);
   }
 
   @Override
