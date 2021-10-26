@@ -160,8 +160,9 @@ public class CrmImportEvent {
       description.add("Fundraiser Title: " + data.get("Fundraiser Title"));
       description.add("Fundraiser Type: " + data.get("Fundraiser Type"));
       description.add("Campaign Owner Name: " + data.get("Campaign Owner Name"));
-      description.add("Facebook Campaign ID: " + data.get("Campaign ID"));
-      description.add("CRM Campaign ID: " + data.getOrDefault("CRM Campaign ID", "N/A"));
+      // Depending on the context, Campaign ID might be the CRM, but it might be vendor-specific (ie, Facebook)
+      description.add("Campaign ID: " + data.get("Campaign ID"));
+      description.add("CRM Campaign ID: " + data.get("CRM Campaign ID"));
       description.add("Permalink: " + data.get("Permalink"));
       description.add("Payment ID: " + data.get("Payment ID"));
       description.add("Source Name: " + data.get("Source Name"));
