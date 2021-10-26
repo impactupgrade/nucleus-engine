@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.service.logic;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -29,6 +30,13 @@ public class DonationService {
   }
 
   public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    // TODO: Happens both here and DonationService, since we need both processes to halt. Refactor?
+    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
+      log.warn("payment gateway event {} had no email address or CRM ID; skipping processing", paymentGatewayEvent.getTransactionId());
+      return;
+    }
+
     Optional<CrmDonation> existingDonation = crmService.getDonation(paymentGatewayEvent);
 
     if (existingDonation.isPresent()) {
