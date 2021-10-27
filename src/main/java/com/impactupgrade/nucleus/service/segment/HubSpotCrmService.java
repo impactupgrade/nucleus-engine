@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResults;
 import com.impactupgrade.integration.hubspot.crm.v3.Company;
 import com.impactupgrade.integration.hubspot.crm.v3.CompanyProperties;
+import com.impactupgrade.integration.hubspot.crm.v3.CompanyResults;
 import com.impactupgrade.integration.hubspot.crm.v3.Contact;
 import com.impactupgrade.integration.hubspot.crm.v3.ContactProperties;
 import com.impactupgrade.integration.hubspot.crm.v3.ContactResults;
@@ -49,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -99,8 +101,18 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    // TODO:
-    return Optional.empty();
+    if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId)) {
+      return Optional.empty();
+    }
+    Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, "EQ", customerId);
+    CompanyResults companyResults = hsClient.company().search(List.of(filter), companyFields);
+
+    if (Objects.isNull(companyResults) || companyResults.getTotal() == 0) {
+      return Optional.empty();
+    }
+    Company foundCompany = companyResults.getResults().get(0);
+    CrmAccount crmAccount = toCrmAccount(foundCompany);
+    return Optional.of(crmAccount);
   }
 
   @Override
@@ -196,15 +208,12 @@ public class HubSpotCrmService implements CrmService {
 
     EngagementTaskMetadata metadata = new EngagementTaskMetadata();
     metadata.setBody(crmTask.description);
-    if (CrmTask.Status.TO_DO == crmTask.status) {
-      metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
-    } else if (CrmTask.Status.IN_PROGRESS == crmTask.status) {
-      metadata.setStatus(EngagementTaskMetadata.Status.IN_PROGRESS);
-    } else if (CrmTask.Status.DONE == crmTask.status) {
-      metadata.setStatus(EngagementTaskMetadata.Status.COMPLETED);
-    } else {
-      // default
-      metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
+
+    switch (crmTask.status) {
+      case TO_DO -> metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
+      case IN_PROGRESS -> metadata.setStatus(EngagementTaskMetadata.Status.IN_PROGRESS);
+      case DONE -> metadata.setStatus(EngagementTaskMetadata.Status.COMPLETED);
+      default -> metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
     }
     metadata.setSubject(crmTask.subject);
     engagementRequest.setMetadata(metadata);
