@@ -283,18 +283,18 @@ public class StripeController {
               String taskSubject = notifications.task.subject;
 
               String targetId = null;
-              Optional<CrmAccount> crmAccountOptional = env.primaryCrmService().getAccountByCustomerId(card.getCustomer());
+              Optional<CrmAccount> crmAccountOptional = env.donationsCrmService().getAccountByCustomerId(card.getCustomer());
               if (crmAccountOptional.isPresent()) {
                 targetId = crmAccountOptional.get().id;
               } else {
-                Optional<CrmContact> crmContactOptional = env.primaryCrmService().getContactByEmail(customer.getEmail());
+                Optional<CrmContact> crmContactOptional = env.donationsCrmService().getContactByEmail(customer.getEmail());
                 if (crmContactOptional.isPresent()) {
                   targetId = crmAccountOptional.get().id;
                 }
               }
 
               if (!Strings.isNullOrEmpty(targetId)) {
-                env.primaryCrmService().insertTask(new CrmTask(
+                env.donationsCrmService().insertTask(new CrmTask(
                         targetId, assignTo, taskSubject, "Contact payment card will expire soon!",
                         CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));
               }

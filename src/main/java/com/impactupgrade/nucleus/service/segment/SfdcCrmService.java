@@ -141,25 +141,16 @@ public class SfdcCrmService implements CrmService {
     task.setField("Subject", crmTask.subject);
     task.setField("Description", crmTask.description);
 
-    if (CrmTask.Status.TO_DO == crmTask.status) {
-      task.setField("Status", "Not Started");
-    } else if (CrmTask.Status.IN_PROGRESS == crmTask.status) {
-      task.setField("Status", "In Progress");
-    } else if (CrmTask.Status.DONE == crmTask.status) {
-      task.setField("Status", "Completed");
-    } else {
-      // default
-      task.setField("Status", "Not Started");
+    switch (crmTask.status) {
+      case IN_PROGRESS -> task.setField("Status", "In Progress");
+      case DONE -> task.setField("Status", "Completed");
+      default -> task.setField("Status", "Not Started");
     }
 
-    if (CrmTask.Priority.LOW == crmTask.priority) {
-      task.setField("Priority", "Low");
-    } else if (CrmTask.Priority.MEDIUM == crmTask.priority) {
-      task.setField("Priority", "Normal");
-    } else if (CrmTask.Priority.HIGH == crmTask.priority || CrmTask.Priority.CRITICAL == crmTask.priority) {
-      task.setField("Priority", "High");
-    } else {
-      task.setField("Priority", "Normal");
+    switch (crmTask.priority) {
+      case LOW -> task.setField("Priority", "Low");
+      case HIGH, CRITICAL -> task.setField("Priority", "High");
+      default -> task.setField("Priority", "Normal");
     }
 
     task.setField("ActivityDate", crmTask.dueDate);
