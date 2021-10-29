@@ -54,7 +54,11 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         continue;
       }
 
-      PaymentGatewayEvent e = chargeToPaymentGatewayEvent(charge, Optional.of(charge.getBalanceTransactionObject()));
+      // avoid chargeToPaymentGatewayEvent since we don't need full details and it will attempt to fill everything
+      // out with extra Stripe API hits...
+      PaymentGatewayEvent e = new PaymentGatewayEvent(env);
+      e.initStripe(charge, Optional.ofNullable(charge.getCustomerObject()), Optional.empty(),
+          Optional.of(charge.getBalanceTransactionObject()));
 
       PaymentGatewayTransaction transaction = new PaymentGatewayTransaction(
           e.getTransactionDate(),

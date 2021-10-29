@@ -227,6 +227,8 @@ public class PaymentGatewayEvent {
   }
 
   protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
+    Map<String, String> metadata = getAllMetadata();
+
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
@@ -234,13 +236,18 @@ public class PaymentGatewayEvent {
 
       crmContact.email = stripeCustomer.getEmail();
       crmContact.mobilePhone = stripeCustomer.getPhone();
-    } else {
-      crmContact.email = getAllMetadata().entrySet().stream().filter(e -> {
+    }
+
+    // backfill with metadata if needed
+    if (Strings.isNullOrEmpty(crmContact.email)) {
+      crmContact.email = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("email"));
       }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+    if (Strings.isNullOrEmpty(crmContact.mobilePhone)) {
       // TODO: Do we need to break this down into the different phone numbers?
-      crmContact.mobilePhone = getAllMetadata().entrySet().stream().filter(e -> {
+      crmContact.mobilePhone = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("phone"));
       }).findFirst().map(Map.Entry::getValue).orElse(null);
@@ -332,7 +339,7 @@ public class PaymentGatewayEvent {
         crmAddress.state = stripeCustomer.getAddress().getState();
         crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
         crmAddress.country = stripeCustomer.getAddress().getCountry();
-      } else {
+      } else if (stripeCustomer.getSources() != null) {
         // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
         // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
         stripeCustomer.getSources().getData().stream()
@@ -350,13 +357,16 @@ public class PaymentGatewayEvent {
               crmAddress.country = stripeCard.getAddressCountry();
             });
       }
-    } else {
+    }
+
+    // If the customer and sources didn't have the full address, try metadata from both.
+    if (Strings.isNullOrEmpty(crmAddress.street)) {
       Map<String, String> metadata = getAllMetadata();
 
       // TODO: The stream and filter are getting repetitive (see initStripeCustomerName as well). DRY it up
       crmAddress.street = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
-        return key.contains("street");
+        return key.contains("street") || key.contains("address");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
       crmAddress.city = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
