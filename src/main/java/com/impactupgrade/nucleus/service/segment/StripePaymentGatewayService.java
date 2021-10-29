@@ -25,9 +25,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public class StripePaymentGatewayService implements PaymentGatewayService {
@@ -56,32 +54,20 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         continue;
       }
 
-      Calendar c = Calendar.getInstance();
-      c.setTimeInMillis(charge.getCreated() * 1000);
-
-      String address = null;
-      if (charge.getCustomerObject().getAddress() != null
-          && !Strings.isNullOrEmpty(charge.getCustomerObject().getAddress().getLine1())) {
-        // TODO: May need to format this differently...
-        address = charge.getCustomerObject().getAddress().toString();
-      }
-
-      Map<String, String> metadata = new HashMap<>();
-      metadata.putAll(charge.getMetadata());
-      metadata.putAll(charge.getCustomerObject().getMetadata());
+      PaymentGatewayEvent e = chargeToPaymentGatewayEvent(charge, Optional.of(charge.getBalanceTransactionObject()));
 
       PaymentGatewayTransaction transaction = new PaymentGatewayTransaction(
-          c,
-          charge.getAmount() / 100.0,
-          charge.getBalanceTransactionObject().getNet() / 100.0,
-          charge.getBalanceTransactionObject().getFee() / 100.0,
-          charge.getCustomerObject().getName(),
-          charge.getCustomerObject().getEmail(),
-          charge.getCustomerObject().getPhone(),
-          address,
+          e.getTransactionDate(),
+          e.getTransactionAmountInDollars(),
+          e.getTransactionNetAmountInDollars(),
+          e.getTransactionFeeInDollars(),
+          e.getCrmContact().firstName + " " + e.getCrmContact().lastName,
+          e.getCrmContact().email,
+          e.getCrmContact().mobilePhone,
+          e.getCrmContact().address.toString(),
           "Stripe",
           "https://dashboard.stripe.com/charges/" + charge.getId(),
-          metadata
+          e.getAllMetadata()
       );
       transactions.add(transaction);
     }
