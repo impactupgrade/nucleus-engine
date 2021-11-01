@@ -12,10 +12,8 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
-import com.impactupgrade.nucleus.util.EmailUtil;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.stripe.exception.StripeException;
@@ -41,8 +39,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -257,31 +253,19 @@ public class StripeController {
 
             if (crmRecurringDonationOptional.isPresent()) {
               //For each RD, send a staff email notification + create a task
-              CrmRecurringDonation donation = crmRecurringDonationOptional.get();
+              // Notifications
+              EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get("stripe:customer.source.expiring");
 
               // Email
-              EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get("stripe:customer.source.expiring");
-              String emailFrom = notifications.email.from;
-              String emailTo = String.join(",", notifications.email.to);
-              String emailSubject = notifications.email.subject;
-              EmailUtil.sendEmail(
-                      emailSubject,
-                      "Recurring donation " + donation.id + " is using card " + card.getId() + " that is about to expire!", // TODO: define message text
-                      "<html></html>",
-                      emailTo, emailFrom);
+              env.notificationService().sendEmailNotification(notifications.email,
+                      "Recurring donation " + crmRecurringDonationOptional.get().id + " is using card " + card.getId() + " that is about to expire!",
+                      "<html></html>");
 
               // SMS
-              //String fromPhoneNumber = notifications.sms.from;
-              //List<String> toPhoneNumbers = notifications.sms.to;
-              // TODO: send sms messages
+              // TODO: send sms message
+              //env.notificationService().sendSMSNotification(notifications.sms, "Card expiring!");
 
               // Task
-              LocalDate now = LocalDate.now();
-              LocalDate inAWeek = now.plusDays(7);
-              Date dueDate = Date.from(inAWeek.atStartOfDay().toInstant(ZoneOffset.UTC)); // TODO: define due date
-              String assignTo = notifications.task.assignTo;
-              String taskSubject = notifications.task.subject;
-
               String targetId = null;
               Optional<CrmAccount> crmAccountOptional = env.donationsCrmService().getAccountByCustomerId(card.getCustomer());
               if (crmAccountOptional.isPresent()) {
@@ -293,11 +277,8 @@ public class StripeController {
                 }
               }
 
-              if (!Strings.isNullOrEmpty(targetId)) {
-                env.donationsCrmService().insertTask(new CrmTask(
-                        targetId, assignTo, taskSubject, "Contact payment card will expire soon!",
-                        CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));
-              }
+              env.notificationService().createCrmTask(notifications.task, env.donationsCrmService().name(),
+                      targetId, "Contact payment card will expire soon!");
             }
           }
         } else {

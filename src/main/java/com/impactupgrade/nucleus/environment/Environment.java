@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
+import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -101,6 +102,7 @@ public class Environment {
   public DonationService donationService() { return new DonationService(this); }
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
+  public NotificationService notificationService() { return new NotificationService(this); }
 
   // segment services
 
