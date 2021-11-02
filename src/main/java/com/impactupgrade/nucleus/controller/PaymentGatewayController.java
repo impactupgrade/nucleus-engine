@@ -4,6 +4,12 @@
 
 package com.impactupgrade.nucleus.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -14,6 +20,8 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
@@ -26,6 +34,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -71,7 +80,14 @@ public class PaymentGatewayController {
     // sorting by-date is more important than by-source for this report (for now)
     transactions = transactions.stream().sorted(Comparator.comparing(PaymentGatewayTransaction::date)).collect(Collectors.toList());
 
-    return Response.status(200).entity(transactions).build();
+    // passing the date range back so the export can access the original params
+    Gson gson = new GsonBuilder().create();
+    JSONObject jsonObj = new JSONObject()
+            .put("transactions", gson.toJsonTree(transactions))
+            .put("startDate", start)
+            .put("endDate", end);
+
+    return Response.status(200).entity(gson.toJson(jsonObj)).build();
   }
 
   /**
