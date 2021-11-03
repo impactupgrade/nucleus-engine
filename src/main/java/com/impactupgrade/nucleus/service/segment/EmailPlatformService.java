@@ -22,4 +22,5 @@ public interface EmailPlatformService extends SegmentService {
 
   void syncContacts(Calendar since) throws Exception;
   void syncDonors(Calendar since) throws Exception;
+  void syncTags(Calendar since) throws Exception;
 }

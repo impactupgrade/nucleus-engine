@@ -14,6 +14,7 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import org.checkerframework.checker.units.qual.C;
 
 import java.util.Calendar;
 import java.util.List;
@@ -107,6 +108,7 @@ public interface CrmService extends SegmentService {
 
   List <CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception;
   List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception;
+  List<CrmContact> getAllUpdatedContactsSince(Calendar calendar) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS

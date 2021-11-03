@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.List;
+import java.util.Map;
 
 public class CrmContact {
 
@@ -31,6 +32,7 @@ public class CrmContact {
   public String ownerId;
   public String notes;
   public List<String> emailGroups;
+  public Map<String, String> tags;
 
   @JsonIgnore
   public Object rawObject;
@@ -45,7 +47,7 @@ public class CrmContact {
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmContact(String id, String accountId, String firstName, String lastName, String email, String homePhone,
       String mobilePhone, String workPhone, PreferredPhone preferredPhone, CrmAddress address,
-      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, List<String> emailGroups,
+      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, List<String> emailGroups, Map<String,String> tags,
       Object rawObject) {
     this.id = id;
     this.accountId = accountId;
@@ -63,6 +65,7 @@ public class CrmContact {
     this.smsOptOut = smsOptOut;
     this.ownerId = ownerId;
     this.emailGroups = emailGroups;
+    this.tags = tags;
     this.rawObject = rawObject;
   }
 
@@ -80,4 +83,9 @@ public class CrmContact {
     }
     return true;
   }
+
+  public void updateTags(){
+
+  }
+
 }

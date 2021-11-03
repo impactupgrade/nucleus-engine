@@ -695,6 +695,13 @@ public class SfdcCrmService implements CrmService {
     return sfdcClient.getDonorContactsSince(calendar).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
+  @Override
+  public List<CrmContact> getAllUpdatedContactsSince(Calendar calendar) throws Exception{
+    List<CrmContact> updatedContacts = getContactsUpdatedSince(calendar);
+    updatedContacts.addAll(getDonorContactsSince(calendar));
+    return updatedContacts;
+  }
+
 
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());
@@ -902,6 +909,7 @@ public class SfdcCrmService implements CrmService {
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
         (String) sObject.getField("OwnerId"),
         Collections.emptyList(),
+        Collections.emptyMap(),
         sObject
     );
   }

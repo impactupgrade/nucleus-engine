@@ -107,6 +107,14 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     }
   }
 
+  @Override
+  public void syncTags(Calendar since) throws Exception {
+    //TODO Implement
+      //gets a list of all updatedContacts and updates their tags
+      List<CrmContact> contacts = crmService.getAllUpdatedContactsSince(since);
+      contacts.forEach(CrmContact::updateTags);
+  }
+
   /**
    * Returns the ID of the list from the config map
    */
