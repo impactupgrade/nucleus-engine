@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.logic;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -21,6 +22,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -58,20 +60,29 @@ public class AccountingService {
 
             log.info("Accounting platform service '{}' running...", accountingPlatformName);
             try {
-                Date startDate = getMostPastTransactionDate(transactions);
+                Date startDate = getMinStartDate(transactions);
                 List<?> existingTransactions = accountingPlatformService.getTransactions(startDate);
                 log.info("Found existing transactions: {}", existingTransactions.size());
 
                 List<PaymentGatewayEvent> transactionsToCreate = getTransactionsToCreate(
-                        transactions, PaymentGatewayEvent::getTransactionId,
-                        existingTransactions, accountingPlatformService.getTransactionKeyFunction());
+                    transactions,
+                    PaymentGatewayEvent::getTransactionId,
+                    existingTransactions,
+                    accountingPlatformService.getTransactionKeyFunction()
+                );
 
                 if (CollectionUtils.isEmpty(transactionsToCreate)) {
                     log.info("No new transactions to create. Returning...");
                     continue;
                 }
 
-                List<CrmContact> crmContacts = uniqueItems(collectCrmContacts(transactionsToCreate), crmContact -> crmContact.id);
+                List<CrmContact> crmContacts = uniqueItems(collectCrmContacts(transactionsToCreate), crmContact -> {
+                    if (!Strings.isNullOrEmpty(crmContact.email)) {
+                        return crmContact.email;
+                    } else {
+                        return crmContact.firstName + " " + crmContact.lastName;
+                    }
+                });
                 List existingContacts = accountingPlatformService.getContacts();
 
                 List<CrmContact> crmContactsToCreate = getCrmContactsToCreate(
@@ -135,7 +146,7 @@ public class AccountingService {
         return Lists.newArrayList(itemsMap.values());
     }
 
-    private Date getMostPastTransactionDate(List<PaymentGatewayEvent> transactions) {
+    private Date getMinStartDate(List<PaymentGatewayEvent> transactions) {
         if (CollectionUtils.isEmpty(transactions)) {
             return null;
         }
@@ -201,7 +212,7 @@ public class AccountingService {
         for (T item : items) {
             String key = mapFunction.apply(item);
             if (!StringUtils.isEmpty(key)) {
-                itemsMap.put(key, item);
+                itemsMap.put(key.toLowerCase(Locale.ROOT), item);
             }
         }
         return itemsMap;
@@ -223,11 +234,11 @@ public class AccountingService {
                     R right = null;
                     if (Objects.nonNull(leftPrimaryKeyFunction)) {
                         // plan A
-                        right = rightsMappedByPrimaryKey.get(leftPrimaryKeyFunction.apply(left));
+                        right = rightsMappedByPrimaryKey.get(leftPrimaryKeyFunction.apply(left).toLowerCase(Locale.ROOT));
                     }
                     if (Objects.isNull(right) && Objects.nonNull(leftSecondaryKeyFunction)) {
                         // plan B
-                        right = rightsMappedBySecondaryKey.get(leftSecondaryKeyFunction.apply(left));
+                        right = rightsMappedBySecondaryKey.get(leftSecondaryKeyFunction.apply(left).toLowerCase(Locale.ROOT));
                     }
                     return Pair.of(left, right);
                 })

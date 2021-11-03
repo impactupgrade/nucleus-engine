@@ -62,7 +62,6 @@ public class EnvironmentConfig {
     public String clientId = "";
     public String clientSecret = "";
     public String tokenServerUrl = "";
-
     public String accessToken = "";
     public String refreshToken = "";
   }

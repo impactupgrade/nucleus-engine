@@ -6,6 +6,7 @@ import org.apache.commons.collections.MapUtils;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -44,11 +45,11 @@ public interface AccountingPlatformService<C, T> extends SegmentService {
         Function<CrmContact, String> crmContactPrimaryKeyFunction = getCrmContactPrimaryKeyFunction();
         Function<CrmContact, String> crmContactSecondaryKeyFunction = getCrmContactSecondaryKeyFunction();
         if (Objects.nonNull(crmContactPrimaryKeyFunction)) {
-            String crmContactPrimaryKey = crmContactPrimaryKeyFunction.apply(crmContact);
+            String crmContactPrimaryKey = crmContactPrimaryKeyFunction.apply(crmContact).toLowerCase(Locale.ROOT);
             contact = contactsByPrimaryKey.get(crmContactPrimaryKey);
 
             if (Objects.isNull(contact) && Objects.nonNull(crmContactSecondaryKeyFunction)) {
-                String crmContactSecondaryKey = crmContactPrimaryKeyFunction.apply(crmContact);
+                String crmContactSecondaryKey = crmContactSecondaryKeyFunction.apply(crmContact).toLowerCase(Locale.ROOT);
                 contact = contactsBySecondaryKey.get(crmContactSecondaryKey);
             }
         }

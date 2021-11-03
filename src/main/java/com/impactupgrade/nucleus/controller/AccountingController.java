@@ -66,6 +66,8 @@ public class AccountingController {
                 for (PaymentGatewayService paymentGatewayService : paymentGatewayServices) {
                     String serviceName = paymentGatewayService.name();
                     log.info("Payment service '{}' running...", serviceName);
+                    // TODO: This retrieves all charges/invoices/customers, so it can be a heavy lift. Break the method
+                    // down and retrieve only what we need?
                     deposits.addAll(paymentGatewayService.getDeposits(startDate, endDate));
                     log.info("Payment service '{}' done.", serviceName);
                 }

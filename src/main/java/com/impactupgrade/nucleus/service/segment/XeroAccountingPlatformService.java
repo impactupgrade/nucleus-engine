@@ -197,6 +197,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                 DecodedJWT verifiedJWT = apiClient.verify(tokenResponse.getAccessToken());
 
                 log.info("Tokens refreshed!");
+                // TODO: temp -- need to store this in the org's env.json
+                log.info("new refresh token: " + tokenResponse.getRefreshToken());
 
                 accessToken = verifiedJWT.getToken();
 
@@ -282,9 +284,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         }
         bankTransaction.setReference(paymentGatewayEvent.getTransactionId());
         //    private CurrencyCode currencyCode;
-        bankTransaction.setCurrencyCode(CurrencyCode.USD);
+        // TODO: needs to be configurable
+//        bankTransaction.setCurrencyCode(CurrencyCode.USD);
+        bankTransaction.setCurrencyCode(CurrencyCode.AUD);
         //    private Double currencyRate;
-        bankTransaction.setCurrencyRate(paymentGatewayEvent.getTransactionExchangeRate());
+        // TODO: likely not needed
+//        bankTransaction.setCurrencyRate(paymentGatewayEvent.getTransactionExchangeRate());
         //    private String url;
         bankTransaction.setUrl(paymentGatewayEvent.getTransactionUrl());
         //    private BankTransaction.StatusEnum status;
@@ -345,11 +350,21 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         lineItem.setDescription(paymentGatewayEvent.getTransactionDescription());
         lineItem.setQuantity(1.0);
         lineItem.setUnitAmount(paymentGatewayEvent.getTransactionAmountInDollars());
-        lineItem.setTaxType("NONE");
+//        lineItem.setTaxType("NONE");
+        // TODO: DR TEST (https://developer.xero.com/documentation/api/accounting/types/#tax-rates -- country specific)
+        lineItem.setTaxType("EXEMPTOUTPUT");
 
         // TODO: define correct account code for transaction
         // (can NOT be the same as contact we import to)
-        lineItem.setAccountCode(xeroAccountCode);
+//        lineItem.setAccountCode(xeroAccountCode);
+        // TODO: DR TEST -- need to be able to override with code
+        if (paymentGatewayEvent.isTransactionRecurring()) {
+            lineItem.setAccountCode("122");
+        } else if (paymentGatewayEvent.getTransactionAmountInDollars() > 1500.0) {
+            lineItem.setAccountCode("117");
+        } else {
+            lineItem.setAccountCode("116");
+        }
 
         return Collections.singletonList(lineItem);
     }
