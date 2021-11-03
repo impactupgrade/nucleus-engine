@@ -1,30 +1,27 @@
 package com.impactupgrade.nucleus.model;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import java.util.Date;
 
-@Getter
-@Setter
 @Entity
-@Table(name = "failed_request", schema = "public")
-public class FailedRequest {
+@Table(name = "webhook_request", schema = "public")
+public class WebhookRequest {
     @Id
-    private String id;
+    public String id;
+    @Column(name = "payload_type", nullable = false)
+    public String payloadType;
     @Column(name = "payload", nullable = false)
-    private String payload;
-    @Column(name = "error_message", nullable = false)
-    private String errorMessage;
+    public String payload;
+    @Column(name = "error_message")
+    public String errorMessage;
     @Column(name = "attempt_count")
-    private int attemptCount;
+    public int attemptCount;
     @Column(name = "first_attempt_time", nullable = false)
-    private Date firstAttemptTime;
+    public Date firstAttemptTime;
     @Column(name = "last_attempt_time")
-    private Date lastAttemptTime;
+    public Date lastAttemptTime;
 
 }

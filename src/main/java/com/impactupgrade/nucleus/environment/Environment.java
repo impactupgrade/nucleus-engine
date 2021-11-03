@@ -12,7 +12,7 @@ import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
-import com.impactupgrade.nucleus.service.logic.FailedRequestService;
+import com.impactupgrade.nucleus.service.logic.WebhookRequestService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
@@ -102,7 +102,7 @@ public class Environment {
   public DonationService donationService() { return new DonationService(this); }
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
-  public FailedRequestService failedRequestService() { return new FailedRequestService(this); }
+  public WebhookRequestService webhookRequestService() { return new WebhookRequestService(this); }
 
   // segment services
 
