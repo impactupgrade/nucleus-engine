@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmTask;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.EmailUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -25,13 +26,16 @@ public class NotificationService {
         this.env = env;
     }
 
-    // TODO: Decide which parameters should be "static" (taken from config file)
-    // and which ones should be "dynamic" (textBody, htmlBody etc.)
-    public void sendEmailNotification(EnvironmentConfig.EmailNotification emailNotification, String textBody, String htmlBody) throws MessagingException {
-        if (Objects.isNull(emailNotification)) {
-            log.info("Email notification is not defined. Returning...");
+    public void sendEmailNotification(String textBody, EnvironmentConfig.Notifications notifications) throws MessagingException {
+        sendEmailNotification(textBody, null, notifications);
+    }
+
+    public void sendEmailNotification(String textBody, String htmlBody, EnvironmentConfig.Notifications notifications) throws MessagingException {
+        if (Objects.isNull(notifications) || Objects.isNull(notifications.email)) {
+            // Nothing to do
             return;
         }
+        EnvironmentConfig.EmailNotification emailNotification = notifications.email;
         if (!isValidEmailNotification(emailNotification)) {
             log.warn("Email notification is not valid (missing required parameters). Returning...");
             return;
@@ -44,32 +48,35 @@ public class NotificationService {
                 emailTo, emailFrom);
     }
 
-    public void sendSMSNotification(EnvironmentConfig.Notification smsNotification, String smsText) {
+    public void sendSMSNotification(String smsText, EnvironmentConfig.Notifications notifications) {
+        if (Objects.isNull(notifications) || Objects.isNull(notifications.sms)) {
+            // Nothing to do
+            return;
+        }
+        EnvironmentConfig.Notification smsNotification = notifications.sms;
         // TODO: validation
         //String fromPhoneNumber = smsNotification.from;
         //List<String> toPhoneNumbers = smsNotification.to;
         // TODO: send sms messages
     }
 
-    public void createCrmTask(EnvironmentConfig.Task task, String crmService, String targetId, String description) throws Exception {
-        if (Objects.isNull(task)) {
-            log.info("Task is not defined. Returning...");
+    public void createCrmTask(CrmService crmService, String targetId, String description, EnvironmentConfig.Notifications notifications) throws Exception {
+        if (Objects.isNull(notifications) || Objects.isNull(notifications.task)) {
+            // Nothing to do
             return;
         }
+        EnvironmentConfig.Task task = notifications.task;
         if (!isValidTask(task)) {
             log.warn("Task notification is not valid (missing required parameters). Returning...");
             return;
         }
-        if (Strings.isNullOrEmpty(crmService)) {
-            log.warn("Crm Service name is not defined. Returning...");
-            return;
-        }
-        if (Objects.isNull(env.crmService(crmService))) {
-            log.warn("Failed to find crmService for name '{}'. Returning...", crmService);
+        if (Objects.isNull(crmService)) {
+            log.warn("Crm Service is not defined. Returning...");
             return;
         }
         if (Strings.isNullOrEmpty(targetId)) {
             log.warn("Target id is not defined. Returning...");
+            return;
         }
         LocalDate now = LocalDate.now();
         LocalDate inAWeek = now.plusDays(7);
@@ -77,7 +84,7 @@ public class NotificationService {
         String assignTo = task.assignTo;
         String subject = task.subject;
 
-        env.crmService(crmService).insertTask(new CrmTask(
+        crmService.insertTask(new CrmTask(
                 targetId, assignTo,
                 subject, description,
                 CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));

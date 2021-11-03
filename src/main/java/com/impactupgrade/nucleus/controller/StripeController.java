@@ -253,19 +253,15 @@ public class StripeController {
 
             if (crmRecurringDonationOptional.isPresent()) {
               //For each RD, send a staff email notification + create a task
-              // Notifications
-              EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get("stripe:customer.source.expiring");
+              // Notifications configuration
+              EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get("stripe:customer.source.expiring");
 
               // Email
-              env.notificationService().sendEmailNotification(notifications.email,
-                      "Recurring donation " + crmRecurringDonationOptional.get().id + " is using card " + card.getId() + " that is about to expire!",
-                      "<html></html>");
+              env.notificationService().sendEmailNotification(
+                      "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.",
+                      notificationsConfig);
 
-              // SMS
-              // TODO: send sms message
-              //env.notificationService().sendSMSNotification(notifications.sms, "Card expiring!");
-
-              // Task
+              // Crm task
               String targetId = null;
               Optional<CrmAccount> crmAccountOptional = env.donationsCrmService().getAccountByCustomerId(card.getCustomer());
               if (crmAccountOptional.isPresent()) {
@@ -277,8 +273,9 @@ public class StripeController {
                 }
               }
 
-              env.notificationService().createCrmTask(notifications.task, env.donationsCrmService().name(),
-                      targetId, "Contact payment card will expire soon!");
+              env.notificationService().createCrmTask(env.donationsCrmService(), targetId,
+                      "Donor is using a card that's about to expire.",
+                      notificationsConfig);
             }
           }
         } else {
