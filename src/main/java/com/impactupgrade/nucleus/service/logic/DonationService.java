@@ -114,11 +114,13 @@ public class DonationService {
     }
 
     crmService.closeRecurringDonation(paymentGatewayEvent);
-    // Notifications
-    EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get("donation-service:close-recurring-donation");
-    notificationservice.sendEmailNotification(notifications.email,
-            "CRM recurring donation " + recurringDonation.get().id + " has beed closed.",
-            "<html></html>");
+    // Notifications configuration
+    EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get("donation-service:close-recurring-donation");
+
+    // Email
+    notificationservice.sendEmailNotification(
+            "Recurring donation " + recurringDonation.get().id + " has been closed.",
+            notificationsConfig);
   }
 
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
