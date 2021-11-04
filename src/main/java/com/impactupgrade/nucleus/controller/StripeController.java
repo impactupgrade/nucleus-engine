@@ -32,6 +32,7 @@ import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.POST;
@@ -99,10 +100,17 @@ public class StripeController {
       // takes a while, so spin it off as a new thread
       Runnable thread = () -> {
         try {
+          log.info("Saving event with id '{}'...", event.getId());
+          env.webhookRequestService().persist(event.getId(), "stripe", new JSONObject(event));
           processEvent(event.getType(), stripeObject, env);
+
+          // TODO: decide if we want to delete right away or keep it for future analysis/analytics
+          //env.webhookRequestService().delete(event.getId());
         } catch (Exception e) {
           log.error("failed to process the Stripe event", e);
           // TODO: email notification?
+          log.info("Updating event with id '{}' with error details...", event.getId());
+          env.webhookRequestService().updateWithErrorMessage(event.getId(), e.getMessage());
         }
       };
       new Thread(thread).start();
