@@ -182,6 +182,12 @@ public class EnvironmentConfig {
     public Set<String> supportedContactReportColumns = new HashSet<>();
   }
 
+  public Donorwrangler donorwrangler = new Donorwrangler();
+
+  public static class Donorwrangler extends Platform {
+    public String subdomain = "";
+  }
+
   public Twilio twilio = new Twilio();
 
   public static class Twilio extends Platform {
