@@ -15,11 +15,8 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -42,7 +39,7 @@ import java.util.Optional;
 // TODO: Copies from the old C1 code. Needs cleaned up and rethought...
 // TODO: If needs expand, make this into an open source client lib
 
-public class BloomerangCrmService implements CrmService {
+public class BloomerangCrmService implements BasicCrmService {
 
   private static final Logger log = LogManager.getLogger(BloomerangCrmService.class);
 
@@ -145,18 +142,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmUser> getUserById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public String insertTask(CrmTask crmTask) throws Exception {
-    // TODO:
-    return null;
-  }
-
-  @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: for now, naively assume the record doesn't exist and allow it to be created
     return Optional.empty();
@@ -226,11 +211,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
   public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Donation donation = new Donation();
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
@@ -296,21 +276,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void addContactToList(CrmContact crmContact, String listId) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
@@ -322,11 +287,6 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
