@@ -114,12 +114,34 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   @Override
   public void syncTags(Calendar since) throws Exception {
     //TODO Implement
-      //gets a list of all updatedContacts and updates their tags
-      List<CrmContact> contacts = crmService.getAllUpdatedContactsSince(since);
-      contacts.forEach(this::updateTags);
+    syncDonorTags(since);
+    syncMarketingTags(since);
   }
 
-  public void updateTags(CrmContact contact){
+  public void syncDonorTags(Calendar since) throws Exception {
+    List<CrmContact> contacts = crmService.getDonorContactsSince(since);
+    contacts.forEach(contact -> {
+      try {
+        updateTags("Donors",contact);
+      } catch (Exception e) {
+        log.info("Donor list tag sync failed at contact: " + contact.id);
+      }
+    });
+  }
+
+  public void syncMarketingTags(Calendar since) throws Exception {
+    List<CrmContact> contacts = crmService.getContactsUpdatedSince(since);
+    contacts.forEach(contact -> {
+      try {
+        updateTags("Marketing",contact);
+      } catch (Exception e) {
+        log.info("Marketing list tag sync failed at contact: " + contact.id);
+      }
+    });
+  }
+
+  //TODO Might make more sense to have this in the emailController ask Brett
+  public void updateTags(String listName, CrmContact contact) throws Exception{
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////// DONATION METRICS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,7 +149,10 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////// DEMOGRAPHIC INFO
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+    //LOCATION
+    addTagToContact(listName,contact,contact.address.country);
+    addTagToContact(listName,contact,contact.address.postalCode);
+    addTagToContact(listName,contact,contact.address.state);
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////// PAST INTERACTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

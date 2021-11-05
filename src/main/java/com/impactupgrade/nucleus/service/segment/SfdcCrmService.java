@@ -910,7 +910,6 @@ public class SfdcCrmService implements CrmService {
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
         (String) sObject.getField("OwnerId"),
         Collections.emptyList(),
-        Collections.emptyMap(),
         sObject
     );
   }
