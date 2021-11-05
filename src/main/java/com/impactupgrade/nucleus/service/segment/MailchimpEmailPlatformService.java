@@ -85,8 +85,12 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 
   @Override
   public void addTagToContact(String listName, CrmContact crmContact, String tag) throws Exception {
-    String listId = getListIdFromName(listName);
-    mailchimpClient.addTag(listId, crmContact.email, tag);
+    if(getContactTags(listName,crmContact).contains(tag)){
+      return;
+    }else {
+      String listId = getListIdFromName(listName);
+      mailchimpClient.addTag(listId, crmContact.email, tag);
+    }
   }
 
   @Override
@@ -112,7 +116,22 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     //TODO Implement
       //gets a list of all updatedContacts and updates their tags
       List<CrmContact> contacts = crmService.getAllUpdatedContactsSince(since);
-      contacts.forEach(CrmContact::updateTags);
+      contacts.forEach(this::updateTags);
+  }
+
+  public void updateTags(CrmContact contact){
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////// DONATION METRICS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////// DEMOGRAPHIC INFO
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////// PAST INTERACTIONS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   }
 
   /**

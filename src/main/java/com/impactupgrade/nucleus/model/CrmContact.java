@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.impactupgrade.nucleus.environment.Environment;
 
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,8 @@ public class CrmContact {
 
   @JsonIgnore
   public Object rawObject;
+
+  protected Environment env;
 
   public CrmContact() {}
 
@@ -84,8 +87,5 @@ public class CrmContact {
     return true;
   }
 
-  public void updateTags(){
-
-  }
 
 }

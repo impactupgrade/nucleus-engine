@@ -43,6 +43,7 @@ public class SfdcCrmService implements CrmService {
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
 
   protected Environment env;
+
   protected SfdcClient sfdcClient;
 
   @Override
