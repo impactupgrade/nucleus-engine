@@ -16,6 +16,9 @@ public interface PaymentGatewayService extends SegmentService {
   List<PaymentGatewayTransaction> getTransactions(Date startDate, Date endDate) throws Exception;
   List<PaymentGatewayDeposit> getDeposits(Date startDate, Date endDate) throws Exception;
 
+  void verifyAndReplayCharges(Date startDate, Date endDate);
+  void verifyAndReplayDeposits(Date startDate, Date endDate);
+
   void updateSubscription(ManageDonationEvent manageDonationEvent) throws Exception;
   void closeSubscription(ManageDonationEvent manageDonationEvent) throws Exception;
 }

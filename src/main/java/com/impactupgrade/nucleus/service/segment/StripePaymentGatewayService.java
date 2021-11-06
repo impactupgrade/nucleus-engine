@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
@@ -22,6 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -103,6 +105,73 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   }
 
   @Override
+  public void verifyAndReplayCharges(Date startDate, Date endDate) {
+    try {
+      SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+      Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+      int count = 0;
+      for (Charge charge : charges) {
+        if (!charge.getStatus().equalsIgnoreCase("succeeded")
+            || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+          continue;
+        }
+
+        count++;
+
+        try {
+          String paymentIntentId = charge.getPaymentIntent();
+          String chargeId = charge.getId();
+          Optional<CrmDonation> donation = Optional.empty();
+          if (!Strings.isNullOrEmpty(paymentIntentId)) {
+            donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
+          }
+          if (donation.isEmpty()) {
+            donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
+          }
+
+          if (donation.isEmpty()) {
+            log.info("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
+
+            PaymentGatewayEvent paymentGatewayEvent;
+            if (Strings.isNullOrEmpty(paymentIntentId)) {
+              paymentGatewayEvent = chargeToPaymentGatewayEvent(charge);
+            } else {
+              paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject());
+            }
+            env.contactService().processDonor(paymentGatewayEvent);
+            env.donationService().createDonation(paymentGatewayEvent);
+          }
+        } catch (Exception e) {
+          log.error("charge replay failed", e);
+        }
+      }
+    } catch (Exception e) {
+      log.error("charge replays failed", e);
+    }
+  }
+
+  @Override
+  public void verifyAndReplayDeposits(Date startDate, Date endDate) {
+    try {
+      SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+      Iterable<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+      for (Payout payout : payouts) {
+        try {
+          log.info(SDF.format(new Date(payout.getArrivalDate() * 1000)));
+          List<PaymentGatewayEvent> paymentGatewayEvents = payoutToPaymentGatewayEvents(payout);
+          for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
+            env.donationService().chargeDeposited(paymentGatewayEvent);
+          }
+        } catch (Exception e) {
+          log.error("deposit replay failed", e);
+        }
+      }
+    } catch (Exception e) {
+      log.error("deposit replays failed", e);
+    }
+  }
+
+  @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {
     if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
       stripeClient.updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
@@ -135,7 +204,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
       chargeBalanceTransaction = Optional.empty();
     } else {
-      chargeBalanceTransaction = Optional.of(env.stripeClient().getBalanceTransaction(charge.getBalanceTransaction()));
+      chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(charge.getBalanceTransaction()));
       log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
     }
 
@@ -149,7 +218,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     if (Strings.isNullOrEmpty(charge.getCustomer())) {
       chargeCustomer = Optional.empty();
     } else {
-      chargeCustomer = Optional.of(env.stripeClient().getCustomer(charge.getCustomer()));
+      chargeCustomer = Optional.of(stripeClient.getCustomer(charge.getCustomer()));
       log.info("found customer {}", chargeCustomer.get().getId());
     }
 
@@ -157,7 +226,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     if (Strings.isNullOrEmpty(charge.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(env.stripeClient().getInvoice(charge.getInvoice()));
+      chargeInvoice = Optional.of(stripeClient.getInvoice(charge.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
@@ -172,7 +241,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       if (paymentIntent.getCharges().getData().size() == 1) {
         String balanceTransactionId = paymentIntent.getCharges().getData().get(0).getBalanceTransaction();
         if (!Strings.isNullOrEmpty(balanceTransactionId)) {
-          chargeBalanceTransaction = Optional.of(env.stripeClient().getBalanceTransaction(balanceTransactionId));
+          chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(balanceTransactionId));
           log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
         }
       }
@@ -186,13 +255,13 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
     // TODO: For TER, the customers and/or metadata aren't always included in the webhook -- not sure why.
     //  For now, retrieve the whole PaymentIntent and try again...
-    PaymentIntent fullPaymentIntent = env.stripeClient().getPaymentIntent(paymentIntent.getId());
+    PaymentIntent fullPaymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
 
     Optional<Customer> chargeCustomer;
     if (Strings.isNullOrEmpty(fullPaymentIntent.getCustomer())) {
       chargeCustomer = Optional.empty();
     } else {
-      chargeCustomer = Optional.of(env.stripeClient().getCustomer(fullPaymentIntent.getCustomer()));
+      chargeCustomer = Optional.of(stripeClient.getCustomer(fullPaymentIntent.getCustomer()));
       log.info("found customer {}", chargeCustomer.get().getId());
     }
 
@@ -200,7 +269,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     if (Strings.isNullOrEmpty(fullPaymentIntent.getInvoice())) {
       chargeInvoice = Optional.empty();
     } else {
-      chargeInvoice = Optional.of(env.stripeClient().getInvoice(fullPaymentIntent.getInvoice()));
+      chargeInvoice = Optional.of(stripeClient.getInvoice(fullPaymentIntent.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
     }
 
@@ -212,7 +281,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public List<PaymentGatewayEvent> payoutToPaymentGatewayEvents(Payout payout) throws StripeException {
     List<PaymentGatewayEvent> paymentGatewayEvents = new ArrayList<>();
 
-    List<BalanceTransaction> balanceTransactions = env.stripeClient().getBalanceTransactions(payout);
+    List<BalanceTransaction> balanceTransactions = stripeClient.getBalanceTransactions(payout);
     for (BalanceTransaction balanceTransaction : balanceTransactions) {
       if (balanceTransaction.getSourceObject() instanceof Charge charge) {
         log.info("found charge {}", charge.getId());

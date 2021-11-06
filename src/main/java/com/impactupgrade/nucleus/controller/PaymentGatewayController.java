@@ -4,12 +4,8 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -20,7 +16,6 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
@@ -34,7 +29,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -135,6 +129,50 @@ public class PaymentGatewayController {
 
     ManageDonationEvent manageDonationEvent = new ManageDonationEvent(formData, env);
     env.donationService().updateRecurringDonation(manageDonationEvent);
+
+    return Response.status(200).build();
+  }
+
+  @Path("/replay/charges")
+  @POST
+  public Response verifyAndReplayCharges(
+      @FormParam("start") String start,
+      @FormParam("end") String end,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    Date startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+    Date endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+
+    Runnable thread = () -> {
+      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+        paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
+  @Path("/replay/deposits")
+  @POST
+  public Response verifyAndReplayDeposits(
+      @FormParam("start") String start,
+      @FormParam("end") String end,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    Date startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+    Date endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+
+    Runnable thread = () -> {
+      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+        paymentGatewayService.verifyAndReplayDeposits(startDate, endDate);
+      }
+    };
+    new Thread(thread).start();
 
     return Response.status(200).build();
   }

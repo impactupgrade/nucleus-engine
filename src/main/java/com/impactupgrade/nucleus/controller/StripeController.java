@@ -10,13 +10,11 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
-import com.stripe.exception.StripeException;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -38,9 +36,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -281,64 +277,8 @@ public class StripeController {
         } else {
           log.info("found expiring payment source {}", ((PaymentSource) stripeObject).getId());
         }
-
-
-
       }
       default -> log.info("unhandled Stripe webhook event type: {}", eventType);
-    }
-  }
-
-  // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-  public void verifyAndReplayStripeCharges(Date startDate, Date endDate, Environment env) throws StripeException {
-    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-    Iterable<Charge> charges = env.stripeClient().getAllCharges(startDate, endDate);
-    int count = 0;
-    for (Charge charge : charges) {
-      if (!charge.getStatus().equalsIgnoreCase("succeeded")
-          || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
-        continue;
-      }
-
-      count++;
-
-      try {
-        String paymentIntentId = charge.getPaymentIntent();
-        String chargeId = charge.getId();
-        Optional<CrmDonation> donation = Optional.empty();
-        if (!Strings.isNullOrEmpty(paymentIntentId)) {
-          donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
-        }
-        if (donation.isEmpty()) {
-          donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
-        }
-
-        if (donation.isEmpty()) {
-          System.out.println("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
-
-          if (Strings.isNullOrEmpty(paymentIntentId)) {
-            processEvent("charge.succeeded", charge, env);
-          } else {
-            processEvent("payment_intent.succeeded", charge.getPaymentIntentObject(), env);
-          }
-        }
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
-  // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-  public void replayStripePayouts(Date startDate, Date endDate, Environment env) throws Exception {
-    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-    Iterable<Payout> payouts = env.stripeClient().getPayouts(startDate, endDate, 100);
-    for (Payout payout : payouts) {
-      try {
-        System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
-        processEvent("payout.paid", payout, env);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
     }
   }
 }
