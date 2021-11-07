@@ -520,6 +520,24 @@ public class SfdcCrmService implements CrmService {
     // likely not relevant in SFDC
   }
 
+  //TODO implement the queries in the client, add to the interface, flesh out logic for donation amounts ect.
+  @Override
+  public boolean isMajorDonor(CrmContact contact) throws Exception{
+    int limit = 1000; //has donated > $1,000
+    return sfdcClient.getTotalDonationsAmount(contact) >= limit;
+  }
+
+  @Override
+  public boolean isRecentDonor(CrmContact contact) throws Exception{
+    int limit = 90; //90 days since last donation
+    return sfdcClient.getDaysSinceLastDonation(contact) <= limit;
+  }
+
+  @Override
+  public List<String> getEventsAttended(CrmContact contact) throws Exception{
+    return sfdcClient.getEventsAttended(contact);
+  }
+
   @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     SObject opportunity = new SObject("Opportunity");

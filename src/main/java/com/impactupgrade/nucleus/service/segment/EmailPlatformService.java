@@ -19,7 +19,7 @@ public interface EmailPlatformService extends SegmentService {
   void upsertContact(String listName, CrmContact crmContact) throws Exception;
   void unsubscribeContact(String listName, String email) throws Exception;
   void addTagToContact(String listName, CrmContact crmContact, String tag) throws Exception;
-  void clearContactTags(String listName, CrmContact crmContact) throws Exception
+  void clearContactTags(String listName, CrmContact crmContact) throws Exception;
 
   void syncContacts(Calendar since) throws Exception;
   void syncDonors(Calendar since) throws Exception;

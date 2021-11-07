@@ -8,6 +8,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -236,6 +237,20 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
+
+
+  public Integer getTotalDonationsAmount(CrmContact contact) throws ConnectionException, InterruptedException {
+    return null;
+  }
+
+  public Integer getDaysSinceLastDonation(CrmContact contact) throws ConnectionException, InterruptedException {
+    return null;
+  }
+
+  public List<String> getEventsAttended(CrmContact contact) throws ConnectionException, InterruptedException {
+    return null;
+  }
+
 
   public List<SObject> searchContacts(String firstName, String lastName, String email, String phone, String address)
       throws ConnectionException, InterruptedException {

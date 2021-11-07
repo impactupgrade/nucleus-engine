@@ -108,8 +108,13 @@ public interface CrmService extends SegmentService {
 
   List <CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception;
   List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception;
-  List<CrmContact> getAllUpdatedContactsSince(Calendar calendar) throws Exception;
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Tag Sync
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  boolean isMajorDonor(CrmContact contact) throws Exception;
+  boolean isRecentDonor(CrmContact contact) throws Exception;
+  List<String> getEventsAttended(CrmContact contact) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS

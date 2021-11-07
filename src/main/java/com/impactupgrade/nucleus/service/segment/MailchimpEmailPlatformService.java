@@ -143,21 +143,37 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 
   //TODO Might make more sense to have this in the emailController ask Brett
   public void updateTags(String listName, CrmContact contact) throws Exception{
-    clearContactTags(listName,contact);
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////// DONATION METRICS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    clearContactTags(listName, contact);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////// DEMOGRAPHIC INFO
+    // DONATION METRICS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //LOCATION
-    addTagToContact(listName,contact,contact.address.country);
-    addTagToContact(listName,contact,contact.address.postalCode);
-    addTagToContact(listName,contact,contact.address.state);
+    if(crmService.isMajorDonor(contact)){ addTagToContact(listName, contact, "Major Donor"); }
+
+    if(crmService.isRecentDonor(contact)){ addTagToContact(listName, contact, "Recent Donor"); }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////// PAST INTERACTIONS
+    // DEMOGRAPHIC INFO
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // LOCATION
+    addTagToContact(listName, contact, contact.address.country);
+    addTagToContact(listName, contact, contact.address.postalCode);
+    addTagToContact(listName, contact, contact.address.state);
+
+    if(contact.emailOptIn){
+      addTagToContact(listName, contact, "OptIn: Email");
+    }
+
+    if(contact.smsOptIn){
+      addTagToContact(listName, contact, "OptIn: SMS");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // PAST INTERACTIONS
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    for(String event : crmService.getEventsAttended(contact)){
+      addTagToContact(listName, contact, "Attended: " + event);
+    }
 
   }
 
