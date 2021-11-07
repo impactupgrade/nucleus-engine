@@ -94,6 +94,13 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   }
 
   @Override
+  public void clearContactTags(String listName, CrmContact crmContact) throws Exception {
+    for(String tag : getContactTags(listName,crmContact)){
+      mailchimpClient.removeTag(getListIdFromName(listName), crmContact.email,tag);
+    }
+  }
+
+  @Override
   public void syncContacts(Calendar since) throws Exception {
     List <CrmContact> contacts = crmService.getContactsUpdatedSince(since);
     for (CrmContact contact : contacts) {
@@ -113,14 +120,18 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 
   @Override
   public void syncTags(Calendar since) throws Exception {
-    //TODO Implement
-    syncDonorTags(since);
-    syncMarketingTags(since);
-  }
-
-  public void syncDonorTags(Calendar since) throws Exception {
-    List<CrmContact> contacts = crmService.getDonorContactsSince(since);
-    contacts.forEach(contact -> {
+    //Marketing List
+    List<CrmContact> marketingContacts = crmService.getContactsUpdatedSince(since);
+    marketingContacts.forEach(contact -> {
+      try {
+        updateTags("Marketing",contact);
+      } catch (Exception e) {
+        log.info("Marketing list tag sync failed at contact: " + contact.id);
+      }
+    });
+    //DonorList
+    List<CrmContact> donorContacts = crmService.getDonorContactsSince(since);
+    donorContacts.forEach(contact -> {
       try {
         updateTags("Donors",contact);
       } catch (Exception e) {
@@ -129,19 +140,10 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     });
   }
 
-  public void syncMarketingTags(Calendar since) throws Exception {
-    List<CrmContact> contacts = crmService.getContactsUpdatedSince(since);
-    contacts.forEach(contact -> {
-      try {
-        updateTags("Marketing",contact);
-      } catch (Exception e) {
-        log.info("Marketing list tag sync failed at contact: " + contact.id);
-      }
-    });
-  }
 
   //TODO Might make more sense to have this in the emailController ask Brett
   public void updateTags(String listName, CrmContact contact) throws Exception{
+    clearContactTags(listName,contact);
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////// DONATION METRICS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
