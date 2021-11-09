@@ -58,10 +58,14 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 
   @Override
   public void upsertContact(String listName, CrmContact crmContact) throws Exception {
-    if (!Strings.isNullOrEmpty(crmContact.email)) {
-      log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, listName);
-      String listId = getListIdFromName(listName);
-      mailchimpClient.upsertContact(listId, toMcMemberInfo(crmContact));
+    if(crmContact.emailOptIn) {
+      if (!Strings.isNullOrEmpty(crmContact.email)) {
+        log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, listName);
+        String listId = getListIdFromName(listName);
+        mailchimpClient.upsertContact(listId, toMcMemberInfo(crmContact));
+      }
+    }else{
+      log.info("upserting contact {} {} to list {} failed, contact has opt out of emails", crmContact.id, crmContact.email, listName);
     }
   }
 
