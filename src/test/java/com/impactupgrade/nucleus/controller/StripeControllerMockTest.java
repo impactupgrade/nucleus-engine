@@ -57,6 +57,8 @@ public class StripeControllerMockTest extends AbstractMockTest {
     charge.setCustomer(customer.getId());
     charge.setAmount(2000L);
     charge.setCurrency("usd");
+    charge.setPaymentMethodDetails(new Charge.PaymentMethodDetails());
+    charge.getPaymentMethodDetails().setType("ach");
 
     // Test to ensure we can retrieve the campaign ID using custom metadata, using TER's setup as an example.
     Map<String, String> chargeMetadata = Map.of("Designation Code", "campaign_1");
