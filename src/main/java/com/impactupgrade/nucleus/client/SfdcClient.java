@@ -430,7 +430,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public List<SObject> getDonorContactsSince(Calendar calendar) throws ConnectionException, InterruptedException {
     String dateTimeString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateTimeString + " and Amount >= 0.0)";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateTimeString + " and Amount >= 0.0 and (StageName='posted' or StageName='closed won'))";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
