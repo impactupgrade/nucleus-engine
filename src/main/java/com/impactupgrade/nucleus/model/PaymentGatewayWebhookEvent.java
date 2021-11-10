@@ -74,7 +74,14 @@ public class PaymentGatewayWebhookEvent {
 
   public void initStripe(Charge stripeCharge, Customer stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    initStripeCommon();
+    gatewayName = "Stripe";
+    String stripePaymentMethod = stripeCharge.getPaymentMethodDetails().getType();
+    if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
+      paymentMethod = "ACH";
+    } else {
+      paymentMethod = "Credit Card";
+    }
+
     initStripeCustomer(stripeCustomer, stripeCharge);
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
@@ -119,7 +126,14 @@ public class PaymentGatewayWebhookEvent {
 
   public void initStripe(PaymentIntent stripePaymentIntent, Customer stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    initStripeCommon();
+    gatewayName = "Stripe";
+    String stripePaymentMethod = stripePaymentIntent.getCharges().getData().stream().findFirst().map(c -> c.getPaymentMethodDetails().getType()).orElse("");
+    if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
+      paymentMethod = "ACH";
+    } else {
+      paymentMethod = "Credit Card";
+    }
+
     initStripeCustomer(stripeCustomer, stripePaymentIntent);
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
@@ -165,7 +179,7 @@ public class PaymentGatewayWebhookEvent {
   }
 
   public void initStripe(Refund stripeRefund) {
-    initStripeCommon();
+    gatewayName = "Stripe";
 
     refundId = stripeRefund.getId();
     transactionId = stripeRefund.getCharge();
@@ -179,16 +193,10 @@ public class PaymentGatewayWebhookEvent {
   }
 
   public void initStripe(Subscription stripeSubscription, Customer stripeCustomer) {
-    initStripeCommon();
-    initStripeCustomer(stripeCustomer, stripeSubscription);
-
-    initStripeSubscription(stripeSubscription, stripeCustomer);
-  }
-
-  protected void initStripeCommon() {
     gatewayName = "Stripe";
-    // TODO: expand to include ACH through Plaid?
-    paymentMethod = "credit card";
+
+    initStripeCustomer(stripeCustomer, stripeSubscription);
+    initStripeSubscription(stripeSubscription, stripeCustomer);
   }
 
   protected void initStripeCustomer(Customer stripeCustomer, MetadataStore<?> stripeMetadataBackup) {
