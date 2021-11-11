@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.it;
 
 import com.google.common.io.Resources;
+import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.sforce.soap.partner.sobject.SObject;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StripeToSfdcIT extends AbstractIT {
 
+  protected StripeToSfdcIT() {
+    super(new App(envFactorySfdcStripe));
+  }
+
   @Test
   public void coreOneTime() throws Exception {
     clearSfdc();
@@ -30,7 +35,7 @@ public class StripeToSfdcIT extends AbstractIT {
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-    SfdcClient sfdcClient = env().sfdcClient();
+    SfdcClient sfdcClient = env.sfdcClient();
 
     // verify ContactService -> SfdcCrmService
     Optional<SObject> contactO = sfdcClient.getContactByEmail("team+integration+tester@impactupgrade.com");
