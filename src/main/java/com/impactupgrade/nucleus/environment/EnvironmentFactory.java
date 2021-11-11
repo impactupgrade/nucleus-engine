@@ -6,15 +6,31 @@ import javax.ws.rs.core.MultivaluedMap;
 
 public class EnvironmentFactory {
 
+  private final String otherJsonFilename;
+
+  public EnvironmentFactory() {
+    otherJsonFilename = null;
+  }
+
+  public EnvironmentFactory(String otherJsonFilename) {
+    this.otherJsonFilename = otherJsonFilename;
+  }
+
   public Environment init(HttpServletRequest request) {
     Environment env = newEnv();
     env.setRequest(request);
+
+    env.getConfig().addOtherJson(otherJsonFilename);
+
     return env;
   }
 
   public Environment init(MultivaluedMap<String, String> otherContext) {
     Environment env = newEnv();
     env.setOtherContext(otherContext);
+
+    env.getConfig().addOtherJson(otherJsonFilename);
+
     return env;
   }
 
@@ -22,6 +38,9 @@ public class EnvironmentFactory {
     Environment env = newEnv();
     env.setRequest(request);
     env.setOtherContext(otherContext);
+
+    env.getConfig().addOtherJson(otherJsonFilename);
+
     return env;
   }
 
@@ -33,10 +52,12 @@ public class EnvironmentFactory {
     otherContext.add(otherContextKey, otherContextValue);
     env.setOtherContext(otherContext);
 
+    env.getConfig().addOtherJson(otherJsonFilename);
+
     return env;
   }
 
-  public Environment newEnv() {
+  protected Environment newEnv() {
     return new Environment();
   }
 }

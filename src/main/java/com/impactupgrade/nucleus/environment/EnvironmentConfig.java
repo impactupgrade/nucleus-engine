@@ -230,7 +230,6 @@ public class EnvironmentConfig {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   private static final boolean IS_PROD = "production".equalsIgnoreCase(System.getenv("PROFILE"));
-  private static final boolean IS_INTEGRATION_TEST = "true".equalsIgnoreCase(System.getProperty("nucleus.integration.test"));
 
   private static final ObjectMapper mapper = new ObjectMapper();
   static {
@@ -245,9 +244,7 @@ public class EnvironmentConfig {
         InputStream jsonOrg = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("environment.json");
         InputStream jsonOrgSandbox = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("environment-sandbox.json");
-        InputStream jsonOrgIntegrationTest = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("environment-it.json")
+            .getResourceAsStream("environment-sandbox.json")
     ) {
       // Start with the default JSON as the foundation.
       EnvironmentConfig envConfig = mapper.readValue(jsonDefault, EnvironmentConfig.class);
@@ -260,16 +257,24 @@ public class EnvironmentConfig {
         mapper.readerForUpdating(envConfig).readValue(jsonOrgSandbox);
       }
 
-      // IMPORTANT: Gate with the system property, set by AbstractIT, otherwise this file gets picked up by Heroku!
-      if (IS_INTEGRATION_TEST && jsonOrgIntegrationTest != null) {
-        mapper.readerForUpdating(envConfig).readValue(jsonOrgIntegrationTest);
-      }
-
       return envConfig;
     } catch (IOException e) {
       log.error("Unable to read environment JSON files! Exiting...", e);
       System.exit(1);
       return null;
+    }
+  }
+
+  // Allow additional env.json files to be added. This cannot be statically defined, due to usages such as integration
+  // tests where tests run in parallel and each may need unique setups.
+  public void addOtherJson(String otherJsonFilename) {
+    try (InputStream otherJson = Thread.currentThread().getContextClassLoader()
+        .getResourceAsStream(otherJsonFilename)) {
+      if (otherJson != null) {
+        mapper.readerForUpdating(this).readValue(otherJson);
+      }
+    } catch (IOException e) {
+      log.error("unable to read {}}", otherJsonFilename, e);
     }
   }
 

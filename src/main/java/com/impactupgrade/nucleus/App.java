@@ -39,6 +39,13 @@ public class App {
   // $PORT env var provided by Heroku
   private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
+  private final EnvironmentFactory envFactory;
+
+  // Allow orgs to wire in their custom implementations of Environment.
+  public App(EnvironmentFactory envFactory) {
+    this.envFactory = envFactory;
+  }
+
   private Server server = null;
 
   public void start() throws Exception {
@@ -106,13 +113,6 @@ public class App {
   }
 
   /**
-   * Allow orgs to wire in their custom implementations of Environment.
-   */
-  public EnvironmentFactory envFactory() {
-    return new EnvironmentFactory();
-  }
-
-  /**
    * Allow orgs to add custom Controllers, etc.
    */
   public void registerAPIControllers(ResourceConfig apiConfig) throws Exception {}
@@ -123,17 +123,17 @@ public class App {
   public void registerServlets(ServletContextHandler context) throws Exception {}
 
   // Allow orgs to override specific controllers.
-  protected BackupController backupController() { return new BackupController(envFactory()); }
-  protected CrmController crmController() { return new CrmController(envFactory()); }
-  protected DonationFormController donationFormController() { return new DonationFormController(envFactory()); }
-  protected EmailController emailController() { return new EmailController(envFactory()); }
-  protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory()); }
-  protected SfdcController sfdcController() { return new SfdcController(envFactory()); }
-  protected StripeController stripeController() { return new StripeController(envFactory()); }
-  protected TwilioController twilioController() { return new TwilioController(envFactory()); }
-  protected MailchimpController mailchimpController() { return new MailchimpController(envFactory()); }
+  protected BackupController backupController() { return new BackupController(envFactory); }
+  protected CrmController crmController() { return new CrmController(envFactory); }
+  protected DonationFormController donationFormController() { return new DonationFormController(envFactory); }
+  protected EmailController emailController() { return new EmailController(envFactory); }
+  protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory); }
+  protected SfdcController sfdcController() { return new SfdcController(envFactory); }
+  protected StripeController stripeController() { return new StripeController(envFactory); }
+  protected TwilioController twilioController() { return new TwilioController(envFactory); }
+  protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
 
-  public static void main(String... args) throws Exception {
-    new App().start();
+  public EnvironmentFactory getEnvironmentFactory() {
+    return envFactory;
   }
 }

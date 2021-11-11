@@ -4,10 +4,14 @@
 
 package com.impactupgrade.nucleus.it;
 
+import com.impactupgrade.nucleus.App;
+
 public class StripeToHubspotIT extends AbstractIT {
 
-  // TODO: Need to be able to provide multiple copies of environment-it.json
-  // TODO: Or provide defaults in the file, then override individual values programmatically
+  protected StripeToHubspotIT() {
+    super(new App(envFactoryHubspotStripe));
+  }
+
   // TODO: Set up a test portal in HS and configure it!
 
 //  @Test
