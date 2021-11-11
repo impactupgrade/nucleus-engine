@@ -140,4 +140,12 @@ public abstract class AbstractIT extends JerseyTest {
     // ensure we're actually clean
     assertEquals(0, hsClient.company().searchByName(name, Collections.emptyList()).getResults().size());
   }
+
+  protected void clearDonorwrangler() throws Exception {
+    clearDonorwranglerByName("Tester");
+  }
+
+  protected void clearDonorwranglerByName(String name) throws Exception {
+    // TODO
+  }
 }
