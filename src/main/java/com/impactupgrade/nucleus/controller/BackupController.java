@@ -13,6 +13,7 @@ import com.backblaze.b2.client.structures.B2FileVersion;
 import com.backblaze.b2.client.structures.B2UploadFileRequest;
 import com.backblaze.b2.client.structures.B2UploadListener;
 import com.backblaze.b2.util.B2ExecutorUtils;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import org.apache.commons.io.FileUtils;
@@ -58,54 +59,59 @@ public class BackupController {
         10, B2ExecutorUtils.createThreadFactory("backup-executor-%02d"));
 
     Runnable thread = () -> {
-      try {
-        // start with a clean slate and delete the dir used by the script
-        FileUtils.deleteDirectory(new File("backup-salesforce"));
+      // SALESFORCE
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.url)) {
+        try {
+          // start with a clean slate and delete the dir used by the script
+          FileUtils.deleteDirectory(new File("backup-salesforce"));
 
-        log.info("downloading backup file from SFDC");
+          log.info("downloading backup file from SFDC");
 
-        // using jruby to kick off the ruby script -- see https://github.com/carojkov/salesforce-export-downloader
-        ScriptingContainer container = new ScriptingContainer();
-        container.getEnvironment().put("SFDC_USERNAME", env.getConfig().salesforce.username);
-        container.getEnvironment().put("SFDC_PASSWORD", env.getConfig().salesforce.password);
-        container.getEnvironment().put("SFDC_URL", env.getConfig().salesforce.url);
-        container.runScriptlet(PathType.CLASSPATH, "salesforce-export-downloader/salesforce-backup.rb");
+          // using jruby to kick off the ruby script -- see https://github.com/carojkov/salesforce-export-downloader
+          ScriptingContainer container = new ScriptingContainer();
+          container.getEnvironment().put("SFDC_USERNAME", env.getConfig().salesforce.username);
+          container.getEnvironment().put("SFDC_PASSWORD", env.getConfig().salesforce.password);
+          container.getEnvironment().put("SFDC_URL", env.getConfig().salesforce.url);
+          container.runScriptlet(PathType.CLASSPATH, "salesforce-export-downloader/salesforce-backup.rb");
 
-        // should have only downloaded a single zip, so grab the first file
-        Collection<File> files = FileUtils.listFiles(new File("backup-salesforce"), null, false);
+          // should have only downloaded a single zip, so grab the first file
+          Collection<File> files = FileUtils.listFiles(new File("backup-salesforce"), null, false);
 
-        // from here on out, closely following example code from
-        // https://github.com/Backblaze/b2-sdk-java/blob/master/samples/src/main/java/com/backblaze/b2/sample/B2Sample.java
+          // from here on out, closely following example code from
+          // https://github.com/Backblaze/b2-sdk-java/blob/master/samples/src/main/java/com/backblaze/b2/sample/B2Sample.java
 
-        B2StorageClient client = B2StorageClientFactory
-            .createDefaultFactory()
-            .create(
-                env.getConfig().backblaze.publicKey,
-                env.getConfig().backblaze.secretKey,
-                "impact-upgrade-hub"
-            );
+          B2StorageClient client = B2StorageClientFactory
+              .createDefaultFactory()
+              .create(
+                  env.getConfig().backblaze.publicKey,
+                  env.getConfig().backblaze.secretKey,
+                  "impact-upgrade-hub"
+              );
 
-        for (File file : files) {
-          log.info("uploading {} to Backblaze B2", file.getName());
+          for (File file : files) {
+            log.info("uploading {} to Backblaze B2", file.getName());
 
-          B2ContentSource source = B2FileContentSource.builder(file).build();
+            B2ContentSource source = B2FileContentSource.builder(file).build();
 
-          final B2UploadListener uploadListener = (progress) -> {
-            final double percent = (100. * (progress.getBytesSoFar() / (double) progress.getLength()));
-            log.info(String.format("upload progress: %3.2f, %s", percent, progress.toString()));
-          };
+            final B2UploadListener uploadListener = (progress) -> {
+              final double percent = (100. * (progress.getBytesSoFar() / (double) progress.getLength()));
+              log.info(String.format("upload progress: %3.2f, %s", percent, progress.toString()));
+            };
 
-          B2UploadFileRequest uploadRequest = B2UploadFileRequest
-              .builder(env.getConfig().backblaze.bucketId, "salesforce/" + file.getName(), B2ContentTypes.APPLICATION_OCTET, source)
-              .setListener(uploadListener)
-              .build();
-          B2FileVersion upload = client.uploadLargeFile(uploadRequest, executorService);
+            B2UploadFileRequest uploadRequest = B2UploadFileRequest
+                .builder(env.getConfig().backblaze.bucketId, "salesforce/" + file.getName(), B2ContentTypes.APPLICATION_OCTET, source)
+                .setListener(uploadListener)
+                .build();
+            B2FileVersion upload = client.uploadLargeFile(uploadRequest, executorService);
 
-          log.info("upload complete: {}", upload);
+            log.info("upload complete: {}", upload);
+          }
+        } catch(Exception e){
+          log.error("SFDC backup failed", e);
         }
-      } catch (Exception e) {
-        log.error("SFDC backup failed", e);
       }
+
+      // TODO: others
     };
     new Thread(thread).start();
 
