@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.controller;
 
+import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -31,6 +32,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -142,8 +144,18 @@ public class PaymentGatewayController {
   ) throws Exception {
     Environment env = envFactory.init(request);
 
-    Date startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
-    Date endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+    Date startDate;
+    Date endDate;
+    if (Strings.isNullOrEmpty(start)) {
+      // If dates were not provided, this was likely a cronjob. Do the last 3 days.
+      Calendar startCal = Calendar.getInstance();
+      startCal.add(Calendar.DATE, -72);
+      startDate = startCal.getTime();
+      endDate = Calendar.getInstance().getTime();
+    } else {
+      startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+      endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+    }
 
     Runnable thread = () -> {
       for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
@@ -164,8 +176,18 @@ public class PaymentGatewayController {
   ) throws Exception {
     Environment env = envFactory.init(request);
 
-    Date startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
-    Date endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+    Date startDate;
+    Date endDate;
+    if (Strings.isNullOrEmpty(start)) {
+      // If dates were not provided, this was likely a cronjob. Do the last 3 days.
+      Calendar startCal = Calendar.getInstance();
+      startCal.add(Calendar.DATE, -72);
+      startDate = startCal.getTime();
+      endDate = Calendar.getInstance().getTime();
+    } else {
+      startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+      endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+    }
 
     Runnable thread = () -> {
       for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
