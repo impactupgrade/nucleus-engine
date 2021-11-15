@@ -538,14 +538,19 @@ public class SfdcCrmService implements CrmService {
    */
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    List<SObject> sObjects;
     // 701 is the Campaign ID prefix
     if (listId.startsWith("701")) {
-      return toCrmContact(sfdcClient.getContactsByCampaignId(listId));
+      sObjects = sfdcClient.getContactsByCampaignId(listId);
+      // 00O - Report ID prefix
+    } else if (listId.startsWith("00O")) {
+      sObjects = sfdcClient.getContactsByReportId(listId);
     }
     // otherwise, assume it's an explicit Opportunity name
     else {
-      return toCrmContact(sfdcClient.getContactsByOpportunityName(listId));
+      sObjects = sfdcClient.getContactsByOpportunityName(listId);
     }
+    return toCrmContact(sObjects);
   }
 
   @Override
