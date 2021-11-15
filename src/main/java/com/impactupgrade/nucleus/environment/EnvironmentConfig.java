@@ -169,6 +169,9 @@ public class EnvironmentConfig {
       public Set<String> recurringDonation = new HashSet<>();
       public Set<String> user = new HashSet<>();
     }
+
+    public Set<String> supportedContactsReportTypes = new HashSet<>();
+    public Set<String> supportedContactReportColumns = new HashSet<>();
   }
 
   public Twilio twilio = new Twilio();
