@@ -86,17 +86,24 @@ public class EnvironmentConfig {
   //  Needs careful thought...
   public static class CRMFieldDefinitions {
     public String paymentGatewayName = "";
+
     public String paymentGatewayTransactionId = "";
     public String paymentGatewayCustomerId = "";
     public String paymentGatewaySubscriptionId = "";
+
     public String paymentGatewayRefundId = "";
     public String paymentGatewayRefundDate = "";
+    public String paymentGatewayRefundDepositId = "";
+    public String paymentGatewayRefundDepositDate = "";
+
     public String paymentGatewayDepositId = "";
     public String paymentGatewayDepositDate = "";
     public String paymentGatewayDepositNetAmount = "";
     public String paymentGatewayDepositFee = "";
+
     public String emailOptIn = "";
     public String emailOptOut = "";
+
     public String smsOptIn = "";
     public String smsOptOut = "";
   }

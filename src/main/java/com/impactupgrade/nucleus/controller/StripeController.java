@@ -211,7 +211,7 @@ public class StripeController {
 
         List<PaymentGatewayEvent> paymentGatewayEvents = stripePaymentGatewayService.payoutToPaymentGatewayEvents(payout);
         for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
-          env.donationService().chargeDeposited(paymentGatewayEvent);
+          env.donationService().processDeposit(paymentGatewayEvent);
         }
       }
       case "customer.source.expiring" -> {

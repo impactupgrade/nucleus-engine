@@ -147,7 +147,7 @@ public class DonationService {
     }
   }
 
-  public void chargeDeposited(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void processDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = crmService.getDonation(paymentGatewayEvent);
 
     if (donation.isEmpty()) {
