@@ -428,6 +428,8 @@ public class HubSpotCrmService implements CrmService {
       return;
     }
 
+    // TODO: update to reflect the same process used in SfdcCrmService? Missing refund processing, etc.
+
     DealProperties deal = new DealProperties();
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate(), deal.getOtherProperties());

@@ -19,6 +19,7 @@ import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Payout;
+import com.stripe.model.Refund;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -160,7 +161,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           log.info(SDF.format(new Date(payout.getArrivalDate() * 1000)));
           List<PaymentGatewayEvent> paymentGatewayEvents = payoutToPaymentGatewayEvents(payout);
           for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
-            env.donationService().chargeDeposited(paymentGatewayEvent);
+            env.donationService().processDeposit(paymentGatewayEvent);
           }
         } catch (Exception e) {
           log.error("deposit replay failed", e);
@@ -296,6 +297,17 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction));
         }
 
+        paymentGatewayEvent.setDepositId(payout.getId());
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(payout.getArrivalDate() * 1000);
+        paymentGatewayEvent.setDepositDate(c);
+
+        paymentGatewayEvents.add(paymentGatewayEvent);
+      } else if (balanceTransaction.getSourceObject() instanceof Refund refund) {
+        log.info("found refund {}", refund.getId());
+
+        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+        paymentGatewayEvent.initStripe(refund);
         paymentGatewayEvent.setDepositId(payout.getId());
         Calendar c = Calendar.getInstance();
         c.setTimeInMillis(payout.getArrivalDate() * 1000);

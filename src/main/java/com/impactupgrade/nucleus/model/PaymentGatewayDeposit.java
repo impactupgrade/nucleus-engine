@@ -53,7 +53,7 @@ public class PaymentGatewayDeposit {
 
   // TODO: May need to rethink the following, since hierarchies of funds was somewhat of a TER-specific concept.
 
-  public void addTransaction(double gross, double net, double fee, double refund, String parentFund, String fund) {
+  public void addTransaction(double gross, double net, double fee, String parentFund, String fund) {
     if (!ledgers.containsKey(parentFund)) {
       Ledger ledger = new Ledger();
       ledgers.put(parentFund, ledger);
@@ -66,14 +66,12 @@ public class PaymentGatewayDeposit {
     ledgers.get(parentFund).gross += gross;
     ledgers.get(parentFund).net += net;
     ledgers.get(parentFund).fees += fee;
-    ledgers.get(parentFund).refunds += refund;
     ledgers.get(parentFund).subLedgers.get(fund).gross += gross;
     ledgers.get(parentFund).subLedgers.get(fund).net += net;
     ledgers.get(parentFund).subLedgers.get(fund).fees += fee;
-    ledgers.get(parentFund).subLedgers.get(fund).refunds += refund;
   }
 
-  public void addTransaction(double gross, double net, double fee, double refund, String fund) {
+  public void addTransaction(double gross, double net, double fee, String fund) {
     if (Strings.isNullOrEmpty(fund)) {
       fund = "General";
     }
@@ -86,6 +84,32 @@ public class PaymentGatewayDeposit {
     ledgers.get(fund).gross += gross;
     ledgers.get(fund).net += net;
     ledgers.get(fund).fees += fee;
+  }
+
+  public void addRefund(double refund, String parentFund, String fund) {
+    if (!ledgers.containsKey(parentFund)) {
+      Ledger ledger = new Ledger();
+      ledgers.put(parentFund, ledger);
+    }
+    if (!ledgers.get(parentFund).subLedgers.containsKey(fund)) {
+      Ledger ledger = new Ledger();
+      ledgers.get(parentFund).subLedgers.put(fund, ledger);
+    }
+
+    ledgers.get(parentFund).refunds += refund;
+    ledgers.get(parentFund).subLedgers.get(fund).refunds += refund;
+  }
+
+  public void addRefund(double refund, String fund) {
+    if (Strings.isNullOrEmpty(fund)) {
+      fund = "General";
+    }
+
+    if (!ledgers.containsKey(fund)) {
+      Ledger ledger = new Ledger();
+      ledgers.put(fund, ledger);
+    }
+
     ledgers.get(fund).refunds += refund;
   }
 

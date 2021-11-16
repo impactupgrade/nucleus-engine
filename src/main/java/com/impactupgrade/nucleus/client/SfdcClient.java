@@ -327,6 +327,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
+  public List<SObject> getRefundsInDeposit(String depositId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId + " = '" + depositId + "'";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
   public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId) throws ConnectionException, InterruptedException {
     // TODO: Using TOMORROW to account for timezone issues -- we can typically get away with that approach
     // since most RDs are monthly...
