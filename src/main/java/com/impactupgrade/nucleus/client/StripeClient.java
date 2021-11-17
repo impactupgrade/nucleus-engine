@@ -291,13 +291,6 @@ public class StripeClient {
       }
     }
 
-    // we have a new source, so update it as the default
-
-    CustomerUpdateParams customerParams = CustomerUpdateParams.builder()
-        .setDefaultSource(newSource.getId())
-        .build();
-    customer.update(customerParams, requestOptions);
-
     return newSource;
   }
 

@@ -33,7 +33,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -170,9 +169,9 @@ public class DonationFormController {
 
           if (formData.isStripe()) {
             // Attempt/validate *before* creating the new records!
-            stripeCustomer = getOrCreateStripeCustomer(formData, env);
-            List<PaymentSource> stripePaymentSources = stripeCustomer.getSources().getData();
-            stripePaymentSource = stripePaymentSources.get(stripePaymentSources.size() - 1);
+            CustomerAndSource customerAndSource = getOrCreateStripeCustomer(formData, env);
+            stripeCustomer = customerAndSource.customer;
+            stripePaymentSource = customerAndSource.source;
           }
 
           String accountId = createHouseholdAccount(formData, env);
@@ -188,9 +187,9 @@ public class DonationFormController {
               formData.getCrmContactId(), formData.getCrmAccountId(), formData.getEmail());
 
           if (formData.isStripe()) {
-            stripeCustomer = getOrCreateStripeCustomer(formData, env);
-            List<PaymentSource> stripePaymentSources = stripeCustomer.getSources().getData();
-            stripePaymentSource = stripePaymentSources.get(stripePaymentSources.size() - 1);
+            CustomerAndSource customerAndSource = getOrCreateStripeCustomer(formData, env);
+            stripeCustomer = customerAndSource.customer;
+            stripePaymentSource = customerAndSource.source;
           }
 
           // TODO: updates currently fail in HS due to a PATCH + HTTP lib issue in the HS lib
@@ -318,17 +317,21 @@ public class DonationFormController {
     env.donationsCrmService().updateContact(contact);
   }
 
-  protected Customer getOrCreateStripeCustomer(DonationFormData formData, Environment env) throws StripeException {
+  protected record CustomerAndSource(Customer customer, PaymentSource source) {}
+
+  // TODO: Not a huge fan of returning a tuple here, but it helps keep the logic clean for callers...
+  protected CustomerAndSource getOrCreateStripeCustomer(DonationFormData formData, Environment env) throws StripeException {
     StripeClient stripeClient = env.stripeClient();
 
     Customer customer = null;
+    PaymentSource source = null;
 
     // TODO: Also check by customerId, if the field is configured in env.json?
     if (!Strings.isNullOrEmpty(formData.getCustomerEmail())) {
       customer = stripeClient.getCustomerByEmail(formData.getCustomerEmail()).orElse(null);
       if (customer != null) {
         log.info("found Stripe Customer {}", customer.getId());
-        stripeClient.updateCustomerSource(customer, formData.getStripeToken());
+        source = stripeClient.updateCustomerSource(customer, formData.getStripeToken());
         log.info("updated payment source on Stripe Customer {}", customer.getId());
       }
     }
@@ -339,10 +342,11 @@ public class DonationFormController {
           formData.getStripeToken()
       );
       customer = stripeClient.createCustomer(customerBuilder);
+      source = customer.getSources().getData().get(0);
       log.info("created Stripe Customer {}", customer.getId());
     }
 
-    return customer;
+    return new CustomerAndSource(customer, source);
   }
 
   protected void processStripe(Customer stripeCustomer, PaymentSource stripeSource, DonationFormData formData,
