@@ -23,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -136,6 +137,12 @@ public class PaymentGatewayController {
   }
 
   @Path("/replay/charges")
+  @GET
+  public Response verifyAndReplayCharges(@Context HttpServletRequest request) throws Exception {
+    return verifyAndReplayCharges(null, null, request);
+  }
+
+  @Path("/replay/charges")
   @POST
   public Response verifyAndReplayCharges(
       @FormParam("start") String start,
@@ -165,6 +172,12 @@ public class PaymentGatewayController {
     new Thread(thread).start();
 
     return Response.status(200).build();
+  }
+
+  @Path("/replay/deposits")
+  @GET
+  public Response verifyAndReplayDeposits(@Context HttpServletRequest request) throws Exception {
+    return verifyAndReplayDeposits(null, null, request);
   }
 
   @Path("/replay/deposits")
