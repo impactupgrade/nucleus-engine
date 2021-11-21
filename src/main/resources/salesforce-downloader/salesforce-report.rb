@@ -108,8 +108,7 @@ end
 
 def get_urls(login)
   puts "Getting urls..."
-  #https://unstopables-dev-ed.my.salesforce.com/00O7Q000000TzvFUAS?isdtp=p1&export=1&enc=UTF-8&xf=csv
-  urls = ["/00O7Q000000TzvFUAS?isdtp=p1&export=1&enc=UTF-8&xf=csv"]
+  urls = ["/" + ENV["SFDC_REPORT_ID"] + "?isdtp=p1&export=1&enc=UTF-8&xf=csv"]
 end
 
 def download_file(login, url, fdir, fn)

@@ -72,7 +72,7 @@ public class BackupController {
           container.getEnvironment().put("SFDC_USERNAME", env.getConfig().salesforce.username);
           container.getEnvironment().put("SFDC_PASSWORD", env.getConfig().salesforce.password);
           container.getEnvironment().put("SFDC_URL", env.getConfig().salesforce.url);
-          container.runScriptlet(PathType.CLASSPATH, "salesforce-export-downloader/salesforce-backup.rb");
+          container.runScriptlet(PathType.CLASSPATH, "salesforce-downloader/salesforce-backup.rb");
 
           // should have only downloaded a single zip, so grab the first file
           Collection<File> files = FileUtils.listFiles(new File("backup-salesforce"), null, false);

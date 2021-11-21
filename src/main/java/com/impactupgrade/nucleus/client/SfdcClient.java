@@ -15,15 +15,11 @@ import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
@@ -34,11 +30,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SfdcClient extends SFDCPartnerAPIClient {
@@ -242,126 +236,166 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
+//  public List<SObject> getContactsByReportId(String reportId) throws ConnectionException, InterruptedException, IOException {
+//    if (Strings.isNullOrEmpty(reportId)) {
+//      return Collections.emptyList();
+//    }
+//
+//    String reportDescription = getReportDescription(reportId);
+//    if (Strings.isNullOrEmpty(reportDescription)) {
+//      log.error("Failed to get report description! {}", reportId);
+//      return Collections.emptyList();
+//    }
+//
+//    // Check report type is supported
+//    String reportType = getReportType(reportDescription);
+//    Set<String> supportedTypes = env.getConfig().salesforce.supportedContactsReportTypes;
+//    if (!supportedTypes.contains(reportType)) {
+//      log.warn("Report type {} is not supported! Supported types: {}.", reportType, supportedTypes);
+//      log.warn("Can NOT load contacts from report {}!", reportId);
+//      return Collections.emptyList();
+//    }
+//
+//    // Get report columns as a map (csv column label -> report column key)
+//    Map<String, String> reportColumns = getReportColumns(reportDescription);
+//    if (CollectionUtils.isEmpty(reportColumns.keySet())) {
+//      // Should be unreachable
+//      log.error("Report {} does not have any columns defined!", reportId);
+//      return Collections.emptyList();
+//    }
+//    Set<String> supportedColumns = env.getConfig().salesforce.supportedContactReportColumns;
+//    // Check if report contains supported columns
+//    Set<String> filteredColumnsLabels = reportColumns.keySet().stream()
+//            .filter(reportColumnLabel -> supportedColumns.contains(reportColumns.get(reportColumnLabel)))
+//            .collect(Collectors.toSet());
+//
+//    if (CollectionUtils.isEmpty(filteredColumnsLabels)) {
+//      log.warn("Report {} does not contain any of supported columns: {}", reportId, supportedColumns);
+//      log.warn("Can NOT load contacts from report {}!", reportId);
+//      return Collections.emptyList();
+//    }
+//
+//    // Get the report as csv
+//    String reportContent = downloadReportAsString(reportId);
+//
+//    // Get report content as a map of (columnLabel -> columnValues)
+//    Map<String, List<String>> columnValues = new HashMap<>();
+//    CsvMapper mapper = new CsvMapper();
+//    CsvSchema schema = CsvSchema.emptySchema().withHeader();
+//    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(reportContent);
+//    while (iterator.hasNext()) {
+//      Map<String, String> row = iterator.next();
+//      row.entrySet().stream()
+//        // Collect only values for filtered (searchable) columns
+//        .filter(e -> filteredColumnsLabels.contains(e.getKey()))
+//        .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+//        .forEach(e -> {
+//          columnValues.computeIfAbsent(e.getKey(), c -> new ArrayList<>());
+//          columnValues.get(e.getKey()).add(e.getValue());
+//        });
+//    }
+//
+//    log.info("column values: {}", columnValues);
+//
+//    // Select one of supported columns values (getting one that has the most values defined in csv)
+//    String searchColumnLabel = null;
+//    int biggestSize = 0;
+//    for (Map.Entry<String, List<String>> e: columnValues.entrySet()) {
+//      int valuesSize = e.getValue().size();
+//      if (valuesSize > biggestSize) {
+//        biggestSize = valuesSize;
+//        searchColumnLabel = e.getKey();
+//      }
+//    }
+//
+//    String searchColumn = reportColumns.get(searchColumnLabel);
+//    String searchColumnValues = String.join(",", columnValues.get(searchColumnLabel).stream().map(label -> "'" + label + "'").collect(Collectors.toList()));
+//
+//    // Get contacts using column key and csv values
+//    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + searchColumn + " in (" + searchColumnValues + ")";
+//    LoggingUtil.verbose(log, query);
+//    return queryList(query);
+//  }
+
   public List<SObject> getContactsByReportId(String reportId) throws ConnectionException, InterruptedException, IOException {
     if (Strings.isNullOrEmpty(reportId)) {
-      return Collections.emptyList();
-    }
-
-    String reportDescription = getReportDescription(reportId);
-    if (Strings.isNullOrEmpty(reportDescription)) {
-      log.error("Failed to get report description! {}");
-      return Collections.emptyList();
-    }
-
-    // Check report type is supported
-    String reportType = getReportType(reportDescription);
-    Set<String> supportedTypes = env.getConfig().salesforce.supportedContactsReportTypes;
-    if (!supportedTypes.contains(reportType)) {
-      log.warn("Report type {} is not supported! Supported types: {}.", reportType, supportedTypes);
-      log.warn("Can NOT load contacts from report {}!", reportId);
-      return Collections.emptyList();
-    }
-
-    // Get report columns as a map (csv column label -> report column key)
-    Map<String, String> reportColumns = getReportColumns(reportDescription);
-    if (CollectionUtils.isEmpty(reportColumns.keySet())) {
-      // Should be unreachable
-      log.error("Report {} does not have any columns defined!", reportId);
-      return Collections.emptyList();
-    }
-    Set<String> supportedColumns = env.getConfig().salesforce.supportedContactReportColumns;
-    // Check if report contains supported columns
-    Set<String> filteredColumnsLabels = reportColumns.keySet().stream()
-            .filter(reportColumnLabel -> supportedColumns.contains(reportColumns.get(reportColumnLabel)))
-            .collect(Collectors.toSet());
-
-    if (CollectionUtils.isEmpty(filteredColumnsLabels)) {
-      log.warn("Report {} does not contain any of supported columns: {}", reportId, supportedColumns);
-      log.warn("Can NOT load contacts from report {}!", reportId);
       return Collections.emptyList();
     }
 
     // Get the report as csv
     String reportContent = downloadReportAsString(reportId);
 
+    // NOTE: Rather than return a Map of the results, we instead require the report to include an ID column, then
+    // use that to run a normal query to grab all fields we care about.
+
     // Get report content as a map of (columnLabel -> columnValues)
-    Map<String, List<String>> columnValues = new HashMap<>();
+    List<String> resultIds = new ArrayList<>();
     CsvMapper mapper = new CsvMapper();
     CsvSchema schema = CsvSchema.emptySchema().withHeader();
     MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(reportContent);
     while (iterator.hasNext()) {
       Map<String, String> row = iterator.next();
       row.entrySet().stream()
-        // Collect only values for filtered (searchable) columns
-        .filter(e -> filteredColumnsLabels.contains(e.getKey()))
-        .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
-        .forEach(e -> {
-          columnValues.computeIfAbsent(e.getKey(), c -> new ArrayList<>());
-          columnValues.get(e.getKey()).add(e.getValue());
-        });
+          // Collect only values for filtered (searchable) columns
+          .filter(e -> "id".equalsIgnoreCase(e.getKey()) || "contact id".equalsIgnoreCase(e.getKey()))
+          .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+          .forEach(e -> {
+            resultIds.add(e.getValue());
+          });
     }
 
-    log.info("column values: {}", columnValues);
-
-    // Select one of supported columns values (getting one that has the most values defined in csv)
-    String searchColumnLabel = null;
-    int biggestSize = 0;
-    for (Map.Entry<String, List<String>> e: columnValues.entrySet()) {
-      int valuesSize = e.getValue().size();
-      if (valuesSize > biggestSize) {
-        biggestSize = valuesSize;
-        searchColumnLabel = e.getKey();
-      }
+    log.info("report contained {} contacts", resultIds.size());
+    if (resultIds.isEmpty()) {
+      return Collections.emptyList();
+    } else {
+      // Get contacts using ID column
+      String where = resultIds.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (" + where + ")";
+      LoggingUtil.verbose(log, query);
+      return queryList(query);
     }
-
-    String searchColumn = reportColumns.get(searchColumnLabel);
-    String searchColumnValues = String.join(",", columnValues.get(searchColumnLabel).stream().map(label -> "'" + label + "'").collect(Collectors.toList()));
-
-    // Get contacts using column key and csv values
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + searchColumn + " in (" + searchColumnValues + ")";
-    LoggingUtil.verbose(log, query);
-    return queryList(query);
   }
 
-  public String getReportDescription(String reportId) {
-    if (Strings.isNullOrEmpty(reportId)) {
-      return null;
-    }
-    String accessToken = env.getConfig().salesforce.secretKey;
-    String baseUrl = env.getConfig().salesforce.url;
-    // TODO: make version config param?
-    String describeReportUrl = "https://" + baseUrl + "/services/data/v53.0/analytics/reports/" + reportId + "/describe";
-    return HttpClient.getAsString(describeReportUrl, MediaType.APPLICATION_JSON, accessToken);
-  }
-
-  private String getReportType(String reportDescription) {
-    if (Strings.isNullOrEmpty(reportDescription)) {
-      return null;
-    }
-    JSONObject jsonObject = new JSONObject(reportDescription);
-    String reportType = jsonObject
-            .getJSONObject("reportMetadata")
-            .getJSONObject("reportType")
-            .getString("type");
-    log.info("report type: {}", reportType);
-    return reportType;
-  }
-
-  private Map<String, String> getReportColumns(String reportDescription) {
-    if (Strings.isNullOrEmpty(reportDescription)) {
-      return null;
-    }
-    JSONObject jsonObject = new JSONObject(reportDescription);
-    Map<String, String> reportColumns = new HashMap<>();
-    JSONArray categories = jsonObject.getJSONObject("reportTypeMetadata").getJSONArray("categories");
-    for (int i = 0 ; i < categories.length(); i++) {
-      JSONObject categoryColumns = categories.getJSONObject(i).getJSONObject("columns");
-      categoryColumns.keySet().forEach(columnKey -> {
-        reportColumns.put(categoryColumns.getJSONObject(columnKey).getString("label"), columnKey);
-      });
-    }
-    return reportColumns;
-  }
+//  public String getReportDescription(String reportId) {
+//    if (Strings.isNullOrEmpty(reportId)) {
+//      return null;
+//    }
+//    // TODO: no secretKeys for SFDC -- needs to use a login call to get a sessionId, like SfdcBulkClient
+//    String accessToken = env.getConfig().salesforce.secretKey;
+//    String baseUrl = env.getConfig().salesforce.url;
+//    // TODO: make version config param?
+//    String describeReportUrl = "https://" + baseUrl + "/services/data/v53.0/analytics/reports/" + reportId + "/describe";
+//    return HttpClient.getAsString(describeReportUrl, MediaType.APPLICATION_JSON, accessToken);
+//  }
+//
+//  private String getReportType(String reportDescription) {
+//    if (Strings.isNullOrEmpty(reportDescription)) {
+//      return null;
+//    }
+//    JSONObject jsonObject = new JSONObject(reportDescription);
+//    String reportType = jsonObject
+//            .getJSONObject("reportMetadata")
+//            .getJSONObject("reportType")
+//            .getString("type");
+//    log.info("report type: {}", reportType);
+//    return reportType;
+//  }
+//
+//  private Map<String, String> getReportColumns(String reportDescription) {
+//    if (Strings.isNullOrEmpty(reportDescription)) {
+//      return null;
+//    }
+//    JSONObject jsonObject = new JSONObject(reportDescription);
+//    Map<String, String> reportColumns = new HashMap<>();
+//    JSONArray categories = jsonObject.getJSONObject("reportTypeMetadata").getJSONArray("categories");
+//    for (int i = 0 ; i < categories.length(); i++) {
+//      JSONObject categoryColumns = categories.getJSONObject(i).getJSONObject("columns");
+//      categoryColumns.keySet().forEach(columnKey -> {
+//        reportColumns.put(categoryColumns.getJSONObject(columnKey).getString("label"), columnKey);
+//      });
+//    }
+//    return reportColumns;
+//  }
 
   private String downloadReportAsString(String reportId) throws IOException {
     log.info("downloading report file from SFDC...");
@@ -371,7 +405,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     container.getEnvironment().put("SFDC_USERNAME", env.getConfig().salesforce.username);
     container.getEnvironment().put("SFDC_PASSWORD", env.getConfig().salesforce.password);
     container.getEnvironment().put("SFDC_URL", env.getConfig().salesforce.url);
-    container.runScriptlet(PathType.CLASSPATH, "salesforce-export-downloader/salesforce-report.rb");
+    container.getEnvironment().put("SFDC_REPORT_ID", reportId);
+    container.runScriptlet(PathType.CLASSPATH, "salesforce-downloader/salesforce-report.rb");
 
     log.info("report downloaded!");
 
