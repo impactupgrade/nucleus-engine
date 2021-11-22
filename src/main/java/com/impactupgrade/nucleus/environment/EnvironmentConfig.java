@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.environment;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -211,8 +212,18 @@ public class EnvironmentConfig {
 
   public String currency = "";
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // INITIALIZATION
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   private static final boolean IS_PROD = "production".equalsIgnoreCase(System.getenv("PROFILE"));
   private static final boolean IS_INTEGRATION_TEST = "true".equalsIgnoreCase(System.getProperty("nucleus.integration.test"));
+
+  private static final ObjectMapper mapper = new ObjectMapper();
+  static {
+    // Allows nested objects, collections, etc. to be merged together.
+    mapper.setDefaultMergeable(true);
+  }
 
   public static EnvironmentConfig init() {
     try (
@@ -225,9 +236,6 @@ public class EnvironmentConfig {
         InputStream jsonOrgIntegrationTest = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("environment-it.json")
     ) {
-      ObjectMapper mapper = new ObjectMapper();
-      // Allows nested objects, collections, etc. to be merged together.
-      mapper.setDefaultMergeable(true);
       // Start with the default JSON as the foundation.
       EnvironmentConfig envConfig = mapper.readValue(jsonDefault, EnvironmentConfig.class);
       // Then override specific properties with anything that's in env.json, if there is one.
@@ -249,6 +257,19 @@ public class EnvironmentConfig {
       log.error("Unable to read environment JSON files! Exiting...", e);
       System.exit(1);
       return null;
+    }
+  }
+
+  /**
+   * Nucleus Core (and perhaps other use cases) need to dynamically provide the org's JSON from a database lookup.
+   * Assume it will always start with environment-default.json (using the static init() method). Overlay the
+   * unique JSON on top of what we already have.
+   */
+  public void init(String jsonOrg) {
+    try {
+      mapper.readerForUpdating(this).readValue(jsonOrg);
+    } catch (JsonProcessingException e) {
+      log.error("Unable to read environment JSON!", e);
     }
   }
 }

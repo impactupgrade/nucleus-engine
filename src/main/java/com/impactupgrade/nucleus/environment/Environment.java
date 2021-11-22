@@ -18,12 +18,14 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
+import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -47,15 +49,16 @@ public class Environment {
   private static final Logger log = LogManager.getLogger(Environment.class);
 
   // Whenever possible, we focus on being configuration-driven using one, large JSON file.
-  private final EnvironmentConfig config = EnvironmentConfig.init();
+  protected final EnvironmentConfig config = EnvironmentConfig.init();
 
   // Additional context, if available.
   // It seems odd to track URI and headers separately, rather than simply storing HttpServletRequest itself.
   // However, many (most?) frameworks don't allow aspects of request to be accessed over and over. Due to the mechanics,
   // some only allow it to be streamed once.
-  private String uri = null;
-  private final Map<String, String> headers = new HashMap<>();
-  private MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
+  protected String uri = null;
+  protected final Map<String, String> headers = new HashMap<>();
+  protected final Map<String, String> queryParams = new HashMap<>();
+  protected MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
 
   public EnvironmentConfig getConfig() {
     return config;
@@ -70,6 +73,9 @@ public class Environment {
         String headerName = headerNames.nextElement();
         headers.put(headerName, request.getHeader(headerName));
       }
+
+      URLEncodedUtils.parse(request.getQueryString(), StandardCharsets.UTF_8).forEach(
+          pair -> queryParams.put(pair.getName(), pair.getValue()));
     }
   }
 
