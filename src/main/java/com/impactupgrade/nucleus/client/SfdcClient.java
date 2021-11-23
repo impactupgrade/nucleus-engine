@@ -411,7 +411,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     log.info("report downloaded!");
 
     File reportFile = new File("report-salesforce/" + reportId + ".csv");
-    return Files.readString(reportFile.toPath(), StandardCharsets.US_ASCII);
+    return Files.readString(reportFile.toPath(), StandardCharsets.UTF_8);
   }
 
   public List<SObject> getContactsByOpportunityName(String opportunityName) throws ConnectionException, InterruptedException {
