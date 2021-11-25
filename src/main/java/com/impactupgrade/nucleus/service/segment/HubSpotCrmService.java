@@ -16,6 +16,7 @@ import com.impactupgrade.integration.hubspot.crm.v3.Deal;
 import com.impactupgrade.integration.hubspot.crm.v3.DealProperties;
 import com.impactupgrade.integration.hubspot.crm.v3.DealResults;
 import com.impactupgrade.integration.hubspot.crm.v3.Filter;
+import com.impactupgrade.integration.hubspot.crm.v3.FilterGroup;
 import com.impactupgrade.integration.hubspot.crm.v3.HasId;
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
@@ -104,8 +105,10 @@ public class HubSpotCrmService implements CrmService {
     if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId)) {
       return Optional.empty();
     }
+
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, "EQ", customerId);
-    CompanyResults companyResults = hsClient.company().search(List.of(filter), companyFields);
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
+    CompanyResults companyResults = hsClient.company().search(filterGroups, companyFields);
 
     if (Objects.isNull(companyResults) || companyResults.getTotal() == 0) {
       return Optional.empty();
@@ -142,7 +145,8 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, "EQ", transactionId);
-    DealResults results = hsClient.deal().search(List.of(filter), dealFields);
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
+    DealResults results = hsClient.deal().search(filterGroups, dealFields);
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -222,7 +226,8 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", paymentGatewayEvent.getSubscriptionId());
-    DealResults results = hsClient.deal().search(List.of(filter), dealFields);
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
+    DealResults results = hsClient.deal().search(filterGroups, dealFields);
 
     if (results == null || results.getTotal() == 0) {
       return Optional.empty();
@@ -685,8 +690,8 @@ public class HubSpotCrmService implements CrmService {
   public List<CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception {
     String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
 
-    List<Filter> filters = List.of(new Filter("lastmodifieddate", "gte", dateString));
-    ContactResults results = hsClient.contact().search(filters, getCustomFieldNames());
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(new Filter("lastmodifieddate", "gte", dateString))));
+    ContactResults results = hsClient.contact().search(filterGroups, getCustomFieldNames());
 
     return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
 
