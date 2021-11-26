@@ -25,9 +25,9 @@ import java.util.Optional;
 
 // TODO: Could someday become an open source lib...
 
-public class DonorwranglerClient {
+public class DonorWranglerClient {
 
-  private static final Logger log = LogManager.getLogger(DonorwranglerClient.class);
+  private static final Logger log = LogManager.getLogger(DonorWranglerClient.class);
 
   private static final String CLIENT_NAME = "donationSpring";
   // Note: This is more of an "integration key" specifically for Donation Spring as a whole. Ok to be public.
@@ -37,7 +37,7 @@ public class DonorwranglerClient {
 
   protected final Environment env;
 
-  public DonorwranglerClient(Environment env) {
+  public DonorWranglerClient(Environment env) {
     this.env = env;
   }
 
@@ -56,19 +56,7 @@ public class DonorwranglerClient {
     }
 
     JSONObject jsonDonor = (JSONObject) jsonObject.get("result");
-
-    DwDonor donor = new DwDonor(
-        jsonDonor.getInt("id") + "",
-        jsonDonor.getString("first"),
-        jsonDonor.getString("last"),
-        jsonDonor.getString("email"),
-        jsonDonor.getString("phone"),
-        jsonDonor.getString("address1"),
-        jsonDonor.getString("address2"),
-        jsonDonor.getString("city"),
-        jsonDonor.getString("state"),
-        jsonDonor.getString("zip")
-    );
+    DwDonor donor = DwDonor.fromJson(jsonDonor);
     return Optional.of(donor);
   }
 
@@ -92,19 +80,7 @@ public class DonorwranglerClient {
         log.warn("multiple contacts found for {}={}; returning the first", searchKey, searchValue);
       }
       JSONObject jsonDonor = (JSONObject) jsonArray.get(0);
-
-      DwDonor donor = new DwDonor(
-          jsonDonor.getInt("id") + "",
-          jsonDonor.getString("first"),
-          jsonDonor.getString("last"),
-          jsonDonor.getString("email"),
-          jsonDonor.getString("phone"),
-          jsonDonor.getString("address1"),
-          jsonDonor.getString("address2"),
-          jsonDonor.getString("city"),
-          jsonDonor.getString("state"),
-          jsonDonor.getString("zip")
-      );
+      DwDonor donor = DwDonor.fromJson(jsonDonor);
       return Optional.of(donor);
     }
   }
@@ -219,7 +195,22 @@ public class DonorwranglerClient {
     String city,
     String state,
     String zip
-  ){}
+  ) {
+    public static DwDonor fromJson(JSONObject jsonDonor) {
+      return new DwDonor(
+          jsonDonor.getInt("id") + "",
+          jsonDonor.getString("first"),
+          jsonDonor.getString("last"),
+          jsonDonor.getString("email"),
+          jsonDonor.getString("phone"),
+          jsonDonor.getString("address1"),
+          jsonDonor.getString("address2"),
+          jsonDonor.getString("city"),
+          jsonDonor.getString("state"),
+          jsonDonor.getString("zip")
+      );
+    }
+  }
 
   public static record DwDonation(
       String id,

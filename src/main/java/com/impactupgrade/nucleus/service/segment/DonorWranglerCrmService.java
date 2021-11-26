@@ -6,7 +6,7 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.impactupgrade.nucleus.client.DonorwranglerClient;
+import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -34,7 +34,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   protected Environment env;
-  protected DonorwranglerClient dwClient;
+  protected DonorWranglerClient dwClient;
 
   @Override
   public String name() { return "donorwrangler"; }
@@ -204,12 +204,12 @@ public class DonorWranglerCrmService implements BasicCrmService {
     // TODO
   }
 
-  protected Optional<CrmContact> toCrmContact(Optional<DonorwranglerClient.DwDonor> donor) {
+  protected Optional<CrmContact> toCrmContact(Optional<DonorWranglerClient.DwDonor> donor) {
     return donor.map(this::toCrmContact);
   }
 
   // TODO: map the rest
-  protected CrmContact toCrmContact(DonorwranglerClient.DwDonor donor) {
+  protected CrmContact toCrmContact(DonorWranglerClient.DwDonor donor) {
     return new CrmContact(donor.id() + "");
   }
 }
