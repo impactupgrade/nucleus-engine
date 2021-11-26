@@ -29,6 +29,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Application;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -40,6 +42,10 @@ public abstract class AbstractIT extends JerseyTest {
     System.setProperty("jersey.test.host", "localhost");
     System.setProperty("jersey.config.test.container.port", "9009");
   }
+
+  // TODO: Complete hack. We currently have issues since multiple tests revolve around the same integration test
+  //  donor and email address. For now, ensure only one test method runs at a time.
+  private static final Lock LOCK = new ReentrantLock();
 
   // definitions of common environments
   protected static final EnvironmentFactory envFactorySfdcStripe = new EnvironmentFactory("environment-it-sfdc-stripe.json");
@@ -55,19 +61,31 @@ public abstract class AbstractIT extends JerseyTest {
     this.env = app.getEnvironmentFactory().init((HttpServletRequest) null);
   }
 
+  @Override
+  public void setUp() throws Exception {
+    LOCK.lock();
+    super.setUp();
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    super.tearDown();
+    LOCK.unlock();
+  }
+
   // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
   // do not name this setUp()
   @BeforeAll
-  public void before() throws Exception {
+  public void beforeAll() throws Exception {
     TestUtil.SKIP_NEW_THREADS = true;
 
     app.start();
 
     super.setUp();
   }
-  // do not name this tearDown()
+  // ditto (see above) -- do not name this tearDown()
   @AfterAll
-  public void after() throws Exception {
+  public void afterAll() throws Exception {
     app.stop();
 
     super.tearDown();
