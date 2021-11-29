@@ -26,29 +26,34 @@ public class NotificationService {
         this.env = env;
     }
 
-    public void sendEmailNotification(String textBody, EnvironmentConfig.Notifications notifications) throws MessagingException {
-        sendEmailNotification(textBody, null, notifications);
+    // TODO: This needs refactored! env.json allows a flexible configuration of notifications to be set up for specific
+    //  contexts. Don't force the caller of this class to know ahead of time what to send. Instead, let it simply call
+    //  sendNotification(...) and we'll check out notification.email, notification.sms, and notification.task here.
+
+    public void sendEmailNotification(String subject, String textBody, String notificationsKey) throws MessagingException {
+        sendEmailNotification(subject, textBody, null, notificationsKey);
     }
 
-    public void sendEmailNotification(String textBody, String htmlBody, EnvironmentConfig.Notifications notifications) throws MessagingException {
+    public void sendEmailNotification(String subject, String textBody, String htmlBody, String notificationsKey) throws MessagingException {
+        EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get(notificationsKey);
+
         if (Objects.isNull(notifications) || Objects.isNull(notifications.email)) {
             // Nothing to do
             return;
         }
-        EnvironmentConfig.EmailNotification emailNotification = notifications.email;
+        EnvironmentConfig.Notification emailNotification = notifications.email;
         if (!isValidEmailNotification(emailNotification)) {
             log.warn("Email notification is not valid (missing required parameters). Returning...");
             return;
         }
         String emailFrom = emailNotification.from;
         String emailTo = String.join(",", emailNotification.to);
-        String emailSubject = emailNotification.subject;
-        EmailUtil.sendEmail(emailSubject,
-                textBody, htmlBody,
-                emailTo, emailFrom);
+        EmailUtil.sendEmail(subject, textBody, htmlBody, emailTo, emailFrom);
     }
 
-    public void sendSMSNotification(String smsText, EnvironmentConfig.Notifications notifications) {
+    public void sendSMSNotification(String smsText, String notificationsKey) {
+        EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get(notificationsKey);
+
         if (Objects.isNull(notifications) || Objects.isNull(notifications.sms)) {
             // Nothing to do
             return;
@@ -60,7 +65,9 @@ public class NotificationService {
         // TODO: send sms messages
     }
 
-    public void createCrmTask(CrmService crmService, String targetId, String description, EnvironmentConfig.Notifications notifications) throws Exception {
+    public void createCrmTask(CrmService crmService, String targetId, String description, String notificationsKey) throws Exception {
+        EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get(notificationsKey);
+
         if (Objects.isNull(notifications) || Objects.isNull(notifications.task)) {
             // Nothing to do
             return;
@@ -91,7 +98,7 @@ public class NotificationService {
     }
 
     // Utils
-    private boolean isValidEmailNotification(EnvironmentConfig.EmailNotification emailNotification) {
+    private boolean isValidEmailNotification(EnvironmentConfig.Notification emailNotification) {
         return Objects.nonNull(emailNotification)
                 && !Strings.isNullOrEmpty(emailNotification.from)
                 && CollectionUtils.isNotEmpty(emailNotification.to);

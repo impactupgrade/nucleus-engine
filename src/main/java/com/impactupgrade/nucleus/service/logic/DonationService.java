@@ -6,7 +6,6 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -114,13 +113,13 @@ public class DonationService {
     }
 
     crmService.closeRecurringDonation(paymentGatewayEvent);
-    // Notifications configuration
-    EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get("donation-service:close-recurring-donation");
 
     // Email
     notificationservice.sendEmailNotification(
-            "Recurring donation " + recurringDonation.get().id + " has been closed.",
-            notificationsConfig);
+        "Recurring Donation Closed",
+        "Recurring donation " + recurringDonation.get().id + " has been closed.",
+        "donations:close-recurring-donation"
+    );
   }
 
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {

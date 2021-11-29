@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.environment;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -59,17 +60,13 @@ public class EnvironmentConfig {
     public Set<String> to = new HashSet<>();
   }
 
-  public static class EmailNotification extends Notification {
-    public String subject = "";
-  }
-
   public static class Task {
     public String assignTo = "";
     public String subject = "";
   }
 
   public static class Notifications {
-    public EmailNotification email;
+    public Notification email;
     public Notification sms;
     public Task task;
   }
@@ -268,13 +265,15 @@ public class EnvironmentConfig {
   // Allow additional env.json files to be added. This cannot be statically defined, due to usages such as integration
   // tests where tests run in parallel and each may need unique setups.
   public void addOtherJson(String otherJsonFilename) {
-    try (InputStream otherJson = Thread.currentThread().getContextClassLoader()
-        .getResourceAsStream(otherJsonFilename)) {
-      if (otherJson != null) {
-        mapper.readerForUpdating(this).readValue(otherJson);
+    if (!Strings.isNullOrEmpty(otherJsonFilename)) {
+      try (InputStream otherJson = Thread.currentThread().getContextClassLoader()
+          .getResourceAsStream(otherJsonFilename)) {
+        if (otherJson != null) {
+          mapper.readerForUpdating(this).readValue(otherJson);
+        }
+      } catch (IOException e) {
+        log.error("unable to read {}}", otherJsonFilename, e);
       }
-    } catch (IOException e) {
-      log.error("unable to read {}}", otherJsonFilename, e);
     }
   }
 

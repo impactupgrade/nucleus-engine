@@ -41,6 +41,10 @@ public class App {
 
   private final EnvironmentFactory envFactory;
 
+  public App() {
+    envFactory = new EnvironmentFactory();
+  }
+
   // Allow orgs to wire in their custom implementations of Environment.
   public App(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;

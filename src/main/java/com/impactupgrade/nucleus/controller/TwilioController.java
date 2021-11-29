@@ -36,9 +36,11 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * This service provides the ability to send outbound messages through Twilio, as well as be positioned
@@ -252,27 +254,21 @@ public class TwilioController {
       Form rawFormData,
       @Context HttpServletRequest request
   ) throws Exception {
-    // TODO: Disabling this, for now. If Twilio handles the global opt-out, we don't receive these webhook hits.
-    //  And for clients like RL, we don't want to handle this here at all, as SMC needs to receive them.
-//    MultivaluedMap<String, String> smsData = rawFormData.asMap();
-//
-//    log.info(smsData.entrySet().stream().map(e -> e.getKey() + "=" + String.join(",", e.getValue())).collect(Collectors.joining(" ")));
-//
-//    Environment env = envFactory.init(request);
-//
-//    List<String> optInKeywords = Arrays.asList("START", "UNSTOP", "YES", "SUBSCRIBE", "RESTART");
-//    List<String> optOutKeywords = Arrays.asList("STOP", "STOPALL", "CANCEL", "END", "QUIT", "UNSUBSCRIBE");
-//
-//    String from = smsData.get("From").get(0);
-//    if (smsData.containsKey("Body")) {
-//      String body = smsData.get("Body").get(0).trim();
-//      // Super important to do direct matches, and not a String contains! Many of the keywords could be accidentally used out of context.
-//      if (optInKeywords.contains(body.toUpperCase())) {
-//        env.messagingService().optIn(from);
-//      } else if (optOutKeywords.contains(body.toUpperCase())) {
-//        env.messagingService().optOut(from);
-//      }
-//    }
+    Environment env = envFactory.init(request);
+
+    MultivaluedMap<String, String> smsData = rawFormData.asMap();
+    log.info(smsData.entrySet().stream().map(e -> e.getKey() + "=" + String.join(",", e.getValue())).collect(Collectors.joining(" ")));
+
+    String from = smsData.get("From").get(0);
+    if (smsData.containsKey("Body")) {
+      String body = smsData.get("Body").get(0).trim();
+      // for now, simply send an email if it's configured -- in the future, update this to allow Activities to be stored on the SFDC contact, forward to a staff member, etc
+      env.notificationService().sendEmailNotification(
+          "Text Message Received",
+          "Text message received from " + from + ": " + body,
+          "sms:inbound-default"
+      );
+    }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
     MessagingResponse response = new MessagingResponse.Builder().build();
