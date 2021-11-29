@@ -20,6 +20,7 @@ import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -85,6 +86,10 @@ public class DonationFormController {
         // Return something meaningful, just in case it's actually a human, but not detailed to the point where
         // it tips off the nefarious person/bot to the specific issue we detected.
         return Response.status(400).entity("Donation blocked as possible spam. If this is in error, please try again or contact us!").build();
+      }
+
+      if (!EmailValidator.getInstance().isValid(formData.getEmail())) {
+        return Response.status(400).entity("Invalid email address: " + formData.getEmail() + " -- please try again.").build();
       }
 
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
