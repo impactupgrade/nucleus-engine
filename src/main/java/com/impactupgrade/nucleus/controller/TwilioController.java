@@ -40,6 +40,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -243,6 +244,8 @@ public class TwilioController {
     return Response.ok().entity(response.toXml()).build();
   }
 
+  private static final List<String> STOP_WORDS = List.of("STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT");
+
   /**
    * This webhook serves as a more generic catch-all endpoint for inbound messages from Twilio.
    */
@@ -262,12 +265,15 @@ public class TwilioController {
     String from = smsData.get("From").get(0);
     if (smsData.containsKey("Body")) {
       String body = smsData.get("Body").get(0).trim();
-      // for now, simply send an email if it's configured -- in the future, update this to allow Activities to be stored on the SFDC contact, forward to a staff member, etc
-      env.notificationService().sendEmailNotification(
-          "Text Message Received",
-          "Text message received from " + from + ": " + body,
-          "sms:inbound-default"
-      );
+      // prevent opt-out messages, like "STOP", from polluting the notifications
+      if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
+        // for now, simply send an email if it's configured -- in the future, update this to allow Activities to be stored on the SFDC contact, forward to a staff member, etc
+        env.notificationService().sendEmailNotification(
+            "Text Message Received",
+            "Text message received from " + from + ": " + body,
+            "sms:inbound-default"
+        );
+      }
     }
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
