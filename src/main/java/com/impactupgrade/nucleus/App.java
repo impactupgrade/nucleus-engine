@@ -39,7 +39,7 @@ public class App {
   // $PORT env var provided by Heroku
   private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
-  private final EnvironmentFactory envFactory;
+  protected final EnvironmentFactory envFactory;
 
   public App() {
     envFactory = new EnvironmentFactory();
