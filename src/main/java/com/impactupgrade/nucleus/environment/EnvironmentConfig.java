@@ -227,6 +227,7 @@ public class EnvironmentConfig {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   private static final boolean IS_PROD = "production".equalsIgnoreCase(System.getenv("PROFILE"));
+  private static final boolean IS_SANDBOX = "sandbox".equalsIgnoreCase(System.getenv("PROFILE"));
 
   private static final ObjectMapper mapper = new ObjectMapper();
   static {
@@ -250,7 +251,7 @@ public class EnvironmentConfig {
         mapper.readerForUpdating(envConfig).readValue(jsonOrg);
       }
 
-      if (!IS_PROD && jsonOrgSandbox != null) {
+      if (IS_SANDBOX && jsonOrgSandbox != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrgSandbox);
       }
 
