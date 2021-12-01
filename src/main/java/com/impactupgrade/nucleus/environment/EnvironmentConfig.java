@@ -245,8 +245,8 @@ public class EnvironmentConfig {
     ) {
       // Start with the default JSON as the foundation.
       EnvironmentConfig envConfig = mapper.readValue(jsonDefault, EnvironmentConfig.class);
-      // Then override specific properties with anything that's in env.json, if there is one.
-      if (jsonOrg != null) {
+
+      if (IS_PROD && jsonOrg != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrg);
       }
 
