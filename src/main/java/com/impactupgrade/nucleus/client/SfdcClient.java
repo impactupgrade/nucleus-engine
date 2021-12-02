@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SfdcClient extends SFDCPartnerAPIClient {
 
@@ -133,8 +134,25 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   }
 
-  public List<String> getEventsAttended(String contactId) throws ConnectionException, InterruptedException {
-    return null;
+  public List<SObject> getCampaigns(String contactId) throws ConnectionException, InterruptedException {
+    //TODO talk through this flow with someone
+    List<SObject> campaigns = new ArrayList<>();
+    for(String campaignID : getInvolvedCampaignIds(contactId)){
+      campaigns.add(getCampaignById(campaignID).get());
+    }
+    return campaigns;
+  }
+
+  public List<String> getInvolvedCampaignIds(String contactId) throws ConnectionException, InterruptedException {
+    //TODO clean this code up if working
+    String query = "select CampaignId from CampaignMember where contactId = " + contactId;
+    LoggingUtil.verbose(log, query);
+    List<SObject> campaignMember = queryList(query);
+    List<String > ids = new ArrayList<>();
+    for(SObject member : campaignMember){
+      ids.add((String) member.getField("CampaignID"));
+    }
+    return ids;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -170,6 +170,14 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     // PAST INTERACTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     addTagToContact(listName, contact, "Owned By: " + crmService.getOwner(contact));
+
+    crmService.getCampaigns(contact).stream().forEach(campaign -> {
+      try {
+        addTagToContact(listName, contact, campaign);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    });
   }
 
   /**

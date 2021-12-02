@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.checkerframework.checker.units.qual.C;
+import org.jruby.internal.runtime.methods.CacheableMethod;
 
 import java.util.Calendar;
 import java.util.List;
@@ -117,6 +118,7 @@ public interface CrmService extends SegmentService {
   boolean isFrequentDonor(CrmContact contact) throws Exception;
   String getOwner(CrmContact contact) throws Exception;
   Integer getAge(CrmContact contact) throws Exception;
+  List<String> getCampaigns(CrmContact contact) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS

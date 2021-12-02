@@ -581,6 +581,15 @@ public class SfdcCrmService implements CrmService {
     return (Integer) individualAge.getField("IndividualsAge");
   }
 
+  @Override
+  public List<String> getCampaigns(CrmContact contact) throws InterruptedException, ConnectionException {
+    List<SObject> campaigns = sfdcClient.getCampaigns(contact.id);
+    List<String> names = new ArrayList<>();
+    for(SObject c : campaigns){
+      names.add((String) c.getField("Campaign Name"));
+    }
+    return names;
+  }
 
   @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
