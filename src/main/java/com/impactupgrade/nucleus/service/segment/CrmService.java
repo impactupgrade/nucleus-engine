@@ -114,7 +114,9 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   boolean isMajorDonor(CrmContact contact) throws Exception;
   boolean isRecentDonor(CrmContact contact) throws Exception;
-  List<String> getEventsAttended(CrmContact contact) throws Exception;
+  boolean isFrequentDonor(CrmContact contact) throws Exception;
+  String getOwner(CrmContact contact) throws Exception;
+  Integer getAge(CrmContact contact) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS

@@ -27,14 +27,10 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.C;
 
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -520,23 +516,71 @@ public class SfdcCrmService implements CrmService {
     // likely not relevant in SFDC
   }
 
-  //TODO implement the queries in the client, add to the interface, flesh out logic for donation amounts ect.
   @Override
   public boolean isMajorDonor(CrmContact contact) throws Exception{
-    int limit = 1000; //has donated > $1,000
-    return sfdcClient.getTotalDonationsAmount(contact) >= limit;
+    SObject account;
+    if(sfdcClient.getAccountById(contact.accountId).isEmpty()){
+      log.info("Account Associated with Contact: " + contact.id + " is Empty");
+      return false;
+    }else{
+      account = sfdcClient.getAccountById(contact.accountId).get();
+      Integer total = (Integer) getField(account, "npo02__TotalOppAmount__c");
+      return total >= env.getConfig().tagCheckFields.majorDonorAmount;
+    }
   }
 
   @Override
   public boolean isRecentDonor(CrmContact contact) throws Exception{
-    int limit = 90; //90 days since last donation
-    return sfdcClient.getDaysSinceLastDonation(contact) <= limit;
+    Calendar limit = Calendar.getInstance();
+    limit.add(Calendar.DAY_OF_YEAR, env.getConfig().tagCheckFields.recentDonationDays);
+    SObject account;
+    if(sfdcClient.getAccountById(contact.accountId).isEmpty()){
+      log.info("Account Associated with Contact: " + contact.id + " is Empty");
+      return false;
+    }else{
+      account = sfdcClient.getAccountById(contact.accountId).get();
+      //TODO may need some formatting
+      Calendar lastDonation = (Calendar) getField(account, "npo02__LastCloseDate__c");
+      return lastDonation.before(limit);
+    }
   }
 
   @Override
-  public List<String> getEventsAttended(CrmContact contact) throws Exception{
-    return sfdcClient.getEventsAttended(contact);
+  public boolean isFrequentDonor(CrmContact contact) throws Exception {
+    Integer limit = env.getConfig().tagCheckFields.frequentDonationAmount;
+    SObject account;
+    if (sfdcClient.getAccountById(contact.accountId).isEmpty()) {
+      log.info("Account Associated with Contact: " + contact.id + " is Empty");
+      return false;
+    } else {
+      account = sfdcClient.getAccountById(contact.accountId).get();
+    Integer totalDonations = (Integer) getField(account, "npo02__NumberOfClosedOpps__c");
+    return totalDonations >= limit;
+    }
   }
+
+  @Override
+  public String getOwner(CrmContact contact) throws Exception{
+    SObject owner = new SObject();
+    if(sfdcClient.getOwner(contact.accountId).isEmpty()){
+      log.info("Account Associated with Contact: " + contact.id + "is Empty");
+    }else{
+      owner = sfdcClient.getOwner(contact.accountId).get();
+    }
+    return (String) owner.getField("Username");
+  }
+
+  @Override
+  public Integer getAge(CrmContact contact) throws Exception{
+    SObject individualAge = new SObject();
+    if(sfdcClient.getOwner(contact.id).isEmpty()){
+      log.info("Individual Associated with Contact: " + contact.id + "is Empty");
+    }else{
+      individualAge = sfdcClient.getOwner(contact.id).get();
+    }
+    return (Integer) individualAge.getField("IndividualsAge");
+  }
+
 
   @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {

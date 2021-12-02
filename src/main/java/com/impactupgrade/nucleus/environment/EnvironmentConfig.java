@@ -155,6 +155,14 @@ public class EnvironmentConfig {
     public String senderPn = "";
   }
 
+  public TagCheckFields  tagCheckFields = new TagCheckFields();
+
+  public static class TagCheckFields {
+    public Integer majorDonorAmount = 0;
+    public Integer recentDonationDays = 0;
+    public Integer frequentDonationAmount = 0;
+  }
+
   public Mailchimp mailchimp = new Mailchimp();
 
   public static class Mailchimp extends Platform {

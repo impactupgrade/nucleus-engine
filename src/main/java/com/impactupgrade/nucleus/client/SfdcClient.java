@@ -76,7 +76,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, RecordTypeId";
+  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, RecordTypeId";
 
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
@@ -111,10 +111,37 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Tags
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public String userFields = "Username";
+
+  public Optional<SObject> getOwner(String accountId) throws ConnectionException, InterruptedException {
+    SObject account = getAccountById(accountId).get();
+    String query = "select " + userFields + " from User where Id = " + account.getField("OwnerId");
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+  }
+
+  public String individualFields = "IndividualsAge";
+
+  public Optional<SObject> getContactAge(String contactId) throws ConnectionException, InterruptedException {
+    SObject contact = getContactById(contactId).get();
+    String query = "select " + individualFields + " from Individual where Id = " + contact.getField("IndividualId");
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
+
+  }
+
+  public List<String> getEventsAttended(String contactId) throws ConnectionException, InterruptedException {
+    return null;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c, IndividualId";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
@@ -236,19 +263,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateTimeString + " and Amount >= 0.0)";
     LoggingUtil.verbose(log, query);
     return queryList(query);
-  }
-
-
-  public Integer getTotalDonationsAmount(CrmContact contact) throws ConnectionException, InterruptedException {
-    return null;
-  }
-
-  public Integer getDaysSinceLastDonation(CrmContact contact) throws ConnectionException, InterruptedException {
-    return null;
-  }
-
-  public List<String> getEventsAttended(CrmContact contact) throws ConnectionException, InterruptedException {
-    return null;
   }
 
 

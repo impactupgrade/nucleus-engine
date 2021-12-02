@@ -153,8 +153,8 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     // DONATION METRICS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if(crmService.isMajorDonor(contact)){ addTagToContact(listName, contact, "Major Donor"); }
-
     if(crmService.isRecentDonor(contact)){ addTagToContact(listName, contact, "Recent Donor"); }
+    if(crmService.isFrequentDonor(contact)){ addTagToContact(listName, contact, "Frequent Donor"); }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // DEMOGRAPHIC INFO
@@ -163,22 +163,13 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     addTagToContact(listName, contact, contact.address.country);
     addTagToContact(listName, contact, contact.address.postalCode);
     addTagToContact(listName, contact, contact.address.state);
-
-    if(contact.emailOptIn){
-      addTagToContact(listName, contact, "OptIn: Email");
-    }
-
-    if(contact.smsOptIn){
-      addTagToContact(listName, contact, "OptIn: SMS");
-    }
+    char contactAgeGroup = Integer.toString(crmService.getAge(contact)).charAt(0);
+    addTagToContact(listName, contact, "Age: " + contactAgeGroup + "0 - " + contactAgeGroup + "9");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // PAST INTERACTIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    for(String event : crmService.getEventsAttended(contact)){
-      addTagToContact(listName, contact, "Attended: " + event);
-    }
-
+    addTagToContact(listName, contact, "Owned By: " + crmService.getOwner(contact));
   }
 
   /**

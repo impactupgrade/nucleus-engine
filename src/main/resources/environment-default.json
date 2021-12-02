@@ -35,6 +35,12 @@
     "defaultCampaignId": ""
   },
 
+  "tagCheckFields" : {
+    "majorDonorAmount" : "",
+    "recentDonationDays" : "",
+    "frequentDonationAmount" : ""
+  },
+
   "hubspot": {
     "donationPipeline": {
       "id": "",
