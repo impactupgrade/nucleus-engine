@@ -2,7 +2,32 @@
   "crmPrimary": "hubspot",
 
   "hubspot": {
+    "secretKey": "9e36977c-ceaa-4b44-a772-f07ffa496887",
+    "portalId": "21069334",
 
+    "donationPipeline": {
+      "id": "default",
+      "successStageId": "closedwon",
+      "failedStageId": "closedlost"
+    },
+    "recurringDonationPipeline": {
+      "id": "default",
+      "openStageId": "closedwon",
+      "closedStageId": "closedlost"
+    },
+    "fieldDefinitions": {
+      "paymentGatewayName": "payment_gateway_name",
+      "paymentGatewayTransactionId": "payment_gateway_transaction_id",
+      "paymentGatewayCustomerId": "payment_gateway_customer_id",
+      "paymentGatewaySubscriptionId": "payment_gateway_subscription_id",
+      "recurringDonationFrequency": "recurring_donation_frequency"
+    },
+    "customQueryFields": {
+      "company": [],
+      "contact": [],
+      "deal": ["payment_gateway_name","payment_gateway_transaction_id","payment_gateway_customer_id","payment_gateway_subscription_id","recurring_donation_frequency"]
+    },
+    "defaultSmsOptInList": ""
   },
 
   "stripe": {

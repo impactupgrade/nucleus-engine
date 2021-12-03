@@ -140,7 +140,11 @@ public class HubSpotCrmService implements CrmService {
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     AssociationSearchResults associations = hsClient.association().search("company", accountId, "deal");
     List<String> dealIds = associations.getResults().stream().flatMap(r -> r.getTo().stream()).map(HasId::getId).collect(Collectors.toList());
-    return toCrmDonation(hsClient.deal().batchRead(dealIds, dealFields).getResults());
+    List<Deal> deals = hsClient.deal().batchRead(dealIds, dealFields).getResults().stream().filter(deal ->
+        !deal.getProperties().getOtherProperties().containsKey(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency)
+            || Strings.isNullOrEmpty((String) deal.getProperties().getOtherProperties().get(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency))
+    ).collect(Collectors.toList());
+    return toCrmDonation(deals);
   }
 
   @Override
@@ -177,8 +181,14 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    // TODO: will need to add query-by-association to HS lib
-    return Collections.emptyList();
+    AssociationSearchResults associations = hsClient.association().search("company", accountId, "deal");
+    List<String> dealIds = associations.getResults().stream().flatMap(r -> r.getTo().stream()).map(HasId::getId).collect(Collectors.toList());
+    List<Deal> deals = hsClient.deal().batchRead(dealIds, dealFields).getResults().stream().filter(deal ->
+        deal.getProperties().getOtherProperties().containsKey(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency)
+            && !Strings.isNullOrEmpty((String) deal.getProperties().getOtherProperties().get(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency))
+            && deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId)
+    ).collect(Collectors.toList());
+    return toCrmRecurringDonation(deals);
   }
 
   @Override
@@ -473,7 +483,6 @@ public class HubSpotCrmService implements CrmService {
     deal.setPipeline(env.getConfig().hubspot.recurringDonationPipeline.id);
     deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.openStageId);
 
-    deal.setRecurringRevenueDealType("NEW_BUSINESS");
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmAccount().name);
 
@@ -492,9 +501,15 @@ public class HubSpotCrmService implements CrmService {
       case YEARLY ->  amount = amount / 12.0;
       case BIANNUALLY -> amount = amount / 24.0;
     }
-    deal.setRecurringRevenueAmount(amount);
-    // set the original amount as well, needed for display purposes
-    setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationRealAmount, paymentGatewayEvent.getSubscriptionAmountInDollars(), deal.getOtherProperties());
+
+    if (env.getConfig().hubspot.enableRecurring) {
+      deal.setRecurringRevenueDealType("NEW_BUSINESS");
+      deal.setRecurringRevenueAmount(amount);
+      // set the original amount as well, needed for display purposes
+      setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationRealAmount, paymentGatewayEvent.getSubscriptionAmountInDollars(), deal.getOtherProperties());
+    } else {
+      deal.setAmount(amount);
+    }
   }
 
   @Override
@@ -515,8 +530,10 @@ public class HubSpotCrmService implements CrmService {
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
   protected void setRecurringDonationFieldsForClose(DealProperties deal, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    deal.setRecurringRevenueInactiveDate(Calendar.getInstance());
-    deal.setRecurringRevenueInactiveReason("CHURNED");
+    if (env.getConfig().hubspot.enableRecurring) {
+      deal.setRecurringRevenueInactiveDate(Calendar.getInstance());
+      deal.setRecurringRevenueInactiveReason("CHURNED");
+    }
   }
 
   @Override
@@ -819,6 +836,12 @@ public class HubSpotCrmService implements CrmService {
         deal.getProperties().getClosedate(),
         deal
     );
+  }
+
+  protected List<CrmRecurringDonation> toCrmRecurringDonation(List<Deal> deals) {
+    return deals.stream()
+        .map(this::toCrmRecurringDonation)
+        .collect(Collectors.toList());
   }
 
   protected CrmRecurringDonation toCrmRecurringDonation(Deal deal) {
