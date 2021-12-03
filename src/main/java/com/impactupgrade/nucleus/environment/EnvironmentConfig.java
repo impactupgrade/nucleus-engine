@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import org.apache.logging.log4j.LogManager;
@@ -123,6 +124,7 @@ public class EnvironmentConfig {
     public HubspotCRMFieldDefinitions fieldDefinitions = new HubspotCRMFieldDefinitions();
     public HubspotCustomFields customQueryFields = new HubspotCustomFields();
     public String defaultSmsOptInList = "";
+    public boolean enableRecurring = false;
 
     public static class HubSpotDonationPipeline {
       public String id = "";
@@ -278,6 +280,7 @@ public class EnvironmentConfig {
   static {
     // Allows nested objects, collections, etc. to be merged together.
     mapper.setDefaultMergeable(true);
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
   public static EnvironmentConfig init() {
