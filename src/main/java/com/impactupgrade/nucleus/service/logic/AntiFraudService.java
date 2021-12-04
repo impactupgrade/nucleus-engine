@@ -32,7 +32,12 @@ public class AntiFraudService {
   }
 
   public boolean isRecaptchaTokenValid(String recaptchaToken) throws IOException {
-    if (Strings.isNullOrEmpty(env.getConfig().recaptcha.siteSecret)) {
+    String siteSecret = env.getConfig().recaptcha.siteSecret;
+    if (Strings.isNullOrEmpty(siteSecret)) {
+      siteSecret = System.getenv("RECAPTCHA_SITE_SECRET");
+    }
+
+    if (Strings.isNullOrEmpty(siteSecret)) {
       log.info("recaptcha: disabled");
       return true;
     }
@@ -44,7 +49,7 @@ public class AntiFraudService {
 
     URL url = new URL(RECAPTCHA_SITE_VERIFY_URL);
     StringBuilder postData = new StringBuilder();
-    addParam(postData, "secret", env.getConfig().recaptcha.siteSecret);
+    addParam(postData, "secret", siteSecret);
     addParam(postData, "response", recaptchaToken);
 
     // TODO: Taken from https://github.com/googlecodelabs/recaptcha-codelab/blob/master/final/src/main/java/com/example/feedback/FeedbackServlet.java, but this could be cleaned up...
