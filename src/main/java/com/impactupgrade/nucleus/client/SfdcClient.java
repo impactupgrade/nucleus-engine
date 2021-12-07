@@ -17,6 +17,7 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 
@@ -401,7 +402,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     log.info("downloading report file from SFDC...");
 
     // using jruby to kick off the ruby script -- see https://github.com/carojkov/salesforce-export-downloader
-    ScriptingContainer container = new ScriptingContainer();
+    ScriptingContainer container = new ScriptingContainer(LocalContextScope.THREADSAFE);
     container.getEnvironment().put("SFDC_USERNAME", env.getConfig().salesforce.username);
     container.getEnvironment().put("SFDC_PASSWORD", env.getConfig().salesforce.password);
     container.getEnvironment().put("SFDC_URL", env.getConfig().salesforce.url);
