@@ -2,7 +2,6 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -84,40 +83,16 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    for (Map.Entry<String, EnvironmentConfig.MailchimpList> mcList : env.getConfig().mailchimp.lists.entrySet()) {
-      // TODO: We'll likely need a configurable set of filters...
-
+    for (EnvironmentConfig.MailchimpList mcList : env.getConfig().mailchimp.lists) {
       List<CrmContact> crmContacts = Collections.emptyList();
-      switch (mcList.getValue().type) {
-        case CONTACTS -> crmContacts = primaryCrmService.getContactsUpdatedSince(lastSync).stream()
-            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
-        case DONORS -> crmContacts = donationsCrmService.getDonorContactsSince(lastSync).stream()
-            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
+      switch (mcList.type) {
+        case CONTACTS -> crmContacts = primaryCrmService.getEmailContacts(lastSync, mcList.crmFilter);
+        case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
       }
 
       for (CrmContact crmContact : crmContacts) {
-        log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, mcList.getKey());
-        mailchimpClient.upsertContact(mcList.getKey(), toMcMemberInfo(crmContact, mcList.getValue().groups));
-      }
-    }
-  }
-
-  @Override
-  public void syncContacts() throws Exception {
-    for (Map.Entry<String, EnvironmentConfig.MailchimpList> mcList : env.getConfig().mailchimp.lists.entrySet()) {
-      // TODO: We'll likely need a configurable set of filters...
-
-      List<CrmContact> crmContacts = Collections.emptyList();
-      switch (mcList.getValue().type) {
-        case CONTACTS -> crmContacts = primaryCrmService.getAllContacts().stream()
-            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
-        case DONORS -> crmContacts = donationsCrmService.getAllDonorContacts().stream()
-            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
-      }
-
-      for (CrmContact crmContact : crmContacts) {
-        log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, mcList.getKey());
-        mailchimpClient.upsertContact(mcList.getKey(), toMcMemberInfo(crmContact, mcList.getValue().groups));
+        log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, mcList.id);
+        mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
       }
     }
   }

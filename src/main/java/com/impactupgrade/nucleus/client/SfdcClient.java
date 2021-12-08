@@ -421,28 +421,32 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
-  public List<SObject> getContactsUpdatedSince(Calendar calendar) throws ConnectionException, InterruptedException {
-    String dateTimeString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where LastModifiedDate >= " + dateTimeString;
+  public List<SObject> getEmailContacts(Calendar updatedSince, String filter) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = " and LastModifiedDate >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null" + updatedSinceClause + filter;
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
-  public List<SObject> getDonorContactsSince(Calendar calendar) throws ConnectionException, InterruptedException {
-    String dateTimeString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateTimeString + " and Amount >= 0.0 and (StageName='posted' or StageName='closed won'))";
-    LoggingUtil.verbose(log, query);
-    return queryList(query);
-  }
+  public List<SObject> getEmailDonorContacts(Calendar updatedSince, String filter) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = " and CreatedDate >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
 
-  public List<SObject> getAllContacts() throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact";
-    LoggingUtil.verbose(log, query);
-    return queryList(query);
-  }
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
 
-  public List<SObject> getAllDonorContacts() throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where Amount >= 0.0 and (StageName='posted' or StageName='closed won'))";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null and id in (select ContactId from Opportunity where Amount >= 0.0 and (StageName='posted' or StageName='closed won')" + updatedSinceClause + ")" + filter;
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
