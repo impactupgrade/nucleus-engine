@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -192,17 +193,50 @@ public class EnvironmentConfig {
     public String senderPn = "";
   }
 
+  /*
+  "mailchimp": {
+    "secretKey": "asdf",
+    "lists": [
+      {
+        "id": "hopeful-living-id",
+        "type": "CONTACTS",
+        "groups": [],
+        "crmFilter": "type = 'HFL' and foobar != 'whatever'"
+      },
+      {
+        "id": "general-subscribers-id",
+        "type": "CONTACTS",
+        "groups": [],
+        "crmSource": "salesforce",
+        "crmFilter": "type != 'HFL'"
+      },
+      {
+        "id": "general-subscribers-id",
+        "type": "CONTACTS",
+        "groups": [],
+        "crmSource": "hubspot",
+        "crmFilter": "type neq HFL"
+      },
+      {
+        "id": "donors-id",
+        "type": "DONORS",
+        "crmFilter": []
+      }
+    ]
+  }
+   */
+
   public Mailchimp mailchimp = new Mailchimp();
 
   public static class Mailchimp extends Platform {
-    // <ID, List>
-    public Map<String, MailchimpList> lists = Collections.emptyMap();
+    public List<MailchimpList> lists = Collections.emptyList();
   }
 
   public static class MailchimpList {
+    public String id = "";
     public MailchimpListType type = MailchimpListType.CONTACTS;
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
-    // TODO: configurable filter for syncs
+    public String crmFilter = "";
   }
 
   public enum MailchimpListType {

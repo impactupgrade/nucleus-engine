@@ -62,7 +62,7 @@ public class EmailController {
       try {
         for (EmailPlatformService emailPlatformService : env.allEmailPlatformServices()) {
           try {
-            emailPlatformService.syncContacts();
+            emailPlatformService.syncContacts(null);
           } catch (Exception e) {
             log.error("email syncAll failed for {}", emailPlatformService.name(), e);
           }

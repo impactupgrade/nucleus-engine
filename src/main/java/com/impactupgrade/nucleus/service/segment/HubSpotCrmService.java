@@ -45,6 +45,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -687,31 +688,27 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception {
-    String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
+    List<Filter> filters = new ArrayList<>();
+    if (updatedSince != null) {
+      String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+      filters.add(new Filter("lastmodifieddate", "gte", dateString));
+    }
 
-    List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(new Filter("lastmodifieddate", "gte", dateString))));
-    ContactResults results = hsClient.contact().search(filterGroups, getCustomFieldNames());
+    if (!Strings.isNullOrEmpty(filter)) {
+      // ex: type eq FooBar
+      String[] filterSplit = filter.split(" ");
+      filters.add(new Filter(filterSplit[0], filterSplit[1], filterSplit[2]));
+    }
 
-    return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
-
-  }
-
-  @Override
-  public List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public List<CrmContact> getAllContacts() throws Exception {
-    List<FilterGroup> filterGroups = List.of();
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
     ContactResults results = hsClient.contact().search(filterGroups, getCustomFieldNames());
 
     return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
-  public List<CrmContact> getAllDonorContacts() throws Exception {
+  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

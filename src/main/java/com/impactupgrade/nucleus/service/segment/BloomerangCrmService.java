@@ -266,22 +266,12 @@ public class BloomerangCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception {
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
   @Override
-  public List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public List<CrmContact> getAllContacts() throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public List<CrmContact> getAllDonorContacts() throws Exception {
+  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
