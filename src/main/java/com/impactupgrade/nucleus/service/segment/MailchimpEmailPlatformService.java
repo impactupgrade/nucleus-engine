@@ -29,7 +29,8 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   private static final Logger log = LogManager.getLogger(MailchimpEmailPlatformService.class);
 
   protected Environment env;
-  protected CrmService crmService;
+  protected CrmService primaryCrmService;
+  protected CrmService donationsCrmService;
   protected MailchimpClient mailchimpClient;
 
   @Override
@@ -40,7 +41,8 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   @Override
   public void init(Environment env) {
     this.env = env;
-    crmService = env.primaryCrmService();
+    primaryCrmService = env.primaryCrmService();
+    donationsCrmService = env.donationsCrmService();
     mailchimpClient = new MailchimpClient(env);
   }
 
@@ -87,9 +89,9 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 
       List<CrmContact> crmContacts = Collections.emptyList();
       switch (mcList.getValue().type) {
-        case CONTACTS -> crmContacts = crmService.getContactsUpdatedSince(lastSync).stream()
+        case CONTACTS -> crmContacts = primaryCrmService.getContactsUpdatedSince(lastSync).stream()
             .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
-        case DONORS -> crmContacts = crmService.getDonorContactsSince(lastSync).stream()
+        case DONORS -> crmContacts = donationsCrmService.getDonorContactsSince(lastSync).stream()
             .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
       }
 
@@ -107,9 +109,9 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 
       List<CrmContact> crmContacts = Collections.emptyList();
       switch (mcList.getValue().type) {
-        case CONTACTS -> crmContacts = crmService.getAllContacts().stream()
+        case CONTACTS -> crmContacts = primaryCrmService.getAllContacts().stream()
             .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
-        case DONORS -> crmContacts = crmService.getAllDonorContacts().stream()
+        case DONORS -> crmContacts = donationsCrmService.getAllDonorContacts().stream()
             .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
       }
 
