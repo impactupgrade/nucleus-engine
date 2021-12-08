@@ -276,6 +276,16 @@ public class BloomerangCrmService implements BasicCrmService {
   }
 
   @Override
+  public List<CrmContact> getAllContacts() throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public List<CrmContact> getAllDonorContacts() throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     throw new RuntimeException("not implemented");
   }

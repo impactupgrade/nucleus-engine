@@ -748,6 +748,15 @@ public class SfdcCrmService implements CrmService {
     return sfdcClient.getDonorContactsSince(calendar).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
+  @Override
+  public List<CrmContact> getAllContacts() throws Exception {
+    return sfdcClient.getAllContacts().stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<CrmContact> getAllDonorContacts() throws Exception {
+    return sfdcClient.getAllDonorContacts().stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
 
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());

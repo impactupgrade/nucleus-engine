@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -194,10 +195,18 @@ public class EnvironmentConfig {
   public Mailchimp mailchimp = new Mailchimp();
 
   public static class Mailchimp extends Platform {
-    public String marketingListId = "";
-    public String donorListId = "";
+    // <ID, List>
+    public Map<String, MailchimpList> lists = Collections.emptyMap();
+  }
 
+  public static class MailchimpList {
+    public MailchimpListType type = MailchimpListType.CONTACTS;
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
+    // TODO: configurable filter for syncs
+  }
+
+  public enum MailchimpListType {
+    CONTACTS, DONORS
   }
 
   public Backblaze backblaze = new Backblaze();
