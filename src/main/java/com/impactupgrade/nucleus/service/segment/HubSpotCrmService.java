@@ -702,6 +702,19 @@ public class HubSpotCrmService implements CrmService {
     throw new RuntimeException("not implemented");
   }
 
+  @Override
+  public List<CrmContact> getAllContacts() throws Exception {
+    List<FilterGroup> filterGroups = List.of();
+    ContactResults results = hsClient.contact().search(filterGroups, getCustomFieldNames());
+
+    return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<CrmContact> getAllDonorContacts() throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
   protected CrmContact toCrmContact(Contact contact) {
     CrmAddress crmAddress = new CrmAddress(
         contact.getProperties().getAddress(),

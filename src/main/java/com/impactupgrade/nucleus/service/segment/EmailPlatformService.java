@@ -1,8 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
-import com.impactupgrade.nucleus.model.CrmContact;
-
-import java.util.List;
+import java.util.Calendar;
 
 public interface EmailPlatformService extends SegmentService {
 
@@ -16,6 +14,6 @@ public interface EmailPlatformService extends SegmentService {
 //  void unsubscribeContact(String listName, String email) throws Exception;
 //  void addTagToContact(String listName, CrmContact crmContact, String tag) throws Exception;
 
-  void syncContacts(List<CrmContact> contacts) throws Exception;
-  void syncDonors(List<CrmContact> contacts) throws Exception;
+  void syncContacts(Calendar lastSync) throws Exception;
+  void syncContacts() throws Exception;
 }

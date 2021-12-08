@@ -435,6 +435,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
+  public List<SObject> getAllContacts() throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
+  public List<SObject> getAllDonorContacts() throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where Amount >= 0.0 and (StageName='posted' or StageName='closed won'))";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
   public List<SObject> searchContacts(String firstName, String lastName, String email, String phone, String address)
       throws ConnectionException, InterruptedException {
     ArrayList<String> searchParams = new ArrayList<>();

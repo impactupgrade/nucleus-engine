@@ -5,11 +5,14 @@ import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -78,31 +81,50 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
 //  }
 
   @Override
-  public void syncContacts(List<CrmContact> contacts) throws Exception {
-    for (CrmContact contact : contacts) {
-      upsertContact(contact, env.getConfig().mailchimp.marketingListId);
+  public void syncContacts(Calendar lastSync) throws Exception {
+    for (Map.Entry<String, EnvironmentConfig.MailchimpList> mcList : env.getConfig().mailchimp.lists.entrySet()) {
+      // TODO: We'll likely need a configurable set of filters...
+
+      List<CrmContact> crmContacts = Collections.emptyList();
+      switch (mcList.getValue().type) {
+        case CONTACTS -> crmContacts = crmService.getContactsUpdatedSince(lastSync).stream()
+            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
+        case DONORS -> crmContacts = crmService.getDonorContactsSince(lastSync).stream()
+            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
+      }
+
+      for (CrmContact crmContact : crmContacts) {
+        log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, mcList.getKey());
+        mailchimpClient.upsertContact(mcList.getKey(), toMcMemberInfo(crmContact, mcList.getValue().groups));
+      }
     }
   }
 
   @Override
-  public void syncDonors(List<CrmContact> contacts) throws Exception {
-    for (CrmContact contact : contacts) {
-      upsertContact(contact, env.getConfig().mailchimp.donorListId);
-    }
-  }
+  public void syncContacts() throws Exception {
+    for (Map.Entry<String, EnvironmentConfig.MailchimpList> mcList : env.getConfig().mailchimp.lists.entrySet()) {
+      // TODO: We'll likely need a configurable set of filters...
 
-  protected void upsertContact(CrmContact crmContact, String listId) throws Exception {
-    if (!Strings.isNullOrEmpty(crmContact.email)) {
-      log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, listId);
-      mailchimpClient.upsertContact(listId, toMcMemberInfo(crmContact));
+      List<CrmContact> crmContacts = Collections.emptyList();
+      switch (mcList.getValue().type) {
+        case CONTACTS -> crmContacts = crmService.getAllContacts().stream()
+            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
+        case DONORS -> crmContacts = crmService.getAllDonorContacts().stream()
+            .filter(c -> !Strings.isNullOrEmpty(c.email)).collect(Collectors.toList());
+      }
+
+      for (CrmContact crmContact : crmContacts) {
+        log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, mcList.getKey());
+        mailchimpClient.upsertContact(mcList.getKey(), toMcMemberInfo(crmContact, mcList.getValue().groups));
+      }
     }
   }
 
   /**
    * Returns the ID of the group from the config map
    */
-  protected String getGroupIdFromName(String groupName) {
-    return env.getConfig().mailchimp.groups.entrySet().stream()
+  protected String getGroupIdFromName(String groupName, Map<String, String> groups) {
+    return groups.entrySet().stream()
         .filter(e -> e.getKey().equalsIgnoreCase(groupName))
         .map(Map.Entry::getValue)
         .findFirst()
@@ -136,7 +158,7 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     return crmAddress;
   }
 
-  protected MemberInfo toMcMemberInfo(CrmContact contact) {
+  protected MemberInfo toMcMemberInfo(CrmContact contact, Map<String, String> groups) {
     if (contact == null) {
       return null;
     }
@@ -153,7 +175,7 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     mcContact.mapping.put(ADDRESS, toMcAddress(contact.address));
     mcContact.status = contact.canReceiveEmail() ? SUBSCRIBED : UNSUBSCRIBED;
 
-    List<String> groupIds = contact.emailGroups.stream().map(this::getGroupIdFromName).collect(Collectors.toList());
+    List<String> groupIds = contact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
     // TODO: Does this deselect what's no longer subscribed to in MC?
     MailchimpObject groupMap = new MailchimpObject();
     groupIds.forEach(id -> groupMap.mapping.put(id, true));

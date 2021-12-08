@@ -195,6 +195,18 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public List<CrmContact> getAllContacts() throws Exception {
+    // TODO
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<CrmContact> getAllDonorContacts() throws Exception {
+    // TODO
+    return Collections.emptyList();
+  }
+
+  @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     // TODO
   }
