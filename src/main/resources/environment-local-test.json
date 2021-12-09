@@ -1,0 +1,45 @@
+{
+  "crmPrimary": "salesforce",
+
+  "salesforce": {
+    "username": "brett@impactupgrade.com",
+    "password": "4mJA6UrqffKZEP35KrR4uR9DgzwapiaVqVsVGDrT6",
+
+    "fieldDefinitions": {
+      "paymentGatewayName": "Payment_Gateway_Name__c",
+      "paymentGatewayTransactionId": "Payment_Gateway_Transaction_Id__c",
+      "paymentGatewayCustomerId": "Payment_Gateway_Customer_Id__c",
+      "paymentGatewaySubscriptionId": "Payment_Gateway_Subscription_Id__c",
+      "paymentGatewayRefundId": "",
+      "paymentGatewayDepositId": "",
+      "paymentGatewayDepositDate": "",
+      "paymentGatewayDepositNetAmount": "",
+      "paymentGatewayDepositFee": ""
+    },
+    "customQueryFields": {
+      "account": [],
+      "campaign": [],
+      "contact": [],
+      "donation": ["Payment_Gateway_Name__c", "Payment_Gateway_Transaction_Id__c", "Payment_Gateway_Customer_Id__c"],
+      "recurringDonation": ["Payment_Gateway_Name__c", "Payment_Gateway_Subscription_Id__c", "Payment_Gateway_Customer_Id__c"],
+      "user": []
+    },
+    "defaultCampaignId": ""
+  },
+
+  "stripe": {
+    "secretKey": "sk_test_51Imqu3HAwJOu5brrFI1LeFsnRbGSKo01FLQ9tJijlMtTZPXl4XyB2Kidg9qrWqCP6VlDK5EO0YxSXAbPcWZBp7ey00dhw2OuZg"
+  },
+
+  "mailchimp": {
+    "secretKey": "1d6e59751ccdd8156ac9f5ee23371db9-us6",
+    "lists": [
+      {
+        "id": "025143d6d8",
+        "type": "CONTACTS",
+        "groups": {},
+        "crmFilter": ""
+      }
+    ]
+  }
+}
