@@ -140,4 +140,18 @@ public class App {
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
   }
+
+  /**
+   * Run the engine in a local-test mode, pointing at test/sandbox accounts for various platforms.
+   * By default, runs on port 9009.
+   *
+   * To use this in tests requiring webhook URLs (Twilio, Stripe, Mailchimp, etc.), run this with ngrok:
+   * ngrok http 9009
+   *
+   * THIS IS TEMPORARY! Imminently, we'll be deploying the multi-tenant solution through nucleus-core, so
+   * environment-local-test.json will instead be housed in the database!
+   */
+  public static void main(String[] args) throws Exception {
+    new App(new EnvironmentFactory("environment-local-test.json")).start();
+  }
 }

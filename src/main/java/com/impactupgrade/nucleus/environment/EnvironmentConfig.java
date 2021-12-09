@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -200,20 +200,20 @@ public class EnvironmentConfig {
       {
         "id": "hopeful-living-id",
         "type": "CONTACTS",
-        "groups": [],
+        "groups": {},
         "crmFilter": "type = 'HFL' and foobar != 'whatever'"
       },
       {
         "id": "general-subscribers-id",
         "type": "CONTACTS",
-        "groups": [],
+        "groups": {},
         "crmSource": "salesforce",
         "crmFilter": "type != 'HFL'"
       },
       {
         "id": "general-subscribers-id",
         "type": "CONTACTS",
-        "groups": [],
+        "groups": {},
         "crmSource": "hubspot",
         "crmFilter": "type neq HFL"
       },
@@ -229,7 +229,7 @@ public class EnvironmentConfig {
   public Mailchimp mailchimp = new Mailchimp();
 
   public static class Mailchimp extends Platform {
-    public List<MailchimpList> lists = Collections.emptyList();
+    public List<MailchimpList> lists = new ArrayList<>();
   }
 
   public static class MailchimpList {
