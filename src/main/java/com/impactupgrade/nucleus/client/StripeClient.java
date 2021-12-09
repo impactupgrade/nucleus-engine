@@ -71,7 +71,12 @@ public class StripeClient {
   }
 
   public Charge getCharge(String id) throws StripeException {
-    return Charge.retrieve(id, requestOptions);
+    return new Retriever<Charge>() {
+      @Override
+      protected Charge retrieve() throws StripeException {
+        return Charge.retrieve(id, requestOptions);
+      }
+    }.result();
   }
 
   public Invoice getInvoice(String id) throws StripeException {
@@ -80,18 +85,33 @@ public class StripeClient {
     expand.add("subscription");
     params.put("expand", expand);
 
-    return Invoice.retrieve(id, params, requestOptions);
+    return new Retriever<Invoice>() {
+      @Override
+      protected Invoice retrieve() throws StripeException {
+        return Invoice.retrieve(id, params, requestOptions);
+      }
+    }.result();
   }
 
   public BalanceTransaction getBalanceTransaction(String id) throws StripeException {
-    return BalanceTransaction.retrieve(id, requestOptions);
+    return new Retriever<BalanceTransaction>() {
+      @Override
+      protected BalanceTransaction retrieve() throws StripeException {
+        return BalanceTransaction.retrieve(id, requestOptions);
+      }
+    }.result();
   }
 
   public Customer getCustomer(String id) throws StripeException {
     CustomerRetrieveParams customerParams = CustomerRetrieveParams.builder()
         .addExpand("sources")
         .build();
-    return Customer.retrieve(id, customerParams, requestOptions);
+    return new Retriever<Customer>() {
+      @Override
+      protected Customer retrieve() throws StripeException {
+        return Customer.retrieve(id, customerParams, requestOptions);
+      }
+    }.result();
   }
 
   public List<Customer> getCustomersByEmail(String email) throws StripeException {
@@ -108,15 +128,30 @@ public class StripeClient {
   }
 
   public PaymentIntent getPaymentIntent(String id) throws StripeException {
-    return PaymentIntent.retrieve(id, requestOptions);
+    return new Retriever<PaymentIntent>() {
+      @Override
+      protected PaymentIntent retrieve() throws StripeException {
+        return PaymentIntent.retrieve(id, requestOptions);
+      }
+    }.result();
   }
 
   public Refund getRefund(String id) throws StripeException {
-    return Refund.retrieve(id, requestOptions);
+    return new Retriever<Refund>() {
+      @Override
+      protected Refund retrieve() throws StripeException {
+        return Refund.retrieve(id, requestOptions);
+      }
+    }.result();
   }
 
   public Subscription getSubscription(String id) throws StripeException {
-    return Subscription.retrieve(id, requestOptions);
+    return new Retriever<Subscription>() {
+      @Override
+      protected Subscription retrieve() throws StripeException {
+        return Subscription.retrieve(id, requestOptions);
+      }
+    }.result();
   }
 
   public List<Subscription> getActiveSubscriptionsFromCustomer(String customerId) throws StripeException {
@@ -133,7 +168,12 @@ public class StripeClient {
   }
 
   public SubscriptionItem getSubscriptionItem(String id) throws StripeException {
-    return SubscriptionItem.retrieve(id, requestOptions);
+    return new Retriever<SubscriptionItem>() {
+      @Override
+      protected SubscriptionItem retrieve() throws StripeException {
+        return SubscriptionItem.retrieve(id, requestOptions);
+      }
+    }.result();
   }
 
   public Iterable<Charge> getAllCharges(Date startDate, Date endDate) throws StripeException {
@@ -512,6 +552,38 @@ public class StripeClient {
     log.info("created plan {}", planId);
 
     return plan;
+  }
+
+  private abstract class Retriever<T> {
+    protected abstract T retrieve() throws StripeException;
+
+    public T result() throws StripeException {
+      return result(0);
+    }
+
+    private T result(int count) throws StripeException {
+      try {
+        return retrieve();
+      } catch (StripeException e) {
+        log.warn("Stripe API attempt {} failed due to rate limit or lock; retrying in 3s", count, e);
+        try {
+          Thread.sleep(3000);
+        } catch (InterruptedException e1) {
+          log.error("sleep failed", e1);
+        }
+
+        if (count == 4) {
+          log.error("unable to call Stripe API by attempt {}", count);
+          // rethrow exception, since the whole flow simply needs to halt at this point
+          throw e;
+        }
+
+        return result(count + 1);
+      } catch (Exception e) {
+        log.error("Stripe API failed", e);
+        throw e;
+      }
+    }
   }
 
   public RequestOptions getRequestOptions() {
