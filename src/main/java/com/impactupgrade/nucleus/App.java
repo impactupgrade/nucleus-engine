@@ -14,6 +14,8 @@ import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.TaskConfiguration;
+import com.impactupgrade.nucleus.model.TaskProgress;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
@@ -30,6 +32,9 @@ import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
+import org.hibernate.SessionFactory;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.Configuration;
 
 import javax.servlet.DispatcherType;
 import java.util.EnumSet;
@@ -40,14 +45,29 @@ public class App {
   private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
   protected final EnvironmentFactory envFactory;
+  protected final SessionFactory sessionFactory;
 
   public App() {
     envFactory = new EnvironmentFactory();
+    this.sessionFactory = createSessionFactory();
   }
 
   // Allow orgs to wire in their custom implementations of Environment.
   public App(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
+    this.sessionFactory = createSessionFactory();
+  }
+
+  public App(EnvironmentFactory envFactory, SessionFactory sessionFactory) {
+    this.envFactory = envFactory;
+    this.sessionFactory = sessionFactory;
+  }
+
+  private SessionFactory createSessionFactory() {
+    final Configuration configuration = new Configuration();
+    configuration.addAnnotatedClass(TaskConfiguration.class);
+    configuration.addAnnotatedClass(TaskProgress.class);
+    return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
   }
 
   private Server server = null;
