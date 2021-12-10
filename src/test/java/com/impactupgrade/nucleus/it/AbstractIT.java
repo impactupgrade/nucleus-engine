@@ -21,9 +21,11 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
 import org.glassfish.jersey.test.external.ExternalTestContainerFactory;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
+import org.mockito.Mockito;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Application;
@@ -50,6 +52,7 @@ public abstract class AbstractIT extends JerseyTest {
   // definitions of common environments
   protected static final EnvironmentFactory envFactorySfdcStripe = new EnvironmentFactory("environment-it-sfdc-stripe.json");
   protected static final EnvironmentFactory envFactoryHubspotStripe = new EnvironmentFactory("environment-it-hubspot-stripe.json");
+  protected static final SessionFactory sessionFactory = Mockito.mock(SessionFactory.class); ;
 
   protected final App app;
   protected final Environment env;

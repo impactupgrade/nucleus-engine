@@ -36,6 +36,14 @@
     </developer>
   </developers>
 
+  <dependencies>
+    <dependency>
+      <groupId>com.vladmihalcea</groupId>
+      <artifactId>hibernate-types-52</artifactId>
+      <version>2.9.7</version>
+    </dependency>
+  </dependencies>
+
   <build>
     <plugins>
       <!-- Allows the example to be run via 'mvn compile exec:java' -->
