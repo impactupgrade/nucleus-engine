@@ -690,6 +690,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
     List<Filter> filters = new ArrayList<>();
+    filters.add(new Filter("email", "HAS_PROPERTY", null));
     if (updatedSince != null) {
       String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
       filters.add(new Filter("lastmodifieddate", "gte", dateString));
