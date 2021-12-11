@@ -64,6 +64,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public String insertContact(CrmContact crmContact) throws Exception {
     return dwClient.upsertContact(crmContact);
   }

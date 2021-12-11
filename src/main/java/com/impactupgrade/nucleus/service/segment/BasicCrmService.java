@@ -57,6 +57,11 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
+  default List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+    return null;
+  }
+
+
   default String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return null;
   }

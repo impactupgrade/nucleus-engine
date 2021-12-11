@@ -100,8 +100,18 @@ public class BloomerangCrmService implements BasicCrmService {
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     // TODO
-    return Optional.empty();
+    return null;
   }
 
   @Override

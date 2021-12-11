@@ -86,6 +86,15 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) throws InterruptedException, ConnectionException {
+    List<SObject> contacts = sfdcClient.searchContacts(firstName, lastName, email, phone, address);
+    if (contacts.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return contacts.stream().map(c -> toCrmContact(c)).collect(Collectors.toList());
+  }
+
+  @Override
   public String insertAccount(CrmAccount crmAccount) throws Exception {
     SObject account = new SObject("Account");
     setAccountFields(account, crmAccount);
@@ -128,6 +137,53 @@ public class SfdcCrmService implements CrmService {
   public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
     // TODO
     return null;
+  }
+
+  @Override
+  public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
+    List<String> nameClauses = new ArrayList<>();
+    if (name.isPresent()) {
+      String[] nameParts = name.get().split("\\s+");
+
+      for (String part : nameParts) {
+        nameClauses.add("npe03__Organization__r.name LIKE '%" + part + "%'");
+        nameClauses.add("npe03__Contact__r.name LIKE '%" + part + "%'");
+      }
+    }
+
+    List<String> emailClauses = new ArrayList<>();
+    if (email.isPresent()) {
+      if (env.getConfig().salesforce.customQueryFields.recurringDonation.contains("npe03__Organization__r.email__c")) {
+        emailClauses.add("npe03__Organization__r.email__c LIKE '%" + email.get() + "%'");
+      }
+      emailClauses.add("npe03__Contact__r.npe01__HomeEmail__c LIKE '%" + email.get() + "%'");
+      emailClauses.add("npe03__Contact__r.npe01__WorkEmail__c LIKE '%" + email.get() + "%'");
+      emailClauses.add("npe03__Contact__r.npe01__AlternateEmail__c LIKE '%" + email.get() + "%'");
+      emailClauses.add("npe03__Contact__r.email LIKE '%" + email.get() + "%'");
+    }
+
+    List<String> phoneClauses = new ArrayList<>();
+    if (phone.isPresent()) {
+      String phoneClean = phone.get().replaceAll("\\D+", "");
+      phoneClean = phoneClean.replaceAll("", "%");
+      if (!phoneClean.isEmpty()) {
+        phoneClauses.add("npe03__Organization__r.phone LIKE '%" + phoneClean + "%'");
+        phoneClauses.add("npe03__Contact__r.phone LIKE '" + phoneClean + "'");
+        phoneClauses.add("npe03__Contact__r.MobilePhone LIKE '" + phoneClean + "'");
+        phoneClauses.add("npe03__Contact__r.HomePhone LIKE '" + phoneClean + "'");
+        phoneClauses.add("npe03__Contact__r.OtherPhone LIKE '" + phoneClean + "'");
+      }
+    }
+
+    List<String> clauses = new ArrayList<>();
+    if (!nameClauses.isEmpty()) clauses.add(String.join(" OR ", nameClauses));
+    if (!emailClauses.isEmpty()) clauses.add(String.join(" OR ", emailClauses));
+    if (!phoneClauses.isEmpty()) clauses.add(String.join(" OR ", phoneClauses));
+
+    return sfdcClient.searchOpenRecurringDonations(clauses)
+        .stream()
+        .map(this::toCrmRecurringDonation)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -941,9 +997,14 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("BillingCountry")
     );
 
+    String email =
+        (env.getConfig().salesforce.customQueryFields.recurringDonation.contains("npe03__Organization__r.email__c"))
+            ? (String) sObject.getField("Email__c") : null;
+
     return new CrmAccount(
         sObject.getId(),
         (String) sObject.getField("Name"),
+        email,
         crmAddress,
         // TODO: Differentiate between Household and Organization. Customize record type IDs through env.json?
         CrmAccount.Type.HOUSEHOLD,
@@ -976,6 +1037,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("AccountId"),
         (String) sObject.getField("FirstName"),
         (String) sObject.getField("LastName"),
+        (String) sObject.getField("Name"),
         (String) sObject.getField("Email"),
         (String) sObject.getField("HomePhone"),
         (String) sObject.getField("MobilePhone"),
@@ -1044,9 +1106,20 @@ public class SfdcCrmService implements CrmService {
     String customerId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
     String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
-    boolean active = "Open".equalsIgnoreCase(sObject.getField("npe03__Open_Ended_Status__c").toString());
+    String status = sObject.getField("npe03__Open_Ended_Status__c").toString();
+    boolean active = "Open".equalsIgnoreCase(status);
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(sObject.getField("npe03__Installment_Period__c").toString());
-    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, active, frequency, sObject);
+    String donationName = (String) getField(sObject, "Name");
+
+    CrmAccount account = null;
+    if (sObject.getChild("npe03__Organization__r") != null && sObject.getChild("npe03__Organization__r").hasChildren())
+      account = toCrmAccount((SObject) sObject.getChild("npe03__Organization__r"));
+    CrmContact contact = null;
+    if (sObject.getChild("npe03__Contact__r") != null && sObject.getChild("npe03__Contact__r").hasChildren())
+      contact = toCrmContact((SObject) sObject.getChild("npe03__Contact__r"));
+
+    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, status, active, frequency,
+        donationName, sObject, account, contact);
   }
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
