@@ -14,6 +14,7 @@ public class CrmAccount {
 
   public String id;
   public String name;
+  public String email;
   public CrmAddress address = new CrmAddress();
   public Type type;
 
@@ -28,9 +29,10 @@ public class CrmAccount {
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmAccount(String id, String name, CrmAddress address, Type type, Object rawObject) {
+  public CrmAccount(String id, String name, String email, CrmAddress address, Type type, Object rawObject) {
     this.id = id;
     this.name = name;
+    this.email = email;
     this.address = address;
     this.type = type;
     this.rawObject = rawObject;

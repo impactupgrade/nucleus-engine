@@ -142,6 +142,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     AssociationSearchResults associations = hsClient.association().search("company", accountId, "deal");
     List<String> dealIds = associations.getResults().stream().flatMap(r -> r.getTo().stream()).map(HasId::getId).collect(Collectors.toList());
@@ -194,6 +199,12 @@ public class HubSpotCrmService implements CrmService {
             && deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId)
     ).collect(Collectors.toList());
     return toCrmRecurringDonation(deals);
+  }
+
+  @Override
+  public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+    // TODO
+    return Collections.emptyList();
   }
 
   @Override
@@ -731,6 +742,7 @@ public class HubSpotCrmService implements CrmService {
     return new CrmAccount(
         company.getId(),
         company.getProperties().getName(),
+        null,
         crmAddress,
         // TODO: Differentiate between Household and Organization?
         CrmAccount.Type.HOUSEHOLD,
@@ -786,6 +798,7 @@ public class HubSpotCrmService implements CrmService {
         contact.getProperties().getAssociatedcompanyid(),
         contact.getProperties().getFirstname(),
         contact.getProperties().getLastname(),
+        null,
         contact.getProperties().getEmail(),
         // TODO: need the breakdown of phones here
         null, // home phone
@@ -823,6 +836,7 @@ public class HubSpotCrmService implements CrmService {
     //  for simple use cases like outbound messages.
     return new CrmContact(
         contact.getVid() + "",
+        null,
         null,
         null,
         null,
@@ -901,9 +915,13 @@ public class HubSpotCrmService implements CrmService {
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getOtherProperties()),
         deal.getProperties().getAmount(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties()),
+        deal.getProperties().getDealstage(),
         deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
         frequency,
-        deal
+        deal.getProperties().getDealname(),
+        deal,
+        null,
+        null
     );
   }
 

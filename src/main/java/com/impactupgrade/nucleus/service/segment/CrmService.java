@@ -49,12 +49,14 @@ public interface CrmService extends SegmentService {
 //  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
   List<CrmContact> getContactsFromList(String listId) throws Exception;
+  List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
   Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception;
   Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
   List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception;
+  List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DONATION EVENTS
