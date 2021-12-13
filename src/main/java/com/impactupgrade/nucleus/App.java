@@ -14,7 +14,10 @@ import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.job.ScheduledTasksJob;
+import com.impactupgrade.nucleus.model.FutureTask;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
+import com.impactupgrade.nucleus.service.logic.ScheduledTasksService;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
@@ -30,6 +33,17 @@ import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
+import org.hibernate.SessionFactory;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.Configuration;
+import org.quartz.CronScheduleBuilder;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
+import org.quartz.impl.StdSchedulerFactory;
 
 import javax.servlet.DispatcherType;
 import java.util.EnumSet;
@@ -40,14 +54,28 @@ public class App {
   private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
   protected final EnvironmentFactory envFactory;
+  protected final SessionFactory sessionFactory;
 
   public App() {
     envFactory = new EnvironmentFactory();
+    this.sessionFactory = createSessionFactory();
   }
 
   // Allow orgs to wire in their custom implementations of Environment.
   public App(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
+    this.sessionFactory = createSessionFactory();
+  }
+
+  public App(EnvironmentFactory envFactory, SessionFactory sessionFactory) {
+    this.envFactory = envFactory;
+    this.sessionFactory = sessionFactory;
+  }
+
+  private SessionFactory createSessionFactory() {
+    final Configuration configuration = new Configuration();
+    configuration.addAnnotatedClass(FutureTask.class);
+    return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
   }
 
   private Server server = null;
@@ -110,6 +138,8 @@ public class App {
     BusFactory.setDefaultBus(bus);
 
     registerServlets(context);
+
+    registerJobs();
   }
 
   public void stop() throws Exception {
@@ -139,6 +169,22 @@ public class App {
 
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
+  }
+
+  public void registerJobs() throws SchedulerException {
+    JobDetail scheduledTasks = JobBuilder.newJob(ScheduledTasksJob.class)
+            .withIdentity("scheduledTasks", "group1").build();
+
+    scheduledTasks.getJobDataMap().put("scheduledTasksService", new ScheduledTasksService(sessionFactory));
+
+    Trigger trigger1 = TriggerBuilder.newTrigger()
+            .withIdentity("cronTrigger1", "group1")
+            .withSchedule(CronScheduleBuilder.cronSchedule("0/5 * * * * ?"))
+            .build();
+
+    Scheduler scheduler = new StdSchedulerFactory().getScheduler();
+    scheduler.start();
+    scheduler.scheduleJob(scheduledTasks, trigger1);
   }
 
   /**
