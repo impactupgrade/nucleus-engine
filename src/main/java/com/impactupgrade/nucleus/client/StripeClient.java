@@ -565,7 +565,7 @@ public class StripeClient {
       try {
         return retrieve();
       } catch (StripeException e) {
-        log.warn("Stripe API attempt {} failed due to rate limit or lock; retrying in 3s", count, e);
+        log.info("Stripe API attempt {} failed due to rate limit or lock; retrying in 3s", count, e);
         try {
           Thread.sleep(3000);
         } catch (InterruptedException e1) {
