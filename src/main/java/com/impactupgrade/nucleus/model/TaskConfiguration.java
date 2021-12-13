@@ -1,6 +1,6 @@
 package com.impactupgrade.nucleus.model;
 
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import com.vladmihalcea.hibernate.type.json.JsonType;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
@@ -13,10 +13,11 @@ import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import java.util.Map;
 
 @Entity
 @Table(name = "task_configuration", schema = "public")
-@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
+@TypeDef(name = "json", typeClass = JsonType.class)
 public class TaskConfiguration {
 
     @Id
@@ -38,8 +39,8 @@ public class TaskConfiguration {
     @Column(name = "org_id", nullable = false)
     public String orgId;
 
-    @Type(type = "jsonb")
+    @Type(type = "json")
     @Column(name = "configuration", columnDefinition = "jsonb", nullable = false)
-    public String configuration;
+    public Map<String, String> configuration;
 
 }
