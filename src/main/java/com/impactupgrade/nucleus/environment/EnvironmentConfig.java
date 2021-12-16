@@ -4,14 +4,19 @@
 
 package com.impactupgrade.nucleus.environment;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -53,6 +58,24 @@ public class EnvironmentConfig {
 
   public Platform stripe = new Platform();
 
+  public static class Notification {
+    public String from = "";
+    public Set<String> to = new HashSet<>();
+  }
+
+  public static class Task {
+    public String assignTo = "";
+    public String subject = "";
+  }
+
+  public static class Notifications {
+    public Notification email;
+    public Notification sms;
+    public Task task;
+  }
+
+  public Map<String, Notifications> notifications = new HashMap<>();
+
   // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
   //  not often the case! Ex: LJI and TER have separate sets of fields for Stripe vs. PaymentSpring vs. Paypal. For now,
   //  methods that need these fields most be overridden case by case in order to tweak the query to check for all the
@@ -63,17 +86,24 @@ public class EnvironmentConfig {
   //  Needs careful thought...
   public static class CRMFieldDefinitions {
     public String paymentGatewayName = "";
+
     public String paymentGatewayTransactionId = "";
     public String paymentGatewayCustomerId = "";
     public String paymentGatewaySubscriptionId = "";
+
     public String paymentGatewayRefundId = "";
     public String paymentGatewayRefundDate = "";
+    public String paymentGatewayRefundDepositId = "";
+    public String paymentGatewayRefundDepositDate = "";
+
     public String paymentGatewayDepositId = "";
     public String paymentGatewayDepositDate = "";
     public String paymentGatewayDepositNetAmount = "";
     public String paymentGatewayDepositFee = "";
+
     public String emailOptIn = "";
     public String emailOptOut = "";
+
     public String smsOptIn = "";
     public String smsOptOut = "";
   }
@@ -94,6 +124,7 @@ public class EnvironmentConfig {
     public HubspotCRMFieldDefinitions fieldDefinitions = new HubspotCRMFieldDefinitions();
     public HubspotCustomFields customQueryFields = new HubspotCustomFields();
     public String defaultSmsOptInList = "";
+    public boolean enableRecurring = false;
 
     public static class HubSpotDonationPipeline {
       public String id = "";
@@ -147,6 +178,15 @@ public class EnvironmentConfig {
       public Set<String> recurringDonation = new HashSet<>();
       public Set<String> user = new HashSet<>();
     }
+
+    public Set<String> supportedContactsReportTypes = new HashSet<>();
+    public Set<String> supportedContactReportColumns = new HashSet<>();
+  }
+
+  public Donorwrangler donorwrangler = new Donorwrangler();
+
+  public static class Donorwrangler extends Platform {
+    public String subdomain = "";
   }
 
   public Twilio twilio = new Twilio();
@@ -155,19 +195,54 @@ public class EnvironmentConfig {
     public String senderPn = "";
   }
 
-  public TagCheckFields  tagCheckFields = new TagCheckFields();
-
-  public static class TagCheckFields {
-    public Integer majorDonorAmount = 0;
-    public Integer recentDonationDays = 0;
-    public Integer frequentDonationAmount = 0;
+  /*
+  "mailchimp": {
+    "secretKey": "asdf",
+    "lists": [
+      {
+        "id": "hopeful-living-id",
+        "type": "CONTACTS",
+        "groups": {},
+        "crmFilter": "type = 'HFL' and foobar != 'whatever'"
+      },
+      {
+        "id": "general-subscribers-id",
+        "type": "CONTACTS",
+        "groups": {},
+        "crmSource": "salesforce",
+        "crmFilter": "type != 'HFL'"
+      },
+      {
+        "id": "general-subscribers-id",
+        "type": "CONTACTS",
+        "groups": {},
+        "crmSource": "hubspot",
+        "crmFilter": "type neq HFL"
+      },
+      {
+        "id": "donors-id",
+        "type": "DONORS",
+        "crmFilter": []
+      }
+    ]
   }
+   */
 
   public Mailchimp mailchimp = new Mailchimp();
 
   public static class Mailchimp extends Platform {
-    public Map<String, String> lists = new HashMap<>(); // <ID, Name>
-    public Map<String, String> groups = new HashMap<>(); // <ID, Name>
+    public List<MailchimpList> lists = new ArrayList<>();
+  }
+
+  public static class MailchimpList {
+    public String id = "";
+    public MailchimpListType type = MailchimpListType.CONTACTS;
+    public Map<String, String> groups = new HashMap<>(); // <Name, ID>
+    public String crmFilter = "";
+  }
+
+  public enum MailchimpListType {
+    CONTACTS, DONORS
   }
 
   public Backblaze backblaze = new Backblaze();
@@ -194,8 +269,19 @@ public class EnvironmentConfig {
 
   public String currency = "";
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // INITIALIZATION
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   private static final boolean IS_PROD = "production".equalsIgnoreCase(System.getenv("PROFILE"));
-  private static final boolean IS_INTEGRATION_TEST = "true".equalsIgnoreCase(System.getProperty("nucleus.integration.test"));
+  private static final boolean IS_SANDBOX = "sandbox".equalsIgnoreCase(System.getenv("PROFILE"));
+
+  private static final ObjectMapper mapper = new ObjectMapper();
+  static {
+    // Allows nested objects, collections, etc. to be merged together.
+    mapper.setDefaultMergeable(true);
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  }
 
   public static EnvironmentConfig init() {
     try (
@@ -204,27 +290,17 @@ public class EnvironmentConfig {
         InputStream jsonOrg = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("environment.json");
         InputStream jsonOrgSandbox = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("environment-sandbox.json");
-        InputStream jsonOrgIntegrationTest = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("environment-it.json")
+            .getResourceAsStream("environment-sandbox.json")
     ) {
-      ObjectMapper mapper = new ObjectMapper();
-      // Allows nested objects, collections, etc. to be merged together.
-      mapper.setDefaultMergeable(true);
       // Start with the default JSON as the foundation.
       EnvironmentConfig envConfig = mapper.readValue(jsonDefault, EnvironmentConfig.class);
-      // Then override specific properties with anything that's in env.json, if there is one.
-      if (jsonOrg != null) {
+
+      if (IS_PROD && jsonOrg != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrg);
       }
 
-      if (!IS_PROD && jsonOrgSandbox != null) {
+      if (IS_SANDBOX && jsonOrgSandbox != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrgSandbox);
-      }
-
-      // IMPORTANT: Gate with the system property, set by AbstractIT, otherwise this file gets picked up by Heroku!
-      if (IS_INTEGRATION_TEST && jsonOrgIntegrationTest != null) {
-        mapper.readerForUpdating(envConfig).readValue(jsonOrgIntegrationTest);
       }
 
       return envConfig;
@@ -232,6 +308,34 @@ public class EnvironmentConfig {
       log.error("Unable to read environment JSON files! Exiting...", e);
       System.exit(1);
       return null;
+    }
+  }
+
+  // Allow additional env.json files to be added. This cannot be statically defined, due to usages such as integration
+  // tests where tests run in parallel and each may need unique setups.
+  public void addOtherJson(String otherJsonFilename) {
+    if (!Strings.isNullOrEmpty(otherJsonFilename)) {
+      try (InputStream otherJson = Thread.currentThread().getContextClassLoader()
+          .getResourceAsStream(otherJsonFilename)) {
+        if (otherJson != null) {
+          mapper.readerForUpdating(this).readValue(otherJson);
+        }
+      } catch (IOException e) {
+        log.error("unable to read {}}", otherJsonFilename, e);
+      }
+    }
+  }
+
+  /**
+   * Nucleus Core (and perhaps other use cases) need to dynamically provide the org's JSON from a database lookup.
+   * Assume it will always start with environment-default.json (using the static init() method). Overlay the
+   * unique JSON on top of what we already have.
+   */
+  public void init(String jsonOrg) {
+    try {
+      mapper.readerForUpdating(this).readValue(jsonOrg);
+    } catch (JsonProcessingException e) {
+      log.error("Unable to read environment JSON!", e);
     }
   }
 }

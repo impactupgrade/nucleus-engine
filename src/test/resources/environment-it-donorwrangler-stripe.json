@@ -1,0 +1,12 @@
+{
+  "crmPrimary": "donorwrangler",
+
+  "donorwrangler": {
+    "subdomain": "impactupgrade",
+    "secretKey": "ctxH9c+atvWDiRpemlxy0hPuyiI96EeE3fsrtrRoWOU="
+  },
+
+  "stripe": {
+    "secretKey": "sk_test_51Imqu3HAwJOu5brrFI1LeFsnRbGSKo01FLQ9tJijlMtTZPXl4XyB2Kidg9qrWqCP6VlDK5EO0YxSXAbPcWZBp7ey00dhw2OuZg"
+  }
+}

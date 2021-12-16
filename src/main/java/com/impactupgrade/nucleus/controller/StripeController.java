@@ -6,18 +6,22 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
-import com.stripe.exception.StripeException;
+import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentSource;
 import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
@@ -32,8 +36,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -208,63 +211,74 @@ public class StripeController {
 
         List<PaymentGatewayEvent> paymentGatewayEvents = stripePaymentGatewayService.payoutToPaymentGatewayEvents(payout);
         for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
-          env.donationService().chargeDeposited(paymentGatewayEvent);
+          env.donationService().processDeposit(paymentGatewayEvent);
+        }
+      }
+      case "customer.source.expiring" -> {
+        // Occurs whenever a card or source will expire at the end of the month.
+        if (stripeObject instanceof Card) {
+          Card card = (Card) stripeObject;
+          log.info("found expiring card {}", card.getId());
+
+          Customer customer = env.stripeClient().getCustomer(card.getCustomer());
+          List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(card.getCustomer());
+          List<Subscription> affectedSubscriptions = new ArrayList<>();
+
+          for (Subscription subscription: activeSubscriptions) {
+            // ID of the default payment method for the subscription.
+            // It must belong to the customer associated with the subscription.
+            // This takes precedence over default_source.
+            String subscriptionPaymentMethodId = subscription.getDefaultPaymentMethod();
+            if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
+              subscriptionPaymentMethodId = subscription.getDefaultSource();
+            }
+            // If neither are set, invoices will use the customer’s invoice_settings.default_payment_method
+            // or default_source.
+            if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
+              subscriptionPaymentMethodId = customer.getDefaultSource();
+            }
+            if (card.getId().equalsIgnoreCase(subscriptionPaymentMethodId)) {
+              affectedSubscriptions.add(subscription);
+            }
+          }
+
+          for (Subscription subscription: affectedSubscriptions) {
+            //For each open subscription using that payment source,
+            //look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
+            Optional<CrmRecurringDonation> crmRecurringDonationOptional = env.donationsCrmService().getRecurringDonationById(subscription.getId());
+
+            if (crmRecurringDonationOptional.isPresent()) {
+
+              // Email
+              env.notificationService().sendEmailNotification(
+                  "Recurring Donation: Card Expiring",
+                  "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.",
+                  "donations:card-expiring"
+              );
+
+              // Crm task
+              String targetId = null;
+              Optional<CrmAccount> crmAccountOptional = env.donationsCrmService().getAccountByCustomerId(card.getCustomer());
+              if (crmAccountOptional.isPresent()) {
+                targetId = crmAccountOptional.get().id;
+              } else {
+                Optional<CrmContact> crmContactOptional = env.donationsCrmService().getContactByEmail(customer.getEmail());
+                if (crmContactOptional.isPresent()) {
+                  targetId = crmAccountOptional.get().id;
+                }
+              }
+
+              env.notificationService().createCrmTask(env.donationsCrmService(), targetId,
+                  "Donor is using a card that's about to expire.",
+                  "donations:card-expiring"
+              );
+            }
+          }
+        } else {
+          log.info("found expiring payment source {}", ((PaymentSource) stripeObject).getId());
         }
       }
       default -> log.info("unhandled Stripe webhook event type: {}", eventType);
-    }
-  }
-
-  // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-  public void verifyAndReplayStripeCharges(Date startDate, Date endDate, Environment env) throws StripeException {
-    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-    Iterable<Charge> charges = env.stripeClient().getAllCharges(startDate, endDate);
-    int count = 0;
-    for (Charge charge : charges) {
-      if (!charge.getStatus().equalsIgnoreCase("succeeded")
-          || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
-        continue;
-      }
-
-      count++;
-
-      try {
-        String paymentIntentId = charge.getPaymentIntent();
-        String chargeId = charge.getId();
-        Optional<CrmDonation> donation = Optional.empty();
-        if (!Strings.isNullOrEmpty(paymentIntentId)) {
-          donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
-        }
-        if (donation.isEmpty()) {
-          donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
-        }
-
-        if (donation.isEmpty()) {
-          System.out.println("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
-
-          if (Strings.isNullOrEmpty(paymentIntentId)) {
-            processEvent("charge.succeeded", charge, env);
-          } else {
-            processEvent("payment_intent.succeeded", charge.getPaymentIntentObject(), env);
-          }
-        }
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
-  // TODO: To be wrapped in a REST call for the UI to kick off, etc.
-  public void replayStripePayouts(Date startDate, Date endDate, Environment env) throws Exception {
-    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-    Iterable<Payout> payouts = env.stripeClient().getPayouts(startDate, endDate, 100);
-    for (Payout payout : payouts) {
-      try {
-        System.out.println(SDF.format(new Date(payout.getArrivalDate() * 1000)));
-        processEvent("payout.paid", payout, env);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
     }
   }
 }

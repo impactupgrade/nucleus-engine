@@ -83,7 +83,13 @@ public class PaymentGatewayEvent {
 
   public void initStripe(Charge stripeCharge, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    initStripeCommon();
+    gatewayName = "Stripe";
+    String stripePaymentMethod = stripeCharge.getPaymentMethodDetails().getType();
+    if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
+      paymentMethod = "ACH";
+    } else {
+      paymentMethod = "Credit Card";
+    }
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
@@ -137,7 +143,13 @@ public class PaymentGatewayEvent {
 
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    initStripeCommon();
+    gatewayName = "Stripe";
+    String stripePaymentMethod = stripePaymentIntent.getCharges().getData().stream().findFirst().map(c -> c.getPaymentMethodDetails().getType()).orElse("");
+    if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
+      paymentMethod = "ACH";
+    } else {
+      paymentMethod = "Credit Card";
+    }
 
     // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
     // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
@@ -193,7 +205,7 @@ public class PaymentGatewayEvent {
   }
 
   public void initStripe(Refund stripeRefund) {
-    initStripeCommon();
+    gatewayName = "Stripe";
 
     refundId = stripeRefund.getId();
     if (!Strings.isNullOrEmpty(stripeRefund.getPaymentIntent())) {
@@ -212,7 +224,7 @@ public class PaymentGatewayEvent {
   }
 
   public void initStripe(Subscription stripeSubscription, Customer stripeCustomer) {
-    initStripeCommon();
+    gatewayName = "Stripe";
 
     initStripeSubscription(stripeSubscription, stripeCustomer);
 
@@ -220,13 +232,9 @@ public class PaymentGatewayEvent {
     initStripeCustomer(Optional.of(stripeCustomer), Optional.empty());
   }
 
-  protected void initStripeCommon() {
-    gatewayName = "Stripe";
-    // TODO: expand to include ACH through Plaid?
-    paymentMethod = "credit card";
-  }
-
   protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
+    Map<String, String> metadata = getAllMetadata();
+
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
@@ -234,20 +242,25 @@ public class PaymentGatewayEvent {
 
       crmContact.email = stripeCustomer.getEmail();
       crmContact.mobilePhone = stripeCustomer.getPhone();
-    } else {
-      crmContact.email = getAllMetadata().entrySet().stream().filter(e -> {
+    }
+
+    // backfill with metadata if needed
+    if (Strings.isNullOrEmpty(crmContact.email)) {
+      crmContact.email = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("email"));
       }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }
+    if (Strings.isNullOrEmpty(crmContact.mobilePhone)) {
       // TODO: Do we need to break this down into the different phone numbers?
-      crmContact.mobilePhone = getAllMetadata().entrySet().stream().filter(e -> {
+      crmContact.mobilePhone = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("phone"));
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
     initStripeCustomerName(__stripeCustomer, billingDetails);
-    initStripeAddress(__stripeCustomer);
+    initStripeAddress(__stripeCustomer, billingDetails);
   }
 
   // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
@@ -274,6 +287,7 @@ public class PaymentGatewayEvent {
     }
     // And finally, the billing details, if nothing else.
     if (Strings.isNullOrEmpty(crmAccount.name) && billingDetails.isPresent()
+        && !Strings.isNullOrEmpty(billingDetails.get().getName())
         // Some vendors, like Custom Donations, may use email as the billing details name if no true name
         // was available. Sanity check and skip if so...
         && !billingDetails.get().getName().contains("@")) {
@@ -317,7 +331,7 @@ public class PaymentGatewayEvent {
     }
   }
 
-  protected void initStripeAddress(Optional<Customer> __stripeCustomer) {
+  protected void initStripeAddress(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
     CrmAddress crmAddress = new CrmAddress();
 
     if (__stripeCustomer.isPresent()) {
@@ -331,7 +345,7 @@ public class PaymentGatewayEvent {
         crmAddress.state = stripeCustomer.getAddress().getState();
         crmAddress.postalCode = stripeCustomer.getAddress().getPostalCode();
         crmAddress.country = stripeCustomer.getAddress().getCountry();
-      } else {
+      } else if (stripeCustomer.getSources() != null) {
         // use the first payment source, but don't use the default source, since we can't guarantee it's set as a card
         // TODO: This will need rethought after Donor Portal is launched and Stripe is used for ACH!
         stripeCustomer.getSources().getData().stream()
@@ -349,13 +363,28 @@ public class PaymentGatewayEvent {
               crmAddress.country = stripeCard.getAddressCountry();
             });
       }
-    } else {
+    }
+
+    // Also try the source right on the Charge, if it wasn't on the Customer.
+    if (Strings.isNullOrEmpty(crmAddress.street) && billingDetails.isPresent() && billingDetails.get().getAddress() != null) {
+      crmAddress.street = billingDetails.get().getAddress().getLine1();
+      if (!Strings.isNullOrEmpty(billingDetails.get().getAddress().getLine2())) {
+        crmAddress.street += ", " + billingDetails.get().getAddress().getLine2();
+      }
+      crmAddress.city = billingDetails.get().getAddress().getCity();
+      crmAddress.state = billingDetails.get().getAddress().getState();
+      crmAddress.postalCode = billingDetails.get().getAddress().getPostalCode();
+      crmAddress.country = billingDetails.get().getAddress().getCountry();
+    }
+
+    // If the customer and sources didn't have the full address, try metadata from both.
+    if (Strings.isNullOrEmpty(crmAddress.street)) {
       Map<String, String> metadata = getAllMetadata();
 
       // TODO: The stream and filter are getting repetitive (see initStripeCustomerName as well). DRY it up
       crmAddress.street = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
-        return key.contains("street");
+        return key.contains("street") || key.contains("address");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
       crmAddress.city = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
@@ -452,7 +481,7 @@ public class PaymentGatewayEvent {
     return metadataValue;
   }
 
-  private Map<String, String> getAllMetadata() {
+  public Map<String, String> getAllMetadata() {
     // In order!
     return Stream.of(contextMetadata, transactionMetadata, subscriptionMetadata, customerMetadata)
         .flatMap(map -> map.entrySet().stream())

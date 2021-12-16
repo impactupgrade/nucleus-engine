@@ -4,6 +4,8 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.google.common.base.Strings;
+
 public class CrmAddress {
 
   public String street;
@@ -21,5 +23,14 @@ public class CrmAddress {
     this.state = state;
     this.postalCode = postalCode;
     this.country = country;
+  }
+
+  @Override
+  public String toString() {
+    if (Strings.isNullOrEmpty(street)) {
+      return "";
+    } else {
+      return street + ", " + city + ", " + state + " " + postalCode + ", " + country;
+    }
   }
 }

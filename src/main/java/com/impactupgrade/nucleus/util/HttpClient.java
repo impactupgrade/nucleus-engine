@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.util;
 
 import com.google.common.base.Strings;
+import org.eclipse.jetty.http.HttpStatus;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -19,11 +20,19 @@ import java.util.Map;
 public class HttpClient {
 
   public static String getAsString(String url) {
+    return getAsString(url, null, null);
+  }
+
+  public static String getAsString(String url, String mediaType, String bearerToken) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
-    Invocation.Builder invocationBuilder = webTarget.request(MediaType.TEXT_PLAIN);
+    String defaultMediaType = !Strings.isNullOrEmpty(mediaType) ? mediaType : MediaType.TEXT_PLAIN;
+    Invocation.Builder invocationBuilder = webTarget.request(defaultMediaType);
+    if (!Strings.isNullOrEmpty(bearerToken)) {
+      invocationBuilder.header("Authorization", "Bearer " + bearerToken);
+    }
     Response response = invocationBuilder.get();
-    return response.readEntity(String.class);
+    return HttpStatus.OK_200 == response.getStatus() ? response.readEntity(String.class) : null;
   }
 
   public static <T> Response postJson(T entity, String bearerToken, String url, String... paths) {
@@ -47,10 +56,10 @@ public class HttpClient {
       webTarget = webTarget.path(path);
     }
 
-    Invocation.Builder builder = webTarget.request(mediaType);
+    Invocation.Builder invocationBuilder = webTarget.request(mediaType);
     if (!Strings.isNullOrEmpty(bearerToken)) {
-      builder.header("Authorization", "Bearer " + bearerToken);
+      invocationBuilder.header("Authorization", "Bearer " + bearerToken);
     }
-    return builder.post(Entity.entity(entity, mediaType));
+    return invocationBuilder.post(Entity.entity(entity, mediaType));
   }
 }

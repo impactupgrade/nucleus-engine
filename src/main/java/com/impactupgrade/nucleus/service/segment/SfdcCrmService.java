@@ -17,6 +17,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -54,6 +55,11 @@ public class SfdcCrmService implements CrmService {
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {
     return toCrmAccount(sfdcClient.getAccountById(id));
+  }
+
+  @Override
+  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountByCustomerId(customerId));
   }
 
   @Override
@@ -117,6 +123,34 @@ public class SfdcCrmService implements CrmService {
   public Optional<CrmUser> getUserById(String id) throws Exception {
     // TODO
     return Optional.empty();
+  }
+
+  @Override
+  public String insertTask(CrmTask crmTask) throws Exception {
+    SObject task = new SObject("Task");
+    setTaskFields(task, crmTask);
+    return sfdcClient.insert(task).getId();
+  }
+
+  protected void setTaskFields(SObject task, CrmTask crmTask) {
+    task.setField("WhoId", crmTask.targetId);
+    task.setField("OwnerId", crmTask.assignTo);
+    task.setField("Subject", crmTask.subject);
+    task.setField("Description", crmTask.description);
+
+    switch (crmTask.status) {
+      case IN_PROGRESS -> task.setField("Status", "In Progress");
+      case DONE -> task.setField("Status", "Completed");
+      default -> task.setField("Status", "Not Started");
+    }
+
+    switch (crmTask.priority) {
+      case LOW -> task.setField("Priority", "Low");
+      case HIGH, CRITICAL -> task.setField("Priority", "High");
+      default -> task.setField("Priority", "Normal");
+    }
+
+    task.setField("ActivityDate", crmTask.dueDate);
   }
 
   @Override
@@ -333,18 +367,32 @@ public class SfdcCrmService implements CrmService {
     // TODO: Might be helpful to do something like this further upstream, preventing unnecessary processing
     Optional<SObject> opportunity = sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
     if (opportunity.isPresent()) {
-      // Only do this if the field definitions are given in env.json, otherwise assume this method will be overridden.
-      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)
-          && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
-        SObject opportunityUpdate = new SObject("Opportunity");
-        opportunityUpdate.setId(opportunity.get().getId());
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars());
-        sfdcClient.update(opportunityUpdate);
+      // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
+        if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)
+            && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId) == null) {
+          SObject opportunityUpdate = new SObject("Opportunity");
+          opportunityUpdate.setId(opportunity.get().getId());
+          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate());
+          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId());
+          sfdcClient.update(opportunityUpdate);
+        } else {
+          log.info("skipping refund {}; already marked with refund deposit info", opportunity.get().getId());
+        }
+      // Otherwise, assume it was a standard charge.
       } else {
-        log.info("skipping {}; already marked with deposit info", opportunity.get().getId());
+        if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)
+            && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
+          SObject opportunityUpdate = new SObject("Opportunity");
+          opportunityUpdate.setId(opportunity.get().getId());
+          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars());
+          sfdcClient.update(opportunityUpdate);
+        } else {
+          log.info("skipping {}; already marked with deposit info", opportunity.get().getId());
+        }
       }
     }
   }
@@ -501,14 +549,19 @@ public class SfdcCrmService implements CrmService {
    */
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    List<SObject> sObjects;
     // 701 is the Campaign ID prefix
     if (listId.startsWith("701")) {
-      return toCrmContact(sfdcClient.getContactsByCampaignId(listId));
+      sObjects = sfdcClient.getContactsByCampaignId(listId);
+      // 00O - Report ID prefix
+    } else if (listId.startsWith("00O")) {
+      sObjects = sfdcClient.getContactsByReportId(listId);
     }
     // otherwise, assume it's an explicit Opportunity name
     else {
-      return toCrmContact(sfdcClient.getContactsByOpportunityName(listId));
+      sObjects = sfdcClient.getContactsByOpportunityName(listId);
     }
+    return toCrmContact(sObjects);
   }
 
   @Override
@@ -758,15 +811,14 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception {
-    return sfdcClient.getContactsUpdatedSince(calendar).stream().map(this::toCrmContact).collect(Collectors.toList());
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
+    return sfdcClient.getEmailContacts(updatedSince, filter).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
-  public List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception{
-    return sfdcClient.getDonorContactsSince(calendar).stream().map(this::toCrmContact).collect(Collectors.toList());
+  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception{
+    return sfdcClient.getEmailDonorContacts(updatedSince, filter).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
-
 
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());
@@ -894,7 +946,7 @@ public class SfdcCrmService implements CrmService {
         campaign = sfdcClient.getCampaignByName(campaignIdOrName);
       }
     }
-    
+
     if (campaign.isEmpty()) {
       String defaultCampaignId = env.getConfig().salesforce.defaultCampaignId;
       if (Strings.isNullOrEmpty(defaultCampaignId)) {

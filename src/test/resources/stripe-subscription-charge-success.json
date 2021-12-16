@@ -1,0 +1,207 @@
+{
+  "id": "evt_3JufwxHAwJOu5brr0GtEp8vg",
+  "object": "event",
+  "api_version": "2020-08-27",
+  "created": 1636647393,
+  "data": {
+    "object": {
+      "id": "pi_3JufwxHAwJOu5brr0WP4aAVs",
+      "object": "payment_intent",
+      "amount": 10000,
+      "amount_capturable": 0,
+      "amount_received": 10000,
+      "application": null,
+      "application_fee_amount": null,
+      "canceled_at": null,
+      "cancellation_reason": null,
+      "capture_method": "automatic",
+      "charges": {
+        "object": "list",
+        "data": [
+          {
+            "id": "ch_3JufwxHAwJOu5brr0zuNQVTk",
+            "object": "charge",
+            "amount": 10000,
+            "amount_captured": 10000,
+            "amount_refunded": 0,
+            "application": null,
+            "application_fee": null,
+            "application_fee_amount": null,
+            "balance_transaction": "txn_3JufwxHAwJOu5brr0RELFfyU",
+            "billing_details": {
+              "address": {
+                "city": null,
+                "country": null,
+                "line1": null,
+                "line2": null,
+                "postal_code": null,
+                "state": null
+              },
+              "email": null,
+              "name": null,
+              "phone": null
+            },
+            "calculated_statement_descriptor": "IMPACT UPGRADE",
+            "captured": true,
+            "created": 1636647392,
+            "currency": "usd",
+            "customer": "cus_JPgkris8GTsXIH",
+            "description": "Subscription creation",
+            "destination": null,
+            "dispute": null,
+            "disputed": false,
+            "failure_code": null,
+            "failure_message": null,
+            "fraud_details": {
+            },
+            "invoice": "in_1JufwxHAwJOu5brrqfAmU5v9",
+            "livemode": false,
+            "metadata": {
+            },
+            "on_behalf_of": null,
+            "order": null,
+            "outcome": {
+              "network_status": "approved_by_network",
+              "reason": null,
+              "risk_level": "normal",
+              "risk_score": 22,
+              "seller_message": "Payment complete.",
+              "type": "authorized"
+            },
+            "paid": true,
+            "payment_intent": "pi_3JufwxHAwJOu5brr0WP4aAVs",
+            "payment_method": "src_1ImrOKHAwJOu5brr563XLeLz",
+            "payment_method_details": {
+              "card": {
+                "brand": "visa",
+                "checks": {
+                  "address_line1_check": null,
+                  "address_postal_code_check": null,
+                  "cvc_check": null
+                },
+                "country": "US",
+                "exp_month": 12,
+                "exp_year": 2022,
+                "fingerprint": "WHTBeQ5HmOeHlWfu",
+                "funding": "credit",
+                "installments": null,
+                "last4": "4242",
+                "network": "visa",
+                "three_d_secure": null,
+                "wallet": null
+              },
+              "type": "card"
+            },
+            "receipt_email": null,
+            "receipt_number": null,
+            "receipt_url": "https://pay.stripe.com/receipts/acct_1Imqu3HAwJOu5brr/ch_3JufwxHAwJOu5brr0zuNQVTk/rcpt_KZpcwcIvLw4lXhQqbgvzu1C0sLgRly4",
+            "refunded": false,
+            "refunds": {
+              "object": "list",
+              "data": [
+              ],
+              "has_more": false,
+              "total_count": 0,
+              "url": "/v1/charges/ch_3JufwxHAwJOu5brr0zuNQVTk/refunds"
+            },
+            "review": null,
+            "shipping": null,
+            "source": {
+              "id": "src_1ImrOKHAwJOu5brr563XLeLz",
+              "object": "source",
+              "amount": null,
+              "card": {
+                "exp_month": 12,
+                "exp_year": 2022,
+                "last4": "4242",
+                "country": "US",
+                "brand": "Visa",
+                "funding": "credit",
+                "fingerprint": "WHTBeQ5HmOeHlWfu",
+                "three_d_secure": "optional",
+                "name": null,
+                "address_line1_check": null,
+                "address_zip_check": null,
+                "cvc_check": null,
+                "tokenization_method": null,
+                "dynamic_last4": null
+              },
+              "client_secret": "src_client_secret_qbMbzhsqShVitDoqf9g2pTs9",
+              "created": 1636647393,
+              "currency": null,
+              "customer": "cus_JPgkris8GTsXIH",
+              "flow": "none",
+              "livemode": false,
+              "metadata": {
+              },
+              "owner": {
+                "address": null,
+                "email": null,
+                "name": null,
+                "phone": null,
+                "verified_address": null,
+                "verified_email": null,
+                "verified_name": null,
+                "verified_phone": null
+              },
+              "statement_descriptor": null,
+              "status": "chargeable",
+              "type": "card",
+              "usage": "reusable"
+            },
+            "source_transfer": null,
+            "statement_descriptor": null,
+            "statement_descriptor_suffix": null,
+            "status": "succeeded",
+            "transfer_data": null,
+            "transfer_group": null
+          }
+        ],
+        "has_more": false,
+        "total_count": 1,
+        "url": "/v1/charges?payment_intent=pi_3JufwxHAwJOu5brr0WP4aAVs"
+      },
+      "client_secret": "pi_3JufwxHAwJOu5brr0WP4aAVs_secret_ZI6NkSTF1dKxVRy5C9ly599S7",
+      "confirmation_method": "automatic",
+      "created": 1636647391,
+      "currency": "usd",
+      "customer": "cus_JPgkris8GTsXIH",
+      "description": "Subscription creation",
+      "invoice": "in_1JufwxHAwJOu5brrqfAmU5v9",
+      "last_payment_error": null,
+      "livemode": false,
+      "metadata": {
+      },
+      "next_action": null,
+      "on_behalf_of": null,
+      "payment_method": null,
+      "payment_method_options": {
+        "card": {
+          "installments": null,
+          "network": null,
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card"
+      ],
+      "receipt_email": null,
+      "review": null,
+      "setup_future_usage": null,
+      "shipping": null,
+      "source": "src_1ImrOKHAwJOu5brr563XLeLz",
+      "statement_descriptor": null,
+      "statement_descriptor_suffix": null,
+      "status": "succeeded",
+      "transfer_data": null,
+      "transfer_group": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_7SkDQ09JTmFDvS",
+    "idempotency_key": "472e1a35-bece-4c0c-8e17-8759bca0b97f"
+  },
+  "type": "payment_intent.succeeded"
+}

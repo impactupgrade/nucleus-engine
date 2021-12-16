@@ -41,7 +41,6 @@ public class EmailController {
         try {
           emailPlatformService.syncContacts(lastSync);
           emailPlatformService.syncDonors(lastSync);
-          emailPlatformService.syncTags(lastSync);
         } catch (Exception e) {
           log.error("dailySync failed", e);
         }

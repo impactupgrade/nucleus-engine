@@ -6,7 +6,6 @@ package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
 import com.neovisionaries.i18n.CountryCode;
-import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -82,7 +81,7 @@ public class DonationFormData {
         || lastName.contains("<last>") || lastName.contains("<Last>")) {
       log.info("blocking a bad request: name");
       return true;
-    } else if (Strings.isNullOrEmpty(email) || !EmailValidator.getInstance().isValid(email) || email.contains("example.com")) {
+    } else if (Strings.isNullOrEmpty(email) || email.contains("example.com")) {
       log.info("blocking a bad request: email");
       return true;
     // Note: Don't require address (optional in many forms), but sanity check it if provided.

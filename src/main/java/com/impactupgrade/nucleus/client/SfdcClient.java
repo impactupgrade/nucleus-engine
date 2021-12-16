@@ -4,6 +4,9 @@
 
 package com.impactupgrade.nucleus.client;
 
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
@@ -15,8 +18,15 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jruby.embed.LocalContextScope;
+import org.jruby.embed.PathType;
+import org.jruby.embed.ScriptingContainer;
 
 import javax.ws.rs.core.Response;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -91,6 +101,15 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where name like '%" + escapedName + "%' or npo02__Formal_Greeting__c='%" + escapedName + "%'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
+  }
+
+  public Optional<SObject> getAccountByCustomerId(String customerId) throws ConnectionException, InterruptedException {
+    if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
+      return Optional.empty();
+    }
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId + " = '" + customerId + "'";
+    LoggingUtil.verbose(log, query);
+    return querySingle(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -263,22 +282,216 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
+//  public List<SObject> getContactsByReportId(String reportId) throws ConnectionException, InterruptedException, IOException {
+//    if (Strings.isNullOrEmpty(reportId)) {
+//      return Collections.emptyList();
+//    }
+//
+//    String reportDescription = getReportDescription(reportId);
+//    if (Strings.isNullOrEmpty(reportDescription)) {
+//      log.error("Failed to get report description! {}", reportId);
+//      return Collections.emptyList();
+//    }
+//
+//    // Check report type is supported
+//    String reportType = getReportType(reportDescription);
+//    Set<String> supportedTypes = env.getConfig().salesforce.supportedContactsReportTypes;
+//    if (!supportedTypes.contains(reportType)) {
+//      log.warn("Report type {} is not supported! Supported types: {}.", reportType, supportedTypes);
+//      log.warn("Can NOT load contacts from report {}!", reportId);
+//      return Collections.emptyList();
+//    }
+//
+//    // Get report columns as a map (csv column label -> report column key)
+//    Map<String, String> reportColumns = getReportColumns(reportDescription);
+//    if (CollectionUtils.isEmpty(reportColumns.keySet())) {
+//      // Should be unreachable
+//      log.error("Report {} does not have any columns defined!", reportId);
+//      return Collections.emptyList();
+//    }
+//    Set<String> supportedColumns = env.getConfig().salesforce.supportedContactReportColumns;
+//    // Check if report contains supported columns
+//    Set<String> filteredColumnsLabels = reportColumns.keySet().stream()
+//            .filter(reportColumnLabel -> supportedColumns.contains(reportColumns.get(reportColumnLabel)))
+//            .collect(Collectors.toSet());
+//
+//    if (CollectionUtils.isEmpty(filteredColumnsLabels)) {
+//      log.warn("Report {} does not contain any of supported columns: {}", reportId, supportedColumns);
+//      log.warn("Can NOT load contacts from report {}!", reportId);
+//      return Collections.emptyList();
+//    }
+//
+//    // Get the report as csv
+//    String reportContent = downloadReportAsString(reportId);
+//
+//    // Get report content as a map of (columnLabel -> columnValues)
+//    Map<String, List<String>> columnValues = new HashMap<>();
+//    CsvMapper mapper = new CsvMapper();
+//    CsvSchema schema = CsvSchema.emptySchema().withHeader();
+//    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(reportContent);
+//    while (iterator.hasNext()) {
+//      Map<String, String> row = iterator.next();
+//      row.entrySet().stream()
+//        // Collect only values for filtered (searchable) columns
+//        .filter(e -> filteredColumnsLabels.contains(e.getKey()))
+//        .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+//        .forEach(e -> {
+//          columnValues.computeIfAbsent(e.getKey(), c -> new ArrayList<>());
+//          columnValues.get(e.getKey()).add(e.getValue());
+//        });
+//    }
+//
+//    log.info("column values: {}", columnValues);
+//
+//    // Select one of supported columns values (getting one that has the most values defined in csv)
+//    String searchColumnLabel = null;
+//    int biggestSize = 0;
+//    for (Map.Entry<String, List<String>> e: columnValues.entrySet()) {
+//      int valuesSize = e.getValue().size();
+//      if (valuesSize > biggestSize) {
+//        biggestSize = valuesSize;
+//        searchColumnLabel = e.getKey();
+//      }
+//    }
+//
+//    String searchColumn = reportColumns.get(searchColumnLabel);
+//    String searchColumnValues = String.join(",", columnValues.get(searchColumnLabel).stream().map(label -> "'" + label + "'").collect(Collectors.toList()));
+//
+//    // Get contacts using column key and csv values
+//    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + searchColumn + " in (" + searchColumnValues + ")";
+//    LoggingUtil.verbose(log, query);
+//    return queryList(query);
+//  }
+
+  public List<SObject> getContactsByReportId(String reportId) throws ConnectionException, InterruptedException, IOException {
+    if (Strings.isNullOrEmpty(reportId)) {
+      return Collections.emptyList();
+    }
+
+    // Get the report as csv
+    String reportContent = downloadReportAsString(reportId);
+
+    // NOTE: Rather than return a Map of the results, we instead require the report to include an ID column, then
+    // use that to run a normal query to grab all fields we care about.
+
+    // Get report content as a map of (columnLabel -> columnValues)
+    List<String> resultIds = new ArrayList<>();
+    CsvMapper mapper = new CsvMapper();
+    CsvSchema schema = CsvSchema.emptySchema().withHeader();
+    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(reportContent);
+    while (iterator.hasNext()) {
+      Map<String, String> row = iterator.next();
+      row.entrySet().stream()
+          // Collect only values for filtered (searchable) columns
+          .filter(e -> "id".equalsIgnoreCase(e.getKey()) || "contact id".equalsIgnoreCase(e.getKey()))
+          .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+          .forEach(e -> {
+            resultIds.add(e.getValue());
+          });
+    }
+
+    log.info("report contained {} contacts", resultIds.size());
+    if (resultIds.isEmpty()) {
+      return Collections.emptyList();
+    } else {
+      // Get contacts using ID column
+      String where = resultIds.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (" + where + ")";
+      LoggingUtil.verbose(log, query);
+      return queryList(query);
+    }
+  }
+
+//  public String getReportDescription(String reportId) {
+//    if (Strings.isNullOrEmpty(reportId)) {
+//      return null;
+//    }
+//    // TODO: no secretKeys for SFDC -- needs to use a login call to get a sessionId, like SfdcBulkClient
+//    String accessToken = env.getConfig().salesforce.secretKey;
+//    String baseUrl = env.getConfig().salesforce.url;
+//    // TODO: make version config param?
+//    String describeReportUrl = "https://" + baseUrl + "/services/data/v53.0/analytics/reports/" + reportId + "/describe";
+//    return HttpClient.getAsString(describeReportUrl, MediaType.APPLICATION_JSON, accessToken);
+//  }
+//
+//  private String getReportType(String reportDescription) {
+//    if (Strings.isNullOrEmpty(reportDescription)) {
+//      return null;
+//    }
+//    JSONObject jsonObject = new JSONObject(reportDescription);
+//    String reportType = jsonObject
+//            .getJSONObject("reportMetadata")
+//            .getJSONObject("reportType")
+//            .getString("type");
+//    log.info("report type: {}", reportType);
+//    return reportType;
+//  }
+//
+//  private Map<String, String> getReportColumns(String reportDescription) {
+//    if (Strings.isNullOrEmpty(reportDescription)) {
+//      return null;
+//    }
+//    JSONObject jsonObject = new JSONObject(reportDescription);
+//    Map<String, String> reportColumns = new HashMap<>();
+//    JSONArray categories = jsonObject.getJSONObject("reportTypeMetadata").getJSONArray("categories");
+//    for (int i = 0 ; i < categories.length(); i++) {
+//      JSONObject categoryColumns = categories.getJSONObject(i).getJSONObject("columns");
+//      categoryColumns.keySet().forEach(columnKey -> {
+//        reportColumns.put(categoryColumns.getJSONObject(columnKey).getString("label"), columnKey);
+//      });
+//    }
+//    return reportColumns;
+//  }
+
+  private String downloadReportAsString(String reportId) throws IOException {
+    log.info("downloading report file from SFDC...");
+
+    // using jruby to kick off the ruby script -- see https://github.com/carojkov/salesforce-export-downloader
+    ScriptingContainer container = new ScriptingContainer(LocalContextScope.THREADSAFE);
+    container.getEnvironment().put("SFDC_USERNAME", env.getConfig().salesforce.username);
+    container.getEnvironment().put("SFDC_PASSWORD", env.getConfig().salesforce.password);
+    container.getEnvironment().put("SFDC_URL", env.getConfig().salesforce.url);
+    container.getEnvironment().put("SFDC_REPORT_ID", reportId);
+    container.runScriptlet(PathType.CLASSPATH, "salesforce-downloader/salesforce-report.rb");
+
+    log.info("report downloaded!");
+
+    File reportFile = new File("report-salesforce/" + reportId + ".csv");
+    return Files.readString(reportFile.toPath(), StandardCharsets.UTF_8);
+  }
+
   public List<SObject> getContactsByOpportunityName(String opportunityName) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select contactid from Opportunity where name='" + opportunityName + "' and contactid != null)";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
-  public List<SObject> getContactsUpdatedSince(Calendar calendar) throws ConnectionException, InterruptedException {
-    String dateTimeString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where LastModifiedDate >= " + dateTimeString;
+  public List<SObject> getEmailContacts(Calendar updatedSince, String filter) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = " and LastModifiedDate >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null" + updatedSinceClause + filter;
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
 
-  public List<SObject> getDonorContactsSince(Calendar calendar) throws ConnectionException, InterruptedException {
-    String dateTimeString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(calendar.getTime());
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select ContactId from Opportunity where CreatedDate >= " + dateTimeString + " and Amount >= 0.0)";
+  public List<SObject> getEmailDonorContacts(Calendar updatedSince, String filter) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = " and CreatedDate >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null and id in (select ContactId from Opportunity where Amount >= 0.0 and (StageName='posted' or StageName='closed won')" + updatedSinceClause + ")" + filter;
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }
@@ -361,6 +574,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public List<SObject> getDonationsInDeposit(String depositId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId + " = '" + depositId + "'";
+    LoggingUtil.verbose(log, query);
+    return queryList(query);
+  }
+
+  public List<SObject> getRefundsInDeposit(String depositId) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId + " = '" + depositId + "'";
     LoggingUtil.verbose(log, query);
     return queryList(query);
   }

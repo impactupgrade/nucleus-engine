@@ -23,10 +23,12 @@ public class DonationService {
 
   private final Environment env;
   private final CrmService crmService;
+  private final NotificationService notificationservice;
 
   public DonationService(Environment env) {
     this.env = env;
     crmService = env.donationsCrmService();
+    notificationservice = env.notificationService();
   }
 
   public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
@@ -111,6 +113,13 @@ public class DonationService {
     }
 
     crmService.closeRecurringDonation(paymentGatewayEvent);
+
+    // Email
+    notificationservice.sendEmailNotification(
+        "Recurring Donation Closed",
+        "Recurring donation " + recurringDonation.get().id + " has been closed.",
+        "donations:close-recurring-donation"
+    );
   }
 
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
@@ -137,7 +146,7 @@ public class DonationService {
     }
   }
 
-  public void chargeDeposited(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void processDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = crmService.getDonation(paymentGatewayEvent);
 
     if (donation.isEmpty()) {

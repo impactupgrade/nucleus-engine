@@ -14,6 +14,7 @@ import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -24,9 +25,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Application;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -37,28 +41,51 @@ public abstract class AbstractIT extends JerseyTest {
   static {
     System.setProperty("jersey.test.host", "localhost");
     System.setProperty("jersey.config.test.container.port", "9009");
-    System.setProperty("nucleus.integration.test", "true");
   }
 
-  protected AbstractIT() {
+  // TODO: Complete hack. We currently have issues since multiple tests revolve around the same integration test
+  //  donor and email address. For now, ensure only one test method runs at a time.
+  private static final Lock LOCK = new ReentrantLock();
+
+  // definitions of common environments
+  protected static final EnvironmentFactory envFactorySfdcStripe = new EnvironmentFactory("environment-it-sfdc-stripe.json");
+  protected static final EnvironmentFactory envFactoryHubspotStripe = new EnvironmentFactory("environment-it-hubspot-stripe.json");
+
+  protected final App app;
+  protected final Environment env;
+
+  protected AbstractIT(App app) {
     super(new ExternalTestContainerFactory());
+
+    this.app = app;
+    this.env = app.getEnvironmentFactory().init((HttpServletRequest) null);
   }
 
-  private final App app = getApp();
+  @Override
+  public void setUp() throws Exception {
+    LOCK.lock();
+    super.setUp();
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    super.tearDown();
+    LOCK.unlock();
+  }
 
   // TODO: JerseyTest not yet compatible with JUnit 5 -- suggested workaround
   // do not name this setUp()
   @BeforeAll
-  public void before() throws Exception {
+  public void beforeAll() throws Exception {
     TestUtil.SKIP_NEW_THREADS = true;
 
     app.start();
 
     super.setUp();
   }
-  // do not name this tearDown()
+  // ditto (see above) -- do not name this tearDown()
   @AfterAll
-  public void after() throws Exception {
+  public void afterAll() throws Exception {
     app.stop();
 
     super.tearDown();
@@ -73,20 +100,12 @@ public abstract class AbstractIT extends JerseyTest {
     return new ResourceConfig();
   }
 
-  protected App getApp() {
-    return new App();
-  }
-
-  protected Environment env() {
-    return app.envFactory().newEnv();
-  }
-
   protected void clearSfdc() throws Exception {
     clearSfdcByName("Tester");
   }
 
   protected void clearSfdcByName(String name) throws Exception {
-    SfdcClient sfdcClient = env().sfdcClient();
+    SfdcClient sfdcClient = env.sfdcClient();
 
     List<SObject> existingAccounts = sfdcClient.getAccountsByName(name);
     for (SObject existingAccount : existingAccounts) {
@@ -114,7 +133,7 @@ public abstract class AbstractIT extends JerseyTest {
   }
 
   protected void clearHubspotByName(String name) throws Exception {
-    HubSpotCrmV3Client hsClient = HubSpotClientFactory.crmV3Client(env());
+    HubSpotCrmV3Client hsClient = HubSpotClientFactory.crmV3Client(env);
 
     CompanyResults existingAccounts = hsClient.company().searchByName(name, Collections.emptyList());
     for (Company existingAccount : existingAccounts.getResults()) {
@@ -138,5 +157,13 @@ public abstract class AbstractIT extends JerseyTest {
 
     // ensure we're actually clean
     assertEquals(0, hsClient.company().searchByName(name, Collections.emptyList()).getResults().size());
+  }
+
+  protected void clearDonorwrangler() throws Exception {
+    clearDonorwranglerByName("Tester");
+  }
+
+  protected void clearDonorwranglerByName(String name) throws Exception {
+    // TODO
   }
 }

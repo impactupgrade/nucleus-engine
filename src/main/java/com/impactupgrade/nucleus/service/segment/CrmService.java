@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -33,6 +34,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmAccount> getAccountById(String id) throws Exception;
   // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
+  Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
   Optional<CrmContact> getContactById(String id) throws Exception;
   Optional<CrmContact> getContactByEmail(String email) throws Exception;
   Optional<CrmContact> getContactByPhone(String phone) throws Exception;
@@ -107,8 +109,8 @@ public interface CrmService extends SegmentService {
   // EMAIL SYNC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  List <CrmContact> getContactsUpdatedSince(Calendar calendar) throws Exception;
-  List<CrmContact> getDonorContactsSince(Calendar calendar) throws Exception;
+  List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception;
+  List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Tag Sync
@@ -132,4 +134,6 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   Optional<CrmUser> getUserById(String id) throws Exception;
+  String insertTask(CrmTask crmTask) throws Exception;
+
 }

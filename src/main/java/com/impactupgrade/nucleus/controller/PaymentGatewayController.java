@@ -4,6 +4,9 @@
 
 package com.impactupgrade.nucleus.controller;
 
+import com.google.common.base.Strings;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -14,11 +17,13 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -28,6 +33,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -71,7 +77,14 @@ public class PaymentGatewayController {
     // sorting by-date is more important than by-source for this report (for now)
     transactions = transactions.stream().sorted(Comparator.comparing(PaymentGatewayTransaction::date)).collect(Collectors.toList());
 
-    return Response.status(200).entity(transactions).build();
+    // passing the date range back so the export can access the original params
+    Gson gson = new GsonBuilder().create();
+    JSONObject jsonObj = new JSONObject()
+            .put("transactions", gson.toJsonTree(transactions))
+            .put("startDate", start)
+            .put("endDate", end);
+
+    return Response.status(200).entity(gson.toJson(jsonObj)).build();
   }
 
   /**
@@ -119,6 +132,82 @@ public class PaymentGatewayController {
 
     ManageDonationEvent manageDonationEvent = new ManageDonationEvent(formData, env);
     env.donationService().updateRecurringDonation(manageDonationEvent);
+
+    return Response.status(200).build();
+  }
+
+  @Path("/replay/charges")
+  @GET
+  public Response verifyAndReplayCharges(@Context HttpServletRequest request) throws Exception {
+    return verifyAndReplayCharges(null, null, request);
+  }
+
+  @Path("/replay/charges")
+  @POST
+  public Response verifyAndReplayCharges(
+      @FormParam("start") String start,
+      @FormParam("end") String end,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    Date startDate;
+    Date endDate;
+    if (Strings.isNullOrEmpty(start)) {
+      // If dates were not provided, this was likely a cronjob. Do the last 3 days.
+      Calendar startCal = Calendar.getInstance();
+      startCal.add(Calendar.DATE, -72);
+      startDate = startCal.getTime();
+      endDate = Calendar.getInstance().getTime();
+    } else {
+      startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+      endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+    }
+
+    Runnable thread = () -> {
+      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+        paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
+  @Path("/replay/deposits")
+  @GET
+  public Response verifyAndReplayDeposits(@Context HttpServletRequest request) throws Exception {
+    return verifyAndReplayDeposits(null, null, request);
+  }
+
+  @Path("/replay/deposits")
+  @POST
+  public Response verifyAndReplayDeposits(
+      @FormParam("start") String start,
+      @FormParam("end") String end,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    Date startDate;
+    Date endDate;
+    if (Strings.isNullOrEmpty(start)) {
+      // If dates were not provided, this was likely a cronjob. Do the last 3 days.
+      Calendar startCal = Calendar.getInstance();
+      startCal.add(Calendar.DATE, -72);
+      startDate = startCal.getTime();
+      endDate = Calendar.getInstance().getTime();
+    } else {
+      startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+      endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+    }
+
+    Runnable thread = () -> {
+      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+        paymentGatewayService.verifyAndReplayDeposits(startDate, endDate);
+      }
+    };
+    new Thread(thread).start();
 
     return Response.status(200).build();
   }
