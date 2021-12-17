@@ -320,14 +320,15 @@ public class StripeClient {
     // de-duplicate
     Iterable<PaymentSource> existingSources = customer.getSources().autoPagingIterable();
     for (PaymentSource existingSource : existingSources) {
-      // TODO: Assumes we're card only -- will break for Plaid!
-      Card existingCard = (Card) existingSource;
-      Card newCard = (Card) newSource;
-      if (existingCard.getFingerprint().equals(newCard.getFingerprint())
-          && existingCard.getExpMonth().equals(newCard.getExpMonth()) && existingCard.getExpYear().equals(newCard.getExpYear())) {
-        log.info("card duplicated an existing source; removing it and reusing the existing one");
-        newCard.delete(requestOptions);
-        return existingCard;
+      // TODO: Assumes new donations are card only -- will break for Plaid!
+      if (existingSource instanceof Card existingCard) {
+        Card newCard = (Card) newSource;
+        if (existingCard.getFingerprint().equals(newCard.getFingerprint())
+            && existingCard.getExpMonth().equals(newCard.getExpMonth()) && existingCard.getExpYear().equals(newCard.getExpYear())) {
+          log.info("card duplicated an existing source; removing it and reusing the existing one");
+          newCard.delete(requestOptions);
+          return existingCard;
+        }
       }
     }
 
