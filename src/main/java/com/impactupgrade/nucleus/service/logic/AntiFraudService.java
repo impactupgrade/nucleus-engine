@@ -25,18 +25,22 @@ public class AntiFraudService {
   private static final String RECAPTCHA_SITE_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
   private static final double MIN_SCORE = 0.5;
 
-  private final Environment env;
+  private final String siteSecret;
 
   public AntiFraudService(Environment env) {
-    this.env = env;
+    if (!Strings.isNullOrEmpty(env.getConfig().recaptcha.siteSecret)) {
+      siteSecret = env.getConfig().recaptcha.siteSecret;
+    } else {
+      siteSecret = System.getenv("RECAPTCHA_SITE_SECRET");
+    }
+  }
+
+  // Use case example: Donation Spring, which has a single, non-client-specific key.
+  public AntiFraudService(String siteSecret) {
+    this.siteSecret = siteSecret;
   }
 
   public boolean isRecaptchaTokenValid(String recaptchaToken) throws IOException {
-    String siteSecret = env.getConfig().recaptcha.siteSecret;
-    if (Strings.isNullOrEmpty(siteSecret)) {
-      siteSecret = System.getenv("RECAPTCHA_SITE_SECRET");
-    }
-
     if (Strings.isNullOrEmpty(siteSecret)) {
       log.info("recaptcha: disabled");
       return true;
@@ -54,28 +58,35 @@ public class AntiFraudService {
 
     // TODO: Taken from https://github.com/googlecodelabs/recaptcha-codelab/blob/master/final/src/main/java/com/example/feedback/FeedbackServlet.java, but this could be cleaned up...
 
-    HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-    urlConnection.setDoOutput(true);
-    urlConnection.setRequestMethod("POST");
-    urlConnection.setRequestProperty(
-        "Content-Type", "application/x-www-form-urlencoded");
-    urlConnection.setRequestProperty(
-        "charset", StandardCharsets.UTF_8.displayName());
-    urlConnection.setRequestProperty(
-        "Content-Length", Integer.toString(postData.length()));
-    urlConnection.setUseCaches(false);
-    urlConnection.getOutputStream()
-        .write(postData.toString().getBytes(StandardCharsets.UTF_8));
-    JSONTokener jsonTokener = new JSONTokener(urlConnection.getInputStream());
-    JSONObject jsonObject = new JSONObject(jsonTokener);
+    try {
+      HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+      urlConnection.setDoOutput(true);
+      urlConnection.setRequestMethod("POST");
+      urlConnection.setRequestProperty(
+          "Content-Type", "application/x-www-form-urlencoded");
+      urlConnection.setRequestProperty(
+          "charset", StandardCharsets.UTF_8.displayName());
+      urlConnection.setRequestProperty(
+          "Content-Length", Integer.toString(postData.length()));
+      urlConnection.setUseCaches(false);
+      urlConnection.getOutputStream()
+          .write(postData.toString().getBytes(StandardCharsets.UTF_8));
+      JSONTokener jsonTokener = new JSONTokener(urlConnection.getInputStream());
+      JSONObject jsonObject = new JSONObject(jsonTokener);
 
-    boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
-    double score = jsonObject.has("score") ? jsonObject.getDouble("score") : 0.0;
-    String hostname = jsonObject.has("hostname") ? jsonObject.getString("hostname") : "";
+      log.info(jsonObject.toString());
 
-    log.info("recaptcha: success={} score={} hostname={}", success, score, hostname);
+      boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
+      double score = jsonObject.has("score") ? jsonObject.getDouble("score") : 0.0;
+      String hostname = jsonObject.has("hostname") ? jsonObject.getString("hostname") : "";
 
-    return success && score >= MIN_SCORE;
+      log.info("recaptcha: success={} score={} hostname={}", success, score, hostname);
+
+      return success && score >= MIN_SCORE;
+    } catch (Exception e) {
+      log.warn("recaptcha failed; defaulting to invalid", e);
+      return false;
+    }
   }
 
   private StringBuilder addParam(
