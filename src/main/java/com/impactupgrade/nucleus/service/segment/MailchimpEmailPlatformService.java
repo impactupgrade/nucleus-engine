@@ -84,14 +84,16 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
     for (EnvironmentConfig.MailchimpList mcList : env.getConfig().mailchimp.lists) {
+      // TODO: All this will likely end up duplicated in each impl of this service. Refactor?
       List<CrmContact> crmContacts = Collections.emptyList();
       switch (mcList.type) {
         case CONTACTS -> crmContacts = primaryCrmService.getEmailContacts(lastSync, mcList.crmFilter);
         case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
       }
 
+      int count = 0;
       for (CrmContact crmContact : crmContacts) {
-        log.info("upserting contact {} {} to list {}", crmContact.id, crmContact.email, mcList.id);
+        log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, mcList.id, count++, crmContacts.size());
         mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
       }
     }
