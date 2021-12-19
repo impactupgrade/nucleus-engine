@@ -49,9 +49,6 @@ public class Environment {
 
   private static final Logger log = LogManager.getLogger(Environment.class);
 
-  // Whenever possible, we focus on being configuration-driven using one, large JSON file.
-  protected final EnvironmentConfig config = EnvironmentConfig.init();
-
   // Additional context, if available.
   // It seems odd to track URI and headers separately, rather than simply storing HttpServletRequest itself.
   // However, many (most?) frameworks don't allow aspects of request to be accessed over and over. Due to the mechanics,
@@ -61,8 +58,10 @@ public class Environment {
   protected final Map<String, String> queryParams = new HashMap<>();
   protected MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
 
+  // Whenever possible, we focus on being configuration-driven using one, large JSON file.
+  private final EnvironmentConfig _config = EnvironmentConfig.init();
   public EnvironmentConfig getConfig() {
-    return config;
+    return _config;
   }
 
   public void setRequest(HttpServletRequest request) {
@@ -122,12 +121,12 @@ public class Environment {
   }
 
   public CrmService primaryCrmService() {
-    if (Strings.isNullOrEmpty(config.crmPrimary)) {
+    if (Strings.isNullOrEmpty(getConfig().crmPrimary)) {
       throw new RuntimeException("define a crmPrimary in environment.json");
     }
 
     // by default, always use the primary
-    return crmService(config.crmPrimary);
+    return crmService(getConfig().crmPrimary);
   }
 
   public CrmService donationsCrmService() {

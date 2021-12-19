@@ -31,7 +31,8 @@ public class EnvironmentConfig {
 
   // NOTE: We use Set for collections of Strings. When the JSON files are merged together, this prevents duplicate values.
 
-  // TODO: Rethink this -- it's already in the DB
+  // TODO: Once all orgs are using the DB and not local enviroment.json files, this could be removed and code updated
+  //  to use the API Key field on the database row itself.
   public String apiKey = "";
 
   // Some flows will select a CRM by name, when appropriate (especially if kicked off by the Portal).
