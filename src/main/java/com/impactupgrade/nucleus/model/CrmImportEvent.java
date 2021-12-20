@@ -8,6 +8,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.Utils;
+import com.stripe.util.CaseInsensitiveMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -66,8 +67,11 @@ public class CrmImportEvent {
     return data.stream().map(d -> fromGeneric(d, env)).collect(Collectors.toList());
   }
 
-  public static CrmImportEvent fromGeneric(Map<String, String> data, Environment env) {
-    CrmImportEvent importEvent = new CrmImportEvent(data, env);
+  public static CrmImportEvent fromGeneric(Map<String, String> _data, Environment env) {
+    CrmImportEvent importEvent = new CrmImportEvent(_data, env);
+
+    // Be case-insensitive, for sources that aren't always consistent.
+    CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
 
     importEvent.city = data.get("City");
     importEvent.country = data.get("Country");
@@ -117,10 +121,13 @@ public class CrmImportEvent {
   }
 
   // Taken from a sample CSV export from STS's Jan-Feb 2021 FB fundraisers.
-  public static CrmImportEvent fromFBFundraiser(Map<String, String> data, Environment env) {
+  public static CrmImportEvent fromFBFundraiser(Map<String, String> _data, Environment env) {
+    // Be case-insensitive, for sources that aren't always consistent.
+    CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
+
 //  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
-      CrmImportEvent importEvent = new CrmImportEvent(data, env);
+      CrmImportEvent importEvent = new CrmImportEvent(_data, env);
 
 //    TODO: support for initial amount, any fees, and net amount
 //    importEvent. = data.get("Donation Amount");
@@ -174,7 +181,7 @@ public class CrmImportEvent {
     }
   }
 
-  private static BigDecimal getAmount(Map<String, String> data, String columnName) {
+  private static BigDecimal getAmount(CaseInsensitiveMap<String> data, String columnName) {
     if (!data.containsKey(columnName)) {
       return null;
     }
