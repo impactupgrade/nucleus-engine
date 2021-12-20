@@ -79,18 +79,35 @@ public class HibernateDao<I extends Serializable, E> {
     }
 
     public Optional<E> getQueryResult(String queryString) {
-        // TODO:
-        return Optional.empty();
+        return getQueryResult(queryString, false);
+    }
+
+    public Optional<E> getQueryResult(String queryString, boolean isNative) {
+        final Session session = sessionFactory.openSession();
+        Query<E> query = isNative ?
+                session.createNativeQuery(queryString, clazz)
+                : session.createQuery(queryString, clazz);
+
+        Optional<E> queryResult = Optional.ofNullable(query.getSingleResult());
+        session.close();
+        return queryResult;
     }
 
     public List<E> getQueryResultList(String queryString) {
+        return getQueryResultList(queryString, false);
+    }
+
+    public List<E> getQueryResultList(String queryString, boolean isNative) {
         if (StringUtils.isEmpty(queryString)) {
             return Collections.emptyList();
         }
 
         final Session session = sessionFactory.openSession();
-        Query nativeQuery = session.createNativeQuery(queryString, clazz);
-        List<E> entities = nativeQuery.getResultList();
+        Query query = isNative ?
+                session.createNativeQuery(queryString, clazz)
+                : session.createQuery(queryString, clazz);
+
+        List<E> entities = query.getResultList();
         session.close();
         return entities;
     }

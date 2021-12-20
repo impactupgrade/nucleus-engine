@@ -14,9 +14,9 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "task_progress", schema = "public")
+@Table(name = "task_schedule", schema = "public")
 @TypeDef(name = "json", typeClass = JsonType.class)
-public class TaskProgress {
+public class TaskSchedule {
 
     @Id
     @GeneratedValue(generator = "sequence-generator")
@@ -24,7 +24,7 @@ public class TaskProgress {
             name = "sequence-generator",
             strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator",
             parameters = {
-                    @Parameter(name = "sequence_name", value = "task_progress_id"),
+                    @Parameter(name = "sequence_name", value = "task_schedule_id"),
                     @Parameter(name = "initial_value", value = "1"),
                     @Parameter(name = "increment_size", value = "1")
             }
@@ -34,11 +34,9 @@ public class TaskProgress {
     @Column(name = "task_id")
     public Long taskId;
 
-    @Column(name = "contact_id", nullable = false)
-    public String contactId;
-
     @Type(type = "json")
     @Column(name = "payload", columnDefinition = "jsonb", nullable = false)
     public JsonNode payload;
+
 
 }

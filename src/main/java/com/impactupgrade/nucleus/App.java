@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.Task;
 import com.impactupgrade.nucleus.model.TaskProgress;
+import com.impactupgrade.nucleus.model.TaskSchedule;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
@@ -48,7 +49,7 @@ public class App {
   protected final SessionFactory sessionFactory;
 
   public App() {
-    envFactory = new EnvironmentFactory();
+    this.envFactory = new EnvironmentFactory();
     this.sessionFactory = createSessionFactory();
   }
 
@@ -66,6 +67,7 @@ public class App {
   private SessionFactory createSessionFactory() {
     final Configuration configuration = new Configuration();
     configuration.addAnnotatedClass(Task.class);
+    configuration.addAnnotatedClass(TaskSchedule.class);
     configuration.addAnnotatedClass(TaskProgress.class);
     return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
   }

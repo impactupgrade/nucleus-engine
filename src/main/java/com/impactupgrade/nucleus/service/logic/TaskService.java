@@ -1,98 +1,83 @@
 package com.impactupgrade.nucleus.service.logic;
 
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.dao.HibernateDao;
-import com.impactupgrade.nucleus.model.Task;
-import com.impactupgrade.nucleus.model.TaskCriteria;
+import com.impactupgrade.nucleus.model.JsonPathCriteria;
 import com.impactupgrade.nucleus.model.TaskProgress;
-import com.impactupgrade.nucleus.model.TaskProgressCriteria;
+import com.impactupgrade.nucleus.model.TaskSchedule;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.MapUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TaskService {
 
-    private final HibernateDao<Long, Task> taskConfigurationDao;
-    private final HibernateDao<Long, TaskProgress> taskProgressDao;
+    private static final Logger log = LogManager.getLogger(TaskService.class);
+    private static final String DATE_FORMAT = "yyyy-MM-dd";
 
-    public TaskService(HibernateDao taskConfigurationDao, HibernateDao taskProgressDao) {
-        this.taskConfigurationDao = taskConfigurationDao;
+    private final HibernateDao<Long, TaskSchedule> taskScheduleDao;
+    private final HibernateDao<Long, TaskProgress> taskProgressDao;
+    private final SimpleDateFormat simpleDateFormat = new SimpleDateFormat(DATE_FORMAT);
+
+    public TaskService(
+                       HibernateDao taskScheduleDao,
+                       HibernateDao taskProgressDao) {
+        this.taskScheduleDao = taskScheduleDao;
         this.taskProgressDao = taskProgressDao;
     }
 
-    public List<Task> getTaskConfigurations(TaskCriteria taskCriteria) {
-        String baseQuery = "select * from public.task_configuration";
-        StringBuilder stringBuilder = new StringBuilder(baseQuery);
-
-        if (Objects.nonNull(taskCriteria)) {
-            List<String> conditions = new ArrayList<>();
-            conditions.addAll(toConditions(taskCriteria));
-            conditions.addAll(toConditions("configuration", taskCriteria.jsonPathCriteria));
-
-            stringBuilder.append(buildWhereClause(conditions));
-        }
-
-        return taskConfigurationDao.getQueryResultList(stringBuilder.toString());
+    public List<TaskSchedule> findTaskSchedules(List<JsonPathCriteria> criterias) {
+        String query = buildNativeQuery("public", "task_schedule", "payload", criterias);
+        return taskScheduleDao.getQueryResultList(query, true);
     }
 
-    public List<TaskProgress> getTaskProgresses(TaskProgressCriteria taskProgressCriteria) {
-        String baseQuery = "select * from public.task_progress";
-        StringBuilder stringBuilder = new StringBuilder(baseQuery);
-
-        if (Objects.nonNull(taskProgressCriteria)) {
-            List<String> conditions = new ArrayList<>();
-            conditions.addAll(toConditions(taskProgressCriteria));
-            conditions.addAll(toConditions("progress", taskProgressCriteria.jsonPathCriteria));
-
-            stringBuilder.append(buildWhereClause(conditions));
-        }
-
-        return taskProgressDao.getQueryResultList(stringBuilder.toString());
+    public List<TaskProgress> findTaskProgresses(List<JsonPathCriteria> criterias) {
+        String query = buildNativeQuery("public", "task_progress", "payload", criterias);
+        return taskProgressDao.getQueryResultList(query, true);
     }
 
     // Utils
-    private List<String> toConditions(TaskCriteria taskCriteria) {
-        if (Objects.isNull(taskCriteria)) {
+    private List<String> toConditions(String columnName, List<JsonPathCriteria> criterias) {
+        if (CollectionUtils.isEmpty(criterias)) {
             return Collections.emptyList();
         }
-
-        List<String> conditions = new ArrayList<>();
-        if (Objects.nonNull(taskCriteria.taskType)) {
-            conditions.add("task = '" + taskCriteria.taskType + "'");
-        }
-        if (!Strings.isNullOrEmpty(taskCriteria.orgId)) {
-            conditions.add("org_id = '" + taskCriteria.orgId + "'");
-        }
-        return conditions;
-    }
-
-    private List<String> toConditions(TaskProgressCriteria taskProgressCriteria) {
-        List<String> conditions = new ArrayList<>();
-        conditions.addAll(toConditions((TaskCriteria) taskProgressCriteria));
-
-        if (!Strings.isNullOrEmpty(taskProgressCriteria.contactId)) {
-            conditions.add("contact_id = '" + taskProgressCriteria.contactId + "'");
-        }
-        return conditions;
-    }
-
-    private List<String> toConditions(String columnName, Map<String, String> jsonPathCriteria) {
-        if (MapUtils.isEmpty(jsonPathCriteria)) {
-            return Collections.emptyList();
-        }
-        return jsonPathCriteria.entrySet().stream()
-                .map(e -> {
-                    String jsonPath = e.getKey();
-                    String value = e.getValue();
+        return criterias.stream().map(
+                criteria -> {
+                    String jsonPath = criteria.jsonPath;
+                    String operator = criteria.operator;
+                    String value = criteria.value instanceof Date ?
+                            simpleDateFormat.format(criteria.value)
+                            : criteria.value.toString();
                     jsonPath = jsonPath.replaceAll("\\.", "'->'");
-                    return "UPPER(" + columnName + " ->'" + jsonPath + "'->>0) = UPPER('" + value + "')";
-                }).collect(Collectors.toList());
+                    String condition = columnName + " -> '" + jsonPath + "' " + operator + " '" + value + "'";
+                    return replaceLastOccurence(condition, "->", "->>");
+                }
+        ).collect(Collectors.toList());
+    }
+
+    private String replaceLastOccurence(String input, String toReplace, String replacement) {
+        int start = input.lastIndexOf(toReplace);
+        StringBuilder builder = new StringBuilder();
+        builder.append(input, 0, start);
+        builder.append(replacement);
+        builder.append(input.substring(start + toReplace.length()));
+        return builder.toString();
+    }
+
+    private String buildNativeQuery(String schema, String entityTable, String jsonColumn, List<JsonPathCriteria> criteria) {
+        String baseQuery = "select * from " + schema + "." + entityTable;
+        StringBuilder stringBuilder = new StringBuilder(baseQuery);
+
+        if (CollectionUtils.isNotEmpty(criteria)) {
+            List<String> conditions = toConditions(jsonColumn, criteria);
+            stringBuilder.append(buildWhereClause(conditions));
+        }
+
+        return stringBuilder.toString();
     }
 
     private String buildWhereClause(List<String> conditions) {
