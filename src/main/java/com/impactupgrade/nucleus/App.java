@@ -14,7 +14,7 @@ import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.TaskConfiguration;
+import com.impactupgrade.nucleus.model.Task;
 import com.impactupgrade.nucleus.model.TaskProgress;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
@@ -65,7 +65,7 @@ public class App {
 
   private SessionFactory createSessionFactory() {
     final Configuration configuration = new Configuration();
-    configuration.addAnnotatedClass(TaskConfiguration.class);
+    configuration.addAnnotatedClass(Task.class);
     configuration.addAnnotatedClass(TaskProgress.class);
     return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
   }

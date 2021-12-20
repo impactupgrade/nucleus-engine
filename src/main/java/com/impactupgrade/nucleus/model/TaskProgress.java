@@ -34,7 +34,7 @@ public class TaskProgress {
     public Long id;
 
     @Enumerated(EnumType.STRING)
-    public Task task;
+    public TaskType taskType;
 
     @Column(name = "org_id", nullable = false)
     public String orgId;
@@ -43,8 +43,8 @@ public class TaskProgress {
     public String contactId;
 
     @Type(type = "json")
-    @Column(name = "progress", columnDefinition = "jsonb", nullable = false)
-    public Map<String, String> configuration;
+    @Column(name = "properties", columnDefinition = "jsonb", nullable = false)
+    public Map<String, String> properties;
 
 
 }
