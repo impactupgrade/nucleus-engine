@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.vladmihalcea.hibernate.type.json.JsonType;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
@@ -13,7 +14,6 @@ import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import java.util.Map;
 
 @Entity
 @Table(name = "task", schema = "public")
@@ -34,13 +34,14 @@ public class Task {
     public Long id;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "task_type")
     public TaskType taskType;
 
     @Column(name = "org_id", nullable = false)
     public String orgId;
 
     @Type(type = "json")
-    @Column(name = "properties", columnDefinition = "jsonb", nullable = false)
-    public Map<String, String> properties;
+    @Column(name = "payload", columnDefinition = "jsonb", nullable = false)
+    public JsonNode payload;
 
 }
