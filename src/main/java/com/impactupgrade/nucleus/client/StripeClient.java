@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.stripe.exception.InvalidRequestException;
+import com.stripe.exception.RateLimitException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.BalanceTransactionCollection;
@@ -565,7 +566,7 @@ public class StripeClient {
     private T result(int count) throws StripeException {
       try {
         return retrieve();
-      } catch (StripeException e) {
+      } catch (RateLimitException e) {
         log.info("Stripe API attempt {} failed due to rate limit or lock; retrying in 3s", count, e);
         try {
           Thread.sleep(3000);

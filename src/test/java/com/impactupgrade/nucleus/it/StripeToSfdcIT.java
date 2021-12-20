@@ -70,8 +70,6 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("100.0", opp.getField("Amount"));
   }
 
-
-
   @Test
   public void coreSubscription() throws Exception {
     clearSfdc();
