@@ -763,6 +763,11 @@ public class HubSpotCrmService implements CrmService {
     throw new RuntimeException("not implemented");
   }
 
+  @Override
+  public List<String> getCampaigns(CrmContact contact){
+    throw new RuntimeException("not implemented");
+  }
+
   protected CrmContact toCrmContact(Contact contact) {
     CrmAddress crmAddress = new CrmAddress(
         contact.getProperties().getAddress(),
@@ -792,6 +797,8 @@ public class HubSpotCrmService implements CrmService {
         (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
         (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
         contact.getProperties().getOwnerId(),
+            null, null, null, null,
+        //TODO: tagging fields ^
         // TODO: email groups
         Collections.emptyList(),
         contact
@@ -820,6 +827,10 @@ public class HubSpotCrmService implements CrmService {
         null,
         getValue(contact.getProperties().getPhone()),
         getValue(contact.getProperties().getMobilePhone()),
+        null,
+        null,
+        null,
+        null,
         null,
         null,
         null,

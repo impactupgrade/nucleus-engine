@@ -75,4 +75,5 @@ public class EmailController {
 
     return Response.ok().build();
   }
+
 }

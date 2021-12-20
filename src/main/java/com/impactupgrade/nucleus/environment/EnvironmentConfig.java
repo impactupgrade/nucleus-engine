@@ -13,12 +13,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Whenever possible, we focus on being configuration-driven using one, large JSON file.
@@ -235,6 +230,7 @@ public class EnvironmentConfig {
 
   public static class Mailchimp extends Platform {
     public List<MailchimpList> lists = new ArrayList<>();
+    public MailchimpTagFilters tagFilters = new MailchimpTagFilters();
   }
 
   public static class MailchimpList {
@@ -242,6 +238,13 @@ public class EnvironmentConfig {
     public MailchimpListType type = MailchimpListType.CONTACTS;
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
     public String crmFilter = "";
+  }
+
+  public static class MailchimpTagFilters {
+    //Set Low Intentionally For Testing
+    public Integer majorDonorAmount = 100;
+    public Integer recentDonationDays = 100;
+    public Integer frequentDonationAmount = 1;
   }
 
   public enum MailchimpListType {

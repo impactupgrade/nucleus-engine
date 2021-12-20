@@ -7,6 +7,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,15 +35,15 @@ public class MailchimpEmailService implements EmailService {
 
   @Override
   public String name() {
-    return "mailchimp";
+      return "mailchimp";
   }
 
   @Override
   public void init(Environment env) {
-    this.env = env;
-    primaryCrmService = env.primaryCrmService();
-    donationsCrmService = env.donationsCrmService();
-    mailchimpClient = new MailchimpClient(env);
+      this.env = env;
+      primaryCrmService = env.primaryCrmService();
+      donationsCrmService = env.donationsCrmService();
+      mailchimpClient = new MailchimpClient(env);
   }
 
   @Override
@@ -85,10 +86,107 @@ public class MailchimpEmailService implements EmailService {
 //    return mailchimpClient.getContactTags(listId, crmContact.email);
 //  }
 //
+
+  public void updateTags(String listId, CrmContact contact) throws Exception {
+    try {
+      clearContactTags(listId, contact);
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // DONATION METRICS
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      if (contact.totalDonationAmount != null) {
+        if (Double.parseDouble(contact.totalDonationAmount) >= env.getConfig().mailchimp.tagFilters.majorDonorAmount) {
+          addTagToContact(listId, contact, "Major Donor");
+        }
+      }
+
+      if (contact.lastDonationDate == null) {
+        addTagToContact(listId, contact, "No Donations");
+      } else {
+        Calendar lastDonation = Utils.getCalendarFromDateString(contact.lastDonationDate);
+        Calendar limit = Calendar.getInstance();
+        limit.add(Calendar.DAY_OF_MONTH, -env.getConfig().mailchimp.tagFilters.recentDonationDays);
+        if (lastDonation.before(limit)) {
+          addTagToContact(listId, contact, "Recent Donor");
+        }
+      }
+
+      if (Double.parseDouble(contact.numDonations) >= env.getConfig().mailchimp.tagFilters.frequentDonationAmount) {
+        addTagToContact(listId, contact, "Frequent Donor");
+      }
+
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // DEMOGRAPHIC INFO
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // LOCATION
+      if(contact.address.country != null) {
+          addTagToContact(listId, contact, "Country: " + contact.address.country);
+      }
+      if(contact.address.postalCode != null){
+          addTagToContact(listId, contact, "Zip: " + contact.address.postalCode);
+      }
+      if(contact.address.state != null){
+          addTagToContact(listId, contact, "State: " + contact.address.state);
+      }
+
+      //    char contactAgeGroup = Integer.toString(primaryCrmService.getAge(contact)).charAt(0);
+      //    addTagToContact(listId, contact, "Age: " + contactAgeGroup + "0 - " + contactAgeGroup + "9");
+
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // PAST INTERACTIONS
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      if (contact.ownerName != null) {
+        addTagToContact(listId, contact, "Owner: " + contact.ownerName);
+      }
+
+      List<String> campaigns = primaryCrmService.getCampaigns(contact);
+      for (String c : campaigns) {
+          if(c != null) {
+              addTagToContact(listId, contact, "campaign: " + c);
+          }
+      }
+
+     } catch (Exception e) {
+       log.warn("Updating tags failed for contact: {}, {}", contact.id, contact.email);
+     }
+   }
+
+  protected List<String> getContactTags(String listId, CrmContact crmContact) throws Exception {
+    return mailchimpClient.getContactTags(listId, crmContact.email);
+  }
+
+  protected void clearContactTags(String listId, CrmContact crmContact) throws Exception {
+    for (String tag : getContactTags(listId, crmContact)) {
+      mailchimpClient.removeTag(listId, crmContact.email, tag);
+    }
+  }
+
+  public void addTagToContact(String listId, CrmContact crmContact, String tag) throws Exception {
+    if (tag == null) {
+      return;
+    }
+    mailchimpClient.addTag(listId, crmContact.email, tag);
+  }
+
 //  @Override
-//  public void addTagToContact(String listName, CrmContact crmContact, String tag) throws Exception {
-//    String listId = getListIdFromName(listName);
-//    mailchimpClient.addTag(listId, crmContact.email, tag);
+//  public void syncTags(Calendar since) throws Exception {
+//    //Marketing List
+//    List<CrmContact> marketingContacts = primaryCrmService.getEmailContacts(since, null);
+//    marketingContacts.forEach(contact -> {
+//      try {
+//        updateTags("Marketing",contact);
+//      } catch (Exception e) {
+//        log.info("Marketing list tag sync failed at contact: " + contact.id);
+//      }
+//    });
+//    //DonorList
+//    List<CrmContact> donorContacts = primaryCrmService.getEmailDonorContacts(since, null);
+//    donorContacts.forEach(contact -> {
+//      try {
+//        updateTags("Donors",contact);
+//      } catch (Exception e) {
+//        log.info("Donor list tag sync failed at contact: " + contact.id);
+//      }
+//    });
 //  }
 
   @Override
@@ -173,7 +271,7 @@ public class MailchimpEmailService implements EmailService {
     return mcContact;
   }
 
-  protected MailchimpObject toMcAddress(CrmAddress address){
+  protected MailchimpObject toMcAddress(CrmAddress address) {
     MailchimpObject mcAddress = new MailchimpObject();
 
     mcAddress.mapping.put("country", address.country);

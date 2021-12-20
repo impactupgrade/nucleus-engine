@@ -104,7 +104,7 @@ public class MailchimpClient {
     tag.mapping.put(TAG_NAME, tagName);
     EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
     editMemberMethod.tags = getContactInfo(listId, contactEmail).tags;
-    editMemberMethod.tags.remove(tag);
+    editMemberMethod.tags.add(tag);
     client.execute(editMemberMethod);
   }
 }
