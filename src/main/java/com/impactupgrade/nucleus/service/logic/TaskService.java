@@ -2,8 +2,8 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.dao.HibernateDao;
-import com.impactupgrade.nucleus.model.TaskConfiguration;
-import com.impactupgrade.nucleus.model.TaskConfigurationCriteria;
+import com.impactupgrade.nucleus.model.Task;
+import com.impactupgrade.nucleus.model.TaskCriteria;
 import com.impactupgrade.nucleus.model.TaskProgress;
 import com.impactupgrade.nucleus.model.TaskProgressCriteria;
 import org.apache.commons.collections.CollectionUtils;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 public class TaskService {
 
-    private final HibernateDao<Long, TaskConfiguration> taskConfigurationDao;
+    private final HibernateDao<Long, Task> taskConfigurationDao;
     private final HibernateDao<Long, TaskProgress> taskProgressDao;
 
     public TaskService(HibernateDao taskConfigurationDao, HibernateDao taskProgressDao) {
@@ -26,14 +26,14 @@ public class TaskService {
         this.taskProgressDao = taskProgressDao;
     }
 
-    public List<TaskConfiguration> getTaskConfigurations(TaskConfigurationCriteria taskConfigurationCriteria) {
+    public List<Task> getTaskConfigurations(TaskCriteria taskCriteria) {
         String baseQuery = "select * from public.task_configuration";
         StringBuilder stringBuilder = new StringBuilder(baseQuery);
 
-        if (Objects.nonNull(taskConfigurationCriteria)) {
+        if (Objects.nonNull(taskCriteria)) {
             List<String> conditions = new ArrayList<>();
-            conditions.addAll(toConditions(taskConfigurationCriteria));
-            conditions.addAll(toConditions("configuration", taskConfigurationCriteria.jsonPathCriteria));
+            conditions.addAll(toConditions(taskCriteria));
+            conditions.addAll(toConditions("configuration", taskCriteria.jsonPathCriteria));
 
             stringBuilder.append(buildWhereClause(conditions));
         }
@@ -57,24 +57,24 @@ public class TaskService {
     }
 
     // Utils
-    private List<String> toConditions(TaskConfigurationCriteria taskConfigurationCriteria) {
-        if (Objects.isNull(taskConfigurationCriteria)) {
+    private List<String> toConditions(TaskCriteria taskCriteria) {
+        if (Objects.isNull(taskCriteria)) {
             return Collections.emptyList();
         }
 
         List<String> conditions = new ArrayList<>();
-        if (Objects.nonNull(taskConfigurationCriteria.task)) {
-            conditions.add("task = '" + taskConfigurationCriteria.task + "'");
+        if (Objects.nonNull(taskCriteria.taskType)) {
+            conditions.add("task = '" + taskCriteria.taskType + "'");
         }
-        if (!Strings.isNullOrEmpty(taskConfigurationCriteria.orgId)) {
-            conditions.add("org_id = '" + taskConfigurationCriteria.orgId + "'");
+        if (!Strings.isNullOrEmpty(taskCriteria.orgId)) {
+            conditions.add("org_id = '" + taskCriteria.orgId + "'");
         }
         return conditions;
     }
 
     private List<String> toConditions(TaskProgressCriteria taskProgressCriteria) {
         List<String> conditions = new ArrayList<>();
-        conditions.addAll(toConditions((TaskConfigurationCriteria) taskProgressCriteria));
+        conditions.addAll(toConditions((TaskCriteria) taskProgressCriteria));
 
         if (!Strings.isNullOrEmpty(taskProgressCriteria.contactId)) {
             conditions.add("contact_id = '" + taskProgressCriteria.contactId + "'");

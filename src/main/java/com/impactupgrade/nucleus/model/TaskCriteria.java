@@ -2,9 +2,9 @@ package com.impactupgrade.nucleus.model;
 
 import java.util.Map;
 
-public class TaskConfigurationCriteria {
+public class TaskCriteria {
 
-    public Task task;
+    public TaskType taskType;
     public String orgId;
 
     public Map<String, String> jsonPathCriteria;
