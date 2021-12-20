@@ -83,8 +83,14 @@ public class HibernateDao<I extends Serializable, E> {
     }
 
     public Optional<E> getQueryResult(String queryString, boolean isNative) {
-        // TODO:
-        return Optional.empty();
+        final Session session = sessionFactory.openSession();
+        Query<E> query = isNative ?
+                session.createNativeQuery(queryString, clazz)
+                : session.createQuery(queryString, clazz);
+
+        Optional<E> queryResult = Optional.ofNullable(query.getSingleResult());
+        session.close();
+        return queryResult;
     }
 
     public List<E> getQueryResultList(String queryString) {

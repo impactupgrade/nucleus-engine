@@ -15,7 +15,9 @@ import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.job.ScheduledTasksJob;
-import com.impactupgrade.nucleus.model.FutureTask;
+import com.impactupgrade.nucleus.model.Task;
+import com.impactupgrade.nucleus.model.TaskProgress;
+import com.impactupgrade.nucleus.model.TaskSchedule;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import com.impactupgrade.nucleus.service.logic.ScheduledTasksService;
 import org.apache.cxf.Bus;
@@ -57,7 +59,7 @@ public class App {
   protected final SessionFactory sessionFactory;
 
   public App() {
-    envFactory = new EnvironmentFactory();
+    this.envFactory = new EnvironmentFactory();
     this.sessionFactory = createSessionFactory();
   }
 
@@ -74,11 +76,14 @@ public class App {
 
   private SessionFactory createSessionFactory() {
     final Configuration configuration = new Configuration();
-    configuration.addAnnotatedClass(FutureTask.class);
+    configuration.addAnnotatedClass(Task.class);
+    configuration.addAnnotatedClass(TaskProgress.class);
+    configuration.addAnnotatedClass(TaskSchedule.class);
     return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
   }
 
   private Server server = null;
+  private Scheduler scheduler = null;
 
   public void start() throws Exception {
     server = new Server();
@@ -139,10 +144,13 @@ public class App {
 
     registerServlets(context);
 
-    registerJobs();
+    scheduler = new StdSchedulerFactory().getScheduler();
+    scheduler.start();
+    registerJobs(scheduler);
   }
 
   public void stop() throws Exception {
+    scheduler.shutdown();
     server.stop();
   }
 
@@ -171,20 +179,18 @@ public class App {
     return envFactory;
   }
 
-  public void registerJobs() throws SchedulerException {
+  public void registerJobs(Scheduler scheduler) throws SchedulerException {
     JobDetail scheduledTasks = JobBuilder.newJob(ScheduledTasksJob.class)
             .withIdentity("scheduledTasks", "group1").build();
 
     scheduledTasks.getJobDataMap().put("scheduledTasksService", new ScheduledTasksService(sessionFactory));
 
-    Trigger trigger1 = TriggerBuilder.newTrigger()
+    Trigger scheduledTasksTrigger = TriggerBuilder.newTrigger()
             .withIdentity("cronTrigger1", "group1")
-            .withSchedule(CronScheduleBuilder.cronSchedule("0/5 * * * * ?"))
+            .withSchedule(CronScheduleBuilder.cronSchedule("0/15 * * * * ?")) // every 5 min
             .build();
 
-    Scheduler scheduler = new StdSchedulerFactory().getScheduler();
-    scheduler.start();
-    scheduler.scheduleJob(scheduledTasks, trigger1);
+    scheduler.scheduleJob(scheduledTasks, scheduledTasksTrigger);
   }
 
   /**
