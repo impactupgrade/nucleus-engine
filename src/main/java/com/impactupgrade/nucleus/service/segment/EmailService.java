@@ -21,6 +21,6 @@ public interface EmailService extends SegmentService {
 //
 //  void unsubscribeContact(String listName, String email) throws Exception;
 //  void addTagToContact(String listName, CrmContact crmContact, String tag) throws Exception;
-
+//  void syncTags(Calendar lastSync) throws Exception;
   void syncContacts(Calendar lastSync) throws Exception;
 }

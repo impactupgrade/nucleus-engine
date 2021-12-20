@@ -110,4 +110,9 @@ public interface BasicCrmService extends CrmService {
   default String insertTask(CrmTask crmTask) throws Exception {
     return null;
   }
+
+  default List<String> getCampaigns(CrmContact contact) throws Exception{
+    return null;
+  }
+
 }

@@ -10,6 +10,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -583,6 +584,28 @@ public class SfdcCrmService implements CrmService {
     // likely not relevant in SFDC
   }
 
+  //TODO pocketing age for now
+//  @Override
+//  public Integer getAge(CrmContact contact) throws Exception{
+//    SObject individualAge = new SObject();
+//    if(sfdcClient.getOwner(contact.id).isEmpty()){
+//      log.info("Individual Associated with Contact: " + contact.id + "is Empty");
+//    }else{
+//      individualAge = sfdcClient.getOwner(contact.id).get();
+//    }
+//    return (Integer) individualAge.getField("IndividualsAge");
+//  }
+
+  @Override
+  public List<String> getCampaigns(CrmContact contact) throws InterruptedException, ConnectionException {
+    List<SObject> campaigns = sfdcClient.getCampaigns(contact.id);
+    List<String> names = new ArrayList<>();
+    for(SObject c : campaigns){
+      names.add((String) c.getChild("Campaign").getField("Name"));
+    }
+    return names;
+  }
+
   @Override
   public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
     SObject opportunity = new SObject("Opportunity");
@@ -935,11 +958,12 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmContact toCrmContact(SObject sObject) {
     CrmAddress crmAddress = new CrmAddress(
-        (String) sObject.getField("BillingStreet"),
-        (String) sObject.getField("BillingCity"),
-        (String) sObject.getField("BillingState"),
-        (String) sObject.getField("BillingPostalCode"),
-        (String) sObject.getField("BillingCountry")
+            //Tweaked to use address info from account vs contact
+        (String) sObject.getChild("Account").getField("BillingStreet"),
+        (String) sObject.getChild("Account").getField("BillingCity"),
+        (String) sObject.getChild("Account").getField("BillingState"),
+        (String) sObject.getChild("Account").getField("BillingPostalCode"),
+        (String) sObject.getChild("Account").getField("BillingCountry")
     );
 
     CrmContact.PreferredPhone preferredPhone = null;
@@ -963,7 +987,11 @@ public class SfdcCrmService implements CrmService {
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptOut),
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
-        (String) sObject.getField("OwnerId"),
+        (String) sObject.getField("Owner.Id"),
+        (String) sObject.getChild("Owner").getField("Name"),
+        (String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"),
+        (String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c"),
+        (String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"),
         Collections.emptyList(),
         sObject
     );
