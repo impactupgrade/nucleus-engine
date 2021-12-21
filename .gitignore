@@ -3,3 +3,4 @@
 target
 backup-salesforce
 .DS_Store
+/src/main/resources/environment-local.json
