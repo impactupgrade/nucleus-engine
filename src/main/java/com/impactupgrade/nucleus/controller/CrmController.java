@@ -100,26 +100,29 @@ public class CrmController {
   public Response bulkImport(
       @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
+      @Context HttpServletRequest request
+  ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
+    // Important to do this outside of the new thread -- ensures the InputStream is still open.
+    CSVParser csvParser = CSVParser.parse(
+        inputStream,
+        Charset.defaultCharset(),
+        CSVFormat.DEFAULT
+            .withFirstRecordAsHeader()
+            .withIgnoreHeaderCase()
+            .withTrim()
+    );
+    List<Map<String, String>> data = new ArrayList<>();
+    for (CSVRecord csvRecord : csvParser) {
+      data.add(csvRecord.toMap());
+    }
+
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
+
     Runnable thread = () -> {
       try {
-        CSVParser csvParser = CSVParser.parse(
-            inputStream,
-            Charset.defaultCharset(),
-            CSVFormat.DEFAULT
-                .withFirstRecordAsHeader()
-                .withIgnoreHeaderCase()
-                .withTrim()
-        );
-        List<Map<String, String>> data = new ArrayList<>();
-        for (CSVRecord csvRecord : csvParser) {
-          data.add(csvRecord.toMap());
-        }
-
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
         env.primaryCrmService().processBulkImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
@@ -136,14 +139,16 @@ public class CrmController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImport(
       @FormParam("google-sheet-url") String gsheetUrl,
-      @Context HttpServletRequest request) {
+      @Context HttpServletRequest request
+  ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
+    List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
+
     Runnable thread = () -> {
       try {
-        List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
         env.primaryCrmService().processBulkImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
@@ -161,26 +166,29 @@ public class CrmController {
   public Response bulkImportFBFundraisers(
       @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
+      @Context HttpServletRequest request
+  ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
+    // Important to do this outside of the new thread -- ensures the InputStream is still open.
+    CSVParser csvParser = CSVParser.parse(
+        inputStream,
+        Charset.defaultCharset(),
+        CSVFormat.DEFAULT
+            .withFirstRecordAsHeader()
+            .withIgnoreHeaderCase()
+            .withTrim()
+    );
+    List<Map<String, String>> data = new ArrayList<>();
+    for (CSVRecord csvRecord : csvParser) {
+      data.add(csvRecord.toMap());
+    }
+
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data, env);
+
     Runnable thread = () -> {
       try {
-        CSVParser csvParser = CSVParser.parse(
-            inputStream,
-            Charset.defaultCharset(),
-            CSVFormat.DEFAULT
-                .withFirstRecordAsHeader()
-                .withIgnoreHeaderCase()
-                .withTrim()
-        );
-        List<Map<String, String>> data = new ArrayList<>();
-        for (CSVRecord csvRecord : csvParser) {
-          data.add(csvRecord.toMap());
-        }
-
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data, env);
         env.primaryCrmService().processBulkImport(importEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
