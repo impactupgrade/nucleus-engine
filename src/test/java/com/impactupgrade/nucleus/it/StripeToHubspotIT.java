@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class StripeToHubspotIT extends AbstractIT {
 
   protected StripeToHubspotIT() {
-    super(new App(envFactoryHubspotStripe));
+    super(new App(envFactoryHubspotStripe, sessionFactory));
   }
 
   @Test

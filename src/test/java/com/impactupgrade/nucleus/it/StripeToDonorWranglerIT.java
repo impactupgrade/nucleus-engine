@@ -10,7 +10,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 public class StripeToDonorWranglerIT extends AbstractIT {
 
   protected StripeToDonorWranglerIT() {
-    super(new App(new EnvironmentFactory("environment-it-donorwrangler-stripe.json")));
+    super(new App(new EnvironmentFactory("environment-it-donorwrangler-stripe.json"), sessionFactory));
   }
 
   // TODO: DW currently has no delete methods, so it needs to be manually cleared out first :(
