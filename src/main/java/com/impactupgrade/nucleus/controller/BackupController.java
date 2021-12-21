@@ -109,6 +109,8 @@ public class BackupController {
 
               log.info("upload complete: {}", upload);
             }
+
+            client.close();;
           }
         } catch(Exception e){
           log.error("SFDC backup failed", e);
