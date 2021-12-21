@@ -28,7 +28,8 @@ public class CrmImportEvent {
 
   protected final Environment env;
 
-  private final Map<String, String> raw;
+  // Be case-insensitive, for sources that aren't always consistent.
+  private final CaseInsensitiveMap<String> raw;
 
   private String firstName;
   private String lastName;
@@ -58,7 +59,7 @@ public class CrmImportEvent {
   private String opportunityStageName;
   private String opportunityTerminal;
 
-  public CrmImportEvent(Map<String, String> raw, Environment env) {
+  public CrmImportEvent(CaseInsensitiveMap<String> raw, Environment env) {
     this.raw = raw;
     this.env = env;
   }
@@ -68,10 +69,10 @@ public class CrmImportEvent {
   }
 
   public static CrmImportEvent fromGeneric(Map<String, String> _data, Environment env) {
-    CrmImportEvent importEvent = new CrmImportEvent(_data, env);
-
     // Be case-insensitive, for sources that aren't always consistent.
     CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
+
+    CrmImportEvent importEvent = new CrmImportEvent(data, env);
 
     importEvent.city = data.get("City");
     importEvent.country = data.get("Country");
@@ -127,7 +128,7 @@ public class CrmImportEvent {
 
 //  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
-      CrmImportEvent importEvent = new CrmImportEvent(_data, env);
+      CrmImportEvent importEvent = new CrmImportEvent(data, env);
 
 //    TODO: support for initial amount, any fees, and net amount
 //    importEvent. = data.get("Donation Amount");
@@ -289,7 +290,7 @@ public class CrmImportEvent {
     return opportunityTerminal;
   }
 
-  public Map<String, String> getRaw() {
+  public CaseInsensitiveMap<String> getRaw() {
     return raw;
   }
 }
