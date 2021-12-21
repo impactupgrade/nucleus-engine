@@ -103,7 +103,7 @@ public class TwilioController {
                       log.error("CRM contact update failed", e2);
                     }
                   } else {
-                    log.warn("message to {} failed", c.mobilePhone, e1);
+                    log.warn("message to {} failed: {} {}", c.mobilePhone, e1.getCode(), e1.getMessage(), e1);
                   }
                 } catch (Exception e) {
                   log.warn("message to {} failed", c.mobilePhone, e);
