@@ -77,34 +77,38 @@ public class BackupController {
           // should have only downloaded a single zip, so grab the first file
           Collection<File> files = FileUtils.listFiles(new File("backup-salesforce"), null, false);
 
-          // from here on out, closely following example code from
-          // https://github.com/Backblaze/b2-sdk-java/blob/master/samples/src/main/java/com/backblaze/b2/sample/B2Sample.java
+          if (files.isEmpty()) {
+            log.info("no export files existed");
+          } else {
+            // from here on out, closely following example code from
+            // https://github.com/Backblaze/b2-sdk-java/blob/master/samples/src/main/java/com/backblaze/b2/sample/B2Sample.java
 
-          B2StorageClient client = B2StorageClientFactory
-              .createDefaultFactory()
-              .create(
-                  env.getConfig().backblaze.publicKey,
-                  env.getConfig().backblaze.secretKey,
-                  "impact-upgrade-hub"
-              );
+            B2StorageClient client = B2StorageClientFactory
+                .createDefaultFactory()
+                .create(
+                    env.getConfig().backblaze.publicKey,
+                    env.getConfig().backblaze.secretKey,
+                    "impact-upgrade-hub"
+                );
 
-          for (File file : files) {
-            log.info("uploading {} to Backblaze B2", file.getName());
+            for (File file : files) {
+              log.info("uploading {} to Backblaze B2", file.getName());
 
-            B2ContentSource source = B2FileContentSource.builder(file).build();
+              B2ContentSource source = B2FileContentSource.builder(file).build();
 
-            final B2UploadListener uploadListener = (progress) -> {
-              final double percent = (100. * (progress.getBytesSoFar() / (double) progress.getLength()));
-              log.info(String.format("upload progress: %3.2f, %s", percent, progress.toString()));
-            };
+              final B2UploadListener uploadListener = (progress) -> {
+                final double percent = (100. * (progress.getBytesSoFar() / (double) progress.getLength()));
+                log.info(String.format("upload progress: %3.2f, %s", percent, progress.toString()));
+              };
 
-            B2UploadFileRequest uploadRequest = B2UploadFileRequest
-                .builder(env.getConfig().backblaze.bucketId, "salesforce/" + file.getName(), B2ContentTypes.APPLICATION_OCTET, source)
-                .setListener(uploadListener)
-                .build();
-            B2FileVersion upload = client.uploadLargeFile(uploadRequest, executorService);
+              B2UploadFileRequest uploadRequest = B2UploadFileRequest
+                  .builder(env.getConfig().backblaze.bucketId, "salesforce/" + file.getName(), B2ContentTypes.APPLICATION_OCTET, source)
+                  .setListener(uploadListener)
+                  .build();
+              B2FileVersion upload = client.uploadLargeFile(uploadRequest, executorService);
 
-            log.info("upload complete: {}", upload);
+              log.info("upload complete: {}", upload);
+            }
           }
         } catch(Exception e){
           log.error("SFDC backup failed", e);
