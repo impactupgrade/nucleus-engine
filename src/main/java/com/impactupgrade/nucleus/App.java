@@ -183,11 +183,12 @@ public class App {
     JobDetail scheduledTasks = JobBuilder.newJob(ScheduledTasksJob.class)
             .withIdentity("scheduledTasks", "group1").build();
 
+    // TODO: find a better way of initializing the service
     scheduledTasks.getJobDataMap().put("scheduledTasksService", new ScheduledTasksService(sessionFactory));
 
     Trigger scheduledTasksTrigger = TriggerBuilder.newTrigger()
             .withIdentity("cronTrigger1", "group1")
-            .withSchedule(CronScheduleBuilder.cronSchedule("0/15 * * * * ?")) // every 5 min
+            .withSchedule(CronScheduleBuilder.cronSchedule("0/15 * * * * ?")) // every 15 seconds
             .build();
 
     scheduler.scheduleJob(scheduledTasks, scheduledTasksTrigger);
