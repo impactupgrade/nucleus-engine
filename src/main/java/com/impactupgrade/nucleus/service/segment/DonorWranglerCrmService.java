@@ -8,13 +8,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -46,18 +43,6 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    // no accounts in Donor Wrangler
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    // no accounts in Donor Wrangler
-    return Optional.empty();
-  }
-
-  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     return toCrmContact(
         dwClient.contactSearch("id", id)
@@ -79,23 +64,6 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public String insertAccount(CrmAccount crmAccount) throws Exception {
-    // no accounts in Donor Wrangler
-    return null;
-  }
-
-  @Override
-  public void updateAccount(CrmAccount crmAccount) throws Exception {
-    // no accounts in Donor Wrangler
-  }
-
-  @Override
-  public String insertAccount(PaymentGatewayEvent PaymentGatewayEvent) throws Exception {
-    // no accounts in Donor Wrangler
-    return null;
-  }
-
-  @Override
   public String insertContact(CrmContact crmContact) throws Exception {
     return dwClient.upsertContact(crmContact);
   }
@@ -112,18 +80,6 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-    return Optional.empty();
-  }
-
-  @Override
-  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-    return Collections.emptyList();
-  }
-
-  @Override
   public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return dwClient.insertDonation(paymentGatewayEvent);
   }
@@ -136,50 +92,6 @@ public class DonorWranglerCrmService implements BasicCrmService {
   @Override
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // no refund support
-  }
-
-  @Override
-  public void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: Josh
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-    return Optional.empty();
-  }
-
-  @Override
-  public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-    return null;
-  }
-
-  @Override
-  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-    return Optional.empty();
-  }
-
-  @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-  }
-
-  @Override
-  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // no true RD support, outside of tracking payments within a pledged donation
-  }
-
-  @Override
-  public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
-    // technically only needed for Donor Portal concepts, which will need rethought since it focuses on the account level
-    return Collections.emptyList();
   }
 
   @Override

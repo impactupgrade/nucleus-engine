@@ -10,13 +10,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -32,6 +29,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -71,18 +69,6 @@ public class BloomerangCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    // TODO:
-    return Optional.empty();
-  }
-
-  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     // TODO
     return Optional.empty();
@@ -114,13 +100,8 @@ public class BloomerangCrmService implements BasicCrmService {
 
   @Override
   public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     // TODO
-    return null;
+    return Optional.empty();
   }
 
   @Override
@@ -130,37 +111,8 @@ public class BloomerangCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    // TODO
-    return null;
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: for now, naively assume the record doesn't exist and allow it to be created
-    return Optional.empty();
-  }
-
-  @Override
   public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public String insertAccount(CrmAccount crmAccount) throws Exception {
-    // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
-    return null;
-  }
-
-  @Override
-  public void updateAccount(CrmAccount crmAccount) throws Exception {
-    // TODO: no accounts in Bloomerang, so this is likely to mess with upstream
+    // TODO
   }
 
   @Override
@@ -242,52 +194,29 @@ public class BloomerangCrmService implements BasicCrmService {
 
   @Override
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO
   }
 
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO
   }
 
   @Override
   public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO
   }
 
   @Override
   public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO
+    return Collections.emptyList();
   }
 
   @Override
   public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO
+    return Collections.emptyList();
   }
 
   private InputStream get(String endpoint) throws Exception {
