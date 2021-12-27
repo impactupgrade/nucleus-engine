@@ -57,9 +57,21 @@ public class ContactService {
     // create new Household Account
     String accountId = crmService.insertAccount(paymentGatewayEvent);
     paymentGatewayEvent.setCrmAccountId(accountId);
-    // create new Contact
-    String contactId = crmService.insertContact(paymentGatewayEvent);
-    paymentGatewayEvent.setCrmContactId(contactId);
+
+    try {
+      // create new Contact
+      String contactId = crmService.insertContact(paymentGatewayEvent);
+      paymentGatewayEvent.setCrmContactId(contactId);
+    } catch (Exception e) {
+      // Nearly always, this happens due to an issue that will never self-resolve, like an invalid email address
+      // with HubSpot's validation rules. Prevent duplicate, orphaned accounts.
+      log.warn("CRM failed to create the contact, so halting the process and cleaning up the account we just created. Error: {}", e.getMessage());
+      if (!Strings.isNullOrEmpty(accountId)) {
+        crmService.deleteAccount(accountId);
+        // also unset the ID, letting downstream know that it should also halt
+        paymentGatewayEvent.setCrmAccountId(null);
+      }
+    }
   }
 
   public void processContactForm(ContactFormData formData) throws Exception {

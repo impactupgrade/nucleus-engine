@@ -6,7 +6,9 @@ package com.impactupgrade.nucleus.it;
 
 import com.google.common.io.Resources;
 import com.impactupgrade.integration.hubspot.crm.v3.Deal;
+import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.nucleus.App;
+import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -18,10 +20,12 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StripeToHubspotIT extends AbstractIT {
@@ -134,5 +138,29 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals("2021-11-11", new SimpleDateFormat("yyyy-MM-dd").format(donation.closeDate.getTime()));
     assertEquals("Donation: Integration Tester", donation.name);
     assertEquals(100.0, donation.amount);
+  }
+
+  @Test
+  public void invalidEmail() throws Exception {
+    clearHubspot();
+
+    String json = Resources.toString(Resources.getResource("stripe-charge-invalid-email.json"), StandardCharsets.UTF_8);
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // HS needs time to catch up...
+    Thread.sleep(5000);
+
+    HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
+
+    // the contact shouldn't exist, but ensure the orphaned account was deleted
+    Optional<CrmContact> contactO = hsCrmService.getContactByEmail("team+integration+tester@impactupgrade.con");
+    assertFalse(contactO.isPresent());
+    HubSpotCrmV3Client hsClient = HubSpotClientFactory.crmV3Client(env);
+    assertEquals(0, hsClient.company().searchByName("Tester", Collections.emptyList()).getTotal());
+
+    // and ensure the rest of the process halted
+    Optional<CrmDonation> donationO = hsCrmService.getDonationByTransactionId("pi_3KBMgdHAwJOu5brr1JtKjpWJ");
+    assertFalse(donationO.isPresent());
   }
 }

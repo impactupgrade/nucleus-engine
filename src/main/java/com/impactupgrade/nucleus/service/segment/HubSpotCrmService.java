@@ -8,7 +8,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResults;
 import com.impactupgrade.integration.hubspot.crm.v3.Company;
 import com.impactupgrade.integration.hubspot.crm.v3.CompanyProperties;
-import com.impactupgrade.integration.hubspot.crm.v3.CompanyResults;
 import com.impactupgrade.integration.hubspot.crm.v3.Contact;
 import com.impactupgrade.integration.hubspot.crm.v3.ContactProperties;
 import com.impactupgrade.integration.hubspot.crm.v3.ContactResults;
@@ -107,16 +106,22 @@ public class HubSpotCrmService implements CrmService {
       return Optional.empty();
     }
 
+    // TODO: This is a little nuts -- have to do 3 different queries. But unlike SFDC, we're not storing the customerId
+    //  on the company (should we even be doing that there?).
+
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, "EQ", customerId);
     List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
-    CompanyResults companyResults = hsClient.company().search(filterGroups, companyFields);
+    DealResults dealResults = hsClient.deal().search(filterGroups, dealFields);
 
-    if (Objects.isNull(companyResults) || companyResults.getTotal() == 0) {
+    if (Objects.isNull(dealResults) || dealResults.getTotal() == 0) {
       return Optional.empty();
     }
-    Company foundCompany = companyResults.getResults().get(0);
-    CrmAccount crmAccount = toCrmAccount(foundCompany);
-    return Optional.of(crmAccount);
+    AssociationSearchResults associations = hsClient.association().search("deal", dealResults.getResults().get(0).getId(), "company");
+    if (Objects.isNull(associations) || associations.getResults().size() == 0 || associations.getResults().get(0).getTo().size() == 0) {
+      return Optional.empty();
+    }
+
+    return getAccountById(associations.getResults().get(0).getTo().get(0).getId());
   }
 
   @Override
@@ -276,6 +281,11 @@ public class HubSpotCrmService implements CrmService {
     account.setState(crmAccount.address.state);
     account.setZip(crmAccount.address.postalCode);
     account.setCountry(crmAccount.address.country);
+  }
+
+  @Override
+  public void deleteAccount(String accountId) throws Exception {
+    hsClient.company().delete(accountId);
   }
 
   @Override

@@ -33,9 +33,10 @@ public class PaymentGatewayEvent {
 
   protected final Environment env;
 
-  // determined by event
+  // For convenience's sake, making use of CRM models, here, to make downstream processing cleaner.
   protected CrmAccount crmAccount = new CrmAccount();
   protected CrmContact crmContact = new CrmContact();
+
   protected String customerId;
   protected String depositTransactionId;
   protected String gatewayName;

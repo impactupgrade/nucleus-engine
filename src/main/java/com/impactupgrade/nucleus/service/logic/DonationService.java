@@ -32,10 +32,9 @@ public class DonationService {
   }
 
   public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: Happens both here and DonationService, since we need both processes to halt. Refactor?
-    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)
-        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
-      log.warn("payment gateway event {} had no email address or CRM ID; skipping processing", paymentGatewayEvent.getTransactionId());
+    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+      log.warn("payment gateway event {} failed to process the donor; skipping donation processing", paymentGatewayEvent.getTransactionId());
       return;
     }
 
@@ -91,6 +90,12 @@ public class DonationService {
   }
 
   public void processSubscription(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+      log.warn("payment gateway event {} failed to process the donor; skipping subscription processing", paymentGatewayEvent.getTransactionId());
+      return;
+    }
+
     Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(paymentGatewayEvent);
 
     if (recurringDonation.isEmpty()) {

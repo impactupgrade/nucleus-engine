@@ -45,6 +45,9 @@ public interface BasicCrmService extends CrmService {
   default void updateAccount(CrmAccount crmAccount) throws Exception {
   }
 
+  default void deleteAccount(String accountId) throws Exception {
+  }
+
   default List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     return Collections.emptyList();
   }

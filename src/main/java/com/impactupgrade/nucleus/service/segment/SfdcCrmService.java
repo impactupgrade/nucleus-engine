@@ -100,6 +100,13 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public void deleteAccount(String accountId) throws Exception {
+    SObject account = new SObject("Account");
+    account.setId(accountId);
+    sfdcClient.delete(account);
+  }
+
+  @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     // TODO
     return null;
