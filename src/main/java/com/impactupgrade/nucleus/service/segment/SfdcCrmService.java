@@ -376,33 +376,37 @@ public class SfdcCrmService implements CrmService {
   public void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: Might be helpful to do something like this further upstream, preventing unnecessary processing
     Optional<SObject> opportunity = sfdcClient.getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
-    if (opportunity.isPresent()) {
-      // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
-      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
-        if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)
-            && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId) == null) {
-          SObject opportunityUpdate = new SObject("Opportunity");
-          opportunityUpdate.setId(opportunity.get().getId());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId());
-          sfdcClient.update(opportunityUpdate);
-        } else {
-          log.info("skipping refund {}; already marked with refund deposit info", opportunity.get().getId());
-        }
-      // Otherwise, assume it was a standard charge.
+
+    if (opportunity.isEmpty()) {
+      log.warn("unable to find SFDC opportunity using transaction {}", paymentGatewayEvent.getTransactionId());
+      return;
+    }
+
+    // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)
+          && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId) == null) {
+        SObject opportunityUpdate = new SObject("Opportunity");
+        opportunityUpdate.setId(opportunity.get().getId());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId());
+        sfdcClient.update(opportunityUpdate);
       } else {
-        if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)
-            && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
-          SObject opportunityUpdate = new SObject("Opportunity");
-          opportunityUpdate.setId(opportunity.get().getId());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars());
-          sfdcClient.update(opportunityUpdate);
-        } else {
-          log.info("skipping {}; already marked with deposit info", opportunity.get().getId());
-        }
+        log.info("skipping refund {}; already marked with refund deposit info", opportunity.get().getId());
+      }
+    // Otherwise, assume it was a standard charge.
+    } else {
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)
+          && opportunity.get().getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
+        SObject opportunityUpdate = new SObject("Opportunity");
+        opportunityUpdate.setId(opportunity.get().getId());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars());
+        sfdcClient.update(opportunityUpdate);
+      } else {
+        log.info("skipping {}; already marked with deposit info", opportunity.get().getId());
       }
     }
   }
