@@ -156,7 +156,7 @@ public class PaymentGatewayController {
     if (Strings.isNullOrEmpty(start)) {
       // If dates were not provided, this was likely a cronjob. Do the last 3 days.
       Calendar startCal = Calendar.getInstance();
-      startCal.add(Calendar.DATE, -72);
+      startCal.add(Calendar.HOUR, -72);
       startDate = startCal.getTime();
       endDate = Calendar.getInstance().getTime();
     } else {
@@ -194,7 +194,7 @@ public class PaymentGatewayController {
     if (Strings.isNullOrEmpty(start)) {
       // If dates were not provided, this was likely a cronjob. Do the last 3 days.
       Calendar startCal = Calendar.getInstance();
-      startCal.add(Calendar.DATE, -72);
+      startCal.add(Calendar.HOUR, -72);
       startDate = startCal.getTime();
       endDate = Calendar.getInstance().getTime();
     } else {
