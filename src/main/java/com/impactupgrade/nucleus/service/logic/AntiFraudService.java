@@ -74,8 +74,6 @@ public class AntiFraudService {
       JSONTokener jsonTokener = new JSONTokener(urlConnection.getInputStream());
       JSONObject jsonObject = new JSONObject(jsonTokener);
 
-      log.info(jsonObject.toString());
-
       boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
       double score = jsonObject.has("score") ? jsonObject.getDouble("score") : 0.0;
       String hostname = jsonObject.has("hostname") ? jsonObject.getString("hostname") : "";
