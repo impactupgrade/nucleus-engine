@@ -102,6 +102,8 @@ public class TwilioController {
                     } catch (Exception e2) {
                       log.error("CRM contact update failed", e2);
                     }
+                  } else if (e1.getCode() == 22102) {
+                    log.info("invalid phone number: {}", c.mobilePhone);
                   } else {
                     log.warn("message to {} failed: {} {}", c.mobilePhone, e1.getCode(), e1.getMessage(), e1);
                   }
