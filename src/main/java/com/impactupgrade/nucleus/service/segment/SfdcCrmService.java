@@ -672,7 +672,7 @@ public class SfdcCrmService implements CrmService {
         if (existingContacts.size() > 1) {
           // To be safe, let's skip this row for now and deal with it manually...
           log.warn("SKIPPING row due to multiple contacts found!");
-          break;
+          continue;
         } else {
           existingContact = existingContacts.stream().findFirst();
         }
