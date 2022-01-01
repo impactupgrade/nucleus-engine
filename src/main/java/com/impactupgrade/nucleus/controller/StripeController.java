@@ -6,12 +6,12 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
@@ -242,13 +242,14 @@ public class StripeController {
             }
           }
 
+          CrmService crmService = env.donationsCrmService();
+
           for (Subscription subscription: affectedSubscriptions) {
-            //For each open subscription using that payment source,
-            //look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
-            Optional<CrmRecurringDonation> crmRecurringDonationOptional = env.donationsCrmService().getRecurringDonationById(subscription.getId());
+            // For each open subscription using that payment source,
+            // look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
+            Optional<CrmRecurringDonation> crmRecurringDonationOptional = crmService.getRecurringDonationBySubscriptionId(subscription.getId());
 
             if (crmRecurringDonationOptional.isPresent()) {
-
               // Email
               env.notificationService().sendEmailNotification(
                   "Recurring Donation: Card Expiring",
@@ -258,17 +259,17 @@ public class StripeController {
 
               // Crm task
               String targetId = null;
-              Optional<CrmAccount> crmAccountOptional = env.donationsCrmService().getAccountByCustomerId(card.getCustomer());
+              Optional<CrmAccount> crmAccountOptional = crmService.getAccountByCustomerId(card.getCustomer());
               if (crmAccountOptional.isPresent()) {
                 targetId = crmAccountOptional.get().id;
               } else {
-                Optional<CrmContact> crmContactOptional = env.donationsCrmService().getContactByEmail(customer.getEmail());
+                Optional<CrmContact> crmContactOptional = crmService.getContactByEmail(customer.getEmail());
                 if (crmContactOptional.isPresent()) {
                   targetId = crmAccountOptional.get().id;
                 }
               }
 
-              env.notificationService().createCrmTask(env.donationsCrmService(), targetId,
+              env.notificationService().createCrmTask(crmService, targetId,
                   "Donor is using a card that's about to expire.",
                   "donations:card-expiring"
               );
