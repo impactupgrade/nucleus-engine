@@ -5,7 +5,6 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import com.impactupgrade.nucleus.util.EmailUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,10 +30,10 @@ public class NotificationService {
     //  sendNotification(...) and we'll check out notification.email, notification.sms, and notification.task here.
 
     public void sendEmailNotification(String subject, String textBody, String notificationsKey) throws MessagingException {
-        sendEmailNotification(subject, textBody, null, notificationsKey);
+        sendEmailNotification(subject, textBody, false, notificationsKey);
     }
 
-    public void sendEmailNotification(String subject, String textBody, String htmlBody, String notificationsKey) throws MessagingException {
+    public void sendEmailNotification(String subject, String body, boolean isHtml, String notificationsKey) throws MessagingException {
         EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get(notificationsKey);
 
         if (Objects.isNull(notifications) || Objects.isNull(notifications.email)) {
@@ -48,7 +47,7 @@ public class NotificationService {
         }
         String emailFrom = emailNotification.from;
         String emailTo = String.join(",", emailNotification.to);
-        EmailUtil.sendEmail(subject, textBody, htmlBody, emailTo, emailFrom);
+        env.transactionalEmailService().sendEmailText(subject, body, isHtml, emailTo, emailFrom);
     }
 
     public void sendSMSNotification(String smsText, String notificationsKey) {

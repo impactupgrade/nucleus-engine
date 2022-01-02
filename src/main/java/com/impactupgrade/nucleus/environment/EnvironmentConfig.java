@@ -47,6 +47,8 @@ public class EnvironmentConfig {
   public String crmDonations = "";
   public String crmMessaging = "";
 
+  public String emailTransactional = "";
+
   public static class Platform {
     // if keys
     public String publicKey = "";

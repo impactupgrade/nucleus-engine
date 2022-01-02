@@ -2,7 +2,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
+import com.impactupgrade.nucleus.service.segment.EmailService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,7 +37,7 @@ public class EmailController {
 
     Runnable thread = () -> {
       try {
-        for (EmailPlatformService emailPlatformService : env.allEmailPlatformServices()) {
+        for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(lastSync);
           } catch (Exception e) {
@@ -60,7 +60,7 @@ public class EmailController {
 
     Runnable thread = () -> {
       try {
-        for (EmailPlatformService emailPlatformService : env.allEmailPlatformServices()) {
+        for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(null);
           } catch (Exception e) {

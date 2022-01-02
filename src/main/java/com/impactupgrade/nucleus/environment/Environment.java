@@ -16,7 +16,7 @@ import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import com.impactupgrade.nucleus.service.segment.EmailPlatformService;
+import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -146,12 +146,21 @@ public class Environment {
     return segmentServices(PaymentGatewayService.class);
   }
 
-  public EmailPlatformService emailPlatformService(String name) {
-    return segmentService(name, EmailPlatformService.class);
+  public EmailService emailService(String name) {
+    return segmentService(name, EmailService.class);
   }
 
-  public List<EmailPlatformService> allEmailPlatformServices() {
-    return segmentServices(EmailPlatformService.class);
+  public EmailService transactionalEmailService() {
+    if (Strings.isNullOrEmpty(getConfig().emailTransactional)) {
+      // default to SendGrid
+      return emailService("sendgrid");
+    }
+    return emailService(getConfig().emailTransactional);
+  }
+
+  public List<EmailService> allEmailServices() {
+    // TODO: Filter by email services actually configured in env.json
+    return segmentServices(EmailService.class);
   }
 
   private <T extends SegmentService> T segmentService(final String name, Class<T> clazz) {
