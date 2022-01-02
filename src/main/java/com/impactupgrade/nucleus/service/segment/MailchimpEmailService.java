@@ -23,9 +23,9 @@ import static com.impactupgrade.nucleus.client.MailchimpClient.PHONE_NUMBER;
 import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
 import static com.impactupgrade.nucleus.client.MailchimpClient.UNSUBSCRIBED;
 
-public class MailchimpEmailPlatformService implements EmailPlatformService {
+public class MailchimpEmailService implements EmailService {
 
-  private static final Logger log = LogManager.getLogger(MailchimpEmailPlatformService.class);
+  private static final Logger log = LogManager.getLogger(MailchimpEmailService.class);
 
   protected Environment env;
   protected CrmService primaryCrmService;
@@ -43,6 +43,16 @@ public class MailchimpEmailPlatformService implements EmailPlatformService {
     primaryCrmService = env.primaryCrmService();
     donationsCrmService = env.donationsCrmService();
     mailchimpClient = new MailchimpClient(env);
+  }
+
+  @Override
+  public void sendEmailText(String subject, String body, boolean isHtml, String to, String from) {
+    // TODO
+  }
+
+  @Override
+  public void sendEmailTemplate(String template, String to) {
+    // TODO
   }
 
 //  @Override

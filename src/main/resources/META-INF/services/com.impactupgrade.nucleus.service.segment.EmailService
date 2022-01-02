@@ -1,0 +1,3 @@
+com.impactupgrade.nucleus.service.segment.HubSpotEmailService
+com.impactupgrade.nucleus.service.segment.MailchimpEmailService
+com.impactupgrade.nucleus.service.segment.SendGridEmailService
