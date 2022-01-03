@@ -11,29 +11,27 @@ import org.slf4j.LoggerFactory;
 
 public class HibernateUtil {
 
-    private static Logger log = LoggerFactory.getLogger(HibernateUtil.class);
+    private static final Logger log = LoggerFactory.getLogger(HibernateUtil.class);
 
     private static SessionFactory sessionFactory = createSessionFactory();
 
     private static SessionFactory createSessionFactory() {
-        try {
-            if (sessionFactory == null) {
+        if (sessionFactory == null) {
+            try {
                 final Configuration configuration = new Configuration();
                 configuration.addAnnotatedClass(Task.class);
                 configuration.addAnnotatedClass(TaskSchedule.class);
                 configuration.addAnnotatedClass(TaskProgress.class);
                 sessionFactory = configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
+            } catch (Throwable e) {
+                log.info("Failed to create session factory (DB may not be configured): {}", e.getMessage());
             }
-            return sessionFactory;
-        } catch (Throwable e) {
-            //throw new ExceptionInInitializerError(e);
-            log.warn("Failed to create session factory: {}", e.getMessage());
         }
+
         return sessionFactory;
     }
 
     public static SessionFactory getSessionFactory() {
         return sessionFactory;
     }
-
 }
