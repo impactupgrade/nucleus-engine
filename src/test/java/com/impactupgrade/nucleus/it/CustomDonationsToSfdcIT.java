@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class CustomDonationsToSfdcIT extends AbstractIT {
 
   protected CustomDonationsToSfdcIT() {
-    super(new App(envFactorySfdcStripe, sessionFactory));
+    super(new App(envFactorySfdcStripe));
   }
 
   @Test

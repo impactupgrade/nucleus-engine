@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class StripeToSfdcIT extends AbstractIT {
 
   protected StripeToSfdcIT() {
-    super(new App(envFactorySfdcStripe, sessionFactory));
+    super(new App(envFactorySfdcStripe));
   }
 
   @Test

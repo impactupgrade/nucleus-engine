@@ -49,7 +49,6 @@ public class App {
     this.sessionFactory = HibernateUtil.getSessionFactory();
   }
 
-  // Allow orgs to wire in their custom implementations of Environment.
   public App(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
     this.sessionFactory = HibernateUtil.getSessionFactory();
