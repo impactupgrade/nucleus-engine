@@ -554,6 +554,7 @@ public class HubSpotCrmService implements CrmService {
     }
 
     DealProperties deal = new DealProperties();
+    deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
     setRecurringDonationFieldsForClose(deal, paymentGatewayEvent);
 
     hsClient.deal().update(recurringDonation.get().id, deal);
@@ -617,6 +618,7 @@ public class HubSpotCrmService implements CrmService {
     }
 
     DealProperties dealProperties = new DealProperties();
+    dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
     setRecurringDonationFieldsForClose(dealProperties, manageDonationEvent);
 
     hsClient.deal().update(recurringDonation.get().id, dealProperties);
