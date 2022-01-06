@@ -1,5 +1,7 @@
 package com.impactupgrade.nucleus.util;
 
+import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.model.Criteria;
 import com.impactupgrade.nucleus.model.Task;
 import com.impactupgrade.nucleus.model.TaskProgress;
 import com.impactupgrade.nucleus.model.TaskSchedule;
@@ -34,4 +36,21 @@ public class HibernateUtil {
     public static SessionFactory getSessionFactory() {
         return sessionFactory;
     }
+
+    public static String buildNativeQuery(String schema, String entityTable, Criteria criteria) {
+        String baseQuery = "select * from " + schema + "." + entityTable;
+        StringBuilder stringBuilder = new StringBuilder(baseQuery);
+        stringBuilder.append(buildWhereClause(criteria));
+        return stringBuilder.toString();
+    }
+
+    public static String buildWhereClause(Criteria criteria) {
+        String where = "";
+        String sqlString = criteria.toSqlString();
+        if (!Strings.isNullOrEmpty(sqlString)) {
+            where = " where " + sqlString;
+        }
+        return where;
+    }
+
 }
