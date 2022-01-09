@@ -528,7 +528,7 @@ public class HubSpotCrmService implements CrmService {
     // HS doesn't support non-monthly intervals natively. So, we must divide the amount into a monthly rate for
     // recurring revenue forecasts to work correctly. Ex: Quarterly gift of $90 becomes $30/month.
     switch (frequency) {
-      case QUARTERLY -> amount = amount / 3.0;
+      case QUARTERLY -> amount = amount / 4.0;
       case YEARLY ->  amount = amount / 12.0;
       case BIANNUALLY -> amount = amount / 24.0;
     }
