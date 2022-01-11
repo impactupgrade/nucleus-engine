@@ -112,6 +112,8 @@ public class EnvironmentConfig {
 
     public String smsOptIn = "";
     public String smsOptOut = "";
+
+    public String contactLanguage = "";
   }
 
   public Bloomerang bloomerang = new Bloomerang();

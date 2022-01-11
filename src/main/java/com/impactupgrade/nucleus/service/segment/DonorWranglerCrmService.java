@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
@@ -119,6 +120,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   @Override
   public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
     // TODO
+  }
+
+  @Override
+  public EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions() {
+    return new EnvironmentConfig.CRMFieldDefinitions();
   }
 
   protected Optional<CrmContact> toCrmContact(Optional<DonorWranglerClient.DwDonor> donor) {

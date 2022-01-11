@@ -65,6 +65,7 @@ public class CrmContact {
   public String lastDonationDate;
   public String notes;
   public List<String> emailGroups;
+  public String contactLanguage;
 
   @JsonIgnore
   public Object rawObject;
@@ -79,7 +80,7 @@ public class CrmContact {
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmContact(String id, String accountId, String firstName, String lastName, String fullName, String email, String homePhone,
       String mobilePhone, String workPhone, String otherPhone, PreferredPhone preferredPhone, CrmAddress address,
-      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, String ownerName, String totalDonationAmount, String numDonations, String lastDonationDate,  List<String> emailGroups,
+      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, String ownerName, String totalDonationAmount, String numDonations, String lastDonationDate,  List<String> emailGroups, String contactLanguage,
       Object rawObject) {
     this.id = id;
     this.accountId = accountId;
@@ -103,6 +104,7 @@ public class CrmContact {
     this.numDonations = numDonations;
     this.lastDonationDate = lastDonationDate;
     this.emailGroups = emailGroups;
+    this.contactLanguage = contactLanguage;
     this.rawObject = rawObject;
   }
 

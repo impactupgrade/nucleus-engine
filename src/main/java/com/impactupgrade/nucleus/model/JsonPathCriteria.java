@@ -2,7 +2,7 @@ package com.impactupgrade.nucleus.model;
 
 import java.util.Objects;
 
-public class JsonPathCriteria extends Criteria {
+public class JsonPathCriteria implements Criteria {
 
     public String columnName;
     public String jsonPath;

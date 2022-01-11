@@ -1,7 +1,9 @@
 package com.impactupgrade.nucleus.controller;
 
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.service.logic.TaskService;
+import com.impactupgrade.nucleus.security.SecurityUtil;
+import com.impactupgrade.nucleus.service.logic.ScheduledTaskService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.SessionFactory;
@@ -19,19 +21,22 @@ public class ScheduledTaskController {
 
     protected final EnvironmentFactory envFactory;
     protected final SessionFactory sessionFactory;
-    protected final TaskService taskService;
+    protected final ScheduledTaskService scheduledTaskService;
 
     public ScheduledTaskController(EnvironmentFactory envFactory, SessionFactory sessionFactory) {
         this.envFactory = envFactory;
         this.sessionFactory = sessionFactory;
-        this.taskService = new TaskService(sessionFactory);
+        this.scheduledTaskService = new ScheduledTaskService(sessionFactory);
     }
 
     @GET
-    @Path("/weekly")
-    public Response weekly(@Context HttpServletRequest request) {
+    public Response execute(@Context HttpServletRequest request) {
         log.info("executing scheduled tasks");
-        new Thread(() -> taskService.processTaskSchedules()).start();
+
+        Environment env = envFactory.init(request);
+        SecurityUtil.verifyApiKey(env);
+
+        new Thread(() -> scheduledTaskService.processTaskSchedules(env)).start();
         return Response.ok().build();
     }
 

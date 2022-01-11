@@ -9,8 +9,11 @@ import org.hibernate.annotations.TypeDef;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
@@ -31,14 +34,15 @@ public class TaskProgress {
     )
     public Long id;
 
-    @Column(name = "task_id")
-    public Long taskId;
-
     @Column(name = "contact_id", nullable = false)
     public String contactId;
 
     @Type(type = "json")
     @Column(name = "payload", columnDefinition = "jsonb", nullable = false)
     public JsonNode payload;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "task_id")
+    public Task task;
 
 }

@@ -221,6 +221,11 @@ public class HubSpotCrmService implements CrmService {
     return response == null ? null : response.getId() + "";
   }
 
+  @Override
+  public EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions() {
+    return this.env.getConfig().hubspot.fieldDefinitions;
+  }
+
   protected void setTaskFields(EngagementRequest engagementRequest, CrmTask crmTask) {
     Engagement engagement = new Engagement();
     engagement.setActive(true);
@@ -817,6 +822,7 @@ public class HubSpotCrmService implements CrmService {
         null, null, null, null,
         // TODO: email groups
         Collections.emptyList(),
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
         contact
     );
   }
@@ -858,6 +864,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         null,
         Collections.emptyList(),
+        null,
         null
     );
   }

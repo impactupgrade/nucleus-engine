@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -144,5 +145,7 @@ public interface CrmService extends SegmentService {
 
   Optional<CrmUser> getUserById(String id) throws Exception;
   String insertTask(CrmTask crmTask) throws Exception;
+
+  EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();
 
 }
