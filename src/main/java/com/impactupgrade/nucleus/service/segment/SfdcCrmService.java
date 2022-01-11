@@ -10,6 +10,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -191,6 +192,11 @@ public class SfdcCrmService implements CrmService {
     SObject task = new SObject("Task");
     setTaskFields(task, crmTask);
     return sfdcClient.insert(task).getId();
+  }
+
+  @Override
+  public EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions() {
+    return this.env.getConfig().salesforce.fieldDefinitions;
   }
 
   protected void setTaskFields(SObject task, CrmTask crmTask) {
@@ -1058,6 +1064,7 @@ public class SfdcCrmService implements CrmService {
         numberOfClosedOpps,
         lastCloseDate,
         Collections.emptyList(),
+        (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),
         sObject
     );
   }

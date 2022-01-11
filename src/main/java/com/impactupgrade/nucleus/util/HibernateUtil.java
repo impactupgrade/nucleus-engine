@@ -37,20 +37,14 @@ public class HibernateUtil {
         return sessionFactory;
     }
 
-    public static String buildNativeQuery(String schema, String entityTable, Criteria criteria) {
-        String baseQuery = "select * from " + schema + "." + entityTable;
+    public static String buildNativeQuery(String entityTable, Criteria criteria) {
+        String baseQuery = "select * from " + entityTable;
         StringBuilder stringBuilder = new StringBuilder(baseQuery);
-        stringBuilder.append(buildWhereClause(criteria));
-        return stringBuilder.toString();
-    }
-
-    public static String buildWhereClause(Criteria criteria) {
-        String where = "";
-        String sqlString = criteria.toSqlString();
-        if (!Strings.isNullOrEmpty(sqlString)) {
-            where = " where " + sqlString;
+        String criteriaString = criteria.toSqlString();
+        if (!Strings.isNullOrEmpty(criteriaString)) {
+            stringBuilder.append(" where " + criteriaString);
         }
-        return where;
+        return stringBuilder.toString();
     }
 
 }
