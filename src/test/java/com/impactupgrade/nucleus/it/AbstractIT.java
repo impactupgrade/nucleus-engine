@@ -156,7 +156,7 @@ public abstract class AbstractIT extends JerseyTest {
     }
 
     // HS needs time to catch up...
-    Thread.sleep(5000);
+    Thread.sleep(10000);
 
     // ensure we're actually clean
     assertEquals(0, hsClient.company().searchByName(name, Collections.emptyList()).getResults().size());
