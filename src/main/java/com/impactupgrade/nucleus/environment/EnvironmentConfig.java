@@ -248,6 +248,9 @@ public class EnvironmentConfig {
     CONTACTS, DONORS
   }
 
+  public Platform sendgridEmail = new Platform();
+  public Platform hubspotEmail = new Platform();
+
   public Backblaze backblaze = new Backblaze();
 
   public static class Backblaze extends Platform {
