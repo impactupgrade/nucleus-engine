@@ -5,6 +5,9 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
+import com.impactupgrade.integration.hubspot.crm.v3.Company;
+import com.impactupgrade.integration.hubspot.crm.v3.CompanyProperties;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
@@ -14,11 +17,17 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
@@ -37,9 +46,13 @@ import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Path("/crm")
 public class CrmController {
@@ -271,5 +284,99 @@ public class CrmController {
     env.contactService().processContactForm(formData);
 
     return Response.status(200).build();
+  }
+
+  @Path("/wa-import/file")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response waImport(
+          @FormDataParam("file") InputStream inputStream,
+          @FormDataParam("file") FormDataContentDisposition fileDisposition,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    Workbook workbook = new XSSFWorkbook(inputStream);
+    log.info(workbook.getNumberOfSheets());
+    //TODO: validate sheets count?
+
+    List<Map<String, String>> data = new ArrayList<>();
+    for (int i = 0; i<workbook.getNumberOfSheets(); i ++) {
+      Sheet sheet = workbook.getSheetAt(i);
+      log.info("Sheet name: {}", sheet.getSheetName());
+
+      Map<Integer, String> headers = new HashMap<>();
+      for (Row row : sheet) {
+        Map<String, String> rowMap = new HashMap<>();
+        if (row.getRowNum() == 0) {
+            for (Cell cell : row) {
+                headers.put(cell.getColumnIndex(), cell.getStringCellValue());
+            }
+            log.info("Headers: {}", headers);
+        } else {
+            for (Cell cell : row) {
+                String header = headers.get(cell.getColumnIndex());
+                switch (cell.getCellType()) {
+                    case NUMERIC:
+                        rowMap.put(header, String.valueOf(cell.getNumericCellValue()));
+                        break;
+                    default: rowMap.put(header, cell.getStringCellValue());
+                }
+            }
+            data.add(rowMap);
+        }
+
+      }
+
+
+
+
+    }
+
+    //log.info(data);
+
+    //TODO: convert map to contacts/companies
+    List<Company> companies = data.stream()
+            .map(this::asCompany)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    log.info("Companies: {}", companies);
+
+    return Response.status(200).build();
+  }
+
+  // TODO: move to utils / extends for other types except churh
+  private Company asCompany(Map<String, String> map) {
+    if (!isChurch(map)) {
+      return null;
+    }
+    CompanyProperties companyProperties = new CompanyProperties();
+    String name = map.get("Name").trim();
+    companyProperties.setName(name);
+    companyProperties.setAddress(map.get("Address1"));
+    companyProperties.setCity(map.get("City"));
+    companyProperties.setState(map.get("State"));
+    companyProperties.setZip(map.get("Zip"));
+    companyProperties.setCountry("USA");
+
+    Company company = new Company(name, companyProperties);
+    return company;
+  }
+
+  private boolean isChurch(Map<String, String> map) {
+    if (MapUtils.isEmpty(map) || !map.containsKey("Name")) {
+      return false;
+    }
+    String name = map.get("Name").trim();
+    // TODO: Can be moved to config?
+    Set<String> words = Sets.newHashSet("church", "chapel", "lutheran", "office", "hospital", "communit", "worship", "ministr", "women", "ladies",
+            "providence", "manor", "elca", "umc", "place", "service", "village", "presbyterian", "breeze park",
+            "steepleview", "rehab", "trinity", "foundation", "new basel", "sisters", "parish", "silver saints",
+            "peace");
+    return words.stream()
+            .filter(n -> name.toLowerCase().contains(n))
+            .findFirst().isPresent();
   }
 }
