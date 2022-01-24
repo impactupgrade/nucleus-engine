@@ -136,6 +136,45 @@ public class PaymentGatewayController {
     return Response.status(200).build();
   }
 
+  @Path("/verify/charges")
+  @GET
+  public Response verifyCharges(@Context HttpServletRequest request) throws Exception {
+    return verifyCharges(null, null, request);
+  }
+
+  @Path("/verify/charges")
+  @POST
+  public Response verifyCharges(
+      @FormParam("start") String start,
+      @FormParam("end") String end,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    Date startDate;
+    Date endDate;
+    if (Strings.isNullOrEmpty(start)) {
+      // If dates were not provided, this was likely a cronjob. Do the last 3 days.
+      Calendar startCal = Calendar.getInstance();
+      startCal.add(Calendar.HOUR, -72);
+      startDate = startCal.getTime();
+      endDate = Calendar.getInstance().getTime();
+    } else {
+      startDate = new SimpleDateFormat("yyyy-MM-dd").parse(start);
+      endDate = new SimpleDateFormat("yyyy-MM-dd").parse(end);
+    }
+
+    Runnable thread = () -> {
+      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+        // TODO: The results from this could be returned as a CSV...
+        paymentGatewayService.verifyCharges(startDate, endDate);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
   @Path("/replay/charges")
   @GET
   public Response verifyAndReplayCharges(@Context HttpServletRequest request) throws Exception {

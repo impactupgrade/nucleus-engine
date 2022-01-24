@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayTransaction;
 
 import java.util.Date;
@@ -16,6 +17,7 @@ public interface PaymentGatewayService extends SegmentService {
   List<PaymentGatewayTransaction> getTransactions(Date startDate, Date endDate) throws Exception;
   List<PaymentGatewayDeposit> getDeposits(Date startDate, Date endDate) throws Exception;
 
+  List<PaymentGatewayEvent> verifyCharges(Date startDate, Date endDate);
   void verifyAndReplayCharges(Date startDate, Date endDate);
   void verifyAndReplayDeposits(Date startDate, Date endDate);
 

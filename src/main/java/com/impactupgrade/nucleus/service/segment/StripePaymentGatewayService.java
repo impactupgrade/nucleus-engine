@@ -106,6 +106,87 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   }
 
   @Override
+  public List<PaymentGatewayEvent> verifyCharges(Date startDate, Date endDate) {
+    List<PaymentGatewayEvent> missingDonations = new ArrayList<>();
+
+    try {
+      SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+      Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+      int count = 0;
+      for (Charge charge : charges) {
+        if (!charge.getStatus().equalsIgnoreCase("succeeded")
+            || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+          continue;
+        }
+
+        count++;
+
+        try {
+          String paymentIntentId = charge.getPaymentIntent();
+          String chargeId = charge.getId();
+          String transactionId = chargeId;
+          Optional<CrmDonation> donation = Optional.empty();
+          if (!Strings.isNullOrEmpty(paymentIntentId)) {
+            donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
+            transactionId = paymentIntentId;
+          }
+          if (donation.isEmpty()) {
+            donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
+          }
+
+          if (donation.isEmpty()) {
+            log.info("verify-charges," + count + ",MISSING," + transactionId + "," + SDF.format(charge.getCreated() * 1000));
+          } else if (donation.get().status != CrmDonation.Status.SUCCESSFUL) {
+            log.info("verify-charges," + count + ",WRONG-STATE," + transactionId + "," + SDF.format(charge.getCreated() * 1000) + "," + donation.get().status);
+          } else {
+            continue;
+          }
+
+          // TODO: For now, avoiding this since it hits the Stripe API to fill in info.
+//          PaymentGatewayEvent paymentGatewayEvent;
+//          if (Strings.isNullOrEmpty(paymentIntentId)) {
+//            paymentGatewayEvent = chargeToPaymentGatewayEvent(charge);
+//          } else {
+//            paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject());
+//          }
+//          missingDonations.add(paymentGatewayEvent);
+        } catch (Exception e) {
+          log.error("charge verify failed", e);
+        }
+      }
+    } catch (Exception e) {
+      log.error("charge verifies failed", e);
+    }
+
+    return missingDonations;
+  }
+
+  // TODO: Once the above is returning results, use this. But for now, keeping the original one...
+//  @Override
+//  public void verifyAndReplayCharges(Date startDate, Date endDate) {
+//    try {
+//      SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+//
+//      List<PaymentGatewayEvent> missingDonations = verifyCharges(startDate, endDate);
+//
+//      int count = 0;
+//      for (PaymentGatewayEvent missingDonation : missingDonations) {
+//        count++;
+//
+//        try {
+//          log.info("(" + count + ") REPLAYING: " + missingDonation.getTransactionId());
+//          env.contactService().processDonor(missingDonation);
+//          env.donationService().createDonation(missingDonation);
+//        } catch (Exception e) {
+//          log.error("charge replay failed", e);
+//        }
+//      }
+//    } catch (Exception e) {
+//      log.error("charge replays failed", e);
+//    }
+//  }
+
+  @Override
   public void verifyAndReplayCharges(Date startDate, Date endDate) {
     try {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
