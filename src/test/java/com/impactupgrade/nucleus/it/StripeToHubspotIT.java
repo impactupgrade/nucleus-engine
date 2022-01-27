@@ -5,7 +5,7 @@
 package com.impactupgrade.nucleus.it;
 
 import com.google.common.io.Resources;
-import com.impactupgrade.integration.hubspot.crm.v3.Deal;
+import com.impactupgrade.integration.hubspot.Deal;
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;

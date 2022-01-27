@@ -4,11 +4,11 @@
 
 package com.impactupgrade.nucleus.it;
 
-import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResult;
-import com.impactupgrade.integration.hubspot.crm.v3.AssociationSearchResults;
-import com.impactupgrade.integration.hubspot.crm.v3.Company;
-import com.impactupgrade.integration.hubspot.crm.v3.CompanyResults;
-import com.impactupgrade.integration.hubspot.crm.v3.HasId;
+import com.impactupgrade.integration.hubspot.AssociationSearchResult;
+import com.impactupgrade.integration.hubspot.AssociationSearchResults;
+import com.impactupgrade.integration.hubspot.Company;
+import com.impactupgrade.integration.hubspot.CompanyResults;
+import com.impactupgrade.integration.hubspot.HasId;
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
