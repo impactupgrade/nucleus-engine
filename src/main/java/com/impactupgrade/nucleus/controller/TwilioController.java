@@ -41,6 +41,7 @@ import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -89,7 +90,8 @@ public class TwilioController {
                   pn = pn.replaceAll("[^0-9\\+]", "");
 
                   if (!Strings.isNullOrEmpty(pn)) {
-                    Message twilioMessage = twilioClient.sendMessage(pn, message, null);
+                    String personalizedMessage = personalizeMessage(message, c, listId);
+                    Message twilioMessage = twilioClient.sendMessage(pn, personalizedMessage, null);
 
                     log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
                         twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
@@ -125,6 +127,17 @@ public class TwilioController {
     new Thread(thread).start();
 
     return Response.ok().build();
+  }
+
+  private String personalizeMessage(String message, CrmContact c, String listId) {
+    if (Strings.isNullOrEmpty(message) || Objects.isNull(c) || Strings.isNullOrEmpty(listId)) {
+      return message;
+    }
+    return message
+            .replaceAll("\\[\\[first_name\\]\\]", c.firstName)
+            .replaceAll("\\[\\[last_name\\]\\]", c.lastName)
+            .replaceAll("\\[\\[contact_id\\]\\]", c.id)
+            .replaceAll("\\[\\[account_id\\]\\]", c.accountId);
   }
 
   /**
