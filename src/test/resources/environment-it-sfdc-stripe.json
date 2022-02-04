@@ -2,8 +2,8 @@
   "crmPrimary": "salesforce",
 
   "salesforce": {
-    "username": "bmeyer+sfdc@cornerstoneyc.org",
-    "password": "REC-nqk6pva4pzg!aefkKwY660MWSHyZtg6iCQcU7D0Q",
+    "username": "brett@impactupgrade.com",
+    "password": "4mJA6UrqffKZEP35KrR4uR9DgzwapiaVqVsVGDrT6",
 
     "fieldDefinitions": {
       "paymentGatewayName": "Payment_Gateway_Name__c",

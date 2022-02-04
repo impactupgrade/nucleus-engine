@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
@@ -35,15 +36,15 @@ public class MailchimpEmailService implements EmailService {
 
   @Override
   public String name() {
-      return "mailchimp";
+    return "mailchimp";
   }
 
   @Override
   public void init(Environment env) {
-      this.env = env;
-      primaryCrmService = env.primaryCrmService();
-      donationsCrmService = env.donationsCrmService();
-      mailchimpClient = new MailchimpClient(env);
+    this.env = env;
+    primaryCrmService = env.primaryCrmService();
+    donationsCrmService = env.donationsCrmService();
+    mailchimpClient = new MailchimpClient(env);
   }
 
   @Override
@@ -54,6 +55,25 @@ public class MailchimpEmailService implements EmailService {
   @Override
   public void sendEmailTemplate(String template, String to) {
     // TODO
+  }
+
+  @Override
+  public void syncContacts(Calendar lastSync) throws Exception {
+    for (EnvironmentConfig.MailchimpList mcList : env.getConfig().mailchimp.lists) {
+      // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
+      List<CrmContact> crmContacts = Collections.emptyList();
+      switch (mcList.type) {
+        case CONTACTS -> crmContacts = primaryCrmService.getEmailContacts(lastSync, mcList.crmFilter);
+        case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
+      }
+
+      int count = 0;
+      for (CrmContact crmContact : crmContacts) {
+        log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, mcList.id, count++, crmContacts.size());
+        mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
+        updateTags(mcList.id, crmContact);
+      }
+    }
   }
 
 //  @Override
@@ -87,124 +107,80 @@ public class MailchimpEmailService implements EmailService {
 //  }
 //
 
-  public void updateTags(String listId, CrmContact contact) throws Exception {
+  protected void updateTags(String listId, CrmContact crmContact) {
     try {
-      clearContactTags(listId, contact);
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      // DONATION METRICS
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      if (contact.totalDonationAmount != null) {
-        if (Double.parseDouble(contact.totalDonationAmount) >= env.getConfig().mailchimp.tagFilters.majorDonorAmount) {
-          addTagToContact(listId, contact, "Major Donor");
-        }
+      List<String> existingTags = mailchimpClient.getContactTags(listId, crmContact.email);;
+      List<String> tags = buildContactTags(crmContact);
+
+      // first, remove existing tags that are no longer true
+      existingTags.removeAll(tags);
+      for (String existingTag : existingTags) {
+        mailchimpClient.removeTag(listId, crmContact.email, existingTag);
       }
 
-      if (contact.lastDonationDate == null) {
-        addTagToContact(listId, contact, "No Donations");
-      } else {
-        Calendar lastDonation = Utils.getCalendarFromDateString(contact.lastDonationDate);
-        Calendar limit = Calendar.getInstance();
-        limit.add(Calendar.DAY_OF_MONTH, -env.getConfig().mailchimp.tagFilters.recentDonationDays);
-        if (lastDonation.before(limit)) {
-          addTagToContact(listId, contact, "Recent Donor");
-        }
+      // then, add new tags
+      tags.removeAll(existingTags);
+      for (String tag : tags) {
+        mailchimpClient.addTag(listId, crmContact.email, tag);
       }
-
-      if (Double.parseDouble(contact.numDonations) >= env.getConfig().mailchimp.tagFilters.frequentDonationAmount) {
-        addTagToContact(listId, contact, "Frequent Donor");
-      }
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      // DEMOGRAPHIC INFO
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      // LOCATION
-      if(contact.address.country != null) {
-          addTagToContact(listId, contact, "Country: " + contact.address.country);
-      }
-      if(contact.address.postalCode != null){
-          addTagToContact(listId, contact, "Zip: " + contact.address.postalCode);
-      }
-      if(contact.address.state != null){
-          addTagToContact(listId, contact, "State: " + contact.address.state);
-      }
-
-      //    char contactAgeGroup = Integer.toString(primaryCrmService.getAge(contact)).charAt(0);
-      //    addTagToContact(listId, contact, "Age: " + contactAgeGroup + "0 - " + contactAgeGroup + "9");
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      // PAST INTERACTIONS
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      if (contact.ownerName != null) {
-        addTagToContact(listId, contact, "Owner: " + contact.ownerName);
-      }
-
-      List<String> campaigns = primaryCrmService.getCampaigns(contact);
-      for (String c : campaigns) {
-          if(c != null) {
-              addTagToContact(listId, contact, "campaign: " + c);
-          }
-      }
-
-     } catch (Exception e) {
-       log.warn("Updating tags failed for contact: {}, {}", contact.id, contact.email);
-     }
-   }
-
-  protected List<String> getContactTags(String listId, CrmContact crmContact) throws Exception {
-    return mailchimpClient.getContactTags(listId, crmContact.email);
-  }
-
-  protected void clearContactTags(String listId, CrmContact crmContact) throws Exception {
-    for (String tag : getContactTags(listId, crmContact)) {
-      mailchimpClient.removeTag(listId, crmContact.email, tag);
+    } catch (Exception e) {
+      log.error("updating tags failed for contact: {} {}", crmContact.id, crmContact.email, e);
     }
   }
 
-  public void addTagToContact(String listId, CrmContact crmContact, String tag) throws Exception {
-    if (tag == null) {
-      return;
+  // Separate method, allowing orgs to add in (or completely override) the defaults.
+  // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
+  protected List<String> buildContactTags(CrmContact contact) throws Exception {
+    List<String> tags = new ArrayList<>();
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // DONATION METRICS
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    if (contact.totalDonationAmount != null
+        && Double.parseDouble(contact.totalDonationAmount) >= env.getConfig().mailchimp.tagFilters.majorDonorAmount) {
+      tags.add("Major Donor");
     }
-    mailchimpClient.addTag(listId, crmContact.email, tag);
-  }
 
-//  @Override
-//  public void syncTags(Calendar since) throws Exception {
-//    //Marketing List
-//    List<CrmContact> marketingContacts = primaryCrmService.getEmailContacts(since, null);
-//    marketingContacts.forEach(contact -> {
-//      try {
-//        updateTags("Marketing",contact);
-//      } catch (Exception e) {
-//        log.info("Marketing list tag sync failed at contact: " + contact.id);
-//      }
-//    });
-//    //DonorList
-//    List<CrmContact> donorContacts = primaryCrmService.getEmailDonorContacts(since, null);
-//    donorContacts.forEach(contact -> {
-//      try {
-//        updateTags("Donors",contact);
-//      } catch (Exception e) {
-//        log.info("Donor list tag sync failed at contact: " + contact.id);
-//      }
-//    });
-//  }
+    if (contact.lastDonationDate != null) {
+      tags.add("Donor");
 
-  @Override
-  public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.MailchimpList mcList : env.getConfig().mailchimp.lists) {
-      // TODO: All this will likely end up duplicated in each impl of this service. Refactor?
-      List<CrmContact> crmContacts = Collections.emptyList();
-      switch (mcList.type) {
-        case CONTACTS -> crmContacts = primaryCrmService.getEmailContacts(lastSync, mcList.crmFilter);
-        case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
-      }
-
-      int count = 0;
-      for (CrmContact crmContact : crmContacts) {
-        log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, mcList.id, count++, crmContacts.size());
-        mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
+      Calendar lastDonation = Utils.getCalendarFromDateString(contact.lastDonationDate);
+      Calendar limit = Calendar.getInstance();
+      limit.add(Calendar.DAY_OF_MONTH, -env.getConfig().mailchimp.tagFilters.recentDonorDays);
+      if (lastDonation.after(limit)) {
+        tags.add("Recent Donor");
       }
     }
+
+    if (contact.numDonations != null
+        && Double.parseDouble(contact.numDonations) >= env.getConfig().mailchimp.tagFilters.frequentDonorCount) {
+      tags.add("Frequent Donor");
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // DEMOGRAPHIC INFO
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // TODO: Would be great to have age, but the field (or "birthdate") tends to be custom within SFDC.
+//      char contactAgeGroup = Integer.toString(primaryCrmService.getAge(contact)).charAt(0);
+//      addTagToContact(listId, contact, "Age: " + contactAgeGroup + "0 - " + contactAgeGroup + "9");
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // INTERNAL INFO
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    if (contact.ownerName != null) {
+      tags.add("Owner: " + contact.ownerName);
+    }
+
+    // TODO: This will hurt the API limit of larger orgs. Try a "WHERE IN" query to bulk select using mass contact ID lists?
+    List<String> campaigns = primaryCrmService.getActiveCampaignsByContactId(contact.id);
+    for (String c : campaigns) {
+      tags.add("Campaign Member: " + c);
+    }
+
+    return tags;
   }
 
   /**
@@ -218,32 +194,32 @@ public class MailchimpEmailService implements EmailService {
         .orElseThrow(() -> new RuntimeException("group " + groupName + " not configured in environment.json"));
   }
 
-  protected CrmContact toCrmContact(MemberInfo member) {
-    if (member == null) {
-      return null;
-    }
-
-    CrmContact contact = new CrmContact();
-    contact.email = member.email_address;
-    contact.firstName = (String) member.merge_fields.mapping.get(FIRST_NAME);
-    contact.lastName = (String) member.merge_fields.mapping.get(LAST_NAME);
-    contact.mobilePhone = (String) member.merge_fields.mapping.get(PHONE_NUMBER);
-    contact.emailOptIn = SUBSCRIBED.equalsIgnoreCase(member.status);
-    contact.address = toCrmAddress((Map<String, Object>) member.merge_fields.mapping.get(ADDRESS));
-    // TODO
-//    contact.emailGroups = getContactGroupIDs(contact.listName, contact.email);
-    return contact;
-  }
-
-  protected CrmAddress toCrmAddress(Map<String, Object> address) {
-    CrmAddress crmAddress = new CrmAddress();
-    crmAddress.country = (String) address.get("country");
-    crmAddress.street = (String) address.get("state");
-    crmAddress.city = (String) address.get("city");
-    crmAddress.street = address.get("addr1") + "\n" + address.get("addr2");
-    crmAddress.postalCode = (String) address.get("zip");
-    return crmAddress;
-  }
+//  protected CrmContact toCrmContact(MemberInfo member) {
+//    if (member == null) {
+//      return null;
+//    }
+//
+//    CrmContact contact = new CrmContact();
+//    contact.email = member.email_address;
+//    contact.firstName = (String) member.merge_fields.mapping.get(FIRST_NAME);
+//    contact.lastName = (String) member.merge_fields.mapping.get(LAST_NAME);
+//    contact.mobilePhone = (String) member.merge_fields.mapping.get(PHONE_NUMBER);
+//    contact.emailOptIn = SUBSCRIBED.equalsIgnoreCase(member.status);
+//    contact.address = toCrmAddress((Map<String, Object>) member.merge_fields.mapping.get(ADDRESS));
+//    // TODO
+////    contact.emailGroups = getContactGroupIDs(contact.listName, contact.email);
+//    return contact;
+//  }
+//
+//  protected CrmAddress toCrmAddress(Map<String, Object> address) {
+//    CrmAddress crmAddress = new CrmAddress();
+//    crmAddress.country = (String) address.get("country");
+//    crmAddress.street = (String) address.get("state");
+//    crmAddress.city = (String) address.get("city");
+//    crmAddress.street = address.get("addr1") + "\n" + address.get("addr2");
+//    crmAddress.postalCode = (String) address.get("zip");
+//    return crmAddress;
+//  }
 
   protected MemberInfo toMcMemberInfo(CrmContact contact, Map<String, String> groups) {
     if (contact == null) {
@@ -259,7 +235,7 @@ public class MailchimpEmailService implements EmailService {
     mcContact.merge_fields.mapping.put(FIRST_NAME, contact.firstName);
     mcContact.merge_fields.mapping.put(LAST_NAME, contact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, contact.mobilePhone);
-    mcContact.mapping.put(ADDRESS, toMcAddress(contact.address));
+    mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(contact.address));
     mcContact.status = contact.canReceiveEmail() ? SUBSCRIBED : UNSUBSCRIBED;
 
     List<String> groupIds = contact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
@@ -277,7 +253,8 @@ public class MailchimpEmailService implements EmailService {
     mcAddress.mapping.put("country", address.country);
     mcAddress.mapping.put("state", address.state);
     mcAddress.mapping.put("city", address.city);
-    mcAddress.mapping.put("addr1", address.street); //TODO does not handle multiple address lines eg. addr1 & addr2
+    // TODO: CRM street does not handle multiple address lines eg. addr1 & addr2
+    mcAddress.mapping.put("addr1", address.street);
     mcAddress.mapping.put("zip", address.postalCode);
 
     return mcAddress;

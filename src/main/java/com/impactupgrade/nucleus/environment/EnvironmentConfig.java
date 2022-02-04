@@ -13,7 +13,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Whenever possible, we focus on being configuration-driven using one, large JSON file.
@@ -193,6 +198,8 @@ public class EnvironmentConfig {
     public String senderPn = "";
   }
 
+  // TODO: The following needs to be genericized to support other email platforms...
+
   /*
   "mailchimp": {
     "secretKey": "asdf",
@@ -241,10 +248,9 @@ public class EnvironmentConfig {
   }
 
   public static class MailchimpTagFilters {
-    //Set Low Intentionally For Testing
-    public Integer majorDonorAmount = 100;
-    public Integer recentDonationDays = 100;
-    public Integer frequentDonationAmount = 1;
+    public Integer majorDonorAmount = 1000;
+    public Integer recentDonorDays = 31;
+    public Integer frequentDonorCount = 6;
   }
 
   public enum MailchimpListType {

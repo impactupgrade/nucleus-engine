@@ -764,7 +764,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<String> getCampaigns(CrmContact contact){
+  public List<String> getActiveCampaignsByContactId(String contactId){
     throw new RuntimeException("not implemented");
   }
 
@@ -787,9 +787,10 @@ public class HubSpotCrmService implements CrmService {
         contact.getProperties().getLastname(),
         contact.getProperties().getEmail(),
         // TODO: need the breakdown of phones here
-        null,
+        null, // home phone
         contact.getProperties().getMobilephone(),
-        null,
+        null, // work phone
+        null, // other phone
         preferredPhone,
         crmAddress,
         (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, contact.getProperties().getOtherProperties()),
@@ -797,8 +798,8 @@ public class HubSpotCrmService implements CrmService {
         (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
         (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
         contact.getProperties().getOwnerId(),
-            null, null, null, null,
-        //TODO: tagging fields ^
+        //TODO: tagging fields
+        null, null, null, null,
         // TODO: email groups
         Collections.emptyList(),
         contact
@@ -827,6 +828,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         getValue(contact.getProperties().getPhone()),
         getValue(contact.getProperties().getMobilePhone()),
+        null,
         null,
         null,
         null,
