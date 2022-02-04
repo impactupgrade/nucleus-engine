@@ -16,6 +16,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.client.MailchimpClient.ADDRESS;
@@ -32,7 +33,7 @@ public class MailchimpEmailService implements EmailService {
   protected Environment env;
   protected CrmService primaryCrmService;
   protected CrmService donationsCrmService;
-  protected MailchimpClient mailchimpClient;
+  protected Map<String, MailchimpClient> mailchimpClients;
 
   @Override
   public String name() {
@@ -44,7 +45,10 @@ public class MailchimpEmailService implements EmailService {
     this.env = env;
     primaryCrmService = env.primaryCrmService();
     donationsCrmService = env.donationsCrmService();
-    mailchimpClient = new MailchimpClient(env);
+    Set<String> instances = env.getConfig().mailchimpInstances.keySet();
+    instances.forEach(instance -> {
+      mailchimpClients.put(instance, new MailchimpClient(env, instance));
+    });
   }
 
   @Override
@@ -59,22 +63,26 @@ public class MailchimpEmailService implements EmailService {
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.MailchimpList mcList : env.getConfig().mailchimp.lists) {
-      // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
-      List<CrmContact> crmContacts = Collections.emptyList();
-      switch (mcList.type) {
-        case CONTACTS -> crmContacts = primaryCrmService.getEmailContacts(lastSync, mcList.crmFilter);
-        case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
-      }
+    for (String instance: env.getConfig().mailchimpInstances.keySet()) {
+      EnvironmentConfig.Mailchimp mailchimpConfig = env.getConfig().mailchimpInstances.get(instance);
+      MailchimpClient mailchimpClient = mailchimpClients.get(instance);
+      for (EnvironmentConfig.MailchimpList mcList : mailchimpConfig.lists) {
+        // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
+        List<CrmContact> crmContacts = Collections.emptyList();
+        switch (mcList.type) {
+          case CONTACTS -> crmContacts = primaryCrmService.getEmailContacts(lastSync, mcList.crmFilter);
+          case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
+        }
 
-      List<String> crmContactIds = crmContacts.stream().map(c -> c.id).collect(Collectors.toList());
-      Map<String, List<String>> contactCampaignNames = primaryCrmService.getActiveCampaignsByContactIds(crmContactIds);
+        List<String> crmContactIds = crmContacts.stream().map(c -> c.id).collect(Collectors.toList());
+        Map<String, List<String>> contactCampaignNames = primaryCrmService.getActiveCampaignsByContactIds(crmContactIds);
 
-      int count = 0;
-      for (CrmContact crmContact : crmContacts) {
-        log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, mcList.id, count++, crmContacts.size());
-        mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
-        updateTags(mcList.id, crmContact, contactCampaignNames.get(crmContact.id));
+        int count = 0;
+        for (CrmContact crmContact : crmContacts) {
+          log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, mcList.id, count++, crmContacts.size());
+          mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
+          updateTags(mcList.id, crmContact, contactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
+        }
       }
     }
   }
@@ -110,9 +118,10 @@ public class MailchimpEmailService implements EmailService {
 //  }
 //
 
-  protected void updateTags(String listId, CrmContact crmContact, List<String> contactCampaignNames) {
+  protected void updateTags(String listId, CrmContact crmContact, List<String> contactCampaignNames,
+      MailchimpClient mailchimpClient, EnvironmentConfig.Mailchimp mailchimpConfig) {
     try {
-      List<String> activeTags = buildContactTags(crmContact, contactCampaignNames);
+      List<String> activeTags = buildContactTags(crmContact, contactCampaignNames, mailchimpConfig);
       List<String> inactiveTags = mailchimpClient.getContactTags(listId, crmContact.email);
       inactiveTags.removeAll(activeTags);
 
@@ -124,7 +133,7 @@ public class MailchimpEmailService implements EmailService {
 
   // Separate method, allowing orgs to add in (or completely override) the defaults.
   // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
-  protected List<String> buildContactTags(CrmContact contact, List<String> contactCampaignNames) throws Exception {
+  protected List<String> buildContactTags(CrmContact contact, List<String> contactCampaignNames, EnvironmentConfig.Mailchimp mailchimpConfig) throws Exception {
     List<String> tags = new ArrayList<>();
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +141,7 @@ public class MailchimpEmailService implements EmailService {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (contact.totalDonationAmount != null
-        && Double.parseDouble(contact.totalDonationAmount) >= env.getConfig().mailchimp.tagFilters.majorDonorAmount) {
+        && Double.parseDouble(contact.totalDonationAmount) >= mailchimpConfig.tagFilters.majorDonorAmount) {
       tags.add("Major Donor");
     }
 
@@ -141,14 +150,14 @@ public class MailchimpEmailService implements EmailService {
 
       Calendar lastDonation = Utils.getCalendarFromDateString(contact.lastDonationDate);
       Calendar limit = Calendar.getInstance();
-      limit.add(Calendar.DAY_OF_MONTH, -env.getConfig().mailchimp.tagFilters.recentDonorDays);
+      limit.add(Calendar.DAY_OF_MONTH, -mailchimpConfig.tagFilters.recentDonorDays);
       if (lastDonation.after(limit)) {
         tags.add("Recent Donor");
       }
     }
 
     if (contact.numDonations != null
-        && Double.parseDouble(contact.numDonations) >= env.getConfig().mailchimp.tagFilters.frequentDonorCount) {
+        && Double.parseDouble(contact.numDonations) >= mailchimpConfig.tagFilters.frequentDonorCount) {
       tags.add("Frequent Donor");
     }
 
