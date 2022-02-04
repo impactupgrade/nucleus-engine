@@ -90,7 +90,7 @@ public class TwilioController {
                   pn = pn.replaceAll("[^0-9\\+]", "");
 
                   if (!Strings.isNullOrEmpty(pn)) {
-                    String personalizedMessage = personalizeMessage(message, c, listId);
+                    String personalizedMessage = personalizeMessage(message, c);
                     Message twilioMessage = twilioClient.sendMessage(pn, personalizedMessage, null);
 
                     log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
@@ -129,15 +129,15 @@ public class TwilioController {
     return Response.ok().build();
   }
 
-  private String personalizeMessage(String message, CrmContact c, String listId) {
-    if (Strings.isNullOrEmpty(message) || Objects.isNull(c) || Strings.isNullOrEmpty(listId)) {
+  private String personalizeMessage(String message, CrmContact crmContact) {
+    if (Strings.isNullOrEmpty(message) || Objects.isNull(crmContact)) {
       return message;
     }
     return message
-            .replaceAll("\\[\\[first_name\\]\\]", c.firstName)
-            .replaceAll("\\[\\[last_name\\]\\]", c.lastName)
-            .replaceAll("\\[\\[contact_id\\]\\]", c.id)
-            .replaceAll("\\[\\[account_id\\]\\]", c.accountId);
+            .replaceAll("\\{\\{first_name\\}\\}", crmContact.firstName)
+            .replaceAll("\\{\\{last_name\\}\\}", crmContact.lastName)
+            .replaceAll("\\{\\{contact_id\\}\\}", crmContact.id)
+            .replaceAll("\\{\\{account_id\\}\\}", crmContact.accountId);
   }
 
   /**
