@@ -104,6 +104,7 @@ public class MailchimpClient {
     tag.mapping.put(TAG_NAME, tagName);
     EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
     editMemberMethod.tags = getContactInfo(listId, contactEmail).tags;
+    // TODO: Is there a way to remove a tag completely, rather than "adding" it in an inactive state?
     editMemberMethod.tags.add(tag);
     client.execute(editMemberMethod);
   }

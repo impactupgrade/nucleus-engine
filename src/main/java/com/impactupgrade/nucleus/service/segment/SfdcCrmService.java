@@ -10,7 +10,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -35,7 +34,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -584,26 +582,10 @@ public class SfdcCrmService implements CrmService {
     // likely not relevant in SFDC
   }
 
-  //TODO pocketing age for now
-//  @Override
-//  public Integer getAge(CrmContact contact) throws Exception{
-//    SObject individualAge = new SObject();
-//    if(sfdcClient.getOwner(contact.id).isEmpty()){
-//      log.info("Individual Associated with Contact: " + contact.id + "is Empty");
-//    }else{
-//      individualAge = sfdcClient.getOwner(contact.id).get();
-//    }
-//    return (Integer) individualAge.getField("IndividualsAge");
-//  }
-
   @Override
-  public List<String> getCampaigns(CrmContact contact) throws InterruptedException, ConnectionException {
-    List<SObject> campaigns = sfdcClient.getCampaigns(contact.id);
-    List<String> names = new ArrayList<>();
-    for(SObject c : campaigns){
-      names.add((String) c.getChild("Campaign").getField("Name"));
-    }
-    return names;
+  public List<String> getActiveCampaignsByContactId(String contactId) throws InterruptedException, ConnectionException {
+    return sfdcClient.getActiveCampaignsByContactId(contactId).stream()
+        .map(c -> (String) c.getChild("Campaign").getField("Name")).collect(Collectors.toList());
   }
 
   @Override
@@ -958,7 +940,8 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmContact toCrmContact(SObject sObject) {
     CrmAddress crmAddress = new CrmAddress(
-            //Tweaked to use address info from account vs contact
+        // TODO: This was updated to use Account instead of assuming Billing fields are directly on the Contact.
+        //  THOROUGHLY test this with all clients.
         (String) sObject.getChild("Account").getField("BillingStreet"),
         (String) sObject.getChild("Account").getField("BillingCity"),
         (String) sObject.getChild("Account").getField("BillingState"),
@@ -967,9 +950,8 @@ public class SfdcCrmService implements CrmService {
     );
 
     CrmContact.PreferredPhone preferredPhone = null;
-    if (sObject.getField("npe01__preferredphone__c") != null) {
-      String s = (String) sObject.getField("npe01__preferredphone__c");
-      preferredPhone = CrmContact.PreferredPhone.valueOf(s.toUpperCase(Locale.ROOT));
+    if (sObject.getField("npe01__PreferredPhone__c") != null) {
+      preferredPhone = CrmContact.PreferredPhone.fromName((String) sObject.getField("npe01__PreferredPhone__c"));
     }
 
     return new CrmContact(
@@ -980,7 +962,8 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Email"),
         (String) sObject.getField("HomePhone"),
         (String) sObject.getField("MobilePhone"),
-        (String) sObject.getField("npe01__workphone__c"),
+        (String) sObject.getField("npe01__WorkPhone__c"),
+        (String) sObject.getField("OtherPhone"),
         preferredPhone,
         crmAddress,
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptIn),

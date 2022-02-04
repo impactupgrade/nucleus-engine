@@ -115,13 +115,7 @@ public interface CrmService extends SegmentService {
 
   List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception;
   List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Tag Sync
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //TODO pocketing age for now
-  //Integer getAge(CrmContact contact) throws Exception;
-  List<String> getCampaigns(CrmContact contact) throws Exception;
+  List<String> getActiveCampaignsByContactId(String contactId) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BULK UTILS

@@ -5,13 +5,41 @@
 package com.impactupgrade.nucleus.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Strings;
 
 import java.util.List;
+import java.util.Locale;
 
 public class CrmContact {
 
   public enum PreferredPhone {
-    HOME, MOBILE, WORK
+    HOME(List.of("home", "household")),
+    MOBILE(List.of("mobile")),
+    WORK(List.of("work")),
+    OTHER(List.of("other"));
+
+    private final List<String> names;
+
+    PreferredPhone(List<String> names) {
+      this.names = names;
+    }
+
+    public static PreferredPhone fromName(String name) {
+      if (Strings.isNullOrEmpty(name)) {
+        return null;
+      }
+
+      if (HOME.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return HOME;
+      } else if (WORK.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return WORK;
+      } else if (OTHER.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return OTHER;
+      } else {
+        // default to mobile
+        return MOBILE;
+      }
+    }
   }
 
   public String id;
@@ -22,6 +50,7 @@ public class CrmContact {
   public String homePhone;
   public String mobilePhone;
   public String workPhone;
+  public String otherPhone;
   public PreferredPhone preferredPhone;
   public CrmAddress address = new CrmAddress();
   public Boolean emailOptIn;
@@ -48,7 +77,7 @@ public class CrmContact {
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmContact(String id, String accountId, String firstName, String lastName, String email, String homePhone,
-      String mobilePhone, String workPhone, PreferredPhone preferredPhone, CrmAddress address,
+      String mobilePhone, String workPhone, String otherPhone, PreferredPhone preferredPhone, CrmAddress address,
       Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, String ownerName, String totalDonationAmount, String numDonations, String lastDonationDate,  List<String> emailGroups,
       Object rawObject) {
     this.id = id;
@@ -59,6 +88,7 @@ public class CrmContact {
     this.homePhone = homePhone;
     this.mobilePhone = mobilePhone;
     this.workPhone = workPhone;
+    this.otherPhone = otherPhone;
     this.preferredPhone = preferredPhone;
     this.address = address;
     this.emailOptIn = emailOptIn;

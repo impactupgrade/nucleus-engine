@@ -124,11 +124,17 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  public List<SObject> getActiveCampaignsByContactId(String contactId) throws ConnectionException, InterruptedException {
+    // TODO: Note the use of CampaignMember -- currently need the name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
+    String query = "select Campaign.Name from CampaignMember where contactId = '" + contactId + "' and Campaign.IsActive=true";
+    return queryList(query);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__LastCloseDate__c, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__LastCloseDate__c, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
@@ -533,27 +539,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
     return querySingle(query);
   }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Tags
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//  public String individualFields = "IndividualsAge";
-//
-//  public Optional<SObject> getAge(String contactId) throws ConnectionException, InterruptedException {
-//    SObject contact = getContactById(contactId).get();
-//    String query = "select " + individualFields + " from Individual where Id = " + contact.getField("IndividualId");
-//    LoggingUtil.verbose(log, query);
-//    return querySingle(query);
-//
-//  }
-
-  public List<SObject> getCampaigns(String contactId) throws ConnectionException, InterruptedException {
-    String query = "select Campaign.name from campaignMember where contactId = '" + contactId + "'";
-    LoggingUtil.verbose(log, query);
-    return queryList(query);
-  }
-
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // META
