@@ -13,7 +13,6 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
-import com.impactupgrade.nucleus.util.LoggingUtil;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;
@@ -66,7 +65,6 @@ public class StripeController {
   @POST
   @Produces(MediaType.APPLICATION_JSON)
   public Response webhook(String json, @Context HttpServletRequest request) throws Exception {
-    LoggingUtil.verbose(log, json);
     Environment env = envFactory.init(request);
 
     // stripe-java uses GSON, so Jersey/Jackson won't work on its own
