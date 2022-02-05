@@ -1016,36 +1016,25 @@ public class SfdcCrmService implements CrmService {
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmDonation);
   }
-
-  protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
-    Map<String, Object> map = sfdcClient.toMap(sObject);
-    CrmRecurringDonation crmRecurringDonation = CrmRecurringDonationMapper.INSTANCE.toCrmRecurringDonation(map, env);
-    crmRecurringDonation.rawObject = sObject;
-    return crmRecurringDonation;
-  }
-
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmRecurringDonation);
   }
+  protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
+    return CrmRecurringDonationMapper.INSTANCE.toCrmRecurringDonation(sObject, env);
+  }
 
   public static class MapperConversions {
-    public String asString(Object obj) {
-      return (String) obj;
-    }
-    @Named("Double")
-    public Double asDouble(Object obj) {
-      return Double.parseDouble(obj.toString());
-    }
+    // TODO: May not need this superclass...
   }
 
   public static class RecurringDonationMapperConversions extends MapperConversions {
     @Named("Frequency")
-    public CrmRecurringDonation.Frequency asFrequency(Object obj) {
-      return CrmRecurringDonation.Frequency.fromName((String) obj);
+    public CrmRecurringDonation.Frequency asFrequency(String s) {
+      return CrmRecurringDonation.Frequency.fromName(s);
     }
     @Named("Open")
-    public boolean isOpen(Object obj) {
-      return "Open".equalsIgnoreCase((String) obj);
+    public boolean isOpen(String s) {
+      return "Open".equalsIgnoreCase(s);
     }
   }
 
@@ -1053,14 +1042,20 @@ public class SfdcCrmService implements CrmService {
   public interface CrmRecurringDonationMapper {
     CrmRecurringDonationMapper INSTANCE = Mappers.getMapper(CrmRecurringDonationMapper.class);
 
+    default CrmRecurringDonation toCrmRecurringDonation(SObject sObject, Environment env) {
+      Map<String, String> map = env.sfdcClient().toMapOfStrings(sObject);
+      return toCrmRecurringDonation(sObject, map, env);
+    }
+
     @Mapping(target = "id", source = "map.Id")
     @Mapping(target = "subscriptionId", expression = "java((String) map.get(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId))")
     @Mapping(target = "customerId", expression = "java((String) map.get(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId))")
-    @Mapping(target = "amount", source = "map.npe03__Amount__c", qualifiedByName = "Double")
+    @Mapping(target = "amount", source = "map.npe03__Amount__c")
     @Mapping(target = "paymentGatewayName", expression = "java((String) map.get(env.getConfig().salesforce.fieldDefinitions.paymentGatewayName))")
     @Mapping(target = "active", source = "map.npe03__Open_Ended_Status__c", qualifiedByName = "Open")
     @Mapping(target = "frequency", source = "map.npe03__Installment_Period__c", qualifiedByName = "Frequency")
-    CrmRecurringDonation toCrmRecurringDonation(Map<String, Object> map, Environment env);
+    @Mapping(target = "rawObject", expression = "java(sObject)")
+    CrmRecurringDonation toCrmRecurringDonation(SObject sObject, Map<String, String> map, Environment env);
   }
 
   public static void main(String[] args) throws InterruptedException, ConnectionException {
