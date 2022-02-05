@@ -10,6 +10,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -28,13 +29,19 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
+import org.mapstruct.factory.Mappers;
 
+import javax.servlet.http.HttpServletRequest;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -1011,17 +1018,58 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
-    String id = sObject.getId();
-    String subscriptionId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
-    String customerId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
-    String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
-    Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
-    boolean active = "Open".equalsIgnoreCase(sObject.getField("npe03__Open_Ended_Status__c").toString());
-    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(sObject.getField("npe03__Installment_Period__c").toString());
-    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, active, frequency, sObject);
+    Map<String, Object> map = sfdcClient.toMap(sObject);
+    CrmRecurringDonation crmRecurringDonation = CrmRecurringDonationMapper.INSTANCE.toCrmRecurringDonation(map, env);
+    crmRecurringDonation.rawObject = sObject;
+    return crmRecurringDonation;
   }
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmRecurringDonation);
+  }
+
+  public static class MapperConversions {
+    public String asString(Object obj) {
+      return (String) obj;
+    }
+    @Named("Double")
+    public Double asDouble(Object obj) {
+      return Double.parseDouble(obj.toString());
+    }
+  }
+
+  public static class RecurringDonationMapperConversions extends MapperConversions {
+    @Named("Frequency")
+    public CrmRecurringDonation.Frequency asFrequency(Object obj) {
+      return CrmRecurringDonation.Frequency.fromName((String) obj);
+    }
+    @Named("Open")
+    public boolean isOpen(Object obj) {
+      return "Open".equalsIgnoreCase((String) obj);
+    }
+  }
+
+  @Mapper(uses = RecurringDonationMapperConversions.class)
+  public interface CrmRecurringDonationMapper {
+    CrmRecurringDonationMapper INSTANCE = Mappers.getMapper(CrmRecurringDonationMapper.class);
+
+    @Mapping(target = "id", source = "map.Id")
+    @Mapping(target = "subscriptionId", expression = "java((String) map.get(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId))")
+    @Mapping(target = "customerId", expression = "java((String) map.get(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId))")
+    @Mapping(target = "amount", source = "map.npe03__Amount__c", qualifiedByName = "Double")
+    @Mapping(target = "paymentGatewayName", expression = "java((String) map.get(env.getConfig().salesforce.fieldDefinitions.paymentGatewayName))")
+    @Mapping(target = "active", source = "map.npe03__Open_Ended_Status__c", qualifiedByName = "Open")
+    @Mapping(target = "frequency", source = "map.npe03__Installment_Period__c", qualifiedByName = "Frequency")
+    CrmRecurringDonation toCrmRecurringDonation(Map<String, Object> map, Environment env);
+  }
+
+  public static void main(String[] args) throws InterruptedException, ConnectionException {
+    EnvironmentFactory envFactory = new EnvironmentFactory("environment-local.json");
+    SfdcCrmService sfdcCrmService = new SfdcCrmService();
+    sfdcCrmService.init(envFactory.init((HttpServletRequest) null));
+
+    SObject rd = sfdcCrmService.sfdcClient.getRecurringDonationById("a095G00001aph8PQAQ").get();
+    CrmRecurringDonation crmRd = sfdcCrmService.toCrmRecurringDonation(rd);
+    System.out.println(crmRd.id);
   }
 }

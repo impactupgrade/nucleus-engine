@@ -882,14 +882,14 @@ public class HubSpotCrmService implements CrmService {
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency, deal.getProperties().getOtherProperties()));
 
     return new CrmRecurringDonation(
-        deal.getId(),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getOtherProperties()),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getOtherProperties()),
-        deal.getProperties().getAmount(),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties()),
-        deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
-        frequency,
-        deal
+//        deal.getId(),
+//        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getOtherProperties()),
+//        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getOtherProperties()),
+//        deal.getProperties().getAmount(),
+//        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties()),
+//        deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
+//        frequency,
+//        deal
     );
   }
 

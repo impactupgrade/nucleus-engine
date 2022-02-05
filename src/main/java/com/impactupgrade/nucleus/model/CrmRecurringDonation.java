@@ -62,17 +62,4 @@ public class CrmRecurringDonation {
   public CrmRecurringDonation(String id) {
     this.id = id;
   }
-
-  // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount,
-      String paymentGatewayName, Boolean active, Frequency frequency, Object rawObject) {
-    this.id = id;
-    this.subscriptionId = subscriptionId;
-    this.customerId = customerId;
-    this.amount = amount;
-    this.paymentGatewayName = paymentGatewayName;
-    this.active = active;
-    this.frequency = frequency;
-    this.rawObject = rawObject;
-  }
 }
