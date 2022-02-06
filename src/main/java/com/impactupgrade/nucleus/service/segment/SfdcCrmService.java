@@ -906,16 +906,9 @@ public class SfdcCrmService implements CrmService {
     return campaign;
   }
 
-  protected CrmCampaign toCrmCampaign(SObject sObject) {
-    String id = sObject.getId();
-    return new CrmCampaign(id);
-  }
-
-  protected Optional<CrmCampaign> toCrmCampaign(Optional<SObject> sObject) {
-    return sObject.map(this::toCrmCampaign);
-  }
-
-  // TODO: starting to feel like we need an object mapper lib...
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // MAPPERS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   protected CrmAccount toCrmAccount(SObject sObject) {
     CrmAddress crmAddress = new CrmAddress(
@@ -935,7 +928,6 @@ public class SfdcCrmService implements CrmService {
         sObject
     );
   }
-
   protected Optional<CrmAccount> toCrmAccount(Optional<SObject> sObject) {
     return sObject.map(this::toCrmAccount);
   }
@@ -975,11 +967,9 @@ public class SfdcCrmService implements CrmService {
         sObject
     );
   }
-
   protected Optional<CrmContact> toCrmContact(Optional<SObject> sObject) {
     return sObject.map(this::toCrmContact);
   }
-
   protected List<CrmContact> toCrmContact(List<SObject> sObjects) {
     return sObjects.stream()
         .map(this::toCrmContact)
@@ -1012,22 +1002,31 @@ public class SfdcCrmService implements CrmService {
     return new CrmDonation(id, (String) sObject.getField("Name"), amount,
         paymentGatewayName, status, closeDate, sObject);
   }
-
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmDonation);
+  }
+
+  protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
+    Map<String, String> map = sfdcClient.toMapOfStrings(sObject);
+    return CrmRecurringDonationMapper.INSTANCE.toCrmRecurringDonation(sObject, map, env);
   }
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmRecurringDonation);
   }
-  protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
-    return CrmRecurringDonationMapper.INSTANCE.toCrmRecurringDonation(sObject, env);
+
+  protected CrmCampaign toCrmCampaign(SObject sObject) {
+    String id = sObject.getId();
+    return new CrmCampaign(id);
   }
+  protected Optional<CrmCampaign> toCrmCampaign(Optional<SObject> sObject) {
+    return sObject.map(this::toCrmCampaign);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // MAPPERS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static class MapperConversions {
-    // TODO: May not need this superclass...
-  }
-
-  public static class RecurringDonationMapperConversions extends MapperConversions {
     @Named("Frequency")
     public CrmRecurringDonation.Frequency asFrequency(String s) {
       return CrmRecurringDonation.Frequency.fromName(s);
@@ -1038,14 +1037,9 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
-  @Mapper(uses = RecurringDonationMapperConversions.class)
+  @Mapper(uses = MapperConversions.class)
   public interface CrmRecurringDonationMapper {
     CrmRecurringDonationMapper INSTANCE = Mappers.getMapper(CrmRecurringDonationMapper.class);
-
-    default CrmRecurringDonation toCrmRecurringDonation(SObject sObject, Environment env) {
-      Map<String, String> map = env.sfdcClient().toMapOfStrings(sObject);
-      return toCrmRecurringDonation(sObject, map, env);
-    }
 
     @Mapping(target = "id", source = "map.Id")
     @Mapping(target = "subscriptionId", expression = "java((String) map.get(env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId))")
