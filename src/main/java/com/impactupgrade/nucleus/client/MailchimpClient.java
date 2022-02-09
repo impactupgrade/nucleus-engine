@@ -15,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -78,34 +79,29 @@ public class MailchimpClient {
     return contact.interests.mapping.keySet();
   }
 
-  // TODO: TEST THIS
   public List<String> getContactTags(String listId, String contactEmail) throws IOException, MailchimpException {
     MemberInfo member = getContactInfo(listId, contactEmail);
     List<MailchimpObject> tags = (List<MailchimpObject>) member.mapping.get(TAGS);
     return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toList());
   }
 
-  // TODO: TEST THIS
-  public void addTag(String listId, String contactEmail, String tagName) throws IOException, MailchimpException {
-    MailchimpObject newTag = new MailchimpObject();
-    newTag.mapping.put(TAG_STATUS, TAG_ACTIVE);
-    newTag.mapping.put(TAG_NAME, tagName);
-    EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
-    // TODO: Necessary? Is there more of an add method that would preserve the existing list?
-    editMemberMethod.tags = getContactInfo(listId, contactEmail).tags;
-    editMemberMethod.tags.add(newTag);
-    client.execute(editMemberMethod);
-  }
+  public void updateContactTags(String listId, String contactEmail, List<String> activeTags, List<String> inactiveTags) throws IOException, MailchimpException {
+    ArrayList<MailchimpObject> tags = new ArrayList<>();
+    for (String activeTag : activeTags) {
+      MailchimpObject tag = new MailchimpObject();
+      tag.mapping.put(TAG_STATUS, TAG_ACTIVE);
+      tag.mapping.put(TAG_NAME, activeTag);
+      tags.add(tag);
+    }
+    for (String inactiveTag : inactiveTags) {
+      MailchimpObject tag = new MailchimpObject();
+      tag.mapping.put(TAG_STATUS, TAG_INACTIVE);
+      tag.mapping.put(TAG_NAME, inactiveTag);
+      tags.add(tag);
+    }
 
-  // TODO: TEST THIS
-  public void removeTag(String listId, String contactEmail, String tagName) throws IOException, MailchimpException {
-    MailchimpObject tag = new MailchimpObject();
-    tag.mapping.put(TAG_STATUS, TAG_INACTIVE);
-    tag.mapping.put(TAG_NAME, tagName);
     EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
-    editMemberMethod.tags = getContactInfo(listId, contactEmail).tags;
-    // TODO: Is there a way to remove a tag completely, rather than "adding" it in an inactive state?
-    editMemberMethod.tags.add(tag);
+    editMemberMethod.tags = tags;
     client.execute(editMemberMethod);
   }
 }
