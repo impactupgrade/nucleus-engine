@@ -67,11 +67,14 @@ public class MailchimpEmailService implements EmailService {
         case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
       }
 
+      List<String> crmContactIds = crmContacts.stream().map(c -> c.id).collect(Collectors.toList());
+      Map<String, List<String>> contactCampaignNames = primaryCrmService.getActiveCampaignsByContactIds(crmContactIds);
+
       int count = 0;
       for (CrmContact crmContact : crmContacts) {
         log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, mcList.id, count++, crmContacts.size());
         mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
-        updateTags(mcList.id, crmContact);
+        updateTags(mcList.id, crmContact, contactCampaignNames.get(crmContact.id));
       }
     }
   }
@@ -107,10 +110,10 @@ public class MailchimpEmailService implements EmailService {
 //  }
 //
 
-  protected void updateTags(String listId, CrmContact crmContact) {
+  protected void updateTags(String listId, CrmContact crmContact, List<String> contactCampaignNames) {
     try {
       List<String> existingTags = mailchimpClient.getContactTags(listId, crmContact.email);;
-      List<String> tags = buildContactTags(crmContact);
+      List<String> tags = buildContactTags(crmContact, contactCampaignNames);
 
       // first, remove existing tags that are no longer true
       existingTags.removeAll(tags);
@@ -130,7 +133,7 @@ public class MailchimpEmailService implements EmailService {
 
   // Separate method, allowing orgs to add in (or completely override) the defaults.
   // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
-  protected List<String> buildContactTags(CrmContact contact) throws Exception {
+  protected List<String> buildContactTags(CrmContact contact, List<String> contactCampaignNames) throws Exception {
     List<String> tags = new ArrayList<>();
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -174,10 +177,10 @@ public class MailchimpEmailService implements EmailService {
       tags.add("Owner: " + contact.ownerName);
     }
 
-    // TODO: This will hurt the API limit of larger orgs. Try a "WHERE IN" query to bulk select using mass contact ID lists?
-    List<String> campaigns = primaryCrmService.getActiveCampaignsByContactId(contact.id);
-    for (String c : campaigns) {
-      tags.add("Campaign Member: " + c);
+    if (contactCampaignNames != null) {
+      for (String c : contactCampaignNames) {
+        tags.add("Campaign Member: " + c);
+      }
     }
 
     return tags;

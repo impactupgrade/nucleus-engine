@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -111,7 +112,7 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default List<String> getActiveCampaignsByContactId(String contactId) throws Exception{
+  default Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
     return null;
   }
 
