@@ -33,7 +33,9 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -583,9 +585,18 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<String> getActiveCampaignsByContactId(String contactId) throws InterruptedException, ConnectionException {
-    return sfdcClient.getActiveCampaignsByContactId(contactId).stream()
-        .map(c -> (String) c.getChild("Campaign").getField("Name")).collect(Collectors.toList());
+  public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
+    Map<String, List<String>> contactCampaigns = new HashMap<>();
+    List<SObject> campaignMembers = sfdcClient.getActiveCampaignsByContactIds(contactIds);
+    for (SObject campaignMember : campaignMembers) {
+      String contactId = (String) campaignMember.getField("ContactId");
+      String campaignName = (String) campaignMember.getChild("Campaign").getField("Name");
+      if (!contactCampaigns.containsKey(contactId)) {
+        contactCampaigns.put(contactId, new ArrayList<>());
+      }
+      contactCampaigns.get(contactId).add(campaignName);
+    }
+    return contactCampaigns;
   }
 
   @Override

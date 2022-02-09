@@ -124,10 +124,30 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
-  public List<SObject> getActiveCampaignsByContactId(String contactId) throws ConnectionException, InterruptedException {
+  // See note on CrmService.getActiveCampaignsByContactIds. Retrieve in batches to preserve API limits!
+  public List<SObject> getActiveCampaignsByContactIds(List<String> contactIds) throws ConnectionException, InterruptedException {
     // TODO: Note the use of CampaignMember -- currently need the name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
-    String query = "select Campaign.Name from CampaignMember where contactId = '" + contactId + "' and Campaign.IsActive=true";
-    return queryList(query);
+
+    List<String> page;
+    List<String> more;
+    // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
+    if (contactIds.size() > 1000) {
+      page = contactIds.subList(0, 1000);
+      more = contactIds.subList(1000, contactIds.size());
+    } else {
+      page = contactIds;
+      more = Collections.emptyList();
+    }
+
+    String contactIdsJoin = page.stream().map(contactId -> "'" + contactId + "'").collect(Collectors.joining(","));
+    String query = "select ContactId, Campaign.Name from CampaignMember where ContactId in (" + contactIdsJoin + ") and Campaign.IsActive=true";
+    List<SObject> results = queryList(query);
+
+    if (!more.isEmpty()) {
+      results.addAll(getActiveCampaignsByContactIds(more));
+    }
+
+    return results;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

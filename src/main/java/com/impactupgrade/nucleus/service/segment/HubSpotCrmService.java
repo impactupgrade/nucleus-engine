@@ -764,7 +764,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<String> getActiveCampaignsByContactId(String contactId){
+  public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
