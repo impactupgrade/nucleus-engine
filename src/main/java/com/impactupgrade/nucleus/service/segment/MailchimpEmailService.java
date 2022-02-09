@@ -112,20 +112,11 @@ public class MailchimpEmailService implements EmailService {
 
   protected void updateTags(String listId, CrmContact crmContact, List<String> contactCampaignNames) {
     try {
-      List<String> existingTags = mailchimpClient.getContactTags(listId, crmContact.email);;
-      List<String> tags = buildContactTags(crmContact, contactCampaignNames);
+      List<String> activeTags = buildContactTags(crmContact, contactCampaignNames);
+      List<String> inactiveTags = mailchimpClient.getContactTags(listId, crmContact.email);
+      inactiveTags.removeAll(activeTags);
 
-      // first, remove existing tags that are no longer true
-      existingTags.removeAll(tags);
-      for (String existingTag : existingTags) {
-        mailchimpClient.removeTag(listId, crmContact.email, existingTag);
-      }
-
-      // then, add new tags
-      tags.removeAll(existingTags);
-      for (String tag : tags) {
-        mailchimpClient.addTag(listId, crmContact.email, tag);
-      }
+      mailchimpClient.updateContactTags(listId, crmContact.email, activeTags, inactiveTags);
     } catch (Exception e) {
       log.error("updating tags failed for contact: {} {}", crmContact.id, crmContact.email, e);
     }
