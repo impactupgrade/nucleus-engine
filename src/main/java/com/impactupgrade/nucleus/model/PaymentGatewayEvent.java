@@ -330,6 +330,13 @@ public class PaymentGatewayEvent {
     if (Strings.isNullOrEmpty(crmAccount.name) && !Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(crmContact.lastName)) {
       crmAccount.name = crmContact.firstName + " " + crmContact.lastName;
     }
+
+    // Finally, if we have no name at all, use a default. Many/most CRMs will fail without something.
+    if (Strings.isNullOrEmpty(crmAccount.name) && Strings.isNullOrEmpty(crmContact.lastName)) {
+      crmAccount.name = "Anonymous Account";
+      crmContact.firstName = "Anonymous";
+      crmContact.lastName = "Contact";
+    }
   }
 
   protected void initStripeAddress(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
