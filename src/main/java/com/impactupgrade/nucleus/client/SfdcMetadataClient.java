@@ -166,8 +166,23 @@ public class SfdcMetadataClient {
     log.info("added {} {} to all contact/campaign/opportunity record types", globalPicklistApiName, newValue);
   }
 
-  public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType, Integer fieldLength)
+  public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType)
       throws ConnectionException {
+    createCustomField(objectName, fieldName, fieldLabel, fieldType, null, null, null);
+  }
+
+  public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType,
+      Integer fieldLength) throws ConnectionException {
+    createCustomField(objectName, fieldName, fieldLabel, fieldType, fieldLength, null, null);
+  }
+
+  public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType,
+      Integer fieldPrecision, Integer fieldScale) throws ConnectionException {
+    createCustomField(objectName, fieldName, fieldLabel, fieldType, null, fieldPrecision, fieldScale);
+  }
+
+  public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType,
+			Integer fieldLength, Integer fieldPrecision, Integer fieldScale) throws ConnectionException {
     String fullName = objectName + "." + fieldName;
 
     CustomField customField = new CustomField();
@@ -175,6 +190,8 @@ public class SfdcMetadataClient {
     customField.setLabel(fieldLabel);
     customField.setType(fieldType);
     if (fieldLength != null) customField.setLength(fieldLength);
+    if (fieldPrecision != null) customField.setPrecision(fieldPrecision);
+    if (fieldScale != null) customField.setScale(fieldScale);
 
     MetadataConnection metadataConn = metadataConn();
 
