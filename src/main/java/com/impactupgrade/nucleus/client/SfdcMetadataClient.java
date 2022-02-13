@@ -4,15 +4,20 @@
 
 package com.impactupgrade.nucleus.client;
 
+import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.sforce.soap.metadata.Connector;
+import com.sforce.soap.metadata.CustomField;
 import com.sforce.soap.metadata.CustomValue;
+import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.metadata.FileProperties;
 import com.sforce.soap.metadata.GlobalValueSet;
 import com.sforce.soap.metadata.ListMetadataQuery;
 import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.soap.metadata.PicklistValue;
+import com.sforce.soap.metadata.Profile;
+import com.sforce.soap.metadata.ProfileFieldLevelSecurity;
 import com.sforce.soap.metadata.ReadResult;
 import com.sforce.soap.metadata.RecordType;
 import com.sforce.soap.metadata.RecordTypePicklistValue;
@@ -27,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Wraps the SFDC Metadata SOAP API.
@@ -158,5 +164,44 @@ public class SfdcMetadataClient {
 		}
 
 		log.info("added {} {} to all contact/campaign/opportunity record types", globalPicklistApiName, newValue);
+	}
+
+	public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType, Integer fieldLength)
+			throws ConnectionException {
+		String fullName = objectName + "." + fieldName;
+
+		CustomField customField = new CustomField();
+		customField.setFullName(fullName);
+		customField.setLabel(fieldLabel);
+		customField.setType(fieldType);
+		if (fieldLength != null) customField.setLength(fieldLength);
+
+		MetadataConnection metadataConn = metadataConn();
+
+		Arrays.stream(metadataConn.createMetadata(new Metadata[]{customField})).forEach(log::info);
+
+		ListMetadataQuery listMetadataQuery = new ListMetadataQuery();
+		listMetadataQuery.setType("Profile");
+		List<Profile> profiles = Arrays.stream(metadataConn.listMetadata(new ListMetadataQuery[]{listMetadataQuery}, 0.0))
+				.map(p -> {
+					Profile profile = new Profile();
+					profile.setFullName(p.getFullName());
+
+					ProfileFieldLevelSecurity fieldSec = new ProfileFieldLevelSecurity();
+					fieldSec.setField(fullName);
+					fieldSec.setEditable(true);
+					fieldSec.setReadable(true);
+					profile.setFieldPermissions(new ProfileFieldLevelSecurity[]{fieldSec});
+
+					return profile;
+				}).collect(Collectors.toList());
+
+		// API limits us to a max of 10 at a time (by default, NPSP has 17).
+		final List<List<Profile>> profileBatches = Lists.partition(profiles, 10);
+		for (List<Profile> profileBatch : profileBatches) {
+			Arrays.stream(metadataConn.updateMetadata(profileBatch.toArray(new Metadata[0]))).forEach(log::info);
+		}
+
+		// TODO: Add to page layouts?
 	}
 }
