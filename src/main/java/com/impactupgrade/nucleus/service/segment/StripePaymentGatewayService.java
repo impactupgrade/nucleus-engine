@@ -73,6 +73,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           e.getCrmContact().mobilePhone,
           e.getCrmContact().address.toString(),
           "Stripe",
+          charge.getId(),
           "https://dashboard.stripe.com/charges/" + charge.getId(),
           e.getAllMetadata()
       );

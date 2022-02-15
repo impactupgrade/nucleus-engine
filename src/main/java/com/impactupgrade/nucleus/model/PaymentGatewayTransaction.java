@@ -22,6 +22,7 @@ public record PaymentGatewayTransaction (
     String phone,
     String address,
     String source,
+    String id,
     String url,
     Map<String, String> rawMetadata
 ) {
