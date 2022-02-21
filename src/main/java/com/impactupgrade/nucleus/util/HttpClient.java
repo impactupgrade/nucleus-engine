@@ -13,6 +13,7 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Form;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Map;
@@ -24,6 +25,20 @@ public class HttpClient {
   }
 
   public static String getAsString(String url, String mediaType, String bearerToken) {
+    return get(url, mediaType, bearerToken, String.class);
+  }
+
+  public static <T> T get(String url, String mediaType, String bearerToken, Class<T> clazz) {
+    Response response = get(url, mediaType, bearerToken);
+    return HttpStatus.OK_200 == response.getStatus() ? response.readEntity(clazz) : null;
+  }
+
+  public static <T> T get(String url, String mediaType, String bearerToken, GenericType<T> genericType) {
+    Response response = get(url, mediaType, bearerToken);
+    return HttpStatus.OK_200 == response.getStatus() ? response.readEntity(genericType) : null;
+  }
+
+  private static Response get(String url, String mediaType, String bearerToken) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
     String defaultMediaType = !Strings.isNullOrEmpty(mediaType) ? mediaType : MediaType.TEXT_PLAIN;
@@ -31,8 +46,7 @@ public class HttpClient {
     if (!Strings.isNullOrEmpty(bearerToken)) {
       invocationBuilder.header("Authorization", "Bearer " + bearerToken);
     }
-    Response response = invocationBuilder.get();
-    return HttpStatus.OK_200 == response.getStatus() ? response.readEntity(String.class) : null;
+    return invocationBuilder.get();
   }
 
   public static <T> Response postJson(T entity, String bearerToken, String url, String... paths) {
