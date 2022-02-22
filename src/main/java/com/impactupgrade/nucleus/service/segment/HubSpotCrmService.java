@@ -401,7 +401,7 @@ public class HubSpotCrmService implements CrmService {
 
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
     deal.setDescription(paymentGatewayEvent.getTransactionDescription());
-    deal.setDealname("Donation: " + paymentGatewayEvent.getCrmAccount().name);
+    deal.setDealname("Donation: " + paymentGatewayEvent.getCrmContact().fullName());
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationDealId, paymentGatewayEvent.getCrmRecurringDonationId(), deal.getOtherProperties());
@@ -515,7 +515,7 @@ public class HubSpotCrmService implements CrmService {
     deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.openStageId);
 
     deal.setClosedate(paymentGatewayEvent.getTransactionDate());
-    deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmAccount().name);
+    deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmContact().fullName());
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId(), deal.getOtherProperties());

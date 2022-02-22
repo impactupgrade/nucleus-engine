@@ -118,4 +118,8 @@ public class CrmContact {
     }
     return true;
   }
+
+  public String fullName() {
+    return firstName + " " + lastName;
+  }
 }

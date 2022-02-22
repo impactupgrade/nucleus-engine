@@ -343,7 +343,7 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("Description", paymentGatewayEvent.getTransactionDescription());
 
     // purely a default, but we generally expect this to be overridden
-    opportunity.setField("Name", paymentGatewayEvent.getCrmAccount().name + " Donation");
+    opportunity.setField("Name", paymentGatewayEvent.getCrmContact().fullName() + " Donation");
   }
 
   @Override
@@ -445,7 +445,7 @@ public class SfdcCrmService implements CrmService {
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(paymentGatewayEvent).map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
-    recurringDonation.setField("Name", paymentGatewayEvent.getCrmAccount().name + " Recurring Donation");
+    recurringDonation.setField("Name", paymentGatewayEvent.getCrmContact().fullName() + " Recurring Donation");
   }
 
   @Override
