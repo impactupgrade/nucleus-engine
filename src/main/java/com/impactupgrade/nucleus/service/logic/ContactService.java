@@ -47,7 +47,8 @@ public class ContactService {
       log.info("found CRM contact {} and account {} using email {}",
           existingContact.get().id, existingContact.get().accountId, paymentGatewayEvent.getCrmContact().email);
       paymentGatewayEvent.setCrmAccountId(existingContact.get().accountId);
-      paymentGatewayEvent.setCrmContactId(existingContact.get().id);
+      // Set the full Contact, which we need to populate donation names, etc.
+      paymentGatewayEvent.setCrmContact(existingContact.get());
       return;
     }
 
@@ -61,6 +62,7 @@ public class ContactService {
     try {
       // create new Contact
       String contactId = crmService.insertContact(paymentGatewayEvent);
+      // Don't need to set the full Contact here, since the event already has all the details.
       paymentGatewayEvent.setCrmContactId(contactId);
     } catch (Exception e) {
       // Nearly always, this happens due to an issue that will never self-resolve, like an invalid email address
