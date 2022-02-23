@@ -67,8 +67,13 @@ public interface CrmService extends SegmentService {
   default String insertContact(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return insertContact(paymentGatewayEvent.getCrmContact());
   }
+  // TODO: This works, but is a double hit on the API. Could refactor the by-transaction-id chain to allow multiple IDs, OR'd together.
   default Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    return getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
+    Optional<CrmDonation> donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
+    if (donation.isEmpty()) {
+      donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionSecondaryId());
+    }
+    return donation;
   }
   String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
