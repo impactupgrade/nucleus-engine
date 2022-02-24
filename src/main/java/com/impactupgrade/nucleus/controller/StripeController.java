@@ -113,7 +113,7 @@ public class StripeController {
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
           log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
-          PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge);
+          PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
         }
@@ -122,7 +122,7 @@ public class StripeController {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
         log.info("found payment intent {}", paymentIntent.getId());
 
-        PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent);
+        PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
         env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
@@ -133,7 +133,7 @@ public class StripeController {
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
           log.info("charge {} is part of an intent; skipping...", charge.getId());
         } else {
-          PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge);
+          PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
         }
@@ -142,7 +142,7 @@ public class StripeController {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
         log.info("found payment intent {}", paymentIntent.getId());
 
-        PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent);
+        PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
         env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
@@ -208,9 +208,7 @@ public class StripeController {
         log.info("found payout {}", payout.getId());
 
         List<PaymentGatewayEvent> paymentGatewayEvents = stripePaymentGatewayService.payoutToPaymentGatewayEvents(payout);
-        for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
-          env.donationService().processDeposit(paymentGatewayEvent);
-        }
+        env.donationService().processDeposit(paymentGatewayEvents);
       }
       case "customer.source.expiring" -> {
         // Occurs whenever a card or source will expire at the end of the month.

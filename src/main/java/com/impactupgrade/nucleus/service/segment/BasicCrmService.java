@@ -84,7 +84,7 @@ public interface BasicCrmService extends CrmService {
     throw new RuntimeException("not implemented");
   }
 
-  default void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  default void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
   }
 
   default void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {

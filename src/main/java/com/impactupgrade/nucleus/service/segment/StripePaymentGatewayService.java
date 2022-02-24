@@ -217,9 +217,9 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
             PaymentGatewayEvent paymentGatewayEvent;
             if (Strings.isNullOrEmpty(paymentIntentId)) {
-              paymentGatewayEvent = chargeToPaymentGatewayEvent(charge);
+              paymentGatewayEvent = chargeToPaymentGatewayEvent(charge, true);
             } else {
-              paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject());
+              paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), true);
             }
             env.contactService().processDonor(paymentGatewayEvent);
             env.donationService().createDonation(paymentGatewayEvent);
@@ -240,10 +240,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       Iterable<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
       for (Payout payout : payouts) {
         try {
-          log.info(SDF.format(new Date(payout.getArrivalDate() * 1000)));
-          List<PaymentGatewayEvent> paymentGatewayEvents = payoutToPaymentGatewayEvents(payout);
-          for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
-            env.donationService().processDeposit(paymentGatewayEvent);
+          if ("paid".equalsIgnoreCase(payout.getStatus())) {
+            log.info(SDF.format(new Date(payout.getArrivalDate() * 1000)));
+            List<PaymentGatewayEvent> paymentGatewayEvents = payoutToPaymentGatewayEvents(payout);
+            env.donationService().processDeposit(paymentGatewayEvents);
           }
         } catch (Exception e) {
           log.error("deposit replay failed", e);
@@ -282,35 +282,35 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     stripeClient.cancelSubscription(manageDonationEvent.getSubscriptionId());
   }
 
-  public PaymentGatewayEvent chargeToPaymentGatewayEvent(Charge charge) throws StripeException {
+  public PaymentGatewayEvent chargeToPaymentGatewayEvent(Charge charge, boolean fullObjects) throws StripeException {
     Optional<BalanceTransaction> chargeBalanceTransaction;
-    if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
-      chargeBalanceTransaction = Optional.empty();
-    } else {
+    if (fullObjects && !Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
       chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(charge.getBalanceTransaction()));
       log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
+    } else {
+      chargeBalanceTransaction = Optional.empty();
     }
 
-    return chargeToPaymentGatewayEvent(charge, chargeBalanceTransaction);
+    return chargeToPaymentGatewayEvent(charge, chargeBalanceTransaction, fullObjects);
   }
 
-  public PaymentGatewayEvent chargeToPaymentGatewayEvent(Charge charge, Optional<BalanceTransaction> chargeBalanceTransaction) throws StripeException {
+  public PaymentGatewayEvent chargeToPaymentGatewayEvent(Charge charge, Optional<BalanceTransaction> chargeBalanceTransaction, boolean fullObjects) throws StripeException {
     PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
 
     Optional<Customer> chargeCustomer;
-    if (Strings.isNullOrEmpty(charge.getCustomer())) {
-      chargeCustomer = Optional.empty();
-    } else {
+    if (fullObjects && !Strings.isNullOrEmpty(charge.getCustomer())) {
       chargeCustomer = Optional.of(stripeClient.getCustomer(charge.getCustomer()));
       log.info("found customer {}", chargeCustomer.get().getId());
+    } else {
+      chargeCustomer = Optional.empty();
     }
 
     Optional<Invoice> chargeInvoice;
-    if (Strings.isNullOrEmpty(charge.getInvoice())) {
-      chargeInvoice = Optional.empty();
-    } else {
+    if (fullObjects && !Strings.isNullOrEmpty(charge.getInvoice())) {
       chargeInvoice = Optional.of(stripeClient.getInvoice(charge.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
+    } else {
+      chargeInvoice = Optional.empty();
     }
 
     paymentGatewayEvent.initStripe(charge, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
@@ -318,45 +318,45 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     return paymentGatewayEvent;
   }
 
-  public PaymentGatewayEvent paymentIntentToPaymentGatewayEvent(PaymentIntent paymentIntent) throws StripeException {
+  public PaymentGatewayEvent paymentIntentToPaymentGatewayEvent(PaymentIntent paymentIntent, boolean fullObjects) throws StripeException {
     Optional<BalanceTransaction> chargeBalanceTransaction = Optional.empty();
     if (paymentIntent.getCharges() != null && !paymentIntent.getCharges().getData().isEmpty()) {
       if (paymentIntent.getCharges().getData().size() == 1) {
         String balanceTransactionId = paymentIntent.getCharges().getData().get(0).getBalanceTransaction();
-        if (!Strings.isNullOrEmpty(balanceTransactionId)) {
+        if (fullObjects && !Strings.isNullOrEmpty(balanceTransactionId)) {
           chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(balanceTransactionId));
           log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
         }
       }
     }
 
-    return paymentIntentToPaymentGatewayEvent(paymentIntent, chargeBalanceTransaction);
+    return paymentIntentToPaymentGatewayEvent(paymentIntent, chargeBalanceTransaction, fullObjects);
   }
 
-  public PaymentGatewayEvent paymentIntentToPaymentGatewayEvent(PaymentIntent paymentIntent, Optional<BalanceTransaction> chargeBalanceTransaction) throws StripeException {
+  public PaymentGatewayEvent paymentIntentToPaymentGatewayEvent(PaymentIntent paymentIntent, Optional<BalanceTransaction> chargeBalanceTransaction, boolean fullObjects) throws StripeException {
     PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
 
     // TODO: For TER, the customers and/or metadata aren't always included in the webhook -- not sure why.
     //  For now, retrieve the whole PaymentIntent and try again...
-    PaymentIntent fullPaymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
+    paymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
 
     Optional<Customer> chargeCustomer;
-    if (Strings.isNullOrEmpty(fullPaymentIntent.getCustomer())) {
-      chargeCustomer = Optional.empty();
-    } else {
-      chargeCustomer = Optional.of(stripeClient.getCustomer(fullPaymentIntent.getCustomer()));
+    if (fullObjects && !Strings.isNullOrEmpty(paymentIntent.getCustomer())) {
+      chargeCustomer = Optional.of(stripeClient.getCustomer(paymentIntent.getCustomer()));
       log.info("found customer {}", chargeCustomer.get().getId());
+    } else {
+      chargeCustomer = Optional.empty();
     }
 
     Optional<Invoice> chargeInvoice;
-    if (Strings.isNullOrEmpty(fullPaymentIntent.getInvoice())) {
-      chargeInvoice = Optional.empty();
-    } else {
-      chargeInvoice = Optional.of(stripeClient.getInvoice(fullPaymentIntent.getInvoice()));
+    if (fullObjects && !Strings.isNullOrEmpty(paymentIntent.getInvoice())) {
+      chargeInvoice = Optional.of(stripeClient.getInvoice(paymentIntent.getInvoice()));
       log.info("found invoice {}", chargeInvoice.get().getId());
+    } else {
+      chargeInvoice = Optional.empty();
     }
 
-    paymentGatewayEvent.initStripe(fullPaymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
+    paymentGatewayEvent.initStripe(paymentIntent, chargeCustomer, chargeInvoice, chargeBalanceTransaction);
 
     return paymentGatewayEvent;
   }
@@ -371,12 +371,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
         PaymentGatewayEvent paymentGatewayEvent;
         if (Strings.isNullOrEmpty(charge.getPaymentIntent())) {
-          paymentGatewayEvent = chargeToPaymentGatewayEvent(charge, Optional.of(balanceTransaction));
+          paymentGatewayEvent = chargeToPaymentGatewayEvent(charge, Optional.of(balanceTransaction), false);
         } else {
-          // TODO: There's a chance we might have to retrieve the full intent, here. MetadataRetriever had a note
-          //  that made it sound like payment intents in a payout balance transaction aren't 100% filled out.
           log.info("found intent {}", charge.getPaymentIntent());
-          paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction));
+          paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction), false);
         }
 
         paymentGatewayEvent.setDepositId(payout.getId());

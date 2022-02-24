@@ -444,42 +444,43 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: Might be helpful to do something like this further upstream, preventing unnecessary processing
-    Optional<CrmDonation> donation = getDonation(paymentGatewayEvent);
+  public void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+    for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
+      Optional<CrmDonation> donation = getDonation(paymentGatewayEvent);
 
-    if (donation.isEmpty()) {
-      log.warn("unable to find HS donation using transaction {}", paymentGatewayEvent.getTransactionId());
-      return;
-    }
-
-    Deal deal = (Deal) donation.get().rawObject;
-
-    // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
-      if (!Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId)
-          && deal.getProperties().getOtherProperties().get(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId) == null) {
-        DealProperties dealProperties = new DealProperties();
-        setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate(), dealProperties.getOtherProperties());
-        setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId(), dealProperties.getOtherProperties());
-        hsClient.deal().update(donation.get().id, dealProperties);
-      } else {
-        log.info("skipping refund {}; already marked with refund deposit info", donation.get().id);
+      if (donation.isEmpty()) {
+        log.warn("unable to find HS donation using transaction {}", paymentGatewayEvent.getTransactionId());
+        continue;
       }
-      // Otherwise, assume it was a standard charge.
-    } else {
-      if (!Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId)
-          && deal.getProperties().getOtherProperties().get(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId) == null) {
-        DealProperties dealProperties = new DealProperties();
 
-        setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId(), dealProperties.getOtherProperties());
-        setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate(), dealProperties.getOtherProperties());
-        setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars(), dealProperties.getOtherProperties());
-        setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars(), dealProperties.getOtherProperties());
+      Deal deal = (Deal) donation.get().rawObject;
 
-        hsClient.deal().update(donation.get().id, dealProperties);
+      // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
+        if (!Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId)
+            && deal.getProperties().getOtherProperties().get(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId) == null) {
+          DealProperties dealProperties = new DealProperties();
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate(), dealProperties.getOtherProperties());
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId(), dealProperties.getOtherProperties());
+          hsClient.deal().update(donation.get().id, dealProperties);
+        } else {
+          log.info("skipping refund {}; already marked with refund deposit info", donation.get().id);
+        }
+        // Otherwise, assume it was a standard charge.
       } else {
-        log.info("skipping {}; already marked with deposit info", donation.get().id);
+        if (!Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId)
+            && deal.getProperties().getOtherProperties().get(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId) == null) {
+          DealProperties dealProperties = new DealProperties();
+
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId(), dealProperties.getOtherProperties());
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate(), dealProperties.getOtherProperties());
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars(), dealProperties.getOtherProperties());
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars(), dealProperties.getOtherProperties());
+
+          hsClient.deal().update(donation.get().id, dealProperties);
+        } else {
+          log.info("skipping {}; already marked with deposit info", donation.get().id);
+        }
       }
     }
 

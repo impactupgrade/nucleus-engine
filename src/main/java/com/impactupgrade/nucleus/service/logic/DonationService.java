@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
 import java.util.Optional;
 
 public class DonationService {
@@ -151,16 +152,7 @@ public class DonationService {
     }
   }
 
-  public void processDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmDonation> donation = crmService.getDonation(paymentGatewayEvent);
-
-    if (donation.isEmpty()) {
-      log.info("missing an CRM donation for transaction {}; notifying staff...", paymentGatewayEvent.getTransactionId());
-      // TODO: Send email alert
-      // TODO: First retry the original charge/intent succeeded event, just in case the original webhook failed?
-      return;
-    }
-
-    crmService.insertDonationDeposit(paymentGatewayEvent);
+  public void processDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+    crmService.insertDonationDeposit(paymentGatewayEvents);
   }
 }

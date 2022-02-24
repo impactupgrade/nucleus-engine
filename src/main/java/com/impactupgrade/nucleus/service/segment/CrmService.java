@@ -78,7 +78,7 @@ public interface CrmService extends SegmentService {
   String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
-  void insertDonationDeposit(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception;
   default Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return getRecurringDonationBySubscriptionId(paymentGatewayEvent.getSubscriptionId());
   }
