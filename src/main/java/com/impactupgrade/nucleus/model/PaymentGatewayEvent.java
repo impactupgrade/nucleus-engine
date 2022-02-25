@@ -295,27 +295,28 @@ public class PaymentGatewayEvent {
       crmAccount.name = billingDetails.get().getName();
     }
 
-    // Now do first name, again using metadata.
+    // Now do first name, again using metadata. Don't do "contains 'first' and contains 'name'", since that would also
+    // pick up, as an example, Raisely's use of fundraiser_first_name. Instead, use regex that's a little more explicit.
     crmContact.firstName = metadata.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
-      return key.contains("first") && key.contains("name");
+      return key.matches("(?i)first.*name");
     }).findFirst().map(Map.Entry::getValue).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.firstName)) {
       crmContact.firstName = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
-        return key.contains("first") && key.contains("name");
+        return key.matches("(?i)first.*name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
     // And now the last name.
     crmContact.lastName = metadata.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
-      return key.contains("last") && key.contains("name");
+      return key.matches("(?i)last.*name");
     }).findFirst().map(Map.Entry::getValue).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.lastName)) {
       crmContact.lastName = metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
-        return key.contains("last") && key.contains("name");
+        return key.matches("(?i)last.*name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
 
