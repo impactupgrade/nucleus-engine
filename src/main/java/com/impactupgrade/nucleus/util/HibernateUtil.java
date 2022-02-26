@@ -2,9 +2,9 @@ package com.impactupgrade.nucleus.util;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.model.Criteria;
-import com.impactupgrade.nucleus.model.Task;
-import com.impactupgrade.nucleus.model.TaskProgress;
-import com.impactupgrade.nucleus.model.TaskSchedule;
+import com.impactupgrade.nucleus.model.Job;
+import com.impactupgrade.nucleus.model.JobProgress;
+import com.impactupgrade.nucleus.model.JobSchedule;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -21,9 +21,9 @@ public class HibernateUtil {
         if (sessionFactory == null) {
             try {
                 final Configuration configuration = new Configuration();
-                configuration.addAnnotatedClass(Task.class);
-                configuration.addAnnotatedClass(TaskSchedule.class);
-                configuration.addAnnotatedClass(TaskProgress.class);
+                configuration.addAnnotatedClass(Job.class);
+                configuration.addAnnotatedClass(JobSchedule.class);
+                configuration.addAnnotatedClass(JobProgress.class);
                 sessionFactory = configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
             } catch (Throwable e) {
                 log.info("Failed to create session factory (DB may not be configured): {}", e.getMessage());

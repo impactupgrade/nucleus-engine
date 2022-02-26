@@ -1,7 +1,6 @@
 package com.impactupgrade.nucleus.model;
 
-public enum TaskType {
+public enum JobType {
 
     SMS_CAMPAIGN;
-
 }
