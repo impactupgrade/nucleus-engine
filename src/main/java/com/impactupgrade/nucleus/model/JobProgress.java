@@ -17,9 +17,9 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "task_schedule", schema = "public")
+@Table(name = "job_progress")
 @TypeDef(name = "json", typeClass = JsonType.class)
-public class TaskSchedule {
+public class JobProgress {
 
     @Id
     @GeneratedValue(generator = "sequence-generator")
@@ -27,19 +27,22 @@ public class TaskSchedule {
             name = "sequence-generator",
             strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator",
             parameters = {
-                    @Parameter(name = "sequence_name", value = "task_schedule_id"),
+                    @Parameter(name = "sequence_name", value = "job_progress_id"),
                     @Parameter(name = "initial_value", value = "1"),
                     @Parameter(name = "increment_size", value = "1")
             }
     )
     public Long id;
 
+    @Column(name = "contact_id", nullable = false)
+    public String contactId;
+
     @Type(type = "json")
     @Column(name = "payload", columnDefinition = "jsonb", nullable = false)
     public JsonNode payload;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "task_id")
-    public Task task;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_id")
+    public Job job;
 
 }

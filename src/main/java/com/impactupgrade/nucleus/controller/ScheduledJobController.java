@@ -3,7 +3,7 @@ package com.impactupgrade.nucleus.controller;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.logic.ScheduledTaskService;
+import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.SessionFactory;
@@ -14,29 +14,29 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 
-@Path("/scheduled-task")
-public class ScheduledTaskController {
+@Path("/scheduled-job")
+public class ScheduledJobController {
 
-    private static final Logger log = LogManager.getLogger(ScheduledTaskController.class);
+    private static final Logger log = LogManager.getLogger(ScheduledJobController.class);
 
     protected final EnvironmentFactory envFactory;
     protected final SessionFactory sessionFactory;
-    protected final ScheduledTaskService scheduledTaskService;
+    protected final ScheduledJobService scheduledJobService;
 
-    public ScheduledTaskController(EnvironmentFactory envFactory, SessionFactory sessionFactory) {
+    public ScheduledJobController(EnvironmentFactory envFactory, SessionFactory sessionFactory) {
         this.envFactory = envFactory;
         this.sessionFactory = sessionFactory;
-        this.scheduledTaskService = new ScheduledTaskService(sessionFactory);
+        this.scheduledJobService = new ScheduledJobService(sessionFactory);
     }
 
     @GET
     public Response execute(@Context HttpServletRequest request) {
-        log.info("executing scheduled tasks");
+        log.info("executing scheduled jobs");
 
         Environment env = envFactory.init(request);
         SecurityUtil.verifyApiKey(env);
 
-        new Thread(() -> scheduledTaskService.processTaskSchedules(env)).start();
+        new Thread(() -> scheduledJobService.processJobSchedules(env)).start();
         return Response.ok().build();
     }
 

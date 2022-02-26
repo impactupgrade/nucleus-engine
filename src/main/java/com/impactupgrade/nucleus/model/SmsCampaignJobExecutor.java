@@ -26,29 +26,29 @@ import java.util.Optional;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 
-import static com.impactupgrade.nucleus.service.logic.ScheduledTaskService.DATE_FORMAT;
-import static com.impactupgrade.nucleus.service.logic.ScheduledTaskService.TIME_ZONE;
+import static com.impactupgrade.nucleus.service.logic.ScheduledJobService.DATE_FORMAT;
+import static com.impactupgrade.nucleus.service.logic.ScheduledJobService.TIME_ZONE;
 
-public class SmsCampaignTaskExecutor implements TaskExecutor {
+public class SmsCampaignJobExecutor implements JobExecutor {
 
-    private static final Logger log = LogManager.getLogger(SmsCampaignTaskExecutor.class);
+    private static final Logger log = LogManager.getLogger(SmsCampaignJobExecutor.class);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final HibernateDao<Long, Task> taskDao;
+    private final HibernateDao<Long, Job> jobDao;
     private final CrmService crmService;
     private final TwilioClient twilioClient;
 
-    public SmsCampaignTaskExecutor(HibernateDao<Long, Task> taskDao, Environment environment) {
-        this.taskDao = taskDao;
+    public SmsCampaignJobExecutor(HibernateDao<Long, Job> jobDao, Environment environment) {
+        this.jobDao = jobDao;
         this.crmService = environment.primaryCrmService();
         this.twilioClient = environment.twilioClient();
     }
 
     @Override
-    public void execute(Task task, TaskSchedule taskSchedule) {
-        String contactListId = getCrmContactListId(task.payload);
+    public void execute(Job job, JobSchedule jobSchedule) {
+        String contactListId = getCrmContactListId(job.payload);
         if (Strings.isNullOrEmpty(contactListId)) {
-            log.error("Failed to get contact list id for task id {}! Returning...", task.id);
+            log.error("Failed to get contact list id for job id {}! Returning...", job.id);
             return;
         }
 
@@ -62,67 +62,67 @@ public class SmsCampaignTaskExecutor implements TaskExecutor {
 
         if (CollectionUtils.isEmpty(crmContacts)) {
             // No one to send to!
-            log.warn("Could not get any contact ids for task id {}! Returning...", task.id);
+            log.warn("Could not get any contact ids for job id {}! Returning...", job.id);
             return;
         }
 
-        JsonNode messagesNode = getMessagesNode(task.payload);
+        JsonNode messagesNode = getMessagesNode(job.payload);
         if (Objects.isNull(messagesNode)) {
-            log.error("Failed to get messages for task id {}! Returning...", task.id);
+            log.error("Failed to get messages for job id {}! Returning...", job.id);
             throw new IllegalArgumentException();
         }
         if (messagesNode.isEmpty()) {
             // Nothing to send!
-            log.warn("Could not get any messages for task id {}! Returning...", task.id);
+            log.warn("Could not get any messages for job id {}! Returning...", job.id);
             return;
         }
 
-        List<TaskProgress> taskProgresses = task.taskProgresses;
-        Map<String, TaskProgress> progressesByContacts =
-                CollectionUtils.isNotEmpty(taskProgresses) ?
-                        taskProgresses.stream()
+        List<JobProgress> jobProgresses = job.jobProgresses;
+        Map<String, JobProgress> progressesByContacts =
+                CollectionUtils.isNotEmpty(jobProgresses) ?
+                        jobProgresses.stream()
                                 .collect(Collectors.toMap(tp -> tp.contactId, tp -> tp))
                         : Collections.emptyMap();
 
         for (CrmContact crmContact : crmContacts) {
             String contactId = crmContact.id;
             Integer nextMessage = 1;
-            TaskProgress taskProgress = progressesByContacts.get(contactId);
+            JobProgress jobProgress = progressesByContacts.get(contactId);
 
-            if (Objects.isNull(taskProgress)) {
+            if (Objects.isNull(jobProgress)) {
                 log.info("Contact id {} does not have any progress so far...", contactId);
 
-                // Create new task progress
-                taskProgress = new TaskProgress();
-                taskProgress.contactId = contactId;
-                taskProgress.payload = objectMapper.createObjectNode();
-                taskProgress.task = task;
-                task.taskProgresses.add(taskProgress);
+                // Create new job progress
+                jobProgress = new JobProgress();
+                jobProgress.contactId = contactId;
+                jobProgress.payload = objectMapper.createObjectNode();
+                jobProgress.job = job;
+                job.jobProgresses.add(jobProgress);
 
             } else {
                 log.info("Checking existing progress for contact id {}...", contactId);
-                Date lastSentAt = getLastSentAt(taskProgress.payload);
+                Date lastSentAt = getLastSentAt(jobProgress.payload);
                 if (Objects.isNull(lastSentAt)) {
-                    log.error("Failed to get last sent timestamp for task progress id {}! ", taskProgress.id);
+                    log.error("Failed to get last sent timestamp for job progress id {}! ", jobProgress.id);
                     continue;
                 }
 
-                Optional<Date> nextFireTime = getNextFireTime(lastSentAt, taskSchedule);
+                Optional<Date> nextFireTime = getNextFireTime(lastSentAt, jobSchedule);
                 if (Objects.isNull(nextFireTime)) {
-                    log.error("Failed to get next fire time for task id {}!", task.id);
+                    log.error("Failed to get next fire time for job id {}!", job.id);
                     continue;
                 }
 
                 if (nextFireTime.isEmpty() // One time send
                         // or too soon for a new run
                         || new Date().before(nextFireTime.get())) {
-                    log.info("Message already sent at {}. Next fire time is {}. Skipping...", getLastSentAt(taskProgress.payload), nextFireTime.get());
+                    log.info("Message already sent at {}. Next fire time is {}. Skipping...", getLastSentAt(jobProgress.payload), nextFireTime.get());
                     continue;
                 }
 
-                Integer lastSentMessage = getLastSentMessage(taskProgress.payload);
+                Integer lastSentMessage = getLastSentMessage(jobProgress.payload);
                 if (Objects.isNull(lastSentMessage)) {
-                    log.error("Failed to get last sent message from task progress id {}! ", taskProgress.id);
+                    log.error("Failed to get last sent message from job progress id {}! ", jobProgress.id);
                     continue;
                 }
                 log.info("Last sent message id for contact id {} is {}", contactId, lastSentMessage);
@@ -151,10 +151,10 @@ public class SmsCampaignTaskExecutor implements TaskExecutor {
             twilioClient.sendMessage(contactPhoneNumber, message);
             log.info("Message sent!");
 
-            setLastSentInfo(taskProgress.payload, nextMessage);
-            taskDao.update(task);
+            setLastSentInfo(jobProgress.payload, nextMessage);
+            jobDao.update(job);
         }
-        log.info("Task processed!");
+        log.info("Job processed!");
     }
 
     // JsonNode utils
@@ -212,18 +212,18 @@ public class SmsCampaignTaskExecutor implements TaskExecutor {
     }
 
     // Date utils
-    private Optional<Date> getNextFireTime(Date lastSentAt, TaskSchedule taskSchedule) {
-        if (Objects.isNull(taskSchedule)
-                || Objects.isNull(taskSchedule.payload)
-                || Objects.isNull(taskSchedule.payload.findValue("start"))) {
+    private Optional<Date> getNextFireTime(Date lastSentAt, JobSchedule jobSchedule) {
+        if (Objects.isNull(jobSchedule)
+                || Objects.isNull(jobSchedule.payload)
+                || Objects.isNull(jobSchedule.payload.findValue("start"))) {
             return null;
         }
-        if (Objects.isNull(taskSchedule.payload.findValue("frequency"))
-                || Objects.isNull(taskSchedule.payload.findValue("interval"))) {
+        if (Objects.isNull(jobSchedule.payload.findValue("frequency"))
+                || Objects.isNull(jobSchedule.payload.findValue("interval"))) {
             return Optional.empty();
         }
 
-        JsonNode jsonNode = taskSchedule.payload;
+        JsonNode jsonNode = jobSchedule.payload;
         Date startDate = parseDate(jsonNode.findValue("start").asText());
         String frequency = jsonNode.findValue("frequency").asText();
         Integer interval = jsonNode.findValue("interval").asInt();

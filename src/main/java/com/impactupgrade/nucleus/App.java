@@ -10,7 +10,7 @@ import com.impactupgrade.nucleus.controller.DonationFormController;
 import com.impactupgrade.nucleus.controller.EmailController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
-import com.impactupgrade.nucleus.controller.ScheduledTaskController;
+import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
@@ -147,7 +147,7 @@ public class App {
   protected StripeController stripeController() { return new StripeController(envFactory); }
   protected TwilioController twilioController() { return new TwilioController(envFactory); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
-  protected ScheduledTaskController scheduledTaskController() { return new ScheduledTaskController(envFactory, sessionFactory); }
+  protected ScheduledJobController scheduledTaskController() { return new ScheduledJobController(envFactory, sessionFactory); }
 
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
