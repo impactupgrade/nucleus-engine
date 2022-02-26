@@ -19,6 +19,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -97,8 +98,9 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("donorInfo[zip]", Strings.nullToEmpty(crmContact.address.postalCode)));
     params.add(new BasicNameValuePair("donorInfo[email]", Strings.nullToEmpty(crmContact.email)));
     params.add(new BasicNameValuePair("donorInfo[phone]", Strings.nullToEmpty(crmContact.mobilePhone)));
-    params.add(new BasicNameValuePair("donorInfo[first]", Strings.nullToEmpty(crmContact.firstName)));
-    params.add(new BasicNameValuePair("donorInfo[last]", Strings.nullToEmpty(crmContact.lastName)));
+    params.add(new BasicNameValuePair("donorInfo[first]", crmContact.firstName));
+    params.add(new BasicNameValuePair("donorInfo[last]", crmContact.lastName));
+    params.add(new BasicNameValuePair("donorInfo[display]", crmContact.fullName()));
 
     HttpResponse response = executePost(params);
     String responseString = getResponseString(response);
@@ -148,6 +150,7 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("action", "addUpdateDonation"));
     params.add(new BasicNameValuePair("id", "-1"));
     params.add(new BasicNameValuePair("donationInfo[giftType]", "Gift"));
+    params.add(new BasicNameValuePair("donationInfo[created]", new SimpleDateFormat("yyyy-MM-dd").format(paymentGatewayEvent.getTransactionDate().getTime())));
     params.add(new BasicNameValuePair("donationInfo[donorId]", paymentGatewayEvent.getCrmContact().id));
     params.add(new BasicNameValuePair("donationInfo[notes]", Strings.nullToEmpty(paymentGatewayEvent.getTransactionDescription())));
     params.add(new BasicNameValuePair("donationInfo[source]", paymentGatewayEvent.getGatewayName()));
@@ -158,15 +161,16 @@ public class DonorWranglerClient {
 //    params.add(new BasicNameValuePair("donationInfo[feeAmount]", donation.getStripeFeeInDollars() + ""));
     params.add(new BasicNameValuePair("donationInfo[referenceNum]", paymentGatewayEvent.getTransactionId()));
 
-    // if DS provided a configurable key/value, use them -- otherwise, default to Fund
-    if (paymentGatewayEvent.getMetadataValue("Subselection Key") != null) {
-      params.add(new BasicNameValuePair("donationInfo[fund]", paymentGatewayEvent.getMetadataValue("Subselection Key")));
+    // if DS provided a configurable key/value, use them -- otherwise, default to General
+    String subselectionValue = paymentGatewayEvent.getMetadataValue("Subselection Value");
+    if (!Strings.isNullOrEmpty(subselectionValue) && !"general".equalsIgnoreCase(subselectionValue)) {
+//      params.add(new BasicNameValuePair("donationInfo[fund]", paymentGatewayEvent.getMetadataValue("Subselection Key")));
       params.add(new BasicNameValuePair("donationInfo[directedPurpose]", Strings.nullToEmpty(paymentGatewayEvent.getMetadataValue("Subselection Value"))));
     } else if (paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund) != null) {
-      params.add(new BasicNameValuePair("donationInfo[fund]", "Fund"));
+//      params.add(new BasicNameValuePair("donationInfo[fund]", "Fund"));
       params.add(new BasicNameValuePair("donationInfo[directedPurpose]", paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund)));
     } else {
-      params.add(new BasicNameValuePair("donationInfo[fund]", "General"));
+//      params.add(new BasicNameValuePair("donationInfo[fund]", "General"));
     }
 
     HttpResponse response = executePost(params);
