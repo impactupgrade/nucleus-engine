@@ -16,7 +16,7 @@ import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
-import com.impactupgrade.nucleus.util.HibernateUtil;
+import com.impactupgrade.nucleus.dao.HibernateUtil;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;

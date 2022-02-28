@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
+import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -22,6 +23,7 @@ import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.SessionFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
@@ -109,6 +111,7 @@ public class Environment {
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
   public NotificationService notificationService() { return new NotificationService(this); }
+  public ScheduledJobService scheduledJobService(SessionFactory sessionFactory) { return new ScheduledJobService(this, sessionFactory); }
 
   // segment services
 
