@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -17,6 +18,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public abstract class AbstractMockTest {
 
+  protected static final ObjectMapper MAPPER = new ObjectMapper();
+
   // TODO: Do these need reset after each test method, or does Mockito/Junit do that automatically?
   @Mock protected DonationService donationServiceMock;
   @Mock protected ContactService contactServiceMock;
@@ -29,6 +32,10 @@ public abstract class AbstractMockTest {
 
     @Override
     public CrmService crmService(String name) {
+      return crmServiceMock;
+    }
+    @Override
+    public CrmService primaryCrmService() {
       return crmServiceMock;
     }
 
