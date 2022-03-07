@@ -286,13 +286,17 @@ public class PaymentGatewayEvent {
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(Map.Entry::getValue).orElse(null);
     }
-    // And finally, the billing details, if nothing else.
+    // Still nothing? Try the billing details.
     if (Strings.isNullOrEmpty(crmAccount.name) && billingDetails.isPresent()
         && !Strings.isNullOrEmpty(billingDetails.get().getName())
         // Some vendors, like Custom Donations, may use email as the billing details name if no true name
         // was available. Sanity check and skip if so...
         && !billingDetails.get().getName().contains("@")) {
       crmAccount.name = billingDetails.get().getName();
+    }
+    // And finally, because some platforms are silly and use Description, try that...
+    if (Strings.isNullOrEmpty(crmAccount.name)) {
+      crmAccount.name = stripeCustomer.map(Customer::getDescription).orElse(null);
     }
 
     // Now do first name, again using metadata. Don't do "contains 'first' and contains 'name'", since that would also
