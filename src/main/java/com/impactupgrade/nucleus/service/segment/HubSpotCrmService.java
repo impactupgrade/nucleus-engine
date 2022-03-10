@@ -742,7 +742,6 @@ public class HubSpotCrmService implements CrmService {
     return new CrmAccount(
         company.getId(),
         company.getProperties().getName(),
-        null,
         crmAddress,
         // TODO: Differentiate between Household and Organization?
         CrmAccount.Type.HOUSEHOLD,

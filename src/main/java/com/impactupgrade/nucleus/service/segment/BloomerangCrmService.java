@@ -111,7 +111,7 @@ public class BloomerangCrmService implements BasicCrmService {
   @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     // TODO
-    return null;
+    return Collections.emptyList();
   }
 
   @Override

@@ -87,11 +87,8 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) throws InterruptedException, ConnectionException {
-    List<SObject> contacts = sfdcClient.searchContacts(firstName, lastName, email, phone, address);
-    if (contacts.isEmpty()) {
-      return Collections.emptyList();
-    }
-    return contacts.stream().map(c -> toCrmContact(c)).collect(Collectors.toList());
+    return sfdcClient.searchContacts(firstName, lastName, email, phone, address)
+        .stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
@@ -153,9 +150,6 @@ public class SfdcCrmService implements CrmService {
 
     List<String> emailClauses = new ArrayList<>();
     if (email.isPresent()) {
-      if (env.getConfig().salesforce.customQueryFields.recurringDonation.contains("npe03__Organization__r.email__c")) {
-        emailClauses.add("npe03__Organization__r.email__c LIKE '%" + email.get() + "%'");
-      }
       emailClauses.add("npe03__Contact__r.npe01__HomeEmail__c LIKE '%" + email.get() + "%'");
       emailClauses.add("npe03__Contact__r.npe01__WorkEmail__c LIKE '%" + email.get() + "%'");
       emailClauses.add("npe03__Contact__r.npe01__AlternateEmail__c LIKE '%" + email.get() + "%'");
@@ -997,14 +991,9 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("BillingCountry")
     );
 
-    String email =
-        (env.getConfig().salesforce.customQueryFields.recurringDonation.contains("npe03__Organization__r.email__c"))
-            ? (String) sObject.getField("Email__c") : null;
-
     return new CrmAccount(
         sObject.getId(),
         (String) sObject.getField("Name"),
-        email,
         crmAddress,
         // TODO: Differentiate between Household and Organization. Customize record type IDs through env.json?
         CrmAccount.Type.HOUSEHOLD,

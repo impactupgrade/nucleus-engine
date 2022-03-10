@@ -573,7 +573,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // RECURRING DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.id, npe03__Contact__r.name, npe03__Contact__r.email, npsp__InstallmentFrequency__c, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.id, npe03__Organization__r.name";
+  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npsp__InstallmentFrequency__c, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name";
 
   public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where id='" + id + "'";
