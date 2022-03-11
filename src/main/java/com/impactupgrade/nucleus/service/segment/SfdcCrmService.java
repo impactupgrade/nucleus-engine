@@ -1006,19 +1006,35 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected CrmContact toCrmContact(SObject sObject) {
-    CrmAddress crmAddress = new CrmAddress(
-        // TODO: This was updated to use Account instead of assuming Billing fields are directly on the Contact.
-        //  THOROUGHLY test this with all clients.
-        (String) sObject.getChild("Account").getField("BillingStreet"),
-        (String) sObject.getChild("Account").getField("BillingCity"),
-        (String) sObject.getChild("Account").getField("BillingState"),
-        (String) sObject.getChild("Account").getField("BillingPostalCode"),
-        (String) sObject.getChild("Account").getField("BillingCountry")
-    );
-
     CrmContact.PreferredPhone preferredPhone = null;
     if (sObject.getField("npe01__PreferredPhone__c") != null) {
       preferredPhone = CrmContact.PreferredPhone.fromName((String) sObject.getField("npe01__PreferredPhone__c"));
+    }
+
+    CrmAddress crmAddress = null;
+    String totalOppAmount = null;
+    String numberOfClosedOpps = null;
+    String lastCloseDate = null;
+
+    if (sObject.getChild("Account") != null && sObject.getChild("Account").hasChildren()) {
+      crmAddress = new CrmAddress(
+          // TODO: This was updated to use Account instead of assuming Billing fields are directly on the Contact.
+          //  THOROUGHLY test this with all clients.
+          (String) sObject.getChild("Account").getField("BillingStreet"),
+          (String) sObject.getChild("Account").getField("BillingCity"),
+          (String) sObject.getChild("Account").getField("BillingState"),
+          (String) sObject.getChild("Account").getField("BillingPostalCode"),
+          (String) sObject.getChild("Account").getField("BillingCountry")
+      );
+
+      totalOppAmount = (String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c");
+      numberOfClosedOpps = (String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c");
+      lastCloseDate = (String) sObject.getChild("Account").getField("npo02__LastCloseDate__c");
+    }
+
+    String ownerName = null;
+    if (sObject.getChild("Owner") != null && sObject.getChild("Owner").hasChildren()) {
+      ownerName = (String) sObject.getChild("Owner").getField("Name");
     }
 
     return new CrmContact(
@@ -1039,10 +1055,10 @@ public class SfdcCrmService implements CrmService {
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
         (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
         (String) sObject.getField("Owner.Id"),
-        (String) sObject.getChild("Owner").getField("Name"),
-        (String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"),
-        (String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c"),
-        (String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"),
+        ownerName,
+        totalOppAmount,
+        numberOfClosedOpps,
+        lastCloseDate,
         Collections.emptyList(),
         sObject
     );

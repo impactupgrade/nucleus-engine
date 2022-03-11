@@ -288,6 +288,7 @@ public class CrmController {
   ) throws Exception {
     // other env context might be passed in raw form data, so use this init method
     Environment env = envFactory.init(request, rawFormData.asMap());
+    SecurityUtil.verifyApiKey(env);
 
     List<CrmRecurringDonation> recurringDonations = env.primaryCrmService().searchOpenRecurringDonations(
         Optional.ofNullable(Strings.emptyToNull(name)),
