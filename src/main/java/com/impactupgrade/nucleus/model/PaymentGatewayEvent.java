@@ -17,11 +17,11 @@ import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
+import com.stripe.util.CaseInsensitiveMap;
 
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -70,10 +70,11 @@ public class PaymentGatewayEvent {
   protected Calendar depositDate;
 
   // Maps holding metadata content. We need to split these up in order to define an ordered hierarchy of values.
-  private Map<String, String> contextMetadata = new HashMap<>();
-  private Map<String, String> transactionMetadata = new HashMap<>();
-  private Map<String, String> subscriptionMetadata = new HashMap<>();
-  private Map<String, String> customerMetadata = new HashMap<>();
+  // VITAL: Allow these to be case insensitive!
+  private Map<String, String> contextMetadata = new CaseInsensitiveMap<>();
+  private Map<String, String> transactionMetadata = new CaseInsensitiveMap<>();
+  private Map<String, String> subscriptionMetadata = new CaseInsensitiveMap<>();
+  private Map<String, String> customerMetadata = new CaseInsensitiveMap<>();
 
   public PaymentGatewayEvent(Environment env) {
     this.env = env;
