@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -72,7 +73,7 @@ public interface CrmService extends SegmentService {
   // TODO: This works, but is a double hit on the API. Could refactor the by-transaction-id chain to allow multiple IDs, OR'd together.
   default Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
-    if (donation.isEmpty()) {
+    if (donation.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getTransactionSecondaryId())) {
       donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionSecondaryId());
     }
     return donation;
