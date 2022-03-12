@@ -104,6 +104,9 @@ public class EnvironmentConfig {
     public String paymentGatewayDepositNetAmount = "";
     public String paymentGatewayDepositFee = "";
 
+    // donation designation
+    public String fund = "";
+
     public String emailOptIn = "";
     public String emailOptOut = "";
 

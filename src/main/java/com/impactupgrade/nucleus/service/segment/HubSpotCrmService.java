@@ -421,6 +421,7 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
     // Do NOT set subscriptionId! In getRecurringDonation, we search by that and expect only the RD to be returned.
 
     deal.setAmount(paymentGatewayEvent.getTransactionAmountInDollars());
@@ -532,6 +533,7 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId(), deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
 
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(paymentGatewayEvent.getSubscriptionInterval());
     setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency, frequency.name().toLowerCase(Locale.ROOT), deal.getOtherProperties());

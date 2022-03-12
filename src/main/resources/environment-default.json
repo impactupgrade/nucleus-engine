@@ -2,6 +2,7 @@
   "metadataKeys": {
     "account": ["account", "account_id", "sf_account", "sf_account_id"],
     "campaign": ["campaign", "campaign_id", "sf_campaign", "sf_campaign_id"],
+    "fund": ["fund"],
     "contact": ["contact", "contact_id", "sf_contact", "sf_contact_id"],
     "recordType": ["sf_opp_record_type", "sf_opp_record_type_id"]
   },
