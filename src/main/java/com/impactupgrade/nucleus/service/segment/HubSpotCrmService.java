@@ -808,10 +808,10 @@ public class HubSpotCrmService implements CrmService {
         null, // other phone
         preferredPhone,
         crmAddress,
-        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, contact.getProperties().getOtherProperties()),
-        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, contact.getProperties().getOtherProperties()),
-        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
-        (Boolean) getProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
+        getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.emailOptIn, contact.getProperties().getOtherProperties()),
+        getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.emailOptOut, contact.getProperties().getOtherProperties()),
+        getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
+        getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
         contact.getProperties().getOwnerId(),
         //TODO: tagging fields
         null, null, null, null,
@@ -933,6 +933,16 @@ public class HubSpotCrmService implements CrmService {
     }
 
     return customProperties.get(fieldName);
+  }
+
+  protected Boolean getPropertyBoolean(String fieldName, Map<String, Object> customProperties) {
+    String value = (String) getProperty(fieldName, customProperties);
+
+    if (Strings.isNullOrEmpty(value)) {
+      return null;
+    }
+
+    return Boolean.valueOf(value);
   }
 
   protected void setProperty(String fieldName, Object value, Map<String, Object> customProperties) {
