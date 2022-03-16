@@ -43,8 +43,8 @@ public class StripeToHubspotIT extends AbstractIT {
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-    // HS needs time to catch up...
-    Thread.sleep(10000);
+    // TODO: HS needs time to catch up, and we arbitrarily have to keep increasing this...
+    Thread.sleep(15000);
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
@@ -90,8 +90,8 @@ public class StripeToHubspotIT extends AbstractIT {
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-    // HS needs time to catch up...
-    Thread.sleep(10000);
+    // TODO: HS needs time to catch up, and we arbitrarily have to keep increasing this...
+    Thread.sleep(15000);
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
@@ -148,8 +148,8 @@ public class StripeToHubspotIT extends AbstractIT {
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-    // HS needs time to catch up...
-    Thread.sleep(10000);
+    // TODO: HS needs time to catch up, and we arbitrarily have to keep increasing this...
+    Thread.sleep(15000);
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
