@@ -275,6 +275,19 @@ public class EnvironmentConfig {
     public String siteSecret = "";
   }
 
+  // NOTE: ODK is a data collection platform that we're using with a client, supporting offline mobile forms.
+  // That code currently lives in the client's unique instance of Nucleus, but we have plans to shift the common
+  // pieces here since ODK could be super useful in other nonprofits. For the moment, setting up env.json to support
+  // the connectivity.
+  public Odk odk = new Odk();
+  public static class Odk extends Platform {
+    public String url = "";
+    public Integer projectId = null;
+    public String formId = "";
+    public String formVersion = "";
+
+  }
+
   public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys {
@@ -286,16 +299,6 @@ public class EnvironmentConfig {
   }
 
   public String currency = "";
-
-  public Odk odk = new Odk();
-
-  public static class Odk extends Platform {
-    public String url = "";
-    public Integer projectId = null;
-    public String formId = "";
-    public String formVersion = "";
-
-  }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // INITIALIZATION
