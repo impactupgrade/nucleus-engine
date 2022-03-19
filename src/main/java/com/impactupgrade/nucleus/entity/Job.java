@@ -25,7 +25,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Entity
-@Table(name = "job")
+@Table(name = "core_job")
 @TypeDef(name = "json", typeClass = JsonType.class)
 public class Job {
 
@@ -35,7 +35,7 @@ public class Job {
       name = "job_id_generator",
       strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator",
       parameters = {
-          @Parameter(name = "sequence_name", value = "job_id"),
+          @Parameter(name = "sequence_name", value = "core_job_id_seq"),
           @Parameter(name = "initial_value", value = "1"),
           @Parameter(name = "increment_size", value = "1")
       }
@@ -47,7 +47,7 @@ public class Job {
   public JobType jobType;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(name = "org_id")
+  @JoinColumn(name = "organization_id")
   public Organization org;
 
   @Type(type = "json")
@@ -65,16 +65,16 @@ public class Job {
 
   @Column(name = "schedule_frequency", nullable = false)
   @Enumerated(EnumType.STRING)
-  public JobFrequency frequency;
+  public JobFrequency scheduleFrequency;
 
   @Column(name = "schedule_interval", nullable = true)
-  public Integer interval;
+  public Integer scheduleInterval;
 
   @Column(name = "schedule_start", nullable = false)
-  public Instant start;
+  public Instant scheduleStart;
 
   @Column(name = "schedule_end", nullable = true)
-  public Instant end;
+  public Instant scheduleEnd;
 
   @Column(name = "sequence_order", nullable = true)
   @Enumerated(EnumType.STRING)

@@ -7,7 +7,9 @@ package com.impactupgrade.nucleus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.StripeClient;
+import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -23,12 +25,19 @@ public abstract class AbstractMockTest {
   // TODO: Do these need reset after each test method, or does Mockito/Junit do that automatically?
   @Mock protected DonationService donationServiceMock;
   @Mock protected ContactService contactServiceMock;
-  @Mock protected SfdcClient sfdcClientMock;
   @Mock protected CrmService crmServiceMock;
-
+  @Mock protected SfdcClient sfdcClientMock;
   @Mock protected StripeClient stripeClientMock;
+  @Mock protected TwilioClient twilioClientMock;
 
   public class DefaultEnvironment extends Environment {
+
+    @Override
+    public EnvironmentConfig getConfig() {
+      EnvironmentConfig envConfig = new EnvironmentConfig();
+      envConfig.apiKey = "abc123";
+      return envConfig;
+    }
 
     @Override
     public CrmService crmService(String name) {
@@ -62,6 +71,11 @@ public abstract class AbstractMockTest {
     @Override
     public StripeClient stripeClient() {
       return stripeClientMock;
+    }
+
+    @Override
+    public TwilioClient twilioClient() {
+      return twilioClientMock;
     }
   }
 }

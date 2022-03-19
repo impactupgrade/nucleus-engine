@@ -27,17 +27,26 @@ public class ScheduledJobService {
     this.jobDao = new HibernateDao<>(Job.class, sessionFactory);
   }
 
-  public void processJobSchedules() throws Exception {
+  // May seem a little odd to require the now argument, rather than simply doing Instant.now() inline. However:
+  // 1) Helps with testing.
+  // 2) May be future situations where we need granular control...
+  public void processJobSchedules(Instant now) throws Exception {
     if (Strings.isNullOrEmpty(env.getConfig().apiKey)) {
       log.warn("no apiKey in the env config; skipping the scheduled job run");
       return;
     }
 
     List<Job> jobs = jobDao.getQueryResultList(
-        "FROM Job WHERE start <= :now AND (stop IS NULL OR stop >= :now) AND status = 'ACTIVE' AND org.nucleusApiKey = :nucleusApiKey",
+        "FROM Job WHERE scheduleStart <= :now AND (scheduleEnd IS NULL OR scheduleEnd >= :now) AND status = 'ACTIVE' AND org.nucleusApiKey = :nucleusApiKey",
         query -> {
-          query.setParameter("now", Instant.now(), TemporalType.TIMESTAMP);
+          query.setParameter("now", now, TemporalType.TIMESTAMP);
           query.setParameter("nucleusApiKey", env.getConfig().apiKey);
+        },
+        entities -> {
+          if (!entities.isEmpty()) {
+            // initialize the jobProgresses subselect
+            entities.get(0).jobProgresses.size();
+          }
         }
     );
 
@@ -47,7 +56,7 @@ public class ScheduledJobService {
     for (Job job : jobs) {
       log.info("Processing job {}...", job.id);
       switch (job.jobType) {
-        case SMS_CAMPAIGN -> new SmsCampaignJobExecutor(env, sessionFactory).execute(job);
+        case SMS_CAMPAIGN -> new SmsCampaignJobExecutor(env, sessionFactory).execute(job, now);
         default -> log.error("Job type {} is not yet supported!", job.jobType);
       }
     }
