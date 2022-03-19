@@ -3,9 +3,11 @@ package com.impactupgrade.nucleus.service.logic;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.impactupgrade.nucleus.entity.Job;
 
+import java.time.Instant;
+
 public interface JobExecutor {
 
-  void execute(Job job) throws Exception;
+  void execute(Job job, Instant now) throws Exception;
 
   default String getJsonText(JsonNode jsonNode, String fieldName) {
     JsonNode value = getJsonNode(jsonNode, fieldName);
@@ -21,6 +23,14 @@ public interface JobExecutor {
       return null;
     }
     return value.asInt();
+  }
+
+  default Long getJsonLong(JsonNode jsonNode, String fieldName) {
+    JsonNode value = getJsonNode(jsonNode, fieldName);
+    if (value == null) {
+      return null;
+    }
+    return value.asLong();
   }
 
   default JsonNode getJsonNode(JsonNode jsonNode, String fieldName) {

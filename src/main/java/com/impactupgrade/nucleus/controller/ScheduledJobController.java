@@ -11,6 +11,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
+import java.time.Instant;
 
 @Path("/scheduled-job")
 public class ScheduledJobController {
@@ -32,7 +33,7 @@ public class ScheduledJobController {
     Environment env = envFactory.init(request);
     new Thread(() -> {
       try {
-        env.scheduledJobService(sessionFactory).processJobSchedules();
+        env.scheduledJobService(sessionFactory).processJobSchedules(Instant.now());
       } catch (Exception e) {
         log.error("scheduled job failed", e);
       }

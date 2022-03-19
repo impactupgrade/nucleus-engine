@@ -20,9 +20,11 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.SessionFactory;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SmsCampaignJobExecutor implements JobExecutor {
@@ -43,7 +45,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   }
 
   @Override
-  public void execute(Job job) throws Exception {
+  public void execute(Job job, Instant now) throws Exception {
     String contactListId = getJsonText(job.payload, "crm_list");
     if (Strings.isNullOrEmpty(contactListId)) {
       log.error("Failed to get contact list id for job id {}! Skipping...", job.id);
@@ -75,6 +77,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       String contactId = crmContact.id;
 
       try {
+        // TODO: Need to differentiate between JobSequenceOrder (BEGINNING vs. NEXT)!
         Integer nextMessage = 1;
         JobProgress jobProgress = progressesByContacts.get(contactId);
 
@@ -84,35 +87,20 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           jobProgress = new JobProgress();
           jobProgress.targetId = contactId;
           jobProgress.payload = objectMapper.createObjectNode();
-          updateProgress(jobProgress.payload, nextMessage);
           jobProgress.job = job;
           jobProgressDao.create(jobProgress);
         } else {
-          //        log.info("Checking existing progress for contact id {}...", contactId);
-          //        String lastTimestamp = getJsonText(jobProgress.payload, "lastTimestamp");
-          //        if (Strings.isNullOrEmpty(lastTimestamp)) {
-          //          log.error("Failed to get last sent timestamp for job progress id {}! ", jobProgress.id);
-          //          continue;
-          //        }
-          //
-          //        Optional<Date> nextFireTime = getNextFireTime(lastTimestamp, jobSchedule);
-          //        if (Objects.isNull(nextFireTime)) {
-          //          log.error("Failed to get next fire time for job id {}!", job.id);
-          //          continue;
-          //        }
-          //
-          //        if (nextFireTime.isEmpty() // One time send
-          //            // or too soon for a new run
-          //            || new Date().before(nextFireTime.get())) {
-          //          log.info("Message already sent at {}. Next fire time is {}. Skipping...", getLastSentAt(jobProgress.payload), nextFireTime.get());
-          //          continue;
-          //        }
+          Instant lastTimestamp = Instant.ofEpochMilli(getJsonLong(jobProgress.payload, "lastTimestamp"));
+          Optional<Instant> nextFireTime = getNextFireTime(job, lastTimestamp);
 
-          Integer lastMessage = getJsonInt(jobProgress.payload, "lastMessage");
-          if (lastMessage == null) {
-            log.error("Failed to get last sent message from job progress id {}! ", jobProgress.id);
+          // One time send
+          if (nextFireTime.isEmpty()
+              // or too soon for a new run
+              || now.isBefore(nextFireTime.get())) {
             continue;
           }
+
+          Integer lastMessage = getJsonInt(jobProgress.payload, "lastMessage");
           log.info("Last sent message id for contact id {} is {}", contactId, lastMessage);
           nextMessage = lastMessage + 1;
           log.info("Next message id to send: {}", nextMessage);
@@ -132,10 +120,6 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           languageCode = "EN";
         }
         String message = getMessage(messagesNode, nextMessage, languageCode);
-        if (Strings.isNullOrEmpty(message)) {
-          log.error("Failed to get message for id {} and language {}!", nextMessage, languageCode);
-          continue;
-        }
 
         String contactPhoneNumber = crmContact.mobilePhone;
         if (Strings.isNullOrEmpty(contactPhoneNumber)) {
@@ -146,7 +130,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         log.info("Sending message id {} to contact id {} using phone number {}...", nextMessage, contactId, contactPhoneNumber);
         twilioClient.sendMessage(contactPhoneNumber, message);
 
-        updateProgress(jobProgress.payload, nextMessage);
+        updateProgress(jobProgress.payload, nextMessage, now);
         jobProgressDao.update(jobProgress);
       } catch (Exception e) {
         log.error("scheduled job failed for contact {}", contactId, e);
@@ -155,7 +139,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
     log.info("Job processed!");
 
-    if (job.frequency == JobFrequency.ONETIME) {
+    if (job.scheduleFrequency == JobFrequency.ONETIME) {
       job.status = JobStatus.DONE;
       jobDao.update(job);
     }
@@ -180,43 +164,37 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     return null;
   }
 
-  private void updateProgress(JsonNode jobProgressNode, Integer lastMessage) {
+  private void updateProgress(JsonNode jobProgressNode, Integer lastMessage, Instant now) {
     ((ObjectNode) jobProgressNode).put("lastMessage", lastMessage);
-    // TODO: Use secs or millis consistently to match whatever the DB uses for timestamps in JobSchedule.
-    ((ObjectNode) jobProgressNode).put("lastTimestamp", Instant.now().getEpochSecond() * 1000);
+    ((ObjectNode) jobProgressNode).put("lastTimestamp", now.getEpochSecond() * 1000);
     if (Objects.isNull(jobProgressNode.findValue("sentMessages"))) {
       ((ObjectNode) jobProgressNode).putArray("sentMessages");
     }
     ((ArrayNode) jobProgressNode.findValue("sentMessages")).add(lastMessage);
   }
 
-//  private Optional<Date> getNextFireTime(Date lastSentAt, JobSchedule jobSchedule) {
-//    Calendar startDate = jobSchedule.start;
-//    String frequency = jsonNode.findValue("frequency").asText();
-//    Integer interval = jsonNode.findValue("interval").asInt();
-//
-//    Date nextFireTime = startDate;
-//    do {
-//      nextFireTime = increaseDate(nextFireTime, frequency, interval);
-//    } while (nextFireTime.before(lastSentAt));
-//
-//    return Optional.of(nextFireTime);
-//  }
-//
-//  private Date increaseDate(Date inputDate, String frequency, Integer interval) {
-//    LocalDateTime previousEecutionTime = inputDate.toInstant()
-//        .atZone(ZoneId.of(TIME_ZONE))
-//        .toLocalDateTime();
-//
-//    LocalDateTime nextExecutionDate = switch (frequency) {
-//      case "minute" -> previousEecutionTime.plusMinutes(interval);
-//      case "day" -> previousEecutionTime.plusDays(interval);
-//      case "week" -> previousEecutionTime.plusWeeks(interval);
-//      case "month" -> previousEecutionTime.plusMonths(interval);
-//      default -> previousEecutionTime;
-//    };
-//
-//    // TODO: switch to LocalDateTime everywhere?
-//    return Date.from(nextExecutionDate.atZone(ZoneId.of(TIME_ZONE)).toInstant());
-//  }
+  // TODO: This doesn't work in the case when someone joins in the middle of the interval.
+  //  Ex: start day = 0, interval = 2, contact joins on day 3. Currently, they'll receive the 1st message on day 3,
+  //  the 2nd message on day 4, 3rd message on day 6, etc. Note the 1 day interval between the 1st and 2nd message.
+  //  All that's due to this sliding up based on the ***job start date*** instead of the contact's lastMessage date.
+  //  Could be a tricky fix. Rethink this whole setup?
+  private Optional<Instant> getNextFireTime(Job job, Instant lastSent) {
+    Instant nextFireTime = job.scheduleStart;
+    do {
+      nextFireTime = increaseDate(nextFireTime, job.scheduleFrequency, job.scheduleInterval);
+    } while (nextFireTime.isBefore(lastSent));
+
+    return Optional.of(nextFireTime);
+  }
+
+  private Instant increaseDate(Instant previous, JobFrequency frequency, Integer interval) {
+    return switch (frequency) {
+      case DAILY -> previous.plus(interval, ChronoUnit.DAYS);
+      case WEEKLY -> previous.plus(interval * 7, ChronoUnit.DAYS);
+      // TODO: How to handle 28 vs. 30 vs. 31?
+      case MONTHLY -> previous.plus(interval * 31, ChronoUnit.DAYS);
+      // TODO: Should never happen? Dangerous to include this? Could cause repetition...
+      default -> previous;
+    };
+  }
 }
