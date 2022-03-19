@@ -133,6 +133,7 @@ public class EnvironmentConfig {
     public HubspotCustomFields customQueryFields = new HubspotCustomFields();
     public String defaultSmsOptInList = "";
     public boolean enableRecurring = false;
+    public EmailPlatform email = new EmailPlatform();
 
     public static class HubSpotDonationPipeline {
       public String id = "";
@@ -238,32 +239,33 @@ public class EnvironmentConfig {
   }
    */
 
-  public List<Mailchimp> mailchimp = new ArrayList<>();
-
-  public static class Mailchimp extends Platform {
-    public List<MailchimpList> lists = new ArrayList<>();
-    public MailchimpTagFilters tagFilters = new MailchimpTagFilters();
+  public enum EmailListType {
+    CONTACTS, DONORS
   }
 
-  public static class MailchimpList {
-    public String id = "";
-    public MailchimpListType type = MailchimpListType.CONTACTS;
-    public Map<String, String> groups = new HashMap<>(); // <Name, ID>
-    public String crmFilter = "";
-  }
-
-  public static class MailchimpTagFilters {
+  public static class EmailTagFilters {
     public Integer majorDonorAmount = 1000;
     public Integer recentDonorDays = 31;
     public Integer frequentDonorCount = 6;
   }
 
-  public enum MailchimpListType {
-    CONTACTS, DONORS
+  public static class EmailList {
+    public String id = "";
+    public EmailListType type = EmailListType.CONTACTS;
+    public Map<String, String> groups = new HashMap<>(); // <Name, ID>
+    public String crmFilter = "";
   }
 
-  public Platform sendgridEmail = new Platform();
-  public Platform hubspotEmail = new Platform();
+  public static class EmailPlatform extends Platform {
+    public List<EmailList> lists = new ArrayList<>();
+    public EmailTagFilters tagFilters = new EmailTagFilters();
+    // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
+    // designated as the conduit!
+    public boolean transactionalSender = false;
+  }
+
+  public List<EmailPlatform> mailchimp = new ArrayList<>();
+  public List<EmailPlatform> sendgrid = new ArrayList<>();
 
   public Backblaze backblaze = new Backblaze();
 

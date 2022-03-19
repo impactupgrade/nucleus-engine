@@ -40,7 +40,7 @@ public class MailchimpClient {
 
   protected final com.ecwid.maleorang.MailchimpClient client;
 
-  public MailchimpClient(EnvironmentConfig.Mailchimp mailchimpConfig) {
+  public MailchimpClient(EnvironmentConfig.EmailPlatform mailchimpConfig) {
     client = new com.ecwid.maleorang.MailchimpClient(mailchimpConfig.secretKey);
   }
 

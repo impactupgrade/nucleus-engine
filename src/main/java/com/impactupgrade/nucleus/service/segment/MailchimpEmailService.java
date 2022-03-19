@@ -3,17 +3,13 @@ package com.impactupgrade.nucleus.service.segment;
 import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.impactupgrade.nucleus.client.MailchimpClient;
-import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,24 +21,13 @@ import static com.impactupgrade.nucleus.client.MailchimpClient.PHONE_NUMBER;
 import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
 import static com.impactupgrade.nucleus.client.MailchimpClient.UNSUBSCRIBED;
 
-public class MailchimpEmailService implements EmailService {
+public class MailchimpEmailService extends AbstractEmailService {
 
   private static final Logger log = LogManager.getLogger(MailchimpEmailService.class);
-
-  protected Environment env;
-  protected CrmService primaryCrmService;
-  protected CrmService donationsCrmService;
 
   @Override
   public String name() {
     return "mailchimp";
-  }
-
-  @Override
-  public void init(Environment env) {
-    this.env = env;
-    primaryCrmService = env.primaryCrmService();
-    donationsCrmService = env.donationsCrmService();
   }
 
   @Override
@@ -57,24 +42,17 @@ public class MailchimpEmailService implements EmailService {
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.Mailchimp mailchimpConfig: env.getConfig().mailchimp) {
-      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
-      for (EnvironmentConfig.MailchimpList mcList : mailchimpConfig.lists) {
-        // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
-        List<CrmContact> crmContacts = Collections.emptyList();
-        switch (mcList.type) {
-          case CONTACTS -> crmContacts = primaryCrmService.getEmailContacts(lastSync, mcList.crmFilter);
-          case DONORS -> crmContacts = donationsCrmService.getEmailDonorContacts(lastSync, mcList.crmFilter);
-        }
-
-        List<String> crmContactIds = crmContacts.stream().map(c -> c.id).collect(Collectors.toList());
-        Map<String, List<String>> contactCampaignNames = primaryCrmService.getActiveCampaignsByContactIds(crmContactIds);
+    for (EnvironmentConfig.EmailPlatform emailPlatform : env.getConfig().mailchimp) {
+      MailchimpClient mailchimpClient = new MailchimpClient(emailPlatform);
+      for (EnvironmentConfig.EmailList emailList : emailPlatform.lists) {
+        List<CrmContact> crmContacts = getCrmContacts(emailList, lastSync);
+        Map<String, List<String>> contactCampaignNames = getContactCampaignNames(crmContacts);
 
         int count = 0;
         for (CrmContact crmContact : crmContacts) {
-          log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, mcList.id, count++, crmContacts.size());
-          mailchimpClient.upsertContact(mcList.id, toMcMemberInfo(crmContact, mcList.groups));
-          updateTags(mcList.id, crmContact, contactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
+          log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
+          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, emailList.groups));
+          updateTags(emailList.id, crmContact, contactCampaignNames.get(crmContact.id), mailchimpClient, emailPlatform);
         }
       }
     }
@@ -112,7 +90,7 @@ public class MailchimpEmailService implements EmailService {
 //
 
   protected void updateTags(String listId, CrmContact crmContact, List<String> contactCampaignNames,
-      MailchimpClient mailchimpClient, EnvironmentConfig.Mailchimp mailchimpConfig) {
+      MailchimpClient mailchimpClient, EnvironmentConfig.EmailPlatform mailchimpConfig) {
     try {
       List<String> activeTags = buildContactTags(crmContact, contactCampaignNames, mailchimpConfig);
       List<String> inactiveTags = mailchimpClient.getContactTags(listId, crmContact.email);
@@ -122,72 +100,6 @@ public class MailchimpEmailService implements EmailService {
     } catch (Exception e) {
       log.error("updating tags failed for contact: {} {}", crmContact.id, crmContact.email, e);
     }
-  }
-
-  // Separate method, allowing orgs to add in (or completely override) the defaults.
-  // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
-  protected List<String> buildContactTags(CrmContact contact, List<String> contactCampaignNames, EnvironmentConfig.Mailchimp mailchimpConfig) throws Exception {
-    List<String> tags = new ArrayList<>();
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // DONATION METRICS
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    if (contact.totalDonationAmount != null
-        && Double.parseDouble(contact.totalDonationAmount) >= mailchimpConfig.tagFilters.majorDonorAmount) {
-      tags.add("Major Donor");
-    }
-
-    if (contact.lastDonationDate != null) {
-      tags.add("Donor");
-
-      Calendar lastDonation = Utils.getCalendarFromDateString(contact.lastDonationDate);
-      Calendar limit = Calendar.getInstance();
-      limit.add(Calendar.DAY_OF_MONTH, -mailchimpConfig.tagFilters.recentDonorDays);
-      if (lastDonation.after(limit)) {
-        tags.add("Recent Donor");
-      }
-    }
-
-    if (contact.numDonations != null
-        && Double.parseDouble(contact.numDonations) >= mailchimpConfig.tagFilters.frequentDonorCount) {
-      tags.add("Frequent Donor");
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // DEMOGRAPHIC INFO
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // TODO: Would be great to have age, but the field (or "birthdate") tends to be custom within SFDC.
-//      char contactAgeGroup = Integer.toString(primaryCrmService.getAge(contact)).charAt(0);
-//      addTagToContact(listId, contact, "Age: " + contactAgeGroup + "0 - " + contactAgeGroup + "9");
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // INTERNAL INFO
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    if (contact.ownerName != null) {
-      tags.add("Owner: " + contact.ownerName);
-    }
-
-    if (contactCampaignNames != null) {
-      for (String c : contactCampaignNames) {
-        tags.add("Campaign Member: " + c);
-      }
-    }
-
-    return tags;
-  }
-
-  /**
-   * Returns the ID of the group from the config map
-   */
-  protected String getGroupIdFromName(String groupName, Map<String, String> groups) {
-    return groups.entrySet().stream()
-        .filter(e -> e.getKey().equalsIgnoreCase(groupName))
-        .map(Map.Entry::getValue)
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("group " + groupName + " not configured in environment.json"));
   }
 
 //  protected CrmContact toCrmContact(MemberInfo member) {
