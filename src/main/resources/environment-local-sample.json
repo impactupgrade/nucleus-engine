@@ -60,15 +60,17 @@
     "secretKey": "sk_test_51Imqu3HAwJOu5brrFI1LeFsnRbGSKo01FLQ9tJijlMtTZPXl4XyB2Kidg9qrWqCP6VlDK5EO0YxSXAbPcWZBp7ey00dhw2OuZg"
   },
 
-  "mailchimp": {
-    "secretKey": "1d6e59751ccdd8156ac9f5ee23371db9-us6",
-    "lists": [
-      {
-        "id": "025143d6d8",
-        "type": "CONTACTS",
-        "groups": {},
-        "crmFilter": ""
-      }
-    ]
-  }
+  "mailchimp": [
+    {
+      "secretKey": "1d6e59751ccdd8156ac9f5ee23371db9-us6",
+      "lists": [
+        {
+          "id": "025143d6d8",
+          "type": "CONTACTS",
+          "groups": {},
+          "crmFilter": ""
+        }
+      ]
+    }
+  ]
 }

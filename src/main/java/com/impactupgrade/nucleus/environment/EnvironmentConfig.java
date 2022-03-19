@@ -236,7 +236,7 @@ public class EnvironmentConfig {
   }
    */
 
-  public Map<String, Mailchimp> mailchimpInstances = new HashMap<>();
+  public List<Mailchimp> mailchimp = new ArrayList<>();
 
   public static class Mailchimp extends Platform {
     public List<MailchimpList> lists = new ArrayList<>();

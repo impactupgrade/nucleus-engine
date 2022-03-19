@@ -16,7 +16,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.client.MailchimpClient.ADDRESS;
@@ -33,7 +32,6 @@ public class MailchimpEmailService implements EmailService {
   protected Environment env;
   protected CrmService primaryCrmService;
   protected CrmService donationsCrmService;
-  protected Map<String, MailchimpClient> mailchimpClients;
 
   @Override
   public String name() {
@@ -45,10 +43,6 @@ public class MailchimpEmailService implements EmailService {
     this.env = env;
     primaryCrmService = env.primaryCrmService();
     donationsCrmService = env.donationsCrmService();
-    Set<String> instances = env.getConfig().mailchimpInstances.keySet();
-    instances.forEach(instance -> {
-      mailchimpClients.put(instance, new MailchimpClient(env, instance));
-    });
   }
 
   @Override
@@ -63,9 +57,8 @@ public class MailchimpEmailService implements EmailService {
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    for (String instance: env.getConfig().mailchimpInstances.keySet()) {
-      EnvironmentConfig.Mailchimp mailchimpConfig = env.getConfig().mailchimpInstances.get(instance);
-      MailchimpClient mailchimpClient = mailchimpClients.get(instance);
+    for (EnvironmentConfig.Mailchimp mailchimpConfig: env.getConfig().mailchimp) {
+      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
       for (EnvironmentConfig.MailchimpList mcList : mailchimpConfig.lists) {
         // TODO: All this will likely end up duplicated in each impl of this service interface. Refactor?
         List<CrmContact> crmContacts = Collections.emptyList();
