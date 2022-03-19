@@ -10,7 +10,6 @@ import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
-import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -41,9 +40,8 @@ public class MailchimpClient {
 
   protected final com.ecwid.maleorang.MailchimpClient client;
 
-  public MailchimpClient(Environment env, String instance) {
-    EnvironmentConfig.Mailchimp mailchimp = env.getConfig().mailchimpInstances.get(instance);
-    client = new com.ecwid.maleorang.MailchimpClient(mailchimp.secretKey);
+  public MailchimpClient(EnvironmentConfig.Mailchimp mailchimpConfig) {
+    client = new com.ecwid.maleorang.MailchimpClient(mailchimpConfig.secretKey);
   }
 
   public MemberInfo getContactInfo(String listId, String contactEmail) throws IOException, MailchimpException {
