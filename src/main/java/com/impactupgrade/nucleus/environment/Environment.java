@@ -179,10 +179,17 @@ public class Environment {
   }
 
   private <T extends SegmentService> List<T> segmentServices(Class<T> clazz) {
+    // TODO: Allow custom instances to override segment services by name. The ServiceLoader will first find their
+    //  own registered impls, due to ClassLoader ordering. But we then need to make sure that the default impls
+    //  aren't also called.
+    Map<String, T> discoveredServices = new HashMap<>();
+
     ServiceLoader<T> loader = java.util.ServiceLoader.load(clazz);
     return loader.stream()
+        .filter(p -> !discoveredServices.containsKey(p.get().name()))
         .map(p -> {
           T segmentService = p.get();
+          discoveredServices.put(segmentService.name(), segmentService);
           segmentService.init(this);
           return segmentService;
         })

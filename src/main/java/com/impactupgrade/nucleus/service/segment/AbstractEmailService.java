@@ -37,6 +37,8 @@ public abstract class AbstractEmailService implements EmailService {
   }
 
   // Separate method, allowing orgs to add in (or completely override) the defaults.
+  // NOTE: Only use alphanumeric and _ chars! Some providers, like SendGrid, are using custom fields for
+  //  tags and have limitations on field names.
   protected List<String> buildContactTags(CrmContact contact, List<String> contactCampaignNames, EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
     List<String> tags = new ArrayList<>();
 
@@ -46,23 +48,23 @@ public abstract class AbstractEmailService implements EmailService {
 
     if (contact.totalDonationAmount != null
         && Double.parseDouble(contact.totalDonationAmount) >= emailPlatform.tagFilters.majorDonorAmount) {
-      tags.add("Major Donor");
+      tags.add("major_donor");
     }
 
     if (contact.lastDonationDate != null) {
-      tags.add("Donor");
+      tags.add("donor");
 
       Calendar lastDonation = Utils.getCalendarFromDateString(contact.lastDonationDate);
       Calendar limit = Calendar.getInstance();
       limit.add(Calendar.DAY_OF_MONTH, -emailPlatform.tagFilters.recentDonorDays);
       if (lastDonation.after(limit)) {
-        tags.add("Recent Donor");
+        tags.add("recent_donor");
       }
     }
 
     if (contact.numDonations != null
         && Double.parseDouble(contact.numDonations) >= emailPlatform.tagFilters.frequentDonorCount) {
-      tags.add("Frequent Donor");
+      tags.add("frequent_donor");
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,12 +80,12 @@ public abstract class AbstractEmailService implements EmailService {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (contact.ownerName != null) {
-      tags.add("Owner: " + contact.ownerName);
+      tags.add("owner_" + Utils.toSlug(contact.ownerName));
     }
 
     if (contactCampaignNames != null) {
       for (String c : contactCampaignNames) {
-        tags.add("Campaign Member: " + c);
+        tags.add("campaign_" + Utils.toSlug(c));
       }
     }
 

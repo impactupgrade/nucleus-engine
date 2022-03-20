@@ -1,5 +1,7 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -11,6 +13,7 @@ import com.sendgrid.SendGrid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
@@ -21,7 +24,10 @@ import java.util.stream.Collectors;
 public class SendGridEmailService extends SmtpEmailService {
 
   private static final Logger log = LogManager.getLogger(SendGridEmailService.class);
-  private static final ObjectMapper mapper = new ObjectMapper();
+
+  private static final ObjectMapper mapper = new ObjectMapper()
+      .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+      .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
   @Override
   public String name() {
@@ -43,6 +49,16 @@ public class SendGridEmailService extends SmtpEmailService {
   public void syncContacts(Calendar lastSync) throws Exception {
     for (EnvironmentConfig.EmailPlatform emailPlatform : env.getConfig().sendgrid) {
       SendGrid sendgridClient = new SendGrid(emailPlatform.secretKey);
+
+      // SendGrid requires that custom field definitions first be explicitly created. Start by grabbing the whole
+      // list of existing definitions -- we'll create the rest as we go.
+      Request request = new Request();
+      request.setMethod(Method.GET);
+      request.setEndpoint("/marketing/field_definitions");
+      Response response = sendgridClient.api(request);
+      CustomFieldsResponse customFieldsResponse = mapper.readValue(response.getBody(), CustomFieldsResponse.class);
+      Map<String, String> customFieldsByName = customFieldsResponse.custom_fields.stream().collect(Collectors.toMap(f -> f.name, f -> f.id));
+
       for (EnvironmentConfig.EmailList emailList : emailPlatform.lists) {
         // TODO: SG has a max of 30k per call, so we may need to break this down for some customers.
         List<CrmContact> crmContacts = getCrmContacts(emailList, lastSync);
@@ -50,26 +66,29 @@ public class SendGridEmailService extends SmtpEmailService {
 
         log.info("upserting {} contacts to list {}", crmContacts.size(), emailList.id);
 
-        Request request = new Request();
+        request = new Request();
         request.setMethod(Method.PUT);
         request.setEndpoint("/marketing/contacts");
         UpsertContacts upsertContacts = new UpsertContacts();
         upsertContacts.list_ids = List.of(emailList.id);
         upsertContacts.contacts = crmContacts.stream()
-            .map(c -> toSendGridContact(c, contactCampaignNames.get(c.id), emailList.groups, emailPlatform))
+            .map(crmContact -> toSendGridContact(crmContact, contactCampaignNames.get(crmContact.id), emailList.groups,
+                customFieldsByName, sendgridClient, emailPlatform))
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
         request.setBody(mapper.writeValueAsString(upsertContacts));
-        Response response = sendgridClient.api(request);
-//          System.out.println(response.getStatusCode());
-//          System.out.println(response.getBody());
-//          System.out.println(response.getHeaders());
+        response = sendgridClient.api(request);
+        if (response.getStatusCode() < 300) {
+          log.info("sync was successful");
+        } else {
+          log.error("sync failed: {}", response.getBody());
+        }
       }
     }
   }
 
   protected Contact toSendGridContact(CrmContact crmContact, List<String> campaignNames, Map<String, String> groups,
-      EnvironmentConfig.EmailPlatform emailPlatform) {
+      Map<String, String> customFieldsByName, SendGrid sendgridClient, EnvironmentConfig.EmailPlatform emailPlatform) {
     if (crmContact == null) {
       return null;
     }
@@ -88,15 +107,15 @@ public class SendGridEmailService extends SmtpEmailService {
       contact.country = crmContact.address.country;
       // TODO: contact.canReceiveEmail()? Is there a "status" field, or do we instead need to simply remove from the list?
 
-      // TODO: custom fields must first exist, so create a map from https://docs.sendgrid.com/api-reference/custom-fields/get-all-field-definitions
-      //  up front, check it as we go, and add new fields with https://docs.sendgrid.com/api-reference/custom-fields/create-custom-field-definition
-      //  as needed?
       List<String> activeTags = buildContactTags(crmContact, campaignNames, emailPlatform);
       // TODO: may need to use https://docs.sendgrid.com/api-reference/contacts/get-contacts-by-emails to get the
       //  total list
 //      List<String> inactiveTags =
 //      inactiveTags.removeAll(activeTags);
-      activeTags.forEach(t -> contact.custom_fields.put(t, "true"));
+      activeTags.forEach(t -> {
+        String customFieldId = getCustomFieldId(t, customFieldsByName, sendgridClient);
+        contact.custom_fields.put(customFieldId, "true");
+      });
 
       // TODO: groups?
     } catch (Exception e) {
@@ -105,10 +124,47 @@ public class SendGridEmailService extends SmtpEmailService {
 
     return contact;
   }
-  
+
+  protected String getCustomFieldId(String fieldName, Map<String, String> customFieldsByName, SendGrid sendgridClient) {
+    if (!customFieldsByName.containsKey(fieldName)) {
+      try {
+        Request request = new Request();
+        request.setMethod(Method.POST);
+        request.setEndpoint("/marketing/field_definitions");
+        CustomField customField = new CustomField();
+        customField.name = fieldName;
+        customField.field_type = "Text";
+        request.setBody(mapper.writeValueAsString(customField));
+        Response response = sendgridClient.api(request);
+        if (response.getStatusCode() < 300) {
+          log.info("created custom field: {}", fieldName);
+
+          customField = mapper.readValue(response.getBody(), CustomField.class);
+          customFieldsByName.put(fieldName, customField.id);
+        } else {
+          log.error("failed to create custom field: {}", fieldName);
+        }
+      } catch (Exception e) {
+        log.error("failed to create custom field: {}", fieldName, e);
+      }
+    }
+
+    return customFieldsByName.get(fieldName);
+  }
+
+  protected static class CustomFieldsResponse {
+    public List<CustomField> custom_fields = new ArrayList<>();
+  }
+
+  protected static class CustomField {
+    public String id;
+    public String name;
+    public String field_type; // Text, Number, Date
+  }
+
   protected static class UpsertContacts {
-    List<String> list_ids;
-    List<Contact> contacts;
+    public List<String> list_ids;
+    public List<Contact> contacts;
   }
 
   protected static class Contact {
