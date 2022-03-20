@@ -1,6 +1,5 @@
 package com.impactupgrade.nucleus.service.segment;
 
-import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,8 +10,6 @@ import java.util.List;
 public class HubSpotEmailService extends SmtpEmailService {
 
   private static final Logger log = LogManager.getLogger(HubSpotEmailService.class);
-
-  protected Environment env;
 
   @Override
   public String name() {

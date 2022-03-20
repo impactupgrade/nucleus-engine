@@ -10,7 +10,6 @@ import com.impactupgrade.integration.hubspot.Company;
 import com.impactupgrade.integration.hubspot.CompanyProperties;
 import com.impactupgrade.integration.hubspot.Contact;
 import com.impactupgrade.integration.hubspot.ContactProperties;
-import com.impactupgrade.integration.hubspot.ContactResults;
 import com.impactupgrade.integration.hubspot.Deal;
 import com.impactupgrade.integration.hubspot.DealProperties;
 import com.impactupgrade.integration.hubspot.DealResults;
@@ -143,7 +142,8 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
-    throw new RuntimeException("not implemented");
+    // TODO
+    return Collections.emptyList();
   }
 
   @Override
@@ -771,20 +771,25 @@ public class HubSpotCrmService implements CrmService {
       filters.add(new Filter(filterSplit[0], filterSplit[1], filterSplit[2]));
     }
 
-    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
-    ContactResults results = hsClient.contact().search(filterGroups, getCustomFieldNames());
+//    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
+//    ContactResults results = hsClient.contact().search(filterGroups, getCustomFieldNames());
+//    return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
 
-    return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
+    List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, getCustomFieldNames());
+    return results.stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
   public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO
+    return Collections.emptyList();
   }
 
   @Override
   public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
-    throw new RuntimeException("not implemented");
+    // TODO
+    return Collections.emptyMap();
   }
 
   protected CrmContact toCrmContact(Contact contact) {

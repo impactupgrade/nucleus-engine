@@ -11,6 +11,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,5 +72,13 @@ public class Utils {
         .replaceAll("[\\u2026]", "...")
         .replaceAll("&quot;", "\"")
         .replaceAll("&#039;", "'");
+  }
+
+  public static String toSlug(String s) {
+    if (s == null) return null;
+    s = s.toLowerCase(Locale.ROOT).trim().replaceAll("[^A-Za-z0-9]+", "_");
+    if (s.startsWith("_")) s = s.substring(1);
+    if (s.endsWith("_")) s = s.substring(0, s.length() - 1);
+    return s;
   }
 }
