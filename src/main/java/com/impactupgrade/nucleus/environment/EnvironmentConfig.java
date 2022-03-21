@@ -109,6 +109,7 @@ public class EnvironmentConfig {
 
     public String emailOptIn = "";
     public String emailOptOut = "";
+    public String emailGroups = "";
 
     public String smsOptIn = "";
     public String smsOptOut = "";
