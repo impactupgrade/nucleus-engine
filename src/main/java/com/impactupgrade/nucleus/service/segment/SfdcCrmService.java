@@ -32,8 +32,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1041,6 +1041,13 @@ public class SfdcCrmService implements CrmService {
       ownerName = (String) sObject.getChild("Owner").getField("Name");
     }
 
+    List<String> emailGroups = new ArrayList<>();
+    String emailGroupList = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailGroups);
+    // assumes a multiselect picklist, which is a single ; separated string
+    if (!Strings.isNullOrEmpty(emailGroupList)) {
+      emailGroups = Arrays.stream(emailGroupList.split(";")).toList();
+    }
+
     return new CrmContact(
         sObject.getId(),
         (String) sObject.getField("AccountId"),
@@ -1063,7 +1070,7 @@ public class SfdcCrmService implements CrmService {
         totalOppAmount,
         numberOfClosedOpps,
         lastCloseDate,
-        Collections.emptyList(),
+        emailGroups,
         (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),
         sObject
     );
