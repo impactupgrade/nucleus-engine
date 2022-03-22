@@ -438,37 +438,32 @@ public class SfdcCrmService implements CrmService {
       }
 
       SObject opportunity = (SObject) crmDonation.get().rawObject;
+      SObject opportunityUpdate = new SObject("Opportunity");
+      opportunityUpdate.setId(opportunity.getId());
+      setDonationDepositFields(opportunity, opportunityUpdate, paymentGatewayEvent);
 
-      // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
-      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
-        if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)
-            && opportunity.getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId) == null) {
-          SObject opportunityUpdate = new SObject("Opportunity");
-          opportunityUpdate.setId(opportunity.getId());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId());
-          sfdcClient.batchUpdate(opportunityUpdate);
-        } else {
-          log.info("skipping refund {}; already marked with refund deposit info", opportunity.getId());
-        }
-        // Otherwise, assume it was a standard charge.
-      } else {
-        if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)
-            && opportunity.getField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId) == null) {
-          SObject opportunityUpdate = new SObject("Opportunity");
-          opportunityUpdate.setId(opportunity.getId());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
-          opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars());
-          sfdcClient.batchUpdate(opportunityUpdate);
-        } else {
-          log.info("skipping {}; already marked with deposit info", opportunity.getId());
-        }
-      }
+      sfdcClient.batchUpdate(opportunityUpdate);
     }
 
     sfdcClient.batchFlush();
+  }
+
+  protected void setDonationDepositFields(SObject existingOpportunity, SObject opportunityUpdate,
+      PaymentGatewayEvent paymentGatewayEvent) throws InterruptedException {
+// If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId());
+      }
+    } else {
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)) {
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars());
+      }
+    }
   }
 
   @Override
