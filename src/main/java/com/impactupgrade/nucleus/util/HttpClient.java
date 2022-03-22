@@ -38,7 +38,7 @@ public class HttpClient {
     return HttpStatus.OK_200 == response.getStatus() ? response.readEntity(genericType) : null;
   }
 
-  private static Response get(String url, String mediaType, String bearerToken) {
+  protected static Response get(String url, String mediaType, String bearerToken) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
     String defaultMediaType = !Strings.isNullOrEmpty(mediaType) ? mediaType : MediaType.TEXT_PLAIN;
@@ -63,7 +63,7 @@ public class HttpClient {
     return post(MediaType.APPLICATION_FORM_URLENCODED, form, bearerToken, url, paths);
   }
 
-  private static <T> Response post(String mediaType, T entity, String bearerToken, String url, String... paths) {
+  protected static <T> Response post(String mediaType, T entity, String bearerToken, String url, String... paths) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
     for (String path : paths) {

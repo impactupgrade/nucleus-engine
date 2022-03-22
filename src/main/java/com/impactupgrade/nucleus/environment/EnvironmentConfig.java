@@ -282,10 +282,11 @@ public class EnvironmentConfig {
   public Odk odk = new Odk();
   public static class Odk extends Platform {
     public String url = "";
+    public List<OdkProject> projects = new ArrayList<>();
+  }
+  public static class OdkProject {
     public Integer projectId = null;
-    public String formId = "";
-    public String formVersion = "";
-
+    public String form = "";
   }
 
   public MetadataKeys metadataKeys = new MetadataKeys();
