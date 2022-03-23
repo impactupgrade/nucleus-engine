@@ -35,4 +35,8 @@ public class HibernateUtil {
 
     return sessionFactory;
   }
+
+  public static void resetSessionFactory() {
+    sessionFactory = null;
+  }
 }

@@ -33,10 +33,17 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class, sessionFactory);
     HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class, sessionFactory);
+    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class, sessionFactory);
 
     ScheduledJobService service = new ScheduledJobService(env, sessionFactory);
 
+    Organization org = new Organization();
+    org.setId(1);
+    org.setNucleusApiKey(env.getConfig().apiKey);
+    organizationDao.create(org);
+
     Job job = new Job();
+    job.org = org;
     job.jobType = JobType.SMS_CAMPAIGN;
     job.status = JobStatus.ACTIVE;
     job.scheduleFrequency = JobFrequency.ONETIME;
@@ -81,7 +88,16 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
   }
 
   @Test
-  public void testSequence() throws Exception {
+  public void testSequenceWithBeginning() throws Exception {
+    testSequence(JobSequenceOrder.BEGINNING);
+  }
+
+  @Test
+  public void testSequenceWithNext() throws Exception {
+    testSequence(JobSequenceOrder.NEXT);
+  }
+
+  private void testSequence(JobSequenceOrder sequenceOrder) throws Exception {
     // Bit of a hack. We use this to
     Instant originalNow = Instant.now();
 
@@ -101,7 +117,6 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Job job = new Job();
     job.org = org;
     job.jobType = JobType.SMS_CAMPAIGN;
-    // TODO: Another test with INACTIVE, making sure nothing fires.
     job.status = JobStatus.ACTIVE;
     job.scheduleFrequency = JobFrequency.DAILY;
     job.scheduleInterval = 2;
@@ -109,8 +124,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     //  off the job are identical.
     job.scheduleStart = originalNow.plus(2, ChronoUnit.DAYS).minus(30, ChronoUnit.SECONDS);
     job.scheduleEnd = originalNow.plus(30, ChronoUnit.DAYS).minus(30, ChronoUnit.SECONDS);
-    // TODO: Another test with NEXT
-    job.sequenceOrder = JobSequenceOrder.BEGINNING;
+    job.sequenceOrder = sequenceOrder;
     job.jobProgresses = List.of();
     job.payload = MAPPER.readTree("""
         {
@@ -352,8 +366,13 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1,2,3]"));
     assertEquals("contact3", jobProgresses.get(2).targetId);
     String contact3ProgressPayload = jobProgresses.get(2).payload.toString();
-    assertTrue(contact3ProgressPayload.contains("\"lastMessage\":1,"));
-    assertTrue(contact3ProgressPayload.contains("\"sentMessages\":[1]"));
+    if (sequenceOrder == JobSequenceOrder.BEGINNING) {
+      assertTrue(contact3ProgressPayload.contains("\"lastMessage\":1,"));
+      assertTrue(contact3ProgressPayload.contains("\"sentMessages\":[1]"));
+    } else {
+      assertTrue(contact3ProgressPayload.contains("\"lastMessage\":3,"));
+      assertTrue(contact3ProgressPayload.contains("\"sentMessages\":[3]"));
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // NOW = day 7
@@ -378,6 +397,237 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
     assertEquals("contact3", jobProgresses.get(2).targetId);
     assertEquals(contact3ProgressPayload, jobProgresses.get(2).payload.toString());
+  }
+
+  @Test
+  public void testInactive() throws Exception {
+    // Bit of a hack. We use this to
+    Instant originalNow = Instant.now();
+
+    Environment env = new DefaultEnvironment();
+    SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class, sessionFactory);
+    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class, sessionFactory);
+    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class, sessionFactory);
+
+    ScheduledJobService service = new ScheduledJobService(env, sessionFactory);
+
+    Organization org = new Organization();
+    org.setId(1);
+    org.setNucleusApiKey(env.getConfig().apiKey);
+    organizationDao.create(org);
+
+    Job job = new Job();
+    job.org = org;
+    job.jobType = JobType.SMS_CAMPAIGN;
+    job.status = JobStatus.INACTIVE;
+    job.scheduleFrequency = JobFrequency.DAILY;
+    job.scheduleInterval = 2;
+    // TODO: The -30s is a little ridiculous. But we run into timing issues if the start time and time used to kick
+    //  off the job are identical.
+    job.scheduleStart = originalNow.plus(2, ChronoUnit.DAYS).minus(30, ChronoUnit.SECONDS);
+    job.scheduleEnd = originalNow.plus(30, ChronoUnit.DAYS).minus(30, ChronoUnit.SECONDS);
+    job.sequenceOrder = JobSequenceOrder.BEGINNING;
+    job.jobProgresses = List.of();
+    job.payload = MAPPER.readTree("""
+        {
+          "crm_list": "list1234",
+          "messages": [
+            {
+              "id": 1,
+              "seq": 1,
+              "languages": {
+                "EN": {"message": "This is message number 1."},
+                "ES": {"message": "Este es el mensaje número 1."}
+              }
+            },
+            {
+              "id": 2,
+              "seq": 2,
+              "languages": {
+                "EN": {"message": "This is message number 2."},
+                "ES": {"message": "Este es el mensaje número 2."}
+              }
+            },
+            {
+              "id": 3,
+              "seq": 3,
+              "languages": {
+                "EN": {"message": "This is message number 3."},
+                "ES": {"message": "Este es el mensaje número 3."}
+              }
+            }
+          ]
+        }
+    """);
+    jobDao.create(job);
+
+    List<CrmContact> contacts = new ArrayList<>();
+    contacts.add(crmContact("contact1", "EN"));
+    contacts.add(crmContact("contact2", "ES"));
+    lenient().when(crmServiceMock.getContactsFromList("list1234")).thenReturn(contacts);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 0
+    // CONTACT LIST SIZE = 2
+    //
+    // RESULT: nothing fires
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    Instant now = originalNow;
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    List<JobProgress> jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 0.5 (simulate crontab running multiple times a day)
+    // CONTACT LIST SIZE = 2
+    //
+    // RESULT: nothing fires
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(1, ChronoUnit.HALF_DAYS);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 2 minus 5 min (simulate a run immediately prior to the start time)
+    // CONTACT LIST SIZE = 2
+    //
+    // RESULT: nothing fires
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 2
+    // CONTACT LIST SIZE = 2
+    //
+    // RESULT: nothing fires
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 2 plus 15 min (simulate crontab running multiple times a day)
+    // CONTACT LIST SIZE = 2
+    //
+    // RESULT: nothing new should fire
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 3
+    // CONTACT LIST SIZE = 2
+    //
+    // RESULT: nothing new should fire
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 4
+    // CONTACT LIST SIZE = 2
+    //
+    // RESULT: nothing new should fire
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 5
+    // CONTACT LIST SIZE = 3 (a new contact entered in the middle of the current interval cadence)
+    //
+    // RESULT: nothing new should fire
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    contacts.add(crmContact("contact3", "EN"));
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 6
+    // CONTACT LIST SIZE = 3 (a new contact entered in the middle of the current interval cadence)
+    //
+    // RESULT: nothing new should fire
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOW = day 7
+    // CONTACT LIST SIZE = 3 (a new contact entered in the middle of the current interval cadence)
+    //
+    // RESULT: nothing new should fire
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
+    service.processJobSchedules(now);
+
+    job = jobDao.getById(job.id).get();
+    assertEquals(JobStatus.INACTIVE, job.status);
+
+    jobProgresses = jobProgressDao.getAll();
+    assertEquals(0, jobProgresses.size());
   }
 
   private CrmContact crmContact(String id, String lang) {
