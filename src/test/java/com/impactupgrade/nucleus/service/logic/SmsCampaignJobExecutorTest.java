@@ -206,10 +206,16 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     now = originalNow.plus(2, ChronoUnit.DAYS);
+    // need these later
+    Instant firstTimestamp = now;
+    Instant lastTimestamp = now;
+
     service.processJobSchedules(now);
 
     job = jobDao.getById(job.id).get();
     assertEquals(JobStatus.ACTIVE, job.status);
+    assertTrue(job.payload.toString().contains("\"firstTimestamp\":" + firstTimestamp.toEpochMilli()));
+    assertTrue(job.payload.toString().contains("\"lastTimestamp\":" + lastTimestamp.toEpochMilli()));
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
@@ -234,6 +240,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     job = jobDao.getById(job.id).get();
     assertEquals(JobStatus.ACTIVE, job.status);
+    assertTrue(job.payload.toString().contains("\"firstTimestamp\":" + firstTimestamp.toEpochMilli()));
+    assertTrue(job.payload.toString().contains("\"lastTimestamp\":" + lastTimestamp.toEpochMilli()));
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
@@ -254,6 +262,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     job = jobDao.getById(job.id).get();
     assertEquals(JobStatus.ACTIVE, job.status);
+    assertTrue(job.payload.toString().contains("\"firstTimestamp\":" + firstTimestamp.toEpochMilli()));
+    assertTrue(job.payload.toString().contains("\"lastTimestamp\":" + lastTimestamp.toEpochMilli()));
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
@@ -270,10 +280,13 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     now = originalNow.plus(4, ChronoUnit.DAYS);
+    lastTimestamp = now;
     service.processJobSchedules(now);
 
     job = jobDao.getById(job.id).get();
     assertEquals(JobStatus.ACTIVE, job.status);
+    assertTrue(job.payload.toString().contains("\"firstTimestamp\":" + firstTimestamp.toEpochMilli()));
+    assertTrue(job.payload.toString().contains("\"lastTimestamp\":" + lastTimestamp.toEpochMilli()));
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
@@ -290,40 +303,42 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     // NOW = day 5
     // CONTACT LIST SIZE = 3 (a new contact entered in the middle of the current interval cadence)
     //
-    // RESULT: contacts 1-2 don't receive anything, contact 3 starts at message 1
+    // RESULT: contacts 1-2 don't receive anything, contact 3 doesn't either (instead starts on the next window)
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     contacts.add(crmContact("contact3", "EN"));
 
     now = originalNow.plus(5, ChronoUnit.DAYS);
+
     service.processJobSchedules(now);
 
     job = jobDao.getById(job.id).get();
     assertEquals(JobStatus.ACTIVE, job.status);
+    assertTrue(job.payload.toString().contains("\"firstTimestamp\":" + firstTimestamp.toEpochMilli()));
+    assertTrue(job.payload.toString().contains("\"lastTimestamp\":" + lastTimestamp.toEpochMilli()));
 
     jobProgresses = jobProgressDao.getAll();
-    assertEquals(3, jobProgresses.size());
+    assertEquals(2, jobProgresses.size());
     assertEquals("contact1", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
     assertEquals("contact2", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
-    assertEquals("contact3", jobProgresses.get(2).targetId);
-    String contact3ProgressPayload = jobProgresses.get(2).payload.toString();
-    assertTrue(contact3ProgressPayload.contains("\"lastMessage\":1,"));
-    assertTrue(contact3ProgressPayload.contains("\"sentMessages\":[1]"));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // NOW = day 6
     // CONTACT LIST SIZE = 3 (a new contact entered in the middle of the current interval cadence)
     //
-    // RESULT: contacts 1-2 receive message 3, contact 3 stays at message 1
+    // RESULT: contacts 1-2 receive message 3, contact 3 receives message 1
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     now = originalNow.plus(6, ChronoUnit.DAYS);
+    lastTimestamp = now;
     service.processJobSchedules(now);
 
     job = jobDao.getById(job.id).get();
     assertEquals(JobStatus.ACTIVE, job.status);
+    assertTrue(job.payload.toString().contains("\"firstTimestamp\":" + firstTimestamp.toEpochMilli()));
+    assertTrue(job.payload.toString().contains("\"lastTimestamp\":" + lastTimestamp.toEpochMilli()));
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(3, jobProgresses.size());
@@ -336,14 +351,15 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     assertTrue(contact2ProgressPayload.contains("\"lastMessage\":3,"));
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1,2,3]"));
     assertEquals("contact3", jobProgresses.get(2).targetId);
-    // TODO: Failing due to getNextFireTime (see TODO there).
-    assertEquals(contact3ProgressPayload, jobProgresses.get(2).payload.toString());
+    String contact3ProgressPayload = jobProgresses.get(2).payload.toString();
+    assertTrue(contact3ProgressPayload.contains("\"lastMessage\":1,"));
+    assertTrue(contact3ProgressPayload.contains("\"sentMessages\":[1]"));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // NOW = day 7
     // CONTACT LIST SIZE = 3 (a new contact entered in the middle of the current interval cadence)
     //
-    // RESULT: contacts 1-2 don't receive anything, contact 3 starts at message 1
+    // RESULT: contacts 1-3 don't receive anything
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     now = originalNow.plus(7, ChronoUnit.DAYS);
@@ -351,6 +367,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     job = jobDao.getById(job.id).get();
     assertEquals(JobStatus.ACTIVE, job.status);
+    assertTrue(job.payload.toString().contains("\"firstTimestamp\":" + firstTimestamp.toEpochMilli()));
+    assertTrue(job.payload.toString().contains("\"lastTimestamp\":" + lastTimestamp.toEpochMilli()));
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(3, jobProgresses.size());
@@ -359,9 +377,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     assertEquals("contact2", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
     assertEquals("contact3", jobProgresses.get(2).targetId);
-    contact3ProgressPayload = jobProgresses.get(2).payload.toString();
-    assertTrue(contact3ProgressPayload.contains("\"lastMessage\":2"));
-    assertTrue(contact3ProgressPayload.contains("\"sentMessages\":[1,2]"));
+    assertEquals(contact3ProgressPayload, jobProgresses.get(2).payload.toString());
   }
 
   private CrmContact crmContact(String id, String lang) {

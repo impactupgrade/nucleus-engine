@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobFrequency;
 import com.impactupgrade.nucleus.entity.JobProgress;
+import com.impactupgrade.nucleus.entity.JobSequenceOrder;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -46,29 +47,38 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
   @Override
   public void execute(Job job, Instant now) throws Exception {
+    // First, is it time to fire off this job?
+    if (getJsonLong(job.payload, "lastTimestamp") == null) {
+      if (now.isBefore(job.scheduleStart)) {
+        // too soon for a new run
+        return;
+      }
+    } else {
+      Instant lastTimestamp = Instant.ofEpochMilli(getJsonLong(job.payload, "lastTimestamp"));
+      Optional<Instant> nextFireTime = getNextFireTime(job, lastTimestamp);
+      // One time send
+      if (nextFireTime.isEmpty()
+          // or too soon for a new run
+          || now.isBefore(nextFireTime.get())) {
+        return;
+      }
+    }
+
+    log.info("job {} is ready for the next message", job.id);
+
     String contactListId = getJsonText(job.payload, "crm_list");
     if (Strings.isNullOrEmpty(contactListId)) {
-      log.error("Failed to get contact list id for job id {}! Skipping...", job.id);
+      log.warn("Failed to get contact list id for job id {}! Skipping...", job.id);
       return;
     }
 
     List<CrmContact> crmContacts = crmService.getContactsFromList(contactListId);
-
     if (CollectionUtils.isEmpty(crmContacts)) {
       log.info("No contacts returned for job id {}! Skipping...", job.id);
       return;
     }
 
     JsonNode messagesNode = getJsonNode(job.payload, "messages");
-    if (messagesNode == null) {
-      log.error("Failed to get messages node for job id {}! Skipping...", job.id);
-      return;
-    }
-    if (messagesNode.isEmpty()) {
-      // TODO: Any reason why this wouldn't be an error?
-      log.error("Empty messages node for job id {}! Skipping...", job.id);
-      return;
-    }
 
     Map<String, JobProgress> progressesByContacts = job.jobProgresses.stream()
         .collect(Collectors.toMap(tp -> tp.targetId, tp -> tp));
@@ -77,8 +87,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       String contactId = crmContact.id;
 
       try {
-        // TODO: Need to differentiate between JobSequenceOrder (BEGINNING vs. NEXT)!
-        Integer nextMessage = 1;
+        int nextMessage;
         JobProgress jobProgress = progressesByContacts.get(contactId);
 
         if (jobProgress == null) {
@@ -89,17 +98,13 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           jobProgress.payload = objectMapper.createObjectNode();
           jobProgress.job = job;
           jobProgressDao.create(jobProgress);
-        } else {
-          Instant lastTimestamp = Instant.ofEpochMilli(getJsonLong(jobProgress.payload, "lastTimestamp"));
-          Optional<Instant> nextFireTime = getNextFireTime(job, lastTimestamp);
 
-          // One time send
-          if (nextFireTime.isEmpty()
-              // or too soon for a new run
-              || now.isBefore(nextFireTime.get())) {
-            continue;
+          if (job.sequenceOrder == JobSequenceOrder.BEGINNING) {
+            nextMessage = 1;
+          } else {
+            nextMessage = getJsonInt(job.payload, "lastMessage") + 1;
           }
-
+        } else {
           Integer lastMessage = getJsonInt(jobProgress.payload, "lastMessage");
           log.info("Last sent message id for contact id {} is {}", contactId, lastMessage);
           nextMessage = lastMessage + 1;
@@ -130,7 +135,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         log.info("Sending message id {} to contact id {} using phone number {}...", nextMessage, contactId, contactPhoneNumber);
         twilioClient.sendMessage(contactPhoneNumber, message);
 
-        updateProgress(jobProgress.payload, nextMessage, now);
+        updateProgress(jobProgress.payload, nextMessage);
         jobProgressDao.update(jobProgress);
       } catch (Exception e) {
         log.error("scheduled job failed for contact {}", contactId, e);
@@ -141,8 +146,10 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
     if (job.scheduleFrequency == JobFrequency.ONETIME) {
       job.status = JobStatus.DONE;
-      jobDao.update(job);
+    } else {
+      updateTimestamps(job.payload, now);
     }
+    jobDao.update(job);
   }
 
   // TODO: Let's introduce jsonpath? Or a limited set of Jackson bindings?
@@ -164,20 +171,21 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     return null;
   }
 
-  private void updateProgress(JsonNode jobProgressNode, Integer lastMessage, Instant now) {
+  private void updateTimestamps(JsonNode jobNode, Instant now) {
+    if (Objects.isNull(jobNode.findValue("firstTimestamp"))) {
+      ((ObjectNode) jobNode).put("firstTimestamp", now.toEpochMilli());
+    }
+    ((ObjectNode) jobNode).put("lastTimestamp", now.toEpochMilli());
+  }
+
+  private void updateProgress(JsonNode jobProgressNode, Integer lastMessage) {
     ((ObjectNode) jobProgressNode).put("lastMessage", lastMessage);
-    ((ObjectNode) jobProgressNode).put("lastTimestamp", now.getEpochSecond() * 1000);
     if (Objects.isNull(jobProgressNode.findValue("sentMessages"))) {
       ((ObjectNode) jobProgressNode).putArray("sentMessages");
     }
     ((ArrayNode) jobProgressNode.findValue("sentMessages")).add(lastMessage);
   }
 
-  // TODO: This doesn't work in the case when someone joins in the middle of the interval.
-  //  Ex: start day = 0, interval = 2, contact joins on day 3. Currently, they'll receive the 1st message on day 3,
-  //  the 2nd message on day 4, 3rd message on day 6, etc. Note the 1 day interval between the 1st and 2nd message.
-  //  All that's due to this sliding up based on the ***job start date*** instead of the contact's lastMessage date.
-  //  Could be a tricky fix. Rethink this whole setup?
   private Optional<Instant> getNextFireTime(Job job, Instant lastSent) {
     Instant nextFireTime = job.scheduleStart;
     do {
@@ -190,11 +198,10 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   private Instant increaseDate(Instant previous, JobFrequency frequency, Integer interval) {
     return switch (frequency) {
       case DAILY -> previous.plus(interval, ChronoUnit.DAYS);
-      case WEEKLY -> previous.plus(interval * 7, ChronoUnit.DAYS);
+      case WEEKLY -> previous.plus(interval * 7L, ChronoUnit.DAYS);
       // TODO: How to handle 28 vs. 30 vs. 31?
-      case MONTHLY -> previous.plus(interval * 31, ChronoUnit.DAYS);
-      // TODO: Should never happen? Dangerous to include this? Could cause repetition...
-      default -> previous;
+      case MONTHLY -> previous.plus(interval * 31L, ChronoUnit.DAYS);
+      default -> throw new RuntimeException("unexpected frequency: " + frequency);
     };
   }
 }
