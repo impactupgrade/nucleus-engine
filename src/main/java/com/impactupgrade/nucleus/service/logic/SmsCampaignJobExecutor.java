@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 public class SmsCampaignJobExecutor implements JobExecutor {
@@ -103,7 +104,12 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           if (job.sequenceOrder == JobSequenceOrder.BEGINNING) {
             nextMessage = 1;
           } else {
-            nextMessage = getJsonInt(job.payload, "lastMessage") + 1;
+            Integer lastMessage = getJsonInt(job.payload, "lastMessage");
+            if (lastMessage == null) {
+              nextMessage = 1;
+            } else {
+              nextMessage = lastMessage + 1;
+            }
           }
         } else {
           Integer lastMessage = getJsonInt(jobProgress.payload, "lastMessage");
@@ -136,7 +142,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         log.info("Sending message id {} to contact id {} using phone number {}...", nextMessage, contactId, contactPhoneNumber);
         twilioClient.sendMessage(contactPhoneNumber, message);
 
-        updateProgress(jobProgress.payload, nextMessage);
+        updateJobProgress(jobProgress.payload, nextMessage);
         jobProgressDao.update(jobProgress);
       } catch (Exception e) {
         log.error("scheduled job failed for contact {}", contactId, e);
@@ -148,7 +154,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     if (job.scheduleFrequency == JobFrequency.ONETIME) {
       job.status = JobStatus.DONE;
     } else {
-      updateTimestamps(job.payload, now);
+      updateJob(job, now);
     }
     jobDao.update(job);
   }
@@ -172,14 +178,23 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     return null;
   }
 
-  private void updateTimestamps(JsonNode jobNode, Instant now) {
-    if (Objects.isNull(jobNode.findValue("firstTimestamp"))) {
-      ((ObjectNode) jobNode).put("firstTimestamp", now.toEpochMilli());
+  private void updateJob(Job job, Instant now) {
+    if (Objects.isNull(job.payload.findValue("firstTimestamp"))) {
+      ((ObjectNode) job.payload).put("firstTimestamp", now.toEpochMilli());
     }
-    ((ObjectNode) jobNode).put("lastTimestamp", now.toEpochMilli());
+    ((ObjectNode) job.payload).put("lastTimestamp", now.toEpochMilli());
+
+    if (job.sequenceOrder == JobSequenceOrder.NEXT) {
+      Integer lastMessage = getJsonInt(job.payload, "lastMessage");
+      if (lastMessage == null) {
+        ((ObjectNode) job.payload).put("lastMessage", 1);
+      } else {
+        ((ObjectNode) job.payload).put("lastMessage", lastMessage + 1);
+      }
+    }
   }
 
-  private void updateProgress(JsonNode jobProgressNode, Integer lastMessage) {
+  private void updateJobProgress(JsonNode jobProgressNode, Integer lastMessage) {
     ((ObjectNode) jobProgressNode).put("lastMessage", lastMessage);
     if (Objects.isNull(jobProgressNode.findValue("sentMessages"))) {
       ((ObjectNode) jobProgressNode).putArray("sentMessages");
@@ -197,7 +212,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   }
 
   private Instant increaseDate(Instant previous, JobFrequency frequency, Integer interval) {
-    Calendar calendar = Calendar.getInstance();
+    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     calendar.setTime(Date.from(previous));
     switch (frequency) {
       case DAILY -> calendar.add(Calendar.DATE, interval);
