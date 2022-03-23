@@ -21,7 +21,8 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.SessionFactory;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -196,12 +197,14 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   }
 
   private Instant increaseDate(Instant previous, JobFrequency frequency, Integer interval) {
-    return switch (frequency) {
-      case DAILY -> previous.plus(interval, ChronoUnit.DAYS);
-      case WEEKLY -> previous.plus(interval * 7L, ChronoUnit.DAYS);
-      // TODO: How to handle 28 vs. 30 vs. 31?
-      case MONTHLY -> previous.plus(interval * 31L, ChronoUnit.DAYS);
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTime(Date.from(previous));
+    switch (frequency) {
+      case DAILY -> calendar.add(Calendar.DATE, interval);
+      case WEEKLY -> calendar.add(Calendar.WEEK_OF_YEAR, interval);
+      case MONTHLY -> calendar.add(Calendar.MONTH, interval);
       default -> throw new RuntimeException("unexpected frequency: " + frequency);
     };
+    return calendar.getTime().toInstant();
   }
 }
