@@ -38,6 +38,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   public String name() { return "donorwrangler"; }
 
   @Override
+  public boolean isConfigured(Environment env) {
+    return env.getConfig().donorwrangler != null;
+  }
+
+  @Override
   public void init(Environment env) {
     this.env = env;
     this.dwClient = env.donorwranglerClient();

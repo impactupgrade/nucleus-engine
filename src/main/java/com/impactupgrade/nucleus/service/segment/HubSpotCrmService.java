@@ -79,6 +79,11 @@ public class HubSpotCrmService implements CrmService {
   public String name() { return "hubspot"; }
 
   @Override
+  public boolean isConfigured(Environment env) {
+    return env.getConfig().hubspot != null;
+  }
+
+  @Override
   public void init(Environment env) {
     this.env = env;
     hsClient = HubSpotClientFactory.crmV3Client(env);
@@ -823,8 +828,8 @@ public class HubSpotCrmService implements CrmService {
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
         contact.getProperties().getOwnerId(),
-        //TODO: tagging fields
-        null, null, null, null,
+        // TODO: tagging fields
+        null, null, null, null, null,
         // TODO: email groups
         Collections.emptyList(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
@@ -855,6 +860,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         getValue(contact.getProperties().getPhone()),
         getValue(contact.getProperties().getMobilePhone()),
+        null,
         null,
         null,
         null,

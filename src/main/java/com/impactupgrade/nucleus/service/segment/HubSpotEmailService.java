@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +15,11 @@ public class HubSpotEmailService extends SmtpEmailService {
   @Override
   public String name() {
     return "hubspot";
+  }
+
+  @Override
+  public boolean isConfigured(Environment env) {
+    return env.getConfig().hubspot != null && env.getConfig().hubspot.email != null;
   }
 
   @Override

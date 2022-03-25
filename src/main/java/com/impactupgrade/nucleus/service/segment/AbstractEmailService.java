@@ -7,6 +7,7 @@ import com.impactupgrade.nucleus.util.Utils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,34 +37,58 @@ public abstract class AbstractEmailService implements EmailService {
     return primaryCrmService.getActiveCampaignsByContactIds(crmContactIds);
   }
 
+  protected Map<String, Object> buildContactCustomFields(CrmContact crmContact,
+      EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
+    Map<String, Object> fields = new HashMap<>();
+
+    if (crmContact.firstDonationDate != null) {
+      // TODO: will probably need to convert this
+      fields.put("date_of_first_donation", crmContact.firstDonationDate);
+    }
+    if (crmContact.lastDonationDate != null) {
+      // TODO: will probably need to convert this
+      fields.put("date_of_last_donation", crmContact.lastDonationDate);
+    }
+    if (crmContact.totalDonationAmount != null) {
+      fields.put("total_of_donations", crmContact.totalDonationAmount);
+    }
+    if (crmContact.numDonations != null) {
+      fields.put("number_of_donations", crmContact.numDonations);
+    }
+
+    return fields;
+  }
+
   // Separate method, allowing orgs to add in (or completely override) the defaults.
   // NOTE: Only use alphanumeric and _ chars! Some providers, like SendGrid, are using custom fields for
   //  tags and have limitations on field names.
-  protected List<String> buildContactTags(CrmContact contact, List<String> contactCampaignNames, EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
+  protected List<String> buildContactTags(CrmContact crmContact, List<String> contactCampaignNames,
+      EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
     List<String> tags = new ArrayList<>();
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // DONATION METRICS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (contact.totalDonationAmount != null
-        && Double.parseDouble(contact.totalDonationAmount) >= emailPlatform.tagFilters.majorDonorAmount) {
+    if (crmContact.totalDonationAmount != null && emailPlatform.tagFilters.majorDonorAmount != null
+        && Double.parseDouble(crmContact.totalDonationAmount) >= emailPlatform.tagFilters.majorDonorAmount) {
       tags.add("major_donor");
     }
 
-    if (contact.lastDonationDate != null) {
+    if (crmContact.lastDonationDate != null) {
       tags.add("donor");
 
-      Calendar lastDonation = Utils.getCalendarFromDateString(contact.lastDonationDate);
-      Calendar limit = Calendar.getInstance();
-      limit.add(Calendar.DAY_OF_MONTH, -emailPlatform.tagFilters.recentDonorDays);
-      if (lastDonation.after(limit)) {
-        tags.add("recent_donor");
+      if (emailPlatform.tagFilters.recentDonorDays != null) {
+        Calendar limit = Calendar.getInstance();
+        limit.add(Calendar.DAY_OF_MONTH, -emailPlatform.tagFilters.recentDonorDays);
+        if (crmContact.lastDonationDate.after(limit)) {
+          tags.add("recent_donor");
+        }
       }
     }
 
-    if (contact.numDonations != null
-        && Double.parseDouble(contact.numDonations) >= emailPlatform.tagFilters.frequentDonorCount) {
+    if (crmContact.numDonations != null && emailPlatform.tagFilters.frequentDonorCount != null
+        && Double.parseDouble(crmContact.numDonations) >= emailPlatform.tagFilters.frequentDonorCount) {
       tags.add("frequent_donor");
     }
 
@@ -79,8 +104,8 @@ public abstract class AbstractEmailService implements EmailService {
     // INTERNAL INFO
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (contact.ownerName != null) {
-      tags.add("owner_" + Utils.toSlug(contact.ownerName));
+    if (crmContact.ownerName != null) {
+      tags.add("owner_" + Utils.toSlug(crmContact.ownerName));
     }
 
     if (contactCampaignNames != null) {

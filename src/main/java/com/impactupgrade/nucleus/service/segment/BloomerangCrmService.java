@@ -60,6 +60,11 @@ public class BloomerangCrmService implements BasicCrmService {
   public String name() { return "bloomerang"; }
 
   @Override
+  public boolean isConfigured(Environment env) {
+    return env.getConfig().bloomerang != null;
+  }
+
+  @Override
   public void init(Environment env) {
     this.apiKey = env.getConfig().bloomerang.secretKey;
     this.anonymousId = env.getConfig().bloomerang.anonymousId;
