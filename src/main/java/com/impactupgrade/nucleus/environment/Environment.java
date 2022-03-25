@@ -33,6 +33,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
@@ -145,7 +146,6 @@ public class Environment {
   }
 
   public List<PaymentGatewayService> allPaymentGatewayServices() {
-    // TODO: Filter by payment gateways actually configured in env.json
     return segmentServices(PaymentGatewayService.class);
   }
 
@@ -162,7 +162,6 @@ public class Environment {
   }
 
   public List<EmailService> allEmailServices() {
-    // TODO: Filter by email services actually configured in env.json
     return segmentServices(EmailService.class);
   }
 
@@ -190,9 +189,16 @@ public class Environment {
         .map(p -> {
           T segmentService = p.get();
           discoveredServices.put(segmentService.name(), segmentService);
+
+          // segmentServices should only return the list of services that are actually configured in env.json
+          if (!segmentService.isConfigured(this)) {
+            return null;
+          }
+
           segmentService.init(this);
           return segmentService;
         })
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 

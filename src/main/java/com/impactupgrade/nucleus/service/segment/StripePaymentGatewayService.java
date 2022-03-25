@@ -42,6 +42,11 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public String name() { return "stripe"; }
 
   @Override
+  public boolean isConfigured(Environment env) {
+    return env.getConfig().stripe != null;
+  }
+
+  @Override
   public void init(Environment env) {
     this.env = env;
     stripeClient = env.stripeClient();

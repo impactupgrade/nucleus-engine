@@ -245,9 +245,9 @@ public class EnvironmentConfig {
   }
 
   public static class EmailTagFilters {
-    public Integer majorDonorAmount = 1000;
-    public Integer recentDonorDays = 31;
-    public Integer frequentDonorCount = 6;
+    public Integer majorDonorAmount = null;
+    public Integer recentDonorDays = null;
+    public Integer frequentDonorCount = null;
   }
 
   public static class EmailList {

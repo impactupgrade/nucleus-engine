@@ -52,6 +52,11 @@ public class SfdcCrmService implements CrmService {
   public String name() { return "salesforce"; }
 
   @Override
+  public boolean isConfigured(Environment env) {
+    return env.getConfig().salesforce != null;
+  }
+
+  @Override
   public void init(Environment env) {
     this.env = env;
     sfdcClient = env.sfdcClient();
@@ -1018,7 +1023,8 @@ public class SfdcCrmService implements CrmService {
     CrmAddress crmAddress = null;
     String totalOppAmount = null;
     String numberOfClosedOpps = null;
-    String lastCloseDate = null;
+    Calendar firstCloseDate = null;
+    Calendar lastCloseDate = null;
 
     if (sObject.getChild("Account") != null && sObject.getChild("Account").hasChildren()) {
       crmAddress = new CrmAddress(
@@ -1033,7 +1039,12 @@ public class SfdcCrmService implements CrmService {
 
       totalOppAmount = (String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c");
       numberOfClosedOpps = (String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c");
-      lastCloseDate = (String) sObject.getChild("Account").getField("npo02__LastCloseDate__c");
+      try {
+        firstCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
+        lastCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
+      } catch (ParseException e) {
+        log.error("unable to parse first/last close date", e);
+      }
     }
 
     String ownerName = null;
@@ -1069,6 +1080,7 @@ public class SfdcCrmService implements CrmService {
         ownerName,
         totalOppAmount,
         numberOfClosedOpps,
+        firstCloseDate,
         lastCloseDate,
         emailGroups,
         (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),

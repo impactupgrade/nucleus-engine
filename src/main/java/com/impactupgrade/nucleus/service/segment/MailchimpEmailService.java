@@ -3,6 +3,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.impactupgrade.nucleus.client.MailchimpClient;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -31,6 +32,11 @@ public class MailchimpEmailService extends AbstractEmailService {
   }
 
   @Override
+  public boolean isConfigured(Environment env) {
+    return env.getConfig().mailchimp != null && !env.getConfig().mailchimp.isEmpty();
+  }
+
+  @Override
   public void sendEmailText(String subject, String body, boolean isHtml, String to, String from) {
     // TODO
   }
@@ -51,7 +57,7 @@ public class MailchimpEmailService extends AbstractEmailService {
         int count = 0;
         for (CrmContact crmContact : crmContacts) {
           log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
-          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, emailList.groups));
+          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, emailList.groups, emailPlatform));
           updateTags(emailList.id, crmContact, contactCampaignNames.get(crmContact.id), mailchimpClient, emailPlatform);
         }
       }
@@ -129,7 +135,8 @@ public class MailchimpEmailService extends AbstractEmailService {
 //    return crmAddress;
 //  }
 
-  protected MemberInfo toMcMemberInfo(CrmContact contact, Map<String, String> groups) {
+  protected MemberInfo toMcMemberInfo(CrmContact contact, Map<String, String> groups,
+      EnvironmentConfig.EmailPlatform mailchimpConfig) throws Exception {
     if (contact == null) {
       return null;
     }
@@ -144,6 +151,7 @@ public class MailchimpEmailService extends AbstractEmailService {
     mcContact.merge_fields.mapping.put(LAST_NAME, contact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, contact.mobilePhone);
     mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(contact.address));
+    mcContact.merge_fields.mapping.putAll(buildContactCustomFields(contact, mailchimpConfig));
     mcContact.status = contact.canReceiveEmail() ? SUBSCRIBED : UNSUBSCRIBED;
 
     List<String> groupIds = contact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
