@@ -205,41 +205,6 @@ public class EnvironmentConfig {
     public String senderPn = "";
   }
 
-  // TODO: The following needs to be genericized to support other email platforms...
-
-  /*
-  "mailchimp": {
-    "secretKey": "asdf",
-    "lists": [
-      {
-        "id": "hopeful-living-id",
-        "type": "CONTACTS",
-        "groups": {},
-        "crmFilter": "type = 'HFL' and foobar != 'whatever'"
-      },
-      {
-        "id": "general-subscribers-id",
-        "type": "CONTACTS",
-        "groups": {},
-        "crmSource": "salesforce",
-        "crmFilter": "type != 'HFL'"
-      },
-      {
-        "id": "general-subscribers-id",
-        "type": "CONTACTS",
-        "groups": {},
-        "crmSource": "hubspot",
-        "crmFilter": "type neq HFL"
-      },
-      {
-        "id": "donors-id",
-        "type": "DONORS",
-        "crmFilter": []
-      }
-    ]
-  }
-   */
-
   public enum EmailListType {
     CONTACTS, DONORS
   }

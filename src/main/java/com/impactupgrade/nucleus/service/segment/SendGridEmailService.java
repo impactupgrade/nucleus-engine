@@ -41,11 +41,6 @@ public class SendGridEmailService extends SmtpEmailService {
   }
 
   @Override
-  protected List<EnvironmentConfig.EmailPlatform> emailPlatforms() {
-    return env.getConfig().sendgrid;
-  }
-
-  @Override
   public void sendEmailTemplate(String template, String to) {
     log.info("not implemented: sendEmailTemplate");
     // TODO
@@ -186,14 +181,23 @@ public class SendGridEmailService extends SmtpEmailService {
     public Map<String, String> custom_fields = new HashMap<>();
   }
 
-  protected String host(EnvironmentConfig.EmailPlatform emailPlatform) { return "smtp.sendgrid.net"; }
-  protected String port(EnvironmentConfig.EmailPlatform emailPlatform) { return "587"; }
-  protected String username(EnvironmentConfig.EmailPlatform emailPlatform) { return "apikey"; }
-  protected String password(EnvironmentConfig.EmailPlatform emailPlatform) {
-    if (Strings.isNullOrEmpty(emailPlatform.secretKey)) {
+  @Override protected String host() { return "smtp.sendgrid.net"; }
+  @Override protected String port() { return "587"; }
+  @Override protected String username() { return "apikey"; }
+  @Override
+  protected String password() {
+    EnvironmentConfig.EmailPlatform config = getConfig();
+    if (config == null || Strings.isNullOrEmpty(config.secretKey)) {
       // legacy support
       return System.getenv("SENDGRID_KEY");
     }
-    return emailPlatform.secretKey;
+    return config.secretKey;
+  }
+
+  private EnvironmentConfig.EmailPlatform getConfig() {
+    // Find the transactionalSender. If it's not explicitly set, assume the first (or only).
+    return env.getConfig().sendgrid.stream().filter(ep -> ep.transactionalSender).findFirst().orElse(
+        env.getConfig().sendgrid.stream().findFirst().orElse(null)
+    );
   }
 }

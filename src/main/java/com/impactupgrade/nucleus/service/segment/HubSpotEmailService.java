@@ -1,12 +1,10 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Calendar;
-import java.util.List;
 
 public class HubSpotEmailService extends SmtpEmailService {
 
@@ -23,11 +21,6 @@ public class HubSpotEmailService extends SmtpEmailService {
   }
 
   @Override
-  protected List<EnvironmentConfig.EmailPlatform> emailPlatforms() {
-    return List.of(env.getConfig().hubspot.email);
-  }
-
-  @Override
   public void sendEmailTemplate(String template, String to) {
     // TODO
   }
@@ -39,9 +32,9 @@ public class HubSpotEmailService extends SmtpEmailService {
     //  CRM as well. No syncs ever needed?
   }
 
-  protected String host(EnvironmentConfig.EmailPlatform emailPlatform) { return "smtp.hubapi.com"; }
-  protected String port(EnvironmentConfig.EmailPlatform emailPlatform) { return "587"; }
+  @Override protected String host() { return "smtp.hubapi.com"; }
+  @Override protected String port() { return "587"; }
   // TODO: Can transactional email use the apikey instead?
-  protected String username(EnvironmentConfig.EmailPlatform emailPlatform) { return emailPlatform.username; }
-  protected String password(EnvironmentConfig.EmailPlatform emailPlatform) { return emailPlatform.password; }
+  @Override protected String username() { return env.getConfig().hubspot.email.username; }
+  @Override protected String password() { return env.getConfig().hubspot.email.password; }
 }

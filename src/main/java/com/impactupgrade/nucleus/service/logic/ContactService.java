@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ContactFormData;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -36,16 +37,22 @@ public class ContactService {
     }
 
     if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
-      log.info("found CRM account {} and contact {}",
-          paymentGatewayEvent.getCrmAccount().id, paymentGatewayEvent.getCrmContact().id);
-      return;
+      Optional<CrmAccount> existingAccount = crmService.getAccountById(paymentGatewayEvent.getCrmAccount().id);
+      if (existingAccount.isPresent()) {
+        log.info("found CRM account {} and contact {}",
+            paymentGatewayEvent.getCrmAccount().id, paymentGatewayEvent.getCrmContact().id);
+        return;
+      } else {
+        log.info("event included CRM account {} and contact {}, but the account didn't exist; trying by-email...",
+            paymentGatewayEvent.getCrmAccount().id, paymentGatewayEvent.getCrmContact().id);
+      }
     }
 
     // attempt to find a Contact using the email
     Optional<CrmContact> existingContact = crmService.getContactByEmail(paymentGatewayEvent.getCrmContact().email);
     if (existingContact.isPresent()) {
-      log.info("found CRM contact {} and account {} using email {}",
-          existingContact.get().id, existingContact.get().accountId, paymentGatewayEvent.getCrmContact().email);
+      log.info("found CRM account {} and contact {} using email {}",
+          existingContact.get().accountId, existingContact.get().id, paymentGatewayEvent.getCrmContact().email);
       paymentGatewayEvent.setCrmAccountId(existingContact.get().accountId);
       // Set the full Contact, which we need to populate donation names, etc.
       paymentGatewayEvent.setCrmContact(existingContact.get());
