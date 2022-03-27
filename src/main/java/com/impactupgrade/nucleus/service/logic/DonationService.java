@@ -120,10 +120,17 @@ public class DonationService {
 
     crmService.closeRecurringDonation(paymentGatewayEvent);
 
-    // Email
-    notificationservice.sendEmailNotification(
+    String targetId = null;
+    if (!Strings.isNullOrEmpty(recurringDonation.get().account.id)) {
+      targetId = recurringDonation.get().account.id;
+    } else {
+      targetId = recurringDonation.get().contact.id;
+    }
+
+    notificationservice.sendNotification(
         "Recurring Donation Closed",
         "Recurring donation " + recurringDonation.get().id + " has been closed.",
+        targetId,
         "donations:close-recurring-donation"
     );
   }

@@ -246,14 +246,6 @@ public class StripeController {
             Optional<CrmRecurringDonation> crmRecurringDonationOptional = crmService.getRecurringDonationBySubscriptionId(subscription.getId());
 
             if (crmRecurringDonationOptional.isPresent()) {
-              // Email
-              env.notificationService().sendEmailNotification(
-                  "Recurring Donation: Card Expiring",
-                  "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.",
-                  "donations:card-expiring"
-              );
-
-              // Crm task
               String targetId = null;
               Optional<CrmAccount> crmAccountOptional = crmService.getAccountByCustomerId(card.getCustomer());
               if (crmAccountOptional.isPresent()) {
@@ -265,8 +257,10 @@ public class StripeController {
                 }
               }
 
-              env.notificationService().createCrmTask(crmService, targetId,
-                  "Donor is using a card that's about to expire.",
+              env.notificationService().sendNotification(
+                  "Recurring Donation: Card Expiring",
+                  "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.",
+                  targetId,
                   "donations:card-expiring"
               );
             }

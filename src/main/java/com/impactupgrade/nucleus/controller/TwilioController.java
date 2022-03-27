@@ -287,10 +287,11 @@ public class TwilioController {
       String body = smsData.get("Body").get(0).trim();
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
-        // for now, simply send an email if it's configured -- in the future, update this to allow Activities to be stored on the SFDC contact, forward to a staff member, etc
-        env.notificationService().sendEmailNotification(
+        String targetId = env.messagingCrmService().getContactByPhone(from).map(c -> c.id).orElse(null);
+        env.notificationService().sendNotification(
             "Text Message Received",
             "Text message received from " + from + ": " + body,
+            targetId,
             "sms:inbound-default"
         );
       }
