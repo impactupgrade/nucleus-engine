@@ -10,6 +10,9 @@ import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
+import com.ecwid.maleorang.method.v3_0.lists.merge_fields.EditMergeFieldMethod;
+import com.ecwid.maleorang.method.v3_0.lists.merge_fields.GetMergeFieldsMethod;
+import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -57,7 +60,11 @@ public class MailchimpClient {
       upsertMemberMethod.interests.mapping.putAll(contact.interests.mapping);
       client.execute(upsertMemberMethod);
     } catch (MailchimpException e) {
-      log.warn("Mailchimp upsertContact failed: {}", e.description);
+      String description = e.description;
+      if (e.errors != null) {
+        description += String.join(" ; ", e.errors);
+      }
+      log.warn("Mailchimp upsertContact failed: {}", description);
     }
   }
 
@@ -103,5 +110,21 @@ public class MailchimpClient {
     EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
     editMemberMethod.tags = tags;
     client.execute(editMemberMethod);
+  }
+
+  public List<MergeFieldInfo> getMergeFields(String listId) throws IOException, MailchimpException {
+    GetMergeFieldsMethod getMergeFields = new GetMergeFieldsMethod(listId);
+    getMergeFields.count = 1000; // the max
+    GetMergeFieldsMethod.Response getMergeFieldsResponse = client.execute(getMergeFields);
+    return getMergeFieldsResponse.merge_fields;
+  }
+
+  public MergeFieldInfo createMergeField(String listId, String name, MergeFieldInfo.Type type)
+      throws IOException, MailchimpException {
+    EditMergeFieldMethod.Create createMergeField = new EditMergeFieldMethod.Create(listId, type);
+    createMergeField.name = name;
+    createMergeField.required = false;
+    createMergeField.is_public = false;
+    return client.execute(createMergeField);
   }
 }

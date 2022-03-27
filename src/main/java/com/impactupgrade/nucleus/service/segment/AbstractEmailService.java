@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -7,7 +8,6 @@ import com.impactupgrade.nucleus.util.Utils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,26 +37,51 @@ public abstract class AbstractEmailService implements EmailService {
     return primaryCrmService.getActiveCampaignsByContactIds(crmContactIds);
   }
 
-  protected Map<String, Object> buildContactCustomFields(CrmContact crmContact,
+  protected List<CustomField> buildContactCustomFields(CrmContact crmContact,
       EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
-    Map<String, Object> fields = new HashMap<>();
+    List<CustomField> customFields = new ArrayList<>();
+
+    if (!Strings.isNullOrEmpty(crmContact.address.city)) {
+      customFields.add(new CustomField("city", CustomFieldType.STRING, crmContact.address.city));
+    }
+    if (!Strings.isNullOrEmpty(crmContact.address.state)) {
+      customFields.add(new CustomField("state", CustomFieldType.STRING, crmContact.address.state));
+    }
+    if (!Strings.isNullOrEmpty(crmContact.address.postalCode)) {
+      customFields.add(new CustomField("postal_code", CustomFieldType.STRING, crmContact.address.postalCode));
+    }
+    if (!Strings.isNullOrEmpty(crmContact.address.country)) {
+      customFields.add(new CustomField("country", CustomFieldType.STRING, crmContact.address.country));
+    }
 
     if (crmContact.firstDonationDate != null) {
-      // TODO: will probably need to convert this
-      fields.put("date_of_first_donation", crmContact.firstDonationDate);
+      customFields.add(new CustomField("date_of_first_donation", CustomFieldType.DATE, crmContact.firstDonationDate));
     }
     if (crmContact.lastDonationDate != null) {
-      // TODO: will probably need to convert this
-      fields.put("date_of_last_donation", crmContact.lastDonationDate);
+      customFields.add(new CustomField("date_of_last_donation", CustomFieldType.DATE, crmContact.lastDonationDate));
     }
     if (crmContact.totalDonationAmount != null) {
-      fields.put("total_of_donations", crmContact.totalDonationAmount);
+      customFields.add(new CustomField("total_of_donations", CustomFieldType.NUMBER, crmContact.totalDonationAmount));
     }
     if (crmContact.numDonations != null) {
-      fields.put("number_of_donations", crmContact.numDonations);
+      customFields.add(new CustomField("number_of_donations", CustomFieldType.NUMBER, crmContact.numDonations));
     }
 
-    return fields;
+    return customFields;
+  }
+
+  protected enum CustomFieldType {
+    STRING, NUMBER, BOOLEAN, DATE
+  }
+  protected static class CustomField {
+    public String name;
+    public CustomFieldType type;
+    public Object value;
+    public CustomField(String name, CustomFieldType type, Object value) {
+      this.name = name;
+      this.type = type;
+      this.value = value;
+    }
   }
 
   // Separate method, allowing orgs to add in (or completely override) the defaults.
@@ -71,7 +96,7 @@ public abstract class AbstractEmailService implements EmailService {
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (crmContact.totalDonationAmount != null && emailPlatform.tagFilters.majorDonorAmount != null
-        && Double.parseDouble(crmContact.totalDonationAmount) >= emailPlatform.tagFilters.majorDonorAmount) {
+        && crmContact.totalDonationAmount >= emailPlatform.tagFilters.majorDonorAmount) {
       tags.add("major_donor");
     }
 
@@ -88,7 +113,7 @@ public abstract class AbstractEmailService implements EmailService {
     }
 
     if (crmContact.numDonations != null && emailPlatform.tagFilters.frequentDonorCount != null
-        && Double.parseDouble(crmContact.numDonations) >= emailPlatform.tagFilters.frequentDonorCount) {
+        && crmContact.numDonations >= emailPlatform.tagFilters.frequentDonorCount) {
       tags.add("frequent_donor");
     }
 

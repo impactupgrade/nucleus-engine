@@ -2,6 +2,8 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
+import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -10,7 +12,9 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,6 +29,8 @@ import static com.impactupgrade.nucleus.client.MailchimpClient.UNSUBSCRIBED;
 public class MailchimpEmailService extends AbstractEmailService {
 
   private static final Logger log = LogManager.getLogger(MailchimpEmailService.class);
+
+  private final Map<String, String> mergeFieldsNameToTag = new HashMap<>();
 
   @Override
   public String name() {
@@ -48,17 +54,18 @@ public class MailchimpEmailService extends AbstractEmailService {
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.EmailPlatform emailPlatform : env.getConfig().mailchimp) {
-      MailchimpClient mailchimpClient = new MailchimpClient(emailPlatform);
-      for (EnvironmentConfig.EmailList emailList : emailPlatform.lists) {
+    for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
+      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+      for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
         List<CrmContact> crmContacts = getCrmContacts(emailList, lastSync);
-        Map<String, List<String>> contactCampaignNames = getContactCampaignNames(crmContacts);
+        Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
 
         int count = 0;
         for (CrmContact crmContact : crmContacts) {
           log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
-          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, emailList.groups, emailPlatform));
-          updateTags(emailList.id, crmContact, contactCampaignNames.get(crmContact.id), mailchimpClient, emailPlatform);
+          Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
+          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
+          updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
         }
       }
     }
@@ -93,12 +100,59 @@ public class MailchimpEmailService extends AbstractEmailService {
 //    String listId = getListIdFromName(listName);
 //    return mailchimpClient.getContactTags(listId, crmContact.email);
 //  }
-//
 
-  protected void updateTags(String listId, CrmContact crmContact, List<String> contactCampaignNames,
+  protected Map<String, Object> getCustomFields(String listId, CrmContact crmContact, MailchimpClient mailchimpClient,
+      EnvironmentConfig.EmailPlatform mailchimpConfig) throws Exception {
+    Map<String, Object> customFieldMap = new HashMap<>();
+
+    List<CustomField> customFields = buildContactCustomFields(crmContact, mailchimpConfig);
+    if (mergeFieldsNameToTag.isEmpty()) {
+      List<MergeFieldInfo> mergeFields = mailchimpClient.getMergeFields(listId);
+      for (MergeFieldInfo mergeField : mergeFields) {
+        mergeFieldsNameToTag.put(mergeField.name, mergeField.tag);
+      }
+    }
+    for (CustomField customField : customFields) {
+      if (customField.value == null) {
+        continue;
+      }
+
+      if (!mergeFieldsNameToTag.containsKey(customField.name)) {
+        // TEXT, NUMBER, ADDRESS, PHONE, DATE, URL, IMAGEURL, RADIO, DROPDOWN, BIRTHDAY, ZIP
+        MergeFieldInfo.Type type = switch(customField.type) {
+          case DATE -> MergeFieldInfo.Type.DATE;
+          // MC doesn't support a boolean type, so we use NUMBER and map to 0/1
+          case BOOLEAN -> MergeFieldInfo.Type.NUMBER;
+          case NUMBER -> MergeFieldInfo.Type.NUMBER;
+          default -> MergeFieldInfo.Type.TEXT;
+        };
+        MergeFieldInfo mergeField = mailchimpClient.createMergeField(listId, customField.name, type);
+        mergeFieldsNameToTag.put(mergeField.name, mergeField.tag);
+      }
+
+      Object value = customField.value;
+      if (customField.type == CustomFieldType.BOOLEAN) {
+        if (((Boolean) value)) {
+          value = 1;
+        } else {
+          value = 0;
+        }
+      } else if (customField.type == CustomFieldType.DATE) {
+        Calendar c = (Calendar) value;
+        value = new SimpleDateFormat("yyyy-MM-dd").format(c.getTime());
+      }
+
+      String mailchimpTag = mergeFieldsNameToTag.get(customField.name);
+      customFieldMap.put(mailchimpTag, value);
+    }
+
+    return customFieldMap;
+  }
+
+  protected void updateTags(String listId, CrmContact crmContact, List<String> crmContactCampaignNames,
       MailchimpClient mailchimpClient, EnvironmentConfig.EmailPlatform mailchimpConfig) {
     try {
-      List<String> activeTags = buildContactTags(crmContact, contactCampaignNames, mailchimpConfig);
+      List<String> activeTags = buildContactTags(crmContact, crmContactCampaignNames, mailchimpConfig);
       List<String> inactiveTags = mailchimpClient.getContactTags(listId, crmContact.email);
       inactiveTags.removeAll(activeTags);
 
@@ -135,9 +189,8 @@ public class MailchimpEmailService extends AbstractEmailService {
 //    return crmAddress;
 //  }
 
-  protected MemberInfo toMcMemberInfo(CrmContact contact, Map<String, String> groups,
-      EnvironmentConfig.EmailPlatform mailchimpConfig) throws Exception {
-    if (contact == null) {
+  protected MemberInfo toMcMemberInfo(CrmContact crmContact, Map<String, Object> customFields, Map<String, String> groups) {
+    if (crmContact == null) {
       return null;
     }
 
@@ -145,16 +198,20 @@ public class MailchimpEmailService extends AbstractEmailService {
     // TODO: This isn't correct, but we'll need a way to pull the existing MC contact ID? Or maybe it's never needed,
     //  since updates use the email hash...
 //    mcContact.id = contact.id;
-    mcContact.email_address = contact.email;
+    mcContact.email_address = crmContact.email;
     mcContact.merge_fields = new MailchimpObject();
-    mcContact.merge_fields.mapping.put(FIRST_NAME, contact.firstName);
-    mcContact.merge_fields.mapping.put(LAST_NAME, contact.lastName);
-    mcContact.merge_fields.mapping.put(PHONE_NUMBER, contact.mobilePhone);
-    mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(contact.address));
-    mcContact.merge_fields.mapping.putAll(buildContactCustomFields(contact, mailchimpConfig));
-    mcContact.status = contact.canReceiveEmail() ? SUBSCRIBED : UNSUBSCRIBED;
+    mcContact.merge_fields.mapping.put(FIRST_NAME, crmContact.firstName);
+    mcContact.merge_fields.mapping.put(LAST_NAME, crmContact.lastName);
+    mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
+    // MC only allows "complete" addresses, so only fill this out if that's the case. As a backup, we're creating
+    // separate, custom fields for city/state/zip/country.
+    if (!Strings.isNullOrEmpty(crmContact.address.street)) {
+      mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(crmContact.address));
+    }
+    mcContact.merge_fields.mapping.putAll(customFields);
+    mcContact.status = crmContact.canReceiveEmail() ? SUBSCRIBED : UNSUBSCRIBED;
 
-    List<String> groupIds = contact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
+    List<String> groupIds = crmContact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
     // TODO: Does this deselect what's no longer subscribed to in MC?
     MailchimpObject groupMap = new MailchimpObject();
     groupIds.forEach(id -> groupMap.mapping.put(id, true));

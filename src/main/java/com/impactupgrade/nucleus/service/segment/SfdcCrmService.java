@@ -1021,8 +1021,8 @@ public class SfdcCrmService implements CrmService {
     }
 
     CrmAddress crmAddress = null;
-    String totalOppAmount = null;
-    String numberOfClosedOpps = null;
+    Double totalOppAmount = null;
+    Integer numberOfClosedOpps = null;
     Calendar firstCloseDate = null;
     Calendar lastCloseDate = null;
 
@@ -1037,8 +1037,8 @@ public class SfdcCrmService implements CrmService {
           (String) sObject.getChild("Account").getField("BillingCountry")
       );
 
-      totalOppAmount = (String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c");
-      numberOfClosedOpps = (String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c");
+      totalOppAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"));
+      numberOfClosedOpps = Double.valueOf((String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c")).intValue();
       try {
         firstCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
         lastCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
