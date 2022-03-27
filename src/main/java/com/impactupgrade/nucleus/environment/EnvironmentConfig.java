@@ -68,13 +68,12 @@ public class EnvironmentConfig {
 
   public static class Task {
     public String assignTo = "";
-    public String subject = "";
   }
 
   public static class Notifications {
-    public Notification email;
-    public Notification sms;
-    public Task task;
+    public Notification email = null;
+    public Notification sms = null;
+    public Task task = null;
   }
 
   public Map<String, Notifications> notifications = new HashMap<>();

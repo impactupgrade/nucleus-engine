@@ -9,104 +9,84 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.mail.MessagingException;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.Date;
-import java.util.Objects;
+import java.util.Calendar;
 
 public class NotificationService {
 
-    private static final Logger log = LogManager.getLogger(NotificationService.class);
+  private static final Logger log = LogManager.getLogger(NotificationService.class);
 
-    private final Environment env;
+  private final Environment env;
 
-    public NotificationService(Environment env) {
-        this.env = env;
+  public NotificationService(Environment env) {
+    this.env = env;
+  }
+
+  public void sendNotification(String subject, String body, String notificationKey) throws Exception {
+    sendNotification(subject, body, null, notificationKey);
+  }
+
+  public void sendNotification(String subject, String body, String targetId, String notificationKey) throws Exception {
+    EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get(notificationKey);
+    if (notificationsConfig == null) {
+      // nothing to do
+      return;
     }
 
-    // TODO: This needs refactored! env.json allows a flexible configuration of notifications to be set up for specific
-    //  contexts. Don't force the caller of this class to know ahead of time what to send. Instead, let it simply call
-    //  sendNotification(...) and we'll check out notification.email, notification.sms, and notification.task here.
+    if (notificationsConfig.email != null) {
+      sendEmailNotification(subject, body, notificationsConfig.email);
+    }
+    if (notificationsConfig.sms != null) {
+      sendSmsNotification(body, notificationsConfig.sms);
+    }
+    if (notificationsConfig.task != null) {
+      createCrmTask(subject, body, targetId, notificationsConfig.task);
+    }
+  }
 
-    public void sendEmailNotification(String subject, String textBody, String notificationsKey) throws MessagingException {
-        sendEmailNotification(subject, textBody, false, notificationsKey);
+  protected void sendEmailNotification(String subject, String body, EnvironmentConfig.Notification notificationConfig) {
+    if (Strings.isNullOrEmpty(notificationConfig.from) || CollectionUtils.isEmpty(notificationConfig.to)) {
+      log.warn("Email notification is not valid (missing required parameters). Returning...");
+      return;
+    }
+    String emailFrom = notificationConfig.from;
+    String emailTo = String.join(",", notificationConfig.to);
+    env.transactionalEmailService().sendEmailText(subject, body, false, emailTo, emailFrom);
+  }
+
+  protected void sendSmsNotification(String body, EnvironmentConfig.Notification notificationConfig) {
+    if (CollectionUtils.isEmpty(notificationConfig.to)) {
+      log.warn("Email notification is not valid (missing required parameters). Returning...");
+      return;
     }
 
-    public void sendEmailNotification(String subject, String body, boolean isHtml, String notificationsKey) throws MessagingException {
-        EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get(notificationsKey);
+    for (String to : notificationConfig.to) {
+      env.twilioClient().sendMessage(to, body);
+    }
+  }
 
-        if (Objects.isNull(notifications) || Objects.isNull(notifications.email)) {
-            // Nothing to do
-            return;
-        }
-        EnvironmentConfig.Notification emailNotification = notifications.email;
-        if (!isValidEmailNotification(emailNotification)) {
-            log.warn("Email notification is not valid (missing required parameters). Returning...");
-            return;
-        }
-        String emailFrom = emailNotification.from;
-        String emailTo = String.join(",", emailNotification.to);
-        env.transactionalEmailService().sendEmailText(subject, body, isHtml, emailTo, emailFrom);
+  protected void createCrmTask(String subject, String body, String targetId, EnvironmentConfig.Task notificationConfig)
+      throws Exception {
+    CrmService crmService = env.primaryCrmService();
+
+    if (crmService == null) {
+      log.info("CRM is not defined. Returning...");
+      return;
     }
 
-    public void sendSMSNotification(String smsText, String notificationsKey) {
-        EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get(notificationsKey);
-
-        if (Objects.isNull(notifications) || Objects.isNull(notifications.sms)) {
-            // Nothing to do
-            return;
-        }
-        EnvironmentConfig.Notification smsNotification = notifications.sms;
-        // TODO: validation
-        //String fromPhoneNumber = smsNotification.from;
-        //List<String> toPhoneNumbers = smsNotification.to;
-        // TODO: send sms messages
+    if (Strings.isNullOrEmpty(targetId)) {
+      log.info("CRM Target ID is not defined. Returning...");
+      return;
     }
 
-    public void createCrmTask(CrmService crmService, String targetId, String description, String notificationsKey) throws Exception {
-        EnvironmentConfig.Notifications notifications = env.getConfig().notifications.get(notificationsKey);
+    Calendar dueDate = Calendar.getInstance();
+    // TODO: For now, push it out a week, but make this configurable?
+    dueDate.add(Calendar.HOUR, 7 * 24);
+    String assignTo = notificationConfig.assignTo;
 
-        if (Objects.isNull(notifications) || Objects.isNull(notifications.task)) {
-            // Nothing to do
-            return;
-        }
-        EnvironmentConfig.Task task = notifications.task;
-        if (!isValidTask(task)) {
-            log.warn("Task notification is not valid (missing required parameters). Returning...");
-            return;
-        }
-        if (Objects.isNull(crmService)) {
-            log.warn("Crm Service is not defined. Returning...");
-            return;
-        }
-        if (Strings.isNullOrEmpty(targetId)) {
-            log.warn("Target id is not defined. Returning...");
-            return;
-        }
-        LocalDate now = LocalDate.now();
-        LocalDate inAWeek = now.plusDays(7);
-        Date dueDate = Date.from(inAWeek.atStartOfDay().toInstant(ZoneOffset.UTC)); // TODO: define due date
-        String assignTo = task.assignTo;
-        String subject = task.subject;
-
-        crmService.insertTask(new CrmTask(
-                targetId, assignTo,
-                subject, description,
-                CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate));
-    }
-
-    // Utils
-    private boolean isValidEmailNotification(EnvironmentConfig.Notification emailNotification) {
-        return Objects.nonNull(emailNotification)
-                && !Strings.isNullOrEmpty(emailNotification.from)
-                && CollectionUtils.isNotEmpty(emailNotification.to);
-    }
-
-    private boolean isValidTask(EnvironmentConfig.Task task) {
-        return Objects.nonNull(task)
-                && !Strings.isNullOrEmpty(task.assignTo)
-                && !Strings.isNullOrEmpty(task.subject);
-    }
-
+    crmService.insertTask(new CrmTask(
+        targetId, assignTo,
+        subject, body,
+        CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate
+    ));
+  }
 }
