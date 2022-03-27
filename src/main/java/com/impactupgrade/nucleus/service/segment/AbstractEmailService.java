@@ -15,26 +15,25 @@ import java.util.stream.Collectors;
 public abstract class AbstractEmailService implements EmailService {
 
   protected Environment env;
-  protected CrmService primaryCrmService;
-  protected CrmService donationsCrmService;
 
   @Override
   public void init(Environment env) {
     this.env = env;
-    primaryCrmService = env.primaryCrmService();
-    donationsCrmService = env.donationsCrmService();
+    // TODO: DO NOT try to pull CrmService here! We should consider a refactor (possibly splitting EmailService
+    //  into an email sync service vs. transactional email service. Currently, nucleus-core and others use
+    //  SendGridEmailService, even when no CrmService is identified.
   }
 
   protected List<CrmContact> getCrmContacts(EnvironmentConfig.EmailList emailList, Calendar lastSync) throws Exception {
     return switch (emailList.type) {
-      case CONTACTS -> primaryCrmService.getEmailContacts(lastSync, emailList.crmFilter);
-      case DONORS -> donationsCrmService.getEmailDonorContacts(lastSync, emailList.crmFilter);
+      case CONTACTS -> env.primaryCrmService().getEmailContacts(lastSync, emailList.crmFilter);
+      case DONORS -> env.donationsCrmService().getEmailDonorContacts(lastSync, emailList.crmFilter);
     };
   }
 
   protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts) throws Exception {
     List<String> crmContactIds = crmContacts.stream().map(c -> c.id).collect(Collectors.toList());
-    return primaryCrmService.getActiveCampaignsByContactIds(crmContactIds);
+    return env.primaryCrmService().getActiveCampaignsByContactIds(crmContactIds);
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,
