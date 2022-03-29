@@ -53,18 +53,30 @@ public class MailchimpClient {
   }
 
   public void upsertContact(String listId, MemberInfo contact) throws IOException {
+    EditMemberMethod.CreateOrUpdate upsertMemberMethod = new EditMemberMethod.CreateOrUpdate(listId, contact.email_address);
+    upsertMemberMethod.status_if_new = contact.status;
+    upsertMemberMethod.mapping.putAll(contact.mapping);
+    upsertMemberMethod.merge_fields.mapping.putAll(contact.merge_fields.mapping);
+    upsertMemberMethod.interests.mapping.putAll(contact.interests.mapping);
+
     try {
-      EditMemberMethod.CreateOrUpdate upsertMemberMethod = new EditMemberMethod.CreateOrUpdate(listId, contact.email_address);
-      upsertMemberMethod.status_if_new = contact.status;
-      upsertMemberMethod.mapping.putAll(contact.mapping);
-      upsertMemberMethod.interests.mapping.putAll(contact.interests.mapping);
       client.execute(upsertMemberMethod);
     } catch (MailchimpException e) {
       String description = e.description;
       if (e.errors != null) {
         description += String.join(" ; ", e.errors);
       }
-      log.warn("Mailchimp upsertContact failed: {}", description);
+
+      // We're finding that address validation is SUPER picky, especially when it comes to CRMs that combine
+      // street1 and street2 into a single street. If the upsert fails, try it again without ADDRESS...
+      if (contact.merge_fields.mapping.containsKey(ADDRESS)) {
+        log.info("Mailchimp upsertContact failed: {}", description);
+        log.info("retrying upsertContact without ADDRESS");
+        contact.merge_fields.mapping.remove(ADDRESS);
+        upsertContact(listId, contact);
+      } else {
+        log.warn("Mailchimp upsertContact failed: {}", description);
+      }
     }
   }
 
