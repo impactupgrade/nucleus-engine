@@ -268,7 +268,7 @@ public class EnvironmentConfig {
   public static class Xero extends Platform {
     public String tenantId = "";
     public String accountId = "";
-    public String accountCode = "";
+    public String lineItemCode = "";
   }
 
   public Xero xero = new Xero();

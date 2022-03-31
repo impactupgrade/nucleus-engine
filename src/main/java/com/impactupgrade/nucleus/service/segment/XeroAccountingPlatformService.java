@@ -16,33 +16,29 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.xero.api.ApiClient;
 import com.xero.api.client.AccountingApi;
-import com.xero.models.accounting.Account;
-import com.xero.models.accounting.BankTransaction;
-import com.xero.models.accounting.BankTransactions;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.Contacts;
-import com.xero.models.accounting.CurrencyCode;
+import com.xero.models.accounting.Invoice;
+import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.threeten.bp.LocalDate;
 import org.threeten.bp.LocalDateTime;
 import org.threeten.bp.OffsetDateTime;
 import org.threeten.bp.ZoneOffset;
 
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import static com.xero.models.accounting.BankTransaction.TypeEnum.RECEIVE;
-
-public class XeroAccountingPlatformService implements AccountingPlatformService<Contact, BankTransaction> {
+public class XeroAccountingPlatformService implements AccountingPlatformService<Contact, Invoice> {
 
     private static final Logger log = LogManager.getLogger(XeroAccountingPlatformService.class);
 
@@ -55,12 +51,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     private String clientSecret;
     private String tokenServerUrl;
 
-    private String accessToken;
-    private String refreshToken;
+    private static String accessToken;
+    private static String refreshToken;
 
     private String xeroTenantId;
     private String xeroAccountId;
-    private String xeroAccountCode;
+    private String xeroLineItemCode;
 
     private ApiClient apiClient;
     private AccountingApi accountingApi;
@@ -78,7 +74,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     @Override
+    public boolean isConfigured(Environment env) {
+        return env.getConfig().xero != null;
+    }
+
+    @Override
     public void init(Environment environment) {
+        this.environment = environment;
         this.clientId = environment.getConfig().xero.clientId;
         this.clientSecret = environment.getConfig().xero.clientSecret;
         this.tokenServerUrl = environment.getConfig().xero.tokenServerUrl;
@@ -87,32 +89,49 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         this.refreshToken = environment.getConfig().xero.refreshToken;
         this.xeroTenantId = environment.getConfig().xero.tenantId;
         this.xeroAccountId = environment.getConfig().xero.accountId;
-        this.xeroAccountCode = environment.getConfig().xero.accountCode;
-
+        this.xeroLineItemCode = environment.getConfig().xero.lineItemCode;
     }
 
     @Override
-    public List<BankTransaction> getTransactions(Date startDate) throws Exception {
+    public List<Invoice> getTransactions(Date startDate) throws Exception {
         try {
             OffsetDateTime ifModifiedSince = OffsetDateTime.of(asLocalDateTime(startDate), ZoneOffset.UTC);
-            BankTransactions bankTransactionsResponse = accountingApi.getBankTransactions(getAccessToken(), xeroTenantId,
-                    ifModifiedSince,
-                    //String where = 'Status=="AUTHORISED"';
-                    //String order = 'Type ASC';
-                    //Integer page = 1;
-                    //nteger unitdp = 4;
-                    null, null, null, null);
+            Invoices invoicesResponse = accountingApi.getInvoices(getAccessToken(), xeroTenantId, ifModifiedSince,
+                    //String where,
+                    null,
+                    // String order,
+                    null,
+                    // List<UUID> ids,
+                    null,
+                    //List<String> invoiceNumbers,
+                    null,
+                    //List<UUID> contactIDs,
+                    null,
+                    //List<String> statuses,
+                    List.of(
+                            Invoice.StatusEnum.DRAFT.name(),
+                            Invoice.StatusEnum.SUBMITTED.name(),
+                            Invoice.StatusEnum.AUTHORISED.name(),
+                            Invoice.StatusEnum.VOIDED.name()),
+                    //Integer page,
+                    null,
+                    //Boolean includeArchived,
+                    null,
+                    //Boolean createdByMyApp,
+                    null,
+                    // Integer unitdp, Boolean summaryOnly
+                    null, null);
 
-            List<BankTransaction> bankTransactions = bankTransactionsResponse.getBankTransactions();
+            List<Invoice> invoices = invoicesResponse.getInvoices();
 
-            // TODO: can we do it in where clause?
-            if (Objects.nonNull(xeroAccountId)) {
-                bankTransactions = bankTransactions.stream()
-                        .filter(t -> xeroAccountId.equalsIgnoreCase(t.getBankAccount().getAccountID().toString()))
-                        .collect(Collectors.toList());
-            }
+            // TODO: Do we need filtering? can we do it in where clause?
+//            if (Objects.nonNull(xeroAccountId)) {
+//                bankTransactions = bankTransactions.stream()
+//                        .filter(t -> xeroAccountId.equalsIgnoreCase(t.getBankAccount().getAccountID().toString()))
+//                        .collect(Collectors.toList());
+//            }????
 
-            return bankTransactions;
+            return invoices;
         } catch (Exception e) {
             log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
             throw e;
@@ -120,15 +139,21 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     @Override
-    public Function<BankTransaction, String> getTransactionKeyFunction() {
-        return BankTransaction::getReference;
+    public Function<Invoice, String> getTransactionKeyFunction() {
+        return Invoice::getReference;
     }
 
     @Override
     public List<Contact> getContacts() throws Exception {
         try {
             log.info("Getting existing contacts...");
-            Contacts contactsResponse = accountingApi.getContacts(getAccessToken(), xeroTenantId, null, null, null, null, null, null, null);
+            Contacts contactsResponse = accountingApi.getContacts(getAccessToken(), xeroTenantId, null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
             List<Contact> contacts = contactsResponse.getContacts();
             log.info("Contacts found: {}", contacts.size());
             return contacts;
@@ -141,25 +166,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
     @Override
     public List<Contact> createContacts(List<CrmContact> crmContacts) {
-        // We create contacts in create transaction call
+        // We create contacts in create transactions call
         // so here we just return empty list
         return Collections.emptyList();
-    }
-
-    @Override
-    public List<BankTransaction> createTransactions(List<PaymentGatewayEvent> transactions, Map<String, Contact> contactsByPrimaryKey, Map<String, Contact> contactsBySecondaryKey) throws Exception {
-        log.info("Input transactions: {}", transactions.size());
-        // Map transactions
-        BankTransactions bankTransactions = asBankTransactions(transactions, contactsByPrimaryKey, contactsBySecondaryKey);
-        log.info("Bank transactions to create: {}", bankTransactions.getBankTransactions().size());
-        try {
-            BankTransactions createdTransactions = accountingApi.createBankTransactions(getAccessToken(), xeroTenantId, bankTransactions, summarizeErrors, unitdp);
-            log.info("Bank transactions created.");
-            return createdTransactions.getBankTransactions();
-        } catch (Exception e) {
-            log.error("Failed to create bank transactions! {}", getExceptionDetails(e));
-            throw e;
-        }
     }
 
     @Override
@@ -182,12 +191,31 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         return Contact::getName;
     }
 
+    @Override
+    public List<Invoice> createTransactions(List<PaymentGatewayEvent> transactions, Map<String, Contact> contactsByPrimaryKey, Map<String, Contact> contactsBySecondaryKey) throws Exception {
+        log.info("Input transactions: {}", transactions.size());
+
+        Invoices invoices = asInvoices(transactions, contactsByPrimaryKey, contactsBySecondaryKey);
+        log.info("Invoices to create: {}", invoices.getInvoices().size());
+
+        try {
+            Invoices createdInvoices = accountingApi.createInvoices(getAccessToken(), xeroTenantId, invoices, summarizeErrors, unitdp);
+            List<Invoice> createdItems = createdInvoices.getInvoices();
+
+            log.info("Invoices created: {}", createdItems.size());
+            return createdItems;
+
+        } catch (Exception e) {
+            log.error("Failed to create invoices! {}", getExceptionDetails(e));
+            throw e;
+        }
+    }
+
     private String getAccessToken() throws IOException, JwkException {
         DecodedJWT jwt = JWT.decode(accessToken);
 
-        if (jwt.getExpiresAt().getTime() > System.currentTimeMillis()) {
-        } else {
-            log.info("Refreshing tokens...");
+        if (jwt.getExpiresAt().getTime() < System.currentTimeMillis()) {
+            log.info("Access token expired. Refreshing tokens...");
             try {
                 TokenResponse tokenResponse = new RefreshTokenRequest(new NetHttpTransport(), new JacksonFactory(),
                         new GenericUrl(tokenServerUrl), refreshToken)
@@ -197,10 +225,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                 DecodedJWT verifiedJWT = apiClient.verify(tokenResponse.getAccessToken());
 
                 log.info("Tokens refreshed!");
-                // TODO: temp -- need to store this in the org's env.json
-                log.info("new refresh token: " + tokenResponse.getRefreshToken());
 
                 accessToken = verifiedJWT.getToken();
+                refreshToken = tokenResponse.getRefreshToken();
+
+                environment.getConfig().xero.accessToken = accessToken;
+                environment.getConfig().xero.refreshToken = refreshToken;
 
             } catch (IOException | JwkException e) {
                 log.error("Failed to refresh access token!");
@@ -227,98 +257,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         return Objects.nonNull(e) ? e.getClass() + ":" + e : null;
     }
 
-    private BankTransactions asBankTransactions(List<PaymentGatewayEvent> transactions,
-                                                Map<String, Contact> contactsMappedByPrimaryKey,
-                                                Map<String, Contact> contactsMappedBySecondaryKey) {
-        BankTransactions bankTransactions = new BankTransactions();
-
-        if (CollectionUtils.isNotEmpty(transactions)) {
-            transactions.stream()
-                    .map(transaction -> {
-                        BankTransaction bankTransaction = asBankTransaction(transaction);
-
-                        CrmContact crmContact = transaction.getCrmContact();
-                        Contact contact = getContactForCrmContact(crmContact, contactsMappedByPrimaryKey, contactsMappedBySecondaryKey);
-
-                        if (Objects.nonNull(contact)) {
-                            // Reuse existing contact
-                            bankTransaction.setContact(contact);
-                        } else {
-                            // Create new contact
-                            bankTransaction.setContact(asContact(crmContact));
-                        }
-
-                        return bankTransaction;
-                    }).forEach(bankTransaction -> bankTransactions.addBankTransactionsItem(bankTransaction));
-        }
-
-        return bankTransactions;
-    }
-
-    private BankTransaction asBankTransaction(PaymentGatewayEvent paymentGatewayEvent) {
-        if (Objects.isNull(paymentGatewayEvent)) {
-            return null;
-        }
-
-        BankTransaction bankTransaction = new BankTransaction();
-
-        //    private Account bankAccount;
-        Account account = new Account();
-        account.setAccountID(UUID.fromString(xeroAccountId));
-        bankTransaction.setBankAccount(account);
-
-        //    private BankTransaction.TypeEnum type;
-        bankTransaction.setType(getBankTransactionType(paymentGatewayEvent));
-
-        //    private Contact contact;
-        //bankTransaction.setContact(asContact(paymentGatewayEvent.getCrmContact()));
-
-        //    private List<LineItem> lineItems = new ArrayList();
-        bankTransaction.setLineItems(getLineItems(paymentGatewayEvent));
-
-        //bankTransaction.setIsReconciled(Boolean.FALSE); // ?
-        Date paymentGatewayEventDate = paymentGatewayEvent.getTransactionDate().getTime();
-        LocalDateTime transactionDateTime = asLocalDateTime(paymentGatewayEventDate);
-        if (Objects.nonNull(transactionDateTime)) {
-            bankTransaction.setDate(transactionDateTime.toLocalDate());
-        }
-        bankTransaction.setReference(paymentGatewayEvent.getTransactionId());
-        //    private CurrencyCode currencyCode;
-        // TODO: needs to be configurable
-//        bankTransaction.setCurrencyCode(CurrencyCode.USD);
-        bankTransaction.setCurrencyCode(CurrencyCode.AUD);
-        //    private Double currencyRate;
-        // TODO: likely not needed
-//        bankTransaction.setCurrencyRate(paymentGatewayEvent.getTransactionExchangeRate());
-        //    private String url;
-        bankTransaction.setUrl(paymentGatewayEvent.getTransactionUrl());
-        //    private BankTransaction.StatusEnum status;
-        bankTransaction.setStatus(getStatusEnum(paymentGatewayEvent));
-        //    private LineAmountTypes lineAmountTypes;
-        //LineAmountTypes lineAmountTypes = paymentGatewayEvent.get // ?
-        //    private Double subTotal;
-        //bankTransaction.setSubTotal(paymentGatewayEvent.get); // ?
-        //    private Double totalTax;
-        //bankTransaction.setTotalTax(paymentGatewayEvent.get); // ?
-        //    private Double total;
-        bankTransaction.setTotal(paymentGatewayEvent.getTransactionAmountInDollars());
-
-        //    private UUID bankTransactionID;
-        //    private UUID prepaymentID;
-        //    private UUID overpaymentID;
-        //    private String updatedDateUTC;
-        //    private Boolean hasAttachments = false;
-        //    private String statusAttributeString;
-
-        return bankTransaction;
-    }
-
-    private BankTransaction.TypeEnum getBankTransactionType(PaymentGatewayEvent paymentGatewayEvent) {
-        if (Objects.isNull(paymentGatewayEvent)) {
-            return null;
-        }
-        // TODO: send or receive?
-        return RECEIVE;
+    //TODO: get custom field
+    private String getSupporterId(CrmContact crmContact) {
+        //(String) crmContact.rawObject.getField("Supporter_ID__c");
+        return "23456789";
     }
 
     private Contact asContact(CrmContact crmContact) {
@@ -329,8 +271,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         contact.setFirstName(crmContact.firstName);
         contact.setLastName(crmContact.lastName);
         contact.setName(getContactName(crmContact));
-        contact.setAccountNumber(crmContact.accountId);
+        contact.setAccountNumber(getSupporterId(crmContact));
         contact.setEmailAddress(crmContact.email);
+
         return contact;
     }
 
@@ -350,13 +293,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         lineItem.setDescription(paymentGatewayEvent.getTransactionDescription());
         lineItem.setQuantity(1.0);
         lineItem.setUnitAmount(paymentGatewayEvent.getTransactionAmountInDollars());
-//        lineItem.setTaxType("NONE");
+        lineItem.setTaxType("NONE");
         // TODO: DR TEST (https://developer.xero.com/documentation/api/accounting/types/#tax-rates -- country specific)
-        lineItem.setTaxType("EXEMPTOUTPUT");
+        //lineItem.setTaxType("EXEMPTOUTPUT");
 
-        // TODO: define correct account code for transaction
-        // (can NOT be the same as contact we import to)
-//        lineItem.setAccountCode(xeroAccountCode);
         // TODO: DR TEST -- need to be able to override with code
         if (paymentGatewayEvent.isTransactionRecurring()) {
             lineItem.setAccountCode("122");
@@ -366,15 +306,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
             lineItem.setAccountCode("116");
         }
 
-        return Collections.singletonList(lineItem);
-    }
+        lineItem.setItemCode(xeroLineItemCode);
 
-    private BankTransaction.StatusEnum getStatusEnum(PaymentGatewayEvent paymentGatewayEvent) {
-        if (Objects.isNull(paymentGatewayEvent)) {
-            return null;
-        }
-        return paymentGatewayEvent.isTransactionSuccess() ?
-                BankTransaction.StatusEnum.AUTHORISED : BankTransaction.StatusEnum.VOIDED;
+        return Collections.singletonList(lineItem);
     }
 
     private LocalDateTime asLocalDateTime(Date date) {
@@ -382,6 +316,51 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
             return null;
         }
         return LocalDateTime.ofEpochSecond(date.toInstant().getEpochSecond(), 0, ZoneOffset.UTC);
+    }
+
+    private Invoices asInvoices(List<PaymentGatewayEvent> transactions,
+                                Map<String, Contact> contactsMappedByPrimaryKey,
+                                Map<String, Contact> contactsMappedBySecondaryKey) {
+        Invoices invoices = new Invoices();
+        if (CollectionUtils.isNotEmpty(transactions)) {
+            transactions.stream()
+                    .map(transaction -> {
+                        CrmContact crmContact = transaction.getCrmContact();
+                        Contact contact = getContactForCrmContact(crmContact,
+                                contactsMappedByPrimaryKey, contactsMappedBySecondaryKey);
+                        if (Objects.isNull(contact)) {
+                            // Create new contact if can not find existing one
+                            contact = asContact(crmContact);
+                        }
+                        Invoice invoice = asInvoice(transaction, contact);
+                        return invoice;
+                    }).forEach(invoice -> invoices.addInvoicesItem(invoice));
+        }
+        return invoices;
+    }
+
+    private Invoice asInvoice(PaymentGatewayEvent paymentGatewayEvent, Contact contact) {
+        if (Objects.isNull(paymentGatewayEvent)) {
+            return null;
+        }
+        Invoice invoice = new Invoice();
+
+        Calendar transactionDate = paymentGatewayEvent.getTransactionDate();
+        LocalDate localDate = LocalDate.of(
+                transactionDate.get(Calendar.YEAR),
+                transactionDate.get(Calendar.MONTH),
+                transactionDate.get(Calendar.DATE)
+        );
+        invoice.setDate(localDate);
+        invoice.setDueDate(localDate);
+        invoice.setContact(contact);
+
+        invoice.setLineItems(getLineItems(paymentGatewayEvent));
+        invoice.setType(Invoice.TypeEnum.ACCREC); // Receive
+
+        invoice.setReference(paymentGatewayEvent.getTransactionId());
+
+        return invoice;
     }
 
 }

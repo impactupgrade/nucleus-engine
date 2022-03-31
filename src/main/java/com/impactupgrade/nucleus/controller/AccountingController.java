@@ -3,7 +3,6 @@ package com.impactupgrade.nucleus.controller;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
-import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -86,4 +85,3 @@ public class AccountingController {
     }
 
 }
-
