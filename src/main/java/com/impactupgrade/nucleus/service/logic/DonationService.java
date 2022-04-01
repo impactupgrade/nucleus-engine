@@ -121,9 +121,9 @@ public class DonationService {
     crmService.closeRecurringDonation(paymentGatewayEvent);
 
     String targetId = null;
-    if (!Strings.isNullOrEmpty(recurringDonation.get().account.id)) {
+    if (recurringDonation.get().account != null && !Strings.isNullOrEmpty(recurringDonation.get().account.id)) {
       targetId = recurringDonation.get().account.id;
-    } else {
+    } else if (recurringDonation.get().contact != null && !Strings.isNullOrEmpty(recurringDonation.get().contact.id)) {
       targetId = recurringDonation.get().contact.id;
     }
 
