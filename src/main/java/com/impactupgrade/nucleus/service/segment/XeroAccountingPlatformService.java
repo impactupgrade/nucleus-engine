@@ -14,6 +14,7 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Contact;
@@ -33,15 +34,19 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService<Contact, Invoice> {
 
     private static final Logger log = LogManager.getLogger(XeroAccountingPlatformService.class);
 
+    private static final String SUPPORTER_ID_FIELD_NAME = "Supporter_ID__c";
     // If false return 200 OK and mix of successfully created objects and any with validation errors
     private static Boolean summarizeErrors = Boolean.TRUE;
     // e.g. unitdp=4 – (Unit Decimal Places) You can opt in to use four decimal places for unit amounts
@@ -121,16 +126,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                     null,
                     // Integer unitdp, Boolean summaryOnly
                     null, null);
-
             List<Invoice> invoices = invoicesResponse.getInvoices();
-
-            // TODO: Do we need filtering? can we do it in where clause?
-//            if (Objects.nonNull(xeroAccountId)) {
-//                bankTransactions = bankTransactions.stream()
-//                        .filter(t -> xeroAccountId.equalsIgnoreCase(t.getBankAccount().getAccountID().toString()))
-//                        .collect(Collectors.toList());
-//            }????
-
             return invoices;
         } catch (Exception e) {
             log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
@@ -166,9 +162,29 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
     @Override
     public List<Contact> createContacts(List<CrmContact> crmContacts) {
-        // We create contacts in create transactions call
-        // so here we just return empty list
-        return Collections.emptyList();
+        if (CollectionUtils.isEmpty(crmContacts)) {
+            return Collections.emptyList();
+        }
+        Set<String> ids = crmContacts.stream().map(c -> c.id).collect(Collectors.toSet());
+        List<SObject> contactObjects;
+        Map<String, String> supporterIds = new HashMap<>();
+        try {
+            contactObjects = environment.sfdcClient().getContactsByIds(ids);
+            contactObjects.forEach(c -> {
+                supporterIds.put(c.getId(), (String) c.getField(SUPPORTER_ID_FIELD_NAME));
+            });
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to get contacts info from SF!", e);
+
+        }
+
+        List<Contact> contacts = crmContacts.stream()
+                .map(crmContact -> asContact(crmContact, supporterIds.get(crmContact.id)))
+                .collect(Collectors.toList());
+
+        // We create contacts in create invoices call
+        // so here we just return mapped list
+        return contacts;
     }
 
     @Override
@@ -257,13 +273,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         return Objects.nonNull(e) ? e.getClass() + ":" + e : null;
     }
 
-    //TODO: get custom field
-    private String getSupporterId(CrmContact crmContact) {
-        //(String) crmContact.rawObject.getField("Supporter_ID__c");
-        return "23456789";
-    }
-
-    private Contact asContact(CrmContact crmContact) {
+    private Contact asContact(CrmContact crmContact, String supporterId) {
         if (Objects.isNull(crmContact)) {
             return null;
         }
@@ -271,7 +281,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         contact.setFirstName(crmContact.firstName);
         contact.setLastName(crmContact.lastName);
         contact.setName(getContactName(crmContact));
-        contact.setAccountNumber(getSupporterId(crmContact));
+        contact.setAccountNumber(supporterId);
         contact.setEmailAddress(crmContact.email);
 
         return contact;
@@ -328,10 +338,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                         CrmContact crmContact = transaction.getCrmContact();
                         Contact contact = getContactForCrmContact(crmContact,
                                 contactsMappedByPrimaryKey, contactsMappedBySecondaryKey);
-                        if (Objects.isNull(contact)) {
-                            // Create new contact if can not find existing one
-                            contact = asContact(crmContact);
-                        }
                         Invoice invoice = asInvoice(transaction, contact);
                         return invoice;
                     }).forEach(invoice -> invoices.addInvoicesItem(invoice));
