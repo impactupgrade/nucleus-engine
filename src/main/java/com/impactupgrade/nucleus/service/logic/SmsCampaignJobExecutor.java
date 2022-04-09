@@ -34,6 +34,9 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
   private static final Logger log = LogManager.getLogger(SmsCampaignJobExecutor.class);
 
+  // TODO: configuration property?
+  private static final String STOP_TO_OPT_OUT_TEXT = "\ntext STOP to opt out";
+
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final HibernateDao<Long, Job> jobDao;
   private final HibernateDao<Long, JobProgress> jobProgressDao;
@@ -133,6 +136,10 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         }
         String message = getMessage(messagesNode, nextMessage, languageCode);
 
+        if (nextMessage == 1) {
+          message = addStopToOptOutText(message);
+        }
+
         String contactPhoneNumber = crmContact.mobilePhone;
         if (Strings.isNullOrEmpty(contactPhoneNumber)) {
           log.info("Contact id {} had no mobile phone number.", contactId);
@@ -176,6 +183,13 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     }
 
     return null;
+  }
+
+  private String addStopToOptOutText(String message) {
+    if (Strings.isNullOrEmpty(message)) {
+      return message;
+    }
+    return message + STOP_TO_OPT_OUT_TEXT;
   }
 
   private void updateJob(Job job, Instant now) {
