@@ -34,6 +34,7 @@ import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerListParams;
 import com.stripe.param.CustomerRetrieveParams;
 import com.stripe.param.CustomerUpdateParams;
+import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PaymentSourceCollectionCreateParams;
 import com.stripe.param.PayoutListParams;
 import com.stripe.param.PlanCreateParams;
@@ -452,6 +453,19 @@ public class StripeClient {
 
   public Charge createCharge(ChargeCreateParams.Builder chargeBuilder) throws StripeException {
     return Charge.create(chargeBuilder.build(), requestOptions);
+  }
+
+  public PaymentIntentCreateParams.Builder defaultPaymentIntentBuilder(
+      Customer customer, PaymentSource source, long amountInCents, String currency) {
+    return PaymentIntentCreateParams.builder()
+                .setCustomer(customer.getId())
+                .setPaymentMethod(source.getId())
+                .setAmount(amountInCents)
+                .setCurrency(currency);
+  }
+
+  public PaymentIntent createPaymentIntent(PaymentIntentCreateParams.Builder paymentIntentBuilder) throws StripeException {
+    return PaymentIntent.create(paymentIntentBuilder.build(), requestOptions);
   }
 
   public ProductCreateParams.Builder defaultProductBuilder(Customer customer, long amountInCents, String currency) {

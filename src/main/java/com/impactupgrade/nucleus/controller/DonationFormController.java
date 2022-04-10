@@ -11,12 +11,12 @@ import com.impactupgrade.nucleus.service.logic.AntiFraudService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Charge;
 import com.stripe.model.Customer;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.PaymentSource;
 import com.stripe.model.Subscription;
-import com.stripe.param.ChargeCreateParams;
 import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
@@ -394,19 +394,27 @@ public class DonationFormController {
       Subscription subscription = stripeClient.createSubscription(productBuilder, planBuilder, subscriptionBuilder);
       log.info("created Stripe Subscription {}", subscription.getId());
     } else {
-      Map<String, String> chargeMetadata = new HashMap<>();
-      chargeMetadata.put("campaign", formData.getCampaignId());
+      Map<String, String> paymentIntentMetadata = new HashMap<>();
+      paymentIntentMetadata.put("campaign", formData.getCampaignId());
       if (formData.getCustomMetadataCharge() != null) {
-        chargeMetadata.putAll(formData.getCustomMetadataCharge());
+        paymentIntentMetadata.putAll(formData.getCustomMetadataCharge());
       }
-      ChargeCreateParams.Builder chargeBuilder = stripeClient.defaultChargeBuilder(
+      PaymentIntentCreateParams.Builder paymentIntentCreateParamsBuilder = stripeClient.defaultPaymentIntentBuilder(
           stripeCustomer,
           stripeSource,
           formData.getAmountInCents(),
           currency
-      ).setDescription(formData.getNotes()).setMetadata(chargeMetadata);
-      Charge charge = stripeClient.createCharge(chargeBuilder);
-      log.info("created Stripe Charge {}", charge.getId());
+      ).setDescription(formData.getNotes()).putAllMetadata(paymentIntentMetadata);
+
+      paymentIntentCreateParamsBuilder
+              // attempt to confirm this PaymentIntent immediately
+              .setConfirm(Boolean.TRUE)
+              // to indicate that the customer is not in our checkout flow during this payment attempt,
+              // and therefore is unable to authenticate
+              .setOffSession(Boolean.TRUE);
+
+      PaymentIntent paymentIntent = stripeClient.createPaymentIntent(paymentIntentCreateParamsBuilder);
+      log.info("created Stripe Payment Intent {}", paymentIntent.getId());
     }
   }
 }
