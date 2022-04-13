@@ -60,8 +60,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     private static String refreshToken;
 
     private String xeroTenantId;
-    private String xeroAccountId;
-    private String xeroLineItemCode;
 
     private ApiClient apiClient;
     private AccountingApi accountingApi;
@@ -93,8 +91,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         this.accessToken = environment.getConfig().xero.accessToken;
         this.refreshToken = environment.getConfig().xero.refreshToken;
         this.xeroTenantId = environment.getConfig().xero.tenantId;
-        this.xeroAccountId = environment.getConfig().xero.accountId;
-        this.xeroLineItemCode = environment.getConfig().xero.lineItemCode;
     }
 
     @Override
@@ -310,13 +306,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         // TODO: DR TEST -- need to be able to override with code
         if (paymentGatewayEvent.isTransactionRecurring()) {
             lineItem.setAccountCode("122");
+            lineItem.setItemCode("Partner");
         } else if (paymentGatewayEvent.getTransactionAmountInDollars() > 1500.0) {
             lineItem.setAccountCode("117");
+            lineItem.setItemCode("RAC");
         } else {
             lineItem.setAccountCode("116");
+            lineItem.setItemCode("Donate");
         }
-
-        lineItem.setItemCode(xeroLineItemCode);
 
         return Collections.singletonList(lineItem);
     }
