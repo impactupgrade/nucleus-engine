@@ -19,6 +19,7 @@ import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.util.CaseInsensitiveMap;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -215,7 +216,10 @@ public class PaymentGatewayEvent {
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
         transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;
-        transactionExchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
+        BigDecimal exchangeRate = stripeBalanceTransaction.get().getExchangeRate();
+        if (Objects.nonNull(exchangeRate)) {
+          transactionExchangeRate = exchangeRate.doubleValue();
+        }
       }
     }
 

@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus;
 
+import com.impactupgrade.nucleus.controller.AccountingController;
 import com.impactupgrade.nucleus.controller.BackupController;
 import com.impactupgrade.nucleus.controller.CrmController;
 import com.impactupgrade.nucleus.controller.DonationFormController;
@@ -100,6 +101,7 @@ public class App {
     apiConfig.register(stripeController());
     apiConfig.register(twilioController());
     apiConfig.register(twilioFrontlineController());
+    apiConfig.register(accountingController());
 
     registerAPIControllers(apiConfig);
 
@@ -151,7 +153,7 @@ public class App {
   protected TwilioFrontlineController twilioFrontlineController() { return new TwilioFrontlineController(envFactory); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
   protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory, sessionFactory); }
-
+  protected AccountingController accountingController() { return new AccountingController(envFactory); }
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
   }

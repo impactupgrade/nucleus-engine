@@ -277,6 +277,14 @@ public class EnvironmentConfig {
 
   public SharePointPlatform sharePoint = new SharePointPlatform();
 
+  public static class Xero extends Platform {
+    public String tenantId = "";
+    public String accountId = "";
+    public String accountCode = "";
+  }
+
+  public Xero xero = new Xero();
+
   public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys {

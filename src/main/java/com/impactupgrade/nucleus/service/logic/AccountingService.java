@@ -1,0 +1,230 @@
+package com.impactupgrade.nucleus.service.logic;
+
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class AccountingService {
+
+    private static final Logger log = LogManager.getLogger(AccountingService.class);
+
+    private final List<AccountingPlatformService> accountingPlatformServices;
+
+    public AccountingService(Environment environment) {
+        this.accountingPlatformServices = environment.allAccountingPlatformServices();
+    }
+
+    public void addDeposits(List<PaymentGatewayDeposit> paymentGatewayDeposits) {
+        if (CollectionUtils.isEmpty(accountingPlatformServices)) {
+            log.info("Accounting Platform Services not defined for environment! Returning...");
+            return;
+        }
+
+        List<PaymentGatewayEvent> transactions = collectTransactions(paymentGatewayDeposits);
+        if (CollectionUtils.isEmpty(transactions)) {
+            // Nothing to process
+            log.info("Got no transactions to process. Returning...");
+            return;
+        }
+
+        log.info("Input transactions count: {}", transactions.size());
+        for (AccountingPlatformService accountingPlatformService : accountingPlatformServices) {
+            String accountingPlatformName = accountingPlatformService.name();
+            log.info("Accounting platform service '{}' running...", accountingPlatformName);
+            try {
+                Date startDate = getMinStartDate(transactions);
+                List<?> existingTransactions = accountingPlatformService.getTransactions(startDate);
+                log.info("Found existing transactions: {}", existingTransactions.size());
+
+                List<PaymentGatewayEvent> transactionsToCreate = getTransactionsToCreate(
+                        transactions, existingTransactions, accountingPlatformService);
+                if (CollectionUtils.isEmpty(transactionsToCreate)) {
+                    log.info("No new transactions to create. Returning...");
+                    continue;
+                }
+
+                List<CrmContact> crmContacts = collectCrmContacts(transactionsToCreate);
+                crmContacts = uniqueItems(crmContacts, crmContact -> {
+                    if (!Strings.isNullOrEmpty(crmContact.email)) {
+                        return crmContact.email;
+                    } else {
+                        return crmContact.fullName();
+                    }
+                });
+
+                List existingContacts = accountingPlatformService.getContacts();
+
+                List<CrmContact> crmContactsToCreate = getCrmContactsToCreate(
+                        crmContacts, existingContacts, accountingPlatformService);
+
+                List createdContacts = accountingPlatformService.createContacts(crmContactsToCreate);
+                List allContacts = new ArrayList();
+                allContacts.addAll(existingContacts);
+                allContacts.addAll(createdContacts);
+
+                Map<String, ?> contactsByPrimaryKey = mapItems(allContacts, c -> accountingPlatformService.getContactPrimaryKey(c));
+                Map<String, ?> contactsBySecondaryKey = mapItems(allContacts, c -> accountingPlatformService.getContactSecondaryKey(c));
+
+                accountingPlatformService.createTransactions(transactionsToCreate, contactsByPrimaryKey, contactsBySecondaryKey);
+
+            } catch (Exception e) {
+                log.error("Failed to add transactions!", e);
+            }
+
+            log.info("Accounting platform service '{}' done.", accountingPlatformName);
+        }
+    }
+
+    // Utils
+    private List<PaymentGatewayEvent> collectTransactions(List<PaymentGatewayDeposit> deposits) {
+        if (CollectionUtils.isEmpty(deposits)) {
+            return Collections.emptyList();
+        }
+        return deposits.stream()
+                .filter(Objects::nonNull)
+                .map(PaymentGatewayDeposit::getLedgers)
+                .filter(MapUtils::isNotEmpty)
+                .flatMap(ledgersMap -> ledgersMap.entrySet().stream())
+                .filter(Objects::nonNull)
+                .map(ledgerEntry -> ledgerEntry.getValue().getTransactions())
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+    }
+
+    private List<CrmContact> collectCrmContacts(List<PaymentGatewayEvent> transactions) {
+        if (CollectionUtils.isEmpty(transactions)) {
+            return Collections.emptyList();
+        }
+        return transactions.stream()
+                .map(this::getCrmContact)
+                .collect(Collectors.toList());
+    }
+
+    private CrmContact getCrmContact(PaymentGatewayEvent paymentGatewayEvent) {
+        if (CrmAccount.Type.ORGANIZATION == paymentGatewayEvent.getCrmAccount().type) {
+            // Using account name if 'Organization' account
+            CrmContact crmAccountContact = new CrmContact();
+            crmAccountContact.id = paymentGatewayEvent.getCrmAccount().id;
+            crmAccountContact.firstName = paymentGatewayEvent.getCrmAccount().name;
+            return crmAccountContact;
+        } else {
+            // Using contact's data otherwise
+            return paymentGatewayEvent.getCrmContact();
+        }
+    }
+
+    private <T> List<T> uniqueItems(List<T> items, Function<T, String> uniqueKeyFunction) {
+        if (CollectionUtils.isEmpty(items) || Objects.isNull(uniqueKeyFunction)) {
+            return Collections.emptyList();
+        }
+        Map<String, T> itemsMap = new HashMap<>();
+        items.stream().forEach(item -> {
+            String uniqueKey = uniqueKeyFunction.apply(item);
+            if (!itemsMap.containsKey(uniqueKey)) {
+                itemsMap.put(uniqueKey, item);
+            }
+        });
+        return Lists.newArrayList(itemsMap.values());
+    }
+
+    private Date getMinStartDate(List<PaymentGatewayEvent> transactions) {
+        if (CollectionUtils.isEmpty(transactions)) {
+            return null;
+        }
+        Set<Date> transactionDates = transactions.stream()
+                .filter(Objects::nonNull)
+                .map(PaymentGatewayEvent::getTransactionDate)
+                .filter(Objects::nonNull)
+                .map(Calendar::getTime)
+                .collect(Collectors.toSet());
+        return Collections.min(transactionDates);
+    }
+
+    private <T> List<PaymentGatewayEvent> getTransactionsToCreate(
+            List<PaymentGatewayEvent> paymentGatewayEvents, List<T> transactions,
+            AccountingPlatformService accountingPlatformService) {
+
+        if (CollectionUtils.isEmpty(transactions)) {
+            return paymentGatewayEvents;
+        }
+
+        Map<String, PaymentGatewayEvent> paymentGatewayEventMap = mapItems(paymentGatewayEvents, PaymentGatewayEvent::getTransactionId);
+        Map<String, T> existingTransactionsMap = mapItems(transactions, t -> accountingPlatformService.getTransactionKey(t));
+
+        List<PaymentGatewayEvent> transactionsToCreate = new ArrayList<>();
+        for (Map.Entry<String, PaymentGatewayEvent> entry : paymentGatewayEventMap.entrySet()) {
+            if (!existingTransactionsMap.containsKey(entry)) {
+                transactionsToCreate.add(entry.getValue());
+            }
+        }
+
+        return transactionsToCreate;
+    }
+
+    private <C> List<CrmContact> getCrmContactsToCreate(
+            List<CrmContact> crmContacts, List<C> contacts,
+            AccountingPlatformService accountingPlatformService) {
+
+        if (CollectionUtils.isEmpty(contacts)) {
+            return crmContacts;
+        }
+
+        Map<String, C> contactsByPrimaryKey = mapItems(contacts, c -> accountingPlatformService.getContactPrimaryKey(c));
+        Map<String, C> contactsBySecondaryKey = mapItems(contacts, c -> accountingPlatformService.getContactSecondaryKey(c));
+
+        List<CrmContact> crmContactsToCreate = new ArrayList<>();
+        for (CrmContact crmContact : crmContacts) {
+            String primaryKey = accountingPlatformService.getCrmContactPrimaryKey(crmContact);
+
+            if (!contactsByPrimaryKey.containsKey(primaryKey)) {
+                String secondaryKey = accountingPlatformService.getCrmContactSecondaryKey(crmContact);
+
+                if (!contactsBySecondaryKey.containsKey(secondaryKey)) {
+                    crmContactsToCreate.add(crmContact);
+                }
+            }
+        }
+
+        return crmContactsToCreate;
+    }
+
+    private <T> Map<String, T> mapItems(List<T> items, Function<T, String> mapFunction) {
+        if (CollectionUtils.isEmpty(items) || Objects.isNull(mapFunction)) {
+            return Collections.emptyMap();
+        }
+        Map<String, T> itemsMap = new HashMap<>();
+        for (T item : items) {
+            String key = mapFunction.apply(item);
+            if (!StringUtils.isEmpty(key)) {
+                itemsMap.put(key.toLowerCase(Locale.ROOT), item);
+            }
+        }
+        return itemsMap;
+    }
+
+}
