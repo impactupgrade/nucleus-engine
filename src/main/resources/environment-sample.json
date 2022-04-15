@@ -1,0 +1,210 @@
+{
+  "crmPrimary": "salesforce",
+  "crmDonations": "salesforce",
+  "crmMessaging": "salesforce",
+
+  "emailTransactional": "sendgrid",
+
+  "salesforce": {
+    "sandbox": "false",
+    "url": "impactupgrade-dev-ed.my.salesforce.com",
+    "username": "brett@impactupgrade.com",
+    "password": "4mJA6UrqffKZEP35KrR4uR9DgzwapiaVqVsVGDrT6",
+
+    "fieldDefinitions": {
+      "paymentGatewayName": "Recurring_Payment_Source__c",
+
+      "paymentGatewayTransactionId": "",
+      "paymentGatewayCustomerId": "Stripe_Customer_ID__c",
+      "paymentGatewaySubscriptionId": "Stripe_Subscription_Id__c",
+
+      "paymentGatewayRefundId": "",
+      "paymentGatewayRefundDate": "Refund_Date__c",
+      "paymentGatewayRefundDepositId": "Refund_Deposit_ID__c",
+      "paymentGatewayRefundDepositDate": "Refund_Deposit_Date__c",
+
+      "paymentGatewayDepositId": "Deposit_ID__c",
+      "paymentGatewayDepositDate": "Deposit_Date__c",
+      "paymentGatewayDepositNetAmount": "Deposit_Net__c",
+      "paymentGatewayDepositFee": "Deposit_Fee__c",
+
+      "fund": "",
+
+      "emailOptIn": "",
+      "emailOptOut": "",
+      "emailGroups": "",
+
+      "smsOptIn": "",
+      "smsOptOut": "",
+
+      "contactLanguage": ""
+    },
+    "customQueryFields": {
+      "account": [],
+      "campaign": [],
+      "contact": ["Contact_Language__c"],
+      "donation": ["Payment_Gateway_Name__c", "Payment_Gateway_Transaction_Id__c", "Payment_Gateway_Customer_Id__c"],
+      "recurringDonation": ["Payment_Gateway_Name__c", "Payment_Gateway_Subscription_Id__c", "Payment_Gateway_Customer_Id__c"],
+      "user": []
+    },
+    "defaultCampaignId": ""
+  },
+
+  "hubspot": {
+    "portalId": "21069334",
+    "secretKey": "9e36977c-ceaa-4b44-a772-f07ffa496887",
+
+    "enableRecurring": false,
+
+    "donationPipeline": {
+      "id": "default",
+      "successStageId": "closedwon",
+      "failedStageId": "closedlost",
+      "refundedStageId": ""
+    },
+    "recurringDonationPipeline": {
+      "id": "default",
+      "openStageId": "closedwon",
+      "closedStageId": "closedlost"
+    },
+    "fieldDefinitions": {
+      "paymentGatewayName": "payment_gateway_name",
+
+      "paymentGatewayTransactionId": "payment_gateway_transaction_id",
+      "paymentGatewayCustomerId": "payment_gateway_customer_id",
+      "paymentGatewaySubscriptionId": "payment_gateway_subscription_id",
+
+      "paymentGatewayRefundId": "",
+      "paymentGatewayRefundDate": "",
+      "paymentGatewayRefundDepositId": "",
+      "paymentGatewayRefundDepositDate": "",
+
+      "paymentGatewayDepositId": "",
+      "paymentGatewayDepositDate": "",
+      "paymentGatewayDepositNetAmount": "",
+      "paymentGatewayDepositFee": "",
+
+      "fund": "",
+
+      "emailOptIn": "",
+      "emailOptOut": "",
+      "emailGroups": "",
+
+      "smsOptIn": "",
+      "smsOptOut": "",
+
+      "contactLanguage": "",
+
+      "recurringDonationDealId": "",
+      "recurringDonationFrequency": "recurring_donation_frequency",
+      "recurringDonationRealAmount": "",
+      "paymentGatewayAmountOriginal": "",
+      "paymentGatewayAmountOriginalCurrency": "",
+      "paymentGatewayAmountExchangeRate": ""
+    },
+    "customQueryFields": {
+      "company": [],
+      "contact": [],
+      "deal": ["payment_gateway_name","payment_gateway_transaction_id","payment_gateway_customer_id","payment_gateway_subscription_id","recurring_donation_frequency"]
+    },
+    "defaultSmsOptInList": ""
+  },
+
+  "bloomerang": {
+    "secretKey": "",
+    "anonymousId": ""
+  },
+
+  "donorwrangler": {
+    "secretKey": "",
+    "subdomain": ""
+  },
+
+  "stripe": {
+    "secretKey": "sk_test_51Imqu3HAwJOu5brrFI1LeFsnRbGSKo01FLQ9tJijlMtTZPXl4XyB2Kidg9qrWqCP6VlDK5EO0YxSXAbPcWZBp7ey00dhw2OuZg"
+  },
+
+  "twilio": {
+    "publicKey": "",
+    "secretKey": "",
+    "senderPn": ""
+  },
+
+  "mailchimp": [
+    {
+      "secretKey": "1d6e59751ccdd8156ac9f5ee23371db9-us6",
+      "lists": [
+        {
+          "id": "025143d6d8",
+          "type": "CONTACTS",
+          "groups": {},
+          "crmFilter": ""
+        },
+        {
+          "id": "025143d6d8",
+          "type": "DONORS",
+          "groups": {},
+          "crmFilter": ""
+        }
+      ]
+    }
+  ],
+
+  "sendgrid": [
+    {
+      "secretKey": "",
+      "lists": [
+        {
+          "id": "",
+          "type": "CONTACTS",
+          "groups": {},
+          "crmFilter": ""
+        },
+        {
+          "id": "",
+          "type": "DONORS",
+          "groups": {},
+          "crmFilter": ""
+        }
+      ]
+    }
+  ],
+
+  "backblaze": {
+    "publicKey": "",
+    "secretKey": "",
+    "bucketId": ""
+  },
+
+  "recaptcha": {
+    "siteSecret": ""
+  },
+
+  "notifications": {
+    "donations:card-expiring": {
+      "email": {
+        "from": "",
+        "to": []
+      },
+      "sms": {
+        "from": "",
+        "to": []
+      },
+      "task": {
+        "assignTo": ""
+      }
+    },
+    "donations:close-recurring-donation": {},
+    "sms:inbound-default": {}
+  },
+
+  "metadataKeys": {
+    "account": ["account", "account_id", "sf_account", "sf_account_id"],
+    "campaign": ["campaign", "campaign_id", "sf_campaign", "sf_campaign_id"],
+    "fund": ["fund"],
+    "contact": ["contact", "contact_id", "sf_contact", "sf_contact_id"],
+    "recordType": ["sf_opp_record_type", "sf_opp_record_type_id"]
+  },
+
+  "currency": "usd"
+}

@@ -157,7 +157,7 @@ public class App {
    * Run the engine in a local-test mode, pointing at test/sandbox accounts for various platforms.
    * By default, runs on port 9009.
    *
-   * Copy resources/environment-local-sample.json to resources/environment-local.json and make any necessary changes!
+   * Copy resources/environment-sample.json to resources/environment-local.json and make any necessary changes!
    *
    * To use this in tests requiring webhook URLs (Twilio, Stripe, Mailchimp, etc.), run this with ngrok:
    * ngrok http 9009

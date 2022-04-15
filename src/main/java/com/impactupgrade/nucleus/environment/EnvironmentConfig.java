@@ -148,24 +148,24 @@ public class EnvironmentConfig {
       public String closedStageId = "";
     }
 
+    public static class HubspotCRMFieldDefinitions extends CRMFieldDefinitions {
+      // TODO: Although this one is specifically for a HS shortcoming (no deal-to-deal association)...
+      public String recurringDonationDealId = "";
+      // HS assumes monthly, so we need a custom prop to define the true frequency...
+      public String recurringDonationFrequency = "";
+      // Similarly, we need to know the original, true amount of the recurring gift, regardless of the frequency.
+      public String recurringDonationRealAmount = "";
+      // SFDC has its own currency conversion setup on Opportunity, but HS' is statically defined. Use custom props...
+      public String paymentGatewayAmountOriginal = "";
+      public String paymentGatewayAmountOriginalCurrency = "";
+      public String paymentGatewayAmountExchangeRate = "";
+    }
+
     public static class HubspotCustomFields {
       public Set<String> company = new HashSet<>();
       public Set<String> contact = new HashSet<>();
       public Set<String> deal = new HashSet<>();
     }
-  }
-
-  public static class HubspotCRMFieldDefinitions extends CRMFieldDefinitions {
-    // TODO: Although this one is specifically for a HS shortcoming (no deal-to-deal association)...
-    public String recurringDonationDealId = "";
-    // HS assumes monthly, so we need a custom prop to define the true frequency...
-    public String recurringDonationFrequency = "";
-    // Similarly, we need to know the original, true amount of the recurring gift, regardless of the frequency.
-    public String recurringDonationRealAmount = "";
-    // SFDC has its own currency conversion setup on Opportunity, but HS' is statically defined. Use custom props...
-    public String paymentGatewayAmountOriginal = "";
-    public String paymentGatewayAmountOriginalCurrency = "";
-    public String paymentGatewayAmountExchangeRate = "";
   }
 
   public Salesforce salesforce = new Salesforce();
