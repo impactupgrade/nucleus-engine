@@ -73,7 +73,17 @@ public interface CrmService extends SegmentService {
   }
   // TODO: This works, but is a double hit on the API. Could refactor the by-transaction-id chain to allow multiple IDs, OR'd together.
   default Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmDonation> donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
+    // Start with the most-specific edge cases first (just in case), then fall back to the defaults.
+    Optional<CrmDonation> donation = Optional.empty();
+
+    // SOME orgs create separate Opportunities for refunds, then use the Refund IDs in the standard Charge ID field.
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
+      donation = getDonationByTransactionId(paymentGatewayEvent.getRefundId());
+    }
+
+    if (donation.isEmpty()) {
+      donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionId());
+    }
     if (donation.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getTransactionSecondaryId())) {
       donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionSecondaryId());
     }

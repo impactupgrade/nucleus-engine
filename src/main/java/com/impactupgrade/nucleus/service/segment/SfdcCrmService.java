@@ -461,7 +461,7 @@ public class SfdcCrmService implements CrmService {
 
   protected void setDonationDepositFields(SObject existingOpportunity, SObject opportunityUpdate,
       PaymentGatewayEvent paymentGatewayEvent) throws InterruptedException {
-// If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
+    // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
     if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate());
