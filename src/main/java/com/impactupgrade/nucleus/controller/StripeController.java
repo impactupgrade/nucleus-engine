@@ -138,7 +138,7 @@ public class StripeController {
           env.donationService().createDonation(paymentGatewayEvent);
         }
       }
-      case "payment_intent.payment_failed" -> {
+      case "payment_intent.payment_failed", "payment_intent.requires_payment_method" -> {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
         log.info("found payment intent {}", paymentIntent.getId());
 
