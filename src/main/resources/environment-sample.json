@@ -93,7 +93,7 @@
       "smsOptIn": "",
       "smsOptOut": "",
 
-      "contactLanguage": "",
+      "contactLanguage": "hs_language",
 
       "recurringDonationDealId": "",
       "recurringDonationFrequency": "recurring_donation_frequency",
