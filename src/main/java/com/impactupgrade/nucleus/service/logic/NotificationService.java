@@ -50,7 +50,7 @@ public class NotificationService {
     }
     String emailFrom = notificationConfig.from;
     String emailTo = String.join(",", notificationConfig.to);
-    env.transactionalEmailService().sendEmailText(subject, body, false, emailTo, emailFrom);
+    env.transactionalEmailService().sendEmailText(subject, body, true, emailTo, emailFrom);
   }
 
   protected void sendSmsNotification(String body, EnvironmentConfig.Notification notificationConfig) {
