@@ -71,6 +71,8 @@ public class CrmContact {
 
   @JsonIgnore
   public Object rawObject;
+  @JsonIgnore
+  public String crmUrl;
 
   public CrmContact() {}
 
@@ -83,7 +85,7 @@ public class CrmContact {
   public CrmContact(String id, String accountId, String firstName, String lastName, String fullName, String email, String homePhone,
       String mobilePhone, String workPhone, String otherPhone, PreferredPhone preferredPhone, CrmAddress address,
       Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, String ownerName, Double totalDonationAmount, Integer numDonations, Calendar firstDonationDate, Calendar lastDonationDate,  List<String> emailGroups, String contactLanguage,
-      Object rawObject) {
+      Object rawObject, String crmUrl) {
     this.id = id;
     this.accountId = accountId;
     this.firstName = firstName;
@@ -109,6 +111,7 @@ public class CrmContact {
     this.emailGroups = emailGroups;
     this.contactLanguage = contactLanguage;
     this.rawObject = rawObject;
+    this.crmUrl = crmUrl;
   }
 
   /**

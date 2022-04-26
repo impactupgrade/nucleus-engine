@@ -183,8 +183,16 @@ public class HubSpotCrmService implements CrmService {
     } else {
       status = CrmDonation.Status.PENDING;
     }
-    return Optional.of(new CrmDonation(id, result.getProperties().getDealname(), result.getProperties().getAmount(),
-        paymentGatewayName, status, result.getProperties().getClosedate(), result));
+    return Optional.of(new CrmDonation(
+        id,
+        result.getProperties().getDealname(),
+        result.getProperties().getAmount(),
+        paymentGatewayName,
+        status,
+        result.getProperties().getClosedate(),
+        result,
+        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + id
+    ));
   }
 
   @Override
@@ -757,7 +765,8 @@ public class HubSpotCrmService implements CrmService {
         crmAddress,
         // TODO: Differentiate between Household and Organization?
         CrmAccount.Type.HOUSEHOLD,
-        company
+        company,
+        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/company/" + company.getId()
     );
   }
 
@@ -833,7 +842,8 @@ public class HubSpotCrmService implements CrmService {
         // TODO: email groups
         Collections.emptyList(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
-        contact
+        contact,
+        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/contact/" + contact.getId()
     );
   }
 
@@ -876,6 +886,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         Collections.emptyList(),
         null,
+        null,
         null
     );
   }
@@ -914,7 +925,8 @@ public class HubSpotCrmService implements CrmService {
         paymentGatewayName,
         status,
         deal.getProperties().getClosedate(),
-        deal
+        deal,
+        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + deal.getId()
     );
   }
 
@@ -938,9 +950,10 @@ public class HubSpotCrmService implements CrmService {
         deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
         frequency,
         deal.getProperties().getDealname(),
-        deal,
         null,
-        null
+        null,
+        deal,
+        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + deal.getId()
     );
   }
 

@@ -19,6 +19,8 @@ public class CrmAccount {
 
   @JsonIgnore
   public Object rawObject;
+  @JsonIgnore
+  public String crmUrl;
 
   public CrmAccount() {}
 
@@ -28,11 +30,12 @@ public class CrmAccount {
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmAccount(String id, String name, CrmAddress address, Type type, Object rawObject) {
+  public CrmAccount(String id, String name, CrmAddress address, Type type, Object rawObject, String crmUrl) {
     this.id = id;
     this.name = name;
     this.address = address;
     this.type = type;
     this.rawObject = rawObject;
+    this.crmUrl = crmUrl;
   }
 }

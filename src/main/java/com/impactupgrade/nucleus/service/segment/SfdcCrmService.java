@@ -1006,7 +1006,8 @@ public class SfdcCrmService implements CrmService {
         crmAddress,
         // TODO: Differentiate between Household and Organization. Customize record type IDs through env.json?
         CrmAccount.Type.HOUSEHOLD,
-        sObject
+        sObject,
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Account/" + sObject.getId() + "/view"
     );
   }
 
@@ -1084,7 +1085,8 @@ public class SfdcCrmService implements CrmService {
         lastCloseDate,
         emailGroups,
         (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),
-        sObject
+        sObject,
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getId() + "/view"
     );
   }
 
@@ -1121,8 +1123,16 @@ public class SfdcCrmService implements CrmService {
       status = CrmDonation.Status.PENDING;
     }
 
-    return new CrmDonation(id, (String) sObject.getField("Name"), amount,
-        paymentGatewayName, status, closeDate, sObject);
+    return new CrmDonation(
+        id,
+        (String) sObject.getField("Name"),
+        amount,
+        paymentGatewayName,
+        status,
+        closeDate,
+        sObject,
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Opportunity/" + sObject.getId() + "/view"
+    );
   }
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {
@@ -1147,8 +1157,21 @@ public class SfdcCrmService implements CrmService {
     if (sObject.getChild("npe03__Contact__r") != null && sObject.getChild("npe03__Contact__r").hasChildren())
       contact = toCrmContact((SObject) sObject.getChild("npe03__Contact__r"));
 
-    return new CrmRecurringDonation(id, subscriptionId, customerId, amount, paymentGatewayName, status, active, frequency,
-        donationName, sObject, account, contact);
+    return new CrmRecurringDonation(
+        id,
+        subscriptionId,
+        customerId,
+        amount,
+        paymentGatewayName,
+        status,
+        active,
+        frequency,
+        donationName,
+        account,
+        contact,
+        sObject,
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/npe03__Recurring_Donation__c/" + sObject.getId() + "/view"
+    );
   }
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
