@@ -87,6 +87,22 @@ public abstract class AbstractEmailService implements EmailService {
     }
   }
 
+  protected final List<String> getContactTagsCleaned(CrmContact crmContact, List<String> contactCampaignNames,
+      EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
+    List<String> tags = buildContactTags(crmContact, contactCampaignNames, emailPlatform);
+
+    // Mailchimp's Salesforce plugin chokes on tags > 80 chars, which seems like a sane limit anyway.
+    List<String> cleanedTags = new ArrayList<>();
+    for (String tag : tags) {
+      if (tag.length() > 80) {
+        tag = tag.substring(0, 80);
+      }
+      cleanedTags.add(tag);
+    }
+
+    return cleanedTags;
+  }
+
   // Separate method, allowing orgs to add in (or completely override) the defaults.
   // NOTE: Only use alphanumeric and _ chars! Some providers, like SendGrid, are using custom fields for
   //  tags and have limitations on field names.

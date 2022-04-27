@@ -108,7 +108,7 @@ public class SendGridEmailService extends SmtpEmailService {
       contact.country = crmContact.address.country;
       // TODO: contact.canReceiveEmail()? Is there a "status" field, or do we instead need to simply remove from the list?
 
-      List<String> activeTags = buildContactTags(crmContact, campaignNames, emailPlatform);
+      List<String> activeTags = getContactTagsCleaned(crmContact, campaignNames, emailPlatform);
       // TODO: may need to use https://docs.sendgrid.com/api-reference/contacts/get-contacts-by-emails to get the
       //  total list
 //      List<String> inactiveTags =

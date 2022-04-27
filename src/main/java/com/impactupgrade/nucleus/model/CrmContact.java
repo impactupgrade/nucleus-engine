@@ -132,4 +132,11 @@ public class CrmContact {
   public String fullName() {
     return firstName + " " + lastName;
   }
+
+  public String phoneNumberForSMS() {
+    if (!Strings.isNullOrEmpty(mobilePhone)) {
+      return mobilePhone;
+    }
+    return homePhone;
+  }
 }

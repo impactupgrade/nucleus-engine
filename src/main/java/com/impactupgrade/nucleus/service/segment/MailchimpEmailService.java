@@ -152,7 +152,7 @@ public class MailchimpEmailService extends AbstractEmailService {
   protected void updateTags(String listId, CrmContact crmContact, List<String> crmContactCampaignNames,
       MailchimpClient mailchimpClient, EnvironmentConfig.EmailPlatform mailchimpConfig) {
     try {
-      List<String> activeTags = buildContactTags(crmContact, crmContactCampaignNames, mailchimpConfig);
+      List<String> activeTags = getContactTagsCleaned(crmContact, crmContactCampaignNames, mailchimpConfig);
       List<String> inactiveTags = mailchimpClient.getContactTags(listId, crmContact.email);
       inactiveTags.removeAll(activeTags);
 
