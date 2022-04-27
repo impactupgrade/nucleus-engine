@@ -33,7 +33,8 @@ public class ScheduledJobController {
     Environment env = envFactory.init(request);
     new Thread(() -> {
       try {
-        env.scheduledJobService(sessionFactory).processJobSchedules(Instant.now());
+        Instant now = Instant.now();
+        env.scheduledJobService(sessionFactory).processJobSchedules(now);
       } catch (Exception e) {
         log.error("scheduled job failed", e);
       }

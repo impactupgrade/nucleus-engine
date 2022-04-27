@@ -133,7 +133,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         }
         String message = getMessage(messagesNode, nextMessage, languageCode);
 
-        String contactPhoneNumber = crmContact.mobilePhone;
+        String contactPhoneNumber = crmContact.phoneNumberForSMS();
         if (Strings.isNullOrEmpty(contactPhoneNumber)) {
           log.info("Contact id {} had no mobile phone number.", contactId);
           continue;
