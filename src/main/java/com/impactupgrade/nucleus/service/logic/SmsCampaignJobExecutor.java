@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -130,6 +131,8 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         if (Strings.isNullOrEmpty(languageCode)) {
           log.info("Failed to get contact language for contact id {}; assuming EN", contactId);
           languageCode = "EN";
+        } else {
+          languageCode = languageCode.toUpperCase(Locale.ROOT);
         }
         String message = getMessage(messagesNode, nextMessage, languageCode);
 

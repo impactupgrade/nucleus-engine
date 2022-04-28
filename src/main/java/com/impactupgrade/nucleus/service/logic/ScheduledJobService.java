@@ -32,7 +32,7 @@ public class ScheduledJobService {
   // 2) May be future situations where we need granular control...
   public void processJobSchedules(Instant now) throws Exception {
     if (Strings.isNullOrEmpty(env.getConfig().apiKey)) {
-      log.warn("no apiKey in the env config; skipping the scheduled job run");
+      log.info("no apiKey in the env config; skipping the scheduled job run");
       return;
     }
 
