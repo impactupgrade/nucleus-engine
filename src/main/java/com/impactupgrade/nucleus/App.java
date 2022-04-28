@@ -97,7 +97,7 @@ public class App {
     apiConfig.register(stripeController());
     apiConfig.register(twilioController());
     apiConfig.register(mailchimpController());
-    apiConfig.register(scheduledTaskController());
+    apiConfig.register(scheduledJobController());
 
     registerAPIControllers(apiConfig);
 
@@ -147,7 +147,7 @@ public class App {
   protected StripeController stripeController() { return new StripeController(envFactory); }
   protected TwilioController twilioController() { return new TwilioController(envFactory); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
-  protected ScheduledJobController scheduledTaskController() { return new ScheduledJobController(envFactory, sessionFactory); }
+  protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory, sessionFactory); }
 
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;

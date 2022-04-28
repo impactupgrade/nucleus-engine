@@ -865,10 +865,10 @@ public class HubSpotCrmService implements CrmService {
     return new CrmContact(
         contact.getVid() + "",
         null,
+        getValue(contact.getProperties().getFirstname()),
+        getValue(contact.getProperties().getLastname()),
         null,
-        null,
-        null,
-        null,
+        getValue(contact.getProperties().getEmail()),
         getValue(contact.getProperties().getPhone()),
         getValue(contact.getProperties().getMobilePhone()),
         null,
@@ -886,7 +886,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         null,
         Collections.emptyList(),
-        null,
+        getValue(contact.getProperties().getLanguage()),
         null,
         null
     );
