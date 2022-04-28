@@ -57,6 +57,13 @@ public class EnvironmentConfig {
     // if basic auth
     public String username = "";
     public String password = "";
+
+    // if OAuth
+    public String clientId = "";
+    public String clientSecret = "";
+    public String tokenServerUrl = "";
+    public String accessToken = "";
+    public String refreshToken = "";
   }
 
   public Platform stripe = new Platform();
@@ -257,6 +264,8 @@ public class EnvironmentConfig {
     public Integer projectId = null;
     public String form = "";
   }
+
+  public Platform virtuous = new Platform();
 
   public MetadataKeys metadataKeys = new MetadataKeys();
 

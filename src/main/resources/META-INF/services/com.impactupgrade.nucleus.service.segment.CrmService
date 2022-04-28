@@ -2,3 +2,4 @@ com.impactupgrade.nucleus.service.segment.BloomerangCrmService
 com.impactupgrade.nucleus.service.segment.DonorWranglerCrmService
 com.impactupgrade.nucleus.service.segment.HubSpotCrmService
 com.impactupgrade.nucleus.service.segment.SfdcCrmService
+com.impactupgrade.nucleus.service.segment.VirtuousCrmService
