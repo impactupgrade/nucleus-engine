@@ -12,12 +12,16 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.logging.log4j.LogManager;
@@ -26,6 +30,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -72,33 +77,59 @@ public class VirtuousCrmService implements BasicCrmService {
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
+    // Contacts
     @Override
     public Optional<CrmContact> getContactById(String id) throws Exception {
-        String contactUrl = VIRTUOUS_API_URL + "/Contact" + "/" + id;
-        String contactString = executeGet(contactUrl);
-        // TODO: deserialize and convert
-        // Mappings?
-        return Optional.empty();
+        Contact contact = getContact(VIRTUOUS_API_URL + "/Contact" + "/" + id);
+        return Optional.ofNullable(asCrmContact(contact));
     }
 
     @Override
     public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-        return Optional.empty();
+        Contact contact = getContact(VIRTUOUS_API_URL + "/Contact" + "/Find?email=" + email);
+        return Optional.ofNullable(asCrmContact(contact));
     }
 
     @Override
     public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
+        // TODO: use search?
         return Optional.empty();
+    }
+
+    private Contact getContact(String contactUrl) throws Exception {
+        HttpResponse response = executeGet(contactUrl);
+        if (isOk(response)) {
+            return mapper.readValue(getResponseString(response), Contact.class);
+        } else {
+            return null;
+        }
     }
 
     @Override
     public String insertContact(CrmContact crmContact) throws Exception {
+        Contact contact = asContact(crmContact);
+        HttpResponse response = executePost(
+                VIRTUOUS_API_URL + "/Contact",
+                Map.of(
+                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
+                        HttpHeaders.AUTHORIZATION, getAccessToken()),
+                mapper.writeValueAsString(contact)
+        );
+        // TODO: return created contact's id
         return null;
     }
 
     @Override
     public void updateContact(CrmContact crmContact) throws Exception {
-
+        String id = crmContact.id;
+        Contact contact = asContact(crmContact);
+        HttpResponse response = executePost(
+                VIRTUOUS_API_URL + "/Contact" + "/" + id,
+                Map.of(
+                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
+                        HttpHeaders.AUTHORIZATION, getAccessToken()),
+                mapper.writeValueAsString(contact)
+        );
     }
 
     @Override
@@ -106,6 +137,31 @@ public class VirtuousCrmService implements BasicCrmService {
         return null;
     }
 
+    private CrmContact asCrmContact(Contact contact) {
+        if (Objects.isNull(contact)) {
+            return null;
+        }
+        CrmContact crmContact = new CrmContact();
+        crmContact.id = String.valueOf(contact.id);
+        //crmContact.accountId = // ?
+        //crmContact.firstName = // ?
+        //crmContact.lastName = // ?
+        crmContact.fullName = contact.name;
+        //crmContact.email = // ?
+        return crmContact;
+    }
+
+    private Contact asContact(CrmContact crmContact) {
+        if (Objects.isNull(crmContact)) {
+            return null;
+        }
+        Contact contact = new Contact();
+        contact.name = crmContact.fullName;
+        // TODO: more mappings
+        return contact;
+    }
+
+    // Donation
     @Override
     public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
         return Optional.empty();
@@ -151,34 +207,6 @@ public class VirtuousCrmService implements BasicCrmService {
         return null;
     }
 
-    // {
-    //  "access_token": "abc123.....",
-    //  "token_type": "bearer",
-    //  "expires_in": 3599,
-    //  "refresh_token": "zyx987...",
-    //  "userName": "bobloblaw@loblaw.org",
-    //  "twoFactorEnabled": "True",
-    //  ".issued": "Thu, 10 Feb 2022 22:27:19 GMT",
-    //  ".expires": "Thu, 10 Feb 2022 23:27:19 GMT"
-    //}
-    public static class TokenResponse {
-        @JsonProperty("access_token")
-        private String accessToken;
-        @JsonProperty("token_type")
-        private String tokenType;
-        @JsonProperty("expires_in")
-        private Integer expiresIn;
-        @JsonProperty("refresh_token")
-        private String refreshToken;
-        @JsonProperty("userName")
-        private String username;
-        private Boolean twoFactorEnabled;
-        @JsonProperty(".issued")
-        private Date issuedAt;
-        @JsonProperty(".expires")
-        private Date expiresAt;
-    }
-
     private String getAccessToken() throws Exception {
         if (!containsValidAccessToken(tokenResponse)) {
 
@@ -208,12 +236,13 @@ public class VirtuousCrmService implements BasicCrmService {
         // To refresh access token:
         // curl -d "grant_type=refresh_token&refresh_token=REFRESH_TOKEN"
         // -X POST https://api.virtuoussoftware.com/Token
-        String response = executePost(
+        HttpResponse response = executePost(
                 tokenServerUrl,
+                Collections.emptyMap(),
                 Map.of("grant_type", "refresh_token",
                         "refresh_token", refreshToken)
         );
-        return mapper.readValue(response, TokenResponse.class);
+        return mapper.readValue(getResponseString(response), TokenResponse.class);
     }
 
     private TokenResponse getTokenResponse() throws Exception {
@@ -236,33 +265,53 @@ public class VirtuousCrmService implements BasicCrmService {
 //                .method("POST", body)
 //                .build();
 //        Response response = client.newCall(request).execute();
-        String response = executePost(
+        HttpResponse response = executePost(
                 tokenServerUrl,
+                Collections.emptyMap(),
                 Map.of("grant_type", "password",
                         "username", username,
                         "password", password,
                         "otp", "012345")
         );
-        return mapper.readValue(response, TokenResponse.class);
+
+        return mapper.readValue(getResponseString(response), TokenResponse.class);
     }
 
-    private String executePost(String url, Map<String, String> formParams) throws IOException {
+    private HttpResponse executePost(String url, Map<String, String> headers, Map<String, String> formParams) throws IOException {
         HttpPost post = new HttpPost(url);
+        headers.entrySet().forEach(e -> {
+            post.setHeader(e.getKey(), e.getValue());
+        });
         List<NameValuePair> params = formParams.entrySet().stream()
                 .map(e -> new BasicNameValuePair(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
         post.setEntity(new UrlEncodedFormEntity(params));
-
         HttpClient httpClient = HttpClientBuilder.create().build();
         HttpResponse response = httpClient.execute(post);
-        return getResponseString(response);
+        return response;
     }
 
-    private String executeGet(String url) throws IOException {
+    private HttpResponse executePost(String url, Map<String, String> headers, String body) throws IOException {
+        HttpPost post = new HttpPost(url);
+        headers.entrySet().forEach(e -> {
+            post.setHeader(e.getKey(), e.getValue());
+        });
+        post.setEntity(new StringEntity(body));
+        HttpClient httpClient = HttpClientBuilder.create().build();
+        HttpResponse response = httpClient.execute(post);
+        return response;
+    }
+
+    private HttpResponse executeGet(String url) throws Exception {
         HttpGet get = new HttpGet(url);
+        get.addHeader(HttpHeaders.AUTHORIZATION, getAccessToken());
         HttpClient httpClient = HttpClientBuilder.create().build();
         HttpResponse response = httpClient.execute(get);
-        return getResponseString(response);
+        return response;
+    }
+
+    private boolean isOk(HttpResponse httpResponse) {
+        return HttpStatus.SC_OK == httpResponse.getStatusLine().getStatusCode();
     }
 
     private String getResponseString(org.apache.http.HttpResponse response) throws IOException {
@@ -270,5 +319,152 @@ public class VirtuousCrmService implements BasicCrmService {
             return IOUtils.toString(stream, "UTF-8");
         }
     }
+
+    // {
+    //  "access_token": "abc123.....",
+    //  "token_type": "bearer",
+    //  "expires_in": 3599,
+    //  "refresh_token": "zyx987...",
+    //  "userName": "bobloblaw@loblaw.org",
+    //  "twoFactorEnabled": "True",
+    //  ".issued": "Thu, 10 Feb 2022 22:27:19 GMT",
+    //  ".expires": "Thu, 10 Feb 2022 23:27:19 GMT"
+    //}
+    public static class TokenResponse {
+        @JsonProperty("access_token")
+        public String accessToken;
+        @JsonProperty("token_type")
+        public String tokenType;
+        @JsonProperty("expires_in")
+        public Integer expiresIn;
+        @JsonProperty("refresh_token")
+        public String refreshToken;
+        @JsonProperty("userName")
+        public String username;
+        public Boolean twoFactorEnabled;
+        @JsonProperty(".issued")
+        public Date issuedAt;
+        @JsonProperty(".expires")
+        public Date expiresAt;
+    }
+
+    public static class Contact {
+        public Boolean isCurrentUserFollowing;
+        public Integer id;
+        public String contactType;
+        public Boolean isPrivate;
+        public String name;
+        public String informalName;
+        public String description;
+        public String website;
+        public String maritalStatus;
+        public Integer anniversaryMonth;
+        public Integer anniversaryDay;
+        public Integer anniversaryYear;
+        public Integer mergedIntoContactId;
+        public Address address;
+        public String giftAskAmount;
+        public String giftAskType;
+        public String lifeToDateGiving;
+        public String yearToDateGiving;
+        public String lastGiftAmount;
+        public String lastGiftDate;
+        public List<ContactIndividual> contactIndividuals;
+        public String contactGiftsUrl;
+        public String contactPassthroughGiftsUrl;
+        public String contactPlannedGiftsUrl;
+        public String contactRecurringGiftsUrl;
+        public String contactImportantNotesUrl;
+        public String contactNotesUrl;
+        public String contactTagsUrl;
+        public String contactRelationshipsUrl;
+        public String primaryAvatarUrl;
+        public List<ContactReference> contactReferences;
+        public Integer originSegmentId;
+        public String originSegment;
+        public Date createDateTimeUtc;
+        public Date modifiedDateTimeUtc;
+        public List<String> tags;
+        public List<String> organizationGroups;
+        public List<CustomField> customFields;
+        public List<CustomCollection> customCollections;
+    }
+
+    public static class Address {
+        public Integer id;
+        public String label;
+        public String address1;
+        public String address2;
+        public String city;
+        public String state;
+        public String postal;
+        public String country;
+        public Boolean isPrimary;
+        public Boolean canBePrimary;
+        public Integer startDay;
+        public Integer endMonth;
+        public Integer endDay;
+    }
+
+    public static class ContactIndividual {
+        public Integer id;
+        public Integer contactId;
+        public String prefix;
+        public String firstName;
+        public String middleName;
+        public String lastName;
+        public String suffix;
+        public String gender;
+        public Boolean isPrimary;
+        public Boolean canBePrimary;
+        public Boolean isSecondary;
+        public Boolean canBeSecondary;
+        public Integer birthMonth;
+        public Integer birthDay;
+        public Integer birthYear;
+        public Integer birthDate;
+        public Integer approximateAge;
+        public Boolean isDeceased;
+        public String passion;
+        public String avatarUrl;
+        public List<ContactMethod> contactMethods;
+        public Date createDateTimeUtc;
+        public Date modifiedDateTimeUtc;
+        public List<CustomField> customFields;
+        public List<CustomCollection> customCollections;
+    }
+
+    public static class ContactMethod {
+        public Integer id;
+        public String type;
+        public String value;
+        public Boolean isOptedIn;
+        public Boolean isPrimary;
+        public Boolean canBePrimary;
+    }
+
+    public static class CustomField {
+        public String name;
+        public String value;
+        public String displayName;
+    }
+
+    public static class CustomCollection {
+        public Integer customCollectionId;
+        public String customCollectionName;
+        public Integer collectionInstanceId;
+        public List<Field> fields;
+    }
+
+    public static class Field {
+        public String name;
+        public String value;
+    }
+
+    public static class ContactReference {
+        public String source;
+        public String id;
+    }
+
 
 }
