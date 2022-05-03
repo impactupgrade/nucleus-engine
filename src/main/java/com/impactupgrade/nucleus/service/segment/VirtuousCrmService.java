@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class VirtuousCrmService implements BasicCrmService {
@@ -80,28 +82,56 @@ public class VirtuousCrmService implements BasicCrmService {
     // Contacts
     @Override
     public Optional<CrmContact> getContactById(String id) throws Exception {
-        Contact contact = getContact(VIRTUOUS_API_URL + "/Contact" + "/" + id);
+        Contact contact = getContact(VIRTUOUS_API_URL + "/Contact/" + id);
         return Optional.ofNullable(asCrmContact(contact));
     }
 
     @Override
     public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-        Contact contact = getContact(VIRTUOUS_API_URL + "/Contact" + "/Find?email=" + email);
+        Contact contact = getContact(VIRTUOUS_API_URL + "/Contact/Find?email=" + email);
         return Optional.ofNullable(asCrmContact(contact));
     }
 
     @Override
     public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-        // TODO: use search?
-        return Optional.empty();
+        List<Contact> contacts = getContactsList(
+                // TODO: check if parameters are required
+                // defaults are skip = 0, take = 10
+                VIRTUOUS_API_URL + "/Contact/Search?skip=0&take=10", phone);
+        if (CollectionUtils.isEmpty(contacts)) {
+            return Optional.empty();
+        }
+        if (contacts.size() > 1) {
+            log.warn("Found more than 1 contact for phone '{}'", phone);
+        }
+        return Optional.of(asCrmContact(contacts.get(0)));
     }
 
     private Contact getContact(String contactUrl) throws Exception {
         HttpResponse response = executeGet(contactUrl);
+        String responseString = getResponseString(response);
         if (isOk(response)) {
-            return mapper.readValue(getResponseString(response), Contact.class);
+            return mapper.readValue(responseString, Contact.class);
         } else {
+            log.error("Failed to get contact by url: {}! Response: {}", contactUrl, responseString);
             return null;
+        }
+    }
+
+    private List<Contact> getContactsList(String contactsListUrl, String searchString) throws Exception {
+        ContactsSearchCriteria criteria = new ContactsSearchCriteria();
+        criteria.search = searchString;
+        HttpResponse response = executePost(
+                contactsListUrl,
+                Map.of(
+                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
+                        HttpHeaders.AUTHORIZATION, getAccessToken()),
+                mapper.writeValueAsString(criteria));
+        if (isOk(response)) {
+            return mapper.readValue(getResponseString(response), List.class);
+        } else {
+            log.error("Failed to get contacts list by url: {} and search string {}!", contactsListUrl, searchString);
+            return Collections.emptyList();
         }
     }
 
@@ -115,8 +145,14 @@ public class VirtuousCrmService implements BasicCrmService {
                         HttpHeaders.AUTHORIZATION, getAccessToken()),
                 mapper.writeValueAsString(contact)
         );
-        // TODO: return created contact's id
-        return null;
+        String responseString = getResponseString(response);
+        if (isOk(response)) {
+            Contact createdContact = mapper.readValue(responseString, Contact.class);
+            return createdContact.id + "";
+        } else {
+            log.error("Failed to create contact! Response: {}", responseString);
+            return null;
+        }
     }
 
     @Override
@@ -124,16 +160,20 @@ public class VirtuousCrmService implements BasicCrmService {
         String id = crmContact.id;
         Contact contact = asContact(crmContact);
         HttpResponse response = executePost(
-                VIRTUOUS_API_URL + "/Contact" + "/" + id,
+                VIRTUOUS_API_URL + "/Contact/" + id,
                 Map.of(
                         HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
                         HttpHeaders.AUTHORIZATION, getAccessToken()),
                 mapper.writeValueAsString(contact)
         );
+        if (!isOk(response)) {
+            log.error("Failed to update contact! Response: {}", getResponseString(response));
+        }
     }
 
     @Override
     public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) throws Exception {
+        // TODO: how to?
         return null;
     }
 
@@ -157,19 +197,43 @@ public class VirtuousCrmService implements BasicCrmService {
         }
         Contact contact = new Contact();
         contact.name = crmContact.fullName;
-        // TODO: more mappings
+        // TODO: mappings
         return contact;
     }
 
     // Donation
     @Override
     public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-        return Optional.empty();
+        String transactionSource = "abc"; // TODO: where to get this one from? Any default value?
+        String giftUrl = VIRTUOUS_API_URL + "/Gift/" + transactionSource + "/" + transactionId;
+        HttpResponse response = executeGet(giftUrl);
+        String responseString = getResponseString(response);
+        if (isOk(response)) {
+            Gift gift = mapper.readValue(responseString, Gift.class);
+            return Optional.of(asCrmDonation(gift));
+        } else {
+            log.error("Failed to get gift by url: {}! Response: {}", giftUrl, responseString);
+            return Optional.empty();
+        }
     }
 
     @Override
     public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        return null;
+        GiftTransaction giftTransaction = asGiftTransaction(paymentGatewayEvent);
+        HttpResponse response = executePost(
+                VIRTUOUS_API_URL + "/v2/Gift/Transaction",
+                Map.of(
+                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
+                        HttpHeaders.AUTHORIZATION, getAccessToken()),
+                mapper.writeValueAsString(giftTransaction)
+        );
+        if (isOk(response)) {
+            // TODO: extract created item's id
+            return "abc";
+        } else {
+            log.error("Failed to create Gift Transaction! Response: {}", getResponseString(response));
+            return null;
+        }
     }
 
     @Override
@@ -180,6 +244,27 @@ public class VirtuousCrmService implements BasicCrmService {
     @Override
     public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
 
+    }
+
+    private CrmDonation asCrmDonation(Gift gift) {
+        if (Objects.isNull(gift)) {
+            return null;
+        }
+        CrmDonation crmDonation = new CrmDonation();
+        // TODO: mappings
+        return crmDonation;
+    }
+
+    private GiftTransaction asGiftTransaction(PaymentGatewayEvent paymentGatewayEvent) {
+        if (Objects.isNull(paymentGatewayEvent)) {
+            return null;
+        }
+        GiftTransaction giftTransaction = new GiftTransaction();
+        giftTransaction.amount = paymentGatewayEvent.getTransactionAmountInDollars() + ""; // TODO: double check if string indeed
+        giftTransaction.giftDate = paymentGatewayEvent.getTransactionDate().getTime().toString();
+        giftTransaction.contact = asContact(paymentGatewayEvent.getCrmContact());
+        // TODO: mappings
+        return giftTransaction;
     }
 
     @Override
@@ -311,7 +396,8 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     private boolean isOk(HttpResponse httpResponse) {
-        return HttpStatus.SC_OK == httpResponse.getStatusLine().getStatusCode();
+        return Set.of(HttpStatus.SC_OK, HttpStatus.SC_CREATED, HttpStatus.SC_ACCEPTED)
+                .contains(httpResponse.getStatusLine().getStatusCode());
     }
 
     private String getResponseString(org.apache.http.HttpResponse response) throws IOException {
@@ -464,6 +550,175 @@ public class VirtuousCrmService implements BasicCrmService {
     public static class ContactReference {
         public String source;
         public String id;
+    }
+
+    public static class ContactsSearchCriteria {
+        public String search;
+    }
+
+    public static class Gift {
+        public Integer id;
+        public String transactionSource;
+        public String transactionId;
+        public String contactId;
+        public String contactName;
+        public String contactUrl;
+        public String giftType;
+        public String giftTypeFormatted;
+        public Date giftDate;
+        public String giftDateFormatted;
+        public Double amount;
+        public String amountFormatted;
+        public String batch;
+        public Integer segmentId;
+        public String segment;
+        public String segmentCode;
+        public String segmentUrl;
+        public Integer mediaOutletId;
+        public String mediaOutlet;
+        public Integer grantId;
+        public String grant;
+        public String grantUrl;
+        public String notes;
+        public String tribute;
+        public Integer tributeId;
+        public String tributeType;
+        public Integer acknowledgeeIndividualId;
+        public Date receiptDate;
+        public String receiptDateFormatted;
+        public Integer contactPassthroughId;
+        public String contactPassthroughUrl;
+        public Integer contactIndividualId;
+        public String cashAccountingCode;
+        public Integer giftAskId;
+        public Integer contactMembershipId;
+        public List<GiftDesignation> giftDesignations;
+        public List<GiftPremium> giftPremiums;
+        public List<PledgePayment> pledgePayments;
+        public List<RecurringGiftPayment> recurringGiftPayments;
+        public String giftUrl;
+        public Boolean isPrivate;
+        public Boolean isTaxDeductible;
+        public List<CustomField> customFields;
+    }
+
+    public static class GiftDesignation {
+        public Integer id;
+        public Integer projectId;
+        public String project;
+        public String projectCode;
+        public String externalAccountingCode;
+        public String projectType;
+        public String projectLocation;
+        public String projectUrl;
+        public Double amountDesignated;
+        public String display;
+    }
+
+    public class GiftPremium {
+        public Integer id;
+        public Integer premiumId;
+        public String premium;
+        public String premiumUrl;
+        public Integer quantity;
+        public String display;
+    }
+
+    public class PledgePayment {
+        public Integer id;
+        public Date expectedPaymentDate;
+        public Double expectedAmount;
+        public Integer giftId;
+        public Double actualAmount;
+    }
+
+    public class RecurringGiftPayment {
+        public Integer id;
+        public Gift gift;
+        public Double expectedAmount;
+        public Date expectedPaymentDate;
+        public Date dismissPaymentDate;
+        public Date fulfillPaymentDate;
+    }
+
+    public class GiftTransaction {
+        public String transactionSource;
+        public String transactionId;
+        public Contact contact;
+        public String giftDate;
+        public String cancelDate;
+        public String giftType;
+        public String amount;
+        public String currencyCode;
+        public String frequency;
+        public String recurringGiftTransactionId;
+        public Boolean recurringGiftTransactionUpdate;
+        public String pledgeFrequency;
+        public String pledgeTransactionId;
+        public String batch;
+        public String notes;
+        public String segment;
+        public String mediaOutlet;
+        public String receiptDate;
+        public String receiptSegment;
+        public String cashAccountingCode;
+        public String tribute;
+        public TributeDedication tributeDedication;
+        public Boolean isPrivate;
+        public Boolean isTaxDeductible;
+        public String checkNumber;
+        public String creditCardType;
+        public String nonCashGiftType;
+        public String nonCashGiftDescription;
+        public String stockTickerSymbol;
+        public Integer stockNumberOfShares;
+        public String submissionUrl;
+        public List<Designation> designations;
+        public List<Premium> premiums;
+        public List<CustomField> customFields;
+        public Integer contactIndividualId;
+        public Contact passthroughContact;
+        public EventAttendee eventAttendee;
+    }
+
+    public class TributeDedication {
+        public Integer tributeId;
+        public String tributeType;
+        public String tributeFirstName;
+        public String tributeLastName;
+        public String tributeCity;
+        public String tributeState;
+        public Integer acknowledgeeIndividualId;
+        public String acknowledgeeLastName;
+        public String acknowledgeeAddress;
+        public String acknowledgeeCity;
+        public String acknowledgeeState;
+        public String acknowledgeePostal;
+        public String acknowledgeeEmail;
+        public String acknowledgeePhone;
+    }
+
+    public class Designation {
+        public Integer id;
+        public String name;
+        public String code;
+        public String amountDesignated;
+    }
+
+    public class Premium {
+        public Integer id;
+        public String name;
+        public String code;
+        public String quantity;
+    }
+
+    public class EventAttendee {
+        public Integer eventId;
+        public String eventName;
+        public Boolean invited;
+        public Boolean rsvp;
+        public Boolean rsvpResponse;
+        public Boolean attended;
     }
 
 
