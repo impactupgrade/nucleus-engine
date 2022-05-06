@@ -156,6 +156,7 @@ public class TwilioController {
       @FormParam("Email") String email,
       @FormParam("EmailOptIn") String emailOptIn,
       @FormParam("SmsOptIn") String smsOptIn,
+      @FormParam("Language") String language,
       @FormParam("ListId") String __listId,
       @FormParam("HubSpotListId") @Deprecated Long hsListId,
       @FormParam("CampaignId") String campaignId,
@@ -165,8 +166,8 @@ public class TwilioController {
       @FormParam("OpportunityNotes") String opportunityNotes,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
-        from, __firstName, __lastName, fullName, email, emailOptIn, smsOptIn, __listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
+    log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
+        from, __firstName, __lastName, fullName, email, emailOptIn, smsOptIn, language, __listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
     Environment env = envFactory.init(request);
     OpportunityEvent opportunityEvent = new OpportunityEvent(env);
 
@@ -198,6 +199,7 @@ public class TwilioController {
             email,
             emailOptIn,
             smsOptIn,
+            language,
             campaignId,
             listId
         );

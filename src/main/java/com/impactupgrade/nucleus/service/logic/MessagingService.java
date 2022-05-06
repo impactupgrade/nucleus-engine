@@ -31,6 +31,7 @@ public class MessagingService {
       String email,
       String __emailOptIn,
       String __smsOptIn,
+      String language,
       String campaignId,
       String listId
   ) throws Exception {
@@ -72,9 +73,9 @@ public class MessagingService {
       crmContact.firstName = firstName;
       crmContact.lastName = lastName;
       crmContact.email = email;
-
       crmContact.emailOptIn = emailOptIn;
       crmContact.smsOptIn = smsOptIn;
+      crmContact.contactLanguage = language;
 
       opportunityEvent.setCrmContact(crmContact);
 
