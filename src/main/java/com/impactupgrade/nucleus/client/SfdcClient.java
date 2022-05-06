@@ -431,7 +431,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public Collection<SObject> getEmailContacts(Calendar updatedSince, String filter) throws ConnectionException, InterruptedException {
     String updatedSinceClause = "";
     if (updatedSince != null) {
-      updatedSinceClause = " and LastModifiedDate >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+      updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
 
     if (!Strings.isNullOrEmpty(filter)) {
