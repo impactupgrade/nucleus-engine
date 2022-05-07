@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
@@ -30,10 +31,13 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -45,6 +49,9 @@ public class VirtuousCrmService implements BasicCrmService {
     private static final Logger log = LogManager.getLogger(VirtuousCrmService.class);
 
     private static final String VIRTUOUS_API_URL = "https://api.virtuoussoftware.com/api";
+    private static final String DATE_FORMAT = "MM/dd/yyyy";
+
+    private static TokenResponse tokenResponse;
 
     private String tokenServerUrl;
     private String username;
@@ -54,8 +61,6 @@ public class VirtuousCrmService implements BasicCrmService {
 
     protected Environment env;
     private ObjectMapper mapper;
-
-    private TokenResponse tokenResponse;
 
     @Override
     public String name() {
@@ -82,7 +87,13 @@ public class VirtuousCrmService implements BasicCrmService {
     // Contacts
     @Override
     public Optional<CrmContact> getContactById(String id) throws Exception {
+        try {
+            Integer.parseInt(id);
+        } catch (NumberFormatException nfe) {
+            throw new IllegalArgumentException("Failed to parse numeric id from string '" + id + "'!");
+        }
         Contact contact = getContact(VIRTUOUS_API_URL + "/Contact/" + id);
+        log.info(contact);
         return Optional.ofNullable(asCrmContact(contact));
     }
 
@@ -94,57 +105,52 @@ public class VirtuousCrmService implements BasicCrmService {
 
     @Override
     public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-        List<Contact> contacts = getContactsList(
+        List<ContactIndividualShort> contactIndividuals = getContactIndividualsList(
                 // TODO: check if parameters are required
                 // defaults are skip = 0, take = 10
                 VIRTUOUS_API_URL + "/Contact/Search?skip=0&take=10", phone);
-        if (CollectionUtils.isEmpty(contacts)) {
+        if (CollectionUtils.isEmpty(contactIndividuals)) {
             return Optional.empty();
         }
-        if (contacts.size() > 1) {
-            log.warn("Found more than 1 contact for phone '{}'", phone);
+        if (contactIndividuals.size() > 1) {
+            log.warn("Found more than 1 contact individuals for phone '{}'", phone);
         }
-        return Optional.of(asCrmContact(contacts.get(0)));
+        return Optional.of(asCrmContact(contactIndividuals.get(0)));
     }
 
     private Contact getContact(String contactUrl) throws Exception {
         HttpResponse response = executeGet(contactUrl);
         String responseString = getResponseString(response);
-        if (isOk(response)) {
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode == HttpStatus.SC_OK) {
             return mapper.readValue(responseString, Contact.class);
-        } else {
-            log.error("Failed to get contact by url: {}! Response: {}", contactUrl, responseString);
-            return null;
         }
+        if (statusCode == HttpStatus.SC_NOT_FOUND) {
+            log.info("Contact not found.");
+        } else {
+            log.error("Failed to get contact by url: {}! Response (status/body): {}/{}", contactUrl, statusCode, responseString);
+        }
+        return null;
     }
 
-    private List<Contact> getContactsList(String contactsListUrl, String searchString) throws Exception {
+    private List<ContactIndividualShort> getContactIndividualsList(String contactsListUrl, String searchString) throws Exception {
         ContactsSearchCriteria criteria = new ContactsSearchCriteria();
         criteria.search = searchString;
-        HttpResponse response = executePost(
-                contactsListUrl,
-                Map.of(
-                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
-                        HttpHeaders.AUTHORIZATION, getAccessToken()),
-                mapper.writeValueAsString(criteria));
-        if (isOk(response)) {
-            return mapper.readValue(getResponseString(response), List.class);
+        HttpResponse response = executePost(contactsListUrl, mapper.writeValueAsString(criteria));
+        String responseString = getResponseString(response);
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode == HttpStatus.SC_OK) {
+            return mapper.readValue(responseString, ContactSearchResponse.class).contactIndividualShorts;
         } else {
-            log.error("Failed to get contacts list by url: {} and search string {}!", contactsListUrl, searchString);
-            return Collections.emptyList();
+            log.error("Failed to get contacts list by url: {} and search string {}! Response: {}", contactsListUrl, searchString, responseString);
         }
+        return Collections.emptyList();
     }
 
     @Override
     public String insertContact(CrmContact crmContact) throws Exception {
         Contact contact = asContact(crmContact);
-        HttpResponse response = executePost(
-                VIRTUOUS_API_URL + "/Contact",
-                Map.of(
-                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
-                        HttpHeaders.AUTHORIZATION, getAccessToken()),
-                mapper.writeValueAsString(contact)
-        );
+        HttpResponse response = executePost(VIRTUOUS_API_URL + "/Contact", mapper.writeValueAsString(contact));
         String responseString = getResponseString(response);
         if (isOk(response)) {
             Contact createdContact = mapper.readValue(responseString, Contact.class);
@@ -159,13 +165,7 @@ public class VirtuousCrmService implements BasicCrmService {
     public void updateContact(CrmContact crmContact) throws Exception {
         String id = crmContact.id;
         Contact contact = asContact(crmContact);
-        HttpResponse response = executePost(
-                VIRTUOUS_API_URL + "/Contact/" + id,
-                Map.of(
-                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
-                        HttpHeaders.AUTHORIZATION, getAccessToken()),
-                mapper.writeValueAsString(contact)
-        );
+        HttpResponse response = executePost(VIRTUOUS_API_URL + "/Contact/" + id, mapper.writeValueAsString(contact));
         if (!isOk(response)) {
             log.error("Failed to update contact! Response: {}", getResponseString(response));
         }
@@ -177,6 +177,7 @@ public class VirtuousCrmService implements BasicCrmService {
         return null;
     }
 
+    // TODO: move to a mapper class?
     private CrmContact asCrmContact(Contact contact) {
         if (Objects.isNull(contact)) {
             return null;
@@ -184,11 +185,111 @@ public class VirtuousCrmService implements BasicCrmService {
         CrmContact crmContact = new CrmContact();
         crmContact.id = String.valueOf(contact.id);
         //crmContact.accountId = // ?
-        //crmContact.firstName = // ?
-        //crmContact.lastName = // ?
+        ContactIndividual contactIndividual = getPrimaryContactIndividual(contact);
+        crmContact.firstName = contactIndividual.firstName;
+        crmContact.lastName = contactIndividual.lastName;
         crmContact.fullName = contact.name;
-        //crmContact.email = // ?
+
+        //crmContact.email = ?
+        crmContact.homePhone = getPhone(contactIndividual, "Home Phone");
+        //crmContact.mobilePhone = getPhone(contactIndividual, "Mobile Phone");
+        //crmContact.workPhone = getPhone(contactIndividual, "Work Phone");
+        //crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE // ?
+
+        crmContact.address = getCrmAddress(contact.address);
+
+        //crmContact.emailOptIn;
+        //crmContact.emailOptOut;
+        //crmContact.smsOptIn;
+        //crmContact.smsOptOut;
+        //crmContact.ownerId;
+        //crmContact.ownerName;
+        //crmContact.totalDonationAmount = contact.lifeToDateGiving; // Parse double
+        // crmContact.numDonations;
+        //crmContact.firstDonationDate;
+        crmContact.lastDonationDate = getCalendar(contact.lastGiftDate);
+        crmContact.notes = contact.description;
+        //  public List<String> emailGroups;
+        //  public String contactLanguage;
+
         return crmContact;
+    }
+
+    private CrmContact asCrmContact(ContactIndividualShort contactIndividualShort) {
+        if (Objects.isNull(contactIndividualShort)) {
+            return null;
+        }
+        CrmContact crmContact = new CrmContact();
+        crmContact.id = String.valueOf(contactIndividualShort.id);
+        //crmContact.accountId = // ?
+        crmContact.fullName = contactIndividualShort.name;
+
+        crmContact.email = contactIndividualShort.email;
+        //crmContact.homePhone = getPhone(contactIndividual, "Home Phone");
+        crmContact.mobilePhone = contactIndividualShort.phone;
+        //crmContact.workPhone = getPhone(contactIndividual, "Work Phone");
+        //crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE // ?
+
+        //crmContact.emailOptIn;
+        //crmContact.emailOptOut;
+        //crmContact.smsOptIn;
+        //crmContact.smsOptOut;
+        //crmContact.ownerId;
+        //crmContact.ownerName;
+        //crmContact.totalDonationAmount = contact.lifeToDateGiving; // Parse double
+        // crmContact.numDonations;
+        //crmContact.firstDonationDate;
+        //crmContact.lastDonationDate = getCalendar(contact.lastGiftDate);
+        //crmContact.notes = contact.description;
+        //  public List<String> emailGroups;
+        //  public String contactLanguage;
+
+        return crmContact;
+    }
+
+    private ContactIndividual getPrimaryContactIndividual(Contact contact) {
+        if (Objects.isNull(contact) || CollectionUtils.isEmpty(contact.contactIndividuals)) {
+            return null;
+        }
+        return contact.contactIndividuals.stream()
+                .filter(contactIndividual -> Boolean.TRUE == contactIndividual.isPrimary)
+                .findFirst().orElse(null);
+
+    }
+
+    private String getPhone(ContactIndividual contactIndividual, String phoneType) {
+        if (Objects.isNull(contactIndividual) || CollectionUtils.isEmpty(contactIndividual.contactMethods)) {
+            return null;
+        }
+        return contactIndividual.contactMethods.stream()
+                .filter(contactMethod -> phoneType.equals(contactMethod.type))
+                .findFirst()
+                .map(contactMethod -> contactMethod.value).orElse(null);
+    }
+
+    private CrmAddress getCrmAddress(Address address) {
+        if (Objects.isNull(address)) {
+            return null;
+        }
+        CrmAddress crmAddress = new CrmAddress();
+        crmAddress.country = address.country;
+        crmAddress.state = address.state;
+        crmAddress.city = address.city;
+        crmAddress.postalCode = address.postal;
+        crmAddress.street = address.address1;
+        return crmAddress;
+    }
+
+    private Calendar getCalendar(String date) {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT, Locale.ENGLISH);
+        try {
+            calendar.setTime(sdf.parse(date));
+        } catch (ParseException e) {
+            log.error("Failed to parse date string {}!", date);
+            throw new RuntimeException(e);
+        }
+        return calendar;
     }
 
     private Contact asContact(CrmContact crmContact) {
@@ -222,9 +323,6 @@ public class VirtuousCrmService implements BasicCrmService {
         GiftTransaction giftTransaction = asGiftTransaction(paymentGatewayEvent);
         HttpResponse response = executePost(
                 VIRTUOUS_API_URL + "/v2/Gift/Transaction",
-                Map.of(
-                        HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType(),
-                        HttpHeaders.AUTHORIZATION, getAccessToken()),
                 mapper.writeValueAsString(giftTransaction)
         );
         if (isOk(response)) {
@@ -295,11 +393,14 @@ public class VirtuousCrmService implements BasicCrmService {
     private String getAccessToken() throws Exception {
         if (!containsValidAccessToken(tokenResponse)) {
 
+            log.info("Getting new access token...");
             if (!Strings.isNullOrEmpty(refreshToken)) {
                 // Refresh access token if possible
+                log.info("Refreshing token...");
                 tokenResponse = refreshAccessToken();
             } else {
                 // Get new token pair otherwise
+                log.info("Getting new pair of tokens...");
                 tokenResponse = getTokenResponse();
             }
 
@@ -323,7 +424,6 @@ public class VirtuousCrmService implements BasicCrmService {
         // -X POST https://api.virtuoussoftware.com/Token
         HttpResponse response = executePost(
                 tokenServerUrl,
-                Collections.emptyMap(),
                 Map.of("grant_type", "refresh_token",
                         "refresh_token", refreshToken)
         );
@@ -352,21 +452,18 @@ public class VirtuousCrmService implements BasicCrmService {
 //        Response response = client.newCall(request).execute();
         HttpResponse response = executePost(
                 tokenServerUrl,
-                Collections.emptyMap(),
-                Map.of("grant_type", "password",
-                        "username", username,
-                        "password", password,
-                        "otp", "012345")
+                Map.of("grant_type", "password"
+                        , "username", username
+                        , "password", password
+                        //, "otp", "012345"
+                )
         );
 
         return mapper.readValue(getResponseString(response), TokenResponse.class);
     }
 
-    private HttpResponse executePost(String url, Map<String, String> headers, Map<String, String> formParams) throws IOException {
+    private HttpResponse executePost(String url, Map<String, String> formParams) throws IOException {
         HttpPost post = new HttpPost(url);
-        headers.entrySet().forEach(e -> {
-            post.setHeader(e.getKey(), e.getValue());
-        });
         List<NameValuePair> params = formParams.entrySet().stream()
                 .map(e -> new BasicNameValuePair(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
@@ -376,11 +473,10 @@ public class VirtuousCrmService implements BasicCrmService {
         return response;
     }
 
-    private HttpResponse executePost(String url, Map<String, String> headers, String body) throws IOException {
+    private HttpResponse executePost(String url, String body) throws Exception {
         HttpPost post = new HttpPost(url);
-        headers.entrySet().forEach(e -> {
-            post.setHeader(e.getKey(), e.getValue());
-        });
+        post.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
+        post.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken());
         post.setEntity(new StringEntity(body));
         HttpClient httpClient = HttpClientBuilder.create().build();
         HttpResponse response = httpClient.execute(post);
@@ -389,7 +485,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
     private HttpResponse executeGet(String url) throws Exception {
         HttpGet get = new HttpGet(url);
-        get.addHeader(HttpHeaders.AUTHORIZATION, getAccessToken());
+        get.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken());
         HttpClient httpClient = HttpClientBuilder.create().build();
         HttpResponse response = httpClient.execute(get);
         return response;
@@ -432,6 +528,11 @@ public class VirtuousCrmService implements BasicCrmService {
         public Date issuedAt;
         @JsonProperty(".expires")
         public Date expiresAt;
+    }
+
+    public static class ContactSearchResponse {
+        @JsonProperty("list")
+        public List<ContactIndividualShort> contactIndividualShorts;
     }
 
     public static class Contact {
@@ -518,6 +619,20 @@ public class VirtuousCrmService implements BasicCrmService {
         public Date modifiedDateTimeUtc;
         public List<CustomField> customFields;
         public List<CustomCollection> customCollections;
+    }
+
+    // TODO: use 1 entity with merged fields?
+    // TODO: find a better name
+    public static class ContactIndividualShort {
+        public Integer individualId;
+        public String name;
+        public Integer id;
+        public String contactType;
+        public String contactName;
+        public String address;
+        public String email;
+        public String phone;
+        public String contactViewUrl;
     }
 
     public static class ContactMethod {
