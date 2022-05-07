@@ -356,7 +356,7 @@ public class HubSpotCrmService implements CrmService {
       contact.setPhone(crmContact.workPhone);
 //      contact.setPreferredPhone("Work");
     }
-    contact.setLanguage(crmContact.contactLanguage);
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, crmContact.contactLanguage, contact.getOtherProperties());
 
     // TODO: add/remove in default lists?
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
