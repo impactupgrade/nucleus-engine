@@ -714,7 +714,7 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
-    ContactArray contactArray = HubSpotClientFactory.v1Client(env).contactList().getContactsInList(Long.parseLong(listId));
+    ContactArray contactArray = HubSpotClientFactory.v1Client(env).contactList().getContactsInList(Long.parseLong(listId), env.getConfig().hubspot.customQueryFields.contact);
     return toCrmContact(contactArray);
   }
 
@@ -886,7 +886,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         null,
         Collections.emptyList(),
-        getValue(contact.getProperties().getLanguage()),
+        getValue(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
         null,
         null
     );
@@ -894,6 +894,15 @@ public class HubSpotCrmService implements CrmService {
 
   private String getValue(HasValue<String> value) {
     return value == null ? null : value.getValue();
+  }
+
+  protected String getValue(String fieldName, Map<String, HasValue<String>> customProperties) {
+    // Optional field names may not be configured in env.json, so ensure we actually have a name first...
+    if (Strings.isNullOrEmpty(fieldName)) {
+      return null;
+    }
+
+    return getValue(customProperties.get(fieldName));
   }
 
   // V1 option, temporarily
