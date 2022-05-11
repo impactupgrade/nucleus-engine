@@ -30,21 +30,21 @@ public class CrmImportEvent {
 
   // Be case-insensitive, for sources that aren't always consistent.
   private final CaseInsensitiveMap<String> raw;
-
-  private String firstName;
-  private String lastName;
-  private String email;
-  private String homePhone;
-  private String mobilePhone;
-  private String street;
-  private String city;
-  private String state;
-  private String country;
-  private String zip;
+  
   private String ownerId;
 
-  private boolean optInEmail;
-  private boolean optInSms;
+  private String contactEmail;
+  private String contactFirstName;
+  private String contactHomePhone;
+  private String contactLastName;
+  private String contactMobilePhone;
+  private String contactMailingStreet;
+  private String contactMailingCity;
+  private String contactMailingState;
+  private String contactMailingZip;
+  private String contactMailingCountry;
+  private Boolean contactOptInEmail;
+  private Boolean contactOptInSms;
 
   private BigDecimal opportunityAmount;
   private String opportunityCampaignExternalRef;
@@ -52,7 +52,6 @@ public class CrmImportEvent {
   private Calendar opportunityDate;
   private String opportunityDescription;
   private String opportunityName;
-  private String opportunityOwnerId;
   private String opportunityRecordTypeId;
   private String opportunityRecordTypeName;
   private String opportunitySource;
@@ -74,21 +73,18 @@ public class CrmImportEvent {
 
     CrmImportEvent importEvent = new CrmImportEvent(data, env);
 
-    importEvent.city = data.get("City");
-    importEvent.country = data.get("Country");
-    importEvent.email = data.get("Email");
-    importEvent.firstName = data.get("First Name");
-    importEvent.homePhone = data.get("Home Phone");
-    importEvent.lastName = data.get("Last Name");
-    importEvent.mobilePhone = data.get("Mobile Phone");
-    importEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
     importEvent.ownerId = data.get("Owner ID");
-    importEvent.state = data.get("State");
-    importEvent.street = data.get("Address");
-    importEvent.zip = data.get("PostCode");
 
-    importEvent.optInEmail = "yes".equalsIgnoreCase(data.get("Email Opt In")) || "true".equalsIgnoreCase(data.get("Email Opt In"));
-    importEvent.optInSms = "yes".equalsIgnoreCase(data.get("SMS Opt In")) || "true".equalsIgnoreCase(data.get("SMS Opt In"));
+    importEvent.contactEmail = data.get("Contact Email");
+    importEvent.contactFirstName = data.get("Contact First Name");
+    importEvent.contactHomePhone = data.get("Contact Home Phone");
+    importEvent.contactLastName = data.get("Contact Last Name");
+    importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
+    importEvent.contactMailingStreet = data.get("Contact Mailing Address");
+    importEvent.contactMailingCity = data.get("Contact Mailing City");
+    importEvent.contactMailingState = data.get("Contact Mailing State");
+    importEvent.contactMailingZip = data.get("Contact Mailing PostCode");
+    importEvent.contactMailingCountry = data.get("Contact Mailing Country");
 
     importEvent.opportunityDate = Calendar.getInstance();
     try {
@@ -105,11 +101,11 @@ public class CrmImportEvent {
       log.warn("failed to parse date", e);
     }
 
+    importEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
     importEvent.opportunityCampaignExternalRef = data.get("External Campaign Ref");
     importEvent.opportunityCampaignId = data.get("Campaign ID");
     importEvent.opportunityDescription = data.get("Opportunity Description");
     importEvent.opportunityName = data.get("Opportunity Name");
-    importEvent.opportunityOwnerId = data.get("Owner ID");
     importEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
     importEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
     importEvent.opportunityStageName = data.get("Opportunity Stage Name");
@@ -153,9 +149,9 @@ public class CrmImportEvent {
         log.warn("failed to parse date", e);
       }
 
-      importEvent.firstName = Utils.nameToTitleCase(data.get("First Name"));
-      importEvent.lastName = Utils.nameToTitleCase(data.get("Last Name"));
-      importEvent.email = data.get("Email Address");
+      importEvent.contactFirstName = Utils.nameToTitleCase(data.get("First Name"));
+      importEvent.contactLastName = Utils.nameToTitleCase(data.get("Last Name"));
+      importEvent.contactEmail = data.get("Email Address");
       importEvent.opportunitySource = (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) ? data.get("Fundraiser Title") : data.get("Fundraiser Type");
       importEvent.opportunityTerminal = data.get("Payment Processor");
       importEvent.opportunityStageName = "Posted";
@@ -190,56 +186,60 @@ public class CrmImportEvent {
         .trim()).setScale(2, RoundingMode.CEILING);
   }
 
-  public String getCity() {
-    return city;
-  }
-
-  public String getCountry() {
-    return country;
-  }
-
-  public String getEmail() {
-    return email;
-  }
-
-  public String getFirstName() {
-    return firstName;
-  }
-
-  public String getHomePhone() {
-    return homePhone;
-  }
-
-  public String getLastName() {
-    return lastName;
-  }
-
-  public String getMobilePhone() {
-    return mobilePhone;
+  public CaseInsensitiveMap<String> getRaw() {
+    return raw;
   }
 
   public String getOwnerId() {
     return ownerId;
   }
 
-  public String getState() {
-    return state;
+  public String getContactEmail() {
+    return contactEmail;
   }
 
-  public String getStreet() {
-    return street;
+  public String getContactFirstName() {
+    return contactFirstName;
   }
 
-  public String getZip() {
-    return zip;
+  public String getContactHomePhone() {
+    return contactHomePhone;
   }
 
-  public boolean isOptInEmail() {
-    return optInEmail;
+  public String getContactLastName() {
+    return contactLastName;
   }
 
-  public boolean isOptInSms() {
-    return optInSms;
+  public String getContactMobilePhone() {
+    return contactMobilePhone;
+  }
+
+  public String getContactMailingStreet() {
+    return contactMailingStreet;
+  }
+
+  public String getContactMailingCity() {
+    return contactMailingCity;
+  }
+
+  public String getContactMailingState() {
+    return contactMailingState;
+  }
+
+  public String getContactMailingZip() {
+    return contactMailingZip;
+  }
+
+  public String getContactMailingCountry() {
+    return contactMailingCountry;
+  }
+
+  public Boolean getContactOptInEmail() {
+    return contactOptInEmail;
+  }
+
+  public Boolean getContactOptInSms() {
+    return contactOptInSms;
   }
 
   public BigDecimal getOpportunityAmount() {
@@ -266,10 +266,6 @@ public class CrmImportEvent {
     return opportunityName;
   }
 
-  public String getOpportunityOwnerId() {
-    return opportunityOwnerId;
-  }
-
   public String getOpportunityRecordTypeId() {
     return opportunityRecordTypeId;
   }
@@ -288,9 +284,5 @@ public class CrmImportEvent {
 
   public String getOpportunityTerminal() {
     return opportunityTerminal;
-  }
-
-  public CaseInsensitiveMap<String> getRaw() {
-    return raw;
   }
 }

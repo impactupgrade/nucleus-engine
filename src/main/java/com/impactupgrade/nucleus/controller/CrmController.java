@@ -37,6 +37,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -218,26 +219,28 @@ public class CrmController {
   public Response bulkUpdate(
       @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
+      @Context HttpServletRequest request) throws IOException {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
+    // Important to do this outside of the new thread -- ensures the InputStream is still open.
+    CSVParser csvParser = CSVParser.parse(
+        inputStream,
+        Charset.defaultCharset(),
+        CSVFormat.DEFAULT
+            .withFirstRecordAsHeader()
+            .withIgnoreHeaderCase()
+            .withTrim()
+    );
+    List<Map<String, String>> data = new ArrayList<>();
+    for (CSVRecord csvRecord : csvParser) {
+      data.add(csvRecord.toMap());
+    }
+
+    List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
+
     Runnable thread = () -> {
       try {
-        CSVParser csvParser = CSVParser.parse(
-            inputStream,
-            Charset.defaultCharset(),
-            CSVFormat.DEFAULT
-                .withFirstRecordAsHeader()
-                .withIgnoreHeaderCase()
-                .withTrim()
-        );
-        List<Map<String, String>> data = new ArrayList<>();
-        for (CSVRecord csvRecord : csvParser) {
-          data.add(csvRecord.toMap());
-        }
-
-        List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
         env.primaryCrmService().processBulkUpdate(updateEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
@@ -254,16 +257,17 @@ public class CrmController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkUpdate(
       @FormParam("google-sheet-url") String _gsheetUrl,
-      @Context HttpServletRequest request) {
+      @Context HttpServletRequest request) throws IOException {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     final String gsheetUrl = noWhitespace(_gsheetUrl);
 
+    List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
+    List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
+
     Runnable thread = () -> {
       try {
-        List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-        List<CrmUpdateEvent> updateEvents = CrmUpdateEvent.fromGeneric(data, env);
         env.primaryCrmService().processBulkUpdate(updateEvents);
       } catch (Exception e) {
         log.error("bulkImport failed", e);

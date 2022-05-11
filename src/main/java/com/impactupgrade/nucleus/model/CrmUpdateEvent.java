@@ -28,29 +28,28 @@ public class CrmUpdateEvent {
 
   private String accountId;
   private String contactId;
+  private String contactEmail;
   private String opportunityId;
-
-  private String email;
-  private String firstName;
-  private String homePhone;
-  private String lastName;
-  private String mobilePhone;
+  
   private String ownerId;
 
-  private String billingStreet;
-  private String billingCity;
-  private String billingState;
-  private String billingZip;
-  private String billingCountry;
+  private String accountBillingStreet;
+  private String accountBillingCity;
+  private String accountBillingState;
+  private String accountBillingZip;
+  private String accountBillingCountry;
 
-  private String mailingStreet;
-  private String mailingCity;
-  private String mailingState;
-  private String mailingZip;
-  private String mailingCountry;
-
-  private Boolean optInEmail;
-  private Boolean optInSms;
+  private String contactFirstName;
+  private String contactHomePhone;
+  private String contactLastName;
+  private String contactMobilePhone;
+  private String contactMailingStreet;
+  private String contactMailingCity;
+  private String contactMailingState;
+  private String contactMailingZip;
+  private String contactMailingCountry;
+  private Boolean contactOptInEmail;
+  private Boolean contactOptInSms;
 
   private BigDecimal opportunityAmount;
   private String opportunityCampaignExternalRef;
@@ -58,7 +57,6 @@ public class CrmUpdateEvent {
   private Calendar opportunityDate;
   private String opportunityDescription;
   private String opportunityName;
-  private String opportunityOwnerId;
   private String opportunityRecordTypeId;
   private String opportunityRecordTypeName;
   private String opportunityStageName;
@@ -77,30 +75,29 @@ public class CrmUpdateEvent {
 
     updateEvent.accountId = data.get("Account ID");
     updateEvent.contactId = data.get("Contact ID");
+    updateEvent.contactEmail = data.get("Contact Email");
     updateEvent.opportunityId = data.get("Opportunity ID");
-
-    updateEvent.email = data.get("Email");
-    updateEvent.firstName = data.get("First Name");
-    updateEvent.homePhone = data.get("Home Phone");
-    updateEvent.lastName = data.get("Last Name");
-    updateEvent.mobilePhone = data.get("Mobile Phone");
-    updateEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
+    
     updateEvent.ownerId = data.get("Owner ID");
 
-    updateEvent.billingStreet = data.get("Billing Address");
-    updateEvent.billingCity = data.get("Billing City");
-    updateEvent.billingState = data.get("Billing State");
-    updateEvent.billingZip = data.get("Billing PostCode");
-    updateEvent.billingCountry = data.get("Billing Country");
+    updateEvent.accountBillingStreet = data.get("Account Billing Address");
+    updateEvent.accountBillingCity = data.get("Account Billing City");
+    updateEvent.accountBillingState = data.get("Account Billing State");
+    updateEvent.accountBillingZip = data.get("Account Billing PostCode");
+    updateEvent.accountBillingCountry = data.get("Account Billing Country");
 
-    updateEvent.mailingStreet = data.get("Mailing Address");
-    updateEvent.mailingCity = data.get("Mailing City");
-    updateEvent.mailingState = data.get("Mailing State");
-    updateEvent.mailingZip = data.get("Mailing PostCode");
-    updateEvent.mailingCountry = data.get("Mailing Country");
+    updateEvent.contactFirstName = data.get("Contact First Name");
+    updateEvent.contactHomePhone = data.get("Contact Home Phone");
+    updateEvent.contactLastName = data.get("Contact Last Name");
+    updateEvent.contactMobilePhone = data.get("Contact Mobile Phone");
+    updateEvent.contactMailingStreet = data.get("Contact Mailing Address");
+    updateEvent.contactMailingCity = data.get("Contact Mailing City");
+    updateEvent.contactMailingState = data.get("Contact Mailing State");
+    updateEvent.contactMailingZip = data.get("Contact Mailing PostCode");
+    updateEvent.contactMailingCountry = data.get("Contact Mailing Country");
 
-    updateEvent.optInEmail = "yes".equalsIgnoreCase(data.get("Email Opt In")) || "true".equalsIgnoreCase(data.get("Email Opt In"));
-    updateEvent.optInSms = "yes".equalsIgnoreCase(data.get("SMS Opt In")) || "true".equalsIgnoreCase(data.get("SMS Opt In"));
+    updateEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In"));
+    updateEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In"));
 
     updateEvent.opportunityDate = Calendar.getInstance();
     try {
@@ -117,11 +114,11 @@ public class CrmUpdateEvent {
       log.warn("failed to parse date", e);
     }
 
-    updateEvent.opportunityCampaignExternalRef = data.get("External Campaign Ref");
-    updateEvent.opportunityCampaignId = data.get("Campaign ID");
+    updateEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
+    updateEvent.opportunityCampaignExternalRef = data.get("Opportunity External Campaign Ref");
+    updateEvent.opportunityCampaignId = data.get("Opportunity Campaign ID");
     updateEvent.opportunityDescription = data.get("Opportunity Description");
     updateEvent.opportunityName = data.get("Opportunity Name");
-    updateEvent.opportunityOwnerId = data.get("Owner ID");
     updateEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
     updateEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
     updateEvent.opportunityStageName = data.get("Opportunity Stage Name");
@@ -137,6 +134,10 @@ public class CrmUpdateEvent {
         .trim()).setScale(2, RoundingMode.CEILING);
   }
 
+  public Map<String, String> getRaw() {
+    return raw;
+  }
+
   public String getAccountId() {
     return accountId;
   }
@@ -145,80 +146,80 @@ public class CrmUpdateEvent {
     return contactId;
   }
 
+  public String getContactEmail() {
+    return contactEmail;
+  }
+
   public String getOpportunityId() {
     return opportunityId;
-  }
-
-  public String getEmail() {
-    return email;
-  }
-
-  public String getFirstName() {
-    return firstName;
-  }
-
-  public String getHomePhone() {
-    return homePhone;
-  }
-
-  public String getLastName() {
-    return lastName;
-  }
-
-  public String getMobilePhone() {
-    return mobilePhone;
   }
 
   public String getOwnerId() {
     return ownerId;
   }
 
-  public String getBillingStreet() {
-    return billingStreet;
+  public String getAccountBillingStreet() {
+    return accountBillingStreet;
   }
 
-  public String getBillingCity() {
-    return billingCity;
+  public String getAccountBillingCity() {
+    return accountBillingCity;
   }
 
-  public String getBillingState() {
-    return billingState;
+  public String getAccountBillingState() {
+    return accountBillingState;
   }
 
-  public String getBillingZip() {
-    return billingZip;
+  public String getAccountBillingZip() {
+    return accountBillingZip;
   }
 
-  public String getBillingCountry() {
-    return billingCountry;
+  public String getAccountBillingCountry() {
+    return accountBillingCountry;
   }
 
-  public String getMailingStreet() {
-    return mailingStreet;
+  public String getContactFirstName() {
+    return contactFirstName;
   }
 
-  public String getMailingCity() {
-    return mailingCity;
+  public String getContactHomePhone() {
+    return contactHomePhone;
   }
 
-  public String getMailingState() {
-    return mailingState;
+  public String getContactLastName() {
+    return contactLastName;
   }
 
-  public String getMailingZip() {
-    return mailingZip;
+  public String getContactMobilePhone() {
+    return contactMobilePhone;
   }
 
-  public String getMailingCountry() {
-    return mailingCountry;
+  public String getContactMailingStreet() {
+    return contactMailingStreet;
   }
 
-  public Boolean isOptInEmail() {
-    return optInEmail;
+  public String getContactMailingCity() {
+    return contactMailingCity;
   }
 
-  public Boolean isOptInSms() {
-    return optInSms;
+  public String getContactMailingState() {
+    return contactMailingState;
+  }
+
+  public String getContactMailingZip() {
+    return contactMailingZip;
+  }
+
+  public String getContactMailingCountry() {
+    return contactMailingCountry;
+  }
+
+  public Boolean getContactOptInEmail() {
+    return contactOptInEmail;
+  }
+
+  public Boolean getContactOptInSms() {
+    return contactOptInSms;
   }
 
   public BigDecimal getOpportunityAmount() {
@@ -245,10 +246,6 @@ public class CrmUpdateEvent {
     return opportunityName;
   }
 
-  public String getOpportunityOwnerId() {
-    return opportunityOwnerId;
-  }
-
   public String getOpportunityRecordTypeId() {
     return opportunityRecordTypeId;
   }
@@ -259,9 +256,5 @@ public class CrmUpdateEvent {
 
   public String getOpportunityStageName() {
     return opportunityStageName;
-  }
-
-  public Map<String, String> getRaw() {
-    return raw;
   }
 }
