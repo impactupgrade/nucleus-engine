@@ -748,15 +748,15 @@ public class SfdcCrmService implements CrmService {
 
       log.info("processing row {} of {}: {}", i + 2, importEvents.size() + 1, importEvent);
 
-      String email = importEvent.getEmail();
-      String firstName = importEvent.getFirstName();
-      String lastName = importEvent.getLastName();
+      String email = importEvent.getContactEmail();
+      String firstName = importEvent.getContactFirstName();
+      String lastName = importEvent.getContactLastName();
 
       // First try to get contact by email
       // Some import events (ie. FB fundraisers) don't provide an email,
       // so create the empty object first and try only if email is provided
       Optional<SObject> existingContact = Optional.empty();
-      if (!Strings.isNullOrEmpty(importEvent.getEmail())) {
+      if (!Strings.isNullOrEmpty(email)) {
         existingContact = sfdcClient.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
         log.info("found contact for email {}: {}", email, existingContact.isPresent());
       }
@@ -840,11 +840,27 @@ public class SfdcCrmService implements CrmService {
           oppUpdates.add(opp);
         }
       }
+
+      // do this last -- only use Contact Email as a lookup if an ID wasn't provided
+      if (!Strings.isNullOrEmpty(updateEvent.getContactEmail())) {
+        Optional<SObject> existingContact = sfdcClient.searchContacts(ContactSearch.byEmail(updateEvent.getContactEmail())).getSingleResult();
+        log.info("found contact for email {}: {}", updateEvent.getContactEmail(), existingContact.isPresent());
+
+        if (existingContact.isPresent()) {
+          SObject contact = new SObject("Contact");
+          contact.setId(existingContact.get().getId());
+          setBulkUpdateContactFields(contact, updateEvent);
+          contactUpdates.add(contact);
+        }
+      }
     }
 
     sfdcClient.batchUpdate(contactUpdates.toArray());
+    sfdcClient.batchFlush();
     sfdcClient.batchUpdate(accountUpdates.toArray());
+    sfdcClient.batchFlush();
     sfdcClient.batchUpdate(oppUpdates.toArray());
+    sfdcClient.batchFlush();
   }
 
   @Override
@@ -860,39 +876,48 @@ public class SfdcCrmService implements CrmService {
 
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());
-    contact.setField("FirstName", importEvent.getFirstName());
-    contact.setField("LastName", importEvent.getLastName());
-    contact.setField("MailingStreet", importEvent.getStreet());
-    contact.setField("MailingCity", importEvent.getCity());
-    contact.setField("MailingState", importEvent.getState());
-    contact.setField("MailingPostalCode", importEvent.getZip());
-    contact.setField("MailingCountry", importEvent.getCountry());
-    contact.setField("HomePhone", importEvent.getHomePhone());
-    contact.setField("MobilePhone", importEvent.getMobilePhone());
-    contact.setField("Email", importEvent.getEmail());
+    contact.setField("FirstName", importEvent.getContactFirstName());
+    contact.setField("LastName", importEvent.getContactLastName());
+    contact.setField("MailingStreet", importEvent.getContactMailingStreet());
+    contact.setField("MailingCity", importEvent.getContactMailingCity());
+    contact.setField("MailingState", importEvent.getContactMailingState());
+    contact.setField("MailingPostalCode", importEvent.getContactMailingZip());
+    contact.setField("MailingCountry", importEvent.getContactMailingCountry());
+    contact.setField("HomePhone", importEvent.getContactHomePhone());
+    contact.setField("MobilePhone", importEvent.getContactMobilePhone());
+    contact.setField("Email", importEvent.getContactEmail());
+
+    importEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Contact "))
+        .forEach(entry -> contact.setField(entry.getKey().replace("Custom Contact ", ""), entry.getValue()));
   }
 
   protected void setBulkUpdateContactFields(SObject contact, CrmUpdateEvent updateEvent) {
     setField(contact, "OwnerId", updateEvent.getOwnerId());
-    setField(contact, "FirstName", updateEvent.getFirstName());
-    setField(contact, "LastName", updateEvent.getLastName());
-    setField(contact, "MailingStreet", updateEvent.getMailingStreet());
-    setField(contact, "MailingCity", updateEvent.getMailingCity());
-    setField(contact, "MailingState", updateEvent.getMailingState());
-    setField(contact, "MailingPostalCode", updateEvent.getMailingZip());
-    setField(contact, "MailingCountry", updateEvent.getMailingCountry());
-    setField(contact, "HomePhone", updateEvent.getHomePhone());
-    setField(contact, "MobilePhone", updateEvent.getMobilePhone());
-    setField(contact, "Email", updateEvent.getEmail());
+    setField(contact, "FirstName", updateEvent.getContactFirstName());
+    setField(contact, "LastName", updateEvent.getContactLastName());
+    setField(contact, "MailingStreet", updateEvent.getContactMailingStreet());
+    setField(contact, "MailingCity", updateEvent.getContactMailingCity());
+    setField(contact, "MailingState", updateEvent.getContactMailingState());
+    setField(contact, "MailingPostalCode", updateEvent.getContactMailingZip());
+    setField(contact, "MailingCountry", updateEvent.getContactMailingCountry());
+    setField(contact, "HomePhone", updateEvent.getContactHomePhone());
+    setField(contact, "MobilePhone", updateEvent.getContactMobilePhone());
+    setField(contact, "Email", updateEvent.getContactEmail());
+
+    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Contact "))
+        .forEach(entry -> contact.setField(entry.getKey().replace("Custom Contact ", ""), entry.getValue()));
   }
 
   protected void setBulkUpdateAccountFields(SObject account, CrmUpdateEvent updateEvent) {
     setField(account, "OwnerId", updateEvent.getOwnerId());
-    setField(account, "BillingStreet", updateEvent.getBillingStreet());
-    setField(account, "BillingCity", updateEvent.getBillingCity());
-    setField(account, "BillingState", updateEvent.getBillingState());
-    setField(account, "BillingPostalCode", updateEvent.getBillingZip());
-    setField(account, "BillingCountry", updateEvent.getBillingCountry());
+    setField(account, "BillingStreet", updateEvent.getAccountBillingStreet());
+    setField(account, "BillingCity", updateEvent.getAccountBillingCity());
+    setField(account, "BillingState", updateEvent.getAccountBillingState());
+    setField(account, "BillingPostalCode", updateEvent.getAccountBillingZip());
+    setField(account, "BillingCountry", updateEvent.getAccountBillingCountry());
+
+    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Account "))
+        .forEach(entry -> account.setField(entry.getKey().replace("Custom Account ", ""), entry.getValue()));
   }
 
   protected void setBulkImportOpportunityFields(SObject opportunity, SObject contact,
@@ -926,8 +951,11 @@ public class SfdcCrmService implements CrmService {
     }
     String ownerId = opportunity.getField("OwnerId") == null ? null : opportunity.getField("OwnerId").toString();
     if (Strings.isNullOrEmpty(ownerId)) {
-      opportunity.setField("OwnerId", importEvent.getOpportunityOwnerId());
+      opportunity.setField("OwnerId", importEvent.getOwnerId());
     }
+
+    importEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Opportunity "))
+        .forEach(entry -> opportunity.setField(entry.getKey().replace("Custom Opportunity ", ""), entry.getValue()));
   }
 
   protected void setBulkUpdateOpportunityFields(SObject opportunity, CrmUpdateEvent updateEvent)
@@ -946,7 +974,7 @@ public class SfdcCrmService implements CrmService {
     setField(opportunity, "Amount", updateEvent.getOpportunityAmount().doubleValue());
     setField(opportunity, "StageName", updateEvent.getOpportunityStageName());
     setField(opportunity, "CloseDate", updateEvent.getOpportunityDate());
-    setField(opportunity, "OwnerId", updateEvent.getOpportunityOwnerId());
+    setField(opportunity, "OwnerId", updateEvent.getOwnerId());
 
     if (!Strings.isNullOrEmpty(updateEvent.getOpportunityCampaignId())) {
       setField(opportunity, "CampaignId", updateEvent.getOpportunityCampaignId());
@@ -954,6 +982,9 @@ public class SfdcCrmService implements CrmService {
       Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getOpportunityCampaignExternalRef());
       campaign.ifPresent(c -> setField(opportunity, "CampaignId", c.getId()));
     }
+
+    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Opportunity "))
+        .forEach(entry -> opportunity.setField(entry.getKey().replace("Custom Opportunity ", ""), entry.getValue()));
   }
 
   protected String getStringField(SObject sObject, String name) {
