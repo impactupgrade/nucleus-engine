@@ -274,15 +274,13 @@ public class CrmController {
   }
 
   @Path("/donations-total")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @GET
   @Produces(MediaType.TEXT_PLAIN)
   public Response donationsTotal(
-      @FormParam("filter") String filter,
+      @QueryParam("filter") String filter,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
-    SecurityUtil.verifyApiKey(env);
 
     double donationsTotal = env.donationsCrmService().getDonationsTotal(filter);
     return Response.status(200).entity(donationsTotal).build();
