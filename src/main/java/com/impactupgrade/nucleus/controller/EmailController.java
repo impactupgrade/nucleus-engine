@@ -24,7 +24,6 @@ public class EmailController {
     this.envFactory = envFactory;
   }
 
-  // TODO: wire to cron
   @GET
   @Path("/sync/daily")
   public Response syncDaily(@Context HttpServletRequest request) throws Exception {

@@ -10,7 +10,6 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -33,7 +32,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
@@ -275,26 +273,18 @@ public class CrmController {
     return Response.status(200).build();
   }
 
-  @Path("/recurring-donations/search")
+  @Path("/donations-total")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response donorRecurringDonations(
-      @FormParam("name") String name,
-      @FormParam("email") String email,
-      @FormParam("phone") String phone,
-      Form rawFormData,
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response donationsTotal(
+      @FormParam("filter") String filter,
       @Context HttpServletRequest request
   ) throws Exception {
-    // other env context might be passed in raw form data, so use this init method
-    Environment env = envFactory.init(request, rawFormData.asMap());
+    Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    List<CrmRecurringDonation> recurringDonations = env.primaryCrmService().searchOpenRecurringDonations(
-        Optional.ofNullable(Strings.emptyToNull(name)),
-        Optional.ofNullable(Strings.emptyToNull(email)),
-        Optional.ofNullable(Strings.emptyToNull(phone))
-    );
-    return Response.status(200).entity(recurringDonations).build();
+    double donationsTotal = env.donationsCrmService().getDonationsTotal(filter);
+    return Response.status(200).entity(donationsTotal).build();
   }
 }

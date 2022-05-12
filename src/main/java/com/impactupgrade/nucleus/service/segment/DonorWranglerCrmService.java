@@ -118,6 +118,12 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public double getDonationsTotal(String filter) throws Exception {
+    // TODO
+    return 0.0;
+  }
+
+  @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     // TODO
   }

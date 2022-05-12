@@ -751,26 +751,6 @@ public class HubSpotCrmService implements CrmService {
     throw new RuntimeException("not implemented");
   }
 
-  protected CrmAccount toCrmAccount(Company company) {
-    CrmAddress crmAddress = new CrmAddress(
-        company.getProperties().getAddress(),
-        company.getProperties().getCity(),
-        company.getProperties().getState(),
-        company.getProperties().getZip(),
-        company.getProperties().getCountry()
-    );
-
-    return new CrmAccount(
-        company.getId(),
-        company.getProperties().getName(),
-        crmAddress,
-        // TODO: Differentiate between Household and Organization?
-        CrmAccount.Type.HOUSEHOLD,
-        company,
-        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/company/" + company.getId()
-    );
-  }
-
   @Override
   public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
     List<Filter> filters = new ArrayList<>();
@@ -780,10 +760,13 @@ public class HubSpotCrmService implements CrmService {
       filters.add(new Filter("lastmodifieddate", "gte", dateString));
     }
 
+    // TODO: more than one query? support and vs. or?
     if (!Strings.isNullOrEmpty(filter)) {
-      // ex: type eq FooBar
+      // TODO: more than one query? support and vs. or?
+      // ex: type eq Foo Bar <-- note that Foo Bar needs to be reassembled back into one value
       String[] filterSplit = filter.split(" ");
-      filters.add(new Filter(filterSplit[0], filterSplit[1], filterSplit[2]));
+      String filterValue = filter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
+      filters.add(new Filter(filterSplit[0], filterSplit[1], filterValue));
     }
 
 //    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
@@ -805,6 +788,50 @@ public class HubSpotCrmService implements CrmService {
   public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
     // TODO
     return Collections.emptyMap();
+  }
+
+  @Override
+  public double getDonationsTotal(String filter) throws Exception {
+    if (Strings.isNullOrEmpty(filter)) {
+      log.warn("no filter provided; out of caution, skipping the query to protect API limits");
+      return 0.0;
+    }
+
+    List<Filter> filters = new ArrayList<>();
+
+    // TODO: more than one query? support and vs. or?
+    // ex: type eq Foo Bar <-- note that Foo Bar needs to be reassembled back into one value
+    String[] filterSplit = filter.split(" ");
+    String filterValue = filter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
+    filters.add(new Filter(filterSplit[0], filterSplit[1], filterValue));
+
+    // only successful transaction deals
+    filters.add(new Filter("pipeline", "EQ", env.getConfig().hubspot.donationPipeline.id));
+    filters.add(new Filter("dealstage", "EQ", env.getConfig().hubspot.donationPipeline.successStageId));
+
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
+    List<Deal> results = hsClient.deal().searchAutoPaging(filterGroups, getCustomFieldNames());
+    return results.stream().map(d -> d.getProperties().getAmount()).reduce(0.0, Double::sum);
+  }
+
+  protected CrmAccount toCrmAccount(Company company) {
+    CrmAddress crmAddress = new CrmAddress(
+        company.getProperties().getAddress(),
+        company.getProperties().getCity(),
+        company.getProperties().getState(),
+        company.getProperties().getZip(),
+        company.getProperties().getCountry()
+    );
+
+    return new CrmAccount(
+        company.getId(),
+        company.getProperties().getName(),
+        crmAddress,
+        // TODO: Differentiate between Household and Organization?
+        CrmAccount.Type.HOUSEHOLD,
+        company,
+        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/company/" + company.getId()
+    );
   }
 
   protected CrmContact toCrmContact(Contact contact) {

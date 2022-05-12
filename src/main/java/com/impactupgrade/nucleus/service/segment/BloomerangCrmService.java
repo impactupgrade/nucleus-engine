@@ -240,6 +240,12 @@ public class BloomerangCrmService implements BasicCrmService {
     return Collections.emptyList();
   }
 
+  @Override
+  public double getDonationsTotal(String filter) throws Exception {
+    // TODO
+    return 0.0;
+  }
+
   private InputStream get(String endpoint) throws Exception {
     final HttpClient client = new DefaultHttpClient();
     final HttpGet request = new HttpGet(endpoint);

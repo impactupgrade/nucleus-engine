@@ -841,6 +841,12 @@ public class SfdcCrmService implements CrmService {
     return sfdcClient.getEmailDonorContacts(updatedSince, filter).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
+  @Override
+  public double getDonationsTotal(String filter) throws Exception {
+    // TODO
+    return 0.0;
+  }
+
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());
     contact.setField("FirstName", importEvent.getFirstName());
