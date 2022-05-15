@@ -44,6 +44,9 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
+import static com.impactupgrade.nucleus.util.Utils.trim;
+
 /**
  * This service provides the ability to send outbound messages through Twilio, as well as be positioned
  * as the Twilio webhook to receive inbound messages and events.
@@ -62,7 +65,9 @@ public class TwilioController {
   @Path("/outbound/crm-list")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response outboundToCrmList(@FormParam("list-id") List<String> listIds, @FormParam("message") String message,
+  public Response outboundToCrmList(
+      @FormParam("list-id") List<String> listIds,
+      @FormParam("message") String message,
       @Context HttpServletRequest request) {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -150,14 +155,14 @@ public class TwilioController {
   @Produces(MediaType.APPLICATION_XML)
   public Response inboundSignup(
       @FormParam("From") String from,
-      @FormParam("FirstName") String __firstName,
-      @FormParam("LastName") String __lastName,
+      @FormParam("FirstName") String _firstName,
+      @FormParam("LastName") String _lastName,
       @FormParam("FullName") String fullName,
-      @FormParam("Email") String email,
+      @FormParam("Email") String _email,
       @FormParam("EmailOptIn") String emailOptIn,
       @FormParam("SmsOptIn") String smsOptIn,
-      @FormParam("Language") String language,
-      @FormParam("ListId") String __listId,
+      @FormParam("Language") String _language,
+      @FormParam("ListId") String _listId,
       @FormParam("HubSpotListId") @Deprecated Long hsListId,
       @FormParam("CampaignId") String campaignId,
       @FormParam("OpportunityName") String opportunityName,
@@ -167,9 +172,15 @@ public class TwilioController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
-        from, __firstName, __lastName, fullName, email, emailOptIn, smsOptIn, language, __listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
+        from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, _listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
     Environment env = envFactory.init(request);
     OpportunityEvent opportunityEvent = new OpportunityEvent(env);
+
+    _firstName = trim(_firstName);
+    _lastName = trim(_lastName);
+    fullName = trim(fullName);
+    final String email = noWhitespace(_email);
+    final String language = noWhitespace(_language);
 
     String firstName;
     String lastName;
@@ -178,15 +189,15 @@ public class TwilioController {
       firstName = split[0];
       lastName = split[1];
     } else {
-      firstName = __firstName;
-      lastName = __lastName;
+      firstName = _firstName;
+      lastName = _lastName;
     }
 
     String listId;
     if (hsListId != null && hsListId > 0) {
       listId = hsListId + "";
     } else {
-      listId = __listId;
+      listId = _listId;
     }
 
     Runnable thread = () -> {
