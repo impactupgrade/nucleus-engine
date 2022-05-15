@@ -41,6 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
+import static com.impactupgrade.nucleus.util.Utils.trim;
+
 @Path("/crm")
 public class CrmController {
 
@@ -67,6 +70,10 @@ public class CrmController {
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
+
+    id = noWhitespace(id);
+    email = noWhitespace(email);
+    phone = trim(phone);
 
     CrmService crmService = env.primaryCrmService();
 
@@ -143,6 +150,8 @@ public class CrmController {
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
+
+    gsheetUrl = noWhitespace(gsheetUrl);
 
     List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
@@ -241,10 +250,12 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkUpdate(
-      @FormParam("google-sheet-url") String gsheetUrl,
+      @FormParam("google-sheet-url") String _gsheetUrl,
       @Context HttpServletRequest request) {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
+
+    final String gsheetUrl = noWhitespace(_gsheetUrl);
 
     Runnable thread = () -> {
       try {

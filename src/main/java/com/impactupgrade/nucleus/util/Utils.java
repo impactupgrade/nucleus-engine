@@ -17,6 +17,16 @@ import java.util.stream.Stream;
 
 public class Utils {
 
+  public static String trim(String s) {
+    if (s == null) return null;
+    return s.trim();
+  }
+
+  public static String noWhitespace(String s) {
+    if (s == null) return null;
+    return s.replaceAll("\\s", "");
+  }
+
   public static String[] fullNameToFirstLast(String fullName) {
     String[] split = fullName.split("\s+");
     String firstName = split[0];
