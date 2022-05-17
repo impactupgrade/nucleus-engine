@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -110,7 +111,12 @@ public class BloomerangCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
+  public PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) {
     throw new RuntimeException("not implemented");
   }
 

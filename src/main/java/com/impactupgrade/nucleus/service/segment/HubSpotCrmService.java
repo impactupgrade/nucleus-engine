@@ -38,6 +38,7 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -146,9 +147,15 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
+  public PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception {
     // TODO
-    return Collections.emptyList();
+    return null;
+  }
+
+  @Override
+  public PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) {
+    // TODO
+    return null;
   }
 
   @Override

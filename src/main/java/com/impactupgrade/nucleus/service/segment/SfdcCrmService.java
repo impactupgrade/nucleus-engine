@@ -23,6 +23,7 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
@@ -92,9 +93,15 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) throws InterruptedException, ConnectionException {
-    return sfdcClient.searchContacts(firstName, lastName, email, phone, address)
-        .stream().map(this::toCrmContact).collect(Collectors.toList());
+  // currentPageToken assumed to be the offset index
+  public PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByOwner(ownerId, pageSize, Integer.parseInt(currentPageToken)));
+  }
+
+  @Override
+  // currentPageToken assumed to be the offset index
+  public PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) throws InterruptedException, ConnectionException {
+    return toCrmContact(sfdcClient.searchContacts(query, ownerId, pageSize, Integer.parseInt(currentPageToken)));
   }
 
   @Override
@@ -1102,9 +1109,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected List<CrmContact> toCrmContact(List<SObject> sObjects) {
-    return sObjects.stream()
-        .map(this::toCrmContact)
-        .collect(Collectors.toList());
+    return sObjects.stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
+
+  protected PagedResults<CrmContact> toCrmContact(PagedResults<SObject> sObjects) {
+    return new PagedResults<>(sObjects.getResults().stream().map(this::toCrmContact).collect(Collectors.toList()),
+        sObjects.getPageSize(), sObjects.getNextPageToken());
   }
 
   protected CrmDonation toCrmDonation(SObject sObject) {

@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
 import java.util.Calendar;
@@ -39,6 +40,9 @@ public interface CrmService extends SegmentService {
   Optional<CrmContact> getContactById(String id) throws Exception;
   Optional<CrmContact> getContactByEmail(String email) throws Exception;
   Optional<CrmContact> getContactByPhone(String phone) throws Exception;
+  // TODO: Pagination initially needed for Twilio Frontline, but should we start introducing pagination across the board?
+  PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception;
+  PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
   // TODO: For now, need this to clean up orphaned accounts (see ContactService). But could eventually expand it
@@ -51,7 +55,6 @@ public interface CrmService extends SegmentService {
 //  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
   List<CrmContact> getContactsFromList(String listId) throws Exception;
-  List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
   Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception;
