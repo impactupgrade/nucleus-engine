@@ -130,6 +130,9 @@ public class CrmContact {
   }
 
   public String fullName() {
+    if (!Strings.isNullOrEmpty(fullName)) {
+      return fullName;
+    }
     return firstName + " " + lastName;
   }
 

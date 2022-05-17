@@ -11,6 +11,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
@@ -474,42 +475,53 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
-  public List<SObject> searchContacts(String firstName, String lastName, String email, String phone, String address)
+  public PagedResults<SObject> getContactsByOwner(String ownerId, Integer pageSize, Integer offset) throws InterruptedException, ConnectionException {
+    String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " FROM Contact WHERE OwnerId = '" + ownerId + "' ORDER BY LastName, FirstName";
+
+    if (pageSize != null) {
+      query += " LIMIT " + pageSize;
+      if (offset != null) {
+        query += " OFFSET " + offset;
+      }
+    }
+
+    List<SObject> results = queryList(query);
+
+    String nextPageToken = null;
+    if (pageSize != null) {
+      if (offset != null) {
+        nextPageToken = (pageSize + offset) + "";
+      } else {
+        nextPageToken = pageSize + "";
+      }
+    }
+
+    return new PagedResults<>(results, pageSize, nextPageToken);
+  }
+
+  public PagedResults<SObject> searchContacts(String query, String ownerId, Integer pageSize, Integer offset)
       throws ConnectionException, InterruptedException {
-    ArrayList<String> searchParams = new ArrayList<>();
+    List<String> clauses = new ArrayList<>();
 
-    if (!Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
-      searchParams.add("(firstname LIKE '%" + firstName + "%' AND lastname LIKE '%" + lastName + "%')");
-    } else {
-      if (!Strings.isNullOrEmpty(firstName)) {
-        searchParams.add("firstname LIKE '%" + firstName + "%'");
-      }
-      if (!Strings.isNullOrEmpty(lastName)) {
-        searchParams.add("lastname LIKE '%" + lastName + "%'");
-      }
+    String[] words = query.trim().split("\\s+");
+    for (String word : words) {
+      clauses.add("(FirstName LIKE '%" + word + "%' OR LastName LIKE '%" + word + "%' OR Email LIKE '%" + word + "%' OR Phone LIKE '%" + word + "%' OR MobilePhone LIKE '%" + word + "%' OR HomePhone LIKE '%" + word + "%' OR npe01__Home_Address__c LIKE '%" + word + "%')");
     }
 
-    if (!Strings.isNullOrEmpty(email)) {
-      searchParams.add("email LIKE '%" + email + "%'");
-    }
-    if (!Strings.isNullOrEmpty(phone)) {
-      String phoneClean = phone.replaceAll("\\D+", "");
-      phoneClean = phoneClean.replaceAll("", "%");
-      if (!phoneClean.isEmpty()) {
-        searchParams.add("phone LIKE '" + phoneClean + "'");
-        searchParams.add("MobilePhone LIKE '" + phoneClean + "'");
-        searchParams.add("HomePhone LIKE '" + phoneClean + "'");
-        searchParams.add("OtherPhone LIKE '" + phoneClean + "'");
+    String fullClause = String.join( " OR ", clauses);
+
+    List<SObject> results = queryList("select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + clauses + " ORDER BY LastName, FirstName");
+
+    String nextPageToken = null;
+    if (pageSize != null) {
+      if (offset != null) {
+        nextPageToken = (pageSize + offset) + "";
+      } else {
+        nextPageToken = pageSize + "";
       }
     }
-    if (!Strings.isNullOrEmpty(address)) {
-      searchParams.add("npe01__Home_Address__c LIKE '%" + address + "%'");
-    }
 
-    String clauses = String.join( " OR ", searchParams);
-
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + clauses + " ORDER BY account.name, name";
-    return queryList(query);
+    return new PagedResults<>(results, pageSize, nextPageToken);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
