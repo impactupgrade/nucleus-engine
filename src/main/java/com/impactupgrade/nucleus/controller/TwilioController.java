@@ -12,13 +12,11 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
-import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.voice.Dial;
 import com.twilio.twiml.voice.Gather;
 import com.twilio.twiml.voice.Redirect;
@@ -38,7 +36,6 @@ import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -232,48 +229,6 @@ public class TwilioController {
 
     // TODO: This builds TwiML, which we could later use to send back dynamic responses.
     MessagingResponse response = new MessagingResponse.Builder().build();
-    return Response.ok().entity(response.toXml()).build();
-  }
-
-  // TODO: Ultimately not helpful since Studio HTTP can't process twiml responses, so this would need wired into
-  //  Functions. But we may be replacing the whole concept with the new flows concept in Portal...
-  @Path("/inbound/sms/give")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_XML)
-  public Response give(
-      @FormParam("From") String from,
-      @FormParam("ResponseMessage") String responseMessage,
-      @FormParam("ResponseGiveUrl") String responseGiveUrl,
-      @FormParam("ResponseContactIdParam") String responseContactIdParam,
-      @FormParam("ResponseCampaignIdParam") String responseCampaignIdParam,
-      @FormParam("ResponseCampaignId") String responseCampaignId,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    log.info("From={} ResponseMessage={} ResponseGiveUrl={} ResponseContactIdParam={} ResponseCampaignIdParam={} ResponseCampaignId={}", from, responseMessage, responseGiveUrl, responseContactIdParam, responseCampaignIdParam, responseCampaignId);
-    Environment env = envFactory.init(request);
-    CrmService crmService = env.primaryCrmService();
-
-    String content = (responseMessage + " " + responseGiveUrl);
-
-    List<String> params = new ArrayList<>();
-    if (!Strings.isNullOrEmpty(responseContactIdParam)) {
-      crmService.getContactByPhone(from).ifPresent(c -> {
-        log.info("adding CRM Contact {}", c.id);
-        params.add(responseContactIdParam + "=" + c.id);
-      });
-    }
-    if (!Strings.isNullOrEmpty(responseCampaignId)) {
-      params.add(responseCampaignIdParam + "=" + responseCampaignId);
-    }
-
-    if (!params.isEmpty()) {
-      content += "?" + String.join("&", params);
-    }
-
-    Body body = new Body.Builder(content).build();
-    com.twilio.twiml.messaging.Message message = new com.twilio.twiml.messaging.Message.Builder().body(body).build();
-    MessagingResponse response = new MessagingResponse.Builder().message(message).build();
     return Response.ok().entity(response.toXml()).build();
   }
 
