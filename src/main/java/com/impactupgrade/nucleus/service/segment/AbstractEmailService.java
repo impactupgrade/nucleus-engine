@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.util.Utils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,6 +34,9 @@ public abstract class AbstractEmailService implements EmailService {
 
   protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts) throws Exception {
     List<String> crmContactIds = crmContacts.stream().map(c -> c.id).collect(Collectors.toList());
+    if (crmContactIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
     return env.primaryCrmService().getActiveCampaignsByContactIds(crmContactIds);
   }
 

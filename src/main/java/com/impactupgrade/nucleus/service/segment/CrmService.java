@@ -139,7 +139,7 @@ public interface CrmService extends SegmentService {
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
   // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
-  // bathces all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
+  // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
   Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

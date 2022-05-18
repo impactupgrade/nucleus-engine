@@ -139,7 +139,7 @@ public class MailchimpEmailService extends AbstractEmailService {
         }
       } else if (customField.type == CustomFieldType.DATE) {
         Calendar c = (Calendar) value;
-        value = new SimpleDateFormat("yyyy-MM-dd").format(c.getTime());
+        value = new SimpleDateFormat("MM/dd/yyyy").format(c.getTime());
       }
 
       String mailchimpTag = mergeFieldsNameToTag.get(customField.name);
