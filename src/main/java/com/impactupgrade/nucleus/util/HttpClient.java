@@ -38,6 +38,10 @@ public class HttpClient {
     return HttpStatus.OK_200 == response.getStatus() ? response.readEntity(genericType) : null;
   }
 
+  public static Response getJson(String url, String bearerToken) {
+    return get(url, MediaType.APPLICATION_JSON, bearerToken);
+  }
+
   protected static Response get(String url, String mediaType, String bearerToken) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
@@ -76,4 +80,23 @@ public class HttpClient {
     }
     return invocationBuilder.post(Entity.entity(entity, mediaType));
   }
+
+  public static <T> Response putJson(T entity, String bearerToken, String url, String... paths) {
+    return put(MediaType.APPLICATION_XML, entity, bearerToken, url, paths);
+  }
+
+  protected static <T> Response put(String mediaType, T entity, String bearerToken, String url, String... paths) {
+    Client client = ClientBuilder.newClient();
+    WebTarget webTarget = client.target(url);
+    for (String path : paths) {
+      webTarget = webTarget.path(path);
+    }
+
+    Invocation.Builder invocationBuilder = webTarget.request(mediaType);
+    if (!Strings.isNullOrEmpty(bearerToken)) {
+      invocationBuilder.header("Authorization", "Bearer " + bearerToken);
+    }
+    return invocationBuilder.put(Entity.entity(entity, mediaType));
+  }
+
 }

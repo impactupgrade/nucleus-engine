@@ -1,8 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -12,28 +10,18 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
-import java.io.InputStream;
+import javax.ws.rs.core.Response;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -52,7 +40,10 @@ public class VirtuousCrmService implements BasicCrmService {
     private static final Logger log = LogManager.getLogger(VirtuousCrmService.class);
 
     private static final String VIRTUOUS_API_URL = "https://api.virtuoussoftware.com/api";
+    //private static final String DATE_FORMAT = "MM/dd/yyyy HH:mm:ss z";
     private static final String DATE_FORMAT = "MM/dd/yyyy";
+    private static final int DEFAULT_OFFSET = 0;
+    private static final int DEFAULT_LIMIT = 100;
 
     private static TokenResponse tokenResponse;
 
@@ -63,7 +54,6 @@ public class VirtuousCrmService implements BasicCrmService {
     private String refreshToken;
 
     protected Environment env;
-    private ObjectMapper mapper;
 
     @Override
     public String name() {
@@ -82,9 +72,6 @@ public class VirtuousCrmService implements BasicCrmService {
         this.password = env.getConfig().virtuous.password;
         this.accessToken = env.getConfig().virtuous.accessToken;
         this.refreshToken = env.getConfig().virtuous.refreshToken;
-
-        mapper = new ObjectMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     // Contacts
@@ -93,7 +80,8 @@ public class VirtuousCrmService implements BasicCrmService {
         try {
             Integer.parseInt(id);
         } catch (NumberFormatException nfe) {
-            throw new IllegalArgumentException("Failed to parse numeric id from string '" + id + "'!");
+            log.error("Failed to parse numeric id from string {}!", id);
+            return Optional.empty();
         }
         Contact contact = getContact(VIRTUOUS_API_URL + "/Contact/" + id);
         return Optional.ofNullable(asCrmContact(contact));
@@ -105,61 +93,42 @@ public class VirtuousCrmService implements BasicCrmService {
         return Optional.ofNullable(asCrmContact(contact));
     }
 
-    private Contact getContact(String contactUrl) throws Exception {
-        HttpResponse response = executeGet(contactUrl);
-        String responseString = getResponseString(response);
-        int statusCode = response.getStatusLine().getStatusCode();
+    private Contact getContact(String contactUrl) {
+        Response response = HttpClient.getJson(contactUrl, getAccessToken());
+        int statusCode = response.getStatus();
         if (statusCode == HttpStatus.SC_OK) {
-            return mapper.readValue(responseString, Contact.class);
+            return response.readEntity(Contact.class);
         }
         if (statusCode == HttpStatus.SC_NOT_FOUND) {
             log.info("Contact not found.");
         } else {
-            log.error("Failed to get contact by url: {}! Response (status/body): {}/{}", contactUrl, statusCode, responseString);
+            log.error("Failed to get contact by url: {}! Response (status/body): {}/{}", contactUrl, statusCode, response.readEntity(String.class));
         }
         return null;
     }
 
     @Override
     public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-        List<ContactIndividualShort> contactIndividuals = getContactIndividualsList(phone);
-        if (CollectionUtils.isEmpty(contactIndividuals)) {
+        List<Contact> contacts = queryContacts(List.of(queryCondition("Phone Number", "Is", phone)));
+        if (CollectionUtils.isEmpty(contacts)) {
             return Optional.empty();
         }
-        if (contactIndividuals.size() > 1) {
-            log.warn("Found more than 1 contact individuals for phone '{}'", phone);
+        if (contacts.size() > 1) {
+            log.warn("Found more than 1 contact for phone '{}'", phone);
         }
-        return Optional.of(asCrmContact(contactIndividuals.get(0)));
-    }
-
-    private List<ContactIndividualShort> getContactIndividualsList(String searchString) throws Exception {
-        ContactsSearchCriteria criteria = new ContactsSearchCriteria();
-        criteria.search = searchString;
-        // TODO: check if parameters are required
-        // defaults are skip = 0, take = 10
-        HttpResponse response = executePost(
-                VIRTUOUS_API_URL + "/Contact/Search?skip=0&take=10",
-                mapper.writeValueAsString(criteria));
-        String responseString = getResponseString(response);
-        int statusCode = response.getStatusLine().getStatusCode();
-        if (statusCode == HttpStatus.SC_OK) {
-            return mapper.readValue(responseString, ContactSearchResponse.class).contactIndividualShorts;
-        } else {
-            log.error("Failed to get contacts list for search string {}! Response: {}", searchString, responseString);
-        }
-        return Collections.emptyList();
+        return contacts.stream()
+                .findFirst().map(this::asCrmContact);
     }
 
     @Override
     public String insertContact(CrmContact crmContact) throws Exception {
         Contact contact = asContact(crmContact);
-        HttpResponse response = executePost(VIRTUOUS_API_URL + "/Contact", mapper.writeValueAsString(contact));
-        String responseString = getResponseString(response);
+        Response response = HttpClient.postJson(contact, getAccessToken(), VIRTUOUS_API_URL + "/Contact");
         if (isOk(response)) {
-            Contact createdContact = mapper.readValue(responseString, Contact.class);
+            Contact createdContact = response.readEntity(Contact.class);
             return createdContact.id + "";
         } else {
-            log.error("Failed to create contact! Response: {}", responseString);
+            log.error("Failed to create contact! Response: {}", response.readEntity(String.class));
             return null;
         }
     }
@@ -167,14 +136,14 @@ public class VirtuousCrmService implements BasicCrmService {
     @Override
     public void updateContact(CrmContact crmContact) throws Exception {
         Contact contact = asContact(crmContact);
-        HttpResponse response = executePut(VIRTUOUS_API_URL + "/Contact/" + crmContact.id, mapper.writeValueAsString(contact));
+        Response response = HttpClient.putJson(contact, getAccessToken(), VIRTUOUS_API_URL + "/Contact/" + crmContact.id);
         if (!isOk(response)) {
-            log.error("Failed to update contact! Response: {}", getResponseString(response));
+            log.error("Failed to update contact! Response: {}", response.readEntity(String.class));
         }
     }
 
     @Override
-    public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) throws Exception {
+    public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
         List<QueryCondition> conditions = new ArrayList<>();
         if (!Strings.isNullOrEmpty(firstName)) {
             conditions.add(queryCondition("First Name", "Is", firstName));
@@ -191,27 +160,13 @@ public class VirtuousCrmService implements BasicCrmService {
         if (!Strings.isNullOrEmpty(address)) {
             conditions.add(queryCondition("Address Line 1", "Is", address));
         }
-
-        QueryConditionGroup group = new QueryConditionGroup();
-        group.conditions = conditions;
-
-        ContactQuery query = new ContactQuery();
-        //query.queryLocation = null; // TODO: decide if we need this param
-        query.groups = List.of(group);
-        query.sortBy = "Last Name";
-        query.descending = false;
-
-        HttpResponse response = executePost(VIRTUOUS_API_URL + "/Contact/Query/FullContact?skip=0&take=10", mapper.writeValueAsString(query));
-        String responseString = getResponseString(response);
-        if (isOk(response)) {
-            List<Contact> contacts = mapper.readValue(responseString, ContactQueryResponse.class).contacts;
-            return contacts.stream()
-                    .map(this::asCrmContact)
-                    .collect(Collectors.toList());
-        } else {
-            log.error("Failed to query contacts! Response: {}", responseString);
-            return null;
+        List<Contact> contacts = queryContacts(conditions);
+        if (CollectionUtils.isEmpty(contacts)) {
+            return Collections.emptyList();
         }
+        return contacts.stream()
+                .map(this::asCrmContact)
+                .collect(Collectors.toList());
     }
 
     private QueryCondition queryCondition(String parameter, String operator, String value) {
@@ -220,6 +175,26 @@ public class VirtuousCrmService implements BasicCrmService {
         queryCondition.operator = operator;
         queryCondition.value = value;
         return queryCondition;
+    }
+
+    private List<Contact> queryContacts(List<QueryCondition> conditions) {
+        QueryConditionGroup group = new QueryConditionGroup();
+        group.conditions = conditions;
+
+        ContactQuery query = new ContactQuery();
+        //query.queryLocation = null; // TODO: decide if we need this param
+        query.groups = List.of(group);
+        query.sortBy = "Last Name";
+        query.descending = false;
+        Response response = HttpClient.postJson(
+                query, getAccessToken(),
+                VIRTUOUS_API_URL + "/Contact/Query/FullContact?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT);
+        if (response.getStatus() == HttpStatus.SC_OK) {
+            return response.readEntity(ContactQueryResponse.class).contacts;
+        } else {
+            log.error("Failed to query contacts! Response: {}", response.readEntity(String.class));
+            return null;
+        }
     }
 
     // TODO: move to a mapper class?
@@ -255,38 +230,6 @@ public class VirtuousCrmService implements BasicCrmService {
         //crmContact.firstDonationDate;
         crmContact.lastDonationDate = getCalendar(contact.lastGiftDate);
         crmContact.notes = contact.description;
-        //  public List<String> emailGroups;
-        //  public String contactLanguage;
-
-        return crmContact;
-    }
-
-    private CrmContact asCrmContact(ContactIndividualShort contactIndividualShort) {
-        if (Objects.isNull(contactIndividualShort)) {
-            return null;
-        }
-        CrmContact crmContact = new CrmContact();
-        crmContact.id = String.valueOf(contactIndividualShort.id);
-        //crmContact.accountId = // ?
-        crmContact.fullName = contactIndividualShort.name;
-
-        crmContact.email = contactIndividualShort.email;
-        //crmContact.homePhone = getPhone(contactIndividual, "Home Phone");
-        crmContact.mobilePhone = contactIndividualShort.phone;
-        //crmContact.workPhone = getPhone(contactIndividual, "Work Phone");
-        //crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE // ?
-
-        //crmContact.emailOptIn;
-        //crmContact.emailOptOut;
-        //crmContact.smsOptIn;
-        //crmContact.smsOptOut;
-        //crmContact.ownerId;
-        //crmContact.ownerName;
-        //crmContact.totalDonationAmount = contact.lifeToDateGiving; // Parse double
-        // crmContact.numDonations;
-        //crmContact.firstDonationDate;
-        //crmContact.lastDonationDate = getCalendar(contact.lastGiftDate);
-        //crmContact.notes = contact.description;
         //  public List<String> emailGroups;
         //  public String contactLanguage;
 
@@ -340,7 +283,8 @@ public class VirtuousCrmService implements BasicCrmService {
         contact.id = Integer.parseInt(crmContact.id);
         contact.name = crmContact.fullName;
         contact.isPrivate = false;
-        contact.contactType = "Household"; // Foundation/Organization/Household ?
+        contact.contactType =
+                "Household"; // Foundation/Organization/Household ?
 
         contact.address = asAddress(crmContact.address);
 
@@ -393,46 +337,101 @@ public class VirtuousCrmService implements BasicCrmService {
     // Donations
     @Override
     public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-        String transactionSource = "stripe"; // TODO: where to get this one from?
+        // TODO: For now, safe to assume Stripe here,
+        //  but might need an interface change...
+        return getDonationByTransactionSourceAndId("stripe", transactionId);
+    }
+
+    public Optional<CrmDonation> getDonationByTransactionSourceAndId(String transactionSource, String transactionId) throws Exception {
         String giftUrl = VIRTUOUS_API_URL + "/Gift/" + transactionSource + "/" + transactionId;
-        HttpResponse response = executeGet(giftUrl);
-        String responseString = getResponseString(response);
-        if (isOk(response)) {
-            Gift gift = mapper.readValue(responseString, Gift.class);
-            return Optional.of(asCrmDonation(gift));
+        Gift gift = getGift(giftUrl);
+        return Optional.ofNullable(asCrmDonation(gift));
+    }
+
+    private Gift getGift(String giftUrl) {
+        Response response = HttpClient.getJson(giftUrl, getAccessToken());
+        int statusCode = response.getStatus();
+        if (statusCode == HttpStatus.SC_OK) {
+            return response.readEntity(Gift.class);
+        }
+        if (statusCode == HttpStatus.SC_NOT_FOUND) {
+            log.info("Gift not found.");
         } else {
-            log.error("Failed to get gift by url: {}! Response: {}", giftUrl, responseString);
-            return Optional.empty();
+            log.error("Failed to get gift by url: {}! Response (status/body): {}/{}", giftUrl, statusCode, response.readEntity(String.class));
+        }
+        return null;
+    }
+
+    // This endpoint creates a gift directly onto a contact record.
+    // Using this endpoint assumes you know the precise contact the gift is matched to.
+    // Virtuous does not support cleaning up data that is caused by
+    // creating the gifts incorrectly through this endpoint.
+    // Please use the Gift Transaction endpoint as a better alternative.
+    // https://docs.virtuoussoftware.com/#5cbc35dc-6b1e-41da-b1a5-477043a9a66d
+    @Override
+    public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+        Gift gift = asGift(paymentGatewayEvent);
+        Response response = HttpClient.postJson(gift, getAccessToken(),
+                VIRTUOUS_API_URL + "/Gift");
+        if (isOk(response)) {
+            Gift createdGift = response.readEntity(Gift.class);
+            return createdGift.id + "";
+        } else {
+            log.error("Failed to create Gift Transaction! Response: {}", response.readEntity(String.class));
+            return null;
         }
     }
 
-    @Override
-    public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        //GiftTransaction giftTransaction = asGiftTransaction(paymentGatewayEvent);
-        Gift giftTransaction = asGift(paymentGatewayEvent);
-        HttpResponse response = executePost(
-                //VIRTUOUS_API_URL + "/v2/Gift/Transaction",
-                VIRTUOUS_API_URL + "/Gift",
-                mapper.writeValueAsString(giftTransaction)
-        );
-        String responseString = getResponseString(response);
-        if (isOk(response)) {
-            Gift gift = mapper.readValue(responseString, Gift.class);
-            return gift.id + "";
-        } else {
-            log.error("Failed to create Gift Transaction! Response: {}", responseString);
-            return null;
+    // This is the recommended way to create a gift.
+    // This ensures the gift is matched using the Virtuous matching algorithms
+    // for Contacts, Recurring gifts, Designations, etc.
+    // https://docs.virtuoussoftware.com/#e4a6a1e3-71a4-44f9-bd7c-9466996befac
+    public void insertDonationAsync(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+        GiftTransaction giftTransaction = asGiftTransaction(paymentGatewayEvent);
+        Response response = HttpClient.postJson(giftTransaction, getAccessToken(),
+                VIRTUOUS_API_URL + "/v2/Gift/Transaction");
+        if (!isOk(response)) {
+            log.error("Failed to create Gift Transaction! Response: {}", response.readEntity(String.class));
         }
     }
 
     @Override
     public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-
+        CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
+        Gift gift = asGift(paymentGatewayEvent);
+        try {
+            gift.id = Integer.parseInt(existingDonation.id);
+        } catch (NumberFormatException nfe) {
+            log.error("Failed to parse numeric id from string {}!", existingDonation.id);
+            return;
+        }
+        Response response = HttpClient.putJson(gift, getAccessToken(), VIRTUOUS_API_URL + "/Gift" + "/" + gift.id);
+        if (!isOk(response)) {
+            log.error("Failed to update Gift! Response: {}", response.readEntity(String.class));
+        }
     }
 
     @Override
     public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+        CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
+        Integer donationId;
+        try {
+            donationId = Integer.parseInt(existingDonation.id);
+        } catch (NumberFormatException nfe) {
+            log.error("Failed to parse numeric id from string {}!", existingDonation.id);
+            return;
+        }
 
+        ReversingTransaction reversingTransaction = new ReversingTransaction();
+        reversingTransaction.reversedGiftId = donationId;
+        reversingTransaction.giftDate = paymentGatewayEvent.getTransactionDate().getTime();
+        reversingTransaction.notes = "Reverting transaction: " +
+                existingDonation.paymentGatewayName + "/" + existingDonation.id;
+
+        Response response = HttpClient.postJson(reversingTransaction, getAccessToken(), VIRTUOUS_API_URL + "/Gift/ReversingTransaction");
+        if (!isOk(response)) {
+            log.error("Failed to create Reversing Transaction! Response: {}", response.readEntity(String.class));
+        }
     }
 
     private CrmDonation asCrmDonation(Gift gift) {
@@ -448,25 +447,6 @@ public class VirtuousCrmService implements BasicCrmService {
         crmDonation.closeDate = getCalendar(gift.giftDate); // ?
         crmDonation.crmUrl = gift.giftUrl;
         return crmDonation;
-    }
-
-    private GiftTransaction asGiftTransaction(PaymentGatewayEvent paymentGatewayEvent) {
-        if (Objects.isNull(paymentGatewayEvent)) {
-            return null;
-        }
-        GiftTransaction giftTransaction = new GiftTransaction();
-
-        giftTransaction.transactionSource = paymentGatewayEvent.getGatewayName(); // ?
-        giftTransaction.transactionId = paymentGatewayEvent.getTransactionId(); // ?
-
-        giftTransaction.amount = paymentGatewayEvent.getTransactionAmountInDollars() + ""; // TODO: double check if string indeed
-        giftTransaction.giftDate = paymentGatewayEvent.getTransactionDate().getTime().toString();
-        giftTransaction.contact = asContact(paymentGatewayEvent.getCrmContact());
-
-        giftTransaction.recurringGiftTransactionUpdate = false; // ?
-        giftTransaction.isPrivate = false; // ?
-        giftTransaction.isTaxDeductible = false; // ?
-        return giftTransaction;
     }
 
     private Gift asGift(PaymentGatewayEvent paymentGatewayEvent) {
@@ -488,9 +468,104 @@ public class VirtuousCrmService implements BasicCrmService {
         return gift;
     }
 
+    private GiftTransaction asGiftTransaction(PaymentGatewayEvent paymentGatewayEvent) {
+        if (Objects.isNull(paymentGatewayEvent)) {
+            return null;
+        }
+        GiftTransaction giftTransaction = new GiftTransaction();
+
+        giftTransaction.transactionSource = paymentGatewayEvent.getGatewayName(); // ?
+        giftTransaction.transactionId = paymentGatewayEvent.getTransactionId(); // ?
+
+        giftTransaction.amount = paymentGatewayEvent.getTransactionAmountInDollars() + ""; // TODO: double check if string indeed
+        giftTransaction.giftDate = paymentGatewayEvent.getTransactionDate().getTime().toString();
+        giftTransaction.contact = asContact(paymentGatewayEvent.getCrmContact());
+
+        giftTransaction.recurringGiftTransactionUpdate = false; // ?
+        giftTransaction.isPrivate = false; // ?
+        giftTransaction.isTaxDeductible = false; // ?
+        return giftTransaction;
+    }
+
     @Override
     public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
-        return null;
+        List<Contact> contacts = queryContacts(List.of(queryCondition("Last Modified Date", "After", getLastModifiedDateValue(updatedSince))));
+        if (CollectionUtils.isEmpty(contacts)) {
+            return Collections.emptyList();
+        }
+
+        if (!Strings.isNullOrEmpty(filter)) {
+            List<ContactIndividualShort> contactIndividuals = getContactIndividuals(filter, DEFAULT_OFFSET, DEFAULT_LIMIT);
+            if (CollectionUtils.isEmpty(contactIndividuals)) {
+                return Collections.emptyList();
+            }
+            Set<Integer> ids = contactIndividuals.stream()
+                    .map(contactIndividualShort -> contactIndividualShort.id)
+                    .collect(Collectors.toSet());
+            contacts = contacts.stream()
+                    .filter(contact -> ids.contains(contact.id))
+                    .collect(Collectors.toList());
+        }
+
+        return contacts.stream()
+                .map(this::asCrmContact)
+                .collect(Collectors.toList());
+    }
+
+    private String getLastModifiedDateValue(Calendar calendar) {
+        //"valueOptions": [
+        //				"180 Days Ago",
+        //				"270 Days Ago",
+        //				"30 Days Ago",
+        //				"60 Days Ago",
+        //				"90 Days Ago",
+        //				"Last Sunday",
+        //				"One week from now",
+        //				"One Year Ago",
+        //				"Start Of This Month",
+        //				"This Calendar Year",
+        //				"Today",
+        //				"Tomorrow",
+        //				"Two Years Ago",
+        //				"Yesterday"
+        //			]
+        LocalDateTime then = LocalDateTime.ofInstant(calendar.toInstant(), ZoneId.of("UTC"));
+        long daysAgo = Duration.between(then, LocalDateTime.now()).toDays();
+        String lastModifiedDate;
+        if (daysAgo < 1) {
+            lastModifiedDate = "Today";
+        } else if (daysAgo >= 1) {
+            lastModifiedDate = "Yesterday";
+        } else if (daysAgo >= 30 && daysAgo < 60) {
+            lastModifiedDate = "30 Days Ago";
+        } else if (daysAgo >= 60 && daysAgo < 90) {
+            lastModifiedDate = "60 Days Ago";
+        } else if (daysAgo >= 90 && daysAgo < 180) {
+            lastModifiedDate = "90 Days Ago";
+        } else if (daysAgo >= 180 && daysAgo < 270) {
+            lastModifiedDate = "180 Days Ago";
+        } else if (daysAgo >= 270 && daysAgo < 365) {
+            lastModifiedDate = "270 Days Ago";
+        } else {
+            lastModifiedDate = "One Year Ago";
+        }
+        return lastModifiedDate;
+    }
+
+    // TODO: switch to PagedResult
+    private List<ContactIndividualShort> getContactIndividuals(String searchString, int offset, int limit) {
+        ContactsSearchCriteria criteria = new ContactsSearchCriteria();
+        criteria.search = searchString;
+        Response response = HttpClient.postJson(
+                criteria, getAccessToken(),
+                VIRTUOUS_API_URL + "/Contact/Search?skip=" + offset + "&take=" + limit);
+        int statusCode = response.getStatus();
+        if (statusCode == HttpStatus.SC_OK) {
+            return response.readEntity(ContactSearchResponse.class).contactIndividualShorts;
+        } else {
+            log.error("Failed to get contacts list for search string {}! Response: {}", searchString, response.readEntity(String.class));
+            return null;
+        }
     }
 
     @Override
@@ -499,13 +574,18 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     @Override
-    public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
+    public double getDonationsTotal(String filter) throws Exception {
+        return 0;
+    }
 
+    @Override
+    public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
+        // TODO:
     }
 
     @Override
     public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-
+        //TODO:
     }
 
     @Override
@@ -514,7 +594,7 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
 
-    private String getAccessToken() throws Exception {
+    private String getAccessToken() {
         // TODO: check access token from config, if available; howto?
         if (!containsValidAccessToken(tokenResponse)) {
 
@@ -544,19 +624,18 @@ public class VirtuousCrmService implements BasicCrmService {
         return Objects.nonNull(tokenResponse) && new Date().before(tokenResponse.expiresAt);
     }
 
-    private TokenResponse refreshAccessToken() throws Exception {
+    private TokenResponse refreshAccessToken() {
         // To refresh access token:
         // curl -d "grant_type=refresh_token&refresh_token=REFRESH_TOKEN"
         // -X POST https://api.virtuoussoftware.com/Token
-        HttpResponse response = executePost(
-                tokenServerUrl,
+        Response response = HttpClient.postForm(
                 Map.of("grant_type", "refresh_token",
-                        "refresh_token", refreshToken)
-        );
-        return mapper.readValue(getResponseString(response), TokenResponse.class);
+                        "refresh_token", refreshToken),
+                null, tokenServerUrl);
+        return response.readEntity(TokenResponse.class);
     }
 
-    private TokenResponse getTokenResponse() throws Exception {
+    private TokenResponse getTokenResponse() {
         // To get access token:
         // curl -d
         // "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD"
@@ -576,70 +655,19 @@ public class VirtuousCrmService implements BasicCrmService {
 //                .method("POST", body)
 //                .build();
 //        Response response = client.newCall(request).execute();
-        HttpResponse response = executePost(
-                tokenServerUrl,
+        Response response = HttpClient.postForm(
                 Map.of("grant_type", "password"
                         , "username", username
                         , "password", password
                         //, "otp", "012345"
-                )
-        );
+                ), null, tokenServerUrl);
 
-        return mapper.readValue(getResponseString(response), TokenResponse.class);
+        return response.readEntity(TokenResponse.class);
     }
 
-    private HttpResponse executePost(String url, Map<String, String> formParams) throws IOException {
-        HttpPost post = new HttpPost(url);
-        List<NameValuePair> params = formParams.entrySet().stream()
-                .map(e -> new BasicNameValuePair(e.getKey(), e.getValue()))
-                .collect(Collectors.toList());
-        post.setEntity(new UrlEncodedFormEntity(params));
-        HttpClient httpClient = HttpClientBuilder.create().build();
-        HttpResponse response = httpClient.execute(post);
-        return response;
-    }
-
-    private HttpResponse executePost(String url, String body) throws Exception {
-        HttpPost post = new HttpPost(url);
-        post.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
-        post.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken());
-        post.setEntity(new StringEntity(body));
-        HttpClient httpClient = HttpClientBuilder.create().build();
-        log.info("Executing post...");
-        log.info("Request url: {}", url);
-        log.info("Request body: {}", body);
-        HttpResponse response = httpClient.execute(post);
-        log.info("Executing post done! Response status: {}", response.getStatusLine().getStatusCode());
-        return response;
-    }
-
-    private HttpResponse executeGet(String url) throws Exception {
-        HttpGet get = new HttpGet(url);
-        get.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken());
-        HttpClient httpClient = HttpClientBuilder.create().build();
-        HttpResponse response = httpClient.execute(get);
-        return response;
-    }
-
-    private HttpResponse executePut(String url, String body) throws Exception {
-        HttpPut put = new HttpPut(url);
-        put.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
-        put.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + getAccessToken());
-        put.setEntity(new StringEntity(body));
-        HttpClient httpClient = HttpClientBuilder.create().build();
-        HttpResponse response = httpClient.execute(put);
-        return response;
-    }
-
-    private boolean isOk(HttpResponse httpResponse) {
+    private boolean isOk(Response response) {
         return Set.of(HttpStatus.SC_OK, HttpStatus.SC_CREATED, HttpStatus.SC_ACCEPTED)
-                .contains(httpResponse.getStatusLine().getStatusCode());
-    }
-
-    private String getResponseString(org.apache.http.HttpResponse response) throws IOException {
-        try (InputStream stream = response.getEntity().getContent()) {
-            return IOUtils.toString(stream, "UTF-8");
-        }
+                .contains(response.getStatus());
     }
 
     // {
@@ -673,6 +701,7 @@ public class VirtuousCrmService implements BasicCrmService {
     public static class ContactSearchResponse {
         @JsonProperty("list")
         public List<ContactIndividualShort> contactIndividualShorts;
+        public Integer total;
     }
 
     public static class Contact {
@@ -761,8 +790,6 @@ public class VirtuousCrmService implements BasicCrmService {
         public List<CustomCollection> customCollections;
     }
 
-    // TODO: use 1 entity with merged fields?
-    // TODO: find a better name
     public static class ContactIndividualShort {
         public Integer individualId;
         public String name;
@@ -1009,5 +1036,10 @@ public class VirtuousCrmService implements BasicCrmService {
         public Integer total;
     }
 
+    public static class ReversingTransaction {
+        public Date giftDate;
+        public Integer reversedGiftId;
+        public String notes;
+    }
 
 }
