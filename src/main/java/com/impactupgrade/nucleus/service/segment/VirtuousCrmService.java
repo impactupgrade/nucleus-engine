@@ -11,9 +11,12 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -28,6 +31,8 @@ import java.util.stream.Stream;
 public class VirtuousCrmService implements BasicCrmService {
 
     private static final Logger log = LogManager.getLogger(VirtuousCrmService.class);
+    private static final String DATE_FORMAT = "MM/dd/yyyy";
+    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
     private VirtuousClient virtuousClient;
     protected Environment env;
@@ -94,8 +99,86 @@ public class VirtuousCrmService implements BasicCrmService {
 
     @Override
     public void updateContact(CrmContact crmContact) throws Exception {
-        VirtuousClient.Contact contact = asContact(crmContact);
-        virtuousClient.updateContact(contact);
+        VirtuousClient.Contact updatingContact = asContact(crmContact);
+        VirtuousClient.Contact existingContact = virtuousClient.getContactById(updatingContact.id);
+
+        VirtuousClient.ContactIndividual updatingIndividual = getPrimaryContactIndividual(updatingContact);
+        VirtuousClient.ContactIndividual existingIndividual = getPrimaryContactIndividual(existingContact);
+
+        List<VirtuousClient.ContactMethod> contactMethodsToCreate = getContactMethodsToCreate(existingIndividual, updatingIndividual);
+        for (VirtuousClient.ContactMethod contactMethod : contactMethodsToCreate) {
+            log.info("Creating contact method...");
+            VirtuousClient.ContactMethod createdContactMethod = virtuousClient.createContactMethod(contactMethod);
+            if (Objects.isNull(createdContactMethod)) {
+                log.error("Failed to create contact method {}!", contactMethod.type);
+                return;
+            }
+            log.info("Contact method created.");
+        }
+
+        List<VirtuousClient.ContactMethod> contactMethodsToUpdate = getContactMethodsToUpdate(existingIndividual, updatingIndividual);
+        for (VirtuousClient.ContactMethod contactMethod : contactMethodsToUpdate) {
+            log.info("Updating contact method...");
+            if (Objects.isNull(virtuousClient.updateContactMethod(contactMethod))) {
+                log.error("Failed to update contact method {}/{}!", contactMethod.id, contactMethod.type);
+                return;
+            }
+            log.info("Contact method updated.");
+        }
+
+        List<VirtuousClient.ContactMethod> contactMethodsToDelete = getContactMethodsToDelete(existingIndividual, updatingIndividual);
+        for (VirtuousClient.ContactMethod contactMethod : contactMethodsToDelete) {
+            log.info("Deleting contact method...");
+            if (Objects.isNull(virtuousClient.deleteContactMethod(contactMethod))) {
+                log.error("Failed to delete contact method {}/{}!", contactMethod.id, contactMethod.type);
+                return;
+            }
+            log.info("Contact method deleted.");
+        }
+
+        virtuousClient.updateContact(updatingContact);
+    }
+
+    private List<VirtuousClient.ContactMethod> getContactMethodsToCreate(VirtuousClient.ContactIndividual existing, VirtuousClient.ContactIndividual updating) {
+        List<VirtuousClient.ContactMethod> toCreate = new ArrayList<>();
+        for (VirtuousClient.ContactMethod updatingContactMethod : updating.contactMethods) {
+            boolean contactMethodExists = existing.contactMethods.stream()
+                    .filter(contactMethod -> StringUtils.equals(contactMethod.type, updatingContactMethod.type))
+                    .findAny().isPresent();
+            if (!contactMethodExists) {
+                updatingContactMethod.contactIndividualId = existing.id;
+                toCreate.add(updatingContactMethod);
+            }
+        }
+        return toCreate;
+    }
+
+    private List<VirtuousClient.ContactMethod> getContactMethodsToUpdate(VirtuousClient.ContactIndividual existing, VirtuousClient.ContactIndividual updating) {
+        for (VirtuousClient.ContactMethod existingContactMethod : existing.contactMethods) {
+            for (VirtuousClient.ContactMethod updatingContactMethod : updating.contactMethods) {
+                // Assuming contact individual has 1 of each type (as crmContact has)
+                if (StringUtils.equals(existingContactMethod.type, updatingContactMethod.type)) {
+                    existingContactMethod.value = updatingContactMethod.value;
+                    existingContactMethod.isOptedIn = updatingContactMethod.isOptedIn;
+                    existingContactMethod.isPrimary = updatingContactMethod.isPrimary;
+                    existingContactMethod.canBePrimary = updatingContactMethod.canBePrimary;
+                }
+            }
+        }
+        return existing.contactMethods;
+    }
+
+    private List<VirtuousClient.ContactMethod> getContactMethodsToDelete(VirtuousClient.ContactIndividual existing, VirtuousClient.ContactIndividual updating) {
+        List<VirtuousClient.ContactMethod> toDelete = new ArrayList<>();
+        for (VirtuousClient.ContactMethod existingContactMethod : existing.contactMethods) {
+            boolean updatingContactMethod = updating.contactMethods.stream()
+                    .filter(contactMethod -> StringUtils.equals(contactMethod.type, existingContactMethod.type))
+                    .findAny().isPresent();
+            if (!updatingContactMethod) {
+                toDelete.add(existingContactMethod);
+            }
+        }
+        return toDelete;
     }
 
     @Override
@@ -151,18 +234,23 @@ public class VirtuousCrmService implements BasicCrmService {
             return null;
         }
         CrmContact crmContact = new CrmContact();
-        crmContact.id = String.valueOf(contact.id);
+        crmContact.id = contact.id + "";
         //crmContact.accountId = // ?
         VirtuousClient.ContactIndividual contactIndividual = getPrimaryContactIndividual(contact);
         crmContact.firstName = contactIndividual.firstName;
         crmContact.lastName = contactIndividual.lastName;
         crmContact.fullName = contact.name;
 
-        //crmContact.email = ?
-        crmContact.homePhone = getPhone(contactIndividual, "Home Phone");
-        crmContact.mobilePhone = getPhone(contactIndividual, "Mobile Phone");
-        crmContact.workPhone = getPhone(contactIndividual, "Work Phone");
-        crmContact.otherPhone = getPhone(contactIndividual, "Other Phone");
+        Optional<VirtuousClient.ContactMethod> emailContactMethodOptional = getContactMethod(contactIndividual, "Home Email");
+        if (emailContactMethodOptional.isPresent()) {
+            crmContact.email = emailContactMethodOptional.get().value;
+            crmContact.emailOptIn = emailContactMethodOptional.get().isOptedIn;
+        }
+
+        crmContact.homePhone = getContactMethodValue(contactIndividual, "Home Phone");
+        crmContact.mobilePhone = getContactMethodValue(contactIndividual, "Mobile Phone");
+        crmContact.workPhone = getContactMethodValue(contactIndividual, "Work Phone");
+        crmContact.otherPhone = getContactMethodValue(contactIndividual, "Other Phone");
         //crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE // ?
 
         crmContact.address = getCrmAddress(contact.address);
@@ -190,9 +278,15 @@ public class VirtuousCrmService implements BasicCrmService {
                 .findFirst().orElse(null);
     }
 
-    private String getPhone(VirtuousClient.ContactIndividual contactIndividual, String phoneType) {
+    private Optional<VirtuousClient.ContactMethod> getContactMethod(VirtuousClient.ContactIndividual contactIndividual, String contactMethodType) {
         return contactIndividual.contactMethods.stream()
-                .filter(contactMethod -> phoneType.equals(contactMethod.type))
+                .filter(contactMethod -> contactMethodType.equals(contactMethod.type))
+                .findFirst();
+    }
+
+    private String getContactMethodValue(VirtuousClient.ContactIndividual contactIndividual, String contactMethodType) {
+        return contactIndividual.contactMethods.stream()
+                .filter(contactMethod -> contactMethodType.equals(contactMethod.type))
                 .findFirst()
                 .map(contactMethod -> contactMethod.value).orElse(null);
     }
@@ -216,12 +310,26 @@ public class VirtuousCrmService implements BasicCrmService {
         return calendar;
     }
 
+    private Calendar getCalendar(String dateString) {
+        Calendar calendar = null;
+        try {
+            Date date = new SimpleDateFormat(DATE_FORMAT).parse(dateString);
+            calendar = Calendar.getInstance();
+            calendar.setTime(date);
+        } catch (ParseException e) {
+            log.error("Failed to parse date from string {}!", dateString);
+        }
+        return calendar;
+    }
+
     private VirtuousClient.Contact asContact(CrmContact crmContact) {
         if (Objects.isNull(crmContact)) {
             return null;
         }
         VirtuousClient.Contact contact = new VirtuousClient.Contact();
-        contact.id = Integer.parseInt(crmContact.id);
+        if (Objects.nonNull(crmContact.id)) {
+            contact.id = Integer.parseInt(crmContact.id);
+        }
         contact.name = crmContact.fullName;
         contact.isPrivate = false;
         contact.contactType =
@@ -247,6 +355,16 @@ public class VirtuousCrmService implements BasicCrmService {
         contact.contactIndividuals = List.of(contactIndividual);
 
         return contact;
+    }
+
+    private Integer parseInt(String string) {
+        Integer integer = null;
+        try {
+            integer = Integer.parseInt(string);
+        } catch (NumberFormatException nfe) {
+            log.error("Failed to parse numeric id from string {}!", string);
+        }
+        return integer;
     }
 
     private VirtuousClient.Address asAddress(CrmAddress crmAddress) {
@@ -331,7 +449,7 @@ public class VirtuousCrmService implements BasicCrmService {
         crmDonation.amount = gift.amount;
         crmDonation.paymentGatewayName = gift.transactionSource; // ?
         //crmDonation.status = CrmDonation.Status.SUCCESSFUL; // ?
-        crmDonation.closeDate = getCalendar(gift.giftDate); // ?
+        crmDonation.closeDate = getCalendar(gift.giftDate);
         crmDonation.crmUrl = gift.giftUrl;
         return crmDonation;
     }

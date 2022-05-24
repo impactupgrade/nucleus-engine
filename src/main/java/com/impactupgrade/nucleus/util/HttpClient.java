@@ -82,7 +82,7 @@ public class HttpClient {
   }
 
   public static <T> Response putJson(T entity, String bearerToken, String url, String... paths) {
-    return put(MediaType.APPLICATION_XML, entity, bearerToken, url, paths);
+    return put(MediaType.APPLICATION_JSON, entity, bearerToken, url, paths);
   }
 
   protected static <T> Response put(String mediaType, T entity, String bearerToken, String url, String... paths) {
@@ -97,6 +97,24 @@ public class HttpClient {
       invocationBuilder.header("Authorization", "Bearer " + bearerToken);
     }
     return invocationBuilder.put(Entity.entity(entity, mediaType));
+  }
+
+  public static Response delete(String bearerToken, String url, String... paths) {
+    return delete(MediaType.TEXT_PLAIN, bearerToken, url, paths);
+  }
+
+  protected static Response delete(String mediaType, String bearerToken, String url, String... paths) {
+    Client client = ClientBuilder.newClient();
+    WebTarget webTarget = client.target(url);
+    for (String path : paths) {
+      webTarget = webTarget.path(path);
+    }
+
+    Invocation.Builder invocationBuilder = webTarget.request(mediaType);
+    if (!Strings.isNullOrEmpty(bearerToken)) {
+      invocationBuilder.header("Authorization", "Bearer " + bearerToken);
+    }
+    return invocationBuilder.delete();
   }
 
 }
