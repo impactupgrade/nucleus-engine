@@ -150,6 +150,36 @@ public class VirtuousClient {
         }
     }
 
+    public ContactMethod createContactMethod(ContactMethod contactMethod) {
+        Response response = HttpClient.postJson(contactMethod, getAccessToken(), VIRTUOUS_API_URL + "/ContactMethod");
+        if (isOk(response)) {
+            return response.readEntity(ContactMethod.class);
+        } else {
+            log.error("Failed to create contact method! Response: {}", response.readEntity(String.class));
+            return null;
+        }
+    }
+
+    public ContactMethod updateContactMethod(ContactMethod contactMethod) {
+        Response response = HttpClient.putJson(contactMethod, getAccessToken(), VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id);
+        if (isOk(response)) {
+            return response.readEntity(ContactMethod.class);
+        } else {
+            log.error("Failed to update contact method! Response: {}", response.readEntity(String.class));
+            return null;
+        }
+    }
+
+    public ContactMethod deleteContactMethod(ContactMethod contactMethod) {
+        Response response = HttpClient.delete(getAccessToken(), VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id);
+        if (isOk(response)) {
+            return contactMethod;
+        } else {
+            log.error("Failed to delete contact method! Response: {}", response.readEntity(String.class));
+            return null;
+        }
+    }
+
     public List<Contact> queryContacts(ContactQuery query) {
         Response response = HttpClient.postJson(
                 query, getAccessToken(),
@@ -389,7 +419,7 @@ public class VirtuousClient {
         public String lifeToDateGiving;
         public String yearToDateGiving;
         public String lastGiftAmount;
-        public Date lastGiftDate;
+        public String lastGiftDate;
         public List<ContactIndividual> contactIndividuals;
         public String contactGiftsUrl;
         public String contactPassthroughGiftsUrl;
@@ -471,6 +501,7 @@ public class VirtuousClient {
 
     public static class ContactMethod {
         public Integer id;
+        public Integer contactIndividualId;
         public String type;
         public String value;
         public Boolean isOptedIn;
