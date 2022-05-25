@@ -23,9 +23,6 @@ public class VirtuousClient {
 
     private static final Logger log = LogManager.getLogger(VirtuousClient.class);
 
-    //public static final String DATE_FORMAT = "MM/dd/yyyy HH:mm:ss z";
-    public static final String DATE_FORMAT = "MM/dd/yyyy";
-
     private static final String VIRTUOUS_API_URL = "https://api.virtuoussoftware.com/api";
     private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_LIMIT = 100;
@@ -331,25 +328,6 @@ public class VirtuousClient {
     }
 
     private TokenResponse getTokenResponse() {
-        // To get access token:
-        // curl -d
-        // "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD"
-        // -X POST https://api.virtuoussoftware.com/Token
-
-//        OkHttpClient client = new OkHttpClient().newBuilder()
-//                .build();
-//        MediaType mediaType = MediaType.parse("text/plain");
-//        RequestBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
-//                .addFormDataPart("grant_type","password")
-//                .addFormDataPart("username","bobloblaw@loblaw.org")
-//                .addFormDataPart("password","SomeFancyGoodPassword")
-//                .addFormDataPart("otp","012345")
-//                .build();
-//        Request request = new Request.Builder()
-//                .url("https://api.virtuoussoftware.com/Token")
-//                .method("POST", body)
-//                .build();
-//        Response response = client.newCall(request).execute();
         Response response = HttpClient.postForm(
                 Map.of("grant_type", "password"
                         , "username", username
@@ -365,16 +343,6 @@ public class VirtuousClient {
                 .contains(response.getStatus());
     }
 
-    // {
-    //  "access_token": "abc123.....",
-    //  "token_type": "bearer",
-    //  "expires_in": 3599,
-    //  "refresh_token": "zyx987...",
-    //  "userName": "bobloblaw@loblaw.org",
-    //  "twoFactorEnabled": "True",
-    //  ".issued": "Thu, 10 Feb 2022 22:27:19 GMT",
-    //  ".expires": "Thu, 10 Feb 2022 23:27:19 GMT"
-    //}
     public static class TokenResponse {
         @JsonProperty("access_token")
         public String accessToken;
@@ -453,6 +421,7 @@ public class VirtuousClient {
         public Boolean isPrimary;
         public Boolean canBePrimary;
         public Integer startDay;
+        public Integer startMonth;
         public Integer endMonth;
         public Integer endDay;
     }
@@ -473,7 +442,7 @@ public class VirtuousClient {
         public Integer birthMonth;
         public Integer birthDay;
         public Integer birthYear;
-        public Integer birthDate;
+        public String birthDate;
         public Integer approximateAge;
         public Boolean isDeceased;
         public String passion;
@@ -538,6 +507,7 @@ public class VirtuousClient {
 
     public static class Gift {
         public Integer id;
+        public Integer reversedGiftId;
         public String transactionSource;
         public String transactionId;
         public String contactId;
@@ -545,7 +515,7 @@ public class VirtuousClient {
         public String contactUrl;
         public String giftType;
         public String giftTypeFormatted;
-        public Date giftDate;
+        public String giftDate;
         public String giftDateFormatted;
         public Double amount;
         public String amountFormatted;
@@ -580,6 +550,11 @@ public class VirtuousClient {
         public Boolean isPrivate;
         public Boolean isTaxDeductible;
         public List<CustomField> customFields;
+        //
+        public String creditCardType;
+        public String currencyCode;
+        public String exchangeRate;
+        public String baseCurrencyCode;
     }
 
     public static class GiftDesignation {
@@ -735,7 +710,7 @@ public class VirtuousClient {
     }
 
     public static class ReversingTransaction {
-        public Date giftDate;
+        public String giftDate;
         public Integer reversedGiftId;
         public String notes;
     }

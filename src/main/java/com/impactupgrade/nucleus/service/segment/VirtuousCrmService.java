@@ -32,7 +32,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
     private static final Logger log = LogManager.getLogger(VirtuousCrmService.class);
     private static final String DATE_FORMAT = "MM/dd/yyyy";
-    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS";
+    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
     private VirtuousClient virtuousClient;
     protected Environment env;
@@ -110,7 +110,7 @@ public class VirtuousCrmService implements BasicCrmService {
             log.info("Creating contact method...");
             VirtuousClient.ContactMethod createdContactMethod = virtuousClient.createContactMethod(contactMethod);
             if (Objects.isNull(createdContactMethod)) {
-                log.error("Failed to create contact method {}!", contactMethod.type);
+                log.error("Failed to create contact method {}/{}!", contactMethod.id, contactMethod.type);
                 return;
             }
             log.info("Contact method created.");
@@ -313,7 +313,7 @@ public class VirtuousCrmService implements BasicCrmService {
     private Calendar getCalendar(String dateString) {
         Calendar calendar = null;
         try {
-            Date date = new SimpleDateFormat(DATE_FORMAT).parse(dateString);
+            Date date = new SimpleDateFormat(DATE_TIME_FORMAT).parse(dateString);
             calendar = Calendar.getInstance();
             calendar.setTime(date);
         } catch (ParseException e) {
@@ -355,16 +355,6 @@ public class VirtuousCrmService implements BasicCrmService {
         contact.contactIndividuals = List.of(contactIndividual);
 
         return contact;
-    }
-
-    private Integer parseInt(String string) {
-        Integer integer = null;
-        try {
-            integer = Integer.parseInt(string);
-        } catch (NumberFormatException nfe) {
-            log.error("Failed to parse numeric id from string {}!", string);
-        }
-        return integer;
     }
 
     private VirtuousClient.Address asAddress(CrmAddress crmAddress) {
@@ -445,7 +435,7 @@ public class VirtuousCrmService implements BasicCrmService {
         }
         CrmDonation crmDonation = new CrmDonation();
         crmDonation.id = gift.id + "";
-        crmDonation.name = gift.transactionId; // ?
+        crmDonation.name = gift.transactionSource + "/" + gift.transactionId; //?
         crmDonation.amount = gift.amount;
         crmDonation.paymentGatewayName = gift.transactionSource; // ?
         //crmDonation.status = CrmDonation.Status.SUCCESSFUL; // ?
@@ -462,8 +452,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
         gift.contactId = paymentGatewayEvent.getCrmContact().id;
         gift.giftType = "Credit"; // ?
-        gift.giftDate = paymentGatewayEvent.getTransactionDate().getTime();
-        //gift.giftDate = paymentGatewayEvent.getTransactionDate();
+        gift.giftDate = new SimpleDateFormat(DATE_TIME_FORMAT).format(paymentGatewayEvent.getTransactionDate().getTime());
         gift.amount = paymentGatewayEvent.getTransactionAmountInDollars();
         gift.transactionSource = paymentGatewayEvent.getGatewayName();
         gift.transactionId = paymentGatewayEvent.getTransactionId();
