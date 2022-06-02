@@ -127,7 +127,6 @@ public class EnvironmentConfig {
 
   // For now, don't actually need the CRMFieldDefinitions...
   public static class Bloomerang extends Platform {
-    public String anonymousId = "";
   }
 
   public Hubspot hubspot = new Hubspot();

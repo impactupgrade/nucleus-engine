@@ -11,6 +11,7 @@ import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -79,29 +80,9 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    return toCrmContact(sfdcClient.getContactByEmail(email));
-  }
-
-  @Override
-  public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    List<SObject> contacts = sfdcClient.getContactsByPhone(phone);
-    if (contacts.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of(toCrmContact(contacts.get(0)));
-  }
-
-  @Override
   // currentPageToken assumed to be the offset index
-  public PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByOwner(ownerId, pageSize, Integer.parseInt(currentPageToken)));
-  }
-
-  @Override
-  // currentPageToken assumed to be the offset index
-  public PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) throws InterruptedException, ConnectionException {
-    return toCrmContact(sfdcClient.searchContacts(query, ownerId, pageSize, Integer.parseInt(currentPageToken)));
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws InterruptedException, ConnectionException {
+    return toCrmContact(sfdcClient.searchContacts(contactSearch));
   }
 
   @Override
@@ -195,8 +176,12 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public Optional<CrmUser> getUserById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    return toCrmUser(sfdcClient.getUserById(id));
+  }
+
+  @Override
+  public Optional<CrmUser> getUserByEmail(String email) throws Exception {
+    return toCrmUser (sfdcClient.getUserByEmail(email));
   }
 
   @Override
@@ -748,7 +733,7 @@ public class SfdcCrmService implements CrmService {
       // so create the empty object first and try only if email is provided
       Optional<SObject> existingContact = Optional.empty();
       if (!Strings.isNullOrEmpty(importEvent.getEmail())) {
-        existingContact = sfdcClient.getContactByEmail(email);
+        existingContact = sfdcClient.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
         log.info("found contact for email {}: {}", email, existingContact.isPresent());
       }
 
@@ -1193,5 +1178,13 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmRecurringDonation);
+  }
+
+  protected CrmUser toCrmUser(SObject sObject) {
+    return new CrmUser(sObject.getId());
+  }
+
+  protected Optional<CrmUser> toCrmUser(Optional<SObject> sObject) {
+    return sObject.map(this::toCrmUser);
   }
 }

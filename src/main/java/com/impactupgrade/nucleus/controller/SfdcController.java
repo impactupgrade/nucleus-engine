@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.sforce.soap.partner.sobject.SObject;
@@ -204,7 +205,7 @@ public class SfdcController {
             log.info("processing row {}: {}", counter++, email);
 
             if (!Strings.isNullOrEmpty(email)) {
-              Optional<SObject> contact = env.sfdcClient().getContactByEmail(email);
+              Optional<SObject> contact = env.sfdcClient().searchContacts(ContactSearch.byEmail(email)).getSingleResult();
               if (contact.isPresent()) {
                 // SF expects date in yyyy-MM-dd'T'HH:mm:ss.SSS'Z, but iWave gives yyyy-MM-dd HH:mm
                 Date date = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(csvRecord.get("Date Scored"));

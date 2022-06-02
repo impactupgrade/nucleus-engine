@@ -27,6 +27,7 @@ import com.impactupgrade.integration.hubspot.v1.model.HasValue;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -137,25 +138,19 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    return hsClient.contact().searchByEmail(email, contactFields).getResults().stream().findFirst().map(this::toCrmContact);
-  }
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+    // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
+    //  combining clauses, owner, keyword search, pagination, etc.
 
-  @Override
-  public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    return hsClient.contact().searchByPhone(phone, contactFields).getResults().stream().findFirst().map(this::toCrmContact);
-  }
-
-  @Override
-  public PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception {
-    // TODO
-    return null;
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) {
-    // TODO
-    return null;
+    if (!Strings.isNullOrEmpty(contactSearch.email)) {
+      List<CrmContact> contacts = toCrmContact(hsClient.contact().searchByEmail(contactSearch.email, contactFields).getResults());
+      return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
+    } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+      List<CrmContact> contacts =  toCrmContact(hsClient.contact().searchByPhone(contactSearch.phone, contactFields).getResults());
+      return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
+    } else {
+      return null;
+    }
   }
 
   @Override
@@ -229,6 +224,12 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmUser> getUserById(String id) throws Exception {
+    // TODO: will need to add User support to HS lib, if even possible
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<CrmUser> getUserByEmail(String id) throws Exception {
     // TODO: will need to add User support to HS lib, if even possible
     return Optional.empty();
   }

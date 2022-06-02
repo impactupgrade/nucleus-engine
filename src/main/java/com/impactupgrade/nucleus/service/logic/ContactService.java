@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ContactFormData;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
@@ -49,7 +50,7 @@ public class ContactService {
     }
 
     // attempt to find a Contact using the email
-    Optional<CrmContact> existingContact = crmService.getContactByEmail(paymentGatewayEvent.getCrmContact().email);
+    Optional<CrmContact> existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
     if (existingContact.isPresent()) {
       log.info("found CRM account {} and contact {} using email {}",
           existingContact.get().accountId, existingContact.get().id, paymentGatewayEvent.getCrmContact().email);
@@ -86,7 +87,7 @@ public class ContactService {
   public void processContactForm(ContactFormData formData) throws Exception {
     CrmContact formCrmContact = formData.toCrmContact();
 
-    Optional<CrmContact> crmContact = crmService.getContactByEmail(formCrmContact.email);
+    Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byEmail(formCrmContact.email)).getSingleResult();
     if (crmContact.isEmpty()) {
       log.info("unable to find CRM contact using email {}; creating new account and contact", formCrmContact.email);
       // create new contact

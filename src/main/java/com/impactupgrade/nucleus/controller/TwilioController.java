@@ -9,6 +9,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
@@ -255,7 +256,7 @@ public class TwilioController {
       String body = smsData.get("Body").get(0).trim();
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
-        String targetId = env.messagingCrmService().getContactByPhone(from).map(c -> c.id).orElse(null);
+        String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
         env.notificationService().sendNotification(
             "Text Message Received",
             "Text message received from " + from + ": " + body,

@@ -11,6 +11,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.sforce.soap.partner.sobject.SObject;
@@ -167,15 +168,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
-  public Optional<SObject> getContactByEmail(String email) throws ConnectionException, InterruptedException {
-    if (Strings.isNullOrEmpty(email)){
-      return Optional.empty();
-    }
-
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where email = '" + email + "' OR npe01__HomeEmail__c = '" + email + "' OR npe01__WorkEmail__c = '" + email + "' OR npe01__AlternateEmail__c = '" + email + "'";
-    return querySingle(query);
-  }
-
   // the context map allows overrides to be given additional hints (such as DR's FNs)
   public List<SObject> getContactsByName(String name, Map<String, String> context) throws ConnectionException, InterruptedException {
     String escapedName = name.replaceAll("'", "\\\\'");
@@ -208,28 +200,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     return contacts;
-  }
-
-  public List<SObject> getContactsByPhone(String phone) throws ConnectionException, InterruptedException {
-    if (Strings.isNullOrEmpty(phone)){
-      return Collections.emptyList();
-    }
-
-    // TODO: Will need to rework this section for international support
-
-    phone = phone.replaceAll("[\\D.]", "");
-    if (phone.length() == 11) {
-      phone = phone.substring(1);
-    }
-
-    String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
-
-    StringBuilder query = new StringBuilder("select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where ")
-        .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-        .append(" OR HomePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-        .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-        .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
-    return queryList(query.toString());
   }
 
   public List<SObject> getContactsByAddress(String street, String city, String state, String zip, String country) throws ConnectionException, InterruptedException {
@@ -475,53 +445,52 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
-  public PagedResults<SObject> getContactsByOwner(String ownerId, Integer pageSize, Integer offset) throws InterruptedException, ConnectionException {
-    String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " FROM Contact WHERE OwnerId = '" + ownerId + "' ORDER BY LastName, FirstName";
-
-    if (pageSize != null) {
-      query += " LIMIT " + pageSize;
-      if (offset != null) {
-        query += " OFFSET " + offset;
-      }
-    }
-
-    List<SObject> results = queryList(query);
-
-    String nextPageToken = null;
-    if (pageSize != null) {
-      if (offset != null) {
-        nextPageToken = (pageSize + offset) + "";
-      } else {
-        nextPageToken = pageSize + "";
-      }
-    }
-
-    return new PagedResults<>(results, pageSize, nextPageToken);
-  }
-
-  public PagedResults<SObject> searchContacts(String query, String ownerId, Integer pageSize, Integer offset)
+  public PagedResults<SObject> searchContacts(ContactSearch contactSearch)
       throws ConnectionException, InterruptedException {
     List<String> clauses = new ArrayList<>();
 
-    String[] words = query.trim().split("\\s+");
-    for (String word : words) {
-      clauses.add("(FirstName LIKE '%" + word + "%' OR LastName LIKE '%" + word + "%' OR Email LIKE '%" + word + "%' OR Phone LIKE '%" + word + "%' OR MobilePhone LIKE '%" + word + "%' OR HomePhone LIKE '%" + word + "%' OR npe01__Home_Address__c LIKE '%" + word + "%')");
+    if (!Strings.isNullOrEmpty(contactSearch.email)) {
+      clauses.add("email = '" + contactSearch.email + "' OR npe01__HomeEmail__c = '" + contactSearch.email + "' OR npe01__WorkEmail__c = '" + contactSearch.email + "' OR npe01__AlternateEmail__c = '" + contactSearch.email + "'");
     }
 
-    String fullClause = String.join( " OR ", clauses);
+    if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+      String phone = contactSearch.phone.replaceAll("[\\D.]", "");
+      if (phone.length() == 11) {
+        phone = phone.substring(1);
+      }
+      String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
+      StringBuilder phoneClause = new StringBuilder()
+          .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+          .append(" OR HomePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+          .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
+      clauses.add(phoneClause.toString());
+    }
 
-    List<SObject> results = queryList("select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + clauses + " ORDER BY LastName, FirstName");
+    if (!Strings.isNullOrEmpty(contactSearch.ownerId)) {
+      clauses.add("OwnerId = '" + contactSearch.ownerId + "'");
+    }
 
-    String nextPageToken = null;
-    if (pageSize != null) {
-      if (offset != null) {
-        nextPageToken = (pageSize + offset) + "";
-      } else {
-        nextPageToken = pageSize + "";
+    if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
+      String[] keywordSplit = contactSearch.keywords.trim().split("\\s+");
+      for (String keyword : keywordSplit) {
+        clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR HomePhone LIKE '%" + keyword + "%' OR npe01__Home_Address__c LIKE '%" + keyword + "%')");
       }
     }
 
-    return new PagedResults<>(results, pageSize, nextPageToken);
+    String fullClause = String.join( " AND ", clauses);
+    String query ="select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + fullClause + " ORDER BY LastName, FirstName";
+
+    if (contactSearch.pageSize != null && contactSearch.pageSize > 0) {
+      query += " LIMIT " + contactSearch.pageSize;
+    }
+    Integer offset = contactSearch.getPageOffset();
+    if (offset != null && offset > 0) {
+      query += " OFFSET " + offset;
+    }
+
+    List<SObject> results = queryList(query);
+    return PagedResults.getPagedResultsFromCurrentOffset(results, contactSearch);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

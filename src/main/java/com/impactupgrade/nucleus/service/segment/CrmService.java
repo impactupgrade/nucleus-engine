@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -38,11 +39,8 @@ public interface CrmService extends SegmentService {
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
   Optional<CrmContact> getContactById(String id) throws Exception;
-  Optional<CrmContact> getContactByEmail(String email) throws Exception;
-  Optional<CrmContact> getContactByPhone(String phone) throws Exception;
   // TODO: Pagination initially needed for Twilio Frontline, but should we start introducing pagination across the board?
-  PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception;
-  PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) throws Exception;
+  PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
   // TODO: For now, need this to clean up orphaned accounts (see ContactService). But could eventually expand it
@@ -166,6 +164,7 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   Optional<CrmUser> getUserById(String id) throws Exception;
+  Optional<CrmUser> getUserByEmail(String email) throws Exception;
   String insertTask(CrmTask crmTask) throws Exception;
 
   EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();

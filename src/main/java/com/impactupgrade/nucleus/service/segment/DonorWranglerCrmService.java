@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
@@ -57,26 +58,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    return toCrmContact(
-        dwClient.getContactByEmail(email)
-    );
-  }
-
-  @Override
-  public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    return toCrmContact(
-      dwClient.contactSearch("phone", phone)
-    );
-  }
-
-  @Override
-  public PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     throw new RuntimeException("not implemented");
   }
 

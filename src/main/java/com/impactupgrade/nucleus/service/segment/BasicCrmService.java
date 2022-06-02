@@ -113,6 +113,10 @@ public interface BasicCrmService extends CrmService {
     return Optional.empty();
   }
 
+  default Optional<CrmUser> getUserByEmail(String email) throws Exception {
+    return Optional.empty();
+  }
+
   default String insertTask(CrmTask crmTask) throws Exception {
     return null;
   }

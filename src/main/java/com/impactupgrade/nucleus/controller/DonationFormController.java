@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.DonationFormData;
@@ -142,7 +143,7 @@ public class DonationFormController {
 //
 //        // Additionally, create a Household Account and Contact for the individual giving on behalf of the biz.
 //        // But only if they don't exist already!
-//        Optional<CrmContact> existingContact = crmService.getContactByEmail(formData.getEmail());
+//        Optional<CrmContact> existingContact = crmService.searchContacts(ContactSearch.byEmail(formData.getEmail())).getSingleResult();
 //        if (existingContact.isEmpty()) {
 //          log.info("unable to find CRM contact using email {}; creating a new account/contact", formData.getEmail());
 //
@@ -168,7 +169,7 @@ public class DonationFormController {
 //      }
 //      // Retrieve or create the household Account/Contact.
 //      else {
-        Optional<CrmContact> existingContact = crmService.getContactByEmail(formData.getEmail());
+        Optional<CrmContact> existingContact = crmService.searchContacts(ContactSearch.byEmail(formData.getEmail())).getSingleResult();
         if (existingContact.isEmpty()) {
           log.info("unable to find CRM contact using email {}; creating a new account/contact", formData.getEmail());
 
