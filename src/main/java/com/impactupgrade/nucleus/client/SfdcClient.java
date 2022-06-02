@@ -422,28 +422,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
-  public Collection<SObject> getEmailDonorContacts(Calendar updatedSince, String filter) throws ConnectionException, InterruptedException {
-    String updatedSinceClause = "";
-    if (updatedSince != null) {
-      updatedSinceClause = " and CreatedDate >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
-    }
-
-    if (!Strings.isNullOrEmpty(filter)) {
-      filter = " and " + filter;
-    }
-
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null and id in (select ContactId from Opportunity where Amount >= 0.0 and (StageName='posted' or StageName='closed won')" + updatedSinceClause + ")" + filter;
-    List<SObject> contacts = queryListAutoPaged(query);
-
-    // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
-    Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
-        so -> so.getField("Email").toString(),
-        Function.identity(),
-        // FIFO
-        (so1, so2) -> so1
-    ));
-    return uniqueContacts.values();
-  }
 
   public PagedResults<SObject> searchContacts(ContactSearch contactSearch)
       throws ConnectionException, InterruptedException {

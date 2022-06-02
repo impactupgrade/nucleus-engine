@@ -100,12 +100,6 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
-    // TODO: lastUpdate field now available
-    return Collections.emptyList();
-  }
-
-  @Override
   public double getDonationsTotal(String filter) throws Exception {
     // TODO
     return 0.0;

@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.client;
 
 import com.ecwid.maleorang.MailchimpException;
 import com.ecwid.maleorang.MailchimpObject;
+import com.ecwid.maleorang.method.v3_0.lists.members.DeleteMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
@@ -29,7 +30,7 @@ public class MailchimpClient {
   private static final Logger log = LogManager.getLogger(MailchimpClient.class);
 
   public static final String SUBSCRIBED = "subscribed";
-  public static final String UNSUBSCRIBED = "unsubscribed";
+  public static final String ARCHIVED = "archived";
   public static final String FIRST_NAME = "FNAME";
   public static final String LAST_NAME = "LNAME";
   public static final String PHONE_NUMBER = "PHONE";
@@ -62,34 +63,41 @@ public class MailchimpClient {
     try {
       client.execute(upsertMemberMethod);
     } catch (MailchimpException e) {
-      String description = e.description;
-      if (e.errors != null) {
-        description += String.join(" ; ", e.errors);
-      }
+      String error = exceptionToString(e);
 
       // We're finding that address validation is SUPER picky, especially when it comes to CRMs that combine
       // street1 and street2 into a single street. If the upsert fails, try it again without ADDRESS...
       if (contact.merge_fields.mapping.containsKey(ADDRESS)) {
-        log.info("Mailchimp upsertContact failed: {}", description);
+        log.info("Mailchimp upsertContact failed: {}", error);
         log.info("retrying upsertContact without ADDRESS");
         contact.merge_fields.mapping.remove(ADDRESS);
         upsertContact(listId, contact);
       } else {
-        log.warn("Mailchimp upsertContact failed: {}", description);
+        log.warn("Mailchimp upsertContact failed: {}", error);
       }
     }
   }
 
-  public List<MemberInfo> getListMembers(String listId) throws IOException, MailchimpException {
+  public List<MemberInfo> getListMembers(String listId, String status) throws IOException, MailchimpException {
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
+    getMembersMethod.status = status;
+    getMembersMethod.count = 1000; // max
     GetMembersMethod.Response getMemberResponse = client.execute(getMembersMethod);
     return getMemberResponse.members;
   }
 
-  public void unsubscribeContact(String listId, String email) throws IOException, MailchimpException {
-    EditMemberMethod editMemberMethod = new EditMemberMethod.Update(listId, email);
-    editMemberMethod.status = UNSUBSCRIBED;
-    client.execute(editMemberMethod);
+  public void archiveContact(String listId, String email) throws IOException, MailchimpException {
+    DeleteMemberMethod deleteMemberMethod = new DeleteMemberMethod(listId, email);
+    try {
+      client.execute(deleteMemberMethod);
+    } catch (MailchimpException e) {
+      if (e.code == 404) {
+        // swallow it -- contact doesn't exist
+      } else {
+        String error = exceptionToString(e);
+        log.warn("Mailchimp archiveContact failed: {}", error);
+      }
+    }
   }
 
   // TODO: TEST THIS
@@ -138,5 +146,13 @@ public class MailchimpClient {
     createMergeField.required = false;
     createMergeField.is_public = false;
     return client.execute(createMergeField);
+  }
+
+  private String exceptionToString(MailchimpException e) {
+    String description = e.description;
+    if (e.errors != null) {
+      description += String.join(" ; ", e.errors);
+    }
+    return description;
   }
 }

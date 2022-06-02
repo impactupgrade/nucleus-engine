@@ -7,6 +7,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
@@ -17,6 +18,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.client.MailchimpClient.ADDRESS;
@@ -24,7 +26,6 @@ import static com.impactupgrade.nucleus.client.MailchimpClient.FIRST_NAME;
 import static com.impactupgrade.nucleus.client.MailchimpClient.LAST_NAME;
 import static com.impactupgrade.nucleus.client.MailchimpClient.PHONE_NUMBER;
 import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
-import static com.impactupgrade.nucleus.client.MailchimpClient.UNSUBSCRIBED;
 
 public class MailchimpEmailService extends AbstractEmailService {
 
@@ -62,16 +63,54 @@ public class MailchimpEmailService extends AbstractEmailService {
 
         int count = 0;
         for (CrmContact crmContact : crmContacts) {
-          log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
-          Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
-          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
-          updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
+          // transactional is always subscribed
+          if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL || crmContact.canReceiveEmail()) {
+            log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
+            Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
+            mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
+            // if they can't, they're archived, and will be failed to be retrieved for update
+            updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
+          } else if (!crmContact.canReceiveEmail()) {
+            log.info("unsubscribing contact {} {} from list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
+            mailchimpClient.archiveContact(emailList.id, crmContact.email);
+          }
         }
       }
     }
   }
 
-//  @Override
+  @Override
+  public void syncUnsubscribes(Calendar lastSync) throws Exception {
+    for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
+      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+      for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
+        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "unsubscribed"));
+        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "cleaned"));
+      }
+    }
+  }
+
+  // TODO: Purely allowing this to unsubscribe in the CRM, as opposed to archiving immediately in MC. Let organizations
+  //  decide if their unsubscribe-from-CRM code does an archive...
+  private void syncUnsubscribes(List<MemberInfo> unsubscribes) throws Exception {
+    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
+    CrmService crmService = env.primaryCrmService();
+
+    int count = 0;
+    for (MemberInfo unsubscribe : unsubscribes) {
+      Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byEmail(unsubscribe.email_address)).getSingleResult();
+      if (crmContact.isPresent()) {
+        log.info("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.get().email, count++, unsubscribes.size());
+        CrmContact updateContact = new CrmContact();
+        updateContact.id = crmContact.get().id;
+        updateContact.emailOptOut = true;
+        crmService.batchUpdateContact(updateContact);
+      }
+    }
+    crmService.batchFlush();
+  }
+
+  //  @Override
 //  public Optional<CrmContact> getContactByEmail(String listName, String email) throws Exception {
 //    String listId = getListIdFromName(listName);
 //    return Optional.ofNullable(toCrmContact(mailchimpClient.getContactInfo(listId, email)));
@@ -209,7 +248,7 @@ public class MailchimpEmailService extends AbstractEmailService {
       mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(crmContact.address));
     }
     mcContact.merge_fields.mapping.putAll(customFields);
-    mcContact.status = crmContact.canReceiveEmail() ? SUBSCRIBED : UNSUBSCRIBED;
+    mcContact.status = SUBSCRIBED;
 
     List<String> groupIds = crmContact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
     // TODO: Does this deselect what's no longer subscribed to in MC?

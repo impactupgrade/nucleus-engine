@@ -226,12 +226,6 @@ public class BloomerangCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
-    // TODO
-    return Collections.emptyList();
-  }
-
-  @Override
   public double getDonationsTotal(String filter) throws Exception {
     // TODO
     return 0.0;

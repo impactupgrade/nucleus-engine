@@ -276,6 +276,19 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public void batchUpdateContact(CrmContact crmContact) throws Exception {
+    SObject contact = new SObject("Contact");
+    contact.setId(crmContact.id);
+    setContactFields(contact, crmContact);
+    sfdcClient.batchUpdate(contact);
+  }
+
+  @Override
+  public void batchFlush() throws Exception {
+    sfdcClient.batchFlush();
+  }
+
+  @Override
   public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
     SObject campaignMember = new SObject("CampaignMember");
     campaignMember.setField("ContactId", crmContact.id);
@@ -829,11 +842,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception{
-    return sfdcClient.getEmailDonorContacts(updatedSince, filter).stream().map(this::toCrmContact).collect(Collectors.toList());
-  }
-
-  @Override
   public double getDonationsTotal(String filter) throws Exception {
     // TODO
     return 0.0;
@@ -937,13 +945,19 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
-  protected Object getField(SObject sObject, String name) {
+  protected String getStringField(SObject sObject, String name) {
     // Optional field names may not be configured in env.json, so ensure we actually have a name first...
     if (Strings.isNullOrEmpty(name)) {
       return null;
     }
 
-    return sObject.getField(name);
+    return (String) sObject.getField(name);
+  }
+
+  protected Boolean getBooleanField(SObject sObject, String name) {
+    String s = getStringField(sObject, name);
+    if (Strings.isNullOrEmpty(s)) return null;
+    return Boolean.parseBoolean(s);
   }
 
   protected void setField(SObject sObject, String name, Object value) {
@@ -1053,7 +1067,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     List<String> emailGroups = new ArrayList<>();
-    String emailGroupList = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailGroups);
+    String emailGroupList = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.emailGroups);
     // assumes a multiselect picklist, which is a single ; separated string
     if (!Strings.isNullOrEmpty(emailGroupList)) {
       emailGroups = Arrays.stream(emailGroupList.split(";")).toList();
@@ -1072,10 +1086,10 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("OtherPhone"),
         preferredPhone,
         crmAddress,
-        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptIn),
-        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptOut),
-        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
-        (Boolean) getField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
+        getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptIn),
+        getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptOut),
+        getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
+        getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
         (String) sObject.getField("Owner.Id"),
         ownerName,
         totalOppAmount,
@@ -1083,7 +1097,7 @@ public class SfdcCrmService implements CrmService {
         firstCloseDate,
         lastCloseDate,
         emailGroups,
-        (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),
+        getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getId() + "/view"
     );
@@ -1104,7 +1118,7 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmDonation toCrmDonation(SObject sObject) {
     String id = sObject.getId();
-    String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
+    String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.valueOf(sObject.getField("Amount").toString());
     Calendar closeDate = null;
     try {
@@ -1143,14 +1157,14 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
     String id = sObject.getId();
-    String subscriptionId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
-    String customerId = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
-    String paymentGatewayName = (String) getField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
+    String subscriptionId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
+    String customerId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
+    String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
     String status = sObject.getField("npe03__Open_Ended_Status__c").toString();
     boolean active = "Open".equalsIgnoreCase(status);
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(sObject.getField("npe03__Installment_Period__c").toString());
-    String donationName = (String) getField(sObject, "Name");
+    String donationName = getStringField(sObject, "Name");
 
     CrmAccount account = null;
     if (sObject.getChild("npe03__Organization__r") != null && sObject.getChild("npe03__Organization__r").hasChildren())

@@ -32,6 +32,13 @@ public class HubSpotEmailService extends SmtpEmailService {
     //  CRM as well. No syncs ever needed?
   }
 
+  @Override
+  public void syncUnsubscribes(Calendar lastSync) throws Exception {
+    log.info("not implemented: syncUnsubscribes");
+    // TODO: May not need this (break up the interface?). If HS used for email, orgs will always have that as their
+    //  CRM as well. No syncs ever needed?
+  }
+
   @Override protected String host() { return "smtp.hubapi.com"; }
   @Override protected String port() { return "587"; }
   // TODO: Can transactional email use the apikey instead?

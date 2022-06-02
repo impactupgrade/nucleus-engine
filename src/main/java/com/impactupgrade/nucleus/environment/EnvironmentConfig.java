@@ -211,7 +211,7 @@ public class EnvironmentConfig {
   }
 
   public enum EmailListType {
-    CONTACTS, DONORS
+    MARKETING, TRANSACTIONAL
   }
 
   public static class EmailTagFilters {
@@ -222,7 +222,7 @@ public class EnvironmentConfig {
 
   public static class EmailList {
     public String id = "";
-    public EmailListType type = EmailListType.CONTACTS;
+    public EmailListType type = EmailListType.MARKETING;
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
     public String crmFilter = "";
   }

@@ -24,4 +24,5 @@ public interface EmailService extends SegmentService {
 //  void syncTags(Calendar lastSync) throws Exception;
 
   void syncContacts(Calendar lastSync) throws Exception;
+  void syncUnsubscribes(Calendar lastSync) throws Exception;
 }

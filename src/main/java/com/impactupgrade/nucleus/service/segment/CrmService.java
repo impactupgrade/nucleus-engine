@@ -48,6 +48,13 @@ public interface CrmService extends SegmentService {
   void deleteAccount(String accountId) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
+  default void batchUpdateContact(CrmContact crmContact) throws Exception {
+    // default to simply updating one-by-one for CRMs that don't support batching
+    updateContact(crmContact);
+  }
+  default void batchFlush() throws Exception {
+    // default to no-op
+  }
   // TODO: Business Donations coming soon.
 //  boolean hasSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
 //  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
@@ -135,7 +142,6 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception;
-  List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception;
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.

@@ -39,6 +39,7 @@ public class EmailController {
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(lastSync);
+            emailPlatformService.syncUnsubscribes(lastSync);
           } catch (Exception e) {
             log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
           }
@@ -62,6 +63,7 @@ public class EmailController {
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(null);
+            emailPlatformService.syncUnsubscribes(null);
           } catch (Exception e) {
             log.error("email syncAll failed for {}", emailPlatformService.name(), e);
           }

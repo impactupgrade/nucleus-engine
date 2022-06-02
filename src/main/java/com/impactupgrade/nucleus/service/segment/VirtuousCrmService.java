@@ -484,11 +484,6 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
-        return null;
-    }
-
-    @Override
     public double getDonationsTotal(String filter) throws Exception {
         return 0;
     }

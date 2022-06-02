@@ -787,12 +787,6 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
-    // TODO
-    return Collections.emptyList();
-  }
-
-  @Override
   public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
     // TODO
     return Collections.emptyMap();

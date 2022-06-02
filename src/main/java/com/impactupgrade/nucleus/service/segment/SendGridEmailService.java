@@ -88,6 +88,11 @@ public class SendGridEmailService extends SmtpEmailService {
     }
   }
 
+  @Override
+  public void syncUnsubscribes(Calendar lastSync) throws Exception {
+    // TODO
+  }
+
   protected Contact toSendGridContact(CrmContact crmContact, List<String> campaignNames, Map<String, String> groups,
       Map<String, String> customFieldsByName, SendGrid sendgridClient, EnvironmentConfig.EmailPlatform emailPlatform) {
     if (crmContact == null) {
