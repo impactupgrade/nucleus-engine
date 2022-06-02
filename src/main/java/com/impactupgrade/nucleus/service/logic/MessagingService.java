@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -45,10 +46,10 @@ public class MessagingService {
     // provided. Other flows allow email to be optional.
     CrmContact crmContact = null;
     if (!Strings.isNullOrEmpty(email) && !"no".equalsIgnoreCase(email)) {
-      crmContact = crmService.getContactByEmail(email).orElse(null);
+      crmContact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult().orElse(null);
     }
     if (crmContact == null) {
-      crmContact = crmService.getContactByPhone(phone).orElse(null);
+      crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
     }
 
     // if the flow didn't include an explicit email opt-in process, safe to assume it's fine if email is present
@@ -130,7 +131,7 @@ public class MessagingService {
 
   public void optIn(String phone) throws Exception {
     // First, look for an existing contact with the PN
-    CrmContact crmContact = crmService.getContactByPhone(phone).orElse(null);
+    CrmContact crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
     if (crmContact != null) {
       log.info("opting {} ({}) into sms...", crmContact.id, phone);
       crmContact.smsOptIn = true;
@@ -144,7 +145,7 @@ public class MessagingService {
 
   public void optOut(String phone) throws Exception {
     // First, look for an existing contact with the PN
-    CrmContact crmContact = crmService.getContactByPhone(phone).orElse(null);
+    CrmContact crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
     if (crmContact != null) {
       optOut(crmContact);
     } else {

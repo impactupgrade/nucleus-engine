@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
@@ -53,7 +54,6 @@ public class BloomerangCrmService implements BasicCrmService {
   private static final String POST_RECURRINGDONATION = BLOOMERANG_URL + "RecurringDonation";
 
   private String apiKey;
-  private String anonymousId;
   protected Environment env;
   private ObjectMapper mapper;
 
@@ -68,7 +68,6 @@ public class BloomerangCrmService implements BasicCrmService {
   @Override
   public void init(Environment env) {
     this.apiKey = env.getConfig().bloomerang.secretKey;
-    this.anonymousId = env.getConfig().bloomerang.anonymousId;
     this.env = env;
 
     mapper = new ObjectMapper();
@@ -82,42 +81,28 @@ public class BloomerangCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-    if (Strings.isNullOrEmpty(email)) {
-      // assume anonymous
-      return Optional.of(new CrmContact(anonymousId));
-    }
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+    // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
+    //  combining clauses, owner, keyword search, pagination, etc.
 
-    ConstituentSearchResults constituentSearchResults = null;
-    try {
-      // search by email only
-      constituentSearchResults = mapper.readValue(get(SEARCH + email), ConstituentSearchResults.class);
-    } catch (Exception e) {
-      // do nothing
-    }
-
-    if (constituentSearchResults != null && constituentSearchResults.results.length > 0
-        && constituentSearchResults.results[0] != null) {
-      // TODO: no accounts in Bloomerang, so this might need addressed upstream if the accountId doesn't exist
-      return Optional.of(new CrmContact(constituentSearchResults.results[0].id + ""));
+    if (!Strings.isNullOrEmpty(contactSearch.email)) {
+      ConstituentSearchResults constituentSearchResults = null;
+      try {
+        // search by email only
+        constituentSearchResults = mapper.readValue(get(SEARCH + contactSearch.email), ConstituentSearchResults.class);
+      } catch (Exception e) {
+        // do nothing
+      }
+      CrmContact crmContact = null;
+      if (constituentSearchResults != null && constituentSearchResults.results.length > 0
+          && constituentSearchResults.results[0] != null) {
+        // TODO: no accounts in Bloomerang, so this might need addressed upstream if the accountId doesn't exist
+        crmContact = new CrmContact(constituentSearchResults.results[0].id + "");
+      }
+      return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
     } else {
-      return Optional.empty();
+      throw new RuntimeException("not implemented");
     }
-  }
-
-  @Override
-  public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public PagedResults<CrmContact> getContactsByOwner(String ownerId, Integer pageSize, String currentPageToken) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(String query, String ownerId, Integer pageSize, String currentPageToken) {
-    throw new RuntimeException("not implemented");
   }
 
   @Override

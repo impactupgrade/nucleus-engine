@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -251,7 +252,7 @@ public class StripeController {
               if (crmAccountOptional.isPresent()) {
                 targetId = crmAccountOptional.get().id;
               } else {
-                Optional<CrmContact> crmContactOptional = crmService.getContactByEmail(customer.getEmail());
+                Optional<CrmContact> crmContactOptional = crmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
                 if (crmContactOptional.isPresent()) {
                   targetId = crmContactOptional.get().accountId;
                 }

@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -85,10 +86,10 @@ public class CrmController {
       contact = crmService.getContactById(id);
     } else if (!Strings.isNullOrEmpty(email)) {
       log.info("searching email={}", email);
-      contact = crmService.getContactByEmail(email);
+      contact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
     } else if (!Strings.isNullOrEmpty(phone)) {
       log.info("searching phone={}", phone);
-      contact = crmService.getContactByPhone(phone);
+      contact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
     } else {
       log.warn("no search params provided");
     }

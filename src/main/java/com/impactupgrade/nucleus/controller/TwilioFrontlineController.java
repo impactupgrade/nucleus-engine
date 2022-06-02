@@ -7,7 +7,9 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,7 +50,6 @@ public class TwilioFrontlineController {
       @FormParam("Worker") String workerIdentity,
       @FormParam("PageSize") Integer pageSize,
       @FormParam("NextPageToken") String nextPageToken,
-      @FormParam("Anchor") String pageLastCustomerId,
       @FormParam("CustomerId") String customerId,
       @FormParam("Query") String searchQuery,
       @Context HttpServletRequest request
@@ -57,8 +58,6 @@ public class TwilioFrontlineController {
     Environment env = envFactory.init(request);
 
     FrontlineCrmResponse frontlineResponse = new FrontlineCrmResponse();
-
-    // TODO: Is the Worker an email, the user ID, username, something else?
 
     switch (location) {
       case "GetCustomerDetailsByCustomerId":
@@ -69,14 +68,26 @@ public class TwilioFrontlineController {
         frontlineResponse.objects.customer = toFrontlineCustomer(crmContact.get(), env);
         break;
       case "GetCustomersList":
-        PagedResults<CrmContact> crmContacts;
-        if (!Strings.isNullOrEmpty(searchQuery)) {
-          crmContacts = env.primaryCrmService().searchContacts(searchQuery, workerIdentity, pageSize, nextPageToken);
-          frontlineResponse.objects.searchable = true;
-        } else {
-          crmContacts = env.primaryCrmService().getContactsByOwner(workerIdentity, pageSize, nextPageToken);
+        // TODO (from Scott): Worker is an email address in all their examples. I'm pretty sure this maps to the email you
+        //  log into the mobile app with. But that might depend on the SSO you use, and docs are unclear, only saying it's a
+        //  string of the "app user identity". https://www.twilio.com/docs/frontline/data-transfer-objects#customer
+        Optional<CrmUser> owner = env.primaryCrmService().getUserByEmail(workerIdentity);
+        if (owner.isEmpty()) {
+          log.error("unexpected owner: " + workerIdentity);
+          return Response.status(422).build();
         }
+        String ownerId = owner.get().id();
+
+        ContactSearch contactSearch = new ContactSearch();
+        contactSearch.keywords = searchQuery;
+        contactSearch.ownerId = ownerId;
+        contactSearch.pageSize = pageSize;
+        contactSearch.pageToken = nextPageToken;
+        PagedResults<CrmContact> crmContacts = env.primaryCrmService().searchContacts(contactSearch);
         frontlineResponse.objects.customers = crmContacts.getResults().stream().map(c -> toFrontlineCustomer(c, env)).collect(Collectors.toList());
+        if (!Strings.isNullOrEmpty(searchQuery)) {
+          frontlineResponse.objects.searchable = true;
+        }
         if (crmContacts.hasMorePages()) {
           frontlineResponse.objects.next_page_token = crmContacts.getNextPageToken();
         }
@@ -95,12 +106,14 @@ public class TwilioFrontlineController {
     // TODO: May want phone/email or physical location to differentiate common names.
     frontlineCustomer.display_name = crmContact.fullName();
 
-    if (!Strings.isNullOrEmpty(crmContact.email)) {
-      FrontlineChannel frontlineChannel = new FrontlineChannel();
-      frontlineChannel.type = "email";
-      frontlineChannel.value = crmContact.email;
-      frontlineCustomer.channels.add(frontlineChannel);
-    }
+    // TODO: This will show up under Contact Details, but clicking it does nothing. Not sure if it's intended to
+    //  act like a mailto: link. For now, skipping this and centering on the mailto: in the links.
+//    if (!Strings.isNullOrEmpty(crmContact.email)) {
+//      FrontlineChannel frontlineChannel = new FrontlineChannel();
+//      frontlineChannel.type = "email";
+//      frontlineChannel.value = crmContact.email;
+//      frontlineCustomer.channels.add(frontlineChannel);
+//    }
     if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
       FrontlineChannel frontlineChannel = new FrontlineChannel();
       frontlineChannel.type = "sms";
@@ -117,7 +130,13 @@ public class TwilioFrontlineController {
     crmLink.value = crmContact.crmUrl;
     frontlineCustomer.links.add(crmLink);
 
-    // TODO: Link with email as mailto? Or does the email channel take care of that?
+    if (!Strings.isNullOrEmpty(crmContact.email)) {
+      FrontlineLink emailLink = new FrontlineLink();
+      emailLink.type = "Email";
+      emailLink.display_name = crmContact.email;
+      emailLink.value = "mailto:" + crmContact.email;
+      frontlineCustomer.links.add(emailLink);
+    }
 
     frontlineCustomer.details.title = "Profile Snapshot";
     // TODO: This will need to be super configurable!

@@ -9,6 +9,7 @@ import com.impactupgrade.integration.hubspot.Deal;
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -48,7 +49,7 @@ public class StripeToHubspotIT extends AbstractIT {
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
-    Optional<CrmContact> contactO = hsCrmService.getContactByEmail("team+integration+tester@impactupgrade.com");
+    Optional<CrmContact> contactO = hsCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
     String accountId = contact.accountId;
@@ -95,7 +96,7 @@ public class StripeToHubspotIT extends AbstractIT {
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
-    Optional<CrmContact> contactO = hsCrmService.getContactByEmail("team+integration+tester@impactupgrade.com");
+    Optional<CrmContact> contactO = hsCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
     String accountId = contact.accountId;
@@ -154,7 +155,7 @@ public class StripeToHubspotIT extends AbstractIT {
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
     // the contact shouldn't exist, but ensure the orphaned account was deleted
-    Optional<CrmContact> contactO = hsCrmService.getContactByEmail("team+integration+tester@impactupgrade.con");
+    Optional<CrmContact> contactO = hsCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
     assertFalse(contactO.isPresent());
     HubSpotCrmV3Client hsClient = HubSpotClientFactory.crmV3Client(env);
     assertEquals(0, hsClient.company().searchByName("Tester", Collections.emptyList()).getTotal());

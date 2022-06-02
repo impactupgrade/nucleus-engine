@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.it;
 import com.google.common.io.Resources;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.sforce.soap.partner.sobject.SObject;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +39,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     SfdcClient sfdcClient = env.sfdcClient();
 
     // verify ContactService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.getContactByEmail("team+integration+tester@impactupgrade.com");
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
@@ -85,7 +86,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     SfdcClient sfdcClient = env.sfdcClient();
 
     // verify DonorService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.getContactByEmail("team+integration+tester@impactupgrade.com");
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
