@@ -14,9 +14,10 @@ import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
+import com.impactupgrade.nucleus.controller.TwilioFrontlineController;
+import com.impactupgrade.nucleus.dao.HibernateUtil;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
-import com.impactupgrade.nucleus.dao.HibernateUtil;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.bus.CXFBusFactory;
@@ -92,12 +93,13 @@ public class App {
     apiConfig.register(crmController());
     apiConfig.register(donationFormController());
     apiConfig.register(emailController());
+    apiConfig.register(mailchimpController());
     apiConfig.register(paymentGatewayController());
     apiConfig.register(sfdcController());
+    apiConfig.register(scheduledJobController());
     apiConfig.register(stripeController());
     apiConfig.register(twilioController());
-    apiConfig.register(mailchimpController());
-    apiConfig.register(scheduledJobController());
+    apiConfig.register(twilioFrontlineController());
 
     registerAPIControllers(apiConfig);
 
@@ -146,6 +148,7 @@ public class App {
   protected SfdcController sfdcController() { return new SfdcController(envFactory); }
   protected StripeController stripeController() { return new StripeController(envFactory); }
   protected TwilioController twilioController() { return new TwilioController(envFactory); }
+  protected TwilioFrontlineController twilioFrontlineController() { return new TwilioFrontlineController(envFactory); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
   protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory, sessionFactory); }
 
