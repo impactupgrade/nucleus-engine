@@ -120,7 +120,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public Optional<SObject> getCampaignByName(String campaignName) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign) + " from campaign where name = '" + campaignName + "'";
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign) + " from campaign where name = '" + campaignName.replaceAll("'", "\\\\'") + "'";
     return querySingle(query);
   }
 
@@ -198,11 +198,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<SObject> contacts = Collections.emptyList();
 
     if (!Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
-      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where firstname = '" + firstName + "' AND lastname = '" + lastName + "'";
+      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where firstname = '" + firstName.replaceAll("'", "\\\\'") + "' AND lastname = '" + lastName.replaceAll("'", "\\\\'") + "'";
       contacts = queryList(query);
     }
     if (contacts.isEmpty()) {
-      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where lastname = '" + lastName + "'";
+      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where lastname = '" + lastName.replaceAll("'", "\\\\'") + "'";
       contacts = queryList(query);
     }
 
@@ -424,7 +424,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getContactsByOpportunityName(String opportunityName) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select contactid from Opportunity where name='" + opportunityName + "' and contactid != null)";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select contactid from Opportunity where name='" + opportunityName.replaceAll("'", "\\\\'") + "' and contactid != null)";
     return queryListAutoPaged(query);
   }
 
@@ -581,7 +581,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public Optional<SObject> getRecurringDonationByName(String name) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where name='" + name + "'";
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where name='" + name.replaceAll("'", "\\\\'") + "'";
     return querySingle(query);
   }
 
