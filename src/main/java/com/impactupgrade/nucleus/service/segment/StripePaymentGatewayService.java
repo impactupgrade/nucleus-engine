@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.filter.StripeObjectFilter;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
@@ -20,6 +21,7 @@ import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Payout;
 import com.stripe.model.Refund;
+import com.stripe.model.StripeObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -42,6 +44,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   protected Environment env;
   protected StripeClient stripeClient;
+  protected StripeObjectFilter stripeObjectFilter;
 
   @Override
   public String name() { return "stripe"; }
@@ -55,6 +58,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public void init(Environment env) {
     this.env = env;
     stripeClient = env.stripeClient();
+    this.stripeObjectFilter = new StripeObjectFilter(env.getConfig().stripeObjectFilteringExpressions);
   }
 
   @Override
@@ -420,5 +424,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     }
 
     return paymentGatewayEvents;
+  }
+
+  // TODO: interface method?
+  public boolean filter(StripeObject stripeObject) {
+    return stripeObjectFilter.filter(stripeObject);
   }
 }

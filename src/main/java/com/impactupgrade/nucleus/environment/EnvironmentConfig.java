@@ -82,6 +82,15 @@ public class EnvironmentConfig {
 
   public Map<String, Notifications> notifications = new HashMap<>();
 
+  public static class Expression {
+    public String key;
+    public String operator;
+    public String value;
+  }
+
+  // TODO: find a better name
+  public List<Expression> stripeObjectFilteringExpressions = new ArrayList<>();
+
   // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
   //  not often the case! Ex: LJI and TER have separate sets of fields for Stripe vs. PaymentSpring vs. Paypal. For now,
   //  methods that need these fields most be overridden case by case in order to tweak the query to check for all the

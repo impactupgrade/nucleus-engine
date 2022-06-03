@@ -105,6 +105,10 @@ public class StripeController {
   // Public so that utilities can call this directly.
   public void processEvent(String eventType, StripeObject stripeObject, Environment env) throws Exception {
     StripePaymentGatewayService stripePaymentGatewayService = (StripePaymentGatewayService) env.paymentGatewayService("stripe");
+    if (stripePaymentGatewayService.filter(stripeObject)) {
+      log.info("Skipping stripe object...");
+      return;
+    }
 
     switch (eventType) {
       case "charge.succeeded" -> {
