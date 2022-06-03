@@ -5,6 +5,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.twilio.http.TwilioRestClient;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.rest.api.v2010.account.MessageCreator;
+import com.twilio.rest.conversations.v1.conversation.Participant;
 import com.twilio.type.PhoneNumber;
 
 /**
@@ -43,5 +44,9 @@ public class TwilioClient {
       messageCreator.setStatusCallback(callbackUrl);
     }
     return messageCreator.create(restClient);
+  }
+
+  public Participant createConversationParticipant(String conversationSid, String identity) {
+    return Participant.creator(conversationSid).setIdentity(identity).create(restClient);
   }
 }

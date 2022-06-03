@@ -1181,7 +1181,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected CrmUser toCrmUser(SObject sObject) {
-    return new CrmUser(sObject.getId());
+    return new CrmUser(sObject.getId(), sObject.getField("Email").toString());
   }
 
   protected Optional<CrmUser> toCrmUser(Optional<SObject> sObject) {

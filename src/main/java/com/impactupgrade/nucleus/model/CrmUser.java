@@ -4,5 +4,5 @@
 
 package com.impactupgrade.nucleus.model;
 
-public record CrmUser(String id) {
+public record CrmUser(String id, String email) {
 }
