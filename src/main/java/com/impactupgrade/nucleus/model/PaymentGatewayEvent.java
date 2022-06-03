@@ -19,11 +19,14 @@ import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.util.CaseInsensitiveMap;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -41,6 +44,9 @@ public class PaymentGatewayEvent {
   protected String depositTransactionId;
   protected String gatewayName;
   protected String paymentMethod;
+  // TODO: Ex: If the payment involved a Stripe invoice, capture the product ID for each line item. We eventually may
+  //  need to refactor this to provide additional info, but let's see how it goes.
+  protected List<String> products = new ArrayList<>();
   protected String refundId;
   protected Calendar refundDate;
   protected Double subscriptionAmountInDollars;
@@ -93,11 +99,19 @@ public class PaymentGatewayEvent {
       paymentMethod = "Credit Card";
     }
 
-    // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
-    // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
-    // first donation do it in order to prevent timing issues.
-    if (stripeInvoice.isPresent() && !Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
-      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer.get());
+    if (stripeInvoice.isPresent()) {
+      if (stripeInvoice.get().getLines() != null) {
+        products = stripeInvoice.get().getLines().getData().stream().map(
+            line -> line.getPrice() == null || line.getPrice().getProduct() == null ? null : line.getPrice().getProduct()
+        ).filter(Objects::nonNull).collect(Collectors.toList());
+      }
+
+      // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
+      // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
+      // first donation do it in order to prevent timing issues.
+      if (!Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
+        initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer.get());
+      }
     }
 
     if (stripeCharge.getCreated() != null) {
@@ -153,11 +167,19 @@ public class PaymentGatewayEvent {
       paymentMethod = "Credit Card";
     }
 
-    // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
-    // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
-    // first donation do it in order to prevent timing issues.
-    if (stripeInvoice.isPresent() && !Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
-      initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer.get());
+    if (stripeInvoice.isPresent()) {
+      if (stripeInvoice.get().getLines() != null) {
+        products = stripeInvoice.get().getLines().getData().stream().map(
+            line -> line.getPrice() == null || line.getPrice().getProduct() == null ? null : line.getPrice().getProduct()
+        ).filter(Objects::nonNull).collect(Collectors.toList());
+      }
+
+      // NOTE: See the note on the StripeService's customer.subscription.created event handling. We insert recurring donations
+      // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
+      // first donation do it in order to prevent timing issues.
+      if (!Strings.isNullOrEmpty(stripeInvoice.get().getSubscription())) {
+        initStripeSubscription(stripeInvoice.get().getSubscriptionObject(), stripeCustomer.get());
+      }
     }
 
     if (stripePaymentIntent.getCreated() != null) {
@@ -602,6 +624,14 @@ public class PaymentGatewayEvent {
     this.paymentMethod = paymentMethod;
   }
 
+  public List<String> getProducts() {
+    return products;
+  }
+
+  public void setProducts(List<String> products) {
+    this.products = products;
+  }
+
   public String getRefundId() {
     return refundId;
   }
@@ -817,6 +847,8 @@ public class PaymentGatewayEvent {
         ", transactionId='" + transactionId + '\'' +
         ", transactionSecondaryId='" + transactionSecondaryId + '\'' +
         ", subscriptionId='" + subscriptionId + '\'' +
+
+        ", products='" + String.join(",", products) + '\'' +
 
         ", transactionDate=" + transactionDate +
         ", transactionSuccess=" + transactionSuccess +
