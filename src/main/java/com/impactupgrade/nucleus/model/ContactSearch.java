@@ -2,7 +2,9 @@ package com.impactupgrade.nucleus.model;
 
 public class ContactSearch extends AbstractSearch {
   public String email;
+  public Boolean hasEmail;
   public String phone;
+  public Boolean hasPhone;
   public String ownerId;
   public String keywords;
 

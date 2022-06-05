@@ -26,6 +26,11 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -87,7 +92,9 @@ public class TwilioFrontlineController {
 
         ContactSearch contactSearch = new ContactSearch();
         contactSearch.keywords = searchQuery;
-        contactSearch.ownerId = ownerId;
+        // TODO: Disabling this for now! Easier to have access to everyone during testing.
+//        contactSearch.ownerId = ownerId;
+        contactSearch.hasPhone = true;
         contactSearch.pageSize = pageSize;
         contactSearch.pageToken = nextPageToken;
         PagedResults<CrmContact> crmContacts = crmService.searchContacts(contactSearch);
@@ -112,8 +119,14 @@ public class TwilioFrontlineController {
   private static FrontlineCustomer toFrontlineCustomer(CrmContact crmContact, String workerIdentity, String crmName) {
     FrontlineCustomer frontlineCustomer = new FrontlineCustomer();
     frontlineCustomer.customer_id = crmContact.id;
-    // TODO: May want phone/email or physical location to differentiate common names.
     frontlineCustomer.display_name = crmContact.fullName();
+    if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
+      frontlineCustomer.display_name += " :: " + crmContact.phoneNumberForSMS();
+    }
+    // TODO: love this idea, but they don't support text wrapping nor newlines, so the real estate doesn't support this much text
+//    if (!Strings.isNullOrEmpty(crmContact.address.stateAndCountry())) {
+//      frontlineCustomer.display_name += " :: " + crmContact.address.stateAndCountry();
+//    }
 
     // TODO: This will show up under Contact Details, but clicking it does nothing. Not sure if it's intended to
     //  act like a mailto: link. For now, skipping this and centering on the mailto: in the links.
@@ -146,9 +159,26 @@ public class TwilioFrontlineController {
       frontlineCustomer.links.add(emailLink);
     }
 
+    if (!Strings.isNullOrEmpty(crmContact.address.street)) {
+      FrontlineLink addressLink = new FrontlineLink();
+      addressLink.type = "Address";
+      addressLink.display_name = crmContact.address.toString();
+      try {
+        addressLink.value = "https://www.google.com/maps/search/?api=1&query=" + URLEncoder.encode(crmContact.address.toString(), StandardCharsets.UTF_8.toString());
+      } catch (UnsupportedEncodingException e) {
+        // will never happen
+      }
+      frontlineCustomer.links.add(addressLink);
+    }
+
     frontlineCustomer.details.title = "Profile Snapshot";
     // TODO: This will need to be super configurable!
-    frontlineCustomer.details.content = "TODO1\nTODO2\n\nTODO3\nTODO4";
+    double totalDonations = crmContact.totalDonationAmount == null ? 0.0 : crmContact.totalDonationAmount;
+    int numberDonations = crmContact.numDonations == null ? 0 : crmContact.numDonations;
+    String lastDate = crmContact.lastDonationDate == null ? "n/a" : new SimpleDateFormat("yyyy-MM-dd").format(crmContact.lastDonationDate.getTime());
+    String firstDate = crmContact.firstDonationDate == null ? "n/a" : new SimpleDateFormat("yyyy-MM-dd").format(crmContact.firstDonationDate.getTime());
+    String notes = Strings.isNullOrEmpty(crmContact.notes) ? "" : "Notes:\n" + crmContact.notes;
+    frontlineCustomer.details.content = "Total Donations: $" + new DecimalFormat("#.##").format(totalDonations) + "\nNumber of Donations: " + numberDonations + "\nLast Donation Date: " + lastDate + "\nFirst Donation Date: " + firstDate + "\n\n" + notes;
 
     frontlineCustomer.worker = workerIdentity;
 
@@ -305,7 +335,7 @@ public class TwilioFrontlineController {
       @FormParam("Identity") String identity,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("eventType={} customerAddress={}", eventType, customerAddress);
+    log.info("eventType={} customerAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, conversationSid, participantSid, identity);
     Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
 
