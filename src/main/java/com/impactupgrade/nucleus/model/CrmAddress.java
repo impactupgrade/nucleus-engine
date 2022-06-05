@@ -25,6 +25,19 @@ public class CrmAddress {
     this.country = country;
   }
 
+  public String stateAndCountry() {
+    String stateAndCountry = "";
+    if (!Strings.isNullOrEmpty(state)) {
+      stateAndCountry = state;
+      if (!Strings.isNullOrEmpty(country)) {
+        stateAndCountry += ", " + country;
+      }
+    } else if (!Strings.isNullOrEmpty(country)) {
+      stateAndCountry = country;
+    }
+    return stateAndCountry;
+  }
+
   @Override
   public String toString() {
     if (Strings.isNullOrEmpty(street)) {

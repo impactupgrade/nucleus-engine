@@ -449,6 +449,14 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       throws ConnectionException, InterruptedException {
     List<String> clauses = new ArrayList<>();
 
+    if (contactSearch.hasEmail != null) {
+      if (contactSearch.hasEmail) {
+        clauses.add("email != null AND email != ''");
+      } else {
+        clauses.add("email = null OR email = ''");
+      }
+    }
+
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       clauses.add("email = '" + contactSearch.email + "' OR npe01__HomeEmail__c = '" + contactSearch.email + "' OR npe01__WorkEmail__c = '" + contactSearch.email + "' OR npe01__AlternateEmail__c = '" + contactSearch.email + "'");
     }
@@ -460,11 +468,19 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       }
       String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
       StringBuilder phoneClause = new StringBuilder()
-          .append("phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
+          .append("Phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
           .append(" OR HomePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
           .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
           .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
       clauses.add(phoneClause.toString());
+    }
+
+    if (contactSearch.hasPhone != null) {
+      if (contactSearch.hasPhone) {
+        clauses.add("((Phone != null AND Phone != '') OR (MobilePhone != null AND MobilePhone != '') OR (HomePhone != null AND HomePhone != ''))");
+      } else {
+        clauses.add("(Phone = null OR Phone = '') AND (MobilePhone = null OR MobilePhone = '') AND (HomePhone = null OR HomePhone = '')");
+      }
     }
 
     if (!Strings.isNullOrEmpty(contactSearch.ownerId)) {
