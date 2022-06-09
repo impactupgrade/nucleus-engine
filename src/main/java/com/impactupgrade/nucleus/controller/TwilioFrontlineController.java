@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.controller;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -49,6 +50,8 @@ public class TwilioFrontlineController {
     this.envFactory = envFactory;
   }
 
+  // TODO: https://www.twilio.com/docs/frontline/callbacks-security
+
   // https://www.twilio.com/docs/frontline/my-customers
   @Path("/callback/crm")
   @POST
@@ -59,8 +62,6 @@ public class TwilioFrontlineController {
       @FormParam("Worker") String workerIdentity,
       @FormParam("PageSize") Integer pageSize,
       @FormParam("NextPageToken") String nextPageToken,
-      // Using the above for offset-based pagination, but anchor pagination is supported if needed
-//      @FormParam("Anchor") String pageLastCustomerId,
       @FormParam("CustomerId") String customerId,
       @FormParam("Query") String searchQuery,
       @Context HttpServletRequest request
@@ -70,8 +71,6 @@ public class TwilioFrontlineController {
     CrmService crmService = env.primaryCrmService();
     String crmName = capitalize(crmService.name());
 
-    // TODO: https://www.twilio.com/docs/frontline/callbacks-security
-
     FrontlineCrmResponse frontlineResponse = new FrontlineCrmResponse();
 
     switch (location) {
@@ -80,9 +79,6 @@ public class TwilioFrontlineController {
         frontlineResponse.objects.customer = toFrontlineCustomer(crmContact.get(), workerIdentity, crmName);
         break;
       case "GetCustomersList":
-        // TODO (from Scott): Worker is an email address in all their examples. I'm pretty sure this maps to the email you
-        //  log into the mobile app with. But that might depend on the SSO you use, and docs are unclear, only saying it's a
-        //  string of the "app user identity". https://www.twilio.com/docs/frontline/data-transfer-objects#customer
         Optional<CrmUser> owner = crmService.getUserByEmail(workerIdentity);
         if (owner.isEmpty()) {
           log.error("unexpected owner: " + workerIdentity);
@@ -113,6 +109,9 @@ public class TwilioFrontlineController {
         return Response.status(422).build();
     }
 
+    String json = new JsonMapper().writeValueAsString(frontlineResponse);
+    log.info("crm json: {}", json);
+
     return Response.ok().entity(frontlineResponse).build();
   }
 
@@ -139,7 +138,9 @@ public class TwilioFrontlineController {
     if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
       FrontlineChannel frontlineChannel = new FrontlineChannel();
       frontlineChannel.type = "sms";
-      frontlineChannel.value = crmContact.phoneNumberForSMS();
+      // TODO: Obviously won't work for non-US contacts, but this must be formatted correctly. Look at the contact's
+      //  country and correctly handle the country code?
+      frontlineChannel.value = "+1" + crmContact.phoneNumberForSMS().replaceAll("[\\D]", "");
       frontlineCustomer.channels.add(frontlineChannel);
     }
     // TODO: WhatsApp?
@@ -252,8 +253,6 @@ public class TwilioFrontlineController {
     log.info("location={} workerIdentity={} customerId={} customerChannel={} customerAddress={}", location, workerIdentity, customerId, customerChannel, customerAddress);
     Environment env = envFactory.init(request);
 
-    // TODO: https://www.twilio.com/docs/frontline/callbacks-security
-
     switch (location) {
       case "GetProxyAddress":
         FrontlineOutgoingConversationResponse frontlineResponse = new FrontlineOutgoingConversationResponse();
@@ -261,6 +260,8 @@ public class TwilioFrontlineController {
         //  Choose from multiple based on the worker's defined proxy number? And take channels into consideration?
         // TODO: Also, this will change for group messaging!
         frontlineResponse.proxy_address = env.getConfig().twilio.senderPn;
+        String json = new JsonMapper().writeValueAsString(frontlineResponse);
+        log.info("outgoing-conversation json: {}", json);
         return Response.ok().entity(frontlineResponse).build();
       default:
         log.error("unexpected location: " + location);
@@ -302,8 +303,6 @@ public class TwilioFrontlineController {
     Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
 
-    // TODO: https://www.twilio.com/docs/frontline/callbacks-security
-
     // TODO: will need tweaked for WhatsApp
     // TODO: verify the phone number formatting works in the search
     Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
@@ -321,8 +320,6 @@ public class TwilioFrontlineController {
   // Conversations onConversationAdd: set conversation name and avatar
   // Conversations onParticipantAdded: set the customer id, avatar, and display name
   // https://www.twilio.com/docs/frontline/conversations-webhooks
-  // TODO: https://www.twilio.com/docs/conversations/conversations-webhooks#onconversationadd
-  // TODO: https://www.twilio.com/docs/conversations/conversations-webhooks#onparticipantadded
   @Path("/callback/conversations")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -338,8 +335,6 @@ public class TwilioFrontlineController {
     log.info("eventType={} customerAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, conversationSid, participantSid, identity);
     Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
-
-    // TODO: https://www.twilio.com/docs/frontline/callbacks-security
 
     switch (eventType) {
       case "onConversationAdd":
