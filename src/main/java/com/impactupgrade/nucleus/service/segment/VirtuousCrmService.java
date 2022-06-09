@@ -4,11 +4,13 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -64,26 +66,6 @@ public class VirtuousCrmService implements BasicCrmService {
         }
         VirtuousClient.Contact contact = virtuousClient.getContactById(contactId);
         return Optional.ofNullable(asCrmContact(contact));
-    }
-
-    @Override
-    public Optional<CrmContact> getContactByEmail(String email) throws Exception {
-        VirtuousClient.Contact contact = virtuousClient.getContactByEmail(email);
-        return Optional.ofNullable(asCrmContact(contact));
-    }
-
-    @Override
-    public Optional<CrmContact> getContactByPhone(String phone) throws Exception {
-        VirtuousClient.ContactQuery contactQuery = contactQuery(List.of(queryCondition("Phone Number", "Is", phone)));
-        List<VirtuousClient.Contact> contacts = virtuousClient.queryContacts(contactQuery);
-        if (CollectionUtils.isEmpty(contacts)) {
-            return Optional.empty();
-        }
-        if (contacts.size() > 1) {
-            log.warn("Found more than 1 contact for phone '{}'", phone);
-        }
-        return contacts.stream()
-                .findFirst().map(this::asCrmContact);
     }
 
     @Override
@@ -182,31 +164,26 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmContact> searchContacts(String firstName, String lastName, String email, String phone, String address) {
+    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
         List<VirtuousClient.QueryCondition> conditions = new ArrayList<>();
-        if (!Strings.isNullOrEmpty(firstName)) {
-            conditions.add(queryCondition("First Name", "Is", firstName));
+//        if (!Strings.isNullOrEmpty(firstName)) {
+//            conditions.add(queryCondition("First Name", "Is", firstName));
+//        }
+//        if (!Strings.isNullOrEmpty(lastName)) {
+//            conditions.add(queryCondition("Last Name", "Is", lastName));
+//        }
+        if (!Strings.isNullOrEmpty(contactSearch.email)) {
+            conditions.add(queryCondition("Email Address", "Is", contactSearch.email));
         }
-        if (!Strings.isNullOrEmpty(lastName)) {
-            conditions.add(queryCondition("Last Name", "Is", lastName));
+        if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+            conditions.add(queryCondition("Phone Number", "Is", contactSearch.phone));
         }
-        if (!Strings.isNullOrEmpty(email)) {
-            conditions.add(queryCondition("Email Address", "Is", email));
-        }
-        if (!Strings.isNullOrEmpty(phone)) {
-            conditions.add(queryCondition("Phone Number", "Is", phone));
-        }
-        if (!Strings.isNullOrEmpty(address)) {
-            conditions.add(queryCondition("Address Line 1", "Is", address));
-        }
+//        if (!Strings.isNullOrEmpty(address)) {
+//            conditions.add(queryCondition("Address Line 1", "Is", address));
+//        }
         VirtuousClient.ContactQuery contactQuery = contactQuery(conditions);
-        List<VirtuousClient.Contact> contacts = virtuousClient.queryContacts(contactQuery);
-        if (CollectionUtils.isEmpty(contacts)) {
-            return Collections.emptyList();
-        }
-        return contacts.stream()
-                .map(this::asCrmContact)
-                .collect(Collectors.toList());
+        List<CrmContact> contacts = virtuousClient.queryContacts(contactQuery).stream().map(this::asCrmContact).collect(Collectors.toList());
+        return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
     }
 
     private VirtuousClient.ContactQuery contactQuery(List<VirtuousClient.QueryCondition> queryConditions) {
