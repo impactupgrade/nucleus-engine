@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -58,8 +59,23 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
-    throw new RuntimeException("not implemented");
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+    // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
+    //  combining clauses, owner, keyword search, pagination, etc.
+
+    if (!Strings.isNullOrEmpty(contactSearch.email)) {
+      Optional<CrmContact> crmContact = toCrmContact(
+          dwClient.getContactByEmail(contactSearch.email)
+      );
+      return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
+    } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+      Optional<CrmContact> crmContact = toCrmContact(
+          dwClient.contactSearch("phone", contactSearch.phone)
+      );
+      return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
+    } else {
+      throw new RuntimeException("not implemented");
+    }
   }
 
   @Override
