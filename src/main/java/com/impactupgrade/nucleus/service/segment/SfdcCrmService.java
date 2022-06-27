@@ -1122,7 +1122,7 @@ public class SfdcCrmService implements CrmService {
     Double amount = Double.valueOf(sObject.getField("Amount").toString());
     Calendar closeDate = null;
     try {
-      closeDate = Utils.getCalendarFromDateString(sObject.getField("CloseDate").toString());
+      closeDate = Utils.getCalendarFromDateString((String) sObject.getField("CloseDate"));
     } catch (ParseException e) {
       log.warn("unable to parse date", e);
     }
