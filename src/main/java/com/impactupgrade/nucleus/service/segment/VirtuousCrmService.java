@@ -57,7 +57,7 @@ public class VirtuousCrmService implements BasicCrmService {
     // Contacts
     @Override
     public Optional<CrmContact> getContactById(String id) throws Exception {
-        Integer contactId;
+        int contactId;
         try {
             contactId = Integer.parseInt(id);
         } catch (NumberFormatException nfe) {
@@ -72,11 +72,7 @@ public class VirtuousCrmService implements BasicCrmService {
     public String insertContact(CrmContact crmContact) throws Exception {
         VirtuousClient.Contact contact = asContact(crmContact);
         VirtuousClient.Contact createdContact = virtuousClient.createContact(contact);
-        if (Objects.nonNull(createdContact)) {
-            return createdContact.id + "";
-        } else {
-            return null;
-        }
+        return createdContact == null ? null : createdContact.id + "";
     }
 
     @Override
@@ -91,7 +87,7 @@ public class VirtuousCrmService implements BasicCrmService {
         for (VirtuousClient.ContactMethod contactMethod : contactMethodsToCreate) {
             log.info("Creating contact method...");
             VirtuousClient.ContactMethod createdContactMethod = virtuousClient.createContactMethod(contactMethod);
-            if (Objects.isNull(createdContactMethod)) {
+            if (createdContactMethod == null) {
                 log.error("Failed to create contact method {}/{}!", contactMethod.id, contactMethod.type);
                 return;
             }
@@ -101,7 +97,7 @@ public class VirtuousCrmService implements BasicCrmService {
         List<VirtuousClient.ContactMethod> contactMethodsToUpdate = getContactMethodsToUpdate(existingIndividual, updatingIndividual);
         for (VirtuousClient.ContactMethod contactMethod : contactMethodsToUpdate) {
             log.info("Updating contact method...");
-            if (Objects.isNull(virtuousClient.updateContactMethod(contactMethod))) {
+            if (virtuousClient.updateContactMethod(contactMethod) == null) {
                 log.error("Failed to update contact method {}/{}!", contactMethod.id, contactMethod.type);
                 return;
             }
@@ -121,8 +117,7 @@ public class VirtuousCrmService implements BasicCrmService {
         List<VirtuousClient.ContactMethod> toCreate = new ArrayList<>();
         for (VirtuousClient.ContactMethod updatingContactMethod : updating.contactMethods) {
             boolean contactMethodExists = existing.contactMethods.stream()
-                    .filter(contactMethod -> StringUtils.equals(contactMethod.type, updatingContactMethod.type))
-                    .findAny().isPresent();
+                    .anyMatch(contactMethod -> StringUtils.equals(contactMethod.type, updatingContactMethod.type));
             if (!contactMethodExists) {
                 updatingContactMethod.contactIndividualId = existing.id;
                 toCreate.add(updatingContactMethod);
@@ -150,8 +145,7 @@ public class VirtuousCrmService implements BasicCrmService {
         List<VirtuousClient.ContactMethod> toDelete = new ArrayList<>();
         for (VirtuousClient.ContactMethod existingContactMethod : existing.contactMethods) {
             boolean updatingContactMethod = updating.contactMethods.stream()
-                    .filter(contactMethod -> StringUtils.equals(contactMethod.type, existingContactMethod.type))
-                    .findAny().isPresent();
+                    .anyMatch(contactMethod -> StringUtils.equals(contactMethod.type, existingContactMethod.type));
             if (!updatingContactMethod) {
                 toDelete.add(existingContactMethod);
             }
@@ -203,7 +197,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
     // TODO: move to a mapper class?
     private CrmContact asCrmContact(VirtuousClient.Contact contact) {
-        if (Objects.isNull(contact)) {
+        if (contact == null) {
             return null;
         }
         CrmContact crmContact = new CrmContact();
@@ -237,7 +231,7 @@ public class VirtuousCrmService implements BasicCrmService {
         //crmContact.totalDonationAmount = contact.lifeToDateGiving; // Parse double
         // crmContact.numDonations;
         //crmContact.firstDonationDate;
-        crmContact.lastDonationDate = getCalendar(contact.lastGiftDate);
+        crmContact.lastDonationDate = getDate(contact.lastGiftDate);
         crmContact.notes = contact.description;
         //  public List<String> emailGroups;
         //  public String contactLanguage;
@@ -265,7 +259,7 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     private CrmAddress getCrmAddress(VirtuousClient.Address address) {
-        if (Objects.isNull(address)) {
+        if (address == null) {
             return null;
         }
         CrmAddress crmAddress = new CrmAddress();
@@ -277,30 +271,38 @@ public class VirtuousCrmService implements BasicCrmService {
         return crmAddress;
     }
 
-    private Calendar getCalendar(Date date) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        return calendar;
+    private Calendar getDateTime(String dateTimeString) {
+        try {
+            Date date = new SimpleDateFormat(DATE_TIME_FORMAT).parse(dateTimeString);
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            return calendar;
+        } catch (ParseException e) {
+            log.error("Failed to parse date from string {}!", dateTimeString);
+        }
+        return null;
     }
 
-    private Calendar getCalendar(String dateString) {
-        Calendar calendar = null;
-        try {
-            Date date = new SimpleDateFormat(DATE_TIME_FORMAT).parse(dateString);
-            calendar = Calendar.getInstance();
-            calendar.setTime(date);
-        } catch (ParseException e) {
-            log.error("Failed to parse date from string {}!", dateString);
+    private Calendar getDate(String dateString) {
+        if (!"unavailable".equalsIgnoreCase(dateString)) {
+            try {
+                Date date = new SimpleDateFormat(DATE_FORMAT).parse(dateString);
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(date);
+                return calendar;
+            } catch (ParseException e) {
+                log.error("Failed to parse date from string {}!", dateString);
+            }
         }
-        return calendar;
+        return null;
     }
 
     private VirtuousClient.Contact asContact(CrmContact crmContact) {
-        if (Objects.isNull(crmContact)) {
+        if (crmContact == null) {
             return null;
         }
         VirtuousClient.Contact contact = new VirtuousClient.Contact();
-        if (Objects.nonNull(crmContact.id)) {
+        if (!Strings.isNullOrEmpty(crmContact.id)) {
             contact.id = Integer.parseInt(crmContact.id);
         }
         contact.name = crmContact.fullName;
@@ -308,7 +310,7 @@ public class VirtuousCrmService implements BasicCrmService {
         contact.contactType =
                 "Household"; // Foundation/Organization/Household ?
 
-        contact.address = asAddress(crmContact.address);
+        contact.contactAddresses.add(asAddress(crmContact.address));
 
         VirtuousClient.ContactIndividual contactIndividual = new VirtuousClient.ContactIndividual();
         contactIndividual.contactId = contact.id;
@@ -331,7 +333,7 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     private VirtuousClient.Address asAddress(CrmAddress crmAddress) {
-        if (Objects.isNull(crmAddress)) {
+        if (crmAddress == null) {
             return null;
         }
         VirtuousClient.Address address = new VirtuousClient.Address();
@@ -403,7 +405,7 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     private CrmDonation asCrmDonation(VirtuousClient.Gift gift) {
-        if (Objects.isNull(gift)) {
+        if (gift == null) {
             return null;
         }
         CrmDonation crmDonation = new CrmDonation();
@@ -411,14 +413,16 @@ public class VirtuousCrmService implements BasicCrmService {
         crmDonation.name = gift.transactionSource + "/" + gift.transactionId; //?
         crmDonation.amount = gift.amount;
         crmDonation.paymentGatewayName = gift.transactionSource; // ?
-        //crmDonation.status = CrmDonation.Status.SUCCESSFUL; // ?
-        crmDonation.closeDate = getCalendar(gift.giftDate);
+        // TODO: Need this so that DonationService doesn't flag it as a "non-posted state". But it doesn't look like
+        //  Virtuous actually has a status to even have a failed state?
+        crmDonation.status = CrmDonation.Status.SUCCESSFUL;
+        crmDonation.closeDate = getDateTime(gift.giftDate);
         crmDonation.crmUrl = gift.giftUrl;
         return crmDonation;
     }
 
     private VirtuousClient.Gift asGift(PaymentGatewayEvent paymentGatewayEvent) {
-        if (Objects.isNull(paymentGatewayEvent)) {
+        if (paymentGatewayEvent == null) {
             return null;
         }
         VirtuousClient.Gift gift = new VirtuousClient.Gift();
@@ -436,7 +440,7 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     private VirtuousClient.GiftTransaction asGiftTransaction(PaymentGatewayEvent paymentGatewayEvent) {
-        if (Objects.isNull(paymentGatewayEvent)) {
+        if (paymentGatewayEvent == null) {
             return null;
         }
         VirtuousClient.GiftTransaction giftTransaction = new VirtuousClient.GiftTransaction();
