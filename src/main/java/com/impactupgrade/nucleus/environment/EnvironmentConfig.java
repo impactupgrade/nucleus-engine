@@ -40,9 +40,6 @@ public class EnvironmentConfig {
   // primary should be set to true. But some will have a split of something like Salesforce for donors and HubSpot for
   // marketing, the latter used for SMS/email. In that case, primary is still treated as the default, but individual
   // flows can be overridden.
-  // TODO: Currently, if no override, we'll simply grab the "primary" from the list. In the future, likely after
-  //  Camel is introduced, this will change to instead allow a flow to be run multiple times, one per CRM. Ex: we may
-  //  want to push donations to multiple CRMs at once.
   public String crmPrimary = "";
   public String crmDonations = "";
   public String crmMessaging = "";
@@ -297,6 +294,7 @@ public class EnvironmentConfig {
 
   private static final boolean IS_PROD = "production".equalsIgnoreCase(System.getenv("PROFILE"));
   private static final boolean IS_SANDBOX = "sandbox".equalsIgnoreCase(System.getenv("PROFILE"));
+  private static final String OTHER_JSON_FILENAME = System.getenv("OTHER_JSON_FILENAME");
 
   private static final ObjectMapper mapper = new ObjectMapper();
   static {
@@ -312,7 +310,8 @@ public class EnvironmentConfig {
         InputStream jsonOrg = Thread.currentThread().getContextClassLoader()
             .getResourceAsStream("environment.json");
         InputStream jsonOrgSandbox = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("environment-sandbox.json")
+            .getResourceAsStream("environment-sandbox.json");
+        InputStream jsonOther = OTHER_JSON_FILENAME == null ? null : Thread.currentThread().getContextClassLoader().getResourceAsStream(OTHER_JSON_FILENAME)
     ) {
       // Start with the default JSON as the foundation.
       EnvironmentConfig envConfig = mapper.readValue(jsonDefault, EnvironmentConfig.class);
@@ -323,6 +322,11 @@ public class EnvironmentConfig {
 
       if (IS_SANDBOX && jsonOrgSandbox != null) {
         mapper.readerForUpdating(envConfig).readValue(jsonOrgSandbox);
+      }
+
+      if (jsonOther != null) {
+        log.info("Including {} in the environment...", jsonOther);
+        mapper.readerForUpdating(envConfig).readValue(jsonOther);
       }
 
       return envConfig;
