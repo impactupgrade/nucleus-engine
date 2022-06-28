@@ -4,29 +4,17 @@
 
 package com.impactupgrade.nucleus.util;
 
-import com.fasterxml.jackson.databind.MappingIterator;
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import com.fasterxml.jackson.dataformat.csv.CsvSchema;
-
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
+import static com.impactupgrade.nucleus.util.Utils.getCsvData;
 
 public class GoogleSheetsUtil {
 
   public static List<Map<String, String>> getSheetData(String url) throws IOException {
-    String csv = exportSheetAsCsv(url);
-    List<Map<String, String>> result = new LinkedList<>();
-    CsvMapper mapper = new CsvMapper();
-    CsvSchema schema = CsvSchema.emptySchema().withHeader();
-    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(csv);
-    while (iterator.hasNext()) {
-      result.add(iterator.next());
-    }
-    return result;
+    return getCsvData(exportSheetAsCsv(url));
   }
 
   private static String exportSheetAsCsv(String url) {

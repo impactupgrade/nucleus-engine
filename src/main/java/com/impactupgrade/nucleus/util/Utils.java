@@ -4,14 +4,21 @@
 
 package com.impactupgrade.nucleus.util;
 
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import com.google.common.base.Strings;
 import com.sun.xml.ws.util.StringUtils;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -90,5 +97,16 @@ public class Utils {
     if (s.startsWith("_")) s = s.substring(1);
     if (s.endsWith("_")) s = s.substring(0, s.length() - 1);
     return s;
+  }
+
+  public static List<Map<String, String>> getCsvData(String csv) throws IOException {
+    CsvMapper mapper = new CsvMapper();
+    CsvSchema schema = CsvSchema.emptySchema().withHeader();
+    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(csv);
+    List<Map<String, String>> result = new LinkedList<>();
+    while (iterator.hasNext()) {
+      result.add(iterator.next());
+    }
+    return result;
   }
 }

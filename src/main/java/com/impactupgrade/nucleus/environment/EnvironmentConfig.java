@@ -267,6 +267,19 @@ public class EnvironmentConfig {
 
   public Platform virtuous = new Platform();
 
+  public static class SharePointPlatform extends Platform {
+    public String tenantId = "";
+    public Map<String, SharePointUserConfiguration> userConfigurations;
+
+  }
+
+  public static class SharePointUserConfiguration {
+    public String siteUrl = "";
+    public String pathToFile = "";
+  }
+
+  public SharePointPlatform sharePoint = new SharePointPlatform();
+
   public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys {
