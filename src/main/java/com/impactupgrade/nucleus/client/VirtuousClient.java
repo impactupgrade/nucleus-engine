@@ -34,9 +34,11 @@ public class VirtuousClient {
 
     private static TokenResponse tokenResponse;
 
-    private String tokenServerUrl;
+    private String apiKey;
     private String username;
     private String password;
+    private String tokenServerUrl;
+
     private String accessToken;
     private String refreshToken;
 
@@ -44,9 +46,13 @@ public class VirtuousClient {
 
     public VirtuousClient(Environment env) {
         this.env = env;
-        this.tokenServerUrl = env.getConfig().virtuous.tokenServerUrl;
+
+        this.apiKey = env.getConfig().virtuous.secretKey;
+
         this.username = env.getConfig().virtuous.username;
         this.password = env.getConfig().virtuous.password;
+        this.tokenServerUrl = env.getConfig().virtuous.tokenServerUrl;
+
         this.accessToken = env.getConfig().virtuous.accessToken;
         this.refreshToken = env.getConfig().virtuous.refreshToken;
     }
@@ -210,9 +216,16 @@ public class VirtuousClient {
     }
 
     private HttpClient.HeaderBuilder headers() {
+        // First, use the simple API key, if available.
+
+        if (!Strings.isNullOrEmpty(apiKey)) {
+            return HttpClient.HeaderBuilder.builder().authBearerToken(apiKey);
+        }
+
+        // Otherwise, assume oauth.
+
         // TODO: check access token from config, if available; howto?
         if (!containsValidAccessToken(tokenResponse)) {
-
             log.info("Getting new access token...");
             if (!Strings.isNullOrEmpty(refreshToken)) {
                 // Refresh access token if possible
