@@ -78,10 +78,10 @@ public class PaymentGatewayEvent {
 
   // Maps holding metadata content. We need to split these up in order to define an ordered hierarchy of values.
   // VITAL: Allow these to be case insensitive!
-  private Map<String, String> contextMetadata = new CaseInsensitiveMap<>();
-  private Map<String, String> transactionMetadata = new CaseInsensitiveMap<>();
-  private Map<String, String> subscriptionMetadata = new CaseInsensitiveMap<>();
-  private Map<String, String> customerMetadata = new CaseInsensitiveMap<>();
+  private final Map<String, String> contextMetadata = new CaseInsensitiveMap<>();
+  private final Map<String, String> transactionMetadata = new CaseInsensitiveMap<>();
+  private final Map<String, String> subscriptionMetadata = new CaseInsensitiveMap<>();
+  private final Map<String, String> customerMetadata = new CaseInsensitiveMap<>();
 
   public PaymentGatewayEvent(Environment env) {
     this.env = env;
@@ -217,7 +217,7 @@ public class PaymentGatewayEvent {
       if (stripeBalanceTransaction.isPresent()) {
         transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;
         BigDecimal exchangeRate = stripeBalanceTransaction.get().getExchangeRate();
-        if (Objects.nonNull(exchangeRate)) {
+        if (exchangeRate != null) {
           transactionExchangeRate = exchangeRate.doubleValue();
         }
       }

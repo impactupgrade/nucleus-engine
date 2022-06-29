@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.controller;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
@@ -20,6 +21,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -44,12 +46,21 @@ public class AccountingController {
             @FormParam("end_date") String end,
             @Context HttpServletRequest request
     ) throws Exception {
-
         Environment environment = environmentFactory.init(request);
         SecurityUtil.verifyApiKey(environment);
 
-        Date startDate = new SimpleDateFormat(DATE_FORMAT).parse(start);
-        Date endDate = new SimpleDateFormat(DATE_FORMAT).parse(end);
+        Date startDate;
+        Date endDate;
+        if (Strings.isNullOrEmpty(start)) {
+            // If dates were not provided, this was likely a cronjob. Do the last 3 days.
+            Calendar startCal = Calendar.getInstance();
+            startCal.add(Calendar.HOUR, -72);
+            startDate = startCal.getTime();
+            endDate = Calendar.getInstance().getTime();
+        } else {
+            startDate = new SimpleDateFormat(DATE_FORMAT).parse(start);
+            endDate = new SimpleDateFormat(DATE_FORMAT).parse(end);
+        }
 
         Runnable runnable = () -> {
             // Get all payment services available (Stripe is it you?)

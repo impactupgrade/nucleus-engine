@@ -5,6 +5,8 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -13,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 public class PaymentGatewayDeposit {
+
+  private static final Logger log = LogManager.getLogger(PaymentGatewayDeposit.class.getName());
 
   private Calendar date;
   private String url;
@@ -125,13 +129,17 @@ public class PaymentGatewayDeposit {
     }
 
     ledgers.get(fund).transactions.add(transaction);
-    ledgers.get(fund).gross += transaction.transactionAmountInDollars;
-    ledgers.get(fund).net += transaction.transactionNetAmountInDollars;
-    ledgers.get(fund).fees += (transaction.transactionAmountInDollars - transaction.transactionNetAmountInDollars);
-    // TODO: The above methods receive explicit refunds amount (see how TER hits the Stripe API to retrieve them).
-    //  We need to bake that same sort of concept into PaymentGatewayEvent. But also note that refunds are on a
-    //  different date compared to the original charge!
+    if (!Strings.isNullOrEmpty(transaction.refundId)) {
+      // TODO: The above methods receive explicit refunds amount (see how TER hits the Stripe API to retrieve them).
+      //  We need to bake that same sort of concept into PaymentGatewayEvent. But also note that refunds are on a
+      //  different date compared to the original charge!
 //    ledgers.get(fund).refunds += refund;
+      log.warn("IMPLEMENT ME! Skipping refund {}", transaction.refundId);
+    } else {
+      ledgers.get(fund).gross += transaction.transactionAmountInDollars;
+      ledgers.get(fund).net += transaction.transactionNetAmountInDollars;
+      ledgers.get(fund).fees += (transaction.transactionAmountInDollars - transaction.transactionNetAmountInDollars);
+    }
   }
 
   public static class Ledger {

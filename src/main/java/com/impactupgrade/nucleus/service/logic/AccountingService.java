@@ -2,7 +2,6 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -63,7 +62,7 @@ public class AccountingService {
 
                 List<PaymentGatewayEvent> transactionsToCreate = getTransactionsToCreate(
                         transactions, existingTransactions, accountingPlatformService);
-                if (CollectionUtils.isEmpty(transactionsToCreate)) {
+                if (transactionsToCreate.isEmpty()) {
                     log.info("No new transactions to create. Returning...");
                     continue;
                 }
@@ -102,9 +101,6 @@ public class AccountingService {
 
     // Utils
     private List<PaymentGatewayEvent> collectTransactions(List<PaymentGatewayDeposit> deposits) {
-        if (CollectionUtils.isEmpty(deposits)) {
-            return Collections.emptyList();
-        }
         return deposits.stream()
                 .filter(Objects::nonNull)
                 .map(PaymentGatewayDeposit::getLedgers)
@@ -117,9 +113,6 @@ public class AccountingService {
     }
 
     private List<CrmContact> collectCrmContacts(List<PaymentGatewayEvent> transactions) {
-        if (CollectionUtils.isEmpty(transactions)) {
-            return Collections.emptyList();
-        }
         return transactions.stream()
                 .map(this::getCrmContact)
                 .collect(Collectors.toList());
@@ -143,7 +136,7 @@ public class AccountingService {
             return Collections.emptyList();
         }
         Map<String, T> itemsMap = new HashMap<>();
-        items.stream().forEach(item -> {
+        items.forEach(item -> {
             String uniqueKey = uniqueKeyFunction.apply(item);
             if (!itemsMap.containsKey(uniqueKey)) {
                 itemsMap.put(uniqueKey, item);
@@ -153,9 +146,6 @@ public class AccountingService {
     }
 
     private Date getMinStartDate(List<PaymentGatewayEvent> transactions) {
-        if (CollectionUtils.isEmpty(transactions)) {
-            return null;
-        }
         Set<Date> transactionDates = transactions.stream()
                 .filter(Objects::nonNull)
                 .map(PaymentGatewayEvent::getTransactionDate)

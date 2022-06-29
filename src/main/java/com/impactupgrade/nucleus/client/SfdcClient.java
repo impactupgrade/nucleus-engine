@@ -16,7 +16,6 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import org.apache.cxf.common.util.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jruby.embed.LocalContextScope;
@@ -35,7 +34,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -168,10 +166,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
-  public List<SObject> getContactsByIds(Set<String> contactIds) throws ConnectionException, InterruptedException {
-    if (CollectionUtils.isEmpty(contactIds)) {
-      return Collections.emptyList();
-    }
+  public List<SObject> getContactsByIds(Collection<String> contactIds) throws ConnectionException, InterruptedException {
     String ids = contactIds.stream()
             .map(id -> "'" + id + "'")
             .collect(Collectors.joining(","));

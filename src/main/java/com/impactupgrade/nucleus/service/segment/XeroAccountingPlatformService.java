@@ -47,27 +47,25 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
     private static final String SUPPORTER_ID_FIELD_NAME = "Supporter_ID__c";
     // If false return 200 OK and mix of successfully created objects and any with validation errors
-    private static Boolean summarizeErrors = Boolean.TRUE;
+    private static final Boolean SUMMARIZE_ERRORS = Boolean.TRUE;
     // e.g. unitdp=4 – (Unit Decimal Places) You can opt in to use four decimal places for unit amounts
-    private static Integer unitdp = 4;
+    private static final Integer UNITDP = 4;
 
-    private String clientId;
-    private String clientSecret;
-    private String tokenServerUrl;
+    private final ApiClient apiClient;
+    private final AccountingApi xeroApi;
 
-    private static String accessToken;
-    private static String refreshToken;
+    protected Environment env;
 
-    private String xeroTenantId;
-
-    private ApiClient apiClient;
-    private AccountingApi accountingApi;
-
-    protected Environment environment;
+    protected String clientId;
+    protected String clientSecret;
+    protected String tokenServerUrl;
+    protected String accessToken;
+    protected String refreshToken;
+    protected String xeroTenantId;
 
     public XeroAccountingPlatformService() {
         this.apiClient = new ApiClient();
-        this.accountingApi = AccountingApi.getInstance(apiClient);
+        this.xeroApi = AccountingApi.getInstance(apiClient);
     }
 
     @Override
@@ -82,11 +80,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
     @Override
     public void init(Environment environment) {
-        this.environment = environment;
+        this.env = environment;
         this.clientId = environment.getConfig().xero.clientId;
         this.clientSecret = environment.getConfig().xero.clientSecret;
         this.tokenServerUrl = environment.getConfig().xero.tokenServerUrl;
-
         this.accessToken = environment.getConfig().xero.accessToken;
         this.refreshToken = environment.getConfig().xero.refreshToken;
         this.xeroTenantId = environment.getConfig().xero.tenantId;
@@ -96,7 +93,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     public List<Invoice> getTransactions(Date startDate) throws Exception {
         try {
             OffsetDateTime ifModifiedSince = OffsetDateTime.of(asLocalDateTime(startDate), ZoneOffset.UTC);
-            Invoices invoicesResponse = accountingApi.getInvoices(getAccessToken(), xeroTenantId, ifModifiedSince,
+            Invoices invoicesResponse = xeroApi.getInvoices(getAccessToken(), xeroTenantId, ifModifiedSince,
                     //String where,
                     null,
                     // String order,
@@ -121,10 +118,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                     null,
                     // Integer unitdp, Boolean summaryOnly
                     null, null);
-            List<Invoice> invoices = invoicesResponse.getInvoices();
-            return invoices;
+            return invoicesResponse.getInvoices();
         } catch (Exception e) {
             log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
+            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
             throw e;
         }
     }
@@ -138,7 +135,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     public List<Contact> getContacts() throws Exception {
         try {
             log.info("Getting existing contacts...");
-            Contacts contactsResponse = accountingApi.getContacts(getAccessToken(), xeroTenantId, null,
+            Contacts contactsResponse = xeroApi.getContacts(getAccessToken(), xeroTenantId, null,
                     null,
                     null,
                     null,
@@ -150,7 +147,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
             return contacts;
         } catch (Exception e) {
             log.error("Failed to get contacts info: {}", getExceptionDetails(e));
-            // Don't know if anything exist already - can NOT process further
+            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
             throw e;
         }
     }
@@ -164,22 +161,17 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         List<SObject> contactObjects;
         Map<String, String> supporterIds = new HashMap<>();
         try {
-            contactObjects = environment.sfdcClient().getContactsByIds(ids);
-            contactObjects.forEach(c -> {
-                supporterIds.put(c.getId(), (String) c.getField(SUPPORTER_ID_FIELD_NAME));
-            });
+            contactObjects = env.sfdcClient().getContactsByIds(ids);
+            contactObjects.forEach(c -> supporterIds.put(c.getId(), (String) c.getField(SUPPORTER_ID_FIELD_NAME)));
         } catch (Exception e) {
             throw new IllegalStateException("Failed to get contacts info from SF!", e);
-
         }
-
-        List<Contact> contacts = crmContacts.stream()
-                .map(crmContact -> asContact(crmContact, supporterIds.get(crmContact.id)))
-                .collect(Collectors.toList());
 
         // We create contacts in create invoices call
         // so here we just return mapped list
-        return contacts;
+        return crmContacts.stream()
+                .map(crmContact -> asContact(crmContact, supporterIds.get(crmContact.id)))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -212,7 +204,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         log.info("Invoices to create: {}", invoices.getInvoices().size());
 
         try {
-            Invoices createdInvoices = accountingApi.createInvoices(getAccessToken(), xeroTenantId, invoices, summarizeErrors, unitdp);
+            Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
             List<Invoice> createdItems = createdInvoices.getInvoices();
 
             log.info("Invoices created: {}", createdItems.size());
@@ -242,8 +234,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                 accessToken = verifiedJWT.getToken();
                 refreshToken = tokenResponse.getRefreshToken();
 
-                environment.getConfig().xero.accessToken = accessToken;
-                environment.getConfig().xero.refreshToken = refreshToken;
+                env.getConfig().xero.accessToken = accessToken;
+                env.getConfig().xero.refreshToken = refreshToken;
 
             } catch (IOException | JwkException e) {
                 log.error("Failed to refresh access token!");
@@ -271,7 +263,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     private Contact asContact(CrmContact crmContact, String supporterId) {
-        if (Objects.isNull(crmContact)) {
+        if (crmContact == null) {
             return null;
         }
         Contact contact = new Contact();
@@ -293,22 +285,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         lineItem.setDescription(paymentGatewayEvent.getTransactionDescription());
         lineItem.setQuantity(1.0);
         lineItem.setUnitAmount(paymentGatewayEvent.getTransactionAmountInDollars());
-        lineItem.setTaxType("NONE");
         // TODO: DR TEST (https://developer.xero.com/documentation/api/accounting/types/#tax-rates -- country specific)
-        //lineItem.setTaxType("EXEMPTOUTPUT");
+        lineItem.setTaxType("EXEMPTOUTPUT");
 
         // TODO: DR TEST -- need to be able to override with code
         if (paymentGatewayEvent.isTransactionRecurring()) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
-        } else if (paymentGatewayEvent.getTransactionAmountInDollars() % 1500.0 == 0) {
-            //confirm this came from the Rescue a Child donation form,
-            // which currently sets the Opportunity record type to
-            // 012280000008Qq6AAE (Rescue a Child)
-            if ("012280000008Qq6AAE".equals(paymentGatewayEvent.getCrmRecurringDonationId())) {
-                lineItem.setAccountCode("117");
-                lineItem.setItemCode("RAC");
-            } // ?
         } else {
             lineItem.setAccountCode("116");
             lineItem.setItemCode("Donate");
@@ -318,7 +301,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     private LocalDateTime asLocalDateTime(Date date) {
-        if (Objects.isNull(date)) {
+        if (date == null) {
             return null;
         }
         return LocalDateTime.ofEpochSecond(date.toInstant().getEpochSecond(), 0, ZoneOffset.UTC);
@@ -334,15 +317,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                         CrmContact crmContact = transaction.getCrmContact();
                         Contact contact = getContactForCrmContact(crmContact,
                                 contactsMappedByPrimaryKey, contactsMappedBySecondaryKey);
-                        Invoice invoice = asInvoice(transaction, contact);
-                        return invoice;
-                    }).forEach(invoice -> invoices.addInvoicesItem(invoice));
+                        return asInvoice(transaction, contact);
+                    }).forEach(invoices::addInvoicesItem);
         }
         return invoices;
     }
 
     private Invoice asInvoice(PaymentGatewayEvent paymentGatewayEvent, Contact contact) {
-        if (Objects.isNull(paymentGatewayEvent)) {
+        if (paymentGatewayEvent == null) {
             return null;
         }
         Invoice invoice = new Invoice();
