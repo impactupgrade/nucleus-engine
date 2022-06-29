@@ -58,6 +58,9 @@ public class MailchimpEmailService extends AbstractEmailService {
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
       MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
+        // clear the cache, since fields differ between audiences
+        mergeFieldsNameToTag.clear();
+
         List<CrmContact> crmContacts = getCrmContacts(emailList, lastSync);
         Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
 
