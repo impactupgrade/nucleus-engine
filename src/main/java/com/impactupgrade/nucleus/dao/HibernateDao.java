@@ -7,6 +7,7 @@ import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import org.springframework.util.StringUtils;
 
+import javax.persistence.NoResultException;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -35,10 +36,12 @@ public class HibernateDao<I extends Serializable, E> {
   }
 
   public Optional<E> getById(I id) {
-    final Session session = openSession();
-    E entity = session.get(clazz, id);
-    session.close();
-    return Optional.ofNullable(entity);
+    try (Session session = openSession()) {
+      E entity = session.get(clazz, id);
+      return Optional.ofNullable(entity);
+    } catch (NoResultException e) {
+      return Optional.empty();
+    }
   }
 
   public List<E> getAll() {
@@ -54,14 +57,15 @@ public class HibernateDao<I extends Serializable, E> {
   }
 
   public Optional<E> getQueryResult(String queryString, boolean isNative) {
-    final Session session = openSession();
-    Query<E> query = isNative ?
-        session.createNativeQuery(queryString, clazz)
-        : session.createQuery(queryString, clazz);
+    try (Session session = openSession()) {
+      Query<E> query = isNative ?
+          session.createNativeQuery(queryString, clazz)
+          : session.createQuery(queryString, clazz);
 
-    Optional<E> queryResult = Optional.ofNullable(query.getSingleResult());
-    session.close();
-    return queryResult;
+      return Optional.ofNullable(query.getSingleResult());
+    } catch (NoResultException e) {
+      return Optional.empty();
+    }
   }
 
   public List<E> getQueryResultList(String queryString) {
