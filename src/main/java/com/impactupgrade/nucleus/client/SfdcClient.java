@@ -42,8 +42,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   private static final Logger log = LogManager.getLogger(SfdcClient.class.getName());
 
-  public static final String AUTH_URL_PRODUCTION = "https://login.salesforce.com/services/Soap/u/47.0/";
-  public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/47.0/";
+  public static final String AUTH_URL_PRODUCTION = "https://login.salesforce.com/services/Soap/u/55.0/";
+  public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/55.0/";
 
   private static final String AUTH_URL;
   static {
