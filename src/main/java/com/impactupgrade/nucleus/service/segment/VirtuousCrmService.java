@@ -111,11 +111,7 @@ public class VirtuousCrmService implements BasicCrmService {
         List<VirtuousClient.ContactMethod> contactMethodsToDelete = getContactMethodsToDelete(existingIndividual, updatingIndividual);
         for (VirtuousClient.ContactMethod contactMethod : contactMethodsToDelete) {
             log.info("Deleting contact method...");
-            if (Objects.isNull(virtuousClient.deleteContactMethod(contactMethod))) {
-                log.error("Failed to delete contact method {}/{}!", contactMethod.id, contactMethod.type);
-                return;
-            }
-            log.info("Contact method deleted.");
+            virtuousClient.deleteContactMethod(contactMethod);
         }
 
         virtuousClient.updateContact(updatingContact);

@@ -4,58 +4,50 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
+import com.impactupgrade.nucleus.model.CrmUser;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
+import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.InputStream;
-import java.io.StringWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-// TODO: Copies from the old C1 code. Needs cleaned up and rethought...
-// TODO: If needs expand, make this into an open source client lib
+import static com.impactupgrade.nucleus.util.HttpClient.get;
+import static com.impactupgrade.nucleus.util.HttpClient.post;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-public class BloomerangCrmService implements BasicCrmService {
+public class BloomerangCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(BloomerangCrmService.class);
 
-  private static final String BLOOMERANG_URL = "https://api.bloomerang.co/v1/";
-  private static final String SEARCH = BLOOMERANG_URL + "Constituent/?q=";
-  private static final String POST_CONSTITUENT = BLOOMERANG_URL + "Constituent";
-  private static final String POST_EMAIL = BLOOMERANG_URL + "Email";
-  private static final String POST_PHONE = BLOOMERANG_URL + "Phone";
-  private static final String POST_ADDRESS = BLOOMERANG_URL + "Address";
-  private static final String POST_DONATION = BLOOMERANG_URL + "Donation";
-  private static final String POST_RECURRINGDONATION = BLOOMERANG_URL + "RecurringDonation";
+  private static final String BLOOMERANG_URL = "https://api.bloomerang.co/v2/";
 
   private String apiKey;
   protected Environment env;
-  private ObjectMapper mapper;
 
   @Override
   public String name() { return "bloomerang"; }
@@ -69,15 +61,12 @@ public class BloomerangCrmService implements BasicCrmService {
   public void init(Environment env) {
     this.apiKey = env.getConfig().bloomerang.secretKey;
     this.env = env;
-
-    mapper = new ObjectMapper();
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
   @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
+    Constituent constituent = get(BLOOMERANG_URL + "constituent/" + id, headers(), Constituent.class);
+    return Optional.of(toCrmContact(constituent));
   }
 
   @Override
@@ -89,17 +78,19 @@ public class BloomerangCrmService implements BasicCrmService {
       ConstituentSearchResults constituentSearchResults = null;
       try {
         // search by email only
-        constituentSearchResults = mapper.readValue(get(SEARCH + contactSearch.email), ConstituentSearchResults.class);
+        constituentSearchResults = get(BLOOMERANG_URL + "constituents/search?search=" + contactSearch.email, headers(), ConstituentSearchResults.class);
       } catch (Exception e) {
         // do nothing
       }
-      CrmContact crmContact = null;
-      if (constituentSearchResults != null && constituentSearchResults.results.length > 0
-          && constituentSearchResults.results[0] != null) {
-        // TODO: no accounts in Bloomerang, so this might need addressed upstream if the accountId doesn't exist
-        crmContact = new CrmContact(constituentSearchResults.results[0].id + "");
+      if (constituentSearchResults == null) {
+        return PagedResults.getPagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
       }
-      return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
+      // filter by exact email match -- API appears to be doing SUPER forgiving fuzzy matches
+      List<Constituent> constituents = constituentSearchResults.results.stream()
+          .filter(c -> c.primaryEmail != null && contactSearch.email.equalsIgnoreCase(c.primaryEmail.value))
+          .collect(Collectors.toList());
+      List<CrmContact> crmContacts = toCrmContact(constituents);
+      return PagedResults.getPagedResultsFromCurrentOffset(crmContacts, contactSearch);
     } else {
       throw new RuntimeException("not implemented");
     }
@@ -107,19 +98,19 @@ public class BloomerangCrmService implements BasicCrmService {
 
   @Override
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
-    // TODO
+    // Doesn't appear possible? But I believe this was mainly for Donor Portal.
     return Collections.emptyList();
   }
 
   @Override
   public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-    // TODO
+    // Retrieving donations by Stripe IDs are not possible.
     return Optional.empty();
   }
 
   @Override
   public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO
+    // Retrieving donations by Stripe IDs are not possible.
   }
 
   @Override
@@ -127,36 +118,34 @@ public class BloomerangCrmService implements BasicCrmService {
     Constituent constituent = new Constituent();
     constituent.firstName = crmContact.firstName;
     constituent.lastName = crmContact.lastName;
-    // TODO
-//    constituent.customFields = customFields;
-    String body = mapper.writeValueAsString(constituent);
-
-    constituent = mapper.readValue(post(POST_CONSTITUENT, body), Constituent.class);
+    constituent.householdId = crmContact.accountId == null ? null : Integer.parseInt(crmContact.accountId);
 
     if (!Strings.isNullOrEmpty(crmContact.email)) {
       final Email constituentEmail = new Email();
-      constituentEmail.accountId = constituent.id;
       constituentEmail.value = crmContact.email;
-      body = mapper.writeValueAsString(constituentEmail);
-      post(POST_EMAIL, body);
+      constituent.primaryEmail = constituentEmail;
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.mobilePhone)) {
+    if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
       final Phone constituentPhone = new Phone();
-      constituentPhone.accountId = constituent.id;
-      constituentPhone.number = crmContact.mobilePhone;
-      constituentPhone.typeName = "Mobile"; // TODO: confirm this is correct
-      post(POST_PHONE, mapper.writeValueAsString(constituentPhone));
+      constituentPhone.number = crmContact.phoneNumberForSMS();
+      constituent.primaryPhone = constituentPhone;
     }
 
     if (!Strings.isNullOrEmpty(crmContact.address.street)) {
       final Address constituentAddress = new Address();
-      constituentAddress.accountId = constituent.id;
       constituentAddress.street = crmContact.address.street;
       constituentAddress.city = crmContact.address.city;
       constituentAddress.state = crmContact.address.state;
-      constituentAddress.zip = crmContact.address.postalCode;
-      post(POST_ADDRESS, mapper.writeValueAsString(constituentAddress));
+      constituentAddress.postalCode = crmContact.address.postalCode;
+      constituentAddress.country = crmContact.address.country;
+      constituent.primaryAddress = constituentAddress;
+    }
+
+    constituent = post(BLOOMERANG_URL + "constituent", constituent, APPLICATION_JSON, headers(), Constituent.class);
+
+    if (constituent == null) {
+      return null;
     }
 
     log.info("inserted constituent {}", constituent.id);
@@ -166,7 +155,7 @@ public class BloomerangCrmService implements BasicCrmService {
 
   @Override
   public void updateContact(CrmContact crmContact) throws Exception {
-    // TODO
+    // TODO: currently used only by custom donation forms, messaging opt in/out, and batch updates
   }
 
   @Override
@@ -176,8 +165,21 @@ public class BloomerangCrmService implements BasicCrmService {
     donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
     donation.date = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
 
-    String body = mapper.writeValueAsString(donation);
-    donation = mapper.readValue(post(POST_DONATION, body), Donation.class);
+    Designation designation = new Designation();
+    designation.amount = donation.amount;
+    // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund));
+    } else {
+      designation.fundId = env.getConfig().bloomerang.defaultFundId;
+    }
+    donation.designations.add(designation);
+
+    donation = post(BLOOMERANG_URL + "transaction", donation, APPLICATION_JSON, headers(), Donation.class);
+
+    if (donation == null) {
+      return null;
+    }
 
     log.info("inserted donation {}", donation.id);
 
@@ -186,32 +188,23 @@ public class BloomerangCrmService implements BasicCrmService {
 
   @Override
   public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    RecurringDonation donation = new RecurringDonation();
-    donation.setAccountId(Integer.parseInt(paymentGatewayEvent.getCrmContact().id));
-    donation.setAmount(paymentGatewayEvent.getSubscriptionAmountInDollars());
-    donation.setDate(new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime()));
-
-    String body = mapper.writeValueAsString(donation);
-    donation = mapper.readValue(post(POST_RECURRINGDONATION, body), RecurringDonation.class);
-
-    log.info("inserted recurring donation {}", donation.id);
-
-    return donation.id + "";
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+    return null;
   }
 
   @Override
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO
+    // Retrieving donations by Stripe IDs are not possible.
   }
 
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    // TODO
+    throw new RuntimeException("not implemented");
   }
 
   @Override
   public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-    // TODO
+    throw new RuntimeException("not implemented");
   }
 
   @Override
@@ -221,254 +214,315 @@ public class BloomerangCrmService implements BasicCrmService {
 
   @Override
   public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
-    // TODO
     return Collections.emptyList();
   }
 
   @Override
   public double getDonationsTotal(String filter) throws Exception {
-    // TODO
-    return 0.0;
+    throw new RuntimeException("not implemented");
   }
 
-  private InputStream get(String endpoint) throws Exception {
-    final HttpClient client = new DefaultHttpClient();
-    final HttpGet request = new HttpGet(endpoint);
-    request.addHeader("Authorization", "Basic " + apiKey);
-    final HttpResponse response = client.execute(request);
-    return response.getEntity().getContent();
+  @Override
+  public Optional<CrmAccount> getAccountById(String id) throws Exception {
+    return Optional.empty();
   }
 
-  private String post(String endpoint, String body) throws Exception {
-    final HttpClient client = new DefaultHttpClient();
-    final HttpPost post = new HttpPost(endpoint);
-    post.addHeader("Authorization", "Basic " + apiKey);
-    final StringEntity requestEntity = new StringEntity(body, "application/json", "UTF-8");
-    post.setEntity(requestEntity);
-    final HttpResponse response = client.execute(post);
-
-//		System.out.println(endpoint);
-//		System.out.println(body);
-    StringWriter writer = new StringWriter();
-    IOUtils.copy(response.getEntity().getContent(), writer);
-//		System.out.println(response);
-//		System.out.println(response.getStatusLine().getStatusCode());
-
-    return writer.toString();
+  @Override
+  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
+    return Optional.empty();
   }
 
+  @Override
+  public String insertAccount(CrmAccount crmAccount) throws Exception {
+    // For now, holding back on households. The odd part is Bloomerang only does this for true households, while
+    // businesses are instead treated as a *constituent*.
+    return null;
 
-  public static class Constituent {
-    @JsonIgnore
-    private int id;
+//    Household household = new Household();
+//    household.fullName = crmAccount.name;
+//    String body = mapper.writeValueAsString(household);
+//
+//    household = mapper.readValue(post(BLOOMERANG_URL + "household", body), Household.class);
+//
+//    log.info("inserted household {}", household.id);
+//
+//    return household.id + "";
+  }
 
-    @JsonProperty("Type")
-    private String type = "Individual";
+  @Override
+  public void updateAccount(CrmAccount crmAccount) throws Exception {
+    // For now, holding back on households.
+  }
 
-    @JsonProperty("FirstName")
-    private String firstName;
+  @Override
+  public void deleteAccount(String accountId) throws Exception {
+    // For now, holding back on households.
+  }
 
-    @JsonProperty("LastName")
-    private String lastName;
+  @Override
+  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
 
-    @JsonProperty("CustomFields")
-    private Map<String, String[]> customFields;
+  @Override
+  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
 
-    @JsonIgnore
-    public int getId() {
-      return id;
+  @Override
+  public void addContactToList(CrmContact crmContact, String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+    return Optional.empty();
+  }
+
+  @Override
+  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+    return Collections.emptyList();
+  }
+
+  @Override
+  public void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+    return Optional.empty();
+  }
+
+  @Override
+  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+  }
+
+  @Override
+  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // We're temporarily skipping RDs, since retrieving RDs by Stripe Subscription ID is not possible.
+  }
+
+  @Override
+  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public Optional<CrmUser> getUserById(String id) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<CrmUser> getUserByEmail(String email) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
+  public String insertTask(CrmTask crmTask) throws Exception {
+    return null;
+  }
+
+  protected CrmContact toCrmContact(Constituent constituent) {
+    if (constituent == null) {
+      return null;
     }
 
+    String householdId = constituent.householdId == null ? null : constituent.householdId + "";
+    String primaryEmail = constituent.primaryEmail == null ? null : constituent.primaryEmail.value;
+    String primaryPhone = constituent.primaryPhone == null ? null : constituent.primaryPhone.number;
+    CrmAddress address = constituent.primaryAddress == null ? null : new CrmAddress(
+        constituent.primaryAddress.street,
+        constituent.primaryAddress.city,
+        constituent.primaryAddress.state,
+        constituent.primaryAddress.postalCode,
+        constituent.primaryAddress.country
+    );
+
+    return new CrmContact(
+        constituent.id + "",
+        householdId,
+        constituent.firstName,
+        constituent.lastName,
+        // TODO: See below note on Contact.FullName
+//        constituent.fullName,
+        constituent.firstName + " " + constituent.lastName,
+        primaryEmail,
+        primaryPhone, // home phone
+        null, null, null, null, // other phone fields
+        address,
+        null, null, null, null, // opt in/out
+        null, null, // owner
+        null, null, null, null, // donation metrics
+        null, // emailGroups
+        null, // contactLanguage
+        constituent,
+        "https://crm.bloomerang.co/Constituent/" + constituent.id + "/Profile"
+    );
+  }
+
+  protected Optional<CrmContact> toCrmContact(Optional<Constituent> constituent) {
+    return constituent.map(this::toCrmContact);
+  }
+
+  protected List<CrmContact> toCrmContact(List<Constituent> constituents) {
+    if (constituents == null) {
+      return Collections.emptyList();
+    }
+    return constituents.stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
+
+  protected PagedResults<CrmContact> toCrmContact(PagedResults<Constituent> constituents) {
+    return new PagedResults<>(constituents.getResults().stream().map(this::toCrmContact).collect(Collectors.toList()),
+        constituents.getPageSize(), constituents.getNextPageToken());
+  }
+
+  private HttpClient.HeaderBuilder headers() {
+    return HttpClient.HeaderBuilder.builder().header("X-API-KEY", apiKey);
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Household {
     @JsonProperty("Id")
-    public void setId(int id) {
-      this.id = id;
-    }
-
-    public String getType() {
-      return type;
-    }
-
-    public void setType(String type) {
-      this.type = type;
-    }
-
-    public String getFirstName() {
-      return firstName;
-    }
-
-    public void setFirstName(String firstName) {
-      this.firstName = firstName;
-    }
-
-    public String getLastName() {
-      return lastName;
-    }
-
-    public void setLastName(String lastName) {
-      this.lastName = lastName;
-    }
-
-    public Map<String, String[]> getCustomFields() {
-      return customFields;
-    }
-
-    public void setCustomFields(Map<String, String[]> customFields) {
-      this.customFields = customFields;
-    }
+    public int id;
+    @JsonProperty("FullName")
+    public String fullName;
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Constituent {
+    @JsonProperty("Id")
+    public int id;
+    @JsonProperty("Type")
+    public String type = "Individual";
+    @JsonProperty("FirstName")
+    public String firstName;
+    @JsonProperty("LastName")
+    public String lastName;
+    // TODO: Annoying issue. We may need to set this for Organization constituents. But the API won't let you set this
+    //  for Individuals. Makes sense, but it's giving that same error even when this is null. We might need to extend the class...
+//    @JsonProperty("FullName")
+//    public String fullName;
+    @JsonProperty("HouseholdId")
+    public Integer householdId;
+    @JsonProperty("PrimaryEmail")
+    public Email primaryEmail;
+    @JsonProperty("PrimaryPhone")
+    public Phone primaryPhone;
+    @JsonProperty("PrimaryAddress")
+    public Address primaryAddress;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Email {
-    @JsonProperty("AccountId")
-    public int accountId;
-
-    @JsonProperty("TypeName")
-    public String typeName = "Home";
-
+    @JsonProperty("Type")
+    public String type = "Home";
+    @JsonProperty("IsPrimary")
+    public boolean isPrimary = true;
     @JsonProperty("Value")
     public String value;
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Phone {
-    @JsonProperty("AccountId")
-    public int accountId;
-
-    @JsonProperty("TypeName")
-    public String typeName = "Home";
-
+    @JsonProperty("Type")
+    public String type = "Home";
+    @JsonProperty("IsPrimary")
+    public boolean isPrimary = true;
     @JsonProperty("Number")
     public String number;
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Address {
-    @JsonProperty("AccountId")
-    public int accountId;
-
-    @JsonProperty("TypeName")
-    public String typeName = "Home";
-
+    @JsonProperty("Type")
+    public String type = "Home";
     @JsonProperty("IsPrimary")
     public boolean isPrimary = true;
-
     @JsonProperty("Street")
     public String street;
-
     @JsonProperty("City")
     public String city;
-
     @JsonProperty("State")
     public String state;
-
     @JsonProperty("PostalCode")
-    public String zip;
+    public String postalCode;
+    @JsonProperty("Country")
+    public String country;
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class ConstituentSearchResults {
     @JsonProperty("Total")
     public int total;
-
     @JsonProperty("Results")
-    public Constituent[] results;
+    public List<Constituent> results;
   }
 
-  public static class Duplicate {
-    @JsonProperty("FirstName")
-    public String firstName;
-
-    @JsonProperty("LastName")
-    public String lastName;
-
-    @JsonProperty("Street")
-    public String street;
-
-    @JsonProperty("PhoneNumber")
-    public String phone;
-
-    @JsonProperty("Email")
-    public String email;
-  }
-
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Donation {
-    @JsonIgnore
-    private int id;
-
-    @JsonProperty("AccountId")
-    private int accountId;
-
-    @JsonProperty("Amount")
-    private double amount;
-
-    @JsonProperty("FundName")
-    private String fundName = "Online Donation";
-
-    @JsonProperty("Date")
-    private String date;
-
-    @JsonIgnore
-    public int getId() {
-      return id;
-    }
-
     @JsonProperty("Id")
-    public void setId(int id) {
-      this.id = id;
-    }
-
-    public int getAccountId() {
-      return accountId;
-    }
-
-    public void setAccountId(int accountId) {
-      this.accountId = accountId;
-    }
-
-    public double getAmount() {
-      return amount;
-    }
-
-    public void setAmount(double amount) {
-      this.amount = amount;
-    }
-
-    public String getFundName() {
-      return fundName;
-    }
-
-    public void setFundName(String fundName) {
-      this.fundName = fundName;
-    }
-
-    public String getDate() {
-      return date;
-    }
-
-    public void setDate(String date) {
-      this.date = date;
-    }
+    public int id;
+    @JsonProperty("AccountId")
+    public int accountId;
+    @JsonProperty("Amount")
+    public double amount;
+    @JsonProperty("Method")
+    public String method = "Credit Card";
+    @JsonProperty("Date")
+    public String date;
+    @JsonProperty("Designations")
+    public List<Designation> designations = new ArrayList<>();
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Designation {
+    @JsonProperty("Amount")
+    public double amount;
+    @JsonProperty("NonDeductibleAmount")
+    public double nonDeductibleAmount = 0.0;
+    @JsonProperty("Type")
+    public String type = "Donation";
+    @JsonProperty("FundId")
+    public int fundId;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class RecurringDonation extends Donation {
-    @JsonIgnore
-    private int id;
-
-    @JsonProperty("Frequency")
-    private String frequency = "Monthly";
-
-    @JsonIgnore
-    public int getId() {
-      return id;
-    }
-
     @JsonProperty("Id")
-    public void setId(int id) {
-      this.id = id;
-    }
-
-    public String getFrequency() {
-      return frequency;
-    }
-
-    public void setFrequency(String frequency) {
-      this.frequency = frequency;
-    }
+    public int id;
+    @JsonProperty("Frequency")
+    public String frequency = "Monthly";
   }
 }

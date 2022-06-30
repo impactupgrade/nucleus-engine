@@ -4,20 +4,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
-import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.ws.rs.core.Response;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+
+import static com.impactupgrade.nucleus.util.HttpClient.delete;
+import static com.impactupgrade.nucleus.util.HttpClient.get;
+import static com.impactupgrade.nucleus.util.HttpClient.post;
+import static com.impactupgrade.nucleus.util.HttpClient.put;
+import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class VirtuousClient {
 
@@ -48,13 +53,7 @@ public class VirtuousClient {
 
     // Contact
     public Contact createContact(Contact contact) {
-        Response response = HttpClient.postJson(contact, getAccessToken(), VIRTUOUS_API_URL + "/Contact");
-        if (isOk(response)) {
-            return response.readEntity(Contact.class);
-        } else {
-            log.error("Failed to create contact! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+        return post(VIRTUOUS_API_URL + "/Contact", contact, APPLICATION_JSON, headers(), Contact.class);
     }
 
     public Contact getContactById(Integer id) {
@@ -66,17 +65,7 @@ public class VirtuousClient {
     }
 
     private Contact getContact(String contactUrl) {
-        Response response = HttpClient.getJson(contactUrl, getAccessToken());
-        int statusCode = response.getStatus();
-        if (statusCode == HttpStatus.SC_OK) {
-            return response.readEntity(Contact.class);
-        }
-        if (statusCode == HttpStatus.SC_NOT_FOUND) {
-            log.info("Contact not found.");
-        } else {
-            log.error("Failed to get contact by url: {}! Response (status/body): {}/{}", contactUrl, statusCode, response.readEntity(String.class));
-        }
-        return null;
+        return get(contactUrl, headers(), Contact.class);
     }
 
     public List<Contact> getContactsModifiedAfter(Calendar modifiedAfter) {
@@ -138,55 +127,27 @@ public class VirtuousClient {
     }
 
     public Contact updateContact(Contact contact) {
-        Response response = HttpClient.putJson(contact, getAccessToken(), VIRTUOUS_API_URL + "/Contact/" + contact.id);
-        if (isOk(response)) {
-            return response.readEntity(Contact.class);
-        } else {
-            log.error("Failed to update contact! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+        return put(VIRTUOUS_API_URL + "/Contact/" + contact.id, contact, APPLICATION_JSON, headers(), Contact.class);
     }
 
     public ContactMethod createContactMethod(ContactMethod contactMethod) {
-        Response response = HttpClient.postJson(contactMethod, getAccessToken(), VIRTUOUS_API_URL + "/ContactMethod");
-        if (isOk(response)) {
-            return response.readEntity(ContactMethod.class);
-        } else {
-            log.error("Failed to create contact method! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+        return post(VIRTUOUS_API_URL + "/ContactMethod", contactMethod, APPLICATION_JSON, headers(), ContactMethod.class);
     }
 
     public ContactMethod updateContactMethod(ContactMethod contactMethod) {
-        Response response = HttpClient.putJson(contactMethod, getAccessToken(), VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id);
-        if (isOk(response)) {
-            return response.readEntity(ContactMethod.class);
-        } else {
-            log.error("Failed to update contact method! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+        return put(VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id, contactMethod, APPLICATION_JSON, headers(), ContactMethod.class);
     }
 
-    public ContactMethod deleteContactMethod(ContactMethod contactMethod) {
-        Response response = HttpClient.delete(getAccessToken(), VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id);
-        if (isOk(response)) {
-            return contactMethod;
-        } else {
-            log.error("Failed to delete contact method! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+    public void deleteContactMethod(ContactMethod contactMethod) {
+        delete(VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id, headers());
     }
 
     public List<Contact> queryContacts(ContactQuery query) {
-        Response response = HttpClient.postJson(
-                query, getAccessToken(),
-                VIRTUOUS_API_URL + "/Contact/Query/FullContact?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT);
-        if (response.getStatus() == HttpStatus.SC_OK) {
-            return response.readEntity(ContactQueryResponse.class).contacts;
-        } else {
-            log.error("Failed to query contacts! Response: {}", response.readEntity(String.class));
-            return null;
+        ContactQueryResponse response = post(VIRTUOUS_API_URL + "/Contact/Query/FullContact?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT, query, APPLICATION_JSON, headers(), ContactQueryResponse.class);
+        if (response == null) {
+            return Collections.emptyList();
         }
+        return response.contacts;
     }
 
     public List<ContactIndividualShort> getContactIndividuals(String searchString) {
@@ -196,16 +157,11 @@ public class VirtuousClient {
     public List<ContactIndividualShort> getContactIndividuals(String searchString, int offset, int limit) {
         ContactsSearchCriteria criteria = new ContactsSearchCriteria();
         criteria.search = searchString;
-        Response response = HttpClient.postJson(
-                criteria, getAccessToken(),
-                VIRTUOUS_API_URL + "/Contact/Search?skip=" + offset + "&take=" + limit);
-        int statusCode = response.getStatus();
-        if (statusCode == HttpStatus.SC_OK) {
-            return response.readEntity(ContactSearchResponse.class).contactIndividualShorts;
-        } else {
-            log.error("Failed to get contacts list for search string {}! Response: {}", searchString, response.readEntity(String.class));
-            return null;
+        ContactSearchResponse response = post(VIRTUOUS_API_URL + "/Contact/Search?skip=" + offset + "&take=" + limit, criteria, APPLICATION_JSON, headers(), ContactSearchResponse.class);
+        if (response == null) {
+            return Collections.emptyList();
         }
+        return response.contactIndividualShorts;
     }
 
     // Gift
@@ -215,17 +171,7 @@ public class VirtuousClient {
     }
 
     private Gift getGift(String giftUrl) {
-        Response response = HttpClient.getJson(giftUrl, getAccessToken());
-        int statusCode = response.getStatus();
-        if (statusCode == HttpStatus.SC_OK) {
-            return response.readEntity(Gift.class);
-        }
-        if (statusCode == HttpStatus.SC_NOT_FOUND) {
-            log.info("Gift not found.");
-        } else {
-            log.error("Failed to get gift by url: {}! Response (status/body): {}/{}", giftUrl, statusCode, response.readEntity(String.class));
-        }
-        return null;
+        return get(giftUrl, headers(), Gift.class);
     }
 
     // This endpoint creates a gift directly onto a contact record.
@@ -235,14 +181,7 @@ public class VirtuousClient {
     // Please use the Gift Transaction endpoint as a better alternative.
     // https://docs.virtuoussoftware.com/#5cbc35dc-6b1e-41da-b1a5-477043a9a66d
     public Gift createGift(Gift gift) {
-        Response response = HttpClient.postJson(gift, getAccessToken(),
-                VIRTUOUS_API_URL + "/Gift");
-        if (isOk(response)) {
-            return response.readEntity(Gift.class);
-        } else {
-            log.error("Failed to create Gift Transaction! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+        return post(VIRTUOUS_API_URL + "/Gift", gift, APPLICATION_JSON, headers(), Gift.class);
     }
 
     // This is the recommended way to create a gift.
@@ -250,31 +189,15 @@ public class VirtuousClient {
     // for Contacts, Recurring gifts, Designations, etc.
     // https://docs.virtuoussoftware.com/#e4a6a1e3-71a4-44f9-bd7c-9466996befac
     public void createGiftAsync(GiftTransaction giftTransaction) {
-        Response response = HttpClient.postJson(giftTransaction, getAccessToken(),
-                VIRTUOUS_API_URL + "/v2/Gift/Transaction");
-        if (!isOk(response)) {
-            log.error("Failed to create Gift Transaction! Response: {}", response.readEntity(String.class));
-        }
+        post(VIRTUOUS_API_URL + "/v2/Gift/Transaction", giftTransaction, APPLICATION_JSON, headers());
     }
 
     public Gift updateGift(Gift gift) {
-        Response response = HttpClient.putJson(gift, getAccessToken(), VIRTUOUS_API_URL + "/Gift" + "/" + gift.id);
-        if (isOk(response)) {
-            return response.readEntity(Gift.class);
-        } else {
-            log.error("Failed to update Gift! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+        return put(VIRTUOUS_API_URL + "/Gift" + "/" + gift.id, gift, APPLICATION_JSON, headers(), Gift.class);
     }
 
     public Gift createReversingTransaction(Gift gift) throws Exception {
-        Response response = HttpClient.postJson(reversingTransaction(gift), getAccessToken(), VIRTUOUS_API_URL + "/Gift/ReversingTransaction");
-        if (isOk(response)) {
-            return response.readEntity(Gift.class);
-        } else {
-            log.error("Failed to create Reversing Transaction! Response: {}", response.readEntity(String.class));
-            return null;
-        }
+        return post(VIRTUOUS_API_URL + "/Gift/ReversingTransaction", reversingTransaction(gift), APPLICATION_JSON, headers(), Gift.class);
     }
 
     public ReversingTransaction reversingTransaction(Gift gift) {
@@ -286,7 +209,7 @@ public class VirtuousClient {
         return reversingTransaction;
     }
 
-    private String getAccessToken() {
+    private HttpClient.HeaderBuilder headers() {
         // TODO: check access token from config, if available; howto?
         if (!containsValidAccessToken(tokenResponse)) {
 
@@ -309,7 +232,7 @@ public class VirtuousClient {
             //To request a new Token after the user enters the verification code, add an OTP header:
             //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token
         }
-        return tokenResponse.accessToken;
+        return HttpClient.HeaderBuilder.builder().authBearerToken(tokenResponse.accessToken);
     }
 
     private boolean containsValidAccessToken(TokenResponse tokenResponse) {
@@ -320,27 +243,11 @@ public class VirtuousClient {
         // To refresh access token:
         // curl -d "grant_type=refresh_token&refresh_token=REFRESH_TOKEN"
         // -X POST https://api.virtuoussoftware.com/Token
-        Response response = HttpClient.postForm(
-                Map.of("grant_type", "refresh_token",
-                        "refresh_token", refreshToken),
-                null, tokenServerUrl);
-        return response.readEntity(TokenResponse.class);
+        return post(tokenServerUrl, Map.of("grant_type", "refresh_token", "refresh_token", refreshToken), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
     }
 
     private TokenResponse getTokenResponse() {
-        Response response = HttpClient.postForm(
-                Map.of("grant_type", "password"
-                        , "username", username
-                        , "password", password
-                        //, "otp", "012345"
-                ), null, tokenServerUrl);
-
-        return response.readEntity(TokenResponse.class);
-    }
-
-    private boolean isOk(Response response) {
-        return Set.of(HttpStatus.SC_OK, HttpStatus.SC_CREATED, HttpStatus.SC_ACCEPTED)
-                .contains(response.getStatus());
+        return post(tokenServerUrl, Map.of("grant_type", "password", "username", username, "password", password), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
     }
 
     public static class TokenResponse {

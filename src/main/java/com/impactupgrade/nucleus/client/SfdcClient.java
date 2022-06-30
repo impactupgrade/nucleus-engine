@@ -22,7 +22,6 @@ import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 
-import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +36,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.impactupgrade.nucleus.util.HttpClient.post;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class SfdcClient extends SFDCPartnerAPIClient {
 
@@ -584,8 +586,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     String sfdcEndpoint = env.getConfig().salesforce.forceUrl + "/services/apexrest/refreshrecurringdonation";
 
-    Response response = HttpClient.postJson(data, sessionId, sfdcEndpoint);
-    log.info("SFDC refresh recurring donation response: {}", response.getStatus());
+    post(sfdcEndpoint, data, APPLICATION_JSON, HttpClient.HeaderBuilder.builder().authBearerToken(sessionId));
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

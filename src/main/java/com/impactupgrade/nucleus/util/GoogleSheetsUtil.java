@@ -13,6 +13,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static com.impactupgrade.nucleus.util.HttpClient.get;
+
 public class GoogleSheetsUtil {
 
   public static List<Map<String, String>> getSheetData(String url) throws IOException {
@@ -45,6 +47,6 @@ public class GoogleSheetsUtil {
       csvUrl = url;
     }
 
-    return HttpClient.getAsString(csvUrl);
+    return get(csvUrl, HttpClient.HeaderBuilder.builder(), String.class);
   }
 }
