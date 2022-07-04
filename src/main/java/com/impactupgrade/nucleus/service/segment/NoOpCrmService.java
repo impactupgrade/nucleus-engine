@@ -179,11 +179,6 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailDonorContacts(Calendar updatedSince, String filter) throws Exception {
-    return Collections.emptyList();
-  }
-
-  @Override
   public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
     return Collections.emptyMap();
   }
