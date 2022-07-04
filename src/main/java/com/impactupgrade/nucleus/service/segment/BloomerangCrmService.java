@@ -160,6 +160,12 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    // Bloomerang has no notion of non-successful transactions.
+    if (!paymentGatewayEvent.isTransactionSuccess()) {
+      log.info("skipping the non-successful transaction: {}", paymentGatewayEvent.getTransactionId());
+      return null;
+    }
+
     Donation donation = new Donation();
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
     donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
