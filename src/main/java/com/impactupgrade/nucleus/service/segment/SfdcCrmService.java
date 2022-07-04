@@ -130,12 +130,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
   public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
     // TODO
     return null;
@@ -1256,8 +1250,7 @@ public class SfdcCrmService implements CrmService {
     String customerId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
     String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
-    String status = sObject.getField("npe03__Open_Ended_Status__c").toString();
-    boolean active = "Open".equalsIgnoreCase(status);
+    boolean active = "Open".equalsIgnoreCase(sObject.getField("npe03__Open_Ended_Status__c").toString());
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(sObject.getField("npe03__Installment_Period__c").toString());
     String donationName = getStringField(sObject, "Name");
 
@@ -1274,7 +1267,6 @@ public class SfdcCrmService implements CrmService {
         customerId,
         amount,
         paymentGatewayName,
-        status,
         active,
         frequency,
         donationName,

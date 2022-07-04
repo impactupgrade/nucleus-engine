@@ -51,7 +51,6 @@ public class CrmRecurringDonation {
   public String donationName;
   public Double amount;
   public String paymentGatewayName;
-  public String status;
   public Boolean active;
   public Frequency frequency;
   public CrmAccount account;
@@ -71,13 +70,12 @@ public class CrmRecurringDonation {
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount,
-      String paymentGatewayName, String status, Boolean active, Frequency frequency, String donationName, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
+      String paymentGatewayName, Boolean active, Frequency frequency, String donationName, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
     this.id = id;
     this.subscriptionId = subscriptionId;
     this.customerId = customerId;
     this.amount = amount;
     this.paymentGatewayName = paymentGatewayName;
-    this.status = status;
     this.active = active;
     this.frequency = frequency;
     this.donationName = donationName;

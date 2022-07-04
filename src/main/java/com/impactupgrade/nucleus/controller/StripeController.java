@@ -220,6 +220,7 @@ public class StripeController {
           log.info("found expiring card {}", card.getId());
 
           Customer customer = env.stripeClient().getCustomer(card.getCustomer());
+          log.info("found customer {}", customer.getId());
           List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(card.getCustomer());
           List<Subscription> affectedSubscriptions = new ArrayList<>();
 
@@ -244,9 +245,12 @@ public class StripeController {
           CrmService crmService = env.donationsCrmService();
 
           for (Subscription subscription: affectedSubscriptions) {
+            // TODO: Move to StripePaymentGatewayService?
+            PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+            paymentGatewayEvent.initStripe(subscription, customer);
             // For each open subscription using that payment source,
             // look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
-            Optional<CrmRecurringDonation> crmRecurringDonationOptional = crmService.getRecurringDonationBySubscriptionId(subscription.getId());
+            Optional<CrmRecurringDonation> crmRecurringDonationOptional = crmService.getRecurringDonation(paymentGatewayEvent);
 
             if (crmRecurringDonationOptional.isPresent()) {
               String targetId = null;

@@ -200,13 +200,6 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    Deal deal = hsClient.deal().read(id, dealFields);
-    CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
-    return Optional.of(crmRecurringDonation);
-  }
-
-  @Override
   public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
     AssociationSearchResults associations = hsClient.association().search("company", accountId, "deal");
     List<String> dealIds = associations.getResults().stream().flatMap(r -> r.getTo().stream()).map(HasId::getId).collect(Collectors.toList());
@@ -613,7 +606,9 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    return getRecurringDonationById(manageDonationEvent.getDonationId());
+    Deal deal = hsClient.deal().read(manageDonationEvent.getDonationId(), dealFields);
+    CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
+    return Optional.of(crmRecurringDonation);
   }
 
   @Override
@@ -989,7 +984,6 @@ public class HubSpotCrmService implements CrmService {
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getOtherProperties()),
         deal.getProperties().getAmount(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties()),
-        deal.getProperties().getDealstage(),
         deal.getProperties().getDealstage().equalsIgnoreCase(env.getConfig().hubspot.recurringDonationPipeline.openStageId),
         frequency,
         deal.getProperties().getDealname(),

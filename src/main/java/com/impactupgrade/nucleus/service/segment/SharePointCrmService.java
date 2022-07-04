@@ -259,11 +259,6 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-        return Optional.empty();
-    }
-
-    @Override
     public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
         return Optional.empty();
     }

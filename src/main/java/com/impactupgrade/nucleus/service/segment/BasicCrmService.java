@@ -66,10 +66,6 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    return Optional.empty();
-  }
-
   default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
     return Optional.empty();
   }
