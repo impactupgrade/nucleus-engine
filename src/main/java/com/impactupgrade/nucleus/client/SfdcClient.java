@@ -158,7 +158,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, homephone, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
+  // TODO: Finding a few clients with no homephone, so taking that out for now.
+  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
@@ -461,6 +462,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       } else {
         clauses.add("(Phone = null OR Phone = '') AND (MobilePhone = null OR MobilePhone = '') AND (HomePhone = null OR HomePhone = '')");
       }
+    }
+
+    if (!Strings.isNullOrEmpty(contactSearch.accountId)) {
+      clauses.add("AccountId = '" + contactSearch.accountId + "'");
     }
 
     if (!Strings.isNullOrEmpty(contactSearch.ownerId)) {
