@@ -1,11 +1,9 @@
 package com.impactupgrade.nucleus.service.segment;
 
-import com.google.api.client.util.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.io.ByteSource;
 import com.impactupgrade.nucleus.client.MSGraphClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -34,12 +32,15 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+// TODO: Note that this class is super specific to LLS' Excel/Sharepoint service and needs to be more configuration driven!
 public class SharePointCrmService implements CrmService {
 
     private static final Logger log = LogManager.getLogger(SharePointCrmService.class);
@@ -75,19 +76,21 @@ public class SharePointCrmService implements CrmService {
                 });
     }
 
-    private List<Map<String, String>> downloadCsvData(String siteUrl, String pathToFile) {
-        log.info("downloading data for {}/{}...", siteUrl, pathToFile);
-        InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteUrl, pathToFile);
-        ByteSource byteSource = new ByteSource() {
-            @Override
-            public InputStream openStream() {
-                return inputStream;
-            }
-        };
+    protected List<Map<String, String>> downloadCsvData(String siteId, String pathToFile) {
+        log.info("downloading data for {}/{}...", siteId, pathToFile);
+        InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, pathToFile);
+//        ByteSource byteSource = new ByteSource() {
+//            @Override
+//            public InputStream openStream() {
+//                return inputStream;
+//            }
+//        };
         List<Map<String, String>> csvData = Collections.emptyList();
         try {
-            String inputStreamString = byteSource.asCharSource(Charsets.UTF_8).read();
-            csvData = Utils.getCsvData(inputStreamString);
+//            String inputStreamString = byteSource.asCharSource(Charsets.UTF_8).read();
+            // TODO: dynamically select by file extension?
+//            csvData = Utils.getCsvData(inputStreamString);
+            csvData = Utils.getExcelData(inputStream);
         } catch (IOException e) {
             log.error("Failed to get csv data! {}", e.getMessage());
 
@@ -107,9 +110,11 @@ public class SharePointCrmService implements CrmService {
 
     @Override
     public Optional<CrmContact> getContactById(String id) throws Exception {
+        String idColumn = env.getConfig().sharePoint.idColumn;
+
         List<Map<String, String>> csvData = getCsvData();
         List<CrmContact> foundContacts = csvData.stream()
-                .filter(csvRow -> StringUtils.equals(id, csvRow.get("id"))) // TODO: define correct csv header/map key
+                .filter(csvRow -> StringUtils.equals(id, csvRow.get(idColumn)))
                 .map(this::toCrmContact)
                 .collect(Collectors.toList());
         return CollectionUtils.isNotEmpty(foundContacts) ?
@@ -118,54 +123,63 @@ public class SharePointCrmService implements CrmService {
 
     @Override
     public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
-        List<Map<String, String>> csvData = getCsvData();
-        String csvColumn;
-        String searchValue;
-        if (!Strings.isNullOrEmpty(contactSearch.email)) {
-            csvColumn = "email"; // ?
-            searchValue = contactSearch.email;
+        EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
+        String emailColumn = sharepoint.emailColumn;
+        String phoneColumn = sharepoint.phoneColumn;
 
+        String csvColumn = null;
+        final String searchValue;
+        if (!Strings.isNullOrEmpty(contactSearch.email)) {
+            csvColumn = emailColumn;
+            searchValue = contactSearch.email;
         } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-            csvColumn = "Mobile #";
+            csvColumn = phoneColumn;
             searchValue = contactSearch.phone;
-        } else {
-            csvColumn = null; // any column
+        } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
             searchValue = contactSearch.keywords;
+        } else {
+            searchValue = null;
         }
 
+        List<Map<String, String>> csvData = getCsvData();
         List<CrmContact> foundContacts = new ArrayList<>();
         for (Map<String, String> csvRow : csvData) {
-            boolean matches;
-            if (!StringUtils.isEmpty(csvColumn)) {
-                matches = StringUtils.equals(csvRow.get(csvColumn), searchValue);
+            if (!Strings.isNullOrEmpty(searchValue)) {
+                if (!StringUtils.isEmpty(csvColumn)) {
+                    // search the specific email/phone/etc column
+                    if (!Strings.isNullOrEmpty(csvRow.get(csvColumn)) && csvRow.get(csvColumn).toLowerCase(Locale.ROOT).contains(searchValue.toLowerCase(Locale.ROOT))) {
+                        foundContacts.add(toCrmContact(csvRow));
+                    }
+                // search all columns
+                } else if (csvRow.values().stream().filter(Objects::nonNull).anyMatch(csvValue -> csvValue.toLowerCase(Locale.ROOT).contains(searchValue.toLowerCase(Locale.ROOT)))) {
+                    foundContacts.add(toCrmContact(csvRow));
+                }
             } else {
-                matches = csvRow.values().stream()
-                        .filter(csvValue -> csvValue.contains(searchValue))
-                        .findFirst()
-                        .isPresent();
+                // no search parameters -- return all
+                foundContacts.add(toCrmContact(csvRow));
             }
-            if (matches) foundContacts.add(toCrmContact(csvRow));
         }
+
+        long skip = contactSearch.pageToken == null ? 0L : Long.parseLong(contactSearch.pageToken);
         List<CrmContact> searchResults = foundContacts.stream()
-                .skip(Long.parseLong(contactSearch.pageToken))
+                .skip(skip)
                 .limit(contactSearch.pageSize)
                 .collect(Collectors.toList());
         return getPagedResults(searchResults, contactSearch);
     }
 
-    private List<Map<String, String>> getCsvData() {
-        String username1 = "username1"; // TODO: pass this from outside
-        EnvironmentConfig.SharePointUserConfiguration userConfiguration = env.getConfig().sharePoint.userConfigurations.get(username1);
-        String siteUrl = userConfiguration.siteUrl;
-        String pathToFile = userConfiguration.pathToFile;
-        return sharepointCsvCache.getUnchecked(toCacheKey(siteUrl, pathToFile));
+    protected List<Map<String, String>> getCsvData() {
+        EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
+        String siteId = sharepoint.siteId;
+        String pathToFile = sharepoint.filePath;
+        return sharepointCsvCache.getUnchecked(toCacheKey(siteId, pathToFile));
     }
 
-    private String toCacheKey(String siteUrl, String pathToFile) {
-        return siteUrl + CACHE_KEY_DELIMITER + pathToFile;
+    protected String toCacheKey(String siteId, String pathToFile) {
+        return siteId + CACHE_KEY_DELIMITER + pathToFile;
     }
 
-    private PagedResults<CrmContact> getPagedResults(List<CrmContact> crmContacts, ContactSearch contactSearch) {
+    protected PagedResults<CrmContact> getPagedResults(List<CrmContact> crmContacts, ContactSearch contactSearch) {
         Stream<CrmContact> contactStream = crmContacts.stream();
         if (contactSearch.pageToken != null) {
             long pageToken = 0;

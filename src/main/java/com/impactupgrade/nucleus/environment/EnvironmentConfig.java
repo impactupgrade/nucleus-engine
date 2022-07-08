@@ -269,13 +269,11 @@ public class EnvironmentConfig {
 
   public static class SharePointPlatform extends Platform {
     public String tenantId = "";
-    public Map<String, SharePointUserConfiguration> userConfigurations;
-
-  }
-
-  public static class SharePointUserConfiguration {
-    public String siteUrl = "";
-    public String pathToFile = "";
+    public String siteId = "";
+    public String filePath = "";
+    public String idColumn = "";
+    public String emailColumn = "";
+    public String phoneColumn = "";
   }
 
   public SharePointPlatform sharePoint = new SharePointPlatform();

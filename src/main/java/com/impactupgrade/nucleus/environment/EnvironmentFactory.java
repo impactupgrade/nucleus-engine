@@ -1,5 +1,7 @@
 package com.impactupgrade.nucleus.environment;
 
+import com.google.common.base.Strings;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
@@ -48,9 +50,11 @@ public class EnvironmentFactory {
     Environment env = newEnv();
     env.setRequest(request);
 
-    MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
-    otherContext.add(otherContextKey, otherContextValue);
-    env.setOtherContext(otherContext);
+    if (!Strings.isNullOrEmpty(otherContextKey) && !Strings.isNullOrEmpty(otherContextValue)) {
+      MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
+      otherContext.add(otherContextKey, otherContextValue);
+      env.setOtherContext(otherContext);
+    }
 
     env.getConfig().addOtherJson(otherJsonFilename);
 
