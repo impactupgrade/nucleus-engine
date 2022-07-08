@@ -131,7 +131,6 @@ public class Utils {
     // first row is the header
     Row header = rowIterator.next();
     for (Cell cell : header) {
-      headerData.add(cell.getStringCellValue());
       switch (cell.getCellType()) {
         case NUMERIC -> headerData.add(cell.getNumericCellValue() + "");
         case BOOLEAN -> headerData.add(cell.getBooleanCellValue() + "");
@@ -142,14 +141,17 @@ public class Utils {
     while (rowIterator.hasNext()) {
       Row row = rowIterator.next();
       Map<String, String> rowData = new HashMap<>();
-      int cellIndex = 0;
-      for (Cell cell : row) {
-        switch (cell.getCellType()) {
-          case NUMERIC -> rowData.put(headerData.get(cellIndex), cell.getNumericCellValue() + "");
-          case BOOLEAN -> rowData.put(headerData.get(cellIndex), cell.getBooleanCellValue() + "");
-          default -> rowData.put(headerData.get(cellIndex), cell.getStringCellValue());
+      for (int i = 0; i < headerData.size(); i++) {
+        Cell cell = row.getCell(i);
+        if (cell == null) {
+          rowData.put(headerData.get(i), "");
+        } else {
+          switch (cell.getCellType()) {
+            case NUMERIC -> rowData.put(headerData.get(i), cell.getNumericCellValue() + "");
+            case BOOLEAN -> rowData.put(headerData.get(i), cell.getBooleanCellValue() + "");
+            default -> rowData.put(headerData.get(i), cell.getStringCellValue());
+          }
         }
-        cellIndex++;
       }
       data.add(rowData);
     }

@@ -151,11 +151,13 @@ public class TwilioFrontlineController {
     // TODO: WhatsApp?
     // TODO: Chat?
 
-    FrontlineLink crmLink = new FrontlineLink();
-    crmLink.type = crmName;
-    crmLink.display_name = "Contact's full profile in " + crmName;
-    crmLink.value = crmContact.crmUrl;
-    frontlineCustomer.links.add(crmLink);
+    if (!Strings.isNullOrEmpty(crmContact.crmUrl)) {
+      FrontlineLink crmLink = new FrontlineLink();
+      crmLink.type = crmName;
+      crmLink.display_name = "Contact's full profile in " + crmName;
+      crmLink.value = crmContact.crmUrl;
+      frontlineCustomer.links.add(crmLink);
+    }
 
     if (!Strings.isNullOrEmpty(crmContact.email)) {
       FrontlineLink emailLink = new FrontlineLink();

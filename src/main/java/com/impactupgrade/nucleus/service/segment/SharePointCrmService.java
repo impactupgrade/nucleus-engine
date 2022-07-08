@@ -373,6 +373,7 @@ public class SharePointCrmService implements CrmService {
         crmContact.firstName = map.get("First Name");
         crmContact.lastName = map.get("Last Name");
         crmContact.mobilePhone = map.get("Mobile #");
+        crmContact.rawObject = map;
         return crmContact;
     }
 
