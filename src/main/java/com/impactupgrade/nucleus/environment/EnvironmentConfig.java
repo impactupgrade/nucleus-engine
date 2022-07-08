@@ -221,7 +221,8 @@ public class EnvironmentConfig implements Serializable {
   public SharePointPlatform sharePoint = new SharePointPlatform();
   public static class SharePointPlatform extends Platform {
     public String tenantId = "";
-    public String siteId = "";
+    public String rootSiteHostname = "";
+    public String subSiteName = "";
     public List<String> filePaths = new ArrayList<>();
     public String idColumn = "";
     public String ownerColumn = "";

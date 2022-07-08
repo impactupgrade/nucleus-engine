@@ -22,6 +22,7 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.Utils;
+import com.microsoft.graph.models.Site;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -91,24 +92,23 @@ public class SharePointCrmService implements CrmService {
     }
 
     protected Map<String, List<Map<String, String>>> downloadCsvDataMap() {
-        EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
-        String siteId = sharepoint.siteId;
-
         Map<String, List<Map<String, String>>> dataMap = new HashMap<>();
 
-        for (String filePath : sharepoint.filePaths) {
-            env.logJobInfo("downloading data for {}/{}...", siteId, filePath);
-
-            List<Map<String, String>> csvData = downloadCsvData(siteId, filePath);
+        for (String filePath : env.getConfig().sharePoint.filePaths) {
+            List<Map<String, String>> csvData = downloadCsvData(filePath);
             dataMap.put(filePath, csvData);
         }
         return dataMap;
     }
 
-    protected List<Map<String, String>> downloadCsvData(String siteId, String filePath) {
+    protected List<Map<String, String>> downloadCsvData(String filePath) {
+        EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
+        Site site = msGraphClient.getSubSite(sharepoint.rootSiteHostname, sharepoint.subSiteName);
+        env.logJobInfo("downloading data for {}/{}...", site.id, filePath);
+
         List<Map<String, String>> csvData = new ArrayList<>();
 
-        try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, filePath)) {
+        try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(site.id, filePath)) {
             if (filePath.endsWith("csv")) {
                 csvData.addAll(Utils.getCsvData(inputStream));
             } else if (filePath.endsWith("xlsx")) {
@@ -117,7 +117,7 @@ public class SharePointCrmService implements CrmService {
                 throw new RuntimeException("unexpected file extension for filePath " + filePath);
             }
         } catch (IOException e) {
-            env.logJobError("unable to download CSV data for {} {}", siteId, filePath, e);
+            env.logJobError("unable to download CSV data for {} {}", site.id, filePath, e);
         }
 
         return csvData;
@@ -295,8 +295,7 @@ public class SharePointCrmService implements CrmService {
     @Override
     public List<CrmContact> getContactsFromList(String listId) throws Exception {
         // listId is assumed to be the file/path of a one-off sheet
-        return downloadCsvData(env.getConfig().sharePoint.siteId, listId).stream()
-            .map(this::toCrmContact).collect(Collectors.toList());
+        return downloadCsvData(listId).stream().map(this::toCrmContact).collect(Collectors.toList());
     }
 
     @Override
