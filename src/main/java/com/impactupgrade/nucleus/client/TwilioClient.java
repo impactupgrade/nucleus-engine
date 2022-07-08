@@ -46,7 +46,15 @@ public class TwilioClient {
     return messageCreator.create(restClient);
   }
 
+  public Participant fetchConversationParticipant(String conversationSid, String participantSid) {
+    return Participant.fetcher(conversationSid, participantSid).fetch(restClient);
+  }
+
   public Participant createConversationParticipant(String conversationSid, String identity) {
     return Participant.creator(conversationSid).setIdentity(identity).create(restClient);
+  }
+
+  public Participant updateConversationParticipant(String conversationSid, String participantSid, String attributes) {
+    return Participant.updater(conversationSid, participantSid).setAttributes(attributes).update(restClient);
   }
 }

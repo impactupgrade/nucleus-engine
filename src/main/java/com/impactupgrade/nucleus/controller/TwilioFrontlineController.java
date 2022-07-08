@@ -33,7 +33,9 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -145,7 +147,7 @@ public class TwilioFrontlineController {
       frontlineChannel.type = "sms";
       // TODO: Obviously won't work for non-US contacts, but this must be formatted correctly. Look at the contact's
       //  country and correctly handle the country code?
-      frontlineChannel.value = "+1" + crmContact.phoneNumberForSMS().replaceAll("[\\D]", "");
+      frontlineChannel.value = "+1" + crmContact.phoneNumberForSMS().replace("+1", "").replaceAll("[\\D]", "");
       frontlineCustomer.channels.add(frontlineChannel);
     }
     // TODO: WhatsApp?
@@ -244,6 +246,12 @@ public class TwilioFrontlineController {
     public String display_name;
   }
 
+  // TODO: For dynamic, multi-source environments like LLS, we need the workerId to look up the correct source, but
+  //  conversationsCallback doesn't include that. For now, hold a cache of outbound coversations we're about to create
+  //  through Frontline, which the Conversations callback can then use to look up the worker. Obviously this falls
+  //  apart if another worker wants to text the same client while this Nucleus instance is still running.
+  private final Map<String, String> customerAddressToWorkerId = new HashMap<>();
+
   // https://www.twilio.com/docs/frontline/outgoing-conversations
   @Path("/callback/outgoing-conversation")
   @POST
@@ -259,6 +267,8 @@ public class TwilioFrontlineController {
   ) throws Exception {
     log.info("location={} workerIdentity={} customerId={} customerChannel={} customerAddress={}", location, workerIdentity, customerId, customerChannel, customerAddress);
     Environment env = getEnvironment(request, workerIdentity);
+
+    customerAddressToWorkerId.put(customerAddress, workerIdentity);
 
     switch (location) {
       case "GetProxyAddress":
@@ -281,7 +291,74 @@ public class TwilioFrontlineController {
     public String proxy_address;
   }
 
-  // TODO: Does the SFDC API support doing this programmatically? https://www.twilio.com/docs/frontline/sso/salesforce
+  // Conversations onConversationAdd: set conversation name and avatar
+  // Conversations onParticipantAdded: set the customer id, avatar, and display name
+  // https://www.twilio.com/docs/frontline/conversations-webhooks
+  @Path("/callback/conversations")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response conversationsCallback(
+      @FormParam("EventType") String eventType,
+      @FormParam("MessagingBinding.Address") String customerAddress,
+      @FormParam("ConversationSid") String conversationSid,
+      @FormParam("ParticipantSid") String participantSid,
+      @FormParam("Identity") String identity,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    log.info("eventType={} customerAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, conversationSid, participantSid, identity);
+    Environment env = getEnvironment(request, customerAddressToWorkerId.get(customerAddress));
+    CrmService crmService = env.primaryCrmService();
+
+    switch (eventType) {
+      case "onConversationAdd":
+        // TODO: In example code, no customerAddress seemed to mean "not an incoming conversation". But this seems off?
+        if (Strings.isNullOrEmpty(customerAddress)) {
+          return Response.status(200).build();
+        }
+
+        // TODO: will need tweaked for WhatsApp
+        // TODO: verify the phone number formatting works in the search
+        Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
+        if (crmContact.isPresent()) {
+          FrontlineConversation frontlineConversation = new FrontlineConversation();
+          // TODO: Append the phone number too? Phone number only if no name?
+          frontlineConversation.friendlyName = crmContact.get().fullName();
+          // TODO
+//          frontlineConversation.attributes.avatar = ;
+          return Response.ok().entity(frontlineConversation).build();
+        } else {
+          log.error("could not find CrmContact: " + customerAddress);
+          return Response.status(422).build();
+        }
+      case "onParticipantAdded":
+        // TODO: Also saw this in example code. Assuming it means that a worker being added is a no-op action.
+        if (Strings.isNullOrEmpty(customerAddress) || !Strings.isNullOrEmpty(identity)) {
+          return Response.status(200).build();
+        }
+
+        // TODO: will need tweaked for WhatsApp
+        // TODO: verify the phone number formatting works in the search
+        crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
+        if (crmContact.isPresent()) {
+          Participant participant = env.twilioClient().fetchConversationParticipant(conversationSid, participantSid);
+          JSONObject attributes = new JSONObject(participant.getAttributes())
+              // TODO
+//              .append("avatar", )
+              .append("customer_id", crmContact.get().id)
+              // TODO: Append the phone number too? Phone number only if no name?
+              .append("display_name", crmContact.get().fullName());
+          // TODO: ensure the JSON attributes formatting is correct
+          env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
+        } else {
+          log.error("could not find CrmContact: " + customerAddress);
+          return Response.status(422).build();
+        }
+      default:
+        log.error("unexpected eventType: " + eventType);
+        return Response.status(422).build();
+    }
+  }
 
   // Frontline onConversationRoute: lookup worker and add to conversation (or handle dynamic routing)
   // https://www.twilio.com/docs/frontline/handle-incoming-conversations
@@ -321,75 +398,6 @@ public class TwilioFrontlineController {
       // TODO: fall back to random routing? or a default worker?
       log.error("could not find CrmContact: " + customerAddress);
       return Response.status(422).build();
-    }
-  }
-
-  // Conversations onConversationAdd: set conversation name and avatar
-  // Conversations onParticipantAdded: set the customer id, avatar, and display name
-  // https://www.twilio.com/docs/frontline/conversations-webhooks
-  @Path("/callback/conversations")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response conversationsCallback(
-      @FormParam("EventType") String eventType,
-      @FormParam("MessagingBinding.Address") String customerAddress,
-      @FormParam("ConversationSid") String conversationSid,
-      @FormParam("ParticipantSid") String participantSid,
-      @FormParam("Identity") String identity,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    log.info("eventType={} customerAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, conversationSid, participantSid, identity);
-    Environment env = getEnvironment(request, null);
-    CrmService crmService = env.primaryCrmService();
-
-    switch (eventType) {
-      case "onConversationAdd":
-        // TODO: In example code, no customerAddress seemed to mean "not an incoming conversation". But this seems off?
-        if (Strings.isNullOrEmpty(customerAddress)) {
-          return Response.status(200).build();
-        }
-
-        // TODO: will need tweaked for WhatsApp
-        // TODO: verify the phone number formatting works in the search
-        Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
-        if (crmContact.isPresent()) {
-          FrontlineConversation frontlineConversation = new FrontlineConversation();
-          // TODO: Append the phone number too? Phone number only if no name?
-          frontlineConversation.friendlyName = crmContact.get().fullName();
-          // TODO
-//          frontlineConversation.attributes.avatar = ;
-          return Response.ok().entity(frontlineConversation).build();
-        } else {
-          log.error("could not find CrmContact: " + customerAddress);
-          return Response.status(422).build();
-        }
-      case "onParticipantAdded":
-        // TODO: Also saw this in example code. Assuming it means that a worker being added is a no-op action.
-        if (Strings.isNullOrEmpty(customerAddress) || !Strings.isNullOrEmpty(identity)) {
-          return Response.status(200).build();
-        }
-
-        // TODO: will need tweaked for WhatsApp
-        // TODO: verify the phone number formatting works in the search
-        crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
-        if (crmContact.isPresent()) {
-          Participant participant = Participant.fetcher(conversationSid, participantSid).fetch();
-          JSONObject attributes = new JSONObject(participant.getAttributes())
-              // TODO
-//              .append("avatar", )
-              .append("customer_id", crmContact.get().id)
-              // TODO: Append the phone number too? Phone number only if no name?
-              .append("display_name", crmContact.get().fullName());
-          // TODO: ensure the JSON attributes formatting is correct
-          Participant.updater(conversationSid, participantSid).setAttributes(attributes.toString());
-        } else {
-          log.error("could not find CrmContact: " + customerAddress);
-          return Response.status(422).build();
-        }
-      default:
-        log.error("unexpected eventType: " + eventType);
-        return Response.status(422).build();
     }
   }
 

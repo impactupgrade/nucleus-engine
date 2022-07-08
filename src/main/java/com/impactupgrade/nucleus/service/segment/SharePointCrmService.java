@@ -127,31 +127,20 @@ public class SharePointCrmService implements CrmService {
         String emailColumn = sharepoint.emailColumn;
         String phoneColumn = sharepoint.phoneColumn;
 
-        String csvColumn = null;
-        final String searchValue;
-        if (!Strings.isNullOrEmpty(contactSearch.email)) {
-            csvColumn = emailColumn;
-            searchValue = contactSearch.email;
-        } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-            csvColumn = phoneColumn;
-            searchValue = contactSearch.phone;
-        } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
-            searchValue = contactSearch.keywords;
-        } else {
-            searchValue = null;
-        }
-
         List<Map<String, String>> csvData = getCsvData();
         List<CrmContact> foundContacts = new ArrayList<>();
         for (Map<String, String> csvRow : csvData) {
-            if (!Strings.isNullOrEmpty(searchValue)) {
-                if (!StringUtils.isEmpty(csvColumn)) {
-                    // search the specific email/phone/etc column
-                    if (!Strings.isNullOrEmpty(csvRow.get(csvColumn)) && csvRow.get(csvColumn).toLowerCase(Locale.ROOT).contains(searchValue.toLowerCase(Locale.ROOT))) {
-                        foundContacts.add(toCrmContact(csvRow));
-                    }
-                // search all columns
-                } else if (csvRow.values().stream().filter(Objects::nonNull).anyMatch(csvValue -> csvValue.toLowerCase(Locale.ROOT).contains(searchValue.toLowerCase(Locale.ROOT)))) {
+            if (!Strings.isNullOrEmpty(contactSearch.email)) {
+                if (!Strings.isNullOrEmpty(csvRow.get(emailColumn)) && csvRow.get(emailColumn).toLowerCase(Locale.ROOT).equals(contactSearch.email.toLowerCase(Locale.ROOT))) {
+                    foundContacts.add(toCrmContact(csvRow));
+                }
+            } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+                // TODO: needs tweaked in case +1 is included on one end but not the other
+                if (!Strings.isNullOrEmpty(csvRow.get(phoneColumn)) && csvRow.get(phoneColumn).replaceAll("[^\\d]", "").equals(contactSearch.phone.replaceAll("[^\\d]", ""))) {
+                    foundContacts.add(toCrmContact(csvRow));
+                }
+            } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
+                if (csvRow.values().stream().filter(Objects::nonNull).anyMatch(csvValue -> csvValue.toLowerCase(Locale.ROOT).contains(contactSearch.keywords.toLowerCase(Locale.ROOT)))) {
                     foundContacts.add(toCrmContact(csvRow));
                 }
             } else {
@@ -161,9 +150,10 @@ public class SharePointCrmService implements CrmService {
         }
 
         long skip = contactSearch.pageToken == null ? 0L : Long.parseLong(contactSearch.pageToken);
+        long limit = contactSearch.pageSize == null ? 100L : (long) contactSearch.pageSize;
         List<CrmContact> searchResults = foundContacts.stream()
                 .skip(skip)
-                .limit(contactSearch.pageSize)
+                .limit(limit)
                 .collect(Collectors.toList());
         return getPagedResults(searchResults, contactSearch);
     }
