@@ -6,6 +6,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.core.ClientException;
 import com.microsoft.graph.models.DriveItem;
+import com.microsoft.graph.models.Site;
 import com.microsoft.graph.requests.DriveItemCollectionPage;
 import com.microsoft.graph.requests.DriveItemContentStreamRequest;
 import com.microsoft.graph.requests.GraphServiceClient;
@@ -41,6 +42,12 @@ public class MSGraphClient {
 
     public GraphServiceClient getClient() {
         return this.graphClient;
+    }
+
+    // GET /sites/{rootSiteHostName}:/sites/{subSiteName}
+    public Site getSubSite(String rootSiteHostname, String subSiteName) {
+        String subSiteUrl = rootSiteHostname + ":/sites/" + subSiteName;
+        return graphClient.sites(subSiteUrl).buildRequest().get();
     }
 
     // GET /sites/{siteId}/drive/items
