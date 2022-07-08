@@ -9,12 +9,21 @@ import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import com.google.common.base.Strings;
 import com.sun.xml.ws.util.StringUtils;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -108,5 +117,43 @@ public class Utils {
       result.add(iterator.next());
     }
     return result;
+  }
+
+  public static List<Map<String, String>> getExcelData(InputStream inputStream) throws IOException {
+    Workbook workbook = new XSSFWorkbook(inputStream);
+    Sheet sheet = workbook.getSheetAt(0);
+
+    List<String> headerData = new ArrayList<>();
+    List<Map<String, String>> data = new ArrayList<>();
+
+    Iterator<Row> rowIterator = sheet.iterator();
+
+    // first row is the header
+    Row header = rowIterator.next();
+    for (Cell cell : header) {
+      headerData.add(cell.getStringCellValue());
+      switch (cell.getCellType()) {
+        case NUMERIC -> headerData.add(cell.getNumericCellValue() + "");
+        case BOOLEAN -> headerData.add(cell.getBooleanCellValue() + "");
+        default -> headerData.add(cell.getStringCellValue());
+      }
+    }
+
+    while (rowIterator.hasNext()) {
+      Row row = rowIterator.next();
+      Map<String, String> rowData = new HashMap<>();
+      int cellIndex = 0;
+      for (Cell cell : row) {
+        switch (cell.getCellType()) {
+          case NUMERIC -> rowData.put(headerData.get(cellIndex), cell.getNumericCellValue() + "");
+          case BOOLEAN -> rowData.put(headerData.get(cellIndex), cell.getBooleanCellValue() + "");
+          default -> rowData.put(headerData.get(cellIndex), cell.getStringCellValue());
+        }
+        cellIndex++;
+      }
+      data.add(rowData);
+    }
+
+    return data;
   }
 }
