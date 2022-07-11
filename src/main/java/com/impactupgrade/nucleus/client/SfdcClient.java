@@ -448,19 +448,20 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         phone = phone.substring(1);
       }
       String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
+      // TODO: Finding a few clients with no homephone, so taking that out for now.
       StringBuilder phoneClause = new StringBuilder()
           .append("Phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR HomePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
           .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
           .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
       clauses.add(phoneClause.toString());
     }
 
+    // TODO: Finding a few clients with no homephone, so taking that out for now.
     if (contactSearch.hasPhone != null) {
       if (contactSearch.hasPhone) {
-        clauses.add("((Phone != null AND Phone != '') OR (MobilePhone != null AND MobilePhone != '') OR (HomePhone != null AND HomePhone != ''))");
+        clauses.add("((Phone != null AND Phone != '') OR (MobilePhone != null AND MobilePhone != ''))");
       } else {
-        clauses.add("(Phone = null OR Phone = '') AND (MobilePhone = null OR MobilePhone = '') AND (HomePhone = null OR HomePhone = '')");
+        clauses.add("(Phone = null OR Phone = '') AND (MobilePhone = null OR MobilePhone = '')");
       }
     }
 
@@ -475,7 +476,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
       String[] keywordSplit = contactSearch.keywords.trim().split("\\s+");
       for (String keyword : keywordSplit) {
-        clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR HomePhone LIKE '%" + keyword + "%' OR npe01__Home_Address__c LIKE '%" + keyword + "%')");
+        // TODO: Finding a few clients with no homephone, so taking that out for now.
+        clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR npe01__Home_Address__c LIKE '%" + keyword + "%')");
       }
     }
 
