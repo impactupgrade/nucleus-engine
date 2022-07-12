@@ -76,7 +76,7 @@ public class TwilioFrontlineController {
     switch (location) {
       case "GetCustomerDetailsByCustomerId":
         Optional<CrmContact> crmContact = crmService.getContactById(customerId);
-        frontlineResponse.objects.customer = toFrontlineCustomer(crmContact.get(), workerIdentity, crmName);
+        frontlineResponse.objects.customer = toFullFrontlineCustomer(crmContact.get(), workerIdentity, crmName, env);
         break;
       case "GetCustomersList":
         Optional<CrmUser> owner = crmService.getUserByEmail(workerIdentity);
@@ -93,7 +93,7 @@ public class TwilioFrontlineController {
         contactSearch.pageSize = pageSize;
         contactSearch.pageToken = nextPageToken;
         PagedResults<CrmContact> crmContacts = crmService.searchContacts(contactSearch);
-        frontlineResponse.objects.customers = crmContacts.getResults().stream().map(c -> toFrontlineCustomer(c, workerIdentity, crmName)).collect(Collectors.toList());
+        frontlineResponse.objects.customers = crmContacts.getResults().stream().map(c -> toBasicFrontlineCustomer(c, workerIdentity, crmName, env)).collect(Collectors.toList());
         // TODO: If I'm reading https://www.twilio.com/docs/frontline/my-customers#customer-search correctly,
         //  this always needs to be true in order to tell Frontline that this service handles custom searches.
 //        if (!Strings.isNullOrEmpty(searchQuery)) {
@@ -114,7 +114,7 @@ public class TwilioFrontlineController {
     return Response.ok().entity(frontlineResponse).build();
   }
 
-  protected FrontlineCustomer toFrontlineCustomer(CrmContact crmContact, String workerIdentity, String crmName) {
+  protected FrontlineCustomer toBasicFrontlineCustomer(CrmContact crmContact, String workerIdentity, String crmName, Environment env) {
     FrontlineCustomer frontlineCustomer = new FrontlineCustomer();
     frontlineCustomer.customer_id = crmContact.id;
     frontlineCustomer.display_name = crmContact.fullName();
@@ -125,6 +125,12 @@ public class TwilioFrontlineController {
 //    if (!Strings.isNullOrEmpty(crmContact.address.stateAndCountry())) {
 //      frontlineCustomer.display_name += " :: " + crmContact.address.stateAndCountry();
 //    }
+
+    return frontlineCustomer;
+  }
+
+  protected FrontlineCustomer toFullFrontlineCustomer(CrmContact crmContact, String workerIdentity, String crmName, Environment env) {
+    FrontlineCustomer frontlineCustomer = toBasicFrontlineCustomer(crmContact, workerIdentity, crmName, env);
 
     // TODO: This will show up under Contact Details, but clicking it does nothing. Not sure if it's intended to
     //  act like a mailto: link. For now, skipping this and centering on the mailto: in the links.
@@ -259,7 +265,6 @@ public class TwilioFrontlineController {
         FrontlineOutgoingConversationResponse frontlineResponse = new FrontlineOutgoingConversationResponse();
         // TODO: For now, likely to be env.json's single sender, but that's going to need to change quickly.
         //  Choose from multiple based on the worker's defined proxy number? And take channels into consideration?
-        // TODO: Also, this will change for group messaging!
         frontlineResponse.proxy_address = env.getConfig().twilio.senderPn;
         String json = new JsonMapper().writeValueAsString(frontlineResponse);
         log.info("outgoing-conversation json: {}", json);
@@ -296,17 +301,15 @@ public class TwilioFrontlineController {
 
     switch (eventType) {
       case "onConversationAdd":
-        // TODO: In example code, no customerAddress seemed to mean "not an incoming conversation". But this seems off?
         if (Strings.isNullOrEmpty(customerAddress)) {
           return Response.status(200).build();
         }
 
         // TODO: will need tweaked for WhatsApp
-        // TODO: verify the phone number formatting works in the search
         Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
         if (crmContact.isPresent()) {
           FrontlineConversation frontlineConversation = new FrontlineConversation();
-          // TODO: Append the phone number too? Phone number only if no name?
+          // Don't append the phone number here, since it might be a Group.
           frontlineConversation.friendlyName = crmContact.get().fullName();
           // TODO
 //          frontlineConversation.attributes.avatar = ;
@@ -316,13 +319,12 @@ public class TwilioFrontlineController {
           return Response.status(422).build();
         }
       case "onParticipantAdded":
-        // TODO: Also saw this in example code. Assuming it means that a worker being added is a no-op action.
+        // TODO: Saw this in example code. Assuming it means that a worker being added is a no-op action.
         if (Strings.isNullOrEmpty(customerAddress) || !Strings.isNullOrEmpty(identity)) {
           return Response.status(200).build();
         }
 
         // TODO: will need tweaked for WhatsApp
-        // TODO: verify the phone number formatting works in the search
         crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
         if (crmContact.isPresent()) {
           Participant participant = env.twilioClient().fetchConversationParticipant(conversationSid, participantSid);
@@ -377,7 +379,7 @@ public class TwilioFrontlineController {
     Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
     if (crmContact.isPresent()) {
       Optional<CrmUser> crmOwner = crmService.getUserById(crmContact.get().ownerId);
-      env.twilioClient().createConversationParticipant(conversationSid, crmOwner.get().email());
+      env.twilioClient().createConversationProxyParticipant(conversationSid, crmOwner.get().email());
       return Response.ok().build();
     } else {
       // TODO: fall back to random routing? or a default worker?

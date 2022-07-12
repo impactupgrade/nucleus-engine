@@ -2,11 +2,15 @@ package com.impactupgrade.nucleus.client;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.twilio.base.ResourceSet;
 import com.twilio.http.TwilioRestClient;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.rest.api.v2010.account.MessageCreator;
+import com.twilio.rest.conversations.v1.Conversation;
 import com.twilio.rest.conversations.v1.conversation.Participant;
 import com.twilio.type.PhoneNumber;
+
+import java.util.Optional;
 
 /**
  * Most of Nucleus' integration with Twilio is responding to webhooks. But some cases require outbound API usage.
@@ -46,15 +50,42 @@ public class TwilioClient {
     return messageCreator.create(restClient);
   }
 
-  public Participant fetchConversationParticipant(String conversationSid, String participantSid) {
-    return Participant.fetcher(conversationSid, participantSid).fetch(restClient);
+  public Conversation createConversation(String friendlyName) {
+    return Conversation.creator().setFriendlyName(friendlyName).create(restClient);
   }
 
-  public Participant createConversationParticipant(String conversationSid, String identity) {
+  public Participant createConversationProxyParticipant(String conversationSid, String identity) {
     return Participant.creator(conversationSid).setIdentity(identity).create(restClient);
+  }
+
+  public Participant createConversationProjectedParticipant(String conversationSid, String identity, String projectedAddress) {
+    return Participant.creator(conversationSid).setIdentity(identity).setMessagingBindingProjectedAddress(projectedAddress).create(restClient);
+  }
+
+  public Participant createConversationExternalParticipant(String conversationSid, String bindingAddress) {
+    return Participant.creator(conversationSid).setMessagingBindingAddress(bindingAddress).create(restClient);
   }
 
   public Participant updateConversationParticipant(String conversationSid, String participantSid, String attributes) {
     return Participant.updater(conversationSid, participantSid).setAttributes(attributes).update(restClient);
+  }
+
+  public Conversation fetchConversation(String conversationSid) {
+    return Conversation.fetcher(conversationSid).fetch(restClient);
+  }
+
+  public Optional<Conversation> findConversation(String friendlyName) {
+    // TODO: Is there not a search or by-friendly-name?
+    ResourceSet<Conversation> conversations = Conversation.reader().read(restClient).setAutoPaging(true);
+    for (Conversation conversation : conversations) {
+      if (conversation.getState() == Conversation.State.ACTIVE && conversation.getFriendlyName() != null && conversation.getFriendlyName().equalsIgnoreCase(friendlyName)) {
+        return Optional.of(conversation);
+      }
+    }
+    return Optional.empty();
+  }
+
+  public Participant fetchConversationParticipant(String conversationSid, String participantSid) {
+    return Participant.fetcher(conversationSid, participantSid).fetch(restClient);
   }
 }

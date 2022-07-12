@@ -8,8 +8,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Strings;
 
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class CrmContact {
 
@@ -73,6 +75,11 @@ public class CrmContact {
   public Object rawObject;
   @JsonIgnore
   public String crmUrl;
+
+  // Mainly to allow orgs to provide custom context at the CrmService level, available for processing back up at the
+  // logic service or controller level.
+  @JsonIgnore
+  public Map<String, Object> additionalContext = new HashMap<>();
 
   public CrmContact() {}
 
