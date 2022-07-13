@@ -26,7 +26,8 @@ public class HttpClient {
   public static <T> T get(String url, HeaderBuilder headerBuilder, Class<T> clazz) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
-    Response response = webTarget.request().headers(headerBuilder.headers).get();
+    MultivaluedMap<String, Object> headers = headerBuilder == null ? new MultivaluedHashMap<>() : headerBuilder.headers;
+    Response response = webTarget.request().headers(headers).get();
     if (isOk(response)) {
       if (clazz != null) {
         return response.readEntity(clazz);
@@ -46,7 +47,8 @@ public class HttpClient {
   public static <S, T> T post(String url, S entity, String mediaType, HeaderBuilder headerBuilder, Class<T> clazz) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
-    Response response = webTarget.request().headers(headerBuilder.headers).post(Entity.entity(entity, mediaType));
+    MultivaluedMap<String, Object> headers = headerBuilder == null ? new MultivaluedHashMap<>() : headerBuilder.headers;
+    Response response = webTarget.request().headers(headers).post(Entity.entity(entity, mediaType));
     if (isOk(response)) {
       if (clazz != null) {
         return response.readEntity(clazz);
@@ -64,7 +66,8 @@ public class HttpClient {
   public static <S, T> T put(String url, S entity, String mediaType, HeaderBuilder headerBuilder, Class<T> clazz) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
-    Response response = webTarget.request().headers(headerBuilder.headers).put(Entity.entity(entity, mediaType));
+    MultivaluedMap<String, Object> headers = headerBuilder == null ? new MultivaluedHashMap<>() : headerBuilder.headers;
+    Response response = webTarget.request().headers(headers).put(Entity.entity(entity, mediaType));
     if (isOk(response)) {
       if (clazz != null) {
         return response.readEntity(clazz);
@@ -78,7 +81,8 @@ public class HttpClient {
   public static void delete(String url, HeaderBuilder headerBuilder) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
-    Response response = webTarget.request().headers(headerBuilder.headers).delete();
+    MultivaluedMap<String, Object> headers = headerBuilder == null ? new MultivaluedHashMap<>() : headerBuilder.headers;
+    Response response = webTarget.request().headers(headers).delete();
     if (!isOk(response)) {
       log.error("DELETE failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
     }
