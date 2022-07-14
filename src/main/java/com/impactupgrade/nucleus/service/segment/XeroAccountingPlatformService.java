@@ -34,11 +34,9 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService<Contact, Invoice> {
@@ -59,8 +57,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     protected String clientId;
     protected String clientSecret;
     protected String tokenServerUrl;
-    protected String accessToken;
-    protected String refreshToken;
+
+    protected static String accessToken;
+    protected static String refreshToken;
+
     protected String xeroTenantId;
 
     public XeroAccountingPlatformService() {
@@ -84,8 +84,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         this.clientId = environment.getConfig().xero.clientId;
         this.clientSecret = environment.getConfig().xero.clientSecret;
         this.tokenServerUrl = environment.getConfig().xero.tokenServerUrl;
-        this.accessToken = environment.getConfig().xero.accessToken;
-        this.refreshToken = environment.getConfig().xero.refreshToken;
+        //TODO: find a better way of saving access token
+        if (this.accessToken == null) {
+            this.accessToken = environment.getConfig().xero.accessToken;
+        }
+        if (this.refreshToken == null) {
+            this.refreshToken = environment.getConfig().xero.refreshToken;
+        }
         this.xeroTenantId = environment.getConfig().xero.tenantId;
     }
 
@@ -141,7 +146,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                     null,
                     null,
                     null,
-                    null);
+                    Boolean.TRUE); // A smaller version of the response object
             List<Contact> contacts = contactsResponse.getContacts();
             log.info("Contacts found: {}", contacts.size());
             return contacts;
@@ -154,29 +159,23 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
     @Override
     public List<Contact> createContacts(List<CrmContact> crmContacts) {
+        // We create contacts in create invoices call
+        // so here we just return the mapped list
+        return toContacts(crmContacts);
+    }
+
+    private List<Contact> toContacts(List<CrmContact> crmContacts) {
         if (CollectionUtils.isEmpty(crmContacts)) {
             return Collections.emptyList();
         }
-        Set<String> ids = crmContacts.stream().map(c -> c.id).collect(Collectors.toSet());
-        List<SObject> contactObjects;
-        Map<String, String> supporterIds = new HashMap<>();
-        try {
-            contactObjects = env.sfdcClient().getContactsByIds(ids);
-            contactObjects.forEach(c -> supporterIds.put(c.getId(), (String) c.getField(SUPPORTER_ID_FIELD_NAME)));
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to get contacts info from SF!", e);
-        }
-
-        // We create contacts in create invoices call
-        // so here we just return mapped list
         return crmContacts.stream()
-                .map(crmContact -> asContact(crmContact, supporterIds.get(crmContact.id)))
+                .map(crmContact -> asContact(crmContact))
                 .collect(Collectors.toList());
     }
 
     @Override
     public String getTransactionKey(Invoice transaction) {
-        return null;
+        return transaction.getReference();
     }
 
     @Override
@@ -186,7 +185,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
     @Override
     public String getCrmContactSecondaryKey(CrmContact crmContact) {
-        return crmContact.fullName;
+        return crmContact.fullName();
     }
 
     @Override
@@ -217,10 +216,15 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     private String getAccessToken() throws IOException, JwkException {
-        DecodedJWT jwt = JWT.decode(accessToken);
+        DecodedJWT jwt = null;
+        try {
+            jwt = JWT.decode(accessToken);
+        } catch (Exception e) {
+            log.warn("Failed to decode access token! {}", e.getMessage());
+        }
 
-        if (jwt.getExpiresAt().getTime() < System.currentTimeMillis()) {
-            log.info("Access token expired. Refreshing tokens...");
+        if (jwt == null || jwt.getExpiresAt().getTime() < System.currentTimeMillis()) {
+            log.info("Refreshing tokens...");
             try {
                 TokenResponse tokenResponse = new RefreshTokenRequest(new NetHttpTransport(), new JacksonFactory(),
                         new GenericUrl(tokenServerUrl), refreshToken)
@@ -233,9 +237,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
                 accessToken = verifiedJWT.getToken();
                 refreshToken = tokenResponse.getRefreshToken();
-
-                env.getConfig().xero.accessToken = accessToken;
-                env.getConfig().xero.refreshToken = refreshToken;
 
             } catch (IOException | JwkException e) {
                 log.error("Failed to refresh access token!");
@@ -262,7 +263,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         return Objects.nonNull(e) ? e.getClass() + ":" + e : null;
     }
 
-    private Contact asContact(CrmContact crmContact, String supporterId) {
+    private Contact asContact(CrmContact crmContact) {
         if (crmContact == null) {
             return null;
         }
@@ -270,8 +271,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         contact.setFirstName(crmContact.firstName);
         contact.setLastName(crmContact.lastName);
         contact.setName(crmContact.fullName());
-        contact.setAccountNumber(supporterId);
         contact.setEmailAddress(crmContact.email);
+
+        // TODO: make this part not-sfdc specific?
+        if (crmContact.rawObject instanceof SObject) {
+            SObject sObject = (SObject) crmContact.rawObject;
+            String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+            contact.setAccountNumber(supporterId);
+        }
 
         return contact;
     }
@@ -332,7 +339,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         Calendar transactionDate = paymentGatewayEvent.getTransactionDate();
         LocalDate localDate = LocalDate.of(
                 transactionDate.get(Calendar.YEAR),
-                transactionDate.get(Calendar.MONTH),
+                transactionDate.get(Calendar.MONTH) + 1, // (valid values 1 - 12)
                 transactionDate.get(Calendar.DATE)
         );
         invoice.setDate(localDate);

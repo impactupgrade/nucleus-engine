@@ -1,9 +1,7 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
@@ -20,6 +18,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -32,10 +31,12 @@ public class AccountingService {
 
     private static final Logger log = LogManager.getLogger(AccountingService.class);
 
+    private final Environment env;
     private final List<AccountingPlatformService> accountingPlatformServices;
 
-    public AccountingService(Environment environment) {
-        this.accountingPlatformServices = environment.allAccountingPlatformServices();
+    public AccountingService(Environment env) {
+        this.env = env;
+        this.accountingPlatformServices = env.allAccountingPlatformServices();
     }
 
     public void addDeposits(List<PaymentGatewayDeposit> paymentGatewayDeposits) {
@@ -67,7 +68,7 @@ public class AccountingService {
                     continue;
                 }
 
-                List<CrmContact> crmContacts = collectCrmContacts(transactionsToCreate);
+                List<CrmContact> crmContacts = getCrmContacts(transactionsToCreate);
                 crmContacts = uniqueItems(crmContacts, crmContact -> {
                     if (!Strings.isNullOrEmpty(crmContact.email)) {
                         return crmContact.email;
@@ -75,7 +76,6 @@ public class AccountingService {
                         return crmContact.fullName();
                     }
                 });
-
                 List existingContacts = accountingPlatformService.getContacts();
 
                 List<CrmContact> crmContactsToCreate = getCrmContactsToCreate(
@@ -112,39 +112,6 @@ public class AccountingService {
                 .collect(Collectors.toList());
     }
 
-    private List<CrmContact> collectCrmContacts(List<PaymentGatewayEvent> transactions) {
-        return transactions.stream()
-                .map(this::getCrmContact)
-                .collect(Collectors.toList());
-    }
-
-    private CrmContact getCrmContact(PaymentGatewayEvent paymentGatewayEvent) {
-        if (CrmAccount.Type.ORGANIZATION == paymentGatewayEvent.getCrmAccount().type) {
-            // Using account name if 'Organization' account
-            CrmContact crmAccountContact = new CrmContact();
-            crmAccountContact.id = paymentGatewayEvent.getCrmAccount().id;
-            crmAccountContact.firstName = paymentGatewayEvent.getCrmAccount().name;
-            return crmAccountContact;
-        } else {
-            // Using contact's data otherwise
-            return paymentGatewayEvent.getCrmContact();
-        }
-    }
-
-    private <T> List<T> uniqueItems(List<T> items, Function<T, String> uniqueKeyFunction) {
-        if (CollectionUtils.isEmpty(items) || Objects.isNull(uniqueKeyFunction)) {
-            return Collections.emptyList();
-        }
-        Map<String, T> itemsMap = new HashMap<>();
-        items.forEach(item -> {
-            String uniqueKey = uniqueKeyFunction.apply(item);
-            if (!itemsMap.containsKey(uniqueKey)) {
-                itemsMap.put(uniqueKey, item);
-            }
-        });
-        return Lists.newArrayList(itemsMap.values());
-    }
-
     private Date getMinStartDate(List<PaymentGatewayEvent> transactions) {
         Set<Date> transactionDates = transactions.stream()
                 .filter(Objects::nonNull)
@@ -168,12 +135,40 @@ public class AccountingService {
 
         List<PaymentGatewayEvent> transactionsToCreate = new ArrayList<>();
         for (Map.Entry<String, PaymentGatewayEvent> entry : paymentGatewayEventMap.entrySet()) {
-            if (!existingTransactionsMap.containsKey(entry)) {
+            if (!existingTransactionsMap.containsKey(entry.getKey())) {
                 transactionsToCreate.add(entry.getValue());
             }
         }
 
         return transactionsToCreate;
+    }
+
+    private List<CrmContact> getCrmContacts(List<PaymentGatewayEvent> transactions) throws Exception {
+        Set<String> donationIds = new HashSet<>();
+        for (PaymentGatewayEvent transaction : transactions) {
+            env.donationsCrmService().getDonation(transaction)
+                    .map(donation -> donationIds.add(donation.id));
+        }
+        List<CrmContact> crmContacts = new ArrayList<>();
+        for (String id : donationIds) {
+            List<CrmContact> donationCrmContacts = env.donationsCrmService().getContactsFromList(id);
+            crmContacts.addAll(donationCrmContacts);
+        }
+        return crmContacts;
+    }
+
+    private <T> List<T> uniqueItems(List<T> items, Function<T, String> uniqueKeyFunction) {
+        if (CollectionUtils.isEmpty(items) || Objects.isNull(uniqueKeyFunction)) {
+            return Collections.emptyList();
+        }
+        Map<String, T> itemsMap = new HashMap<>();
+        items.forEach(item -> {
+            String uniqueKey = uniqueKeyFunction.apply(item);
+            if (!itemsMap.containsKey(uniqueKey)) {
+                itemsMap.put(uniqueKey, item);
+            }
+        });
+        return new ArrayList<>(itemsMap.values());
     }
 
     private <C> List<CrmContact> getCrmContactsToCreate(

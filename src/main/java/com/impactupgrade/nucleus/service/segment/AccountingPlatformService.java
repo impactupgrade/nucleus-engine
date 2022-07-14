@@ -24,9 +24,9 @@ public interface AccountingPlatformService<C, T> extends SegmentService {
 
     String getTransactionKey(T transaction);
 
-    String getContactSecondaryKey(C contact);
-
     String getContactPrimaryKey(C contact);
+
+    String getContactSecondaryKey(C contact);
 
     String getCrmContactPrimaryKey(CrmContact crmContact);
 
@@ -42,11 +42,17 @@ public interface AccountingPlatformService<C, T> extends SegmentService {
 
         C contact;
 
-        String crmContactPrimaryKey = getCrmContactPrimaryKey(crmContact).toLowerCase(Locale.ROOT);
+        String crmContactPrimaryKey = getCrmContactPrimaryKey(crmContact);
+        if (crmContactPrimaryKey != null) {
+            crmContactPrimaryKey = crmContactPrimaryKey.toLowerCase(Locale.ROOT);
+        }
         contact = contactsByPrimaryKey.get(crmContactPrimaryKey);
 
-        if (Objects.isNull(contact)) {
-            String crmContactSecondaryKey = getCrmContactSecondaryKey(crmContact).toLowerCase(Locale.ROOT);
+        if (contact == null) {
+            String crmContactSecondaryKey = getCrmContactSecondaryKey(crmContact);
+            if (crmContactSecondaryKey != null) {
+                crmContactSecondaryKey = crmContactSecondaryKey.toLowerCase(Locale.ROOT);
+            }
             contact = contactsBySecondaryKey.get(crmContactSecondaryKey);
         }
 
