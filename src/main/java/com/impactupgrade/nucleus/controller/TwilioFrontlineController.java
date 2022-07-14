@@ -33,9 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -52,11 +50,6 @@ public class TwilioFrontlineController {
     this.envFactory = envFactory;
   }
   
-  // Allow custom impls to override the Env lookup based on dynamic data.
-  protected Environment getEnvironment(HttpServletRequest request, String workerIdentity) {
-    return envFactory.init(request, "nucleus-username", workerIdentity);
-  }
-
   // TODO: https://www.twilio.com/docs/frontline/callbacks-security
 
   // https://www.twilio.com/docs/frontline/my-customers
@@ -74,7 +67,7 @@ public class TwilioFrontlineController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("location={} workerIdentity={} pageSize={} nextPageToken={} customerId={} searchQuery={}", location, workerIdentity, pageSize, nextPageToken, customerId, searchQuery);
-    Environment env = getEnvironment(request, workerIdentity);
+    Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
     String crmName = capitalize(crmService.name());
 
@@ -86,17 +79,16 @@ public class TwilioFrontlineController {
         frontlineResponse.objects.customer = toFrontlineCustomer(crmContact.get(), workerIdentity, crmName);
         break;
       case "GetCustomersList":
-//        Optional<CrmUser> owner = crmService.getUserByEmail(workerIdentity);
-//        if (owner.isEmpty()) {
-//          log.error("unexpected owner: " + workerIdentity);
-//          return Response.status(422).build();
-//        }
-//        String ownerId = owner.get().id();
+        Optional<CrmUser> owner = crmService.getUserByEmail(workerIdentity);
+        if (owner.isEmpty()) {
+          log.error("unexpected owner: " + workerIdentity);
+          return Response.status(422).build();
+        }
+        String ownerId = owner.get().id();
 
         ContactSearch contactSearch = new ContactSearch();
         contactSearch.keywords = searchQuery;
-        // TODO: Disabling this for now! Easier to have access to everyone during testing.
-//        contactSearch.ownerId = ownerId;
+        contactSearch.ownerId = ownerId;
         contactSearch.hasPhone = true;
         contactSearch.pageSize = pageSize;
         contactSearch.pageToken = nextPageToken;
@@ -246,12 +238,6 @@ public class TwilioFrontlineController {
     public String display_name;
   }
 
-  // TODO: For dynamic, multi-source environments like LLS, we need the workerId to look up the correct source, but
-  //  conversationsCallback doesn't include that. For now, hold a cache of outbound coversations we're about to create
-  //  through Frontline, which the Conversations callback can then use to look up the worker. Obviously this falls
-  //  apart if another worker wants to text the same client while this Nucleus instance is still running.
-  private final Map<String, String> customerAddressToWorkerId = new HashMap<>();
-
   // https://www.twilio.com/docs/frontline/outgoing-conversations
   @Path("/callback/outgoing-conversation")
   @POST
@@ -266,9 +252,7 @@ public class TwilioFrontlineController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("location={} workerIdentity={} customerId={} customerChannel={} customerAddress={}", location, workerIdentity, customerId, customerChannel, customerAddress);
-    Environment env = getEnvironment(request, workerIdentity);
-
-    customerAddressToWorkerId.put(customerAddress, workerIdentity);
+    Environment env = envFactory.init(request);
 
     switch (location) {
       case "GetProxyAddress":
@@ -307,7 +291,7 @@ public class TwilioFrontlineController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("eventType={} customerAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, conversationSid, participantSid, identity);
-    Environment env = getEnvironment(request, customerAddressToWorkerId.get(customerAddress));
+    Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
 
     switch (eventType) {
@@ -350,6 +334,7 @@ public class TwilioFrontlineController {
               .append("display_name", crmContact.get().fullName());
           // TODO: ensure the JSON attributes formatting is correct
           env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
+          return Response.status(200).build();
         } else {
           log.error("could not find CrmContact: " + customerAddress);
           return Response.status(422).build();
@@ -384,7 +369,7 @@ public class TwilioFrontlineController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("conversationSid={} friendlyName={} uniqueName={} attributesJson={} conversationServiceSid={} proxyAddress={} customerAddress={} state={}", conversationSid, friendlyName, uniqueName, attributesJson, conversationServiceSid, proxyAddress, customerAddress, state);
-    Environment env = getEnvironment(request, null);
+    Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
 
     // TODO: will need tweaked for WhatsApp

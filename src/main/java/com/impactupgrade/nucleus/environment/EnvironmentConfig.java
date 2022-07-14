@@ -270,8 +270,9 @@ public class EnvironmentConfig {
   public static class SharePointPlatform extends Platform {
     public String tenantId = "";
     public String siteId = "";
-    public String filePath = "";
+    public List<String> filePaths = new ArrayList<>();
     public String idColumn = "";
+    public String ownerColumn = "";
     public String emailColumn = "";
     public String phoneColumn = "";
   }

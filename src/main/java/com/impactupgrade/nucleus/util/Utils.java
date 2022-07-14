@@ -15,6 +15,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
@@ -109,9 +110,15 @@ public class Utils {
   }
 
   public static List<Map<String, String>> getCsvData(String csv) throws IOException {
+    try (InputStream inputStream = new ByteArrayInputStream(csv.getBytes())) {
+      return getCsvData(inputStream);
+    }
+  }
+
+  public static List<Map<String, String>> getCsvData(InputStream inputStream) throws IOException {
     CsvMapper mapper = new CsvMapper();
     CsvSchema schema = CsvSchema.emptySchema().withHeader();
-    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(csv);
+    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(inputStream);
     List<Map<String, String>> result = new LinkedList<>();
     while (iterator.hasNext()) {
       result.add(iterator.next());

@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,7 +44,7 @@ public class SharePointCrmService implements CrmService {
 
     private static final Logger log = LogManager.getLogger(SharePointCrmService.class);
 
-    private static final String CACHE_KEY_DELIMITER = "::";
+    private static final String CACHE_KEY = "csvData";
 
     protected Environment env;
     protected MSGraphClient msGraphClient;
@@ -70,30 +69,31 @@ public class SharePointCrmService implements CrmService {
                 .build(new CacheLoader<>() {
                     @Override
                     public List<Map<String, String>> load(String cacheKey) {
-                        String[] split = cacheKey.split(CACHE_KEY_DELIMITER);
-                        return downloadCsvData(split[0], split[1]);
+                        return downloadCsvData();
                     }
                 });
     }
 
-    protected List<Map<String, String>> downloadCsvData(String siteId, String pathToFile) {
-        log.info("downloading data for {}/{}...", siteId, pathToFile);
-        InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, pathToFile);
-//        ByteSource byteSource = new ByteSource() {
-//            @Override
-//            public InputStream openStream() {
-//                return inputStream;
-//            }
-//        };
-        List<Map<String, String>> csvData = Collections.emptyList();
-        try {
-//            String inputStreamString = byteSource.asCharSource(Charsets.UTF_8).read();
-            // TODO: dynamically select by file extension?
-//            csvData = Utils.getCsvData(inputStreamString);
-            csvData = Utils.getExcelData(inputStream);
-        } catch (IOException e) {
-            log.error("Failed to get csv data! {}", e.getMessage());
+    protected List<Map<String, String>> downloadCsvData() {
+        EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
+        String siteId = sharepoint.siteId;
 
+        List<Map<String, String>> csvData = new ArrayList<>();
+
+        for (String filePath : sharepoint.filePaths) {
+            log.info("downloading data for {}/{}...", siteId, filePath);
+
+            try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, filePath)) {
+                if (filePath.endsWith("csv")) {
+                    csvData.addAll(Utils.getCsvData(inputStream));
+                } else if (filePath.endsWith("xlsx")) {
+                    csvData.addAll(Utils.getExcelData(inputStream));
+                } else {
+                    log.error("unexpected file extension for filePath {}", filePath);
+                }
+            } catch (IOException e) {
+                log.error("Failed to get csv data! {}", e.getMessage());
+            }
         }
         return csvData;
     }
@@ -124,12 +124,17 @@ public class SharePointCrmService implements CrmService {
     @Override
     public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
+        String ownerColumn = sharepoint.ownerColumn;
         String emailColumn = sharepoint.emailColumn;
         String phoneColumn = sharepoint.phoneColumn;
 
         List<Map<String, String>> csvData = getCsvData();
         List<CrmContact> foundContacts = new ArrayList<>();
         for (Map<String, String> csvRow : csvData) {
+            if (!Strings.isNullOrEmpty(contactSearch.ownerId) && !contactSearch.ownerId.toLowerCase(Locale.ROOT).equals(csvRow.get(ownerColumn).toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+
             if (!Strings.isNullOrEmpty(contactSearch.email)) {
                 if (!Strings.isNullOrEmpty(csvRow.get(emailColumn)) && csvRow.get(emailColumn).toLowerCase(Locale.ROOT).equals(contactSearch.email.toLowerCase(Locale.ROOT))) {
                     foundContacts.add(toCrmContact(csvRow));
@@ -159,14 +164,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     protected List<Map<String, String>> getCsvData() {
-        EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
-        String siteId = sharepoint.siteId;
-        String pathToFile = sharepoint.filePath;
-        return sharepointCsvCache.getUnchecked(toCacheKey(siteId, pathToFile));
-    }
-
-    protected String toCacheKey(String siteId, String pathToFile) {
-        return siteId + CACHE_KEY_DELIMITER + pathToFile;
+        return sharepointCsvCache.getUnchecked(CACHE_KEY);
     }
 
     protected PagedResults<CrmContact> getPagedResults(List<CrmContact> crmContacts, ContactSearch contactSearch) {
@@ -359,10 +357,15 @@ public class SharePointCrmService implements CrmService {
     }
 
     protected CrmContact toCrmContact(Map<String, String> map) {
+        EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
+        String ownerColumn = sharepoint.ownerColumn;
+        String phoneColumn = sharepoint.phoneColumn;
+
         CrmContact crmContact = new CrmContact();
         crmContact.firstName = map.get("First Name");
         crmContact.lastName = map.get("Last Name");
-        crmContact.mobilePhone = map.get("Mobile #");
+        crmContact.mobilePhone = map.get(phoneColumn);
+        crmContact.ownerId = map.get(ownerColumn);
         crmContact.rawObject = map;
         return crmContact;
     }
