@@ -10,6 +10,8 @@ import com.twilio.rest.conversations.v1.Conversation;
 import com.twilio.rest.conversations.v1.conversation.Participant;
 import com.twilio.type.PhoneNumber;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -85,7 +87,20 @@ public class TwilioClient {
     return Optional.empty();
   }
 
+  public List<Conversation> allConversations() {
+    List<Conversation> all = new ArrayList<>();
+    ResourceSet<Conversation> conversations = Conversation.reader().read(restClient).setAutoPaging(true);
+    for (Conversation conversation : conversations) {
+      all.add(conversation);
+    }
+    return all;
+  }
+
   public Participant fetchConversationParticipant(String conversationSid, String participantSid) {
     return Participant.fetcher(conversationSid, participantSid).fetch(restClient);
+  }
+
+  public void deleteConversation(String conversationSid) {
+    Conversation.deleter(conversationSid).delete(restClient);
   }
 }

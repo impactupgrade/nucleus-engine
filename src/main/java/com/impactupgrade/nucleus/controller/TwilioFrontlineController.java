@@ -319,7 +319,7 @@ public class TwilioFrontlineController {
           return Response.status(422).build();
         }
       case "onParticipantAdded":
-        // TODO: Saw this in example code. Assuming it means that a worker being added is a no-op action.
+        // Do nothing if the customer has no binding address OR if the participant is the worker.
         if (Strings.isNullOrEmpty(customerAddress) || !Strings.isNullOrEmpty(identity)) {
           return Response.status(200).build();
         }
@@ -363,9 +363,9 @@ public class TwilioFrontlineController {
       @FormParam("MessagingBinding.ProxyAddress") String proxyAddress,
       @FormParam("MessagingBinding.Address") String customerAddress,
       // TODO: Group MMS
-//      @FormParam("MessagingBinding.ProjectedAddress") String projectedAddress,
+      @FormParam("MessagingBinding.ProjectedAddress") String projectedAddress,
       // TODO: Group MMS
-//      @FormParam("MessagingBinding.AuthorAddress") String authorAddress,
+      @FormParam("MessagingBinding.AuthorAddress") String authorAddress,
       @FormParam("State") String state,
       // TODO: DateCreated & DateUpdated (string, ISO8601 time)
       @Context HttpServletRequest request
@@ -375,7 +375,6 @@ public class TwilioFrontlineController {
     CrmService crmService = env.primaryCrmService();
 
     // TODO: will need tweaked for WhatsApp
-    // TODO: verify the phone number formatting works in the search
     Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
     if (crmContact.isPresent()) {
       Optional<CrmUser> crmOwner = crmService.getUserById(crmContact.get().ownerId);
@@ -398,6 +397,4 @@ public class TwilioFrontlineController {
 //  ) throws Exception {
 //
 //  }
-
-  // TODO: Use https://www.twilio.com/docs/frontline/deep-linking as a CRM field so they can open the app from it?
 }
