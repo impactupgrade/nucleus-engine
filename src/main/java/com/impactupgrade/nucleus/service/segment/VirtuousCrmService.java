@@ -433,7 +433,7 @@ public class VirtuousCrmService implements BasicCrmService {
         gift.amount = paymentGatewayEvent.getTransactionAmountInDollars();
         gift.transactionSource = paymentGatewayEvent.getGatewayName();
         gift.transactionId = paymentGatewayEvent.getTransactionId();
-        gift.isPrivate = true; // ?
+        gift.isPrivate = false; // ?
         gift.isTaxDeductible = true; // ?
 
         return gift;
@@ -454,7 +454,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
         giftTransaction.recurringGiftTransactionUpdate = false; // ?
         giftTransaction.isPrivate = false; // ?
-        giftTransaction.isTaxDeductible = false; // ?
+        giftTransaction.isTaxDeductible = true; // ?
         return giftTransaction;
     }
 
