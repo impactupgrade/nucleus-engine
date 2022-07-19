@@ -192,6 +192,7 @@ public class HubSpotCrmService implements CrmService {
         paymentGatewayName,
         status,
         result.getProperties().getClosedate(),
+        null, null,
         result,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + id
     ));
@@ -964,6 +965,7 @@ public class HubSpotCrmService implements CrmService {
         paymentGatewayName,
         status,
         deal.getProperties().getClosedate(),
+        null, null,
         deal,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + deal.getId()
     );

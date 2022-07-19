@@ -20,10 +20,13 @@ import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface CrmService extends SegmentService {
 
@@ -39,6 +42,14 @@ public interface CrmService extends SegmentService {
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
   Optional<CrmContact> getContactById(String id) throws Exception;
+  default List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
+    List<CrmContact> contacts = new ArrayList<>();
+    for (String id : ids) {
+      Optional<CrmContact> contact = getContactById(id);
+      contact.ifPresent(contacts::add);
+    }
+    return contacts;
+  }
   // TODO: Pagination initially needed for Twilio Frontline, but should we start introducing pagination across the board?
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
@@ -63,6 +74,19 @@ public interface CrmService extends SegmentService {
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
   Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception;
+  // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
+  // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
+  // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
+  // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
+  default List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+    // By default, handle one at a time.
+    List<CrmDonation> crmDonations = new ArrayList<>();
+    for (String transactionId : transactionIds) {
+      Optional<CrmDonation> crmDonation = getDonationByTransactionId(transactionId);
+      crmDonation.ifPresent(crmDonations::add);
+    }
+    return crmDonations;
+  }
   Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
   List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception;
@@ -96,6 +120,27 @@ public interface CrmService extends SegmentService {
       donation = getDonationByTransactionId(paymentGatewayEvent.getTransactionSecondaryId());
     }
     return donation;
+  }
+  // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
+  // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
+  // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
+  // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
+  default List<CrmDonation> getDonations(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+    // use a set to prevent duplicates
+    Set<String> transactionIds = new HashSet<>();
+
+    for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
+      // SOME orgs create separate Opportunities for refunds, then use the Refund IDs in the standard Charge ID field.
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
+        transactionIds.add(paymentGatewayEvent.getRefundId());
+      }
+      transactionIds.add(paymentGatewayEvent.getTransactionId());
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getTransactionSecondaryId())) {
+        transactionIds.add(paymentGatewayEvent.getTransactionSecondaryId());
+      }
+    }
+
+    return getDonationsByTransactionIds(transactionIds.stream().toList());
   }
   String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception;

@@ -508,16 +508,64 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String DONATION_FIELDS = "id, AccountId, ContactId, amount, name, RecordTypeId, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
+  protected static final String DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, ContactId, npsp__Primary_Contact__r.Id, npsp__Primary_Contact__r.Name, npsp__Primary_Contact__r.Email, npsp__Primary_Contact__r.Phone, amount, name, RecordTypeId, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
 
   public Optional<SObject> getDonationById(String donationId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where id = '" + donationId + "'";
     return querySingle(query);
   }
 
+  // For processes like payout handling, we need to retrieve a lot of donations at once. Retrieve in batches to preserve API limits!
+  public List<SObject> getDonationsByIds(List<String> ids) throws ConnectionException, InterruptedException {
+    List<String> page;
+    List<String> more;
+    // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
+    if (ids.size() > 1000) {
+      page = ids.subList(0, 1000);
+      more = ids.subList(1000, ids.size());
+    } else {
+      page = ids;
+      more = Collections.emptyList();
+    }
+
+    String idsJoin = page.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where id in (" + idsJoin + ")";
+    List<SObject> results = queryList(query);
+
+    if (!more.isEmpty()) {
+      results.addAll(getDonationsByIds(more));
+    }
+
+    return results;
+  }
+
   public Optional<SObject> getDonationByTransactionId(String transactionId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " = '" + transactionId + "'";
     return querySingle(query);
+  }
+
+  // For processes like payout handling, we need to retrieve a lot of donations at once. Retrieve in batches to preserve API limits!
+  public List<SObject> getDonationsByTransactionIds(List<String> transactionIds) throws ConnectionException, InterruptedException {
+    List<String> page;
+    List<String> more;
+    // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
+    if (transactionIds.size() > 1000) {
+      page = transactionIds.subList(0, 1000);
+      more = transactionIds.subList(1000, transactionIds.size());
+    } else {
+      page = transactionIds;
+      more = Collections.emptyList();
+    }
+
+    String transactionIdsJoin = page.stream().map(transactionId -> "'" + transactionId + "'").collect(Collectors.joining(","));
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " in (" + transactionIdsJoin + ")";
+    List<SObject> results = queryList(query);
+
+    if (!more.isEmpty()) {
+      results.addAll(getDonationsByTransactionIds(more));
+    }
+
+    return results;
   }
 
   public List<SObject> getDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
@@ -565,7 +613,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // RECURRING DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npsp__InstallmentFrequency__c, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name";
+  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npe03__Contact__r.Phone, npsp__InstallmentFrequency__c, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name";
 
   public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where id='" + id + "'";

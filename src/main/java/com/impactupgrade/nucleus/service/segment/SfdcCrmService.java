@@ -80,6 +80,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByIds(ids));
+  }
+
+  @Override
   // currentPageToken assumed to be the offset index
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws InterruptedException, ConnectionException {
     return toCrmContact(sfdcClient.searchContacts(contactSearch));
@@ -116,6 +121,11 @@ public class SfdcCrmService implements CrmService {
   @Override
   public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
     return toCrmDonation(sfdcClient.getDonationByTransactionId(transactionId));
+  }
+
+  @Override
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationsByTransactionIds(transactionIds));
   }
 
   @Override
@@ -1139,6 +1149,13 @@ public class SfdcCrmService implements CrmService {
       status = CrmDonation.Status.PENDING;
     }
 
+    CrmAccount account = null;
+    if (sObject.getChild("Account") != null && sObject.getChild("Account").hasChildren())
+      account = toCrmAccount((SObject) sObject.getChild("Account"));
+    CrmContact contact = null;
+    if (sObject.getChild("npsp__Primary_Contact__r") != null && sObject.getChild("npsp__Primary_Contact__r").hasChildren())
+      contact = toCrmContact((SObject) sObject.getChild("npsp__Primary_Contact__r"));
+
     return new CrmDonation(
         id,
         (String) sObject.getField("Name"),
@@ -1146,6 +1163,8 @@ public class SfdcCrmService implements CrmService {
         paymentGatewayName,
         status,
         closeDate,
+        account,
+        contact,
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Opportunity/" + sObject.getId() + "/view"
     );
@@ -1153,6 +1172,10 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmDonation> toCrmDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmDonation);
+  }
+
+  protected List<CrmDonation> toCrmDonation(List<SObject> sObjects) {
+    return sObjects.stream().map(this::toCrmDonation).collect(Collectors.toList());
   }
 
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {

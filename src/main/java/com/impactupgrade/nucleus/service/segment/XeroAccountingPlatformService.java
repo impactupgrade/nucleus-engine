@@ -31,6 +31,7 @@ import org.threeten.bp.OffsetDateTime;
 import org.threeten.bp.ZoneOffset;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -97,38 +98,59 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     @Override
     public List<Invoice> getTransactions(Date startDate) throws Exception {
         try {
-            OffsetDateTime ifModifiedSince = OffsetDateTime.of(asLocalDateTime(startDate), ZoneOffset.UTC);
-            Invoices invoicesResponse = xeroApi.getInvoices(getAccessToken(), xeroTenantId, ifModifiedSince,
-                    //String where,
-                    null,
-                    // String order,
-                    null,
-                    // List<UUID> ids,
-                    null,
-                    //List<String> invoiceNumbers,
-                    null,
-                    //List<UUID> contactIDs,
-                    null,
-                    //List<String> statuses,
-                    List.of(
-                            Invoice.StatusEnum.DRAFT.name(),
-                            Invoice.StatusEnum.SUBMITTED.name(),
-                            Invoice.StatusEnum.AUTHORISED.name(),
-                            Invoice.StatusEnum.VOIDED.name()),
-                    //Integer page,
-                    null,
-                    //Boolean includeArchived,
-                    null,
-                    //Boolean createdByMyApp,
-                    null,
-                    // Integer unitdp, Boolean summaryOnly
-                    null, null);
-            return invoicesResponse.getInvoices();
+            List<Invoice> allInvoices = new ArrayList<>();
+            int page = 1;
+            int currentPageSize;
+
+            do {
+                List<Invoice> invoicesPage = getInvoices(startDate, page);
+                allInvoices.addAll(invoicesPage);
+                currentPageSize = invoicesPage.size();
+                page++;
+            } while (currentPageSize == 100);
+
+            return allInvoices;
         } catch (Exception e) {
             log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
             // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
             throw e;
         }
+    }
+
+    protected List<Invoice> getInvoices(Date startDate, int page) throws Exception {
+        OffsetDateTime ifModifiedSince = OffsetDateTime.of(asLocalDateTime(startDate), ZoneOffset.UTC);
+        Invoices invoicesResponse = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
+            // OffsetDateTime ifModifiedSince
+            ifModifiedSince,
+            //String where,
+            "Reference=\"Stripe\"",
+            // String order,
+            null,
+            // List<UUID> ids,
+            null,
+            //List<String> invoiceNumbers,
+            null,
+            //List<UUID> contactIDs,
+            null,
+            //List<String> statuses,
+            List.of(
+                Invoice.StatusEnum.DRAFT.name(),
+                Invoice.StatusEnum.SUBMITTED.name(),
+                Invoice.StatusEnum.AUTHORISED.name(),
+                Invoice.StatusEnum.PAID.name()
+            ),
+            //Integer page,
+            page,
+            //Boolean includeArchived,
+            false,
+            //Boolean createdByMyApp,
+            null,
+            // Integer unitdp
+            null,
+            // Boolean summaryOnly
+            true
+        );
+        return invoicesResponse.getInvoices();
     }
 
     @Override
@@ -139,22 +161,46 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     @Override
     public List<Contact> getContacts() throws Exception {
         try {
-            log.info("Getting existing contacts...");
-            Contacts contactsResponse = xeroApi.getContacts(getAccessToken(), xeroTenantId, null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    Boolean.TRUE); // A smaller version of the response object
-            List<Contact> contacts = contactsResponse.getContacts();
-            log.info("Contacts found: {}", contacts.size());
-            return contacts;
+            List<Contact> allContacts = new ArrayList<>();
+            int page = 1;
+            int currentPageSize;
+
+            do {
+                List<Contact> contactsPage = getContacts(page);
+                allContacts.addAll(contactsPage);
+                currentPageSize = contactsPage.size();
+                page++;
+            } while (currentPageSize == 100);
+
+            return allContacts;
         } catch (Exception e) {
             log.error("Failed to get contacts info: {}", getExceptionDetails(e));
             // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
             throw e;
         }
+    }
+
+    private List<Contact> getContacts(int page) throws Exception {
+        log.info("Getting existing contacts...");
+        Contacts contactsResponse = xeroApi.getContacts(getAccessToken(), xeroTenantId,
+            // OffsetDateTime ifModifiedSince
+            null,
+            // String where,
+            null,
+            // String order,
+            null,
+            // List<UUID> ids,
+            null,
+            // Integer page,
+            page,
+            // Boolean includeArchived,
+            null,
+            // Boolean summaryOnly
+            Boolean.TRUE
+        );
+        List<Contact> contacts = contactsResponse.getContacts();
+        log.info("Contacts found: {}", contacts.size());
+        return contacts;
     }
 
     @Override
@@ -349,7 +395,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         invoice.setLineItems(getLineItems(paymentGatewayEvent));
         invoice.setType(Invoice.TypeEnum.ACCREC); // Receive
 
-        invoice.setReference(paymentGatewayEvent.getTransactionId());
+        invoice.setReference(paymentGatewayEvent.getGatewayName() + ": " + paymentGatewayEvent.getTransactionId());
 
         return invoice;
     }

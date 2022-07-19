@@ -18,7 +18,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -143,18 +142,10 @@ public class AccountingService {
         return transactionsToCreate;
     }
 
+    // TODO: Business gifts with no contact? Should the CrmAccount create a Xero contact?
     private List<CrmContact> getCrmContacts(List<PaymentGatewayEvent> transactions) throws Exception {
-        Set<String> donationIds = new HashSet<>();
-        for (PaymentGatewayEvent transaction : transactions) {
-            env.donationsCrmService().getDonation(transaction)
-                    .map(donation -> donationIds.add(donation.id));
-        }
-        List<CrmContact> crmContacts = new ArrayList<>();
-        for (String id : donationIds) {
-            List<CrmContact> donationCrmContacts = env.donationsCrmService().getContactsFromList(id);
-            crmContacts.addAll(donationCrmContacts);
-        }
-        return crmContacts;
+        List<String> contactIds = env.donationsCrmService().getDonations(transactions).stream().filter(donation -> donation.contact != null).map(donation -> donation.contact.id).filter(contactId -> !Strings.isNullOrEmpty(contactId)).collect(Collectors.toList());
+        return env.donationsCrmService().getContactsByIds(contactIds);
     }
 
     private <T> List<T> uniqueItems(List<T> items, Function<T, String> uniqueKeyFunction) {
