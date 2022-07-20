@@ -1149,10 +1149,16 @@ public class SfdcCrmService implements CrmService {
       status = CrmDonation.Status.PENDING;
     }
 
-    CrmAccount account = null;
+    CrmAccount account = new CrmAccount();
+    if (sObject.getChild("AccountId") != null) {
+      account.id = (String) sObject.getField("AccountId");
+    }
     if (sObject.getChild("Account") != null && sObject.getChild("Account").hasChildren())
       account = toCrmAccount((SObject) sObject.getChild("Account"));
-    CrmContact contact = null;
+    CrmContact contact = new CrmContact();
+    if (sObject.getChild("ContactId") != null) {
+      contact.id = (String) sObject.getField("ContactId");
+    }
     if (sObject.getChild("npsp__Primary_Contact__r") != null && sObject.getChild("npsp__Primary_Contact__r").hasChildren())
       contact = toCrmContact((SObject) sObject.getChild("npsp__Primary_Contact__r"));
 

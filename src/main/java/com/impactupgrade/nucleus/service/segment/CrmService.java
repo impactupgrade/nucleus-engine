@@ -38,6 +38,14 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   Optional<CrmAccount> getAccountById(String id) throws Exception;
+  default List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+    List<CrmAccount> accounts = new ArrayList<>();
+    for (String id : ids) {
+      Optional<CrmAccount> account = getAccountById(id);
+      account.ifPresent(accounts::add);
+    }
+    return accounts;
+  }
   // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;

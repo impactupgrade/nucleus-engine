@@ -123,7 +123,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
             // OffsetDateTime ifModifiedSince
             ifModifiedSince,
             //String where,
-            "Reference=\"Stripe\"",
+            "Reference.StartsWith(\"Stripe\")",
             // String order,
             null,
             // List<UUID> ids,
@@ -148,7 +148,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
             // Integer unitdp
             null,
             // Boolean summaryOnly
-            true
+            false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
         );
         return invoicesResponse.getInvoices();
     }
@@ -160,24 +160,25 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
 
     @Override
     public List<Contact> getContacts() throws Exception {
-        try {
-            List<Contact> allContacts = new ArrayList<>();
-            int page = 1;
-            int currentPageSize;
-
-            do {
-                List<Contact> contactsPage = getContacts(page);
-                allContacts.addAll(contactsPage);
-                currentPageSize = contactsPage.size();
-                page++;
-            } while (currentPageSize == 100);
-
-            return allContacts;
-        } catch (Exception e) {
-            log.error("Failed to get contacts info: {}", getExceptionDetails(e));
-            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
-            throw e;
-        }
+        return Collections.emptyList();
+//        try {
+//            List<Contact> allContacts = new ArrayList<>();
+//            int page = 1;
+//            int currentPageSize;
+//
+//            do {
+//                List<Contact> contactsPage = getContacts(page);
+//                allContacts.addAll(contactsPage);
+//                currentPageSize = contactsPage.size();
+//                page++;
+//            } while (currentPageSize == 100);
+//
+//            return allContacts;
+//        } catch (Exception e) {
+//            log.error("Failed to get contacts info: {}", getExceptionDetails(e));
+//            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
+//            throw e;
+//        }
     }
 
     private List<Contact> getContacts(int page) throws Exception {
@@ -204,10 +205,21 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     @Override
-    public List<Contact> createContacts(List<CrmContact> crmContacts) {
-        // We create contacts in create invoices call
-        // so here we just return the mapped list
-        return toContacts(crmContacts);
+    public List<Contact> createContacts(List<CrmContact> crmContacts) throws Exception {
+        if (CollectionUtils.isEmpty(crmContacts)) {
+            return Collections.emptyList();
+        }
+        List<Contact> contactsToCreate = toContacts(crmContacts);
+        Contacts contacts = new Contacts();
+        contacts.setContacts(contactsToCreate);
+        try {
+            Contacts createdContacts = xeroApi.createContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
+            return createdContacts.getContacts();
+        } catch (Exception e) {
+            log.error("Failed to create contacts! {}", getExceptionDetails(e));
+            //ignore
+            return contactsToCreate;
+        }
     }
 
     private List<Contact> toContacts(List<CrmContact> crmContacts) {
@@ -395,7 +407,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         invoice.setLineItems(getLineItems(paymentGatewayEvent));
         invoice.setType(Invoice.TypeEnum.ACCREC); // Receive
 
-        invoice.setReference(paymentGatewayEvent.getGatewayName() + ": " + paymentGatewayEvent.getTransactionId());
+        invoice.setReference(paymentGatewayEvent.getGatewayName() + ":" + paymentGatewayEvent.getTransactionId());
 
         return invoice;
     }

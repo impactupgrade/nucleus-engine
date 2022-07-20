@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import org.apache.cxf.common.util.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jruby.embed.LocalContextScope;
@@ -34,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -95,6 +97,17 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
     return querySingle(query);
+  }
+
+  public List<SObject> getAccountsByIds(Set<String> accountIds) throws ConnectionException, InterruptedException {
+    if (CollectionUtils.isEmpty(accountIds)) {
+      return Collections.emptyList();
+    }
+    String ids = accountIds.stream()
+            .map(id -> "'" + id + "'")
+            .collect(Collectors.joining(","));
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from account where id in (" + ids + ") ORDER BY name";
+    return queryList(query);
   }
 
   public List<SObject> getAccountsByName(String name) throws ConnectionException, InterruptedException {

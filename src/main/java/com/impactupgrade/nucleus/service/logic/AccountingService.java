@@ -2,7 +2,9 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
@@ -144,8 +146,42 @@ public class AccountingService {
 
     // TODO: Business gifts with no contact? Should the CrmAccount create a Xero contact?
     private List<CrmContact> getCrmContacts(List<PaymentGatewayEvent> transactions) throws Exception {
-        List<String> contactIds = env.donationsCrmService().getDonations(transactions).stream().filter(donation -> donation.contact != null).map(donation -> donation.contact.id).filter(contactId -> !Strings.isNullOrEmpty(contactId)).collect(Collectors.toList());
-        return env.donationsCrmService().getContactsByIds(contactIds);
+        List<CrmDonation> crmDonations = env.donationsCrmService().getDonations(transactions);
+        // Get accounts info
+        List<String> accountIds = crmDonations.stream()
+                .filter(donation -> donation.account != null)
+                .map(donation -> donation.account.id)
+                .filter(accountId -> !StringUtils.isEmpty(accountId))
+                .collect(Collectors.toList());
+        List<CrmAccount> accounts = env.donationsCrmService().getAccountsByIds(accountIds);
+        // Collect organization type accounts into a map
+        Map<String, CrmAccount> orgAccountsMap = new HashMap<>();
+        accounts.stream()
+                .filter(account -> CrmAccount.Type.ORGANIZATION == account.type)
+                .forEach(account -> orgAccountsMap.put(account.id, account));
+
+        // Collect contacts for org and non-org donations
+        List<CrmContact> crmContacts = new ArrayList<>();
+        List<String> contactIds = new ArrayList<>();
+        for (CrmDonation crmDonation : crmDonations) {
+            if (crmDonation.account != null && orgAccountsMap.containsKey(crmDonation.account.id)) {
+                // Get contact for org account
+                CrmAccount orgAccount = orgAccountsMap.get(crmDonation.account.id);
+                CrmContact crmAccountContact = new CrmContact();
+                crmAccountContact.id = orgAccount.id;
+                crmAccountContact.firstName = orgAccount.name;
+                crmAccountContact.lastName = "";
+                crmContacts.add(crmAccountContact);
+            } else if (crmDonation.contact != null && !StringUtils.isEmpty(crmDonation.contact.id)) {
+                contactIds.add(crmDonation.contact.id);
+            } else {
+                // Should be unreachable
+                log.warn("Failed to get either org account or contact id for donation {}!", crmDonation.id);
+            }
+        }
+        // Get non-organization type contacts
+        crmContacts.addAll(env.donationsCrmService().getContactsByIds(contactIds));
+        return crmContacts;
     }
 
     private <T> List<T> uniqueItems(List<T> items, Function<T, String> uniqueKeyFunction) {
