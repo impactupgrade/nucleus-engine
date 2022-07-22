@@ -16,7 +16,7 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import org.apache.cxf.common.util.CollectionUtils;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jruby.embed.LocalContextScope;
@@ -92,7 +92,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, RecordTypeId, RecordType.Name";
+  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, RecordTypeId, RecordType.Id, RecordType.Name";
 
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
@@ -106,7 +106,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String ids = accountIds.stream()
             .map(id -> "'" + id + "'")
             .collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from account where id in (" + ids + ") ORDER BY name";
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id in (" + ids + ") ORDER BY name";
     return queryList(query);
   }
 
@@ -521,7 +521,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, ContactId, npsp__Primary_Contact__r.Id, npsp__Primary_Contact__r.Name, npsp__Primary_Contact__r.Email, npsp__Primary_Contact__r.Phone, amount, name, RecordTypeId, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
+  protected static final String DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
 
   public Optional<SObject> getDonationById(String donationId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where id = '" + donationId + "'";

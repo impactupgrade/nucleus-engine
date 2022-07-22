@@ -190,6 +190,7 @@ public class HubSpotCrmService implements CrmService {
         result.getProperties().getDealname(),
         result.getProperties().getAmount(),
         paymentGatewayName,
+        transactionId,
         status,
         result.getProperties().getClosedate(),
         null, null,
@@ -963,6 +964,7 @@ public class HubSpotCrmService implements CrmService {
         deal.getProperties().getDealname(),
         deal.getProperties().getAmount(),
         paymentGatewayName,
+        null, // TODO: transactionId, may need otherProperties added to the HS lib?
         status,
         deal.getProperties().getClosedate(),
         null, null,

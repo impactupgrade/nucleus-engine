@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -1023,12 +1024,20 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("BillingCountry")
     );
 
+    CrmAccount.Type type = CrmAccount.Type.HOUSEHOLD;
+    if (sObject.getChild("RecordType") != null) {
+      String recordTypeName = sObject.getChild("RecordType").getField("Name").toString().toLowerCase(Locale.ROOT);
+      // TODO: Customize record type names through env.json?
+      if (recordTypeName.contains("business") || recordTypeName.contains("church") || recordTypeName.contains("org") || recordTypeName.contains("group"))  {
+        type = CrmAccount.Type.ORGANIZATION;
+      }
+    }
+
     return new CrmAccount(
         sObject.getId(),
         (String) sObject.getField("Name"),
         crmAddress,
-        // TODO: Differentiate between Household and Organization. Customize record type IDs through env.json?
-        CrmAccount.Type.HOUSEHOLD,
+        type,
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Account/" + sObject.getId() + "/view"
     );
@@ -1129,6 +1138,7 @@ public class SfdcCrmService implements CrmService {
   protected CrmDonation toCrmDonation(SObject sObject) {
     String id = sObject.getId();
     String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
+    String paymentGatewayTransactionId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId);
     Double amount = Double.valueOf(sObject.getField("Amount").toString());
     Calendar closeDate = null;
     try {
@@ -1150,15 +1160,11 @@ public class SfdcCrmService implements CrmService {
     }
 
     CrmAccount account = new CrmAccount();
-    if (sObject.getChild("AccountId") != null) {
-      account.id = (String) sObject.getField("AccountId");
-    }
+    account.id = (String) sObject.getField("AccountId");
     if (sObject.getChild("Account") != null && sObject.getChild("Account").hasChildren())
       account = toCrmAccount((SObject) sObject.getChild("Account"));
     CrmContact contact = new CrmContact();
-    if (sObject.getChild("ContactId") != null) {
-      contact.id = (String) sObject.getField("ContactId");
-    }
+    contact.id = (String) sObject.getField("ContactId");
     if (sObject.getChild("npsp__Primary_Contact__r") != null && sObject.getChild("npsp__Primary_Contact__r").hasChildren())
       contact = toCrmContact((SObject) sObject.getChild("npsp__Primary_Contact__r"));
 
@@ -1167,6 +1173,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Name"),
         amount,
         paymentGatewayName,
+        paymentGatewayTransactionId,
         status,
         closeDate,
         account,

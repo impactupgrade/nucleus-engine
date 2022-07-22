@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -12,20 +13,16 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class AccountingService {
@@ -54,43 +51,25 @@ public class AccountingService {
         }
 
         log.info("Input transactions count: {}", transactions.size());
+
+        Date startDate = getMinStartDate(transactions);
+
         for (AccountingPlatformService accountingPlatformService : accountingPlatformServices) {
             String accountingPlatformName = accountingPlatformService.name();
             log.info("Accounting platform service '{}' running...", accountingPlatformName);
             try {
-                Date startDate = getMinStartDate(transactions);
-                List<?> existingTransactions = accountingPlatformService.getTransactions(startDate);
+                List<AccountingTransaction> existingTransactions = accountingPlatformService.getTransactions(startDate);
                 log.info("Found existing transactions: {}", existingTransactions.size());
 
-                List<PaymentGatewayEvent> transactionsToCreate = getTransactionsToCreate(
+                // get all the new transactions we need to create
+                List<AccountingTransaction> transactionsToCreate = processTransactions(
                         transactions, existingTransactions, accountingPlatformService);
                 if (transactionsToCreate.isEmpty()) {
                     log.info("No new transactions to create. Returning...");
                     continue;
                 }
 
-                List<CrmContact> crmContacts = getCrmContacts(transactionsToCreate);
-                crmContacts = uniqueItems(crmContacts, crmContact -> {
-                    if (!Strings.isNullOrEmpty(crmContact.email)) {
-                        return crmContact.email;
-                    } else {
-                        return crmContact.fullName();
-                    }
-                });
-                List existingContacts = accountingPlatformService.getContacts();
-
-                List<CrmContact> crmContactsToCreate = getCrmContactsToCreate(
-                        crmContacts, existingContacts, accountingPlatformService);
-
-                List createdContacts = accountingPlatformService.createContacts(crmContactsToCreate);
-                List allContacts = new ArrayList();
-                allContacts.addAll(existingContacts);
-                allContacts.addAll(createdContacts);
-
-                Map<String, ?> contactsByPrimaryKey = mapItems(allContacts, c -> accountingPlatformService.getContactPrimaryKey(c));
-                Map<String, ?> contactsBySecondaryKey = mapItems(allContacts, c -> accountingPlatformService.getContactSecondaryKey(c));
-
-                accountingPlatformService.createTransactions(transactionsToCreate, contactsByPrimaryKey, contactsBySecondaryKey);
+                accountingPlatformService.createTransactions(transactionsToCreate);
 
             } catch (Exception e) {
                 log.error("Failed to add transactions!", e);
@@ -123,120 +102,73 @@ public class AccountingService {
         return Collections.min(transactionDates);
     }
 
-    private <T> List<PaymentGatewayEvent> getTransactionsToCreate(
-            List<PaymentGatewayEvent> paymentGatewayEvents, List<T> transactions,
-            AccountingPlatformService accountingPlatformService) {
+    private List<AccountingTransaction> processTransactions(List<PaymentGatewayEvent> paymentGatewayEvents,
+            List<AccountingTransaction> existingTransactions, AccountingPlatformService accountingPlatformService) throws Exception {
 
-        if (CollectionUtils.isEmpty(transactions)) {
-            return paymentGatewayEvents;
-        }
+        // This is a several-step process, processing donations and associated contacts/accounts using bulk queries.
+        // Super important to do it this way, as opposed to one loop with one-at-a-time queries. Some deposits carry
+        // a huge number of transactions -- processing would take a long time + Xero has really restrictive rate limits.
 
-        Map<String, PaymentGatewayEvent> paymentGatewayEventMap = mapItems(paymentGatewayEvents, PaymentGatewayEvent::getTransactionId);
-        Map<String, T> existingTransactionsMap = mapItems(transactions, t -> accountingPlatformService.getTransactionKey(t));
+        // First, filter down the events that are truly new.
+        List<String> existingTransactionsIds = existingTransactions.stream().map(existingTransaction -> existingTransaction.paymentGatewayTransactionId).collect(Collectors.toList());
+        List<PaymentGatewayEvent> newPaymentGatewayEvents = paymentGatewayEvents.stream()
+            .filter(paymentGatewayEvent -> !existingTransactionsIds.contains(paymentGatewayEvent.getTransactionId()))
+            .collect(Collectors.toList());
 
-        List<PaymentGatewayEvent> transactionsToCreate = new ArrayList<>();
-        for (Map.Entry<String, PaymentGatewayEvent> entry : paymentGatewayEventMap.entrySet()) {
-            if (!existingTransactionsMap.containsKey(entry.getKey())) {
-                transactionsToCreate.add(entry.getValue());
-            }
-        }
-
-        return transactionsToCreate;
-    }
-
-    // TODO: Business gifts with no contact? Should the CrmAccount create a Xero contact?
-    private List<CrmContact> getCrmContacts(List<PaymentGatewayEvent> transactions) throws Exception {
-        List<CrmDonation> crmDonations = env.donationsCrmService().getDonations(transactions);
-        // Get accounts info
-        List<String> accountIds = crmDonations.stream()
-                .filter(donation -> donation.account != null)
-                .map(donation -> donation.account.id)
-                .filter(accountId -> !StringUtils.isEmpty(accountId))
-                .collect(Collectors.toList());
-        List<CrmAccount> accounts = env.donationsCrmService().getAccountsByIds(accountIds);
-        // Collect organization type accounts into a map
-        Map<String, CrmAccount> orgAccountsMap = new HashMap<>();
-        accounts.stream()
-                .filter(account -> CrmAccount.Type.ORGANIZATION == account.type)
-                .forEach(account -> orgAccountsMap.put(account.id, account));
-
-        // Collect contacts for org and non-org donations
-        List<CrmContact> crmContacts = new ArrayList<>();
-        List<String> contactIds = new ArrayList<>();
-        for (CrmDonation crmDonation : crmDonations) {
-            if (crmDonation.account != null && orgAccountsMap.containsKey(crmDonation.account.id)) {
-                // Get contact for org account
-                CrmAccount orgAccount = orgAccountsMap.get(crmDonation.account.id);
-                CrmContact crmAccountContact = new CrmContact();
-                crmAccountContact.id = orgAccount.id;
-                crmAccountContact.firstName = orgAccount.name;
-                crmAccountContact.lastName = "";
-                crmContacts.add(crmAccountContact);
-            } else if (crmDonation.contact != null && !StringUtils.isEmpty(crmDonation.contact.id)) {
-                contactIds.add(crmDonation.contact.id);
-            } else {
-                // Should be unreachable
-                log.warn("Failed to get either org account or contact id for donation {}!", crmDonation.id);
-            }
-        }
-        // Get non-organization type contacts
-        crmContacts.addAll(env.donationsCrmService().getContactsByIds(contactIds));
-        return crmContacts;
-    }
-
-    private <T> List<T> uniqueItems(List<T> items, Function<T, String> uniqueKeyFunction) {
-        if (CollectionUtils.isEmpty(items) || Objects.isNull(uniqueKeyFunction)) {
+        // Exit early if there aren't any.
+        if (newPaymentGatewayEvents.isEmpty()) {
             return Collections.emptyList();
         }
-        Map<String, T> itemsMap = new HashMap<>();
-        items.forEach(item -> {
-            String uniqueKey = uniqueKeyFunction.apply(item);
-            if (!itemsMap.containsKey(uniqueKey)) {
-                itemsMap.put(uniqueKey, item);
-            }
-        });
-        return new ArrayList<>(itemsMap.values());
-    }
 
-    private <C> List<CrmContact> getCrmContactsToCreate(
-            List<CrmContact> crmContacts, List<C> contacts,
-            AccountingPlatformService accountingPlatformService) {
+        // Then, all in one shot, grab all the CRM donations. We don't need the donations for anything other than
+        // as a conduit to the contact/account, since these transactions came straight from the payment gateway deposit event
+        // and are unlikely to have customer details.
+        List<CrmDonation> crmDonations = env.donationsCrmService().getDonations(newPaymentGatewayEvents);
+        // Create two maps, pairing the donation's original transaction id with the contact/account id.
+        // TODO: DR breaks here! Transaction ID is in the PT object, not Opp, so DRSfdcClient's getDonationsByTransactionIds needs rethought.
+        Map<String, String> transactionIdToContactId = crmDonations.stream().filter(crmDonation -> crmDonation.contact != null && !Strings.isNullOrEmpty(crmDonation.contact.id)).collect(Collectors.toMap(crmDonation -> crmDonation.paymentGatewayTransactionId, crmDonation -> crmDonation.contact.id));
+        Map<String, String> transactionIdToAccountId = crmDonations.stream().filter(crmDonation -> crmDonation.account != null && !Strings.isNullOrEmpty(crmDonation.account.id)).collect(Collectors.toMap(crmDonation -> crmDonation.paymentGatewayTransactionId, crmDonation -> crmDonation.account.id));
 
-        if (CollectionUtils.isEmpty(contacts)) {
-            return crmContacts;
-        }
+        // Then, again all in one shot, grab all the CRM contacts and accounts.
+        Map<String, CrmContact> crmContacts = env.donationsCrmService().getContactsByIds(transactionIdToContactId.values().stream().toList()).stream().collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
+        Map<String, CrmAccount> crmAccounts = env.donationsCrmService().getAccountsByIds(transactionIdToAccountId.values().stream().toList()).stream().collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
 
-        Map<String, C> contactsByPrimaryKey = mapItems(contacts, c -> accountingPlatformService.getContactPrimaryKey(c));
-        Map<String, C> contactsBySecondaryKey = mapItems(contacts, c -> accountingPlatformService.getContactSecondaryKey(c));
-
-        List<CrmContact> crmContactsToCreate = new ArrayList<>();
-        for (CrmContact crmContact : crmContacts) {
-            String primaryKey = accountingPlatformService.getCrmContactPrimaryKey(crmContact);
-
-            if (!contactsByPrimaryKey.containsKey(primaryKey)) {
-                String secondaryKey = accountingPlatformService.getCrmContactSecondaryKey(crmContact);
-
-                if (!contactsBySecondaryKey.containsKey(secondaryKey)) {
-                    crmContactsToCreate.add(crmContact);
-                }
-            }
-        }
-
-        return crmContactsToCreate;
-    }
-
-    private <T> Map<String, T> mapItems(List<T> items, Function<T, String> mapFunction) {
-        if (CollectionUtils.isEmpty(items) || Objects.isNull(mapFunction)) {
-            return Collections.emptyMap();
-        }
-        Map<String, T> itemsMap = new HashMap<>();
-        for (T item : items) {
-            String key = mapFunction.apply(item);
-            if (!StringUtils.isEmpty(key)) {
-                itemsMap.put(key.toLowerCase(Locale.ROOT), item);
+        // Now loop over the events and batch create/update all the contacts in the accounting platform.
+        Map<String, CrmContact> crmContactsToUpsert = new HashMap<>();
+        for (PaymentGatewayEvent newPaymentGatewayEvent : newPaymentGatewayEvents) {
+            // TODO: This might need a refactor in the future. For Xero, Contacts are a centering point, and here we're
+            //  transforming business gifts into faux CrmContacts. But a better abstract concept may be helpful for QB and others.
+            String contactId = transactionIdToContactId.get(newPaymentGatewayEvent.getTransactionId());
+            String accountId = transactionIdToAccountId.get(newPaymentGatewayEvent.getTransactionId());
+            if (!Strings.isNullOrEmpty(accountId) && crmAccounts.get(accountId).type == CrmAccount.Type.ORGANIZATION) {
+                // biz donation -> faux contact for the org account
+                CrmAccount crmAccount = crmAccounts.get(accountId);
+                CrmContact crmAccountContact = new CrmContact();
+                crmAccountContact.id = crmAccount.id;
+                crmAccountContact.fullName = crmAccount.name;
+                crmAccountContact.address = crmAccount.address;
+                crmContactsToUpsert.put(newPaymentGatewayEvent.getTransactionId(), crmAccountContact);
+            } else {
+                // not a biz donation -> use the real contact
+                crmContactsToUpsert.put(newPaymentGatewayEvent.getTransactionId(), crmContacts.get(contactId));
             }
         }
-        return itemsMap;
-    }
+        Map<String, String> crmContactIdToAccountingContactId = accountingPlatformService
+            .updateOrCreateContacts(crmContactsToUpsert.values().stream().toList());
 
+        // Finally, return the combined list of transactions + the contacts from within the *accounting* platform.
+        return newPaymentGatewayEvents.stream().map(newPaymentGatewayEvent -> {
+            String crmContactId = crmContactsToUpsert.get(newPaymentGatewayEvent.getTransactionId()).id;
+            return new AccountingTransaction(
+                newPaymentGatewayEvent.getTransactionAmountInDollars(),
+                newPaymentGatewayEvent.getTransactionDate(),
+                newPaymentGatewayEvent.getTransactionDescription(),
+                newPaymentGatewayEvent.isTransactionRecurring(),
+                newPaymentGatewayEvent.getGatewayName(),
+                newPaymentGatewayEvent.getTransactionId(),
+                crmContactIdToAccountingContactId.get(crmContactId),
+                crmContactId
+            );
+        }).collect(Collectors.toList());
+    }
 }

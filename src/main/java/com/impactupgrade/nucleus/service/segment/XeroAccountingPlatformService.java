@@ -11,12 +11,14 @@ import com.google.api.client.http.BasicAuthentication;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
 import com.xero.api.client.AccountingApi;
+import com.xero.models.accounting.Address;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.Contacts;
 import com.xero.models.accounting.Invoice;
@@ -36,11 +38,13 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class XeroAccountingPlatformService implements AccountingPlatformService<Contact, Invoice> {
+public class XeroAccountingPlatformService implements AccountingPlatformService {
 
     private static final Logger log = LogManager.getLogger(XeroAccountingPlatformService.class);
 
@@ -96,7 +100,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     @Override
-    public List<Invoice> getTransactions(Date startDate) throws Exception {
+    public List<AccountingTransaction> getTransactions(Date startDate) throws Exception {
         try {
             List<Invoice> allInvoices = new ArrayList<>();
             int page = 1;
@@ -109,7 +113,23 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
                 page++;
             } while (currentPageSize == 100);
 
-            return allInvoices;
+            return allInvoices.stream().map(invoice -> {
+                // references are, ex, Stripe:ch______
+                String reference = invoice.getReference().toLowerCase(Locale.ROOT);
+                String paymentGatewayTransactionId = reference.startsWith("stripe:") ? reference.replace("stripe:", "") : null;
+                // TODO: Shouldn't need most of the fields?
+                return new AccountingTransaction(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    paymentGatewayTransactionId,
+                    null,
+                    null
+                );
+            // Older transactions may not have the stripe: setup, so skip those entirely -- we have no way of pulling the ID from them.
+            }).filter(transaction -> !Strings.isNullOrEmpty(transaction.paymentGatewayTransactionId)).collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
             // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
@@ -154,75 +174,24 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     @Override
-    public String getCrmContactPrimaryKey(CrmContact crmContact) {
-        return crmContact.email;
-    }
-
-    @Override
-    public List<Contact> getContacts() throws Exception {
-        return Collections.emptyList();
-//        try {
-//            List<Contact> allContacts = new ArrayList<>();
-//            int page = 1;
-//            int currentPageSize;
-//
-//            do {
-//                List<Contact> contactsPage = getContacts(page);
-//                allContacts.addAll(contactsPage);
-//                currentPageSize = contactsPage.size();
-//                page++;
-//            } while (currentPageSize == 100);
-//
-//            return allContacts;
-//        } catch (Exception e) {
-//            log.error("Failed to get contacts info: {}", getExceptionDetails(e));
-//            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
-//            throw e;
-//        }
-    }
-
-    private List<Contact> getContacts(int page) throws Exception {
-        log.info("Getting existing contacts...");
-        Contacts contactsResponse = xeroApi.getContacts(getAccessToken(), xeroTenantId,
-            // OffsetDateTime ifModifiedSince
-            null,
-            // String where,
-            null,
-            // String order,
-            null,
-            // List<UUID> ids,
-            null,
-            // Integer page,
-            page,
-            // Boolean includeArchived,
-            null,
-            // Boolean summaryOnly
-            Boolean.TRUE
-        );
-        List<Contact> contacts = contactsResponse.getContacts();
-        log.info("Contacts found: {}", contacts.size());
-        return contacts;
-    }
-
-    @Override
-    public List<Contact> createContacts(List<CrmContact> crmContacts) throws Exception {
+    public Map<String, String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
         if (CollectionUtils.isEmpty(crmContacts)) {
-            return Collections.emptyList();
+            return Collections.emptyMap();
         }
         List<Contact> contactsToCreate = toContacts(crmContacts);
         Contacts contacts = new Contacts();
         contacts.setContacts(contactsToCreate);
         try {
-            Contacts createdContacts = xeroApi.createContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
-            return createdContacts.getContacts();
+            return xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS).getContacts().stream()
+                // account number is set as the crm contact id
+                .collect(Collectors.toMap(Contact::getAccountNumber, contact -> contact.getContactID().toString()));
         } catch (Exception e) {
-            log.error("Failed to create contacts! {}", getExceptionDetails(e));
-            //ignore
-            return contactsToCreate;
+            log.error("Failed to upsert contacts! {}", getExceptionDetails(e));
+            return Collections.emptyMap();
         }
     }
 
-    private List<Contact> toContacts(List<CrmContact> crmContacts) {
+    protected List<Contact> toContacts(List<CrmContact> crmContacts) {
         if (CollectionUtils.isEmpty(crmContacts)) {
             return Collections.emptyList();
         }
@@ -232,32 +201,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
     }
 
     @Override
-    public String getTransactionKey(Invoice transaction) {
-        return transaction.getReference();
-    }
-
-    @Override
-    public String getContactPrimaryKey(Contact contact) {
-        return contact.getEmailAddress();
-    }
-
-    @Override
-    public String getCrmContactSecondaryKey(CrmContact crmContact) {
-        return crmContact.fullName();
-    }
-
-    @Override
-    public String getContactSecondaryKey(Contact contact) {
-        return contact.getName();
-    }
-
-    @Override
-    public List<Invoice> createTransactions(List<PaymentGatewayEvent> transactions,
-                                            Map<String, Contact> contactsByPrimaryKey,
-                                            Map<String, Contact> contactsBySecondaryKey) throws Exception {
+    public void createTransactions(List<AccountingTransaction> transactions) throws Exception {
         log.info("Input transactions: {}", transactions.size());
 
-        Invoices invoices = asInvoices(transactions, contactsByPrimaryKey, contactsBySecondaryKey);
+        Invoices invoices = new Invoices().invoices(transactions.stream().map(this::asInvoice).collect(Collectors.toList()));
         log.info("Invoices to create: {}", invoices.getInvoices().size());
 
         try {
@@ -265,15 +212,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
             List<Invoice> createdItems = createdInvoices.getInvoices();
 
             log.info("Invoices created: {}", createdItems.size());
-            return createdItems;
-
         } catch (Exception e) {
             log.error("Failed to create invoices! {}", getExceptionDetails(e));
             throw e;
         }
     }
 
-    private String getAccessToken() throws IOException, JwkException {
+    protected String getAccessToken() throws IOException, JwkException {
         DecodedJWT jwt = null;
         try {
             jwt = JWT.decode(accessToken);
@@ -316,12 +261,11 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         return accessToken;
     }
 
-    // Utils
-    private String getExceptionDetails(Exception e) {
+    protected String getExceptionDetails(Exception e) {
         return Objects.nonNull(e) ? e.getClass() + ":" + e : null;
     }
 
-    private Contact asContact(CrmContact crmContact) {
+    protected Contact asContact(CrmContact crmContact) {
         if (crmContact == null) {
             return null;
         }
@@ -330,31 +274,40 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         contact.setLastName(crmContact.lastName);
         contact.setName(crmContact.fullName());
         contact.setEmailAddress(crmContact.email);
+        if (!Strings.isNullOrEmpty(crmContact.address.street)) {
+            Address address = new Address()
+                .addressLine1(crmContact.address.street)
+                .city(crmContact.address.street)
+                .region(crmContact.address.state)
+                .postalCode(crmContact.address.postalCode)
+                .country(crmContact.address.country)
+            ;
+            contact.setAddresses(List.of(address));
+        }
 
         // TODO: make this part not-sfdc specific?
-        if (crmContact.rawObject instanceof SObject) {
-            SObject sObject = (SObject) crmContact.rawObject;
+        // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
+        if (crmContact.rawObject instanceof SObject sObject) {
             String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
             contact.setAccountNumber(supporterId);
         }
 
+        // TODO: temp
+        log.info("contact {} {} {} {} {} {}", crmContact.id, contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
+
         return contact;
     }
 
-    private List<LineItem> getLineItems(PaymentGatewayEvent paymentGatewayEvent) {
-        if (Objects.isNull(paymentGatewayEvent)) {
-            return Collections.emptyList();
-        }
-
+    protected List<LineItem> getLineItems(AccountingTransaction accountingTransaction) {
         LineItem lineItem = new LineItem();
-        lineItem.setDescription(paymentGatewayEvent.getTransactionDescription());
+        lineItem.setDescription(accountingTransaction.description);
         lineItem.setQuantity(1.0);
-        lineItem.setUnitAmount(paymentGatewayEvent.getTransactionAmountInDollars());
+        lineItem.setUnitAmount(accountingTransaction.amountInDollars);
         // TODO: DR TEST (https://developer.xero.com/documentation/api/accounting/types/#tax-rates -- country specific)
         lineItem.setTaxType("EXEMPTOUTPUT");
 
         // TODO: DR TEST -- need to be able to override with code
-        if (paymentGatewayEvent.isTransactionRecurring()) {
+        if (accountingTransaction.recurring) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
         } else {
@@ -365,36 +318,17 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         return Collections.singletonList(lineItem);
     }
 
-    private LocalDateTime asLocalDateTime(Date date) {
+    protected LocalDateTime asLocalDateTime(Date date) {
         if (date == null) {
             return null;
         }
         return LocalDateTime.ofEpochSecond(date.toInstant().getEpochSecond(), 0, ZoneOffset.UTC);
     }
 
-    private Invoices asInvoices(List<PaymentGatewayEvent> transactions,
-                                Map<String, Contact> contactsMappedByPrimaryKey,
-                                Map<String, Contact> contactsMappedBySecondaryKey) {
-        Invoices invoices = new Invoices();
-        if (CollectionUtils.isNotEmpty(transactions)) {
-            transactions.stream()
-                    .map(transaction -> {
-                        CrmContact crmContact = transaction.getCrmContact();
-                        Contact contact = getContactForCrmContact(crmContact,
-                                contactsMappedByPrimaryKey, contactsMappedBySecondaryKey);
-                        return asInvoice(transaction, contact);
-                    }).forEach(invoices::addInvoicesItem);
-        }
-        return invoices;
-    }
-
-    private Invoice asInvoice(PaymentGatewayEvent paymentGatewayEvent, Contact contact) {
-        if (paymentGatewayEvent == null) {
-            return null;
-        }
+    protected Invoice asInvoice(AccountingTransaction transaction) {
         Invoice invoice = new Invoice();
 
-        Calendar transactionDate = paymentGatewayEvent.getTransactionDate();
+        Calendar transactionDate = transaction.date;
         LocalDate localDate = LocalDate.of(
                 transactionDate.get(Calendar.YEAR),
                 transactionDate.get(Calendar.MONTH) + 1, // (valid values 1 - 12)
@@ -402,14 +336,17 @@ public class XeroAccountingPlatformService implements AccountingPlatformService<
         );
         invoice.setDate(localDate);
         invoice.setDueDate(localDate);
+        Contact contact = new Contact();
+        contact.setContactID(UUID.fromString(transaction.contactId));
         invoice.setContact(contact);
 
-        invoice.setLineItems(getLineItems(paymentGatewayEvent));
+        invoice.setLineItems(getLineItems(transaction));
         invoice.setType(Invoice.TypeEnum.ACCREC); // Receive
 
-        invoice.setReference(paymentGatewayEvent.getGatewayName() + ":" + paymentGatewayEvent.getTransactionId());
+        invoice.setReference(transaction.paymentGatewayName + ":" + transaction.paymentGatewayTransactionId);
+        // TODO: temporarily leaving them in DRAFT for DR to review
+//        invoice.setStatus(Invoice.StatusEnum.AUTHORISED);
 
         return invoice;
     }
-
 }

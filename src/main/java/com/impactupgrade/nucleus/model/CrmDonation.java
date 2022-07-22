@@ -14,6 +14,7 @@ public class CrmDonation {
   public String name;
   public Double amount;
   public String paymentGatewayName;
+  public String paymentGatewayTransactionId;
   public Status status;
   public Calendar closeDate;
   public CrmAccount account;
@@ -36,12 +37,13 @@ public class CrmDonation {
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmDonation(String id, String name, Double amount, String paymentGatewayName, Status status,
+  public CrmDonation(String id, String name, Double amount, String paymentGatewayName, String paymentGatewayTransactionId, Status status,
       Calendar closeDate, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
     this.id = id;
     this.name = name;
     this.amount = amount;
     this.paymentGatewayName = paymentGatewayName;
+    this.paymentGatewayTransactionId = paymentGatewayTransactionId;
     this.status = status;
     this.closeDate = closeDate;
     this.rawObject = rawObject;
