@@ -145,7 +145,7 @@ public class SharePointCrmService implements CrmService {
                     foundContacts.add(toCrmContact(csvRow));
                 }
             } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
-                if (csvRow.values().stream().filter(Objects::nonNull).anyMatch(csvValue -> csvValue.toLowerCase(Locale.ROOT).contains(contactSearch.keywords.toLowerCase(Locale.ROOT)))) {
+                if (keywordMatch(contactSearch.keywords, csvRow)) {
                     foundContacts.add(toCrmContact(csvRow));
                 }
             } else {
@@ -161,6 +161,23 @@ public class SharePointCrmService implements CrmService {
                 .limit(limit)
                 .collect(Collectors.toList());
         return getPagedResults(searchResults, contactSearch);
+    }
+
+    // Spinning this off into a separate method, since some orgs will want to skip specific columns.
+    protected boolean keywordMatch(String keywords, Map<String, String> csvRow) {
+        String[] keywordSplit = keywords.split("[^\\w]+");
+        // TODO: Not a super performant way of doing this...
+        for (String keyword : keywordSplit) {
+            boolean found = csvRow.entrySet().stream()
+                .filter(entry -> !env.getConfig().sharePoint.searchColumnsToSkip.contains(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .filter(Objects::nonNull)
+                .anyMatch(csvValue -> csvValue.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT)));
+            if (!found) {
+                return false;
+            }
+        }
+        return true;
     }
 
     protected List<Map<String, String>> getCsvData() {

@@ -272,6 +272,7 @@ public class EnvironmentConfig {
     public String ownerColumn = "";
     public String emailColumn = "";
     public String phoneColumn = "";
+    public List<String> searchColumnsToSkip = new ArrayList<>();
   }
 
   public SharePointPlatform sharePoint = new SharePointPlatform();
