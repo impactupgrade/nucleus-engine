@@ -168,6 +168,10 @@ public class Environment {
     return segmentServices(EmailService.class);
   }
 
+  public AccountingPlatformService accountingPlatformService() {
+    return segmentService(getConfig().primaryAccountingPlatformService, AccountingPlatformService.class);
+  }
+
   public List<AccountingPlatformService> allAccountingPlatformServices() {
     return segmentServices(AccountingPlatformService.class);
   }

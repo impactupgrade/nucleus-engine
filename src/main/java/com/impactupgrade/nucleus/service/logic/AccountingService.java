@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -11,6 +12,7 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -30,11 +33,65 @@ public class AccountingService {
     private static final Logger log = LogManager.getLogger(AccountingService.class);
 
     private final Environment env;
+    private final AccountingPlatformService accountingPlatformService;
     private final List<AccountingPlatformService> accountingPlatformServices;
 
     public AccountingService(Environment env) {
         this.env = env;
+        this.accountingPlatformService = env.accountingPlatformService();
         this.accountingPlatformServices = env.allAccountingPlatformServices();
+    }
+
+    public AccountingTransaction processTransaction(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+        Optional<AccountingTransaction> accountingTransactionO = accountingPlatformService.getTransaction(paymentGatewayEvent);
+        if (accountingTransactionO.isPresent()) {
+            log.info("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getTransactionId());
+            return accountingTransactionO.get();
+        }
+
+        Optional<CrmDonation> crmDonationO = env.donationsCrmService().getDonation(paymentGatewayEvent);
+        if (crmDonationO.isEmpty()) {
+            // Should be unreachable
+            log.warn("Failed to find donation for payment gateway event {}! Returning...", paymentGatewayEvent);
+            return null;
+        }
+        CrmDonation crmDonation = crmDonationO.get();
+        CrmContact crmContact = getDonationContact(crmDonation);
+        if (crmContact == null) {
+            // Should be unreachable
+            log.warn("Failed to find crm contact for crm donation {}!", crmDonation.id);
+        }
+
+        AccountingContact accountingContact = accountingPlatformService.updateOrCreateContact(crmContact);
+        log.info("Upserted contact: {}", accountingContact);
+
+        AccountingTransaction accountingTransaction = toAccountingTransaction(paymentGatewayEvent, accountingContact.id, crmContact.id);
+        AccountingTransaction createdTransaction = accountingPlatformService.createTransaction(accountingTransaction);
+        log.info("Created transaction: {}", createdTransaction);
+        return createdTransaction;
+    }
+
+    private CrmContact getDonationContact(CrmDonation crmDonation) throws Exception {
+        CrmContact crmContact = null;
+        String accountId = crmDonation.account != null ? crmDonation.account.id : null;
+        if (!StringUtils.isEmpty(accountId)) {
+            CrmAccount crmAccount = env.donationsCrmService().getAccountById(accountId).orElse(null);
+            // Get contact for org type account
+            if (crmAccount != null && crmAccount.type == CrmAccount.Type.ORGANIZATION) {
+                crmContact = new CrmContact();
+                crmContact.id = crmAccount.id;
+                crmContact.fullName = crmAccount.name;
+                crmContact.address = crmAccount.address;
+            }
+        }
+        if (crmContact == null) {
+            String contactId = crmDonation.contact != null ? crmDonation.contact.id : null;
+            if (!StringUtils.isEmpty(contactId)) {
+                // Get non-org contact
+                crmContact = env.donationsCrmService().getContactById(contactId).orElse(null);
+            }
+        }
+        return crmContact;
     }
 
     public void addDeposits(List<PaymentGatewayDeposit> paymentGatewayDeposits) {
@@ -79,7 +136,6 @@ public class AccountingService {
         }
     }
 
-    // Utils
     private List<PaymentGatewayEvent> collectTransactions(List<PaymentGatewayDeposit> deposits) {
         return deposits.stream()
                 .filter(Objects::nonNull)
@@ -102,15 +158,19 @@ public class AccountingService {
         return Collections.min(transactionDates);
     }
 
-    private List<AccountingTransaction> processTransactions(List<PaymentGatewayEvent> paymentGatewayEvents,
-            List<AccountingTransaction> existingTransactions, AccountingPlatformService accountingPlatformService) throws Exception {
+    private List<AccountingTransaction> processTransactions(
+            List<PaymentGatewayEvent> paymentGatewayEvents,
+            List<AccountingTransaction> existingTransactions,
+            AccountingPlatformService accountingPlatformService) throws Exception {
 
         // This is a several-step process, processing donations and associated contacts/accounts using bulk queries.
         // Super important to do it this way, as opposed to one loop with one-at-a-time queries. Some deposits carry
         // a huge number of transactions -- processing would take a long time + Xero has really restrictive rate limits.
 
         // First, filter down the events that are truly new.
-        List<String> existingTransactionsIds = existingTransactions.stream().map(existingTransaction -> existingTransaction.paymentGatewayTransactionId).collect(Collectors.toList());
+        List<String> existingTransactionsIds = existingTransactions.stream()
+                .map(existingTransaction -> existingTransaction.paymentGatewayTransactionId)
+                .collect(Collectors.toList());
         List<PaymentGatewayEvent> newPaymentGatewayEvents = paymentGatewayEvents.stream()
             .filter(paymentGatewayEvent -> !existingTransactionsIds.contains(paymentGatewayEvent.getTransactionId()))
             .collect(Collectors.toList());
@@ -126,31 +186,40 @@ public class AccountingService {
         List<CrmDonation> crmDonations = env.donationsCrmService().getDonations(newPaymentGatewayEvents);
         // Create two maps, pairing the donation's original transaction id with the contact/account id.
         // TODO: DR breaks here! Transaction ID is in the PT object, not Opp, so DRSfdcClient's getDonationsByTransactionIds needs rethought.
-        Map<String, String> transactionIdToContactId = crmDonations.stream().filter(crmDonation -> crmDonation.contact != null && !Strings.isNullOrEmpty(crmDonation.contact.id)).collect(Collectors.toMap(crmDonation -> crmDonation.paymentGatewayTransactionId, crmDonation -> crmDonation.contact.id));
-        Map<String, String> transactionIdToAccountId = crmDonations.stream().filter(crmDonation -> crmDonation.account != null && !Strings.isNullOrEmpty(crmDonation.account.id)).collect(Collectors.toMap(crmDonation -> crmDonation.paymentGatewayTransactionId, crmDonation -> crmDonation.account.id));
+        Map<String, String> transactionIdToContactId = new HashMap<>();
+        crmDonations.stream()
+                .filter(crmDonation -> crmDonation.contact != null && !Strings.isNullOrEmpty(crmDonation.contact.id))
+                .forEach(crmDonation -> transactionIdToContactId.put(crmDonation.paymentGatewayTransactionId, crmDonation.contact.id));
+        Map<String, String> transactionIdToAccountId = new HashMap<>();
+        crmDonations.stream()
+                .filter(crmDonation -> crmDonation.account != null && !Strings.isNullOrEmpty(crmDonation.account.id))
+                .forEach(crmDonation -> transactionIdToAccountId.put(crmDonation.paymentGatewayTransactionId, crmDonation.account.id));
 
         // Then, again all in one shot, grab all the CRM contacts and accounts.
-        Map<String, CrmContact> crmContacts = env.donationsCrmService().getContactsByIds(transactionIdToContactId.values().stream().toList()).stream().collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
-        Map<String, CrmAccount> crmAccounts = env.donationsCrmService().getAccountsByIds(transactionIdToAccountId.values().stream().toList()).stream().collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
+        List<CrmContact> crmContacts = env.donationsCrmService().getContactsByIds(transactionIdToContactId.values().stream().toList());
+        Map<String, CrmContact> crmContactsByIds = crmContacts.stream().collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
+        List<CrmAccount> crmAccounts = env.donationsCrmService().getAccountsByIds(transactionIdToAccountId.values().stream().toList());
+        Map<String, CrmAccount> crmAccountsByIds = crmAccounts.stream().collect(Collectors.toMap(crmAccount -> crmAccount.id, crmAccount -> crmAccount));
 
         // Now loop over the events and batch create/update all the contacts in the accounting platform.
         Map<String, CrmContact> crmContactsToUpsert = new HashMap<>();
         for (PaymentGatewayEvent newPaymentGatewayEvent : newPaymentGatewayEvents) {
             // TODO: This might need a refactor in the future. For Xero, Contacts are a centering point, and here we're
             //  transforming business gifts into faux CrmContacts. But a better abstract concept may be helpful for QB and others.
-            String contactId = transactionIdToContactId.get(newPaymentGatewayEvent.getTransactionId());
-            String accountId = transactionIdToAccountId.get(newPaymentGatewayEvent.getTransactionId());
-            if (!Strings.isNullOrEmpty(accountId) && crmAccounts.get(accountId).type == CrmAccount.Type.ORGANIZATION) {
+            String paymentGatewayEventTransactionId = newPaymentGatewayEvent.getTransactionId();
+            String contactId = transactionIdToContactId.get(paymentGatewayEventTransactionId);
+            String accountId = transactionIdToAccountId.get(paymentGatewayEventTransactionId);
+            if (!Strings.isNullOrEmpty(accountId) && crmAccountsByIds.get(accountId).type == CrmAccount.Type.ORGANIZATION) {
                 // biz donation -> faux contact for the org account
-                CrmAccount crmAccount = crmAccounts.get(accountId);
+                CrmAccount crmAccount = crmAccountsByIds.get(accountId);
                 CrmContact crmAccountContact = new CrmContact();
                 crmAccountContact.id = crmAccount.id;
                 crmAccountContact.fullName = crmAccount.name;
                 crmAccountContact.address = crmAccount.address;
-                crmContactsToUpsert.put(newPaymentGatewayEvent.getTransactionId(), crmAccountContact);
+                crmContactsToUpsert.put(paymentGatewayEventTransactionId, crmAccountContact);
             } else {
                 // not a biz donation -> use the real contact
-                crmContactsToUpsert.put(newPaymentGatewayEvent.getTransactionId(), crmContacts.get(contactId));
+                crmContactsToUpsert.put(paymentGatewayEventTransactionId, crmContactsByIds.get(contactId));
             }
         }
         Map<String, String> crmContactIdToAccountingContactId = accountingPlatformService
@@ -159,16 +228,22 @@ public class AccountingService {
         // Finally, return the combined list of transactions + the contacts from within the *accounting* platform.
         return newPaymentGatewayEvents.stream().map(newPaymentGatewayEvent -> {
             String crmContactId = crmContactsToUpsert.get(newPaymentGatewayEvent.getTransactionId()).id;
-            return new AccountingTransaction(
+            return toAccountingTransaction(newPaymentGatewayEvent,
+                    crmContactIdToAccountingContactId.get(crmContactId), crmContactId);
+        }).collect(Collectors.toList());
+    }
+
+    private AccountingTransaction toAccountingTransaction(PaymentGatewayEvent newPaymentGatewayEvent,
+                                                          String accountingContactId, String crmContactId) {
+        return new AccountingTransaction(
                 newPaymentGatewayEvent.getTransactionAmountInDollars(),
                 newPaymentGatewayEvent.getTransactionDate(),
                 newPaymentGatewayEvent.getTransactionDescription(),
                 newPaymentGatewayEvent.isTransactionRecurring(),
                 newPaymentGatewayEvent.getGatewayName(),
                 newPaymentGatewayEvent.getTransactionId(),
-                crmContactIdToAccountingContactId.get(crmContactId),
+                accountingContactId,
                 crmContactId
-            );
-        }).collect(Collectors.toList());
+        );
     }
 }
