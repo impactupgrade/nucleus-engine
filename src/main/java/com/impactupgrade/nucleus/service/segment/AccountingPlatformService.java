@@ -5,9 +5,6 @@ import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public interface AccountingPlatformService extends SegmentService {
@@ -18,10 +15,10 @@ public interface AccountingPlatformService extends SegmentService {
 
     AccountingTransaction createTransaction(AccountingTransaction accountingTransaction) throws Exception;
 
-    List<AccountingTransaction> getTransactions(Date startDate) throws Exception;
-
-    // <crm contact id, accounting contact id>
-    Map<String, String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception;
-
-    void createTransactions(List<AccountingTransaction> transactions) throws Exception;
+//    List<AccountingTransaction> getTransactions(Date startDate) throws Exception;
+//
+//    // <crm contact id, accounting contact id>
+//    Map<String, String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception;
+//
+//    void createTransactions(List<AccountingTransaction> transactions) throws Exception;
 }

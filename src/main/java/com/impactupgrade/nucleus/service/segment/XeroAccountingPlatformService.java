@@ -26,26 +26,18 @@ import com.xero.models.accounting.Contacts;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.threeten.bp.LocalDate;
-import org.threeten.bp.LocalDateTime;
-import org.threeten.bp.OffsetDateTime;
-import org.threeten.bp.ZoneOffset;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService {
 
@@ -175,122 +167,122 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
     }
 
-    @Override
-    public List<AccountingTransaction> getTransactions(Date startDate) throws Exception {
-        try {
-            List<Invoice> allInvoices = new ArrayList<>();
-            int page = 1;
-            int currentPageSize;
-
-            do {
-                List<Invoice> invoicesPage = getInvoices(startDate, page);
-                allInvoices.addAll(invoicesPage);
-                currentPageSize = invoicesPage.size();
-                page++;
-            } while (currentPageSize == 100);
-
-            return allInvoices.stream()
-                    .map(invoice -> getPaymentGatewayTransactionId(invoice))
-                    // Older transactions may not have the stripe: setup, so skip those entirely -- we have no way of pulling the ID from them.
-                    .filter(id -> !Strings.isNullOrEmpty(id))
-                    .map(paymentGatewayTransactionId -> new AccountingTransaction(
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            paymentGatewayTransactionId,
-                            null,
-                            null
-                    ))
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
-            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
-            throw e;
-        }
-    }
-
-    protected List<Invoice> getInvoices(Date startDate, int page) throws Exception {
-        OffsetDateTime ifModifiedSince = OffsetDateTime.of(asLocalDateTime(startDate), ZoneOffset.UTC);
-        Invoices invoicesResponse = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
-                // OffsetDateTime ifModifiedSince
-                ifModifiedSince,
-                //String where,
-                "Reference.StartsWith(\"Stripe\")",
-                // String order,
-                null,
-                // List<UUID> ids,
-                null,
-                //List<String> invoiceNumbers,
-                null,
-                //List<UUID> contactIDs,
-                null,
-                //List<String> statuses,
-                List.of(
-                        Invoice.StatusEnum.DRAFT.name(),
-                        Invoice.StatusEnum.SUBMITTED.name(),
-                        Invoice.StatusEnum.AUTHORISED.name(),
-                        Invoice.StatusEnum.PAID.name()
-                ),
-                //Integer page,
-                page,
-                //Boolean includeArchived,
-                false,
-                //Boolean createdByMyApp,
-                null,
-                // Integer unitdp
-                null,
-                // Boolean summaryOnly
-                false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
-        );
-        return invoicesResponse.getInvoices();
-    }
-
-    protected LocalDateTime asLocalDateTime(Date date) {
-        if (date == null) {
-            return null;
-        }
-        return LocalDateTime.ofEpochSecond(date.toInstant().getEpochSecond(), 0, ZoneOffset.UTC);
-    }
-
-    @Override
-    public Map<String, String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
-        if (CollectionUtils.isEmpty(crmContacts)) {
-            return Collections.emptyMap();
-        }
-        Contacts contacts = new Contacts();
-        contacts.setContacts(crmContacts.stream()
-                .map(crmContact -> toContact(crmContact))
-                .collect(Collectors.toList()));
-        try {
-            return xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS).getContacts().stream()
-                .collect(Collectors.toMap(
-                        // account number is set as the crm contact id
-                        Contact::getAccountNumber, contact -> contact.getContactID().toString()));
-        } catch (Exception e) {
-            log.error("Failed to upsert contacts! {}", getExceptionDetails(e));
-            return Collections.emptyMap();
-        }
-    }
-
-    @Override
-    public void createTransactions(List<AccountingTransaction> transactions) throws Exception {
-        log.info("Input transactions: {}", transactions.size());
-
-        Invoices invoices = new Invoices().invoices(transactions.stream().map(this::toInvoice).collect(Collectors.toList()));
-        log.info("Invoices to create: {}", invoices.getInvoices().size());
-
-        try {
-            Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
-            List<Invoice> createdItems = createdInvoices.getInvoices();
-
-            log.info("Invoices created: {}", createdItems.size());
-        } catch (Exception e) {
-            log.error("Failed to create invoices! {}", getExceptionDetails(e));
-            throw e;
-        }
-    }
+//    @Override
+//    public List<AccountingTransaction> getTransactions(Date startDate) throws Exception {
+//        try {
+//            List<Invoice> allInvoices = new ArrayList<>();
+//            int page = 1;
+//            int currentPageSize;
+//
+//            do {
+//                List<Invoice> invoicesPage = getInvoices(startDate, page);
+//                allInvoices.addAll(invoicesPage);
+//                currentPageSize = invoicesPage.size();
+//                page++;
+//            } while (currentPageSize == 100);
+//
+//            return allInvoices.stream()
+//                    .map(invoice -> getPaymentGatewayTransactionId(invoice))
+//                    // Older transactions may not have the stripe: setup, so skip those entirely -- we have no way of pulling the ID from them.
+//                    .filter(id -> !Strings.isNullOrEmpty(id))
+//                    .map(paymentGatewayTransactionId -> new AccountingTransaction(
+//                            null,
+//                            null,
+//                            null,
+//                            null,
+//                            null,
+//                            paymentGatewayTransactionId,
+//                            null,
+//                            null
+//                    ))
+//                    .collect(Collectors.toList());
+//        } catch (Exception e) {
+//            log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
+//            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
+//            throw e;
+//        }
+//    }
+//
+//    protected List<Invoice> getInvoices(Date startDate, int page) throws Exception {
+//        OffsetDateTime ifModifiedSince = OffsetDateTime.of(asLocalDateTime(startDate), ZoneOffset.UTC);
+//        Invoices invoicesResponse = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
+//                // OffsetDateTime ifModifiedSince
+//                ifModifiedSince,
+//                //String where,
+//                "Reference.StartsWith(\"Stripe\")",
+//                // String order,
+//                null,
+//                // List<UUID> ids,
+//                null,
+//                //List<String> invoiceNumbers,
+//                null,
+//                //List<UUID> contactIDs,
+//                null,
+//                //List<String> statuses,
+//                List.of(
+//                        Invoice.StatusEnum.DRAFT.name(),
+//                        Invoice.StatusEnum.SUBMITTED.name(),
+//                        Invoice.StatusEnum.AUTHORISED.name(),
+//                        Invoice.StatusEnum.PAID.name()
+//                ),
+//                //Integer page,
+//                page,
+//                //Boolean includeArchived,
+//                false,
+//                //Boolean createdByMyApp,
+//                null,
+//                // Integer unitdp
+//                null,
+//                // Boolean summaryOnly
+//                false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
+//        );
+//        return invoicesResponse.getInvoices();
+//    }
+//
+//    protected LocalDateTime asLocalDateTime(Date date) {
+//        if (date == null) {
+//            return null;
+//        }
+//        return LocalDateTime.ofEpochSecond(date.toInstant().getEpochSecond(), 0, ZoneOffset.UTC);
+//    }
+//
+//    @Override
+//    public Map<String, String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
+//        if (CollectionUtils.isEmpty(crmContacts)) {
+//            return Collections.emptyMap();
+//        }
+//        Contacts contacts = new Contacts();
+//        contacts.setContacts(crmContacts.stream()
+//                .map(crmContact -> toContact(crmContact))
+//                .collect(Collectors.toList()));
+//        try {
+//            return xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS).getContacts().stream()
+//                .collect(Collectors.toMap(
+//                        // account number is set as the crm contact id
+//                        Contact::getAccountNumber, contact -> contact.getContactID().toString()));
+//        } catch (Exception e) {
+//            log.error("Failed to upsert contacts! {}", getExceptionDetails(e));
+//            return Collections.emptyMap();
+//        }
+//    }
+//
+//    @Override
+//    public void createTransactions(List<AccountingTransaction> transactions) throws Exception {
+//        log.info("Input transactions: {}", transactions.size());
+//
+//        Invoices invoices = new Invoices().invoices(transactions.stream().map(this::toInvoice).collect(Collectors.toList()));
+//        log.info("Invoices to create: {}", invoices.getInvoices().size());
+//
+//        try {
+//            Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
+//            List<Invoice> createdItems = createdInvoices.getInvoices();
+//
+//            log.info("Invoices created: {}", createdItems.size());
+//        } catch (Exception e) {
+//            log.error("Failed to create invoices! {}", getExceptionDetails(e));
+//            throw e;
+//        }
+//    }
 
     protected String getAccessToken() throws IOException, JwkException {
         DecodedJWT jwt = null;
