@@ -16,7 +16,6 @@ import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.controller.TwilioFrontlineController;
-import com.impactupgrade.nucleus.dao.HibernateUtil;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
@@ -34,7 +33,6 @@ import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
-import org.hibernate.SessionFactory;
 
 import javax.servlet.DispatcherType;
 import java.util.EnumSet;
@@ -45,21 +43,13 @@ public class App {
   private static final int PORT = Integer.parseInt(System.getenv("PORT") != null ? System.getenv("PORT") : "9009");
 
   protected final EnvironmentFactory envFactory;
-  protected final SessionFactory sessionFactory;
 
   public App() {
     this.envFactory = new EnvironmentFactory();
-    this.sessionFactory = HibernateUtil.getSessionFactory();
   }
 
   public App(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
-    this.sessionFactory = HibernateUtil.getSessionFactory();
-  }
-
-  public App(EnvironmentFactory envFactory, SessionFactory sessionFactory) {
-    this.envFactory = envFactory;
-    this.sessionFactory = sessionFactory;
   }
 
   private Server server = null;
@@ -152,7 +142,7 @@ public class App {
   protected TwilioController twilioController() { return new TwilioController(envFactory); }
   protected TwilioFrontlineController twilioFrontlineController() { return new TwilioFrontlineController(envFactory); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
-  protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory, sessionFactory); }
+  protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
   protected AccountingController accountingController() { return new AccountingController(envFactory); }
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;

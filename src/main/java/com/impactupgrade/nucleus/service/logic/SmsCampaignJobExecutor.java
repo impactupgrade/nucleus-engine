@@ -18,7 +18,6 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.SessionFactory;
 
 import java.time.Instant;
 import java.util.Calendar;
@@ -41,9 +40,9 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   private final CrmService crmService;
   private final TwilioClient twilioClient;
 
-  public SmsCampaignJobExecutor(Environment env, SessionFactory sessionFactory) {
-    this.jobDao = new HibernateDao<>(Job.class, sessionFactory);
-    this.jobProgressDao = new HibernateDao<>(JobProgress.class, sessionFactory);
+  public SmsCampaignJobExecutor(Environment env) {
+    this.jobDao = new HibernateDao<>(Job.class);
+    this.jobProgressDao = new HibernateDao<>(JobProgress.class);
     this.crmService = env.primaryCrmService();
     this.twilioClient = env.twilioClient();
   }

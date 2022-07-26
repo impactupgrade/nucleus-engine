@@ -4,7 +4,6 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.SessionFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
@@ -19,11 +18,9 @@ public class ScheduledJobController {
   private static final Logger log = LogManager.getLogger(ScheduledJobController.class);
 
   protected final EnvironmentFactory envFactory;
-  protected final SessionFactory sessionFactory;
 
-  public ScheduledJobController(EnvironmentFactory envFactory, SessionFactory sessionFactory) {
+  public ScheduledJobController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
-    this.sessionFactory = sessionFactory;
   }
 
   @GET
@@ -34,7 +31,7 @@ public class ScheduledJobController {
     new Thread(() -> {
       try {
         Instant now = Instant.now();
-        env.scheduledJobService(sessionFactory).processJobSchedules(now);
+        env.scheduledJobService().processJobSchedules(now);
       } catch (Exception e) {
         log.error("scheduled job failed", e);
       }

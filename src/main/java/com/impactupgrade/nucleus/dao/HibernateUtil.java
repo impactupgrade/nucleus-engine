@@ -28,6 +28,11 @@ public class HibernateUtil {
     }
   }
 
+  // allow custom impls to provide their own, if needed
+  public static void setSessionFactory(SessionFactory _sessionFactory) {
+    sessionFactory = _sessionFactory;
+  }
+
   public static SessionFactory getSessionFactory() {
     if (sessionFactory == null) {
       sessionFactory = createSessionFactory();

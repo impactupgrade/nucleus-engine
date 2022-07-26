@@ -21,9 +21,9 @@ public class HibernateDao<I extends Serializable, E> {
   private final Class<E> clazz;
   private final SessionFactory sessionFactory;
 
-  public HibernateDao(Class<E> clazz, SessionFactory sessionFactory) {
+  public HibernateDao(Class<E> clazz) {
     this.clazz = clazz;
-    this.sessionFactory = sessionFactory;
+    this.sessionFactory = HibernateUtil.getSessionFactory();
   }
 
   public E create(E entity) {

@@ -209,16 +209,16 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         try {
           String paymentIntentId = charge.getPaymentIntent();
           String chargeId = charge.getId();
-          Optional<CrmDonation> donation = Optional.empty();
-          if (!Strings.isNullOrEmpty(paymentIntentId)) {
-            donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
-          }
-          if (donation.isEmpty()) {
-            donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
-          }
-
-          if (donation.isEmpty()) {
-            log.info("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
+//          Optional<CrmDonation> donation = Optional.empty();
+//          if (!Strings.isNullOrEmpty(paymentIntentId)) {
+//            donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
+//          }
+//          if (donation.isEmpty()) {
+//            donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
+//          }
+//
+//          if (donation.isEmpty()) {
+//            log.info("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
 
             PaymentGatewayEvent paymentGatewayEvent;
             if (Strings.isNullOrEmpty(paymentIntentId)) {
@@ -228,7 +228,8 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
             }
             env.contactService().processDonor(paymentGatewayEvent);
             env.donationService().createDonation(paymentGatewayEvent);
-          }
+            env.accountingService().processTransaction(paymentGatewayEvent);
+//          }
         } catch (Exception e) {
           log.error("charge replay failed", e);
         }

@@ -25,13 +25,11 @@ public class DonationService {
   private final Environment env;
   private final CrmService crmService;
   private final NotificationService notificationservice;
-  private final AccountingService accountingService;
 
   public DonationService(Environment env) {
     this.env = env;
     crmService = env.donationsCrmService();
     notificationservice = env.notificationService();
-    this.accountingService = env.accountingService();
   }
 
   public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
@@ -77,7 +75,6 @@ public class DonationService {
     }
 
     crmService.insertDonation(paymentGatewayEvent);
-    accountingService.processTransaction(paymentGatewayEvent);
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {

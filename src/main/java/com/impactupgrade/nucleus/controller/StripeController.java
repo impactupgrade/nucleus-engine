@@ -117,6 +117,7 @@ public class StripeController {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
+          env.accountingService().processTransaction(paymentGatewayEvent);
         }
       }
       case "payment_intent.succeeded" -> {
@@ -126,6 +127,7 @@ public class StripeController {
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
         env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
+        env.accountingService().processTransaction(paymentGatewayEvent);
       }
       case "charge.failed" -> {
         Charge charge = (Charge) stripeObject;

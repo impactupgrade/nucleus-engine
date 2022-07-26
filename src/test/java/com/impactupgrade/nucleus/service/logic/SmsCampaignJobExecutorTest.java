@@ -30,12 +30,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
   @Test
   public void testOneTime() throws Exception {
     Environment env = new DefaultEnvironment();
-    SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
-    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class, sessionFactory);
-    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class, sessionFactory);
-    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class, sessionFactory);
+    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
+    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
+    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
 
-    ScheduledJobService service = new ScheduledJobService(env, sessionFactory);
+    ScheduledJobService service = new ScheduledJobService(env);
 
     Organization org = new Organization();
     org.setId(1);
@@ -103,11 +102,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     Environment env = new DefaultEnvironment();
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
-    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class, sessionFactory);
-    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class, sessionFactory);
-    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class, sessionFactory);
+    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
+    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
+    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
 
-    ScheduledJobService service = new ScheduledJobService(env, sessionFactory);
+    ScheduledJobService service = new ScheduledJobService(env);
 
     Organization org = new Organization();
     org.setId(1);
@@ -406,11 +405,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     Environment env = new DefaultEnvironment();
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
-    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class, sessionFactory);
-    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class, sessionFactory);
-    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class, sessionFactory);
+    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
+    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
+    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
 
-    ScheduledJobService service = new ScheduledJobService(env, sessionFactory);
+    ScheduledJobService service = new ScheduledJobService(env);
 
     Organization org = new Organization();
     org.setId(1);

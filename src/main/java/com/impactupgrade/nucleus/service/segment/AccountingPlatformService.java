@@ -13,7 +13,7 @@ public interface AccountingPlatformService extends SegmentService {
 
     AccountingContact updateOrCreateContact(CrmContact crmContact) throws Exception;
 
-    AccountingTransaction createTransaction(AccountingTransaction accountingTransaction) throws Exception;
+    void createTransaction(AccountingTransaction accountingTransaction) throws Exception;
 
 //    List<AccountingTransaction> getTransactions(Date startDate) throws Exception;
 //

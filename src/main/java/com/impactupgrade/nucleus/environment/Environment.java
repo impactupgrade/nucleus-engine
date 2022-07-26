@@ -25,7 +25,6 @@ import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.SessionFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
@@ -114,7 +113,7 @@ public class Environment {
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
   public NotificationService notificationService() { return new NotificationService(this); }
-  public ScheduledJobService scheduledJobService(SessionFactory sessionFactory) { return new ScheduledJobService(this, sessionFactory); }
+  public ScheduledJobService scheduledJobService() { return new ScheduledJobService(this); }
   public AccountingService accountingService() { return new AccountingService(this); }
 
   // segment services
@@ -169,7 +168,7 @@ public class Environment {
   }
 
   public AccountingPlatformService accountingPlatformService() {
-    return segmentService(getConfig().primaryAccountingPlatformService, AccountingPlatformService.class);
+    return segmentService(getConfig().primaryAccounting, AccountingPlatformService.class);
   }
 
   public List<AccountingPlatformService> allAccountingPlatformServices() {

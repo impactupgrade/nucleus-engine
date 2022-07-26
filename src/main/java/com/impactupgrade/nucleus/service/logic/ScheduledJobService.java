@@ -7,7 +7,6 @@ import com.impactupgrade.nucleus.environment.Environment;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.SessionFactory;
 
 import javax.persistence.TemporalType;
 import java.time.Instant;
@@ -19,12 +18,10 @@ public class ScheduledJobService {
 
   private final HibernateDao<Long, Job> jobDao;
   private final Environment env;
-  private final SessionFactory sessionFactory;
 
-  public ScheduledJobService(Environment env, SessionFactory sessionFactory) {
+  public ScheduledJobService(Environment env) {
     this.env = env;
-    this.sessionFactory = sessionFactory;
-    this.jobDao = new HibernateDao<>(Job.class, sessionFactory);
+    this.jobDao = new HibernateDao<>(Job.class);
   }
 
   // May seem a little odd to require the now argument, rather than simply doing Instant.now() inline. However:
@@ -56,7 +53,7 @@ public class ScheduledJobService {
     for (Job job : jobs) {
       log.info("Processing job {}...", job.id);
       switch (job.jobType) {
-        case SMS_CAMPAIGN -> new SmsCampaignJobExecutor(env, sessionFactory).execute(job, now);
+        case SMS_CAMPAIGN -> new SmsCampaignJobExecutor(env).execute(job, now);
         default -> log.error("Job type {} is not yet supported!", job.jobType);
       }
     }

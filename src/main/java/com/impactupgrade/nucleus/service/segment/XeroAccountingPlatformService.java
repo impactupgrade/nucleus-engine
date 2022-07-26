@@ -12,6 +12,8 @@ import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.dao.HibernateDao;
+import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
@@ -28,6 +30,7 @@ import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 import org.threeten.bp.LocalDate;
 
 import java.io.IOException;
@@ -57,11 +60,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     protected String clientId;
     protected String clientSecret;
     protected String tokenServerUrl;
+    protected String xeroTenantId;
+
+    protected HibernateDao<Long, Organization> organizationDao;
 
     protected static String accessToken;
     protected static String refreshToken;
 
-    protected String xeroTenantId;
 
     public XeroAccountingPlatformService() {
         this.apiClient = new ApiClient();
@@ -79,19 +84,24 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public void init(Environment environment) {
-        this.env = environment;
-        this.clientId = environment.getConfig().xero.clientId;
-        this.clientSecret = environment.getConfig().xero.clientSecret;
-        this.tokenServerUrl = environment.getConfig().xero.tokenServerUrl;
-        //TODO: find a better way of saving access token
-        if (this.accessToken == null) {
-            this.accessToken = environment.getConfig().xero.accessToken;
-        }
-        if (this.refreshToken == null) {
-            this.refreshToken = environment.getConfig().xero.refreshToken;
-        }
-        this.xeroTenantId = environment.getConfig().xero.tenantId;
+    public void init(Environment env) {
+        this.env = env;
+        this.clientId = env.getConfig().xero.clientId;
+        this.clientSecret = env.getConfig().xero.clientSecret;
+        this.tokenServerUrl = env.getConfig().xero.tokenServerUrl;
+        this.xeroTenantId = env.getConfig().xero.tenantId;
+        this.organizationDao = new HibernateDao<>(Organization.class);
+
+        Organization org = getOrganization();
+        JSONObject envJson = org.getEnvironmentJson();
+        JSONObject xeroJson = envJson.getJSONObject("xero");
+        accessToken = xeroJson.getString("accessToken");
+        refreshToken = xeroJson.getString("refreshToken");
+    }
+
+    // TODO: This seems likely to be needed again?
+    protected Organization getOrganization() {
+        return organizationDao.getQueryResult("from Organization o where o.nucleusApiKey = '" + env.getConfig().apiKey + "'").get();
     }
 
     @Override
@@ -154,13 +164,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public AccountingTransaction createTransaction(AccountingTransaction accountingTransaction) throws Exception {
+    public void createTransaction(AccountingTransaction accountingTransaction) throws Exception {
         Invoices invoices = new Invoices();
         invoices.setInvoices(List.of(toInvoice(accountingTransaction)));
         try {
             Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
-            Invoice createdInvoice = createdInvoices.getInvoices().stream().findFirst().get();
-            return toAccountingTransaction(createdInvoice);
+            createdInvoices.getInvoices().stream().findFirst().get();
         } catch (Exception e) {
             log.error("Failed to create invoices! {}", getExceptionDetails(e));
             throw e;
@@ -307,6 +316,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 accessToken = verifiedJWT.getToken();
                 refreshToken = tokenResponse.getRefreshToken();
 
+                Organization org = getOrganization();
+                JSONObject envJson = org.getEnvironmentJson();
+                JSONObject xeroJson = envJson.getJSONObject("xero");
+                xeroJson.put("accessToken", accessToken);
+                xeroJson.put("refreshToken", refreshToken);
+                org.setEnvironmentJson(envJson);
+                organizationDao.update(org);
             } catch (IOException | JwkException e) {
                 log.error("Failed to refresh access token!");
                 if (e instanceof TokenResponseException) {

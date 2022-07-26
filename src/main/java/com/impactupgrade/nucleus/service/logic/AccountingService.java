@@ -29,18 +29,18 @@ public class AccountingService {
         this.accountingPlatformServices = env.allAccountingPlatformServices();
     }
 
-    public AccountingTransaction processTransaction(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public void processTransaction(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
         Optional<AccountingTransaction> accountingTransactionO = accountingPlatformService.getTransaction(paymentGatewayEvent);
         if (accountingTransactionO.isPresent()) {
             log.info("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getTransactionId());
-            return accountingTransactionO.get();
+            return;
         }
 
         Optional<CrmDonation> crmDonationO = env.donationsCrmService().getDonation(paymentGatewayEvent);
         if (crmDonationO.isEmpty()) {
             // Should be unreachable
             log.warn("Failed to find donation for payment gateway event {}! Returning...", paymentGatewayEvent);
-            return null;
+            return;
         }
         CrmDonation crmDonation = crmDonationO.get();
         CrmContact crmContact = getDonationContact(crmDonation);
@@ -53,9 +53,8 @@ public class AccountingService {
         log.info("Upserted contact: {}", accountingContact);
 
         AccountingTransaction accountingTransaction = toAccountingTransaction(paymentGatewayEvent, accountingContact.id, crmContact.id);
-        AccountingTransaction createdTransaction = accountingPlatformService.createTransaction(accountingTransaction);
-        log.info("Created transaction: {}", createdTransaction);
-        return createdTransaction;
+        accountingPlatformService.createTransaction(accountingTransaction);
+        log.info("Created transaction: {}", accountingTransaction);
     }
 
     private CrmContact getDonationContact(CrmDonation crmDonation) throws Exception {
