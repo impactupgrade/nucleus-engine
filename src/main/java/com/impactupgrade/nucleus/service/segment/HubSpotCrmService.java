@@ -53,7 +53,7 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmTask;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -239,11 +239,21 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertTask(CrmTask crmTask) throws Exception {
+  public String insertActivity(CrmActivity crmActivity) throws Exception {
     EngagementRequest engagementRequest = new EngagementRequest();
-    setTaskFields(engagementRequest, crmTask);
+    setTaskFields(engagementRequest, crmActivity);
     EngagementRequest response = engagementClient.insert(engagementRequest);
     return response == null ? null : response.getId() + "";
+  }
+
+  @Override
+  public String updateActivity(CrmActivity crmActivity) throws Exception {
+    return null;
+  }
+
+  @Override
+  public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
+    return Optional.empty();
   }
 
   @Override
@@ -286,32 +296,32 @@ public class HubSpotCrmService implements CrmService {
     return this.env.getConfig().hubspot.fieldDefinitions;
   }
 
-  protected void setTaskFields(EngagementRequest engagementRequest, CrmTask crmTask) {
+  protected void setTaskFields(EngagementRequest engagementRequest, CrmActivity crmActivity) {
     Engagement engagement = new Engagement();
     engagement.setActive(true);
     engagement.setType("TASK");
-    engagement.setOwnerId(crmTask.assignTo);
+    engagement.setOwnerId(crmActivity.assignTo);
     engagementRequest.setEngagement(engagement);
 
     EngagementAssociations associations = new EngagementAssociations();
     try {
-      Long contactId = Long.parseLong(crmTask.targetId);
+      Long contactId = Long.parseLong(crmActivity.targetId);
       associations.setContactIds(List.of(contactId));
     } catch (NumberFormatException nfe) {
-      throw new IllegalArgumentException("Failed to parse contact id from target id " + crmTask.targetId + " !");
+      throw new IllegalArgumentException("Failed to parse contact id from target id " + crmActivity.targetId + " !");
     }
     engagementRequest.setAssociations(associations);
 
     EngagementTaskMetadata metadata = new EngagementTaskMetadata();
-    metadata.setBody(crmTask.description);
+    metadata.setBody(crmActivity.description);
 
-    switch (crmTask.status) {
+    switch (crmActivity.status) {
       case TO_DO -> metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
       case IN_PROGRESS -> metadata.setStatus(EngagementTaskMetadata.Status.IN_PROGRESS);
       case DONE -> metadata.setStatus(EngagementTaskMetadata.Status.COMPLETED);
       default -> metadata.setStatus(EngagementTaskMetadata.Status.NOT_STARTED);
     }
-    metadata.setSubject(crmTask.subject);
+    metadata.setSubject(crmActivity.subject);
     engagementRequest.setMetadata(metadata);
   }
 

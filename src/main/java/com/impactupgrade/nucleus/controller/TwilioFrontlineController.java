@@ -336,7 +336,7 @@ public class TwilioFrontlineController {
 
         return Response.ok().build();
       default:
-        env.logJobError("unexpected eventType: " + eventType);
+        env.logJobWarn("unexpected eventType: " + eventType);
         return Response.status(422).build();
     }
   }

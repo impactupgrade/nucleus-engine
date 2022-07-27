@@ -2,28 +2,39 @@ package com.impactupgrade.nucleus.model;
 
 import java.util.Calendar;
 
-public class CrmTask {
+public class CrmActivity {
 
+  public String id;
   public String targetId;
   public String assignTo; // User ID
   public String subject;
   public String description;
+  public Type type;
   public Status status;
   public Priority priority;
   public Calendar dueDate;
 
-  public CrmTask() {
+  public CrmActivity() {
   }
 
-  public CrmTask(String targetId, String assignTo, String subject, String description,
-      Status status, Priority priority, Calendar dueDate) {
+  public CrmActivity(String targetId, String assignTo, String subject, String description, Type type, Status status,
+      Priority priority, Calendar dueDate) {
     this.targetId = targetId;
     this.assignTo = assignTo;
     this.subject = subject;
     this.description = description;
+    this.type = type;
     this.status = status;
     this.priority = priority;
     this.dueDate = dueDate;
+  }
+
+  public enum Type {
+    TASK,
+    EMAIL,
+    LIST_EMAIL,
+    CADENCE,
+    CALL
   }
 
   public enum Status {

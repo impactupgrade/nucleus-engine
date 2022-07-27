@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
+import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.twiml.MessagingResponse;
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
 import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
+import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityType.SMS;
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
 
@@ -289,6 +291,51 @@ public class TwilioController {
     env.endJobLog(DONE);
 
     return Response.ok().entity(xml).build();
+  }
+
+  /**
+   * This webhook handles 'onMessageAdded' event for Conversations, creating CRM activities. However, note that
+   * tracking of one-off messages is instead handled by inboundWebhook!
+   */
+  @Path("/callback/conversations")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response conversationsWebhook(
+      @FormParam("EventType") String eventType,
+      @FormParam("ConversationSid") String conversationSid,
+      @FormParam("MessageSid") String messageSid,
+      @FormParam("MessagingServiceSid") String messagingServiceSid,
+      @FormParam("Index") Integer index,
+      @FormParam("DateCreated") String date, //ISO8601 time
+      @FormParam("Body") String body,
+      @FormParam("Author") String author,
+      @FormParam("ParticipantSid") String participantSid,
+      @FormParam("Attributes") String attributes,
+      @FormParam("Media") String media, // Stringified JSON array of attached media objects
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    env.startJobLog(JobType.EVENT, null, "Conversation Webhook", "Twilio");
+    env.logJobInfo("eventType={} conversationSid={} messageSid={} messagingServiceSid={} index={} date={} body={} author={} participantSid={} attributes={} media={}",
+        eventType, conversationSid, messageSid, messagingServiceSid, index, date, body, author, participantSid, attributes, media);
+
+    switch (eventType) {
+      case "onMessageAdded":
+        env.activityService().upsertActivity(
+            SMS, 
+            conversationSid, 
+            messageSid, 
+            body);
+        env.endJobLog(DONE);
+        return Response.ok().build();
+      default:
+        env.logJobWarn("unexpected eventType: " + eventType);
+        env.endJobLog(FAILED);
+        return Response.status(422).build();
+    }
   }
 
   // TODO: Temporary method to prototype an MMS replacement of the mobile app. In the future,

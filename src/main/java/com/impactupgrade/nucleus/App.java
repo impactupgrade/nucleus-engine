@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.controller.EmailController;
 import com.impactupgrade.nucleus.controller.EventsController;
 import com.impactupgrade.nucleus.controller.FactsController;
 import com.impactupgrade.nucleus.controller.JobController;
+import com.impactupgrade.nucleus.controller.MBTController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
 import com.impactupgrade.nucleus.controller.PaypalController;
@@ -97,6 +98,7 @@ public class App {
     apiConfig.register(factsController());
     apiConfig.register(jobController());
     apiConfig.register(mailchimpController());
+    apiConfig.register(mbtController());
     apiConfig.register(paymentGatewayController());
     apiConfig.register(sfdcController());
     apiConfig.register(scheduledJobController());
@@ -166,6 +168,7 @@ public class App {
   protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
   protected AccountingController accountingController() { return new AccountingController(envFactory); }
   protected JobController jobController() { return new JobController(envFactory); }
+  protected MBTController mbtController() { return new MBTController(envFactory); }
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
   }

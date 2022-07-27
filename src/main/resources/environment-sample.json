@@ -21,6 +21,8 @@
       "paymentGatewayDepositNetAmount": "Payment_Gateway_Deposit_Net_Amount__c",
       "paymentGatewayDepositFee": "Payment_Gateway_Deposit_Fee__c",
 
+      "activityExternalReference": "Subject",
+
       "fund": "",
 
       "emailOptIn": "",
