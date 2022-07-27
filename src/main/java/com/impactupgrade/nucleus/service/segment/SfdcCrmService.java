@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -16,6 +17,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -33,6 +35,7 @@ import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -228,6 +231,89 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public String updateTask(CrmTask crmTask) throws Exception {
+    SObject task = new SObject("Task");
+    setTaskFields(task, crmTask);
+    return sfdcClient.update(task).getId();
+  }
+
+  @Override
+  public String upsertActivity(CrmActivity crmActivity) throws Exception {
+    CrmTask crmTask = toCrmTask(crmActivity);
+    if (Strings.isNullOrEmpty(crmActivity.id)) {
+      return insertTask(crmTask);
+    } else {
+      return updateTask(crmTask);
+    }
+  }
+
+  @Override
+  public Optional<CrmActivity> getActivityByTypeAndConversationId(CrmActivity.Type type, String externalId) throws Exception {
+    String subject = type + ":" + externalId;
+    Optional<SObject> sObjectO = sfdcClient.getTaskBySubject(subject);
+    CrmTask crmTask = sObjectO.map(this::toCrmTask).orElse(null);
+    return Optional.of(toCrmActivity(crmTask));
+  }
+
+  protected CrmTask toCrmTask(SObject sObject) {
+    CrmTask crmTask =  new CrmTask(
+        //sObject.getField("WhoId").toString(),
+        null,
+        sObject.getField("OwnerId").toString(),
+        sObject.getField("Subject").toString(),
+        sObject.getField("Description").toString(),
+        //CrmTask.Status.valueOf(sObject.getField("Status").toString()),
+        null,
+        //CrmTask.Priority.valueOf(sObject.getField("Priority").toString())
+        null,
+        null);
+    crmTask.id = sObject.getId();
+    return crmTask;
+  }
+
+  private CrmTask toCrmTask(CrmActivity crmActivity) {
+    CrmTask crmTask = new CrmTask();
+    crmTask.id = crmActivity.id;
+    crmTask.subject = crmActivity.type.name();
+    if (!Strings.isNullOrEmpty(crmActivity.conversationId)) {
+      crmTask.subject = crmTask.subject + ":" + crmActivity.conversationId;
+    }
+    if (CollectionUtils.isNotEmpty(crmActivity.messageIds)) {
+      crmTask.description = crmActivity.messageIds.stream()
+          .collect(Collectors.joining(","));
+    }
+
+    crmTask.assignTo = env.getConfig().salesforce.defaultTaskAssignee;
+    crmTask.status = CrmTask.Status.TO_DO;
+    crmTask.priority = CrmTask.Priority.MEDIUM;
+
+    return crmTask;
+  }
+
+  private CrmActivity toCrmActivity(CrmTask crmTask) {
+    CrmActivity crmActivity = new CrmActivity();
+
+    crmActivity.id = crmTask.id;
+    crmActivity.targetId = crmTask.targetId;
+    crmActivity.assignTo = crmTask.assignTo;
+
+    String subject = crmTask.subject;
+    String[] split = subject.split(":");
+
+    crmActivity.type = CrmActivity.Type.valueOf(split[0]);
+    if (split.length > 1) {
+      crmActivity.conversationId = split[1];
+    }
+    if (!Strings.isNullOrEmpty(crmTask.description)) {
+      crmActivity.messageIds = Splitter.on(",")
+          .trimResults()
+          .splitToList(crmTask.description);
+    }
+
+    return crmActivity;
+  }
+
+  @Override
   public List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
     try {
       List<String> fieldNames = new ArrayList<>();
@@ -269,6 +355,9 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setTaskFields(SObject task, CrmTask crmTask) {
+    if (crmTask != null) {
+      task.setField("Id", crmTask.id);
+    }
     task.setField("WhoId", crmTask.targetId);
     task.setField("OwnerId", crmTask.assignTo);
     task.setField("Subject", crmTask.subject);

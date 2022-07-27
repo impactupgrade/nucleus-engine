@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
@@ -17,6 +18,7 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -58,6 +60,57 @@ public class CrmController {
 
   public CrmController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
+  }
+
+  //TODO: remove once done with testing
+  @Path("/message")
+  @POST
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response insertTask(
+          Message message,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    //SecurityUtil.verifyApiKey(env);
+
+    CrmActivity crmActivity;
+    if (!Strings.isNullOrEmpty(message.conversationId)) {
+      Optional<CrmActivity> crmActivityOptional = env.primaryCrmService().getActivityByTypeAndConversationId(CrmActivity.Type.SMS_CONVERSATION, message.conversationId);
+      if (crmActivityOptional.isPresent()) {
+        // Existing conversation
+        crmActivity = crmActivityOptional.get();
+      } else {
+        // New conversation
+        crmActivity = new CrmActivity();
+        crmActivity.type = CrmActivity.Type.SMS_CONVERSATION;
+        crmActivity.conversationId = message.conversationId;
+      }
+      addMessage(message, crmActivity);
+    } else {
+      crmActivity = new CrmActivity();
+      crmActivity.type = CrmActivity.Type.SMS_CONVERSATION;
+      crmActivity.messageIds = List.of(message.id);
+    }
+    env.primaryCrmService().upsertActivity(crmActivity);
+
+
+    return Response.ok(crmActivity).build();
+  }
+
+  private static final class Message {
+    public String id;
+    public String conversationId;
+  }
+
+  private static void addMessage(Message message, CrmActivity crmActivity) {
+    List<String> ids = new ArrayList<>();
+    if (CollectionUtils.isNotEmpty(crmActivity.messageIds)) {
+      ids.addAll(crmActivity.messageIds);
+    }
+
+    ids.add(message.id);
+    crmActivity.messageIds = ids;
   }
 
   /**

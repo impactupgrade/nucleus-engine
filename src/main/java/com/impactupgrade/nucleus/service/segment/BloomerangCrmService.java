@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
@@ -572,6 +573,21 @@ public class BloomerangCrmService implements CrmService {
   public String insertTask(CrmTask crmTask) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return null;
+  }
+
+  @Override
+  public String updateTask(CrmTask crmTask) throws Exception {
+    return null;
+  }
+
+  @Override
+  public String upsertActivity(CrmActivity crmActivity) throws Exception {
+    return null;
+  }
+
+  @Override
+  public Optional<CrmActivity> getActivityByTypeAndConversationId(CrmActivity.Type type, String externalId) throws Exception {
+    return Optional.empty();
   }
 
   @Override

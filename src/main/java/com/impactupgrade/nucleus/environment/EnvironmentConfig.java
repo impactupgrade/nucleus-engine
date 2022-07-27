@@ -200,6 +200,7 @@ public class EnvironmentConfig {
     public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
     public SalesforceCustomFields customQueryFields = new SalesforceCustomFields();
     public String defaultCampaignId = "";
+    public String defaultTaskAssignee = "";
 
     public static class SalesforceCustomFields {
       public Set<String> account = new HashSet<>();

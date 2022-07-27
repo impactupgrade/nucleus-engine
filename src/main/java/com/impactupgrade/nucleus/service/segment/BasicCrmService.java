@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -124,6 +125,18 @@ public interface BasicCrmService extends CrmService {
 
   default String insertTask(CrmTask crmTask) throws Exception {
     return null;
+  }
+
+  default String updateTask(CrmTask crmTask) throws Exception {
+    return null;
+  }
+
+  default String upsertActivity(CrmActivity crmActivity) throws Exception {
+    return null;
+  }
+
+  default Optional<CrmActivity> getActivityByTypeAndConversationId(CrmActivity.Type type, String externalId) throws Exception {
+    return Optional.empty();
   }
 
   default Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {

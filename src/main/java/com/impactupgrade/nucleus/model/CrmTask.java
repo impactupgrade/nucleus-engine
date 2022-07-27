@@ -4,6 +4,7 @@ import java.util.Calendar;
 
 public class CrmTask {
 
+  public String id;
   public String targetId;
   public String assignTo; // User ID
   public String subject;
