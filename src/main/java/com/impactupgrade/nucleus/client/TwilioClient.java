@@ -100,6 +100,15 @@ public class TwilioClient {
     return Participant.fetcher(conversationSid, participantSid).fetch(restClient);
   }
 
+  public List<Participant> allConversationParticipants(String conversationSid) {
+    List<Participant> all = new ArrayList<>();
+    ResourceSet<Participant> participants = Participant.reader(conversationSid).read(restClient).setAutoPaging(true);
+    for (Participant participant : participants) {
+      all.add(participant);
+    }
+    return all;
+  }
+
   public void deleteConversation(String conversationSid) {
     Conversation.deleter(conversationSid).delete(restClient);
   }

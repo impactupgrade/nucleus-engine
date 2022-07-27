@@ -4,7 +4,6 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -111,9 +110,6 @@ public class TwilioFrontlineController {
         return Response.status(422).build();
     }
 
-    String json = new JsonMapper().writeValueAsString(frontlineResponse);
-    log.info("crm json: {}", json);
-
     return Response.ok().entity(frontlineResponse).build();
   }
 
@@ -218,8 +214,6 @@ public class TwilioFrontlineController {
         // TODO: For now, likely to be env.json's single sender, but that's going to need to change quickly.
         //  Choose from multiple based on the worker's defined proxy number? And take channels into consideration?
         frontlineResponse.proxy_address = env.getConfig().twilio.senderPn;
-        String json = new JsonMapper().writeValueAsString(frontlineResponse);
-        log.info("outgoing-conversation json: {}", json);
         return Response.ok().entity(frontlineResponse).build();
       default:
         log.error("unexpected location: " + location);
@@ -255,30 +249,33 @@ public class TwilioFrontlineController {
       case "onConversationAdd":
         // For P2P, customerAddress is the external sender.
         // Confusingly, for Group MMS, customerAddress is the Twilio number, while authorAddress is the external sender.
-        String sender;
+
         if (!Strings.isNullOrEmpty(authorAddress)) {
-          sender = authorAddress;
-        } else {
-          sender = customerAddress;
-        }
-
-        if (Strings.isNullOrEmpty(sender)) {
-          return Response.status(200).build();
-        }
-
-        // TODO: will need tweaked for WhatsApp
-        Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(sender)).getSingleResult();
-        if (crmContact.isPresent()) {
-          FrontlineConversation frontlineConversation = new FrontlineConversation();
-          // Don't append the phone number here, since it might be a Group.
-          frontlineConversation.friendlyName = crmContact.get().fullName();
-          // TODO
+          // TODO: will need tweaked for WhatsApp
+          Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(authorAddress)).getSingleResult();
+          if (crmContact.isPresent()) {
+            FrontlineConversation frontlineConversation = new FrontlineConversation();
+            // Don't append the phone number here, since it might be a Group.
+            frontlineConversation.friendly_name = "OUTSIDE GROUP (with " + crmContact.get().fullName() + ")";
+            // TODO
 //          frontlineConversation.attributes.avatar = ;
-          return Response.ok().entity(frontlineConversation).build();
+            return Response.ok().entity(frontlineConversation).build();
+          }
         } else {
-          log.error("could not find CrmContact: " + sender);
-          return Response.status(422).build();
+          // TODO: will need tweaked for WhatsApp
+          Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
+          if (crmContact.isPresent()) {
+            FrontlineConversation frontlineConversation = new FrontlineConversation();
+            // Don't append the phone number here, since it might be a Group.
+            frontlineConversation.friendly_name = crmContact.get().fullName();
+            // TODO
+//          frontlineConversation.attributes.avatar = ;
+            return Response.ok().entity(frontlineConversation).build();
+          }
         }
+
+        log.error("could not find CrmContact");
+        return Response.status(422).build();
       case "onParticipantAdded":
         if (!Strings.isNullOrEmpty(projectedAddress)) {
           projectedAddresses.add(projectedAddress);
@@ -291,16 +288,15 @@ public class TwilioFrontlineController {
         }
 
         // TODO: will need tweaked for WhatsApp
-        crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
+        Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
         if (crmContact.isPresent()) {
           Participant participant = env.twilioClient().fetchConversationParticipant(conversationSid, participantSid);
           JSONObject attributes = new JSONObject(participant.getAttributes())
               // TODO
-//              .append("avatar", )
-              .append("customer_id", crmContact.get().id)
+//              .put("avatar", )
+              .put("customer_id", crmContact.get().id)
               // TODO: Append the phone number too? Phone number only if no name?
-              .append("display_name", crmContact.get().fullName());
-          // TODO: ensure the JSON attributes formatting is correct
+              .put("display_name", crmContact.get().fullName());
           env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
           return Response.status(200).build();
         } else {
@@ -417,16 +413,16 @@ public class TwilioFrontlineController {
     public String content;
   }
   public static class FrontlineConversation {
-    public String friendlyName;
-    public FrontlineAttributes attributes = new FrontlineAttributes();
+    public String friendly_name;
+//    public FrontlineAttributes attributes = new FrontlineAttributes();
   }
   public static class FrontlineUser {
-    public String friendlyName;
+    public String friendly_name;
     public String identity;
-    public FrontlineAttributes attributes = new FrontlineAttributes();
+//    public FrontlineAttributes attributes = new FrontlineAttributes();
   }
   public static class FrontlineParticipant {
-    public FrontlineAttributes attributes = new FrontlineAttributes();
+//    public FrontlineAttributes attributes = new FrontlineAttributes();
   }
   public static class FrontlineAttributes {
     public String avatar;
