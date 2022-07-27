@@ -33,8 +33,11 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.capitalize;
@@ -193,6 +196,193 @@ public class TwilioFrontlineController {
     return frontlineCustomer;
   }
 
+  // https://www.twilio.com/docs/frontline/outgoing-conversations
+  @Path("/callback/outgoing-conversation")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response outgoingConversationCallback(
+      @FormParam("Location") String location,
+      @FormParam("Worker") String workerIdentity,
+      @FormParam("CustomerId") String customerId,
+      @FormParam("ChannelType") String customerChannel,
+      @FormParam("ChannelValue") String customerAddress,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    log.info("location={} workerIdentity={} customerId={} customerChannel={} customerAddress={}", location, workerIdentity, customerId, customerChannel, customerAddress);
+    Environment env = envFactory.init(request);
+
+    switch (location) {
+      case "GetProxyAddress":
+        FrontlineOutgoingConversationResponse frontlineResponse = new FrontlineOutgoingConversationResponse();
+        // TODO: For now, likely to be env.json's single sender, but that's going to need to change quickly.
+        //  Choose from multiple based on the worker's defined proxy number? And take channels into consideration?
+        frontlineResponse.proxy_address = env.getConfig().twilio.senderPn;
+        String json = new JsonMapper().writeValueAsString(frontlineResponse);
+        log.info("outgoing-conversation json: {}", json);
+        return Response.ok().entity(frontlineResponse).build();
+      default:
+        log.error("unexpected location: " + location);
+        return Response.status(422).build();
+    }
+  }
+
+  // TODO: Shouldn't need to save these off, but the routing callback isn't giving us the projectedAddress.
+  protected static Set<String> projectedAddresses = new HashSet<>();
+
+  // Conversations onConversationAdd: set conversation name and avatar
+  // Conversations onParticipantAdded: set the customer id, avatar, and display name
+  // https://www.twilio.com/docs/frontline/conversations-webhooks
+  @Path("/callback/conversations")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response conversationsCallback(
+      @FormParam("EventType") String eventType,
+      @FormParam("MessagingBinding.Address") String customerAddress,
+      @FormParam("MessagingBinding.ProjectedAddress") String projectedAddress,
+      @FormParam("MessagingBinding.AuthorAddress") String authorAddress,
+      @FormParam("ConversationSid") String conversationSid,
+      @FormParam("ParticipantSid") String participantSid,
+      @FormParam("Identity") String identity,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    log.info("eventType={} customerAddress={} projectedAddress={} authorAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, projectedAddress, authorAddress, conversationSid, participantSid, identity);
+    Environment env = envFactory.init(request);
+    CrmService crmService = env.primaryCrmService();
+
+    switch (eventType) {
+      case "onConversationAdd":
+        // For P2P, customerAddress is the external sender.
+        // Confusingly, for Group MMS, customerAddress is the Twilio number, while authorAddress is the external sender.
+        String sender;
+        if (!Strings.isNullOrEmpty(authorAddress)) {
+          sender = authorAddress;
+        } else {
+          sender = customerAddress;
+        }
+
+        if (Strings.isNullOrEmpty(sender)) {
+          return Response.status(200).build();
+        }
+
+        // TODO: will need tweaked for WhatsApp
+        Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(sender)).getSingleResult();
+        if (crmContact.isPresent()) {
+          FrontlineConversation frontlineConversation = new FrontlineConversation();
+          // Don't append the phone number here, since it might be a Group.
+          frontlineConversation.friendlyName = crmContact.get().fullName();
+          // TODO
+//          frontlineConversation.attributes.avatar = ;
+          return Response.ok().entity(frontlineConversation).build();
+        } else {
+          log.error("could not find CrmContact: " + sender);
+          return Response.status(422).build();
+        }
+      case "onParticipantAdded":
+        if (!Strings.isNullOrEmpty(projectedAddress)) {
+          projectedAddresses.add(projectedAddress);
+          return Response.status(200).build();
+        }
+
+        // Do nothing if the customer has no binding address OR if the participant is the worker.
+        if (Strings.isNullOrEmpty(customerAddress) || !Strings.isNullOrEmpty(identity)) {
+          return Response.status(200).build();
+        }
+
+        // TODO: will need tweaked for WhatsApp
+        crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
+        if (crmContact.isPresent()) {
+          Participant participant = env.twilioClient().fetchConversationParticipant(conversationSid, participantSid);
+          JSONObject attributes = new JSONObject(participant.getAttributes())
+              // TODO
+//              .append("avatar", )
+              .append("customer_id", crmContact.get().id)
+              // TODO: Append the phone number too? Phone number only if no name?
+              .append("display_name", crmContact.get().fullName());
+          // TODO: ensure the JSON attributes formatting is correct
+          env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
+          return Response.status(200).build();
+        } else {
+          log.error("could not find CrmContact: " + customerAddress);
+          return Response.status(422).build();
+        }
+      default:
+        log.error("unexpected eventType: " + eventType);
+        return Response.status(422).build();
+    }
+  }
+
+  // Frontline onConversationRoute: lookup worker and add to conversation (or handle dynamic routing)
+  // https://www.twilio.com/docs/frontline/handle-incoming-conversations
+  @Path("/callback/routing")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response routingCallback(
+      @FormParam("ConversationSid") String conversationSid,
+      @FormParam("FriendlyName") String friendlyName,
+      @FormParam("UniqueName") String uniqueName,
+      // raw JSON string
+      @FormParam("Attributes") String attributesJson,
+      @FormParam("ConversationServiceSid") String conversationServiceSid,
+      @FormParam("MessagingBinding.ProxyAddress") String proxyAddress,
+      @FormParam("MessagingBinding.Address") String customerAddress,
+      @FormParam("MessagingBinding.ProjectedAddress") String projectedAddress,
+      @FormParam("MessagingBinding.AuthorAddress") String authorAddress,
+      @FormParam("State") String state,
+      // TODO: DateCreated & DateUpdated (string, ISO8601 time)
+      @Context HttpServletRequest request
+  ) throws Exception {
+    log.info("conversationSid={} friendlyName={} uniqueName={} attributesJson={} conversationServiceSid={} proxyAddress={} customerAddress={} projectedAddress={} authorAddress={} state={}", conversationSid, friendlyName, uniqueName, attributesJson, conversationServiceSid, proxyAddress, customerAddress, projectedAddress, authorAddress, state);
+    Environment env = envFactory.init(request);
+    CrmService crmService = env.primaryCrmService();
+
+    // For P2P, customerAddress is the external sender.
+    // Confusingly, for Group MMS, customerAddress is the Twilio number, while authorAddress is the external sender.
+    String sender;
+    if (!Strings.isNullOrEmpty(authorAddress)) {
+      sender = authorAddress;
+    } else {
+      sender = customerAddress;
+    }
+
+    // TODO: will need tweaked for WhatsApp
+    Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(sender)).getSingleResult();
+    if (crmContact.isPresent()) {
+      Optional<CrmUser> crmOwner = crmService.getUserById(crmContact.get().ownerId);
+
+      // TODO: For Group MMS, authorAddress will be the message sender, then all other participants are listed
+      //   under customerAddress. Ex: customerAddress=+19035183081, +12602670709. One of those will be the projected
+      //   address, the other is another external participant. Break up the list and look for projectedAddresses
+      //   we've saved off. Otherwise, assume it's simple P2P.
+      projectedAddress = Arrays.stream(customerAddress.split(", ")).filter(a -> projectedAddresses.contains(a)).findFirst().orElse(null);
+
+      if (!Strings.isNullOrEmpty(projectedAddress)) {
+        env.twilioClient().createConversationProjectedParticipant(conversationSid, crmOwner.get().email(), projectedAddress);
+      } else {
+        env.twilioClient().createConversationProxyParticipant(conversationSid, crmOwner.get().email());
+      }
+
+      return Response.ok().build();
+    } else {
+      // TODO: fall back to random routing? or a default worker?
+      log.error("could not find CrmContact: " + sender);
+      return Response.status(422).build();
+    }
+  }
+
+  // TODO: WA templates
+//  @Path("/callback/templates")
+//  @POST
+//  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+//  @Produces(MediaType.APPLICATION_JSON)
+//  public Response templatesCallback(
+//      @Context HttpServletRequest request
+//  ) throws Exception {
+//
+//  }
+
   // being lazy and using camel-case to match the explicit field names
   public static class FrontlineCrmResponse {
     public FrontlineObjects objects = new FrontlineObjects();
@@ -243,158 +433,7 @@ public class TwilioFrontlineController {
     public String customer_id;
     public String display_name;
   }
-
-  // https://www.twilio.com/docs/frontline/outgoing-conversations
-  @Path("/callback/outgoing-conversation")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response outgoingConversationCallback(
-      @FormParam("Location") String location,
-      @FormParam("Worker") String workerIdentity,
-      @FormParam("CustomerId") String customerId,
-      @FormParam("ChannelType") String customerChannel,
-      @FormParam("ChannelValue") String customerAddress,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    log.info("location={} workerIdentity={} customerId={} customerChannel={} customerAddress={}", location, workerIdentity, customerId, customerChannel, customerAddress);
-    Environment env = envFactory.init(request);
-
-    switch (location) {
-      case "GetProxyAddress":
-        FrontlineOutgoingConversationResponse frontlineResponse = new FrontlineOutgoingConversationResponse();
-        // TODO: For now, likely to be env.json's single sender, but that's going to need to change quickly.
-        //  Choose from multiple based on the worker's defined proxy number? And take channels into consideration?
-        frontlineResponse.proxy_address = env.getConfig().twilio.senderPn;
-        String json = new JsonMapper().writeValueAsString(frontlineResponse);
-        log.info("outgoing-conversation json: {}", json);
-        return Response.ok().entity(frontlineResponse).build();
-      default:
-        log.error("unexpected location: " + location);
-        return Response.status(422).build();
-    }
-  }
-
-  // being lazy and using camel-case to match the explicit field names
   public static class FrontlineOutgoingConversationResponse {
     public String proxy_address;
   }
-
-  // Conversations onConversationAdd: set conversation name and avatar
-  // Conversations onParticipantAdded: set the customer id, avatar, and display name
-  // https://www.twilio.com/docs/frontline/conversations-webhooks
-  @Path("/callback/conversations")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response conversationsCallback(
-      @FormParam("EventType") String eventType,
-      @FormParam("MessagingBinding.Address") String customerAddress,
-      @FormParam("ConversationSid") String conversationSid,
-      @FormParam("ParticipantSid") String participantSid,
-      @FormParam("Identity") String identity,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    log.info("eventType={} customerAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, conversationSid, participantSid, identity);
-    Environment env = envFactory.init(request);
-    CrmService crmService = env.primaryCrmService();
-
-    switch (eventType) {
-      case "onConversationAdd":
-        if (Strings.isNullOrEmpty(customerAddress)) {
-          return Response.status(200).build();
-        }
-
-        // TODO: will need tweaked for WhatsApp
-        Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
-        if (crmContact.isPresent()) {
-          FrontlineConversation frontlineConversation = new FrontlineConversation();
-          // Don't append the phone number here, since it might be a Group.
-          frontlineConversation.friendlyName = crmContact.get().fullName();
-          // TODO
-//          frontlineConversation.attributes.avatar = ;
-          return Response.ok().entity(frontlineConversation).build();
-        } else {
-          log.error("could not find CrmContact: " + customerAddress);
-          return Response.status(422).build();
-        }
-      case "onParticipantAdded":
-        // Do nothing if the customer has no binding address OR if the participant is the worker.
-        if (Strings.isNullOrEmpty(customerAddress) || !Strings.isNullOrEmpty(identity)) {
-          return Response.status(200).build();
-        }
-
-        // TODO: will need tweaked for WhatsApp
-        crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
-        if (crmContact.isPresent()) {
-          Participant participant = env.twilioClient().fetchConversationParticipant(conversationSid, participantSid);
-          JSONObject attributes = new JSONObject(participant.getAttributes())
-              // TODO
-//              .append("avatar", )
-              .append("customer_id", crmContact.get().id)
-              // TODO: Append the phone number too? Phone number only if no name?
-              .append("display_name", crmContact.get().fullName());
-          // TODO: ensure the JSON attributes formatting is correct
-          env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
-          return Response.status(200).build();
-        } else {
-          log.error("could not find CrmContact: " + customerAddress);
-          return Response.status(422).build();
-        }
-      default:
-        log.error("unexpected eventType: " + eventType);
-        return Response.status(422).build();
-    }
-  }
-
-  // Frontline onConversationRoute: lookup worker and add to conversation (or handle dynamic routing)
-  // https://www.twilio.com/docs/frontline/handle-incoming-conversations
-  @Path("/callback/routing")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response routingCallback(
-      @FormParam("ConversationSid") String conversationSid,
-      @FormParam("FriendlyName") String friendlyName,
-      @FormParam("UniqueName") String uniqueName,
-      // raw JSON string
-      @FormParam("Attributes") String attributesJson,
-      @FormParam("ConversationServiceSid") String conversationServiceSid,
-      @FormParam("MessagingBinding.ProxyAddress") String proxyAddress,
-      @FormParam("MessagingBinding.Address") String customerAddress,
-      // TODO: Group MMS
-      @FormParam("MessagingBinding.ProjectedAddress") String projectedAddress,
-      // TODO: Group MMS
-      @FormParam("MessagingBinding.AuthorAddress") String authorAddress,
-      @FormParam("State") String state,
-      // TODO: DateCreated & DateUpdated (string, ISO8601 time)
-      @Context HttpServletRequest request
-  ) throws Exception {
-    log.info("conversationSid={} friendlyName={} uniqueName={} attributesJson={} conversationServiceSid={} proxyAddress={} customerAddress={} state={}", conversationSid, friendlyName, uniqueName, attributesJson, conversationServiceSid, proxyAddress, customerAddress, state);
-    Environment env = envFactory.init(request);
-    CrmService crmService = env.primaryCrmService();
-
-    // TODO: will need tweaked for WhatsApp
-    Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
-    if (crmContact.isPresent()) {
-      Optional<CrmUser> crmOwner = crmService.getUserById(crmContact.get().ownerId);
-      env.twilioClient().createConversationProxyParticipant(conversationSid, crmOwner.get().email());
-      return Response.ok().build();
-    } else {
-      // TODO: fall back to random routing? or a default worker?
-      log.error("could not find CrmContact: " + customerAddress);
-      return Response.status(422).build();
-    }
-  }
-
-  // TODO: WA templates
-//  @Path("/callback/templates")
-//  @POST
-//  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-//  @Produces(MediaType.APPLICATION_JSON)
-//  public Response templatesCallback(
-//      @Context HttpServletRequest request
-//  ) throws Exception {
-//
-//  }
 }
