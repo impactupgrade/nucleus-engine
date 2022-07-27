@@ -17,7 +17,7 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmTask;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -224,7 +224,9 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  String insertTask(CrmTask crmTask) throws Exception;
+  String insertActivity(CrmActivity crmActivity) throws Exception;
+  String updateActivity(CrmActivity crmActivity) throws Exception;
+  Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception;
   String insertNote(CrmNote crmNote) throws Exception;
 
   List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);

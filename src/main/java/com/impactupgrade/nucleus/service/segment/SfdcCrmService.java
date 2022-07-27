@@ -26,7 +26,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecord;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmTask;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -240,10 +240,27 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertTask(CrmTask crmTask) throws Exception {
+  public String insertActivity(CrmActivity crmActivity) throws Exception {
     SObject task = new SObject("Task");
-    setTaskFields(task, crmTask);
+    setActivityFields(task, crmActivity);
     return sfdcClient.insert(task).getId();
+  }
+
+  @Override
+  public String updateActivity(CrmActivity crmActivity) throws Exception {
+    SObject task = new SObject("Task");
+    if (crmActivity.id != null) {
+      task.setField("Id", crmActivity.id);
+    }
+    setActivityFields(task, crmActivity);
+    return sfdcClient.update(task).getId();
+  }
+
+  @Override
+  public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
+    Optional<SObject> sObjectO = sfdcClient.getActivityByExternalReference(externalRef);
+    CrmActivity crmActivity = sObjectO.map(this::toCrmActivity).orElse(null);
+    return Optional.ofNullable(crmActivity);
   }
 
   @Override
@@ -322,25 +339,33 @@ public class SfdcCrmService implements CrmService {
     return this.env.getConfig().salesforce.fieldDefinitions;
   }
 
-  protected void setTaskFields(SObject task, CrmTask crmTask) {
-    task.setField("WhoId", crmTask.targetId);
-    task.setField("OwnerId", crmTask.assignTo);
-    task.setField("Subject", crmTask.subject);
-    task.setField("Description", crmTask.description);
+  protected void setActivityFields(SObject task, CrmActivity crmActivity) {
+    task.setField("WhoId", crmActivity.targetId);
+    task.setField("OwnerId", crmActivity.assignTo);
+    task.setField("Subject", crmActivity.subject);
+    task.setField("Description", crmActivity.description);
 
-    switch (crmTask.status) {
+    switch (crmActivity.type) {
+      case TASK -> task.setField("TaskSubType", "Task");
+      case EMAIL -> task.setField("TaskSubType", "Email");
+      case LIST_EMAIL -> task.setField("TaskSubType", "List Email");
+      case CADENCE -> task.setField("TaskSubType", "Cadence");
+      default -> task.setField("TaskSubType", "Call");
+    }
+
+    switch (crmActivity.status) {
       case IN_PROGRESS -> task.setField("Status", "In Progress");
       case DONE -> task.setField("Status", "Completed");
       default -> task.setField("Status", "Not Started");
     }
 
-    switch (crmTask.priority) {
+    switch (crmActivity.priority) {
       case LOW -> task.setField("Priority", "Low");
       case HIGH, CRITICAL -> task.setField("Priority", "High");
       default -> task.setField("Priority", "Normal");
     }
 
-    task.setField("ActivityDate", crmTask.dueDate);
+    task.setField("ActivityDate", crmActivity.dueDate);
   }
 
   @Override
@@ -2457,6 +2482,42 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmRecurringDonation);
+  }
+
+  protected CrmActivity toCrmActivity(SObject sObject) {
+    CrmActivity crmActivity =  new CrmActivity(
+        //sObject.getField("WhoId").toString(),
+        null,
+        sObject.getField("OwnerId").toString(),
+        sObject.getField("Subject").toString(),
+        sObject.getField("Description").toString(),
+        null,
+        null,
+        null,
+        null);
+
+    switch (sObject.getField("TaskSubType") + "") {
+      case "Task" -> crmActivity.type = CrmActivity.Type.TASK;
+      case "Email" -> crmActivity.type = CrmActivity.Type.EMAIL;
+      case "List Email" -> crmActivity.type = CrmActivity.Type.LIST_EMAIL;
+      case "Cadence" -> crmActivity.type = CrmActivity.Type.CADENCE;
+      default -> crmActivity.type = CrmActivity.Type.CALL;
+    }
+
+    switch (sObject.getField("Status") + "") {
+      case "In Progress" -> crmActivity.status = CrmActivity.Status.IN_PROGRESS;
+      case "Completed" -> crmActivity.status = CrmActivity.Status.DONE;
+      default -> crmActivity.status = CrmActivity.Status.TO_DO;
+    }
+
+    switch (sObject.getField("Priority") + "") {
+      case "Low" -> crmActivity.priority = CrmActivity.Priority.LOW;
+      case "High" -> crmActivity.priority = CrmActivity.Priority.HIGH;
+      default -> crmActivity.priority = CrmActivity.Priority.MEDIUM;
+    }
+
+    crmActivity.id = sObject.getId();
+    return crmActivity;
   }
 
   protected CrmUser toCrmUser(SObject sObject) {

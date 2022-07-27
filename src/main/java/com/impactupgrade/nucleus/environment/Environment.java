@@ -18,6 +18,7 @@ import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
+import com.impactupgrade.nucleus.service.logic.ActivityService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
@@ -141,6 +142,7 @@ public class Environment {
 
   // logic services
 
+  public ActivityService activityService() { return new ActivityService(this); }
   public DonationService donationService() { return new DonationService(this); }
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }

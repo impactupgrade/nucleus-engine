@@ -3,7 +3,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CrmTask;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -93,10 +93,10 @@ public class NotificationService {
 
     env.logJobInfo("attaching a Task CRM notification to {} and assigning to {}", targetId, assignTo);
 
-    crmService.insertTask(new CrmTask(
+    crmService.insertActivity(new CrmActivity(
         targetId, assignTo,
         notification.taskSubject, notification.taskBody,
-        CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate
+        CrmActivity.Type.TASK, CrmActivity.Status.TO_DO, CrmActivity.Priority.MEDIUM, dueDate
     ));
   }
 

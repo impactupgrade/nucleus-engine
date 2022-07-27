@@ -7,6 +7,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -16,7 +17,6 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -532,10 +532,22 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public String insertTask(CrmTask crmTask) throws Exception {
-    VirtuousClient.Task task = asTask(crmTask);
+  public String insertActivity(CrmActivity crmActivity) throws Exception {
+    VirtuousClient.Task task = asTask(crmActivity);
     VirtuousClient.Task createdTask = virtuousClient.createTask(task);
     return createdTask == null ? null : createdTask.id + "";
+  }
+
+  @Override
+  public String updateActivity(CrmActivity crmActivity) throws Exception {
+    // TODO: May not be possible?
+    return null;
+  }
+
+  @Override
+  public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
+    // TODO
+    return Optional.empty();
   }
 
   @Override
@@ -548,23 +560,23 @@ public class VirtuousCrmService implements CrmService {
     return null;
   }
 
-  private VirtuousClient.Task asTask(CrmTask crmTask) {
-    if (crmTask == null) {
+  private VirtuousClient.Task asTask(CrmActivity crmActivity) {
+    if (crmActivity == null) {
       return null;
     }
     VirtuousClient.Task task = new VirtuousClient.Task();
     task.taskType = VirtuousClient.Task.Type.GENERAL;
-    task.subject = crmTask.subject;
-    task.description = crmTask.description;
-    if (crmTask.dueDate != null) {
-      task.dueDateTime = new SimpleDateFormat(DATE_TIME_FORMAT).format(crmTask.dueDate.getTime());
+    task.subject = crmActivity.subject;
+    task.description = crmActivity.description;
+    if (crmActivity.dueDate != null) {
+      task.dueDateTime = new SimpleDateFormat(DATE_TIME_FORMAT).format(crmActivity.dueDate.getTime());
     }
     try {
-      task.contactId = Integer.parseInt(crmTask.targetId);
+      task.contactId = Integer.parseInt(crmActivity.targetId);
     } catch (NumberFormatException e) {
       env.logJobWarn("Failed to parse Integer from String '{}'!", task.contactId);
     }
-    task.ownerEmail = crmTask.assignTo;
+    task.ownerEmail = crmActivity.assignTo;
 
     return task;
   }

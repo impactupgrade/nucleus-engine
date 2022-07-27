@@ -885,6 +885,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  protected static final String TASK_FIELDS = "Id, WhoId, OwnerId, Subject, description, status, priority, activityDate";
+
+  public Optional<SObject> getActivityByExternalReference(String externalReference) throws ConnectionException, InterruptedException {
+    String query = "select " + TASK_FIELDS + " from task where " + env.getConfig().salesforce.fieldDefinitions.activityExternalReference + " = '" + externalReference + "'";
+    return querySingle(query);
+  }
+
   /**
    * Use with caution, it retrieves ALL active users. Unsuitable for orgs with many users.
    */
