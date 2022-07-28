@@ -15,16 +15,17 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
+import com.xero.api.XeroBadRequestException;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.Contacts;
+import com.xero.models.accounting.Element;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
@@ -92,11 +93,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         this.xeroTenantId = env.getConfig().xero.tenantId;
         this.organizationDao = new HibernateDao<>(Organization.class);
 
-        Organization org = getOrganization();
-        JSONObject envJson = org.getEnvironmentJson();
-        JSONObject xeroJson = envJson.getJSONObject("xero");
-        accessToken = xeroJson.getString("accessToken");
-        refreshToken = xeroJson.getString("refreshToken");
+        if (accessToken == null) {
+            Organization org = getOrganization();
+            JSONObject envJson = org.getEnvironmentJson();
+            JSONObject xeroJson = envJson.getJSONObject("xero");
+            accessToken = xeroJson.getString("accessToken");
+            refreshToken = xeroJson.getString("refreshToken");
+        }
     }
 
     // TODO: This seems likely to be needed again?
@@ -150,26 +153,61 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public AccountingContact updateOrCreateContact(CrmContact crmContact) throws Exception {
+    public String updateOrCreateContact(CrmContact crmContact) throws Exception {
         Contacts contacts = new Contacts();
         contacts.setContacts(List.of(toContact(crmContact)));
         try {
             Contacts createdContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
             Contact upsertedContact = createdContacts.getContacts().stream().findFirst().get();
-            return toAccountingContact(upsertedContact);
+            return upsertedContact.getContactID().toString();
+        } catch (XeroBadRequestException e) {
+            // TODO: upsert appears to require the actual contact ID in order to update. Since we're only providing
+            //   the accountNumber, updating fails. However, the error gives us the contactID we need...
+            for (Element element : e.getElements()) {
+                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
+                    // TODO: Same as toContact -- DR specific, SFDC specific, etc.
+                    if (crmContact.rawObject instanceof SObject sObject) {
+                        String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+                        return getContact(supporterId).map(c -> c.getContactID().toString()).orElse(null);
+                    }
+                }
+            }
+
+            log.error("Failed to upsert contact! {}", getExceptionDetails(e));
+            return null;
         } catch (Exception e) {
             log.error("Failed to upsert contact! {}", getExceptionDetails(e));
             return null;
         }
     }
 
+    protected Optional<Contact> getContact(String accountNumber) throws Exception {
+        Contacts contacts = xeroApi.getContacts(getAccessToken(), xeroTenantId,
+//            OffsetDateTime ifModifiedSince,
+            null,
+//            String where,
+            "AccountNumber=\"" + accountNumber + "\"",
+//            String order,
+            null,
+//            List<UUID> ids,
+            null,
+//            Integer page,
+            null,
+//            Boolean includeArchived,
+            null,
+//            Boolean summaryOnly
+            true
+        );
+        return contacts.getContacts().stream().findFirst();
+    }
+
     @Override
-    public void createTransaction(AccountingTransaction accountingTransaction) throws Exception {
+    public String createTransaction(AccountingTransaction accountingTransaction) throws Exception {
         Invoices invoices = new Invoices();
         invoices.setInvoices(List.of(toInvoice(accountingTransaction)));
         try {
             Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
-            createdInvoices.getInvoices().stream().findFirst().get();
+            return createdInvoices.getInvoices().stream().findFirst().get().getInvoiceID().toString();
         } catch (Exception e) {
             log.error("Failed to create invoices! {}", getExceptionDetails(e));
             throw e;
@@ -380,13 +418,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return contact;
     }
 
-    protected AccountingContact toAccountingContact(Contact contact) {
-        AccountingContact accountingContact = new AccountingContact();
-        accountingContact.id = contact.getContactID().toString();
-        accountingContact.fullName = contact.getName();
-        return accountingContact;
-    }
-
     protected Invoice toInvoice(AccountingTransaction transaction) {
         Invoice invoice = new Invoice();
 
@@ -406,8 +437,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         invoice.setType(Invoice.TypeEnum.ACCREC); // Receive
 
         invoice.setReference(transaction.paymentGatewayName + ":" + transaction.paymentGatewayTransactionId);
-        // TODO: temporarily leaving them in DRAFT for DR to review
-//        invoice.setStatus(Invoice.StatusEnum.AUTHORISED);
+        invoice.setStatus(Invoice.StatusEnum.AUTHORISED);
 
         return invoice;
     }

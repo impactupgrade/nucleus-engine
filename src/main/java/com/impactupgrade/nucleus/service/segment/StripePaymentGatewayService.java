@@ -27,6 +27,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -55,7 +56,9 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   @Override
   public List<PaymentGatewayTransaction> getTransactions(Date startDate, Date endDate) throws Exception {
     List<PaymentGatewayTransaction> transactions = new ArrayList<>();
-    Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+    List<Charge> charges = new ArrayList<>();
+    // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
+    stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0,  c));
     for (Charge charge : charges) {
       if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
         // hasn't been deposited yet, so skip it
@@ -91,6 +94,8 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public List<PaymentGatewayDeposit> getDeposits(Date startDate, Date endDate) throws Exception {
     List<PaymentGatewayDeposit> deposits = new ArrayList<>();
     List<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+    // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
+    Collections.reverse(payouts);
     for (Payout payout : payouts) {
       log.info("found payout {}", payout.getId());
       PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
@@ -117,7 +122,9 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
     try {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-      Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+      List<Charge> charges = new ArrayList<>();
+      // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
+      stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0,  c));
       int count = 0;
       for (Charge charge : charges) {
         if (!charge.getStatus().equalsIgnoreCase("succeeded")
@@ -196,7 +203,9 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public void verifyAndReplayCharges(Date startDate, Date endDate) {
     try {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-      Iterable<Charge> charges = stripeClient.getAllCharges(startDate, endDate);
+      List<Charge> charges = new ArrayList<>();
+      // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
+      stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0,  c));
       int count = 0;
       for (Charge charge : charges) {
         if (!charge.getStatus().equalsIgnoreCase("succeeded")
@@ -243,7 +252,9 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public void verifyAndReplayDeposits(Date startDate, Date endDate) {
     try {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-      Iterable<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+      List<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+      // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
+      Collections.reverse(payouts);
       for (Payout payout : payouts) {
         try {
           if ("paid".equalsIgnoreCase(payout.getStatus())) {

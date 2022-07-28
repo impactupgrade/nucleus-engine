@@ -1,7 +1,6 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -49,12 +48,12 @@ public class AccountingService {
             log.warn("Failed to find crm contact for crm donation {}!", crmDonation.id);
         }
 
-        AccountingContact accountingContact = accountingPlatformService.updateOrCreateContact(crmContact);
-        log.info("Upserted contact: {}", accountingContact);
+        String contactId = accountingPlatformService.updateOrCreateContact(crmContact);
+        log.info("Upserted contact: {}", contactId);
 
-        AccountingTransaction accountingTransaction = toAccountingTransaction(paymentGatewayEvent, accountingContact.id, crmContact.id);
-        accountingPlatformService.createTransaction(accountingTransaction);
-        log.info("Created transaction: {}", accountingTransaction);
+        AccountingTransaction accountingTransaction = toAccountingTransaction(paymentGatewayEvent, contactId, crmContact.id);
+        String transactionId = accountingPlatformService.createTransaction(accountingTransaction);
+        log.info("Created transaction: {}", transactionId);
     }
 
     private CrmContact getDonationContact(CrmDonation crmDonation) throws Exception {
