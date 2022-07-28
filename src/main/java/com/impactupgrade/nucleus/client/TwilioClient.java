@@ -52,8 +52,12 @@ public class TwilioClient {
     return messageCreator.create(restClient);
   }
 
-  public Conversation createConversation(String friendlyName) {
-    return Conversation.creator().setFriendlyName(friendlyName).create(restClient);
+  public Conversation createConversation(String friendlyName, boolean enableWebhooks) {
+    return Conversation.creator()
+        .setFriendlyName(friendlyName)
+        // For enableWebhooks details, see https://www.twilio.com/docs/conversations/conversations-webhooks#triggering-webhooks-for-rest-api-events.
+        .setXTwilioWebhookEnabled(enableWebhooks ? Conversation.WebhookEnabledType.TRUE : Conversation.WebhookEnabledType.FALSE)
+        .create(restClient);
   }
 
   public Participant createConversationProxyParticipant(String conversationSid, String identity) {
@@ -64,8 +68,12 @@ public class TwilioClient {
     return Participant.creator(conversationSid).setIdentity(identity).setMessagingBindingProjectedAddress(projectedAddress).create(restClient);
   }
 
-  public Participant createConversationExternalParticipant(String conversationSid, String bindingAddress) {
-    return Participant.creator(conversationSid).setMessagingBindingAddress(bindingAddress).create(restClient);
+  public Participant createConversationExternalParticipant(String conversationSid, String bindingAddress, boolean enableWebhooks) {
+    return Participant.creator(conversationSid)
+        .setMessagingBindingAddress(bindingAddress)
+        // For enableWebhooks details, see https://www.twilio.com/docs/conversations/conversations-webhooks#triggering-webhooks-for-rest-api-events.
+        .setXTwilioWebhookEnabled(enableWebhooks ? Participant.WebhookEnabledType.TRUE : Participant.WebhookEnabledType.FALSE)
+        .create(restClient);
   }
 
   public Participant updateConversationParticipant(String conversationSid, String participantSid, String attributes) {
