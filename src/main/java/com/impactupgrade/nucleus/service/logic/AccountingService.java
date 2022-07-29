@@ -19,16 +19,21 @@ public class AccountingService {
     private static final Logger log = LogManager.getLogger(AccountingService.class);
 
     private final Environment env;
-    private final AccountingPlatformService accountingPlatformService;
+    private final Optional<AccountingPlatformService> _accountingPlatformService;
     private final List<AccountingPlatformService> accountingPlatformServices;
 
     public AccountingService(Environment env) {
         this.env = env;
-        this.accountingPlatformService = env.accountingPlatformService();
+        this._accountingPlatformService = env.accountingPlatformService();
         this.accountingPlatformServices = env.allAccountingPlatformServices();
     }
 
     public void processTransaction(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+        if (_accountingPlatformService.isEmpty()) {
+            return;
+        }
+        AccountingPlatformService accountingPlatformService = _accountingPlatformService.get();
+
         Optional<AccountingTransaction> accountingTransactionO = accountingPlatformService.getTransaction(paymentGatewayEvent);
         if (accountingTransactionO.isPresent()) {
             log.info("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getTransactionId());

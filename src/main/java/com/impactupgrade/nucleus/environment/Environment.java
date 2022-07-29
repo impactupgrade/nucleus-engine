@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
@@ -151,24 +152,23 @@ public class Environment {
     return segmentServices(PaymentGatewayService.class);
   }
 
-  public EmailService emailService(String name) {
-    return segmentService(name, EmailService.class);
-  }
-
   public EmailService transactionalEmailService() {
     if (Strings.isNullOrEmpty(getConfig().emailTransactional)) {
       // default to SendGrid
-      return emailService("sendgrid");
+      return segmentService("sendgrid", EmailService.class);
     }
-    return emailService(getConfig().emailTransactional);
+    return segmentService(getConfig().emailTransactional, EmailService.class);
   }
 
   public List<EmailService> allEmailServices() {
     return segmentServices(EmailService.class);
   }
 
-  public AccountingPlatformService accountingPlatformService() {
-    return segmentService(getConfig().primaryAccounting, AccountingPlatformService.class);
+  public Optional<AccountingPlatformService> accountingPlatformService() {
+    if (Strings.isNullOrEmpty(getConfig().primaryAccounting)) {
+      return Optional.empty();
+    }
+    return Optional.of(segmentService(getConfig().primaryAccounting, AccountingPlatformService.class));
   }
 
   public List<AccountingPlatformService> allAccountingPlatformServices() {
