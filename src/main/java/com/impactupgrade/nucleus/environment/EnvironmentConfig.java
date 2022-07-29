@@ -206,6 +206,7 @@ public class EnvironmentConfig {
 
   public static class Twilio extends Platform {
     public String senderPn = "";
+    public Map<String, String> userToSenderPn = new HashMap<>();
   }
 
   public enum EmailListType {

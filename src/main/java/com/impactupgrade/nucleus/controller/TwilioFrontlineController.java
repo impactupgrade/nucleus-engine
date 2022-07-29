@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -211,13 +212,21 @@ public class TwilioFrontlineController {
     switch (location) {
       case "GetProxyAddress":
         FrontlineOutgoingConversationResponse frontlineResponse = new FrontlineOutgoingConversationResponse();
-        // TODO: For now, likely to be env.json's single sender, but that's going to need to change quickly.
-        //  Choose from multiple based on the worker's defined proxy number? And take channels into consideration?
-        frontlineResponse.proxy_address = env.getConfig().twilio.senderPn;
+        frontlineResponse.proxy_address = getSenderPn(workerIdentity, env);
         return Response.ok().entity(frontlineResponse).build();
       default:
         log.error("unexpected location: " + location);
         return Response.status(422).build();
+    }
+  }
+
+  // DRY. Spin this off so subclasses can use it.
+  protected String getSenderPn(String workerIdentity, Environment env) {
+    Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
+    if (userToSenderPn.containsKey(workerIdentity) && !Strings.isNullOrEmpty(userToSenderPn.get(workerIdentity))) {
+      return userToSenderPn.get(workerIdentity);
+    } else {
+      return env.getConfig().twilio.senderPn;
     }
   }
 
