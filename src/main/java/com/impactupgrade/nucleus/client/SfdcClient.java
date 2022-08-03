@@ -517,6 +517,30 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return PagedResults.getPagedResultsFromCurrentOffset(results, contactSearch);
   }
 
+  public Collection<SObject> getContactsDeletedSince(Calendar deletedSince, String filter) throws InterruptedException, ConnectionException {
+    String deletedClause = "and isDeleted = TRUE";
+    if (deletedSince!= null) {
+      deletedClause += " and LastModifiedDate >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(deletedSince.getTime());
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select isDeleted" + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null" + deletedClause + filter;
+    List<SObject> contacts = queryListAutoPaged(query);
+
+    // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
+    //TODO added this from the get updated email contats method, might not be necessary
+    Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
+            so -> so.getField("Email").toString(),
+            Function.identity(),
+            // FIFO
+            (so1, so2) -> so1
+    ));
+    return uniqueContacts.values();
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

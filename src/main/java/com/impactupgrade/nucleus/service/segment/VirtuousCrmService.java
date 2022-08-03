@@ -19,14 +19,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.spi.CalendarDataProvider;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -481,6 +475,11 @@ public class VirtuousCrmService implements BasicCrmService {
         return contacts.stream()
                 .map(this::asCrmContact)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CrmContact> getDeletedContacts(Calendar updatedSince, String filter){
+        return Collections.emptyList();
     }
 
     @Override

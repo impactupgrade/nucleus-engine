@@ -224,6 +224,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> getDeletedContacts(Calendar updatedSince, String filter) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
   public double getDonationsTotal(String filter) throws Exception {
     throw new RuntimeException("not implemented");
   }

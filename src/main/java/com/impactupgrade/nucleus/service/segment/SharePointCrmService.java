@@ -334,6 +334,11 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
+    public List<CrmContact> getDeletedContacts(Calendar updatedSince, String filter) throws Exception {
+        return null;
+    }
+
+    @Override
     public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
         return null;
     }

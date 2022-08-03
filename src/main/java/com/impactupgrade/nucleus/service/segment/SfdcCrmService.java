@@ -853,6 +853,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> getDeletedContacts(Calendar updatedSince, String filter) throws Exception {
+    return sfdcClient.getContactsDeletedSince(updatedSince, filter).stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
+
+  @Override
   public double getDonationsTotal(String filter) throws Exception {
     // TODO
     return 0.0;

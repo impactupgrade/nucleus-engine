@@ -202,6 +202,8 @@ public interface CrmService extends SegmentService {
   // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
   Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception;
 
+  List<CrmContact> getDeletedContacts(Calendar updatedSince, String filter) throws Exception;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // STATS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

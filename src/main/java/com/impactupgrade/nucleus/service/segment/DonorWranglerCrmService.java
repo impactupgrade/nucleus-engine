@@ -116,6 +116,10 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public List<CrmContact> getDeletedContacts(Calendar updatedSince, String filter) throws Exception {
+    return Collections.emptyList();
+  }
+  @Override
   public double getDonationsTotal(String filter) throws Exception {
     // TODO
     return 0.0;
