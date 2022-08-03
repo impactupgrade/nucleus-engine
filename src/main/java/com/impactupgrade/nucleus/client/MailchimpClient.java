@@ -6,11 +6,7 @@ package com.impactupgrade.nucleus.client;
 
 import com.ecwid.maleorang.MailchimpException;
 import com.ecwid.maleorang.MailchimpObject;
-import com.ecwid.maleorang.method.v3_0.lists.members.DeleteMemberMethod;
-import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
-import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
-import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
-import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
+import com.ecwid.maleorang.method.v3_0.lists.members.*;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.EditMergeFieldMethod;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.GetMergeFieldsMethod;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
@@ -96,6 +92,20 @@ public class MailchimpClient {
       } else {
         String error = exceptionToString(e);
         log.warn("Mailchimp archiveContact failed: {}", error);
+      }
+    }
+  }
+
+  public void deleteContact(String listId, String email) throws IOException, MailchimpException {
+    DeletePermanentMemberMethod deleteMemberMethod = new DeletePermanentMemberMethod(listId, email);
+    try {
+      client.execute(deleteMemberMethod);
+    } catch (MailchimpException e) {
+      if (e.code == 404) {
+        // swallow it -- contact doesn't exist
+      } else {
+        String error = exceptionToString(e);
+        log.warn("Mailchimp deleteContact failed: {}", error);
       }
     }
   }

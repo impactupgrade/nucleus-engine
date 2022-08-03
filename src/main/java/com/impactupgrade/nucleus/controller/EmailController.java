@@ -40,6 +40,7 @@ public class EmailController {
           try {
             emailPlatformService.syncContacts(lastSync);
             emailPlatformService.syncUnsubscribes(lastSync);
+            emailPlatformService.syncDeletes(lastSync);
           } catch (Exception e) {
             log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
           }

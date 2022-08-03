@@ -93,6 +93,23 @@ public class MailchimpEmailService extends AbstractEmailService {
     }
   }
 
+  @Override
+  public void syncDeletes(Calendar lastSync) throws Exception {
+    CrmService crmService = env.primaryCrmService();
+
+    List<CrmContact> deletedContacts = crmService.getDeletedContacts(lastSync,"");
+
+    for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
+      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+      for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
+        for (CrmContact crmContact : deletedContacts){
+          mailchimpClient.deleteContact(emailList.id, crmContact.email);
+          log.info("permanently deleting contact: {} from Mailchimp List: {}", crmContact.email, emailList.id);
+        }
+      }
+    }
+  }
+
   // TODO: Purely allowing this to unsubscribe in the CRM, as opposed to archiving immediately in MC. Let organizations
   //  decide if their unsubscribe-from-CRM code does an archive...
   private void syncUnsubscribes(List<MemberInfo> unsubscribes) throws Exception {

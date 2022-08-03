@@ -39,6 +39,11 @@ public class HubSpotEmailService extends SmtpEmailService {
     //  CRM as well. No syncs ever needed?
   }
 
+  @Override
+  public void syncDeletes(Calendar lastSync) throws Exception {
+    log.info("not implemented: syncDeletes");
+  }
+
   @Override protected String host() { return "smtp.hubapi.com"; }
   @Override protected String port() { return "587"; }
   // TODO: Can transactional email use the apikey instead?
