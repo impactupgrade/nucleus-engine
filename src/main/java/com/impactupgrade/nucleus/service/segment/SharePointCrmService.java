@@ -96,7 +96,7 @@ public class SharePointCrmService implements CrmService {
                 } else {
                     log.error("unexpected file extension for filePath {}", filePath);
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.error("Failed to get csv data! {}", e.getMessage());
             }
         }
