@@ -10,6 +10,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import com.google.common.base.Strings;
 import com.sun.xml.ws.util.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -18,6 +19,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -139,7 +141,7 @@ public class Utils {
     Row header = rowIterator.next();
     for (Cell cell : header) {
       switch (cell.getCellType()) {
-        case NUMERIC -> headerData.add(cell.getNumericCellValue() + "");
+        case NUMERIC -> headerData.add(new DecimalFormat("#").format(cell.getNumericCellValue()));
         case BOOLEAN -> headerData.add(cell.getBooleanCellValue() + "");
         default -> headerData.add(cell.getStringCellValue());
       }
@@ -149,12 +151,18 @@ public class Utils {
       Row row = rowIterator.next();
       Map<String, String> rowData = new HashMap<>();
       for (int i = 0; i < headerData.size(); i++) {
-        Cell cell = row.getCell(i);
+        Cell cell = row.getCell(i, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK);
         if (cell == null) {
           rowData.put(headerData.get(i), "");
         } else {
           switch (cell.getCellType()) {
-            case NUMERIC -> rowData.put(headerData.get(i), cell.getNumericCellValue() + "");
+            case NUMERIC -> {
+              if (DateUtil.isCellDateFormatted(cell)) {
+                rowData.put(headerData.get(i), new SimpleDateFormat("yyyy-MM-dd").format(cell.getDateCellValue()));
+              } else {
+                rowData.put(headerData.get(i), new DecimalFormat("#").format(cell.getNumericCellValue()));
+              }
+            }
             case BOOLEAN -> rowData.put(headerData.get(i), cell.getBooleanCellValue() + "");
             default -> rowData.put(headerData.get(i), cell.getStringCellValue());
           }

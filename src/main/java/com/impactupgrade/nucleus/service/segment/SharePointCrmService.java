@@ -46,9 +46,10 @@ public class SharePointCrmService implements CrmService {
 
     private static final String CACHE_KEY = "csvData";
 
+    protected static LoadingCache<String, List<Map<String, String>>> sharepointCsvCache;
+
     protected Environment env;
     protected MSGraphClient msGraphClient;
-    protected LoadingCache<String, List<Map<String, String>>> sharepointCsvCache;
 
     @Override
     public String name() {
@@ -63,8 +64,9 @@ public class SharePointCrmService implements CrmService {
     @Override
     public void init(Environment env) {
         this.env = env;
-        this.msGraphClient = new MSGraphClient(env.getConfig().sharePoint);
-        this.sharepointCsvCache = CacheBuilder.newBuilder()
+        msGraphClient = new MSGraphClient(env.getConfig().sharePoint);
+        if (sharepointCsvCache == null) {
+            sharepointCsvCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(5, TimeUnit.MINUTES)
                 .build(new CacheLoader<>() {
                     @Override
@@ -72,6 +74,9 @@ public class SharePointCrmService implements CrmService {
                         return downloadCsvData();
                     }
                 });
+            // warm the cache
+            getCsvData();
+        }
     }
 
     protected List<Map<String, String>> downloadCsvData() {
@@ -96,6 +101,10 @@ public class SharePointCrmService implements CrmService {
             }
         }
         return csvData;
+    }
+
+    protected List<Map<String, String>> getCsvData() {
+        return sharepointCsvCache.getUnchecked(CACHE_KEY);
     }
 
     @Override
@@ -178,10 +187,6 @@ public class SharePointCrmService implements CrmService {
             }
         }
         return true;
-    }
-
-    protected List<Map<String, String>> getCsvData() {
-        return sharepointCsvCache.getUnchecked(CACHE_KEY);
     }
 
     protected PagedResults<CrmContact> getPagedResults(List<CrmContact> crmContacts, ContactSearch contactSearch) {
