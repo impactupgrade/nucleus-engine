@@ -26,7 +26,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -149,8 +148,9 @@ public class SharePointCrmService implements CrmService {
                     foundContacts.add(toCrmContact(csvRow));
                 }
             } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-                // TODO: needs tweaked in case +1 is included on one end but not the other
-                if (!Strings.isNullOrEmpty(csvRow.get(phoneColumn)) && csvRow.get(phoneColumn).replaceAll("[^\\d]", "").equals(contactSearch.phone.replaceAll("[^\\d]", ""))) {
+                // TODO: We need to country codes to either be present or not present on BOTH sides, so for now we're
+                //  simply removing them. However, this needs rethought, especially for non-US numbers.
+                if (!Strings.isNullOrEmpty(csvRow.get(phoneColumn)) && csvRow.get(phoneColumn).replace("+1", "").replaceAll("[^\\d]", "").equals(contactSearch.phone.replace("+1", "").replaceAll("[^\\d]", ""))) {
                     foundContacts.add(toCrmContact(csvRow));
                 }
             } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
