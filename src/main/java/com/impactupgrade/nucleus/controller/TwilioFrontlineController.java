@@ -33,6 +33,7 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +97,10 @@ public class TwilioFrontlineController {
         contactSearch.pageSize = pageSize;
         contactSearch.pageToken = nextPageToken;
         PagedResults<CrmContact> crmContacts = crmService.searchContacts(contactSearch);
-        frontlineResponse.objects.customers = crmContacts.getResults().stream().map(c -> toBasicFrontlineCustomer(c, workerIdentity, crmName, env)).collect(Collectors.toList());
+        frontlineResponse.objects.customers = crmContacts.getResults().stream()
+            .sorted(Comparator.comparing(CrmContact::fullName))
+            .map(c -> toBasicFrontlineCustomer(c, workerIdentity, crmName, env))
+            .collect(Collectors.toList());
         // TODO: If I'm reading https://www.twilio.com/docs/frontline/my-customers#customer-search correctly,
         //  this always needs to be true in order to tell Frontline that this service handles custom searches.
 //        if (!Strings.isNullOrEmpty(searchQuery)) {
