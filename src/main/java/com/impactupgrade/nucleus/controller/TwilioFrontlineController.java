@@ -262,42 +262,43 @@ public class TwilioFrontlineController {
       case "onConversationAdd":
         // For P2P, customerAddress is the external sender.
         // Confusingly, for Group MMS, customerAddress is the Twilio number, while authorAddress is the external sender.
+        
+        FrontlineConversation frontlineConversation = new FrontlineConversation();
 
         if (!Strings.isNullOrEmpty(authorAddress)) {
           // TODO: will need tweaked for WhatsApp
           Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(authorAddress)).getSingleResult();
           if (crmContact.isPresent()) {
-            FrontlineConversation frontlineConversation = new FrontlineConversation();
             // Don't append the phone number here, since it might be a Group.
-            frontlineConversation.friendly_name = "OUTSIDE GROUP (with " + crmContact.get().fullName() + ")";
+            frontlineConversation.friendly_name = "EXTERNAL GROUP (with " + crmContact.get().fullName() + ")";
             // TODO
 //          frontlineConversation.attributes.avatar = ;
-            return Response.ok().entity(frontlineConversation).build();
+          } else {
+            frontlineConversation.friendly_name = "EXTERNAL GROUP (with " + authorAddress + ")";
           }
         } else {
           // TODO: will need tweaked for WhatsApp
           Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
           if (crmContact.isPresent()) {
-            FrontlineConversation frontlineConversation = new FrontlineConversation();
             // Don't append the phone number here, since it might be a Group.
             frontlineConversation.friendly_name = crmContact.get().fullName();
             // TODO
 //          frontlineConversation.attributes.avatar = ;
-            return Response.ok().entity(frontlineConversation).build();
+          } else {
+            frontlineConversation.friendly_name = "EXTERNAL CONTACT: " + customerAddress + "";
           }
         }
-
-        log.error("could not find CrmContact");
-        return Response.status(422).build();
+        
+        return Response.ok().entity(frontlineConversation).build();
       case "onParticipantAdded":
         if (!Strings.isNullOrEmpty(projectedAddress)) {
           projectedAddresses.add(projectedAddress);
-          return Response.status(200).build();
+          return Response.ok().build();
         }
 
         // Do nothing if the customer has no binding address OR if the participant is the worker.
         if (Strings.isNullOrEmpty(customerAddress) || !Strings.isNullOrEmpty(identity)) {
-          return Response.status(200).build();
+          return Response.ok().build();
         }
 
         // TODO: will need tweaked for WhatsApp
@@ -311,11 +312,12 @@ public class TwilioFrontlineController {
               // TODO: Append the phone number too? Phone number only if no name?
               .put("display_name", crmContact.get().fullName());
           env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
-          return Response.status(200).build();
         } else {
-          log.error("could not find CrmContact: " + customerAddress);
-          return Response.status(422).build();
+          log.info("could not find CrmContact: " + customerAddress);
+          // still return 200 -- allow contacts we don't have in the CRM
         }
+
+        return Response.ok().build();
       default:
         log.error("unexpected eventType: " + eventType);
         return Response.status(422).build();
@@ -368,17 +370,37 @@ public class TwilioFrontlineController {
       projectedAddress = Arrays.stream(customerAddress.split(", ")).filter(a -> projectedAddresses.contains(a)).findFirst().orElse(null);
 
       if (!Strings.isNullOrEmpty(projectedAddress)) {
+        log.info("adding projected participant {} to {}", crmOwner.get().email(), conversationSid);
         env.twilioClient().createConversationProjectedParticipant(conversationSid, crmOwner.get().email(), projectedAddress);
       } else {
+        log.info("adding proxy participant {} to {}", crmOwner.get().email(), conversationSid);
         env.twilioClient().createConversationProxyParticipant(conversationSid, crmOwner.get().email());
       }
 
       return Response.ok().build();
-    } else {
-      // TODO: fall back to random routing? or a default worker?
-      log.error("could not find CrmContact: " + sender);
-      return Response.status(422).build();
     }
+
+    // If this contact isn't in the CRM, but the proxy/projected address is assigned to a single worker, route it
+    // there directly.
+    if (env.getConfig().twilio.userToSenderPn.size() > 0) {
+      // reverse the map so we can look users up using their assigned phone numbers
+      Map<String, String> twilioAddressToUser = env.getConfig().twilio.userToSenderPn.entrySet().stream()
+          .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+          .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+      if (!Strings.isNullOrEmpty(projectedAddress) && twilioAddressToUser.containsKey(projectedAddress)) {
+        log.info("routing through userToSenderPn -- adding projected participant {} to {}", twilioAddressToUser.get(projectedAddress), conversationSid);
+        env.twilioClient().createConversationProjectedParticipant(conversationSid, twilioAddressToUser.get(projectedAddress), projectedAddress);
+        return Response.ok().build();
+      } else if (!Strings.isNullOrEmpty(proxyAddress) && twilioAddressToUser.containsKey(proxyAddress)) {
+        log.info("routing through userToSenderPn -- adding proxy participant {} to {}", twilioAddressToUser.get(proxyAddress), conversationSid);
+        env.twilioClient().createConversationProxyParticipant(conversationSid, twilioAddressToUser.get(proxyAddress));
+        return Response.ok().build();
+      }
+    }
+
+    // TODO: fall back to random routing? or a default worker?
+    log.error("could not find CrmContact: " + sender);
+    return Response.status(422).build();
   }
 
   // TODO: WA templates
