@@ -363,21 +363,23 @@ public class TwilioFrontlineController {
     if (crmContact.isPresent()) {
       Optional<CrmUser> crmOwner = crmService.getUserById(crmContact.get().ownerId);
 
-      // TODO: For Group MMS, authorAddress will be the message sender, then all other participants are listed
-      //   under customerAddress. Ex: customerAddress=+19035183081, +12602670709. One of those will be the projected
-      //   address, the other is another external participant. Break up the list and look for projectedAddresses
-      //   we've saved off. Otherwise, assume it's simple P2P.
-      projectedAddress = Arrays.stream(customerAddress.split(", ")).filter(a -> projectedAddresses.contains(a)).findFirst().orElse(null);
+      if (crmOwner.isPresent()) {
+        // TODO: For Group MMS, authorAddress will be the message sender, then all other participants are listed
+        //   under customerAddress. Ex: customerAddress=+19035183081, +12602670709. One of those will be the projected
+        //   address, the other is another external participant. Break up the list and look for projectedAddresses
+        //   we've saved off. Otherwise, assume it's simple P2P.
+        projectedAddress = Arrays.stream(customerAddress.split(", ")).filter(a -> projectedAddresses.contains(a)).findFirst().orElse(null);
 
-      if (!Strings.isNullOrEmpty(projectedAddress)) {
-        log.info("adding projected participant {} to {}", crmOwner.get().email(), conversationSid);
-        env.twilioClient().createConversationProjectedParticipant(conversationSid, crmOwner.get().email(), projectedAddress);
-      } else {
-        log.info("adding proxy participant {} to {}", crmOwner.get().email(), conversationSid);
-        env.twilioClient().createConversationProxyParticipant(conversationSid, crmOwner.get().email());
+        if (!Strings.isNullOrEmpty(projectedAddress)) {
+          log.info("adding projected participant {} to {}", crmOwner.get().email(), conversationSid);
+          env.twilioClient().createConversationProjectedParticipant(conversationSid, crmOwner.get().email(), projectedAddress);
+        } else {
+          log.info("adding proxy participant {} to {}", crmOwner.get().email(), conversationSid);
+          env.twilioClient().createConversationProxyParticipant(conversationSid, crmOwner.get().email());
+        }
+
+        return Response.ok().build();
       }
-
-      return Response.ok().build();
     }
 
     // If this contact isn't in the CRM, but the proxy/projected address is assigned to a single worker, route it
