@@ -57,7 +57,7 @@ public class SharePointCrmService implements CrmService {
 
     @Override
     public boolean isConfigured(Environment env) {
-        return env.getConfig().sharePoint != null;
+        return !Strings.isNullOrEmpty(env.getConfig().sharePoint.clientId);
     }
 
     @Override

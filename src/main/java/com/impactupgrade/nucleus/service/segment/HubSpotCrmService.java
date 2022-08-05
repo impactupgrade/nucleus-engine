@@ -82,7 +82,7 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public boolean isConfigured(Environment env) {
-    return env.getConfig().hubspot != null;
+    return !Strings.isNullOrEmpty(env.getConfig().hubspot.secretKey);
   }
 
   @Override

@@ -42,7 +42,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
 
   @Override
   public boolean isConfigured(Environment env) {
-    return env.getConfig().donorwrangler != null;
+    return !Strings.isNullOrEmpty(env.getConfig().donorwrangler.subdomain);
   }
 
   @Override

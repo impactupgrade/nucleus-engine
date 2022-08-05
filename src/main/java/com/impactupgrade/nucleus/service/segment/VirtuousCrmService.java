@@ -46,7 +46,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
     @Override
     public boolean isConfigured(Environment env) {
-        return env.getConfig().virtuous != null;
+        return !Strings.isNullOrEmpty(env.getConfig().virtuous.secretKey);
     }
 
     @Override

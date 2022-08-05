@@ -81,7 +81,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public boolean isConfigured(Environment env) {
-        return env.getConfig().xero != null;
+        return !Strings.isNullOrEmpty(env.getConfig().xero.clientId);
     }
 
     @Override

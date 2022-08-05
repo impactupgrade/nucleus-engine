@@ -44,7 +44,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   @Override
   public boolean isConfigured(Environment env) {
-    return env.getConfig().stripe != null;
+    return !Strings.isNullOrEmpty(env.getConfig().stripe.secretKey);
   }
 
   @Override

@@ -56,7 +56,7 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public boolean isConfigured(Environment env) {
-    return env.getConfig().salesforce != null;
+    return !Strings.isNullOrEmpty(env.getConfig().salesforce.username);
   }
 
   @Override

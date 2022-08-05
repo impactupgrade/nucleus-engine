@@ -54,7 +54,7 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public boolean isConfigured(Environment env) {
-    return env.getConfig().bloomerang != null;
+    return !Strings.isNullOrEmpty(env.getConfig().bloomerang.secretKey);
   }
 
   @Override
