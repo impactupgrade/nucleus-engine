@@ -527,7 +527,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       filter = " and " + filter;
     }
 
-    String query = "select isDeleted" + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null" + deletedClause + filter;
+    String query = "select isDeleted from contact where Email != null" + deletedClause + filter;
     List<SObject> contacts = queryListAutoPaged(query);
 
     // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
