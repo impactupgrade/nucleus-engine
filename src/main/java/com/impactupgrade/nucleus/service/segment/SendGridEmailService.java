@@ -93,6 +93,11 @@ public class SendGridEmailService extends SmtpEmailService {
     // TODO
   }
 
+  @Override
+  public void upsertContact(String contactId) throws Exception {
+    //TODO
+  }
+
   protected Contact toSendGridContact(CrmContact crmContact, List<String> campaignNames, Map<String, String> groups,
       Map<String, String> customFieldsByName, SendGrid sendgridClient, EnvironmentConfig.EmailPlatform emailPlatform) {
     if (crmContact == null) {

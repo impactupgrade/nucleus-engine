@@ -178,7 +178,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
     return querySingle(query);
   }
-
+  public Optional<SObject> getFilteredContactById(String contactId, String filter) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' and " + filter + " ORDER BY name";
+    return querySingle(query);
+  }
   public List<SObject> getContactsByIds(Collection<String> contactIds) throws ConnectionException, InterruptedException {
     String ids = contactIds.stream()
             .map(id -> "'" + id + "'")

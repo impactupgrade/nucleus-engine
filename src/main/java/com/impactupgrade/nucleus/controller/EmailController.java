@@ -7,7 +7,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
@@ -71,6 +74,25 @@ public class EmailController {
       } catch (Exception e) {
         log.error("email syncAll failed", e);
       }
+    };
+    new Thread(thread).start();
+
+    return Response.ok().build();
+  }
+
+  @POST
+  @Path("/upsert-contact")
+  @Consumes("application/x-www-form-urlencoded")
+  public Response upsertContact(@FormParam("id") String contactID, @Context HttpServletRequest request) throws Exception {
+    Environment env = envFactory.init(request);
+    Runnable thread = () -> {
+        for (EmailService emailPlatformService : env.allEmailServices()) {
+          try {
+            emailPlatformService.upsertContact(contactID);
+          } catch (Exception e) {
+            log.error("contact update failed for contact: {} platform: {}", contactID, emailPlatformService.name(), e);
+          }
+        }
     };
     new Thread(thread).start();
 

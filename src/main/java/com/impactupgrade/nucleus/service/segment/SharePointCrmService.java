@@ -150,6 +150,11 @@ public class SharePointCrmService implements CrmService {
         return CollectionUtils.isNotEmpty(foundContacts) ?
                 Optional.of(foundContacts.get(0)) : Optional.empty();
     }
+    @Override
+    public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+        //Not currently implemented
+        return Optional.empty();
+    }
 
     @Override
     public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {

@@ -1,6 +1,8 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,6 +39,11 @@ public class HubSpotEmailService extends SmtpEmailService {
     log.info("not implemented: syncUnsubscribes");
     // TODO: May not need this (break up the interface?). If HS used for email, orgs will always have that as their
     //  CRM as well. No syncs ever needed?
+  }
+
+  @Override
+  public void upsertContact(String listId) throws Exception {
+    //TODO
   }
 
   @Override protected String host() { return "smtp.hubapi.com"; }

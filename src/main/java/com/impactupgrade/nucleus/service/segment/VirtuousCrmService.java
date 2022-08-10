@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.swing.text.html.Option;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -66,6 +67,11 @@ public class VirtuousCrmService implements BasicCrmService {
         }
         VirtuousClient.Contact contact = virtuousClient.getContactById(contactId);
         return Optional.ofNullable(asCrmContact(contact));
+    }
+    @Override
+    public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+        //Currently not implemented
+        return Optional.empty();
     }
 
     @Override

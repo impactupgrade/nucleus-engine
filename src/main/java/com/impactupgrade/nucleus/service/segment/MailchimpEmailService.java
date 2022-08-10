@@ -13,8 +13,10 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,6 +113,23 @@ public class MailchimpEmailService extends AbstractEmailService {
       }
     }
     crmService.batchFlush();
+  }
+  @Override
+  public void upsertContact(String contactId) throws Exception {
+    CrmService crmService = env.primaryCrmService();
+
+    for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
+      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+      for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
+        Optional<CrmContact> contact = crmService.getFilteredContactById(contactId, emailList.crmFilter);
+        if(contact.isPresent()){
+          Map<String, Object> customFields = getCustomFields(emailList.id, contact.get(), mailchimpClient, mailchimpConfig);
+          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(contact.get(), customFields, emailList.groups));
+          Map<String,List<String>> campaigns = crmService.getActiveCampaignsByContactIds(Collections.singletonList(contact.get().id));
+          updateTags(emailList.id, contact.get(), campaigns.get(0), mailchimpClient, mailchimpConfig);
+        }
+      }
+    }
   }
 
   //  @Override

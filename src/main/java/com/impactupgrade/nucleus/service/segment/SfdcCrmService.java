@@ -81,6 +81,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+    return toCrmContact(sfdcClient.getFilteredContactById(id, filter));
+  }
+
+  @Override
   public List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
     return toCrmContact(sfdcClient.getContactsByIds(ids));
   }
