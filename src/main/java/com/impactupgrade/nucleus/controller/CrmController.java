@@ -17,6 +17,11 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import com.impactupgrade.nucleus.util.crmsync.AccountSyncHelper;
+import com.impactupgrade.nucleus.util.crmsync.ContactSyncHelper;
+import com.impactupgrade.nucleus.util.crmsync.DonationSyncHelper;
+import com.impactupgrade.nucleus.util.crmsync.RecurringDonationSyncHelper;
+import com.impactupgrade.nucleus.util.crmsync.SyncHelper;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -299,4 +304,30 @@ public class CrmController {
     return Response.ok(insertedFields).build();
   }
 
+  @Path("/sync-to-secondary")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  public Response syncToSecondary(
+          @FormParam("id") String recordId,
+          @FormParam("type") String recordType,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SyncHelper syncHelper;
+
+    switch (recordType) {
+      case "contact" -> syncHelper = new ContactSyncHelper(env);
+      case "account" -> syncHelper = new AccountSyncHelper(env);
+      case "donation" -> syncHelper = new DonationSyncHelper(env);
+      case "recurring_donation" -> syncHelper = new RecurringDonationSyncHelper(env);
+      default -> {
+        log.error("Record update failed, Invalid record type!");
+        return Response.serverError().build();
+      }
+    }
+
+    syncHelper.sync(recordId);
+
+    return Response.ok().build();
+  }
 }

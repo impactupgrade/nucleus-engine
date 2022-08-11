@@ -41,6 +41,7 @@ public class EnvironmentConfig {
   // marketing, the latter used for SMS/email. In that case, primary is still treated as the default, but individual
   // flows can be overridden.
   public String crmPrimary = "";
+  public String crmSecondary = "";
   public String crmDonations = "";
   public String crmMessaging = "";
 

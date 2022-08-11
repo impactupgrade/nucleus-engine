@@ -11,8 +11,10 @@ import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.logging.log4j.LogManager;
@@ -47,6 +49,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   public void init(Environment env) {
     this.env = env;
     this.dwClient = env.donorwranglerClient();
+  }
+
+  @Override
+  public Optional<CrmAccount> getAccountByName(String name) throws Exception {
+    return Optional.empty();
   }
 
   @Override
@@ -91,14 +98,35 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public Optional<CrmDonation> getDonationById(String id) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
     // TODO: Josh?
     return Optional.empty();
   }
 
   @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
   public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return dwClient.insertDonation(paymentGatewayEvent);
+  }
+
+  @Override
+  public String insertDonation(CrmDonation donation) throws Exception {
+
+      return null;
+  }
+
+  @Override
+  public void updateDonation(CrmDonation donation) throws Exception {
+
   }
 
   @Override
@@ -109,6 +137,17 @@ public class DonorWranglerCrmService implements BasicCrmService {
   @Override
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // no refund support
+  }
+
+  @Override
+  public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+
+    return null;
+  }
+
+  @Override
+  public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+
   }
 
   @Override

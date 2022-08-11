@@ -46,6 +46,7 @@ public interface CrmService extends SegmentService {
     }
     return accounts;
   }
+  Optional<CrmAccount> getAccountByName(String name) throws Exception;
   // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
@@ -82,6 +83,7 @@ public interface CrmService extends SegmentService {
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
+  Optional<CrmDonation> getDonationById(String id) throws Exception;
   Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception;
   // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
@@ -96,6 +98,7 @@ public interface CrmService extends SegmentService {
     }
     return crmDonations;
   }
+  Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
   List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception;
   List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
@@ -151,6 +154,8 @@ public interface CrmService extends SegmentService {
     return getDonationsByTransactionIds(transactionIds.stream().toList());
   }
   String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  String insertDonation(CrmDonation donation) throws Exception;
+  void updateDonation(CrmDonation donation) throws Exception;
   void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception;
@@ -158,6 +163,8 @@ public interface CrmService extends SegmentService {
     return getRecurringDonationBySubscriptionId(paymentGatewayEvent.getSubscriptionId());
   }
   String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception;
+  void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception;
   void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

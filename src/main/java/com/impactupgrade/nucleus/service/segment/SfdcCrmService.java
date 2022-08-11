@@ -80,6 +80,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmAccount> getAccountByName(String name) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
     return toCrmAccount(sfdcClient.getAccountByCustomerId(customerId));
   }
@@ -427,6 +432,12 @@ public class SfdcCrmService implements CrmService {
     return processNewDonation(campaign, recurringDonationId, paymentGatewayEvent);
   }
 
+  @Override
+  public String insertDonation(CrmDonation donation) throws Exception {
+
+    return null;
+  }
+
   protected String processPledgedDonation(SObject pledgedOpportunity, Optional<SObject> campaign,
       String recurringDonationId, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     log.info("found SFDC pledged opportunity {} in recurring donation {}",
@@ -564,6 +575,12 @@ public class SfdcCrmService implements CrmService {
     return sfdcClient.insert(recurringDonation).getId();
   }
 
+  @Override
+  public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+
+    return null;
+  }
+
   /**
    * Set any necessary fields on an RD before it's inserted.
    */
@@ -644,6 +661,11 @@ public class SfdcCrmService implements CrmService {
     toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
     setRecurringDonationFieldsForClose(toUpdate, manageDonationEvent);
     sfdcClient.update(toUpdate);
+  }
+
+  @Override
+  public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+
   }
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update

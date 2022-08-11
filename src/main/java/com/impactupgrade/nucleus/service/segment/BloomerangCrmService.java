@@ -143,6 +143,11 @@ public class BloomerangCrmService implements CrmService {
     return Optional.empty();
   }
 
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    return Optional.empty();
+  }
+
   // TODO: refundId support?
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
@@ -262,6 +267,16 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public String insertDonation(CrmDonation donation) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
+  public void updateDonation(CrmDonation donation) throws Exception {
+
+  }
+
+  @Override
   public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     if (!paymentGatewayEvent.isTransactionSuccess()) {
       log.info("skipping the non-successful transaction: {}", paymentGatewayEvent.getTransactionId());
@@ -320,6 +335,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+    throw new RuntimeException("not implemented");
+  }
+
+  @Override
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
   }
@@ -347,6 +367,11 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {
     return Optional.empty();
+  }
+
+  @Override
+  public Optional<CrmAccount> getAccountByName(String name) throws Exception {
+    throw new RuntimeException("not implemented");
   }
 
   @Override
@@ -400,6 +425,11 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
     // SMS opt out
+  }
+
+  @Override
+  public Optional<CrmDonation> getDonationById(String id) throws Exception {
+    return Optional.empty();
   }
 
   // TODO: Refactoring idea: We don't need this since we override both the PaymentGatewayEvent and ManageDonationEvent
@@ -542,6 +572,11 @@ public class BloomerangCrmService implements CrmService {
     // TODO: Avoid the double hit? DonationService already retrieved this once.
     Donation recurringDonation = getDonation(manageDonationEvent.getDonationId());
     closeRecurringDonation(recurringDonation);
+  }
+
+  @Override
+  public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+    throw new RuntimeException("not implemented");
   }
 
   @Override
@@ -718,6 +753,7 @@ public class BloomerangCrmService implements CrmService {
         null, // name
         donation.amount,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
+        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId),
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId),
         CrmDonation.Status.SUCCESSFUL, // Bloomerang has no notion of non-successful transactions.
         c,
@@ -743,6 +779,13 @@ public class BloomerangCrmService implements CrmService {
     // TODO
     CrmAccount crmAccount = new CrmAccount();
 
+    Calendar c = Calendar.getInstance();
+    try {
+      c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(donation.date));
+    } catch (ParseException e) {
+      log.error("unparseable date: {}", donation.date, e);
+    }
+
     Designation designation = donation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).findFirst().get();
 
     return new CrmRecurringDonation(
@@ -754,6 +797,7 @@ public class BloomerangCrmService implements CrmService {
         "Active".equalsIgnoreCase(designation.recurringDonationStatus),
         CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
         "Recurring Donation",
+        c,
         crmAccount,
         crmContact,
         donation,

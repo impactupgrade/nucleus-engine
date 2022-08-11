@@ -123,8 +123,8 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(CrmRecurringDonation.Frequency.MONTHLY, rd.frequency);
     assertEquals("2021-11-11", new SimpleDateFormat("yyyy-MM-dd").format(rdDeal.getProperties().getClosedate().getTime()));
     assertEquals("Stripe", rd.paymentGatewayName);
-    assertEquals("cus_JPgkris8GTsXIH", rd.customerId);
-    assertEquals("sub_1JufwxHAwJOu5brrARMtj1Gb", rd.subscriptionId);
+    assertEquals("cus_JPgkris8GTsXIH", rd.paymentGatewayCustomerId);
+    assertEquals("sub_1JufwxHAwJOu5brrARMtj1Gb", rd.paymentGatewaySubscriptionId);
 
     // verify the Posted opp
     List<CrmDonation> donations = hsCrmService.getDonationsByAccountId(accountId);

@@ -7,10 +7,11 @@ package com.impactupgrade.nucleus.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Strings;
 
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
-public class CrmRecurringDonation {
+public class CrmRecurringDonation extends HasId {
 
   public enum Frequency {
     WEEKLY(List.of("weekly", "week")),
@@ -45,14 +46,14 @@ public class CrmRecurringDonation {
     }
   }
 
-  public String id;
-  public String subscriptionId;
-  public String customerId;
+  public String paymentGatewaySubscriptionId;
+  public String paymentGatewayCustomerId;
   public String donationName;
   public Double amount;
   public String paymentGatewayName;
   public Boolean active;
   public Frequency frequency;
+  public Calendar closeDate;
   public CrmAccount account;
   public CrmContact contact;
 
@@ -69,11 +70,11 @@ public class CrmRecurringDonation {
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount,
-      String paymentGatewayName, Boolean active, Frequency frequency, String donationName, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
+  public CrmRecurringDonation(String id, String paymentGatewaySubscriptionId, String paymentGatewayCustomerId, Double amount,
+      String paymentGatewayName, Boolean active, Frequency frequency, String donationName, Calendar closeDate, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
     this.id = id;
-    this.subscriptionId = subscriptionId;
-    this.customerId = customerId;
+    this.paymentGatewaySubscriptionId = paymentGatewaySubscriptionId;
+    this.paymentGatewayCustomerId = paymentGatewayCustomerId;
     this.amount = amount;
     this.paymentGatewayName = paymentGatewayName;
     this.active = active;
@@ -83,5 +84,6 @@ public class CrmRecurringDonation {
     this.rawObject = rawObject;
     this.account = account;
     this.crmUrl = crmUrl;
+    this.closeDate = closeDate;
   }
 }

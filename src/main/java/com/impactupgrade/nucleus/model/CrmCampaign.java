@@ -4,5 +4,9 @@
 
 package com.impactupgrade.nucleus.model;
 
-public record CrmCampaign(String id) {
+public class CrmCampaign extends HasId {
+
+  public CrmCampaign(String id) {
+    this.id = id;
+  }
 }

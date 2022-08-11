@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.api.client.util.DateTime;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
@@ -196,6 +197,11 @@ public class VirtuousClient {
         return getGift(giftUrl);
     }
 
+    public Gift getGiftById(String Id){
+      String giftUrl = VIRTUOUS_API_URL + "/Gift/" + Id;
+      return getGift(giftUrl);
+    }
+
     private Gift getGift(String giftUrl) {
         return get(giftUrl, headers(), Gift.class);
     }
@@ -228,6 +234,31 @@ public class VirtuousClient {
           log.info("Updated gift: {}", gift);
         }
         return gift;
+    }
+
+    public RecurringGift createRecurringGift(RecurringGift recurringGift) {
+      recurringGift = post(VIRTUOUS_API_URL + "/RecurringGift", recurringGift, APPLICATION_JSON, headers(), RecurringGift.class);
+      if (recurringGift != null) {
+        log.info("Created gift: {}", recurringGift);
+      }
+      return recurringGift;
+    }
+
+    public RecurringGift getRecurringGiftById(String Id) {
+      String giftUrl = VIRTUOUS_API_URL + "/RecurringGift/" + Id;
+      return getRecurringGift(giftUrl);
+    }
+
+    public RecurringGift updateRecurringGift(RecurringGift recurringGift) {
+      recurringGift = put(VIRTUOUS_API_URL + "/RecurringGift" + "/" + recurringGift.id, recurringGift, APPLICATION_JSON, headers(), RecurringGift.class);
+      if (recurringGift != null) {
+        log.info("Updated RecurringGift: {}", recurringGift);
+      }
+      return recurringGift;
+    }
+
+    private RecurringGift getRecurringGift(String giftUrl) {
+      return get(giftUrl, headers(), RecurringGift.class);
     }
 
     // TODO: Should this return ReversingTransaction? Does the API respond with ReversingTransaction or the Gift?
@@ -624,6 +655,46 @@ public class VirtuousClient {
           '}';
     }
   }
+
+  //TODO: not all fields here are needed, keep them anyway?
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class RecurringGift {
+      public Integer id;
+      public String transactionSource;
+      public String transactionId;
+      public Integer contactId;
+      public DateTime startDate;
+      public Double amount;
+      public String frequency;
+      public DateTime anticipatedEndDate;
+//      public DateTime cancelDateTimeUtc;
+//      public Integer segmentId;
+//      public String segment;
+//      public String segmentUrl;
+//      public Boolean automatedPayments;
+//      public Boolean trackPayments;
+      public Boolean isPrivate;
+      public String status;
+      public DateTime nextExpectedPaymentDate;
+//      public List<GiftDesignations> designations;
+//      public List<CustomField> customFields;
+
+    @Override
+    public String toString() {
+      return "RecurringGift{" +
+              "id=" + id +
+              ", transactionSource='" + transactionSource + '\'' +
+              ", transactionId='" + transactionId + '\'' +
+              ", contactId='" + contactId + '\'' +
+              ", startDate='" + startDate.toString() + '\'' +
+              ", amount='" + amount + '\'' +
+              ", frequency='" + frequency + '\'' +
+              ", anticipatedEndDate='" + anticipatedEndDate.toString() + '\'' +
+              ", status='" + status + '}';
+
+    }
+  }
+
 
 //    @JsonIgnoreProperties(ignoreUnknown = true)
 //    public static class GiftDesignation {

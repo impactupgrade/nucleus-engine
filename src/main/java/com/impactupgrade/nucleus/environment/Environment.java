@@ -143,6 +143,13 @@ public class Environment {
     return crmService(getConfig().crmPrimary);
   }
 
+  public CrmService secondaryCrmService() {
+    if (Strings.isNullOrEmpty(getConfig().crmSecondary)) {
+      throw new RuntimeException("define a crmSecondary in environment.json");
+    }
+    return crmService(getConfig().crmSecondary);
+  }
+
   public CrmService donationsCrmService() {
     return crmService(getConfig().crmDonations);
   }

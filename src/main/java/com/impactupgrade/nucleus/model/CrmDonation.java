@@ -8,12 +8,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Calendar;
 
-public class CrmDonation {
+public class CrmDonation extends HasId {
 
-  public String id;
   public String name;
   public Double amount;
   public String paymentGatewayName;
+  public String paymentGatewayCustomerId;
   public String paymentGatewayTransactionId;
   public Status status;
   public Calendar closeDate;
@@ -37,12 +37,13 @@ public class CrmDonation {
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmDonation(String id, String name, Double amount, String paymentGatewayName, String paymentGatewayTransactionId, Status status,
+  public CrmDonation(String id, String name, Double amount, String paymentGatewayName, String paymentGatewayCustomerId, String paymentGatewayTransactionId, Status status,
       Calendar closeDate, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
     this.id = id;
     this.name = name;
     this.amount = amount;
     this.paymentGatewayName = paymentGatewayName;
+    this.paymentGatewayCustomerId = paymentGatewayCustomerId;
     this.paymentGatewayTransactionId = paymentGatewayTransactionId;
     this.status = status;
     this.closeDate = closeDate;

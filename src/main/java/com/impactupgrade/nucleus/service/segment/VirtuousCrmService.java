@@ -5,9 +5,11 @@ import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.collections.CollectionUtils;
@@ -52,6 +54,7 @@ public class VirtuousCrmService implements BasicCrmService {
     public void init(Environment env) {
         this.virtuousClient = new VirtuousClient(env);
     }
+
 
     // Contacts
     @Override
@@ -361,6 +364,12 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     // Donations
+
+    @Override
+    public Optional<CrmDonation> getDonationById(String id) throws Exception {
+        return Optional.ofNullable(asCrmDonation(virtuousClient.getGiftById(id)));
+    }
+
     @Override
     public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
         // TODO: For now, safe to assume Stripe here,
@@ -380,9 +389,23 @@ public class VirtuousCrmService implements BasicCrmService {
         }
     }
 
+    @Override
+    public String insertDonation(CrmDonation donation) throws Exception {
+        // TODO: why GiftTransaction here and not Gift?
+        VirtuousClient.GiftTransaction giftTransaction = asGiftTransaction(donation);
+        virtuousClient.createGiftAsync(giftTransaction);
+        // TODO: ?
+        return null;
+    }
+
     public void insertDonationAsync(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
         VirtuousClient.GiftTransaction giftTransaction = asGiftTransaction(paymentGatewayEvent);
         virtuousClient.createGiftAsync(giftTransaction);
+    }
+
+    @Override
+    public void updateDonation(CrmDonation donation) throws Exception {
+        virtuousClient.updateGift(asGift(donation));
     }
 
     @Override
@@ -404,6 +427,26 @@ public class VirtuousCrmService implements BasicCrmService {
         if (Objects.nonNull(gift)) {
             virtuousClient.createReversingTransaction(gift);
         }
+    }
+
+    @Override
+    public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+        VirtuousClient.RecurringGift recurringGift = asRecurringGift(recurringDonation);
+        virtuousClient.createRecurringGift(recurringGift);
+        // TODO: ?
+        return null;
+    }
+
+    @Override
+    public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+        return getRecurringDonationById(id);
+    }
+
+    @Override
+    public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+        // TODO: won't work -- by-id requires Virtuous' own notion of IDs
+        VirtuousClient.RecurringGift recurringGift = virtuousClient.getRecurringGiftById(recurringDonation.paymentGatewaySubscriptionId);
+        virtuousClient.updateRecurringGift(recurringGift);
     }
 
     private CrmDonation asCrmDonation(VirtuousClient.Gift gift) {
@@ -441,6 +484,59 @@ public class VirtuousCrmService implements BasicCrmService {
         return gift;
     }
 
+    private VirtuousClient.GiftTransaction asGiftTransaction(CrmDonation crmDonation) throws Exception {
+        VirtuousClient.GiftTransaction gift = new VirtuousClient.GiftTransaction();
+        Optional<CrmContact> contact = getContactById(crmDonation.contact.id);
+        gift.giftDate = crmDonation.closeDate.getTime().toString();
+        if(contact.isPresent()){
+            gift.contact = asContact(contact.get());
+        }
+        gift.amount = crmDonation.amount.toString();
+        gift.transactionSource = crmDonation.paymentGatewayName;
+        gift.transactionId = crmDonation.paymentGatewayTransactionId;
+        gift.isPrivate = false; // ?
+        gift.isTaxDeductible = true; // ?
+
+        return gift;
+    }
+
+    private VirtuousClient.Gift asGift(CrmDonation crmDonation) throws Exception {
+        VirtuousClient.Gift gift = new VirtuousClient.Gift();
+        Optional<CrmContact> contact = getContactById(crmDonation.contact.id);
+        gift.giftDate = crmDonation.closeDate.getTime().toString();
+        if(contact.isPresent()){
+            gift.contactId = contact.get().id;
+        }
+        gift.amount = crmDonation.amount;
+        gift.transactionSource = crmDonation.paymentGatewayName;
+        gift.transactionId = crmDonation.paymentGatewayTransactionId;
+        gift.isPrivate = false; // ?
+        gift.isTaxDeductible = true; // ?
+
+        return gift;
+    }
+    /* TODO
+     Not as familiar with our virtuous setup but I am guessing it would be helpful to set up explicit handling of
+     recurring vs one time donations...
+     Using the base fields from CrmRecurringDonation but we may be able to get more info to Virtuous
+     */
+    private VirtuousClient.RecurringGift asRecurringGift(CrmRecurringDonation recurringDonation) throws Exception {
+        VirtuousClient.RecurringGift recurringGift = new VirtuousClient.RecurringGift();
+        Optional<CrmContact> contact = getContactById(recurringDonation.contact.id);
+        if(contact.isPresent()){
+            recurringGift.contactId = asContact(contact.get()).id;
+        }
+        recurringGift.amount = recurringDonation.amount; //TODO CHECK: formatting
+        recurringGift.transactionSource = recurringDonation.paymentGatewayName; //TODO CHECK: make sure this is the correct source info
+        recurringGift.transactionId = recurringDonation.paymentGatewaySubscriptionId;
+        recurringGift.frequency = recurringDonation.frequency.toString();
+//        recurringGift.status = recurringDonation.status;
+        //TODO status? ^
+        recurringGift.frequency = recurringDonation.frequency.name(); //TODO CHECK: these map correctly
+        //TODO CHECK: copied these defaults from above
+        recurringGift.isPrivate = false; // ?
+        return recurringGift;
+    }
     private VirtuousClient.GiftTransaction asGiftTransaction(PaymentGatewayEvent paymentGatewayEvent) {
         if (paymentGatewayEvent == null) {
             return null;
@@ -493,6 +589,12 @@ public class VirtuousCrmService implements BasicCrmService {
     @Override
     public EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions() {
         return null;
+    }
+
+
+    @Override
+    public Optional<CrmAccount> getAccountByName(String name) throws Exception {
+        return Optional.empty();
     }
 
 }

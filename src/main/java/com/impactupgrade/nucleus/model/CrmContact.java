@@ -14,7 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
-public class CrmContact {
+public class CrmContact extends HasId {
 
   public enum PreferredPhone {
     HOME(List.of("home", "household")),
@@ -46,7 +46,6 @@ public class CrmContact {
     }
   }
 
-  public String id;
   public String accountId;
   public String firstName;
   public String lastName;

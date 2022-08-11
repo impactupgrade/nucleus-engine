@@ -6,13 +6,12 @@ package com.impactupgrade.nucleus.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-public class CrmAccount {
+public class CrmAccount extends HasId {
 
   public enum Type {
     HOUSEHOLD, ORGANIZATION
   }
 
-  public String id;
   public String name;
   public CrmAddress address = new CrmAddress();
   public Type type;
