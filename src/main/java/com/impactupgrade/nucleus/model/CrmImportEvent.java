@@ -102,8 +102,8 @@ public class CrmImportEvent {
     }
 
     importEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
-    importEvent.opportunityCampaignExternalRef = data.get("External Campaign Ref");
-    importEvent.opportunityCampaignId = data.get("Campaign ID");
+    importEvent.opportunityCampaignExternalRef = data.get("Opportunity External Campaign Ref");
+    importEvent.opportunityCampaignId = data.get("Opportunity Campaign ID");
     importEvent.opportunityDescription = data.get("Opportunity Description");
     importEvent.opportunityName = data.get("Opportunity Name");
     importEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
