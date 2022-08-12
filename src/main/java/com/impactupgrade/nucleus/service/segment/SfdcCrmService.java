@@ -730,6 +730,8 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
+  // TODO: Much of this bulk import/update code needs genericized and pulled upstream!
+
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     // hold a map of campaigns so we don't have to visit them each time
@@ -788,22 +790,34 @@ public class SfdcCrmService implements CrmService {
         contact = existingContact.get();
       }
 
-      SObject opportunity = new SObject("Opportunity");
-      setBulkImportOpportunityFields(opportunity, contact, campaignCache, importEvent);
-      sfdcClient.insert(opportunity).getId();
+      // TODO: Need a way to ensure an Opportunity insert is actually intended. Stage seems like a safe assumption...
+      if (!Strings.isNullOrEmpty(importEvent.getOpportunityStageName())) {
+        SObject opportunity = new SObject("Opportunity");
+        setBulkImportOpportunityFields(opportunity, contact, campaignCache, importEvent);
+        sfdcClient.insert(opportunity).getId();
+      }
     }
+
+    log.info("bulk insert complete");
   }
 
   @Override
   public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-    List<SObject> contactUpdates = new ArrayList<>();
-    List<SObject> accountUpdates = new ArrayList<>();
-    List<SObject> oppUpdates = new ArrayList<>();
+    // We use Maps to ensure no records are attempted to be updated more than once due to duplicates in the sheet.
+    // The Bulk API will reject the update outright if an ID appears more than once in the list.
+    Map<String, SObject> contactUpdates = new HashMap<>();
+    Map<String, SObject> accountUpdates = new HashMap<>();
+    Map<String, SObject> oppUpdates = new HashMap<>();
 
     for (int i = 0; i < updateEvents.size(); i++) {
       CrmUpdateEvent updateEvent = updateEvents.get(i);
 
-      log.info("processing row {} of {}: {}", i + 2, updateEvents.size() + 1, updateEvent);
+      // account for the header row
+      int rowNum = i + 2;
+
+      log.info("processing row {} of {}: {}", rowNum, updateEvents.size() + 1, updateEvent);
+
+      boolean updated = false;
 
       if (!Strings.isNullOrEmpty(updateEvent.getContactId())) {
         Optional<SObject> existingContact = sfdcClient.getContactById(updateEvent.getContactId());
@@ -813,7 +827,9 @@ public class SfdcCrmService implements CrmService {
           SObject contact = new SObject("Contact");
           contact.setId(updateEvent.getContactId());
           setBulkUpdateContactFields(contact, updateEvent);
-          contactUpdates.add(contact);
+          contactUpdates.put(updateEvent.getContactId(), contact);
+
+          updated = true;
         }
       }
 
@@ -825,7 +841,9 @@ public class SfdcCrmService implements CrmService {
           SObject account = new SObject("Account");
           account.setId(updateEvent.getAccountId());
           setBulkUpdateAccountFields(account, updateEvent);
-          accountUpdates.add(account);
+          accountUpdates.put(updateEvent.getAccountId(), account);
+
+          updated = true;
         }
       }
 
@@ -837,7 +855,9 @@ public class SfdcCrmService implements CrmService {
           SObject opp = new SObject("Opportunity");
           opp.setId(updateEvent.getOpportunityId());
           setBulkUpdateOpportunityFields(opp, updateEvent);
-          oppUpdates.add(opp);
+          oppUpdates.put(updateEvent.getOpportunityId(), opp);
+
+          updated = true;
         }
       }
 
@@ -850,17 +870,25 @@ public class SfdcCrmService implements CrmService {
           SObject contact = new SObject("Contact");
           contact.setId(existingContact.get().getId());
           setBulkUpdateContactFields(contact, updateEvent);
-          contactUpdates.add(contact);
+          contactUpdates.put(existingContact.get().getId(), contact);
+
+          updated = true;
         }
+      }
+
+      if (!updated) {
+        log.warn("row {} resulted in no updates", rowNum);
       }
     }
 
-    sfdcClient.batchUpdate(contactUpdates.toArray());
+    sfdcClient.batchUpdate(contactUpdates.values().toArray());
     sfdcClient.batchFlush();
-    sfdcClient.batchUpdate(accountUpdates.toArray());
+    sfdcClient.batchUpdate(accountUpdates.values().toArray());
     sfdcClient.batchFlush();
-    sfdcClient.batchUpdate(oppUpdates.toArray());
+    sfdcClient.batchUpdate(oppUpdates.values().toArray());
     sfdcClient.batchFlush();
+
+    log.info("bulk update complete");
   }
 
   @Override
@@ -887,8 +915,8 @@ public class SfdcCrmService implements CrmService {
     contact.setField("MobilePhone", importEvent.getContactMobilePhone());
     contact.setField("Email", importEvent.getContactEmail());
 
-    importEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Contact "))
-        .forEach(entry -> contact.setField(entry.getKey().replace("Custom Contact ", ""), entry.getValue()));
+    importEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Contact Custom "))
+        .forEach(entry -> contact.setField(entry.getKey().replace("Contact Custom ", ""), entry.getValue()));
   }
 
   protected void setBulkUpdateContactFields(SObject contact, CrmUpdateEvent updateEvent) {
@@ -904,8 +932,8 @@ public class SfdcCrmService implements CrmService {
     setField(contact, "MobilePhone", updateEvent.getContactMobilePhone());
     setField(contact, "Email", updateEvent.getContactEmail());
 
-    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Contact "))
-        .forEach(entry -> contact.setField(entry.getKey().replace("Custom Contact ", ""), entry.getValue()));
+    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Contact Custom "))
+        .forEach(entry -> contact.setField(entry.getKey().replace("Contact Custom ", ""), entry.getValue()));
   }
 
   protected void setBulkUpdateAccountFields(SObject account, CrmUpdateEvent updateEvent) {
@@ -916,8 +944,8 @@ public class SfdcCrmService implements CrmService {
     setField(account, "BillingPostalCode", updateEvent.getAccountBillingZip());
     setField(account, "BillingCountry", updateEvent.getAccountBillingCountry());
 
-    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Account "))
-        .forEach(entry -> account.setField(entry.getKey().replace("Custom Account ", ""), entry.getValue()));
+    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Account Custom "))
+        .forEach(entry -> account.setField(entry.getKey().replace("Account Custom ", ""), entry.getValue()));
   }
 
   protected void setBulkImportOpportunityFields(SObject opportunity, SObject contact,
@@ -954,8 +982,8 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField("OwnerId", importEvent.getOwnerId());
     }
 
-    importEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Opportunity "))
-        .forEach(entry -> opportunity.setField(entry.getKey().replace("Custom Opportunity ", ""), entry.getValue()));
+    importEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
+        .forEach(entry -> opportunity.setField(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
   }
 
   protected void setBulkUpdateOpportunityFields(SObject opportunity, CrmUpdateEvent updateEvent)
@@ -983,8 +1011,8 @@ public class SfdcCrmService implements CrmService {
       campaign.ifPresent(c -> setField(opportunity, "CampaignId", c.getId()));
     }
 
-    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Custom Opportunity "))
-        .forEach(entry -> opportunity.setField(entry.getKey().replace("Custom Opportunity ", ""), entry.getValue()));
+    updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
+        .forEach(entry -> opportunity.setField(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
   }
 
   protected String getStringField(SObject sObject, String name) {
