@@ -5,7 +5,11 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -47,6 +51,7 @@ public class BloomerangCrmService implements CrmService {
   private static final Logger log = LogManager.getLogger(BloomerangCrmService.class);
 
   private static final String BLOOMERANG_URL = "https://api.bloomerang.co/v2/";
+  private static final ObjectMapper mapper = new ObjectMapper();
 
   private String apiKey;
   protected Environment env;
@@ -94,14 +99,12 @@ public class BloomerangCrmService implements CrmService {
       return PagedResults.getPagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
     }
 
-    // TODO: API appears to be doing SUPER forgiving fuzzy matches. We originally handled email-only searches and did
-    //  something like this to ensure exact matches. Now that we're also doing phone and keywords, need to rethink
-    //  it. But let's see how the above works in practice...
-//    List<Constituent> constituents = constituentSearchResults.results.stream()
-//        .filter(c -> c.primaryEmail != null && contactSearch.email.equalsIgnoreCase(c.primaryEmail.value))
-//        .collect(Collectors.toList());
+    // API appears to be doing SUPER forgiving fuzzy matches. If the search was by email/phone, verify those explicitly.
+    List<Constituent> constituents = constituentSearchResults.results.stream()
+        .filter(c -> Strings.isNullOrEmpty(contactSearch.email) || (c.primaryEmail != null && contactSearch.email.equalsIgnoreCase(c.primaryEmail.value)))
+        .collect(Collectors.toList());
 
-    List<CrmContact> crmContacts = toCrmContact(constituentSearchResults.results);
+    List<CrmContact> crmContacts = toCrmContact(constituents);
     return PagedResults.getPagedResultsFromCurrentOffset(crmContacts, contactSearch);
   }
 
@@ -124,7 +127,7 @@ public class BloomerangCrmService implements CrmService {
   public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return getDonation(
         paymentGatewayEvent,
-        "Donation",
+        List.of("Donation", "RecurringDonationPayment"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId,
         List.of(paymentGatewayEvent.getTransactionId(), paymentGatewayEvent.getTransactionSecondaryId())
     ).map(this::toCrmDonation);
@@ -186,10 +189,60 @@ public class BloomerangCrmService implements CrmService {
       return null;
     }
 
+    String date = new SimpleDateFormat("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate().getTime());
+
     Donation donation = new Donation();
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
     donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
-    donation.date = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
+    donation.date = date;
+
+    Designation designation = new Designation();
+    designation.amount = donation.amount;
+
+    // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund));
+    } else {
+      designation.fundId = env.getConfig().bloomerang.defaultFundId;
+    }
+
+    if (paymentGatewayEvent.isTransactionRecurring()) {
+      designation.type = "RecurringDonationPayment";
+      designation.recurringDonationId = Integer.parseInt(paymentGatewayEvent.getCrmRecurringDonationId());
+      designation.isExtraPayment = false;
+      donation.method = "Credit Card";
+    } else {
+      designation.type = "Donation";
+    }
+
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId(), designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), designation.customFields);
+
+    donation.designations.add(designation);
+
+    donation = post(BLOOMERANG_URL + "transaction", donation, APPLICATION_JSON, headers(), Donation.class);
+
+    if (donation == null) {
+      return null;
+    }
+    log.info("inserted donation {}", donation.designations.get(0).id);
+    return donation.designations.get(0).id + "";
+  }
+
+  @Override
+  public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    if (!paymentGatewayEvent.isTransactionSuccess()) {
+      log.info("skipping the non-successful transaction: {}", paymentGatewayEvent.getTransactionId());
+      return null;
+    }
+
+    String date = new SimpleDateFormat("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate().getTime());
+
+    Donation donation = new Donation();
+    donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
+    donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
+    donation.date = date;
 
     Designation designation = new Designation();
     designation.amount = donation.amount;
@@ -199,32 +252,40 @@ public class BloomerangCrmService implements CrmService {
     } else {
       designation.fundId = env.getConfig().bloomerang.defaultFundId;
     }
-    if (paymentGatewayEvent.isTransactionRecurring()) {
-      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmRecurringDonationId())) {
-        designation.type = "RecurringDonationPayment";
-        designation.recurringDonationId = Integer.parseInt(paymentGatewayEvent.getCrmRecurringDonationId());
-      } else {
-        designation.type = "RecurringDonation";
-      }
-    } else {
-      designation.type = "Donation";
-    }
+    designation.type = "RecurringDonation";
+    designation.recurringDonationStatus = "Active";
+    designation.recurringDonationStartDate = date;
+    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(paymentGatewayEvent.getSubscriptionInterval());
+    designation.recurringDonationFrequency = frequency.name();
+
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId(), designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), designation.customFields);
+
     donation.designations.add(designation);
 
+    log.info(mapper.writeValueAsString(donation));
     donation = post(BLOOMERANG_URL + "transaction", donation, APPLICATION_JSON, headers(), Donation.class);
 
     if (donation == null) {
       return null;
     }
-    log.info("inserted donation {}", donation.id);
-    return donation.id + "";
+    log.info("inserted recurring donation {}", donation.designations.get(0).id);
+    return donation.designations.get(0).id + "";
   }
 
-  @Override
-  public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // Bloomerang has no separate endpoint to create schedules, instead requiring you to create one within the
-    // initial payment. We instead let the above insertDonation handle this entirely.
-    return null;
+  protected void setProperty(String fieldKey, String value, List<JsonNode> customFields) {
+    // Optional field names may not be configured in env.json, so ensure we actually have a name first...
+    // Likewise, don't set a null or empty value.
+    if (Strings.isNullOrEmpty(fieldKey) || value == null) {
+      return;
+    }
+    int fieldId = Integer.parseInt(fieldKey);
+
+    ObjectNode objectNode = mapper.createObjectNode();
+    objectNode.put("FieldId", fieldId);
+    objectNode.put("Value", value);
+    customFields.add(objectNode);
   }
 
   @Override
@@ -326,7 +387,7 @@ public class BloomerangCrmService implements CrmService {
   public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return getDonation(
         paymentGatewayEvent,
-        "RecurringDonation",
+        List.of("RecurringDonation"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId,
         List.of(paymentGatewayEvent.getSubscriptionId())
     ).map(this::toCrmRecurringDonation);
@@ -368,13 +429,13 @@ public class BloomerangCrmService implements CrmService {
   public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<Donation> rd = getDonation(
         paymentGatewayEvent,
-        "RecurringDonation",
+        List.of("RecurringDonation"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId,
         List.of(paymentGatewayEvent.getSubscriptionId())
     );
 
     if (rd.isPresent()) {
-      closeRecurringDonation(rd.get().id);
+      closeRecurringDonation(rd.get());
     } else {
       log.warn("could not find RecurringDonation for subscription {}", paymentGatewayEvent.getSubscriptionId());
     }
@@ -403,11 +464,11 @@ public class BloomerangCrmService implements CrmService {
     }
 
     if (manageDonationEvent.getPauseDonation() == true) {
-      recurringDonation.recurringDonationStatus = "Closed";
+      recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(d -> d.recurringDonationStatus = "Closed");
     }
 
     if (manageDonationEvent.getResumeDonation() == true) {
-      recurringDonation.recurringDonationStatus = "Active";
+      recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(d -> d.recurringDonationStatus = "Active");
     }
 
     put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class);
@@ -415,7 +476,8 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    closeRecurringDonation(Integer.parseInt(manageDonationEvent.getDonationId()));
+    Donation recurringDonation = getDonation(manageDonationEvent.getDonationId());
+    closeRecurringDonation(recurringDonation);
   }
 
   @Override
@@ -448,22 +510,28 @@ public class BloomerangCrmService implements CrmService {
     return null;
   }
 
-  protected Optional<Donation> getDonation(PaymentGatewayEvent paymentGatewayEvent, String donationType,
+  protected Optional<Donation> getDonation(PaymentGatewayEvent paymentGatewayEvent, List<String> donationTypes,
       String customFieldKey, List<String> _customFieldValues) {
     if (Strings.isNullOrEmpty(customFieldKey)) {
       return Optional.empty();
     }
-    int customFieldId = Integer.parseInt(customFieldKey);
 
     List<String> customFieldValues = _customFieldValues.stream().filter(v -> !Strings.isNullOrEmpty(v)).collect(Collectors.toList());
     if (customFieldValues.isEmpty()) {
       return Optional.empty();
     }
 
-    return getDonations(paymentGatewayEvent.getCrmContact().id, donationType).stream().filter(d -> {
-      String customFieldValue = d.customFields.stream().filter(f -> f.fieldId == customFieldId).map(f -> (String) f.value.value).findFirst().orElse(null);
-      return customFieldValues.contains(customFieldValue);
-    }).findFirst();
+    for (String donationType : donationTypes) {
+      Optional<Donation> donation = getDonations(paymentGatewayEvent.getCrmContact().id, donationType).stream().filter(d -> {
+        String customFieldValue = getCustomFieldValue(d, customFieldKey);
+        return customFieldValues.contains(customFieldValue);
+      }).findFirst();
+      if (donation.isPresent()) {
+        return donation;
+      }
+    }
+
+    return Optional.empty();
   }
 
   // type: Donation, Pledge, PledgePayment, RecurringDonation, RecurringDonationPayment
@@ -489,13 +557,14 @@ public class BloomerangCrmService implements CrmService {
       return null;
     }
     int customFieldId = Integer.parseInt(customFieldKey);
-    return donation.customFields.stream().filter(f -> f.fieldId == customFieldId).map(f -> (String) f.value.value).findFirst().orElse(null);
+    return donation.designations.stream().flatMap(designation -> designation.customFields.stream())
+        .filter(jsonNode -> jsonNode.has("FieldId") && jsonNode.get("FieldId").asInt() == customFieldId)
+        .map(jsonNode -> jsonNode.get("Value").get("Value").asText())
+        .findFirst().orElse(null);
   }
 
-  protected void closeRecurringDonation(int donationId) throws Exception {
-    Donation recurringDonation = new Donation();
-    recurringDonation.id = donationId;
-    recurringDonation.recurringDonationStatus = "Closed";
+  protected void closeRecurringDonation(Donation recurringDonation) throws Exception {
+    recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(d -> d.recurringDonationStatus = "Closed");
     put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class);
   }
 
@@ -563,7 +632,10 @@ public class BloomerangCrmService implements CrmService {
     crmContact.id = donation.accountId + "";
 
     return new CrmDonation(
-        donation.id + "",
+        // TODO: I *think* this is correct. Ex: in order to post a transaction to a recurring donation, it must be aimed
+        //  at the RD's *designation*. When donations are stored, it appears they're using two different IDs, one for the
+        //  donation and one for the designation type.
+        donation.designations.get(0).id + "",
         null, // name
         donation.amount,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
@@ -588,14 +660,19 @@ public class BloomerangCrmService implements CrmService {
     CrmContact crmContact = new CrmContact();
     crmContact.id = donation.accountId + "";
 
+    Designation designation = donation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).findFirst().get();
+
     return new CrmRecurringDonation(
-        donation.id + "",
+        // TODO: I *think* this is correct. Ex: in order to post a transaction to a recurring donation, it must be aimed
+        //  at the RD's *designation*. When donations are stored, it appears they're using two different IDs, one for the
+        //  donation and one for the designation type. However, not sure if this is going to work for closing/updating the RD!
+        donation.designations.get(0).id + "",
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId),
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId),
         donation.amount,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
-        "Active".equalsIgnoreCase(donation.recurringDonationStatus),
-        CrmRecurringDonation.Frequency.fromName(donation.recurringDonationFrequency),
+        "Active".equalsIgnoreCase(designation.recurringDonationStatus),
+        CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
         null, // name
         crmAccount,
         crmContact,
@@ -609,6 +686,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Household {
     @JsonProperty("Id")
     public int id;
@@ -617,6 +695,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Constituent {
     @JsonProperty("Id")
     public int id;
@@ -641,6 +720,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Email {
     @JsonProperty("Type")
     public String type = "Home";
@@ -651,6 +731,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Phone {
     @JsonProperty("Type")
     public String type = "Home";
@@ -661,6 +742,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Address {
     @JsonProperty("Type")
     public String type = "Home";
@@ -679,6 +761,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ConstituentSearchResults {
     @JsonProperty("Total")
     public int total;
@@ -687,6 +770,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Donation {
     @JsonProperty("Id")
     public int id;
@@ -695,21 +779,15 @@ public class BloomerangCrmService implements CrmService {
     @JsonProperty("Amount")
     public double amount;
     @JsonProperty("Method")
-    public String method = "Credit Card";
+    public String method = "None";
     @JsonProperty("Date")
     public String date;
     @JsonProperty("Designations")
     public List<Designation> designations = new ArrayList<>();
-    // Active, Closed, Overdue
-    @JsonProperty("RecurringDonationStatus")
-    public String recurringDonationStatus;
-    @JsonProperty("RecurringDonationFrequency")
-    public String recurringDonationFrequency;
-    @JsonProperty("CustomValues")
-    public List<CustomField> customFields = new ArrayList<>();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class DonationResults {
     @JsonProperty("Total")
     public int total;
@@ -718,7 +796,10 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Designation {
+    @JsonProperty("Id")
+    public int id;
     @JsonProperty("Amount")
     public double amount;
     @JsonProperty("NonDeductibleAmount")
@@ -729,21 +810,19 @@ public class BloomerangCrmService implements CrmService {
     public int fundId;
     @JsonProperty("RecurringDonationId")
     public Integer recurringDonationId;
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class CustomField {
-    @JsonProperty("FieldId")
-    public int fieldId;
-    @JsonProperty("Value")
-    public CustomValue value;
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class CustomValue {
-    @JsonProperty("89234433")
-    public int id;
-    @JsonProperty("Value")
-    public Object value;
+    // Active, Closed, Overdue
+    @JsonProperty("RecurringDonationStatus")
+    public String recurringDonationStatus;
+    @JsonProperty("RecurringDonationStartDate")
+    public String recurringDonationStartDate;
+    // Weekly, EveryOtherWeekly, TwiceMonthly, Monthly, EveryOtherMonthly, Quarterly, Yearly
+    @JsonProperty("RecurringDonationFrequency")
+    public String recurringDonationFrequency;
+    @JsonProperty("IsExtraPayment")
+    public Boolean isExtraPayment;
+    // TODO: The following is frustrating. Bloomerang uses one CustomField structure for requests, a different one
+    //  for responses, and validation on their side isn't forgiving :(
+    @JsonProperty("CustomValues")
+    public List<JsonNode> customFields = new ArrayList<>();
   }
 }
