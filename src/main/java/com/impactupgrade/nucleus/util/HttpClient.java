@@ -22,15 +22,15 @@ public class HttpClient {
 
   private static final Logger log = LogManager.getLogger(HttpClient.class);
 
-  public static void get(String url, HeaderBuilder headerBuilder) {
-    get(url, headerBuilder, null);
-  }
-
-  public static <T> T get(String url, HeaderBuilder headerBuilder, Class<T> clazz) {
+  public static Response get(String url, HeaderBuilder headerBuilder) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
     MultivaluedMap<String, Object> headers = headerBuilder == null ? new MultivaluedHashMap<>() : headerBuilder.headers;
-    Response response = webTarget.request().headers(headers).get();
+    return webTarget.request().headers(headers).get();
+  }
+
+  public static <T> T get(String url, HeaderBuilder headerBuilder, Class<T> clazz) {
+    Response response = get(url, headerBuilder);
     if (isOk(response)) {
       if (clazz != null) {
         return response.readEntity(clazz);
@@ -43,15 +43,15 @@ public class HttpClient {
     return null;
   }
 
-  public static <S> void post(String url, S entity, String mediaType, HeaderBuilder headerBuilder) {
-    post(url, entity, mediaType, headerBuilder, null);
-  }
-
-  public static <S, T> T post(String url, S entity, String mediaType, HeaderBuilder headerBuilder, Class<T> clazz) {
+  public static <S> Response post(String url, S entity, String mediaType, HeaderBuilder headerBuilder) {
     Client client = ClientBuilder.newClient();
     WebTarget webTarget = client.target(url);
     MultivaluedMap<String, Object> headers = headerBuilder == null ? new MultivaluedHashMap<>() : headerBuilder.headers;
-    Response response = webTarget.request().headers(headers).post(Entity.entity(entity, mediaType));
+    return webTarget.request().headers(headers).post(Entity.entity(entity, mediaType));
+  }
+
+  public static <S, T> T post(String url, S entity, String mediaType, HeaderBuilder headerBuilder, Class<T> clazz) {
+    Response response = post(url, entity, mediaType, headerBuilder);
     if (isOk(response)) {
       if (clazz != null) {
         return response.readEntity(clazz);
