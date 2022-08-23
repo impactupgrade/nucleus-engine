@@ -31,6 +31,9 @@ import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -38,6 +41,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -80,28 +84,40 @@ public class BloomerangCrmService implements CrmService {
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     List<String> keywords = new ArrayList<>();
 
+    String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
+
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       keywords.add(contactSearch.email);
-    } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-      // TODO: might need encoded
-      keywords.add(contactSearch.phone);
+    } else if (!Strings.isNullOrEmpty(phone)) {
+      keywords.add(phone);
     } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
       keywords.add(contactSearch.keywords);
     }
 
+    String query = keywords.stream().map(k -> {
+      try {
+        return URLEncoder.encode(k, StandardCharsets.UTF_8.toString());
+      } catch (UnsupportedEncodingException e) {
+        // will never happen
+        return null;
+      }
+    }).filter(Objects::nonNull).collect(Collectors.joining("+"));
+
     ConstituentSearchResults constituentSearchResults = null;
     try {
-      constituentSearchResults = get(BLOOMERANG_URL + "constituents/search?search=" + String.join("+", keywords), headers(), ConstituentSearchResults.class);
+      constituentSearchResults = get(BLOOMERANG_URL + "constituents/search?search=" + query, headers(), ConstituentSearchResults.class);
     } catch (Exception e) {
-      // do nothing
+//      log.error("search failed", e);
     }
     if (constituentSearchResults == null) {
       return PagedResults.getPagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
     }
 
     // API appears to be doing SUPER forgiving fuzzy matches. If the search was by email/phone, verify those explicitly.
+    // If it was a name search, make sure the name actually matches.
     List<Constituent> constituents = constituentSearchResults.results.stream()
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.email) || (c.primaryEmail != null && contactSearch.email.equalsIgnoreCase(c.primaryEmail.value)))
+        .filter(c -> Strings.isNullOrEmpty(contactSearch.email) || (c.primaryEmail != null && !Strings.isNullOrEmpty(c.primaryEmail.value) && c.primaryEmail.value.equalsIgnoreCase(contactSearch.email)))
+        .filter(c -> Strings.isNullOrEmpty(phone) || (c.primaryPhone != null && !Strings.isNullOrEmpty(c.primaryPhone.number) && c.primaryPhone.number.replaceAll("[\\D]", "").contains(phone)))
         .collect(Collectors.toList());
 
     List<CrmContact> crmContacts = toCrmContact(constituents);
@@ -208,7 +224,10 @@ public class BloomerangCrmService implements CrmService {
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
       designation.type = "RecurringDonationPayment";
-      designation.recurringDonationId = Integer.parseInt(paymentGatewayEvent.getCrmRecurringDonationId());
+      // This is a little odd, but it appears Bloomerang wants the ID of the *designation* within the RecurringDonation,
+      // not the donation itself. So we unfortunately need to grab that from the API.
+      Donation recurringDonation = getDonation(paymentGatewayEvent.getCrmRecurringDonationId());
+      designation.recurringDonationId = recurringDonation.designations.get(0).id;
       designation.isExtraPayment = false;
       donation.method = "Credit Card";
     } else {
@@ -226,8 +245,8 @@ public class BloomerangCrmService implements CrmService {
     if (donation == null) {
       return null;
     }
-    log.info("inserted donation {}", donation.designations.get(0).id);
-    return donation.designations.get(0).id + "";
+    log.info("inserted donation {}", donation.id);
+    return donation.id + "";
   }
 
   @Override
@@ -270,8 +289,8 @@ public class BloomerangCrmService implements CrmService {
     if (donation == null) {
       return null;
     }
-    log.info("inserted recurring donation {}", donation.designations.get(0).id);
-    return donation.designations.get(0).id + "";
+    log.info("inserted recurring donation {}", donation.id);
+    return donation.id + "";
   }
 
   protected void setProperty(String fieldKey, String value, List<JsonNode> customFields) {
@@ -410,11 +429,16 @@ public class BloomerangCrmService implements CrmService {
 
     List<CrmRecurringDonation> rds = new ArrayList<>();
     for (CrmContact contact : contacts.getResults()) {
-      rds.addAll(get(
-          BLOOMERANG_URL + "transactions?type=RecurringDonation&accountId=" + contact.id + "&orderBy=Date&orderDirection=Desc",
-          headers(),
-          DonationResults.class
-      ).results.stream().map(this::toCrmRecurringDonation).collect(Collectors.toList()));
+      rds.addAll(
+          get(
+              BLOOMERANG_URL + "transactions?type=RecurringDonation&accountId=" + contact.id + "&orderBy=Date&orderDirection=Desc",
+              headers(),
+              DonationResults.class
+          ).results.stream()
+              .map(rd -> toCrmRecurringDonation(rd, contact))
+              .filter(rd -> rd.active)
+              .collect(Collectors.toList())
+      );
     }
 
     return rds;
@@ -449,14 +473,15 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO: We need a refactor. Upstream (DonationService), we're already retrieving this once to confirm the RD's
+    //  existence. But here we need it again in order to get the designations. Maybe we need to introduce the raw object
+    //  as a field in ManageDonationEvent?
     Donation recurringDonation = getDonation(manageDonationEvent.getDonationId());
-    if (recurringDonation == null) {
-      log.warn("unable to find recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      return;
-    }
 
     if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
       recurringDonation.amount = manageDonationEvent.getAmount();
+      recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus))
+          .forEach(rd -> rd.amount = manageDonationEvent.getAmount());
       log.info("Updating amount to {}...", manageDonationEvent.getAmount());
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
@@ -464,18 +489,28 @@ public class BloomerangCrmService implements CrmService {
     }
 
     if (manageDonationEvent.getPauseDonation() == true) {
-      recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(d -> d.recurringDonationStatus = "Closed");
+      recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
+        rd.recurringDonationStatus = "Closed";
+        rd.recurringDonationEndDate = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
+      });
+    } else if (manageDonationEvent.getResumeDonation() == true) {
+      recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
+        rd.recurringDonationStatus = "Active";
+        rd.recurringDonationEndDate = null;
+      });
     }
 
-    if (manageDonationEvent.getResumeDonation() == true) {
-      recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(d -> d.recurringDonationStatus = "Active");
-    }
+    // TODO: See the note on Donation.customFields. Since we currently have the response format and are about to push
+    //  in the request format, simply clear them out since we don't need them.
+    recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus))
+        .forEach(rd -> rd.customFields = null);
 
     put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class);
   }
 
   @Override
   public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    // TODO: Avoid the double hit? DonationService already retrieved this once.
     Donation recurringDonation = getDonation(manageDonationEvent.getDonationId());
     closeRecurringDonation(recurringDonation);
   }
@@ -564,7 +599,16 @@ public class BloomerangCrmService implements CrmService {
   }
 
   protected void closeRecurringDonation(Donation recurringDonation) throws Exception {
-    recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(d -> d.recurringDonationStatus = "Closed");
+    recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus))
+        .forEach(rd -> {
+          rd.recurringDonationStatus = "Closed";
+          rd.recurringDonationEndDate = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
+
+          // TODO: See the note on Donation.customFields. Since we currently have the response format and are about to push
+          //  in the request format, simply clear them out since we don't need them.
+          rd.customFields = null;
+        });
+
     put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class);
   }
 
@@ -632,10 +676,7 @@ public class BloomerangCrmService implements CrmService {
     crmContact.id = donation.accountId + "";
 
     return new CrmDonation(
-        // TODO: I *think* this is correct. Ex: in order to post a transaction to a recurring donation, it must be aimed
-        //  at the RD's *designation*. When donations are stored, it appears they're using two different IDs, one for the
-        //  donation and one for the designation type.
-        donation.designations.get(0).id + "",
+        donation.id + "",
         null, // name
         donation.amount,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
@@ -650,6 +691,13 @@ public class BloomerangCrmService implements CrmService {
   }
 
   protected CrmRecurringDonation toCrmRecurringDonation(Donation donation) {
+    CrmContact crmContact = new CrmContact();
+    crmContact.id = donation.accountId + "";
+
+    return toCrmRecurringDonation(donation, crmContact);
+  }
+
+  protected CrmRecurringDonation toCrmRecurringDonation(Donation donation, CrmContact crmContact) {
     if (donation == null) {
       return null;
     }
@@ -657,23 +705,17 @@ public class BloomerangCrmService implements CrmService {
     // TODO
     CrmAccount crmAccount = new CrmAccount();
 
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = donation.accountId + "";
-
     Designation designation = donation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).findFirst().get();
 
     return new CrmRecurringDonation(
-        // TODO: I *think* this is correct. Ex: in order to post a transaction to a recurring donation, it must be aimed
-        //  at the RD's *designation*. When donations are stored, it appears they're using two different IDs, one for the
-        //  donation and one for the designation type. However, not sure if this is going to work for closing/updating the RD!
-        donation.designations.get(0).id + "",
+        donation.id + "",
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId),
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId),
         donation.amount,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
         "Active".equalsIgnoreCase(designation.recurringDonationStatus),
         CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
-        null, // name
+        "Recurring Donation",
         crmAccount,
         crmContact,
         donation,
@@ -775,9 +817,9 @@ public class BloomerangCrmService implements CrmService {
     @JsonProperty("Id")
     public int id;
     @JsonProperty("AccountId")
-    public int accountId;
+    public Integer accountId;
     @JsonProperty("Amount")
-    public double amount;
+    public Double amount;
     @JsonProperty("Method")
     public String method = "None";
     @JsonProperty("Date")
@@ -801,13 +843,13 @@ public class BloomerangCrmService implements CrmService {
     @JsonProperty("Id")
     public int id;
     @JsonProperty("Amount")
-    public double amount;
+    public Double amount;
     @JsonProperty("NonDeductibleAmount")
-    public double nonDeductibleAmount = 0.0;
+    public Double nonDeductibleAmount = 0.0;
     @JsonProperty("Type")
     public String type;
     @JsonProperty("FundId")
-    public int fundId;
+    public Integer fundId;
     @JsonProperty("RecurringDonationId")
     public Integer recurringDonationId;
     // Active, Closed, Overdue
@@ -815,6 +857,8 @@ public class BloomerangCrmService implements CrmService {
     public String recurringDonationStatus;
     @JsonProperty("RecurringDonationStartDate")
     public String recurringDonationStartDate;
+    @JsonProperty("RecurringDonationEndDate")
+    public String recurringDonationEndDate;
     // Weekly, EveryOtherWeekly, TwiceMonthly, Monthly, EveryOtherMonthly, Quarterly, Yearly
     @JsonProperty("RecurringDonationFrequency")
     public String recurringDonationFrequency;
