@@ -72,11 +72,14 @@ public class App {
     cors.setInitParameter(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
     cors.setInitParameter(CrossOriginFilter.ACCESS_CONTROL_ALLOW_ORIGIN_HEADER, "*");
     cors.setInitParameter(CrossOriginFilter.ALLOWED_METHODS_PARAM, "GET,POST,PUT,DELETE,OPTIONS,HEAD");
-    cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin,Authorization");
+    cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "Accept,Authorization,Content-Type,CSRF-Token,Nucleus-Api-Key,Origin,X-Requested-By,X-Requested-With");
 
     // API/REST (Jersey)
     ResourceConfig apiConfig = new ResourceConfig();
 
+    // TODO: I DO NOT UNDERSTAND WHY THIS IS NEEDED. The above CrossOriginFilter is supposed to work at the underlying
+    //  Jetty level, but we hit CORS errors without this Jersey level in the mix as well.
+    apiConfig.register(new CORSFilter());
     apiConfig.register(new SecurityExceptionMapper());
     apiConfig.register(MultiPartFeature.class);
 
