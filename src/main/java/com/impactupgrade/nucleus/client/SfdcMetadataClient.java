@@ -12,6 +12,11 @@ import com.sforce.soap.metadata.CustomValue;
 import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.metadata.FileProperties;
 import com.sforce.soap.metadata.GlobalValueSet;
+import com.sforce.soap.metadata.Layout;
+import com.sforce.soap.metadata.LayoutColumn;
+import com.sforce.soap.metadata.LayoutItem;
+import com.sforce.soap.metadata.LayoutSection;
+import com.sforce.soap.metadata.LayoutSectionStyle;
 import com.sforce.soap.metadata.ListMetadataQuery;
 import com.sforce.soap.metadata.Metadata;
 import com.sforce.soap.metadata.MetadataConnection;
@@ -21,9 +26,12 @@ import com.sforce.soap.metadata.ProfileFieldLevelSecurity;
 import com.sforce.soap.metadata.ReadResult;
 import com.sforce.soap.metadata.RecordType;
 import com.sforce.soap.metadata.RecordTypePicklistValue;
+import com.sforce.soap.metadata.SaveResult;
+import com.sforce.soap.metadata.UiBehavior;
 import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -32,6 +40,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -221,4 +230,66 @@ public class SfdcMetadataClient {
 
     // TODO: Add to page layouts?
   }
+
+  public SaveResult[] addField(String layoutName, String sectionLabel, String fieldName) throws ConnectionException {
+    ReadResult readResult = metadataConn().readMetadata("Layout", new String[] {layoutName});
+    Metadata[] metadata = readResult.getRecords();
+    if (metadata.length == 0) {
+      // Layout not found
+      return null;
+    }
+    Layout layout = (Layout) metadata[0];
+    LayoutSection layoutSection = getOrCreateSection(layout, sectionLabel);
+    LayoutColumn layoutColumn = getOrCreateColumn(layoutSection);
+
+    List<LayoutItem> layoutItems = new ArrayList<>(Arrays.asList(layoutColumn.getLayoutItems()));
+    layoutItems.add(layoutItem(fieldName));
+    layoutColumn.setLayoutItems(layoutItems.toArray(new LayoutItem[0]));
+    return metadataConn().updateMetadata(metadata);
+  }
+
+  private LayoutSection getOrCreateSection(Layout layout, String sectionLabel) {
+    List<LayoutSection> layoutSections = new ArrayList<>(Arrays.asList(layout.getLayoutSections()));
+    Optional<LayoutSection> existingSection = layoutSections.stream()
+            .filter(layoutSection -> sectionLabel.equals(layoutSection.getLabel()))
+            .findFirst();
+    if (existingSection.isPresent()) {
+      return existingSection.get();
+    } else {
+      LayoutSection layoutSection = layoutSection(sectionLabel);
+      layoutSections.add(layoutSection);
+      layout.setLayoutSections(layoutSections.toArray(new LayoutSection[0]));
+      return layoutSection;
+    }
+  }
+
+  private LayoutColumn getOrCreateColumn(LayoutSection layoutSection) {
+    List<LayoutColumn> layoutColumns = new ArrayList<>(Arrays.asList(layoutSection.getLayoutColumns()));
+    if (CollectionUtils.isNotEmpty(layoutColumns)) {
+      return layoutColumns.get(0);
+    } else {
+      LayoutColumn layoutColumn = new LayoutColumn();
+      layoutColumns.add(layoutColumn);
+      layoutSection.setLayoutColumns(layoutColumns.toArray(new LayoutColumn[0]));
+      return layoutColumn;
+    }
+  }
+
+  private LayoutSection layoutSection(String sectionLabel) {
+    LayoutSection layoutSection = new LayoutSection();
+    layoutSection.setLabel(sectionLabel);
+    // TODO: define defaults
+    layoutSection.setStyle(LayoutSectionStyle.OneColumn);
+    layoutSection.setDetailHeading(true);
+    return layoutSection;
+  }
+
+  private LayoutItem layoutItem(String fieldName) {
+    LayoutItem layoutItem = new LayoutItem();
+    layoutItem.setField(fieldName);
+    //TODO: define defaults
+    layoutItem.setBehavior(UiBehavior.Edit);
+    return layoutItem;
+  }
+
 }
