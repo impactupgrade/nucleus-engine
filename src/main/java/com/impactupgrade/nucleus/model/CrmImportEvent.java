@@ -22,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.impactupgrade.nucleus.util.Utils.checkboxToBool;
 import static com.impactupgrade.nucleus.util.Utils.fullNameToFirstLast;
 
 public class CrmImportEvent {
@@ -45,6 +46,7 @@ public class CrmImportEvent {
   public String accountBillingState;
   public String accountBillingZip;
   public String accountBillingCountry;
+  public String accountName;
   public String accountOwnerId;
   public String accountRecordTypeId;
   public String accountRecordTypeName;
@@ -99,7 +101,8 @@ public class CrmImportEvent {
     if (!Strings.isNullOrEmpty(contactFullName)) {
       return contactFullName;
     }
-    return contactFirstName + " " + contactLastName;
+    // trim in case one side or the other is blank
+    return (contactFirstName + " " + contactLastName).trim();
   }
 
   public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data) {
@@ -133,6 +136,7 @@ public class CrmImportEvent {
     importEvent.accountBillingState = data.get("Account Billing State");
     importEvent.accountBillingZip = data.get("Account Billing PostCode");
     importEvent.accountBillingCountry = data.get("Account Billing Country");
+    importEvent.accountName = data.get("Account Name");
     importEvent.accountOwnerId = data.get("Account Owner ID");
     importEvent.accountRecordTypeId = data.get("Account Record Type ID");
     importEvent.accountRecordTypeName = data.get("Account Record Type Name");
@@ -158,9 +162,9 @@ public class CrmImportEvent {
     importEvent.contactMailingState = data.get("Contact Mailing State");
     importEvent.contactMailingZip = data.get("Contact Mailing PostCode");
     importEvent.contactMailingCountry = data.get("Contact Mailing Country");
-    importEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In")) || "1".equalsIgnoreCase(data.get("Contact Email Opt In"));
+    importEvent.contactOptInEmail = checkboxToBool(data.get("Contact Email Opt In"));
     importEvent.contactOptOutEmail = "no".equalsIgnoreCase(data.get("Contact Email Opt In")) || "false".equalsIgnoreCase(data.get("Contact Email Opt In")) || "0".equalsIgnoreCase(data.get("Contact Email Opt In"));
-    importEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "1".equalsIgnoreCase(data.get("Contact SMS Opt In"));
+    importEvent.contactOptInSms = checkboxToBool(data.get("Contact SMS Opt In"));
     importEvent.contactOptOutSms = "no".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "false".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "0".equalsIgnoreCase(data.get("Contact SMS Opt In"));
     importEvent.contactOwnerId = data.get("Contact Owner ID");
     importEvent.contactRecordTypeId = data.get("Contact Record Type ID");
