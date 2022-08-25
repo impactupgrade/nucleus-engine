@@ -28,6 +28,8 @@ import com.sforce.soap.metadata.RecordType;
 import com.sforce.soap.metadata.RecordTypePicklistValue;
 import com.sforce.soap.metadata.SaveResult;
 import com.sforce.soap.metadata.UiBehavior;
+import com.sforce.soap.metadata.ValueSet;
+import com.sforce.soap.metadata.ValueSetValuesDefinition;
 import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
@@ -175,23 +177,30 @@ public class SfdcMetadataClient {
     log.info("added {} {} to all contact/campaign/opportunity record types", globalPicklistApiName, newValue);
   }
 
+  // TODO: createCustomField methods are getting out of control -- shift to a builder pattern?
+
   public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType)
       throws ConnectionException {
-    createCustomField(objectName, fieldName, fieldLabel, fieldType, null, null, null);
+    createCustomField(objectName, fieldName, fieldLabel, fieldType, null, null, null, null);
   }
 
   public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType,
       Integer fieldLength) throws ConnectionException {
-    createCustomField(objectName, fieldName, fieldLabel, fieldType, fieldLength, null, null);
+    createCustomField(objectName, fieldName, fieldLabel, fieldType, fieldLength, null, null, null);
   }
 
   public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType,
       Integer fieldPrecision, Integer fieldScale) throws ConnectionException {
-    createCustomField(objectName, fieldName, fieldLabel, fieldType, null, fieldPrecision, fieldScale);
+    createCustomField(objectName, fieldName, fieldLabel, fieldType, null, fieldPrecision, fieldScale, null);
+  }
+
+  public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType, List<String> values)
+      throws ConnectionException {
+    createCustomField(objectName, fieldName, fieldLabel, fieldType, null, null, null, values);
   }
 
   public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType,
-			Integer fieldLength, Integer fieldPrecision, Integer fieldScale) throws ConnectionException {
+			Integer fieldLength, Integer fieldPrecision, Integer fieldScale, List<String> values) throws ConnectionException {
     String fullName = objectName + "." + fieldName;
 
     CustomField customField = new CustomField();
@@ -201,6 +210,29 @@ public class SfdcMetadataClient {
     if (fieldLength != null) customField.setLength(fieldLength);
     if (fieldPrecision != null) customField.setPrecision(fieldPrecision);
     if (fieldScale != null) customField.setScale(fieldScale);
+    if (values != null && !values.isEmpty()) {
+      ValueSet valueSet = new ValueSet();
+      ValueSetValuesDefinition valuesDefinition = new ValueSetValuesDefinition();
+      // TODO: could set sorted, but for now, assuming the caller passed in the order they want
+      valuesDefinition.setValue(
+          values.stream().map(v -> {
+            CustomValue customValue = new CustomValue();
+            customValue.setFullName(v);
+            customValue.setLabel(v);
+            customValue.setIsActive(true);
+            return customValue;
+          }).toArray(CustomValue[]::new)
+      );
+      valueSet.setValueSetDefinition(valuesDefinition);
+      valueSet.setRestricted(false);
+      customField.setValueSet(valueSet);
+    }
+    if (fieldType == FieldType.MultiselectPicklist) {
+      customField.setVisibleLines(4);
+    }
+    if (fieldType == FieldType.Checkbox) {
+      customField.setDefaultValue("false");
+    }
 
     MetadataConnection metadataConn = metadataConn();
 

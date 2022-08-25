@@ -226,7 +226,8 @@ public class SfdcCrmService implements CrmService {
                 toCustomFieldType(crmCustomField.type),
                 crmCustomField.length,
                 crmCustomField.precision,
-                crmCustomField.scale
+                crmCustomField.scale,
+                List.of() // TODO (picklist support)
         );
         fieldNames.add(crmCustomField.name);
       }

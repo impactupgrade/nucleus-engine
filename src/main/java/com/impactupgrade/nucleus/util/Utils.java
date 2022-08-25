@@ -137,7 +137,22 @@ public class Utils {
   public static List<Map<String, String>> getExcelData(InputStream inputStream) throws IOException {
     Workbook workbook = new XSSFWorkbook(inputStream);
     Sheet sheet = workbook.getSheetAt(0);
+    return getExcelData(sheet);
+  }
 
+  public static List<Map<String, String>> getExcelData(InputStream inputStream, String sheetName) throws IOException {
+    Workbook workbook = new XSSFWorkbook(inputStream);
+    Sheet sheet = workbook.getSheet(sheetName);
+    return getExcelData(sheet);
+  }
+
+  public static List<Map<String, String>> getExcelData(InputStream inputStream, int sheetIndex) throws IOException {
+    Workbook workbook = new XSSFWorkbook(inputStream);
+    Sheet sheet = workbook.getSheetAt(sheetIndex);
+    return getExcelData(sheet);
+  }
+
+  public static List<Map<String, String>> getExcelData(Sheet sheet) throws IOException {
     List<String> headerData = new ArrayList<>();
     List<Map<String, String>> data = new ArrayList<>();
 
