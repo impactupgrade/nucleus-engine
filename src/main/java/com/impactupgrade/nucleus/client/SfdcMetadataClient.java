@@ -349,6 +349,13 @@ public class SfdcMetadataClient {
     // TODO: Add to page layouts?
   }
 
+  public void deleteCustomFields(String objectName, String... fieldNames) throws ConnectionException {
+    MetadataConnection metadataConn = metadataConn();
+    for (String fieldName : fieldNames) {
+      Arrays.stream(metadataConn.deleteMetadata("CustomField", new String[]{objectName + "." + fieldName})).forEach(log::info);
+    }
+  }
+
   public SaveResult[] addFields(String layoutName, String sectionLabel, List<String> fieldNames) throws ConnectionException {
     ReadResult readResult = metadataConn().readMetadata("Layout", new String[] {layoutName});
     Metadata[] metadata = readResult.getRecords();

@@ -32,11 +32,11 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -129,6 +129,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public List<SObject> getAccountsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(ids, "Id", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
   }
+  public List<SObject> getAccountsByUniqueField(String fieldName, List<String> values, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(values, fieldName, "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
+  }
 
   public List<SObject> getAccountsByName(String name, String... extraFields) throws ConnectionException, InterruptedException {
     String escapedName = name.replaceAll("'", "\\\\'");
@@ -148,6 +151,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public List<SObject> getCampaigns(String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) + " from campaign";
+    return queryList(query);
+  }
 
   public Optional<SObject> getCampaignById(String campaignId, String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) + " from campaign where id = '" + campaignId + "'";
@@ -202,6 +210,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
   public List<SObject> getContactsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(ids, "Id", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+  }
+  public List<SObject> getContactsByUniqueField(String fieldName, List<String> values, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(values, fieldName, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
   public List<SObject> getContactsByAccountId(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
@@ -730,14 +741,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected String getFieldsList(String fields, Collection<String> customFields, String[] extraFields) {
     // deal with duplicates
-    Set<String> customFieldsDeduped = new HashSet<>();
-    customFieldsDeduped.addAll(customFields);
-    customFieldsDeduped.addAll(Arrays.stream(extraFields).toList());
+    Set<String> fieldsDeduped = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    fieldsDeduped.addAll(Arrays.stream(fields.split("[,\\s]+")).toList());
+    fieldsDeduped.addAll(customFields);
+    fieldsDeduped.addAll(Arrays.stream(extraFields).toList());
 
-    if (!customFieldsDeduped.isEmpty()) {
-      fields += ", " + Joiner.on(", ").join(customFieldsDeduped);
-    }
-    return fields;
+    return Joiner.on(", ").join(fieldsDeduped);
   }
 
   protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType,
@@ -757,7 +766,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       more = Collections.emptyList();
     }
 
-    String conditionsJoin = page.stream().map(condition -> "'" + condition + "'").collect(Collectors.joining(","));
+    // sometimes searching using external ref IDs or another unique fields -- make sure results include it
+    if (!"id".equalsIgnoreCase(conditionFieldName) && !"email".equalsIgnoreCase(conditionFieldName)) {
+      customFields.add(conditionFieldName);
+    }
+
+    String conditionsJoin = page.stream().map(condition -> "'" + condition.replaceAll("'", "\\\\'") + "'").collect(Collectors.joining(","));
     String query = "select " + getFieldsList(fields, customFields, extraFields) + " from " + objectType + " where " + conditionFieldName + " in (" + conditionsJoin + ")";
     List<SObject> results = queryList(query);
 
