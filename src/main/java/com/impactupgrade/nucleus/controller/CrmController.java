@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
@@ -16,6 +17,7 @@ import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import com.sforce.soap.metadata.SaveResult;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -54,6 +56,7 @@ public class CrmController {
   private static final Logger log = LogManager.getLogger(CrmController.class.getName());
 
   protected final EnvironmentFactory envFactory;
+  private SfdcMetadataClient sfdcMetadataClient;
 
   public CrmController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
@@ -330,4 +333,25 @@ public class CrmController {
     double donationsTotal = env.donationsCrmService().getDonationsTotal(filter);
     return Response.status(200).entity(donationsTotal).build();
   }
+
+  @Path("/provision-fields")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response provisionFields(
+          @FormParam("layout-name") String layoutName,
+          @FormParam("section-label") String sectionLabel,
+          @FormParam("field") String field,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    // TODO: move to a service level?
+    sfdcMetadataClient = new SfdcMetadataClient(env);
+    SaveResult[] saveResults = sfdcMetadataClient.addField(layoutName, sectionLabel, field);
+
+    return Response.ok(saveResults).build();
+  }
+
 }
