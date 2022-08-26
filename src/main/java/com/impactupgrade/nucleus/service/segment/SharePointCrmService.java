@@ -29,6 +29,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,7 +47,12 @@ public class SharePointCrmService implements CrmService {
 
     private static final String CACHE_KEY = "csvData";
 
-    protected static LoadingCache<String, List<Map<String, String>>> sharepointCsvCache;
+    // The Map<String, List<Map<String, String>>> datatype is bonkers, but here's what's happening.
+    // Map<FILENAME, List<ROWS>>
+    // IE, we're storing a map of spreadsheet data, keyed by the original filename it came from.
+    // For complex rules, like filters based on directories/files, we need to know the origin and prevent flattening.
+    // TODO: If this gets worse, wrap it in a class...
+    protected static LoadingCache<String, Map<String, List<Map<String, String>>>> sharepointCsvCache;
 
     protected Environment env;
     protected MSGraphClient msGraphClient;
@@ -69,24 +76,25 @@ public class SharePointCrmService implements CrmService {
                 .expireAfterWrite(5, TimeUnit.MINUTES)
                 .build(new CacheLoader<>() {
                     @Override
-                    public List<Map<String, String>> load(String cacheKey) {
+                    public Map<String, List<Map<String, String>>> load(String cacheKey) {
                         return downloadCsvData();
                     }
                 });
             // warm the cache
-            getCsvData();
+            getCsvDataMap();
         }
     }
 
-    protected List<Map<String, String>> downloadCsvData() {
+    protected Map<String, List<Map<String, String>>> downloadCsvData() {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
         String siteId = sharepoint.siteId;
 
-        List<Map<String, String>> csvData = new ArrayList<>();
+        Map<String, List<Map<String, String>>> dataMap = new HashMap<>();
 
         for (String filePath : sharepoint.filePaths) {
             log.info("downloading data for {}/{}...", siteId, filePath);
 
+            List<Map<String, String>> csvData = new ArrayList<>();
             try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, filePath)) {
                 if (filePath.endsWith("csv")) {
                     csvData.addAll(Utils.getCsvData(inputStream));
@@ -95,15 +103,22 @@ public class SharePointCrmService implements CrmService {
                 } else {
                     log.error("unexpected file extension for filePath {}", filePath);
                 }
+
+                dataMap.put(filePath, csvData);
             } catch (Exception e) {
                 log.error("Failed to get csv data! {}", e.getMessage());
             }
         }
-        return csvData;
+        return dataMap;
     }
 
-    protected List<Map<String, String>> getCsvData() {
+    protected Map<String, List<Map<String, String>>> getCsvDataMap() {
         return sharepointCsvCache.getUnchecked(CACHE_KEY);
+    }
+
+    // for the times when we don't care about the origin and just need one big flattened list
+    protected List<Map<String, String>> getFlattenedCsvData() {
+        return getCsvDataMap().values().stream().flatMap(Collection::stream).collect(Collectors.toList());
     }
 
     @Override
@@ -120,7 +135,8 @@ public class SharePointCrmService implements CrmService {
     public Optional<CrmContact> getContactById(String id) throws Exception {
         String idColumn = env.getConfig().sharePoint.idColumn;
 
-        List<Map<String, String>> csvData = getCsvData();
+        // Ignore the origin here and flatten the map.
+        List<Map<String, String>> csvData = getFlattenedCsvData();
         List<CrmContact> foundContacts = csvData.stream()
                 .filter(csvRow -> StringUtils.equals(id, csvRow.get(idColumn)))
                 .map(this::toCrmContact)
@@ -132,17 +148,13 @@ public class SharePointCrmService implements CrmService {
     @Override
     public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
-        String ownerColumn = sharepoint.ownerColumn;
         String emailColumn = sharepoint.emailColumn;
         String phoneColumn = sharepoint.phoneColumn;
 
-        List<Map<String, String>> csvData = getCsvData();
+        List<Map<String, String>> csvData = getFilteredCsvData(contactSearch);
+
         List<CrmContact> foundContacts = new ArrayList<>();
         for (Map<String, String> csvRow : csvData) {
-            if (!Strings.isNullOrEmpty(contactSearch.ownerId) && !contactSearch.ownerId.toLowerCase(Locale.ROOT).equals(csvRow.get(ownerColumn).toLowerCase(Locale.ROOT))) {
-                continue;
-            }
-
             if (!Strings.isNullOrEmpty(contactSearch.email)) {
                 if (!Strings.isNullOrEmpty(csvRow.get(emailColumn)) && csvRow.get(emailColumn).toLowerCase(Locale.ROOT).equals(contactSearch.email.toLowerCase(Locale.ROOT))) {
                     foundContacts.add(toCrmContact(csvRow));
@@ -172,7 +184,17 @@ public class SharePointCrmService implements CrmService {
         return getPagedResults(searchResults, contactSearch);
     }
 
-    // Spinning this off into a separate method, since some orgs will want to skip specific columns.
+    // Separate method, since some orgs will need to fully customize the filtering rules.
+    protected List<Map<String, String>> getFilteredCsvData(ContactSearch contactSearch) {
+        String ownerColumn = env.getConfig().sharePoint.ownerColumn;
+
+        // By default, return 1) all rows, if there is now owner in the search or 2) rows filtered by the owner.
+        return getFlattenedCsvData().stream()
+            .filter(e -> Strings.isNullOrEmpty(contactSearch.ownerId) || contactSearch.ownerId.toLowerCase(Locale.ROOT).equals(e.get(ownerColumn).toLowerCase(Locale.ROOT)))
+        .collect(Collectors.toList());
+    }
+
+    // Separate method, since some orgs will want to skip specific columns.
     protected boolean keywordMatch(String keywords, Map<String, String> csvRow) {
         String[] keywordSplit = keywords.split("[^\\w]+");
         // TODO: Not a super performant way of doing this...
