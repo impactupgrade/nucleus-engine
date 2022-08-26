@@ -25,6 +25,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -38,6 +40,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -386,16 +389,27 @@ public class TwilioFrontlineController {
     // there directly.
     if (env.getConfig().twilio.userToSenderPn.size() > 0) {
       // reverse the map so we can look users up using their assigned phone numbers
-      Map<String, String> twilioAddressToUser = env.getConfig().twilio.userToSenderPn.entrySet().stream()
+      MultivaluedMap<String, String> twilioAddressToUser = new MultivaluedHashMap<>();
+      env.getConfig().twilio.userToSenderPn.entrySet().stream()
           .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
-          .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+          .forEach(e -> twilioAddressToUser.add(e.getValue(), e.getKey()));
       if (!Strings.isNullOrEmpty(projectedAddress) && twilioAddressToUser.containsKey(projectedAddress)) {
-        log.info("routing through userToSenderPn -- adding projected participant {} to {}", twilioAddressToUser.get(projectedAddress), conversationSid);
-        env.twilioClient().createConversationProjectedParticipant(conversationSid, twilioAddressToUser.get(projectedAddress), projectedAddress);
+        // If multiple users explicitly share the same phone number, randomly select.
+        Random random = new Random();
+        List<String> twilioAddresses = twilioAddressToUser.get(projectedAddress);
+        String twilioAddress = twilioAddresses.get(random.nextInt(twilioAddresses.size()));
+
+        log.info("routing through userToSenderPn -- adding projected participant {} to {}", twilioAddress, conversationSid);
+        env.twilioClient().createConversationProjectedParticipant(conversationSid, twilioAddress, projectedAddress);
         return Response.ok().build();
       } else if (!Strings.isNullOrEmpty(proxyAddress) && twilioAddressToUser.containsKey(proxyAddress)) {
-        log.info("routing through userToSenderPn -- adding proxy participant {} to {}", twilioAddressToUser.get(proxyAddress), conversationSid);
-        env.twilioClient().createConversationProxyParticipant(conversationSid, twilioAddressToUser.get(proxyAddress));
+        // If multiple users explicitly share the same phone number, randomly select.
+        Random random = new Random();
+        List<String> twilioAddresses = twilioAddressToUser.get(proxyAddress);
+        String twilioAddress = twilioAddresses.get(random.nextInt(twilioAddresses.size()));
+
+        log.info("routing through userToSenderPn -- adding proxy participant {} to {}", twilioAddress, conversationSid);
+        env.twilioClient().createConversationProxyParticipant(conversationSid, twilioAddress);
         return Response.ok().build();
       }
     }
