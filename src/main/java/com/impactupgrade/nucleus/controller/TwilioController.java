@@ -39,6 +39,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -66,6 +67,8 @@ public class TwilioController {
   public Response outboundToCrmList(
       @FormParam("list-id") List<String> listIds,
       @FormParam("message") String message,
+      @FormParam("nucleus-username") String nucleusUsername,
+      @FormParam("nucleus-email") String nucleusEmail,
       @Context HttpServletRequest request) {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -94,7 +97,19 @@ public class TwilioController {
 
                   if (!Strings.isNullOrEmpty(pn)) {
                     String personalizedMessage = personalizeMessage(message, c);
-                    Message twilioMessage = twilioClient.sendMessage(pn, personalizedMessage, null);
+
+                    Message twilioMessage;
+                    Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
+                    if (userToSenderPn != null && (userToSenderPn.containsKey(nucleusUsername) || userToSenderPn.containsKey(nucleusEmail))) {
+                      if (userToSenderPn.containsKey(nucleusUsername)) {
+                        twilioMessage = twilioClient.sendMessage(pn, userToSenderPn.get(nucleusUsername), personalizedMessage, null);
+                      } else {
+                        twilioMessage = twilioClient.sendMessage(pn, userToSenderPn.get(nucleusEmail), personalizedMessage, null);
+                      }
+                    } else {
+                      // will use the default sender pn
+                      twilioMessage = twilioClient.sendMessage(pn, personalizedMessage);
+                    }
 
                     log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
                         twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
@@ -132,7 +147,7 @@ public class TwilioController {
     return Response.ok().build();
   }
 
-  private String personalizeMessage(String message, CrmContact crmContact) {
+  protected String personalizeMessage(String message, CrmContact crmContact) {
     if (Strings.isNullOrEmpty(message) || Objects.isNull(crmContact)) {
       return message;
     }

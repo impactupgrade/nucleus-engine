@@ -77,7 +77,7 @@ public class SharePointCrmService implements CrmService {
                 .build(new CacheLoader<>() {
                     @Override
                     public Map<String, List<Map<String, String>>> load(String cacheKey) {
-                        return downloadCsvData();
+                        return downloadCsvDataMap();
                     }
                 });
             // warm the cache
@@ -85,7 +85,7 @@ public class SharePointCrmService implements CrmService {
         }
     }
 
-    protected Map<String, List<Map<String, String>>> downloadCsvData() {
+    protected Map<String, List<Map<String, String>>> downloadCsvDataMap() {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
         String siteId = sharepoint.siteId;
 
@@ -94,22 +94,28 @@ public class SharePointCrmService implements CrmService {
         for (String filePath : sharepoint.filePaths) {
             log.info("downloading data for {}/{}...", siteId, filePath);
 
-            List<Map<String, String>> csvData = new ArrayList<>();
-            try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, filePath)) {
-                if (filePath.endsWith("csv")) {
-                    csvData.addAll(Utils.getCsvData(inputStream));
-                } else if (filePath.endsWith("xlsx")) {
-                    csvData.addAll(Utils.getExcelData(inputStream));
-                } else {
-                    log.error("unexpected file extension for filePath {}", filePath);
-                }
-
-                dataMap.put(filePath, csvData);
-            } catch (Exception e) {
-                log.error("Failed to get csv data! {}", e.getMessage());
-            }
+            List<Map<String, String>> csvData = downloadCsvData(siteId, filePath);
+            dataMap.put(filePath, csvData);
         }
         return dataMap;
+    }
+
+    protected List<Map<String, String>> downloadCsvData(String siteId, String filePath) {
+        List<Map<String, String>> csvData = new ArrayList<>();
+
+        try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, filePath)) {
+            if (filePath.endsWith("csv")) {
+                csvData.addAll(Utils.getCsvData(inputStream));
+            } else if (filePath.endsWith("xlsx")) {
+                csvData.addAll(Utils.getExcelData(inputStream));
+            } else {
+                log.error("unexpected file extension for filePath {}", filePath);
+            }
+        } catch (Exception e) {
+            log.error("Failed to get csv data! {}", e.getMessage());
+        }
+
+        return csvData;
     }
 
     protected Map<String, List<Map<String, String>>> getCsvDataMap() {
@@ -262,7 +268,9 @@ public class SharePointCrmService implements CrmService {
 
     @Override
     public List<CrmContact> getContactsFromList(String listId) throws Exception {
-        return null;
+        // listId is assumed to be the file/path of a one-off sheet
+        return downloadCsvData(env.getConfig().sharePoint.siteId, listId).stream()
+            .map(this::toCrmContact).collect(Collectors.toList());
     }
 
     @Override
