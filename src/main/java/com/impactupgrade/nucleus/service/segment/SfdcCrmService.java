@@ -758,7 +758,7 @@ public class SfdcCrmService implements CrmService {
       }
 
       // If none by email, get contact by name
-      if (existingContact.isEmpty()) {
+      if (existingContact.isEmpty() && !Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
         List<SObject> existingContacts = sfdcClient.getContactsByName(firstName, lastName, importEvent.getRaw());
 
         log.info("number of contacts for name {} {}: {}", firstName, lastName, existingContacts.size());
