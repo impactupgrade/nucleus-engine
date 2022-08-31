@@ -933,8 +933,14 @@ public class SfdcCrmService implements CrmService {
 
   protected void setBulkImportContactFields(SObject contact, CrmImportEvent importEvent) {
     contact.setField("OwnerId", importEvent.getOwnerId());
-    contact.setField("FirstName", importEvent.getContactFirstName());
-    contact.setField("LastName", importEvent.getContactLastName());
+    // last name is required
+    if (Strings.isNullOrEmpty(importEvent.getContactLastName())) {
+      contact.setField("LastName", "Anonymous");
+    } else {
+      contact.setField("FirstName", importEvent.getContactFirstName());
+      contact.setField("LastName", importEvent.getContactLastName());
+    }
+
     contact.setField("MailingStreet", importEvent.getContactMailingStreet());
     contact.setField("MailingCity", importEvent.getContactMailingCity());
     contact.setField("MailingState", importEvent.getContactMailingState());
