@@ -52,14 +52,15 @@ public class CrmUpdateEvent {
   private Boolean contactOptInSms;
 
   private BigDecimal opportunityAmount;
-  private String opportunityCampaignExternalRef;
-  private String opportunityCampaignId;
   private Calendar opportunityDate;
   private String opportunityDescription;
   private String opportunityName;
   private String opportunityRecordTypeId;
   private String opportunityRecordTypeName;
   private String opportunityStageName;
+
+  private String campaignExternalRef;
+  private String campaignId;
 
   public CrmUpdateEvent(Map<String, String> raw, Environment env) {
     this.raw = raw;
@@ -115,13 +116,14 @@ public class CrmUpdateEvent {
     }
 
     updateEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
-    updateEvent.opportunityCampaignExternalRef = data.get("Opportunity External Campaign Ref");
-    updateEvent.opportunityCampaignId = data.get("Opportunity Campaign ID");
     updateEvent.opportunityDescription = data.get("Opportunity Description");
     updateEvent.opportunityName = data.get("Opportunity Name");
     updateEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
     updateEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
     updateEvent.opportunityStageName = data.get("Opportunity Stage Name");
+
+    updateEvent.campaignId = data.get("Campaign ID");
+    updateEvent.campaignExternalRef = data.get("External Campaign Ref");
 
     return updateEvent;
   }
@@ -226,12 +228,12 @@ public class CrmUpdateEvent {
     return opportunityAmount;
   }
 
-  public String getOpportunityCampaignExternalRef() {
-    return opportunityCampaignExternalRef;
+  public String getCampaignExternalRef() {
+    return campaignExternalRef;
   }
 
-  public String getOpportunityCampaignId() {
-    return opportunityCampaignId;
+  public String getCampaignId() {
+    return campaignId;
   }
 
   public Calendar getOpportunityDate() {

@@ -295,10 +295,13 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    addContactToCampaign(crmContact.id, campaignId);
+  }
+
+  protected void addContactToCampaign(String contactId, String campaignId) throws Exception {
     SObject campaignMember = new SObject("CampaignMember");
-    campaignMember.setField("ContactId", crmContact.id);
+    campaignMember.setField("ContactId", contactId);
     campaignMember.setField("CampaignId", campaignId);
-    // TODO: Necessary to set the contact's name and address? Hopefully SFDC does that automatically.
     sfdcClient.insert(campaignMember);
   }
 
@@ -725,6 +728,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   // TODO: Much of this bulk import/update code needs genericized and pulled upstream!
+  // TODO: Bulk Inserts may be likely through the SFDC API, but we'd need to break this down into multiple phases
+  //  since batches can only be of a single type.
 
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
@@ -780,6 +785,16 @@ public class SfdcCrmService implements CrmService {
         String contactId = sfdcClient.insert(contact).getId();
         // retrieve the contact again, fetching the accountId (and contactId) that was auto created
         contact = sfdcClient.getContactById(contactId).get();
+
+        if (!Strings.isNullOrEmpty(importEvent.getCampaignId())) {
+          addContactToCampaign(contactId, importEvent.getCampaignId());
+        } else if (!Strings.isNullOrEmpty(importEvent.getCampaignExternalRef())) {
+          // TODO: CACHE THIS!
+          Optional<SObject> campaign = sfdcClient.getCampaignById(importEvent.getCampaignExternalRef());
+          if (campaign.isPresent()) {
+            addContactToCampaign(contactId, campaign.get().getId());
+          }
+        }
       } else {
         contact = existingContact.get();
       }
@@ -823,6 +838,16 @@ public class SfdcCrmService implements CrmService {
           setBulkUpdateContactFields(contact, updateEvent);
           contactUpdates.put(updateEvent.getContactId(), contact);
 
+          if (!Strings.isNullOrEmpty(updateEvent.getCampaignId())) {
+            addContactToCampaign(contact.getId(), updateEvent.getCampaignId());
+          } else if (!Strings.isNullOrEmpty(updateEvent.getCampaignExternalRef())) {
+            // TODO: CACHE THIS!
+            Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getCampaignExternalRef());
+            if (campaign.isPresent()) {
+              addContactToCampaign(contact.getId(), campaign.get().getId());
+            }
+          }
+
           updated = true;
         }
       }
@@ -865,6 +890,16 @@ public class SfdcCrmService implements CrmService {
           contact.setId(existingContact.get().getId());
           setBulkUpdateContactFields(contact, updateEvent);
           contactUpdates.put(existingContact.get().getId(), contact);
+
+          if (!Strings.isNullOrEmpty(updateEvent.getCampaignId())) {
+            addContactToCampaign(contact.getId(), updateEvent.getCampaignId());
+          } else if (!Strings.isNullOrEmpty(updateEvent.getCampaignExternalRef())) {
+            // TODO: CACHE THIS!
+            Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getCampaignExternalRef());
+            if (campaign.isPresent()) {
+              addContactToCampaign(contact.getId(), campaign.get().getId());
+            }
+          }
 
           updated = true;
         }
@@ -958,10 +993,11 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("StageName", importEvent.getOpportunityStageName());
     opportunity.setField("CloseDate", importEvent.getOpportunityDate());
 
-    if (!Strings.isNullOrEmpty(importEvent.getOpportunityCampaignId())) {
-      opportunity.setField("CampaignId", importEvent.getOpportunityCampaignId());
-    } else if (!Strings.isNullOrEmpty(importEvent.getOpportunityCampaignExternalRef())) {
-      Optional<SObject> campaign = sfdcClient.getCampaignById(importEvent.getOpportunityCampaignExternalRef());
+    if (!Strings.isNullOrEmpty(importEvent.getCampaignId())) {
+      opportunity.setField("CampaignId", importEvent.getCampaignId());
+    } else if (!Strings.isNullOrEmpty(importEvent.getCampaignExternalRef())) {
+      // TODO: CACHE THIS!
+      Optional<SObject> campaign = sfdcClient.getCampaignById(importEvent.getCampaignExternalRef());
       campaign.ifPresent(c -> opportunity.setField("CampaignId", c.getId()));
     }
 
@@ -998,10 +1034,10 @@ public class SfdcCrmService implements CrmService {
     setField(opportunity, "CloseDate", updateEvent.getOpportunityDate());
     setField(opportunity, "OwnerId", updateEvent.getOwnerId());
 
-    if (!Strings.isNullOrEmpty(updateEvent.getOpportunityCampaignId())) {
-      setField(opportunity, "CampaignId", updateEvent.getOpportunityCampaignId());
-    } else if (!Strings.isNullOrEmpty(updateEvent.getOpportunityCampaignExternalRef())) {
-      Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getOpportunityCampaignExternalRef());
+    if (!Strings.isNullOrEmpty(updateEvent.getCampaignId())) {
+      setField(opportunity, "CampaignId", updateEvent.getCampaignId());
+    } else if (!Strings.isNullOrEmpty(updateEvent.getCampaignExternalRef())) {
+      Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getCampaignExternalRef());
       campaign.ifPresent(c -> setField(opportunity, "CampaignId", c.getId()));
     }
 

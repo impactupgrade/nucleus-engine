@@ -47,8 +47,6 @@ public class CrmImportEvent {
   private Boolean contactOptInSms;
 
   private BigDecimal opportunityAmount;
-  private String opportunityCampaignExternalRef;
-  private String opportunityCampaignId;
   private Calendar opportunityDate;
   private String opportunityDescription;
   private String opportunityName;
@@ -57,6 +55,9 @@ public class CrmImportEvent {
   private String opportunitySource;
   private String opportunityStageName;
   private String opportunityTerminal;
+
+  private String campaignExternalRef;
+  private String campaignId;
 
   public CrmImportEvent(CaseInsensitiveMap<String> raw, Environment env) {
     this.raw = raw;
@@ -86,6 +87,9 @@ public class CrmImportEvent {
     importEvent.contactMailingZip = data.get("Contact Mailing PostCode");
     importEvent.contactMailingCountry = data.get("Contact Mailing Country");
 
+    importEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In"));
+    importEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In"));
+
     importEvent.opportunityDate = Calendar.getInstance();
     try {
       if (data.containsKey("Opportunity Date dd/mm/yyyy")) {
@@ -102,13 +106,14 @@ public class CrmImportEvent {
     }
 
     importEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
-    importEvent.opportunityCampaignExternalRef = data.get("Opportunity External Campaign Ref");
-    importEvent.opportunityCampaignId = data.get("Opportunity Campaign ID");
     importEvent.opportunityDescription = data.get("Opportunity Description");
     importEvent.opportunityName = data.get("Opportunity Name");
     importEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
     importEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
     importEvent.opportunityStageName = data.get("Opportunity Stage Name");
+
+    importEvent.campaignId = data.get("Campaign ID");
+    importEvent.campaignExternalRef = data.get("External Campaign Ref");
 
     return importEvent;
   }
@@ -157,7 +162,7 @@ public class CrmImportEvent {
       importEvent.opportunityStageName = "Posted";
 
       if (data.containsKey("CRM Campaign ID")) {
-        importEvent.opportunityCampaignId = data.get("CRM Campaign ID");
+        importEvent.campaignId = data.get("CRM Campaign ID");
       }
 
       List<String> description = new ArrayList<>();
@@ -246,12 +251,12 @@ public class CrmImportEvent {
     return opportunityAmount;
   }
 
-  public String getOpportunityCampaignExternalRef() {
-    return opportunityCampaignExternalRef;
+  public String getCampaignExternalRef() {
+    return campaignExternalRef;
   }
 
-  public String getOpportunityCampaignId() {
-    return opportunityCampaignId;
+  public String getCampaignId() {
+    return campaignId;
   }
 
   public Calendar getOpportunityDate() {
