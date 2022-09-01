@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
@@ -151,11 +153,26 @@ public class TwilioController {
     if (Strings.isNullOrEmpty(message) || Objects.isNull(crmContact)) {
       return message;
     }
-    return message
+
+    // first, replace a few defaults
+    message = message
             .replaceAll("\\{\\{first_name\\}\\}", crmContact.firstName)
             .replaceAll("\\{\\{last_name\\}\\}", crmContact.lastName)
             .replaceAll("\\{\\{contact_id\\}\\}", crmContact.id)
             .replaceAll("\\{\\{account_id\\}\\}", crmContact.accountId);
+
+    // then, find all others and let the CRM raw object handle it
+    Pattern p = Pattern.compile("(\\{\\{[^\\}\\}]+\\}\\})+");
+    Matcher m = p.matcher(message);
+    while (m.find()) {
+      String fieldName = m.group(0).replaceAll("\\{\\{", "").replaceAll("\\}\\}", "");
+      Object value = crmContact.fieldFetcher.apply(fieldName);
+      // TODO: will probably need additional formatting for numerics, dates, times, etc.
+      String valueString = value == null ? "" : value.toString();
+      message = message.replaceAll("\\{\\{" + fieldName + "\\}\\}", valueString);
+    }
+
+    return message;
   }
 
   /**

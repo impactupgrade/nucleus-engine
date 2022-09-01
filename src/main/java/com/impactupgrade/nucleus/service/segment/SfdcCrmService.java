@@ -1213,7 +1213,8 @@ public class SfdcCrmService implements CrmService {
         emailGroups,
         getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),
         sObject,
-        "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getId() + "/view"
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getId() + "/view",
+        sObject::getField
     );
   }
 

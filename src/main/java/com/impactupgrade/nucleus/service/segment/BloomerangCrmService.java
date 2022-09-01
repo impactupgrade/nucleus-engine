@@ -646,7 +646,8 @@ public class BloomerangCrmService implements CrmService {
         null, // emailGroups
         null, // contactLanguage
         constituent,
-        "https://crm.bloomerang.co/Constituent/" + constituent.id + "/Profile"
+        "https://crm.bloomerang.co/Constituent/" + constituent.id + "/Profile",
+        null // fieldFetcher
     );
   }
 

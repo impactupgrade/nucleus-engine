@@ -870,7 +870,8 @@ public class HubSpotCrmService implements CrmService {
         Collections.emptyList(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
         contact,
-        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/contact/" + contact.getId()
+        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/contact/" + contact.getId(),
+        null // fieldFetcher
     );
   }
 
@@ -913,6 +914,7 @@ public class HubSpotCrmService implements CrmService {
         null,
         Collections.emptyList(),
         getValue(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
+        null,
         null,
         null
     );

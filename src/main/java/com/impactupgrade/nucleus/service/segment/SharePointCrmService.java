@@ -414,6 +414,7 @@ public class SharePointCrmService implements CrmService {
         crmContact.mobilePhone = map.get(phoneColumn);
         crmContact.ownerId = map.get(ownerColumn);
         crmContact.rawObject = map;
+        crmContact.fieldFetcher = map::get;
         return crmContact;
     }
 
