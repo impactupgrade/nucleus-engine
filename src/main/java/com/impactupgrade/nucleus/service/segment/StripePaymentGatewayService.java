@@ -383,6 +383,11 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
     List<BalanceTransaction> balanceTransactions = stripeClient.getBalanceTransactions(payout);
     for (BalanceTransaction balanceTransaction : balanceTransactions) {
+      if ("adjustment".equalsIgnoreCase(balanceTransaction.getType())) {
+        // TODO
+        continue;
+      }
+
       if (balanceTransaction.getSourceObject() instanceof Charge charge) {
         log.info("found charge {}", charge.getId());
 
