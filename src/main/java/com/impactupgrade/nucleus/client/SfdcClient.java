@@ -347,6 +347,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
           // Collect only values for filtered (searchable) columns
           .filter(e -> "id".equalsIgnoreCase(e.getKey()) || "contact id".equalsIgnoreCase(e.getKey()))
           .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+          // Important to include this, as some CSV exports include footer details that get picked up as one column rows.
+          .filter(e -> e.getValue().startsWith("003"))
           .forEach(e -> {
             resultIds.add(e.getValue());
           });
