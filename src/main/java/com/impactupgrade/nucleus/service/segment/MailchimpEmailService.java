@@ -13,10 +13,8 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +56,6 @@ public class MailchimpEmailService extends AbstractEmailService {
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
         // clear the cache, since fields differ between audiences
         mergeFieldsNameToTag.clear();
@@ -68,19 +65,25 @@ public class MailchimpEmailService extends AbstractEmailService {
 
         int count = 0;
         for (CrmContact crmContact : crmContacts) {
-          // transactional is always subscribed
-          if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL || crmContact.canReceiveEmail()) {
-            log.info("upserting contact {} {} to list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
-            Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
-            mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
-            // if they can't, they're archived, and will be failed to be retrieved for update
-            updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
-          } else if (!crmContact.canReceiveEmail()) {
-            log.info("unsubscribing contact {} {} from list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
-            mailchimpClient.archiveContact(emailList.id, crmContact.email);
-          }
+          log.info("updating contact {} {} on list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
+          syncContact(crmContact, crmContactCampaignNames, mailchimpConfig, emailList);
         }
       }
+    }
+  }
+
+  protected void syncContact(CrmContact crmContact, Map<String, List<String>> crmContactCampaignNames,
+      EnvironmentConfig.EmailPlatform mailchimpConfig, EnvironmentConfig.EmailList emailList) throws Exception {
+    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+
+    // transactional is always subscribed
+    if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL || crmContact.canReceiveEmail()) {
+      Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
+      mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
+      // if they can't, they're archived, and will be failed to be retrieved for update
+      updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
+    } else if (!crmContact.canReceiveEmail()) {
+      mailchimpClient.archiveContact(emailList.id, crmContact.email);
     }
   }
 
@@ -114,19 +117,18 @@ public class MailchimpEmailService extends AbstractEmailService {
     }
     crmService.batchFlush();
   }
+
   @Override
   public void upsertContact(String contactId) throws Exception {
     CrmService crmService = env.primaryCrmService();
 
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
-        Optional<CrmContact> contact = crmService.getFilteredContactById(contactId, emailList.crmFilter);
-        if(contact.isPresent()){
-          Map<String, Object> customFields = getCustomFields(emailList.id, contact.get(), mailchimpClient, mailchimpConfig);
-          mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(contact.get(), customFields, emailList.groups));
-          Map<String,List<String>> campaigns = crmService.getActiveCampaignsByContactIds(Collections.singletonList(contact.get().id));
-          updateTags(emailList.id, contact.get(), campaigns.get(0), mailchimpClient, mailchimpConfig);
+        Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, emailList.crmFilter);
+        if (crmContact.isPresent()) {
+          log.info("updating contact {} {} on list {}", crmContact.get().id, crmContact.get().email, emailList.id);
+          Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(List.of(crmContact.get()));
+          syncContact(crmContact.get(), crmContactCampaignNames, mailchimpConfig, emailList);
         }
       }
     }

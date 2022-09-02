@@ -44,6 +44,11 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
     return new PagedResults<>(Collections.emptyList(), 0, "");
   }

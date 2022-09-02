@@ -81,18 +81,18 @@ public class EmailController {
   }
 
   @POST
-  @Path("/upsert-contact")
+  @Path("/upsert")
   @Consumes("application/x-www-form-urlencoded")
-  public Response upsertContact(@FormParam("id") String contactID, @Context HttpServletRequest request) throws Exception {
+  public Response upsertContact(@FormParam("contact-id") String contactId, @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     Runnable thread = () -> {
-        for (EmailService emailPlatformService : env.allEmailServices()) {
-          try {
-            emailPlatformService.upsertContact(contactID);
-          } catch (Exception e) {
-            log.error("contact update failed for contact: {} platform: {}", contactID, emailPlatformService.name(), e);
-          }
+      for (EmailService emailPlatformService : env.allEmailServices()) {
+        try {
+          emailPlatformService.upsertContact(contactId);
+        } catch (Exception e) {
+          log.error("contact upsert failed for contact: {} platform: {}", contactId, emailPlatformService.name(), e);
         }
+      }
     };
     new Thread(thread).start();
 
