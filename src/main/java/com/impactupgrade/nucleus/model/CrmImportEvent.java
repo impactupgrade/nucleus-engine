@@ -82,13 +82,16 @@ public class CrmImportEvent {
     importEvent.contactLastName = data.get("Contact Last Name");
     importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
     importEvent.contactMailingStreet = data.get("Contact Mailing Address");
+    if (!Strings.isNullOrEmpty(data.get("Contact Mailing Address 2"))) {
+      importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Address 2");
+    }
     importEvent.contactMailingCity = data.get("Contact Mailing City");
     importEvent.contactMailingState = data.get("Contact Mailing State");
     importEvent.contactMailingZip = data.get("Contact Mailing PostCode");
     importEvent.contactMailingCountry = data.get("Contact Mailing Country");
 
-    importEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In"));
-    importEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In"));
+    importEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In")) || "1".equalsIgnoreCase(data.get("Contact Email Opt In"));
+    importEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "1".equalsIgnoreCase(data.get("Contact SMS Opt In"));
 
     importEvent.opportunityDate = Calendar.getInstance();
     try {

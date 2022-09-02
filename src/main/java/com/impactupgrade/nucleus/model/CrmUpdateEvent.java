@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.model;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -82,6 +83,9 @@ public class CrmUpdateEvent {
     updateEvent.ownerId = data.get("Owner ID");
 
     updateEvent.accountBillingStreet = data.get("Account Billing Address");
+    if (!Strings.isNullOrEmpty(data.get("Account Mailing Address 2"))) {
+      updateEvent.accountBillingStreet += ", " + data.get("Account Mailing Address 2");
+    }
     updateEvent.accountBillingCity = data.get("Account Billing City");
     updateEvent.accountBillingState = data.get("Account Billing State");
     updateEvent.accountBillingZip = data.get("Account Billing PostCode");
@@ -92,13 +96,16 @@ public class CrmUpdateEvent {
     updateEvent.contactLastName = data.get("Contact Last Name");
     updateEvent.contactMobilePhone = data.get("Contact Mobile Phone");
     updateEvent.contactMailingStreet = data.get("Contact Mailing Address");
+    if (!Strings.isNullOrEmpty(data.get("Contact Mailing Address 2"))) {
+      updateEvent.contactMailingStreet += ", " + data.get("Contact Mailing Address 2");
+    }
     updateEvent.contactMailingCity = data.get("Contact Mailing City");
     updateEvent.contactMailingState = data.get("Contact Mailing State");
     updateEvent.contactMailingZip = data.get("Contact Mailing PostCode");
     updateEvent.contactMailingCountry = data.get("Contact Mailing Country");
 
-    updateEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In"));
-    updateEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In"));
+    updateEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In")) || "1".equalsIgnoreCase(data.get("Contact Email Opt In"));
+    updateEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "1".equalsIgnoreCase(data.get("Contact SMS Opt In"));
 
     updateEvent.opportunityDate = Calendar.getInstance();
     try {

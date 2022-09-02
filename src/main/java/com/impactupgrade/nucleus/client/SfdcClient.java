@@ -517,6 +517,30 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return PagedResults.getPagedResultsFromCurrentOffset(results, contactSearch);
   }
 
+  // Special case needed to help with bulk imports.
+  public List<SObject> getContactsByEmails(List<String> emails) throws ConnectionException, InterruptedException {
+    List<String> page;
+    List<String> more;
+    // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
+    if (emails.size() > 1000) {
+      page = emails.subList(0, 1000);
+      more = emails.subList(1000, emails.size());
+    } else {
+      page = emails;
+      more = Collections.emptyList();
+    }
+
+    String emailsJoin = page.stream().map(email -> "'" + email + "'").collect(Collectors.joining(","));
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from Contact where Email in (" + emailsJoin + ")";
+    List<SObject> results = queryList(query);
+
+    if (!more.isEmpty()) {
+      results.addAll(getContactsByEmails(more));
+    }
+
+    return results;
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
