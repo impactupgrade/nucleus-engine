@@ -36,6 +36,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -142,41 +143,45 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
-    List<String> nameClauses = new ArrayList<>();
+    List<String> clauses = new ArrayList<>();
+
     if (name.isPresent()) {
       String[] nameParts = name.get().split("\\s+");
 
       for (String part : nameParts) {
+        List<String> nameClauses = new ArrayList<>();
         nameClauses.add("npe03__Organization__r.name LIKE '%" + part + "%'");
         nameClauses.add("npe03__Contact__r.name LIKE '%" + part + "%'");
+        clauses.add(String.join(" OR ", nameClauses));
       }
     }
 
-    List<String> emailClauses = new ArrayList<>();
     if (email.isPresent()) {
+      List<String> emailClauses = new ArrayList<>();
       emailClauses.add("npe03__Contact__r.npe01__HomeEmail__c LIKE '%" + email.get() + "%'");
       emailClauses.add("npe03__Contact__r.npe01__WorkEmail__c LIKE '%" + email.get() + "%'");
       emailClauses.add("npe03__Contact__r.npe01__AlternateEmail__c LIKE '%" + email.get() + "%'");
       emailClauses.add("npe03__Contact__r.email LIKE '%" + email.get() + "%'");
+      clauses.add(String.join(" OR ", emailClauses));
     }
 
-    List<String> phoneClauses = new ArrayList<>();
     if (phone.isPresent()) {
       String phoneClean = phone.get().replaceAll("\\D+", "");
       phoneClean = phoneClean.replaceAll("", "%");
       if (!phoneClean.isEmpty()) {
+        List<String> phoneClauses = new ArrayList<>();
         phoneClauses.add("npe03__Organization__r.phone LIKE '%" + phoneClean + "%'");
         phoneClauses.add("npe03__Contact__r.phone LIKE '" + phoneClean + "'");
         phoneClauses.add("npe03__Contact__r.MobilePhone LIKE '" + phoneClean + "'");
         phoneClauses.add("npe03__Contact__r.HomePhone LIKE '" + phoneClean + "'");
         phoneClauses.add("npe03__Contact__r.OtherPhone LIKE '" + phoneClean + "'");
+        clauses.add(String.join(" OR ", phoneClauses));
       }
     }
 
-    List<String> clauses = new ArrayList<>();
-    if (!nameClauses.isEmpty()) clauses.add(String.join(" OR ", nameClauses));
-    if (!emailClauses.isEmpty()) clauses.add(String.join(" OR ", emailClauses));
-    if (!phoneClauses.isEmpty()) clauses.add(String.join(" OR ", phoneClauses));
+    if (clauses.isEmpty()) {
+      return Collections.emptyList();
+    }
 
     return sfdcClient.searchOpenRecurringDonations(clauses)
         .stream()
