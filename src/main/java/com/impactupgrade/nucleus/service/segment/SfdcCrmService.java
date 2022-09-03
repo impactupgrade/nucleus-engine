@@ -836,62 +836,23 @@ public class SfdcCrmService implements CrmService {
 
       log.info("processing row {} of {}: {}", rowNum, updateEvents.size() + 1, updateEvent);
 
-      boolean updated = false;
-
       if (!Strings.isNullOrEmpty(updateEvent.getContactId())) {
-        Optional<SObject> existingContact = sfdcClient.getContactById(updateEvent.getContactId());
-        log.info("found contact for id {}: {}", updateEvent.getContactId(), existingContact.isPresent());
+        SObject contact = new SObject("Contact");
+        contact.setId(updateEvent.getContactId());
+        setBulkUpdateContactFields(contact, updateEvent);
+        contactUpdates.put(updateEvent.getContactId(), contact);
 
-        if (existingContact.isPresent()) {
-          SObject contact = new SObject("Contact");
-          contact.setId(updateEvent.getContactId());
-          setBulkUpdateContactFields(contact, updateEvent);
-          contactUpdates.put(updateEvent.getContactId(), contact);
-
-          if (!Strings.isNullOrEmpty(updateEvent.getCampaignId())) {
-            addContactToCampaign(contact.getId(), updateEvent.getCampaignId());
-          } else if (!Strings.isNullOrEmpty(updateEvent.getCampaignExternalRef())) {
-            // TODO: CACHE THIS!
-            Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getCampaignExternalRef());
-            if (campaign.isPresent()) {
-              addContactToCampaign(contact.getId(), campaign.get().getId());
-            }
+        if (!Strings.isNullOrEmpty(updateEvent.getCampaignId())) {
+          // TODO: batch insert these?
+          addContactToCampaign(contact.getId(), updateEvent.getCampaignId());
+        } else if (!Strings.isNullOrEmpty(updateEvent.getCampaignExternalRef())) {
+          // TODO: CACHE THIS!
+          Optional<SObject> campaign = sfdcClient.getCampaignById(updateEvent.getCampaignExternalRef());
+          if (campaign.isPresent()) {
+            addContactToCampaign(contact.getId(), campaign.get().getId());
           }
-
-          updated = true;
         }
-      }
-
-      if (!Strings.isNullOrEmpty(updateEvent.getAccountId())) {
-        Optional<SObject> existingAccount = sfdcClient.getAccountById(updateEvent.getAccountId());
-        log.info("found account for id {}: {}", updateEvent.getAccountId(), existingAccount.isPresent());
-
-        if (existingAccount.isPresent()) {
-          SObject account = new SObject("Account");
-          account.setId(updateEvent.getAccountId());
-          setBulkUpdateAccountFields(account, updateEvent);
-          accountUpdates.put(updateEvent.getAccountId(), account);
-
-          updated = true;
-        }
-      }
-
-      if (!Strings.isNullOrEmpty(updateEvent.getOpportunityId())) {
-        Optional<SObject> existingOpp = sfdcClient.getDonationById(updateEvent.getOpportunityId());
-        log.info("found opp for id {}: {}", updateEvent.getOpportunityId(), existingOpp.isPresent());
-
-        if (existingOpp.isPresent()) {
-          SObject opp = new SObject("Opportunity");
-          opp.setId(updateEvent.getOpportunityId());
-          setBulkUpdateOpportunityFields(opp, updateEvent);
-          oppUpdates.put(updateEvent.getOpportunityId(), opp);
-
-          updated = true;
-        }
-      }
-
-      // do this last -- only use Contact Email as a lookup if an ID wasn't provided
-      if (!Strings.isNullOrEmpty(updateEvent.getContactEmail())) {
+      } else if (!Strings.isNullOrEmpty(updateEvent.getContactEmail())) {
         Optional<SObject> existingContact = sfdcClient.searchContacts(ContactSearch.byEmail(updateEvent.getContactEmail())).getSingleResult();
         log.info("found contact for email {}: {}", updateEvent.getContactEmail(), existingContact.isPresent());
 
@@ -902,6 +863,7 @@ public class SfdcCrmService implements CrmService {
           contactUpdates.put(existingContact.get().getId(), contact);
 
           if (!Strings.isNullOrEmpty(updateEvent.getCampaignId())) {
+            // TODO: batch insert these?
             addContactToCampaign(contact.getId(), updateEvent.getCampaignId());
           } else if (!Strings.isNullOrEmpty(updateEvent.getCampaignExternalRef())) {
             // TODO: CACHE THIS!
@@ -910,13 +872,21 @@ public class SfdcCrmService implements CrmService {
               addContactToCampaign(contact.getId(), campaign.get().getId());
             }
           }
-
-          updated = true;
         }
       }
 
-      if (!updated) {
-        log.warn("row {} resulted in no updates", rowNum);
+      if (!Strings.isNullOrEmpty(updateEvent.getAccountId())) {
+        SObject account = new SObject("Account");
+        account.setId(updateEvent.getAccountId());
+        setBulkUpdateAccountFields(account, updateEvent);
+        accountUpdates.put(updateEvent.getAccountId(), account);
+      }
+
+      if (!Strings.isNullOrEmpty(updateEvent.getOpportunityId())) {
+        SObject opp = new SObject("Opportunity");
+        opp.setId(updateEvent.getOpportunityId());
+        setBulkUpdateOpportunityFields(opp, updateEvent);
+        oppUpdates.put(updateEvent.getOpportunityId(), opp);
       }
     }
 
@@ -1005,7 +975,9 @@ public class SfdcCrmService implements CrmService {
     }
     opportunity.setField("Name", importEvent.getOpportunityName());
     opportunity.setField("Description", importEvent.getOpportunityDescription());
-    opportunity.setField("Amount", importEvent.getOpportunityAmount().doubleValue());
+    if (importEvent.getOpportunityAmount() != null) {
+      opportunity.setField("Amount", importEvent.getOpportunityAmount().doubleValue());
+    }
     opportunity.setField("StageName", importEvent.getOpportunityStageName());
     opportunity.setField("CloseDate", importEvent.getOpportunityDate());
 
@@ -1045,7 +1017,9 @@ public class SfdcCrmService implements CrmService {
     }
     setField(opportunity, "Name", updateEvent.getOpportunityName());
     setField(opportunity, "Description", updateEvent.getOpportunityDescription());
-    setField(opportunity, "Amount", updateEvent.getOpportunityAmount().doubleValue());
+    if (updateEvent.getOpportunityAmount() != null) {
+      setField(opportunity, "Amount", updateEvent.getOpportunityAmount().doubleValue());
+    }
     setField(opportunity, "StageName", updateEvent.getOpportunityStageName());
     setField(opportunity, "CloseDate", updateEvent.getOpportunityDate());
     setField(opportunity, "OwnerId", updateEvent.getOwnerId());
