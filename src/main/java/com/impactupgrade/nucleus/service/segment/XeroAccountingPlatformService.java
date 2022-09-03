@@ -1,6 +1,5 @@
 package com.impactupgrade.nucleus.service.segment;
 
-import com.auth0.jwk.JwkException;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.api.client.auth.oauth2.RefreshTokenRequest;
@@ -34,12 +33,10 @@ import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 import org.threeten.bp.LocalDate;
 
-import java.io.IOException;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -67,7 +64,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected static String accessToken;
     protected static String refreshToken;
-
 
     public XeroAccountingPlatformService() {
         this.apiClient = new ApiClient();
@@ -102,7 +98,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
     }
 
-    // TODO: This seems likely to be needed again?
     protected Organization getOrganization() {
         return organizationDao.getQueryResult("from Organization o where o.nucleusApiKey = '" + env.getConfig().apiKey + "'").get();
     }
@@ -145,10 +140,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         } else {
             return Optional.empty();
         }
-
     }
 
-    private String getReference(PaymentGatewayEvent paymentGatewayEvent) {
+    protected String getReference(PaymentGatewayEvent paymentGatewayEvent) {
         return (paymentGatewayEvent.getGatewayName() + ":" + paymentGatewayEvent.getTransactionId()).toLowerCase(Locale.ROOT);
     }
 
@@ -331,7 +325,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 //        }
 //    }
 
-    protected String getAccessToken() throws IOException, JwkException {
+    protected String getAccessToken() throws Exception {
         DecodedJWT jwt = null;
         try {
             jwt = JWT.decode(accessToken);
@@ -339,20 +333,27 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             log.warn("Failed to decode access token! {}", e.getMessage());
         }
 
-        if (jwt == null || jwt.getExpiresAt().getTime() < System.currentTimeMillis()) {
-            log.info("Refreshing tokens...");
+        long now = System.currentTimeMillis();
+        if (jwt == null || jwt.getExpiresAt().getTime() < now) {
+            log.info("token expired; jwt={} now={}; refreshing...", jwt.getExpiresAt().getTime(), now);
+
             try {
                 TokenResponse tokenResponse = new RefreshTokenRequest(new NetHttpTransport(), new JacksonFactory(),
                         new GenericUrl(tokenServerUrl), refreshToken)
                         .setClientAuthentication(new BasicAuthentication(this.clientId, this.clientSecret))
                         .execute();
 
-                DecodedJWT verifiedJWT = apiClient.verify(tokenResponse.getAccessToken());
-
-                log.info("Tokens refreshed!");
-
-                accessToken = verifiedJWT.getToken();
+                try {
+                    DecodedJWT verifiedJWT = apiClient.verify(tokenResponse.getAccessToken());
+                    accessToken = verifiedJWT.getToken();
+                } catch (Exception e) {
+                    log.warn("unable to validate the new access token; using it anyway...; error={}", e.getMessage());
+                    accessToken = tokenResponse.getAccessToken();
+                }
                 refreshToken = tokenResponse.getRefreshToken();
+
+                // TODO: not safe to have these in the logs, but allowing it for a moment while we debug
+                log.info("tokens refreshed; accessToken={} refreshToken={}", accessToken, refreshToken);
 
                 Organization org = getOrganization();
                 JSONObject envJson = org.getEnvironmentJson();
@@ -361,18 +362,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 xeroJson.put("refreshToken", refreshToken);
                 org.setEnvironmentJson(envJson);
                 organizationDao.update(org);
-            } catch (IOException | JwkException e) {
-                log.error("Failed to refresh access token!");
+            } catch (Exception e) {
+                log.error("Failed to refresh access token!", e);
                 if (e instanceof TokenResponseException) {
                     TokenErrorResponse tokenErrorResponse = ((TokenResponseException) e).getDetails();
-                    if (Objects.nonNull(tokenErrorResponse)) {
-                        log.error(tokenErrorResponse.getError());
-                        if (Objects.nonNull(tokenErrorResponse.getErrorDescription())) {
-                            log.error(tokenErrorResponse.getErrorDescription());
-                        }
-                        if (Objects.nonNull(tokenErrorResponse.getErrorUri())) {
-                            log.error(tokenErrorResponse.getErrorUri());
-                        }
+                    if (tokenErrorResponse != null) {
+                        log.warn("error={} errorDescription={} errorUri={}", tokenErrorResponse.getError(),
+                            tokenErrorResponse.getErrorDescription(), tokenErrorResponse.getErrorUri());
                     }
                 }
                 throw e;
@@ -381,8 +377,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return accessToken;
     }
 
-    protected String getExceptionDetails(Exception e) {
-        return Objects.nonNull(e) ? e.getClass() + ":" + e : null;
+    private String getExceptionDetails(Exception e) {
+        return e == null ? null : e.getClass() + ":" + e;
     }
 
     // Mappings
