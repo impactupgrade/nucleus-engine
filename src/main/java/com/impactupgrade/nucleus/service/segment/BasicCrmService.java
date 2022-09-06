@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
@@ -125,6 +126,10 @@ public interface BasicCrmService extends CrmService {
   }
 
   default Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
+    return null;
+  }
+
+  default List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
     return null;
   }
 

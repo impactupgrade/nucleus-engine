@@ -231,7 +231,7 @@ public class SfdcMetadataClient {
     // TODO: Add to page layouts?
   }
 
-  public SaveResult[] addField(String layoutName, String sectionLabel, String fieldName) throws ConnectionException {
+  public SaveResult[] addFields(String layoutName, String sectionLabel, List<String> fieldNames) throws ConnectionException {
     ReadResult readResult = metadataConn().readMetadata("Layout", new String[] {layoutName});
     Metadata[] metadata = readResult.getRecords();
     if (metadata.length == 0) {
@@ -243,7 +243,10 @@ public class SfdcMetadataClient {
     LayoutColumn layoutColumn = getOrCreateColumn(layoutSection);
 
     List<LayoutItem> layoutItems = new ArrayList<>(Arrays.asList(layoutColumn.getLayoutItems()));
-    layoutItems.add(layoutItem(fieldName));
+    List<LayoutItem> newLayoutItems = fieldNames.stream()
+                    .map(this::layoutItem)
+                    .collect(Collectors.toList());
+    layoutItems.addAll(newLayoutItems);
     layoutColumn.setLayoutItems(layoutItems.toArray(new LayoutItem[0]));
     return metadataConn().updateMetadata(metadata);
   }

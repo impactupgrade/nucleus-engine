@@ -25,8 +25,11 @@ import com.impactupgrade.integration.hubspot.HasId;
 import com.impactupgrade.integration.hubspot.ImportFile;
 import com.impactupgrade.integration.hubspot.ImportRequest;
 import com.impactupgrade.integration.hubspot.ImportResponse;
+import com.impactupgrade.integration.hubspot.PropertiesResponse;
+import com.impactupgrade.integration.hubspot.Property;
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.integration.hubspot.crm.v3.ImportsCrmV3Client;
+import com.impactupgrade.integration.hubspot.crm.v3.PropertiesCrmV3Client;
 import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.integration.hubspot.v1.model.Engagement;
@@ -41,6 +44,7 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -52,6 +56,7 @@ import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -93,6 +98,7 @@ public class HubSpotCrmService implements CrmService {
   protected HubSpotCrmV3Client hsClient;
   protected EngagementV1Client engagementClient;
   protected ImportsCrmV3Client importsClient;
+  protected PropertiesCrmV3Client propertiesClient;
 
   protected Set<String> companyFields;
   protected Set<String> contactFields;
@@ -112,6 +118,7 @@ public class HubSpotCrmService implements CrmService {
     hsClient = HubSpotClientFactory.crmV3Client(env);
     engagementClient = HubSpotClientFactory.engagementV1Client(env);
     importsClient = HubSpotClientFactory.importsCrmV3Client(env);
+    propertiesClient = HubSpotClientFactory.propertiesCrmV3Client(env);
 
     companyFields = getCustomFieldNames();
     companyFields.addAll(env.getConfig().hubspot.customQueryFields.company.stream().toList());
@@ -265,6 +272,51 @@ public class HubSpotCrmService implements CrmService {
     setTaskFields(engagementRequest, crmTask);
     EngagementRequest response = engagementClient.insert(engagementRequest);
     return response == null ? null : response.getId() + "";
+  }
+
+  @Override
+  public List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
+    Map<String, List<CrmCustomField>> propertiesByObjectTypes = crmCustomFields.stream()
+                    .collect(Collectors.groupingBy(crmCustomField -> crmCustomField.objectName));
+    List<Property> insertedProperties = new ArrayList<>();
+    propertiesByObjectTypes.entrySet().forEach(entry -> {
+      String objectName = entry.getKey();
+      List<CrmCustomField> customFields = entry.getValue();
+      List<Property> properties = customFields.stream()
+              .map(this::toProperty)
+              .collect(Collectors.toList());
+
+      PropertiesResponse propertiesResponse = propertiesClient.batchInsert(objectName, properties);
+      insertedProperties.addAll(propertiesResponse.getResults());
+    });
+    return crmCustomFields; // TODO: parse from insertedProperties?
+  }
+
+  protected Property toProperty(CrmCustomField crmCustomField) {
+    Property property = new Property();
+    property.setName(crmCustomField.name);
+    property.setLabel(crmCustomField.label);
+    Pair<String, String> typePair = toPropertyType(crmCustomField.type);
+    property.setType(typePair.getLeft());
+    property.setFieldType(typePair.getRight());
+    property.setGroupName(crmCustomField.groupName);
+    property.setShowCurrencySymbol(crmCustomField.type == CrmCustomField.Type.CURRENCY);
+    return property;
+  }
+
+  protected Pair<String,String> toPropertyType(CrmCustomField.Type type) {
+    // HS types (The data types of the property):
+    // string, number, date, datetime, enumeration
+    // HS field types (Controls how the property appears in HubSpot):
+    // textarea, text, date, file, number, select, radio, checkbox, booleancheckbox
+
+    // Pair.of(type, fieldType):
+    return switch(type) {
+      //case TEXT -> FieldType.Text;
+      case DATE -> Pair.of("datetime", "date");
+      case CURRENCY -> Pair.of("number", "number");
+      default -> Pair.of("text", "text"); // TODO: defaults?
+    };
   }
 
   @Override

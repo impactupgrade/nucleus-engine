@@ -17,6 +17,7 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -569,6 +570,11 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public String insertTask(CrmTask crmTask) throws Exception {
     // Unlikely to be relevant for Bloomerang.
+    return null;
+  }
+
+  @Override
+  public List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
     return null;
   }
 
