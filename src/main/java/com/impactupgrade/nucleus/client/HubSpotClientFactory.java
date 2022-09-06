@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.client;
 
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.integration.hubspot.crm.v3.ImportsCrmV3Client;
+import com.impactupgrade.integration.hubspot.crm.v3.PropertiesCrmV3Client;
 import com.impactupgrade.integration.hubspot.form.v3.FormV3Client;
 import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
 import com.impactupgrade.integration.hubspot.v1.HubSpotV1Client;
@@ -33,4 +34,7 @@ public class HubSpotClientFactory {
         return new ImportsCrmV3Client(env.getConfig().hubspot.secretKey);
     }
 
+    public static PropertiesCrmV3Client propertiesCrmV3Client(Environment env) {
+        return new PropertiesCrmV3Client(env.getConfig().hubspot.secretKey);
+    }
 }

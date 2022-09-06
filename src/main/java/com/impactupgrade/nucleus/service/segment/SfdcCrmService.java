@@ -9,6 +9,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -16,6 +17,7 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -27,6 +29,7 @@ import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.Utils;
+import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.logging.log4j.LogManager;
@@ -52,6 +55,7 @@ public class SfdcCrmService implements CrmService {
 
   protected Environment env;
   protected SfdcClient sfdcClient;
+  protected SfdcMetadataClient sfdcMetadataClient;
 
   @Override
   public String name() { return "salesforce"; }
@@ -64,7 +68,8 @@ public class SfdcCrmService implements CrmService {
   @Override
   public void init(Environment env) {
     this.env = env;
-    sfdcClient = env.sfdcClient();
+    this.sfdcClient = env.sfdcClient();
+    this.sfdcMetadataClient = env.sfdcMetadataClient();
   }
 
   @Override
@@ -219,6 +224,42 @@ public class SfdcCrmService implements CrmService {
     SObject task = new SObject("Task");
     setTaskFields(task, crmTask);
     return sfdcClient.insert(task).getId();
+  }
+
+  @Override
+  public List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
+    try {
+      List<String> fieldNames = new ArrayList<>();
+      // Create custom fields
+      for (CrmCustomField crmCustomField: crmCustomFields) {
+        sfdcMetadataClient.createCustomField(
+                crmCustomField.objectName,
+                crmCustomField.name,
+                crmCustomField.label,
+                toCustomFieldType(crmCustomField.type),
+                crmCustomField.length,
+                crmCustomField.precision,
+                crmCustomField.scale
+        );
+        fieldNames.add(crmCustomField.name);
+      }
+
+      // Add custom fields to layout
+      sfdcMetadataClient.addFields(layoutName, "Custom Fields", fieldNames);
+
+    } catch (Exception e) {
+      log.error("failed to create custom fields", e);
+    }
+    return crmCustomFields;
+  }
+
+  protected FieldType toCustomFieldType(CrmCustomField.Type type) {
+    return switch(type) {
+      //case TEXT -> FieldType.Text;
+      case DATE -> FieldType.Date;
+      case CURRENCY -> FieldType.Currency;
+      default -> FieldType.Text; // TODO: default?
+    };
   }
 
   @Override

@@ -11,13 +11,13 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
-import com.sforce.soap.metadata.SaveResult;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -343,18 +343,28 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response provisionFields(
-          @FormParam("layout-name") String layoutName,
-          @FormParam("section-label") String sectionLabel,
-          @FormParam("field") String field,
+          @FormParam("layout-name") String layoutName, //TODO: custom request model?
+          List<CrmCustomField> crmCustomFields,
           @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    sfdcMetadataClient = new SfdcMetadataClient(env);
-    SaveResult[] saveResults = sfdcMetadataClient.addField(layoutName, sectionLabel, field);
+    // TODO: use input fields
+    List<CrmCustomField> defaultCustomFields = List.of(
+            new CrmCustomField("Opportunity", "Payment_Gateway_Name__c", "Payment Gateway Name", CrmCustomField.Type.TEXT, 100),
+            new CrmCustomField("Opportunity", "Payment_Gateway_Transaction_ID__c", "Payment Gateway Transaction ID", CrmCustomField.Type.TEXT, 100),
+            new CrmCustomField("Opportunity", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
+            new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
+            new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Subscription_ID__c", "Payment Gateway Subscription ID", CrmCustomField.Type.TEXT, 100),
+            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_ID__c", "Payment Gateway Deposit ID", CrmCustomField.Type.TEXT, 100),
+            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Date__c", "Payment Gateway Deposit Date", CrmCustomField.Type.DATE, 16, 2),
+            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Net_Amount__c", "Payment Gateway Deposit Net Amount", CrmCustomField.Type.CURRENCY, 18, 2),
+            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Fee__c", "Payment Gateway Deposit Fee", CrmCustomField.Type.CURRENCY, 18, 2)
+    );
+    List<CrmCustomField> insertedFields = env.primaryCrmService().insertCustomFields(layoutName, defaultCustomFields);
 
-    return Response.ok(saveResults).build();
+    return Response.ok(insertedFields).build();
   }
 
 }

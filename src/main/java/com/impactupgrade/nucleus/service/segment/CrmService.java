@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -225,6 +226,8 @@ public interface CrmService extends SegmentService {
   Optional<CrmUser> getUserById(String id) throws Exception;
   Optional<CrmUser> getUserByEmail(String email) throws Exception;
   String insertTask(CrmTask crmTask) throws Exception;
+
+  List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields);
 
   EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();
 
