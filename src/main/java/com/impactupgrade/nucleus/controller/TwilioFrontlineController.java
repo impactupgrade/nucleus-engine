@@ -258,6 +258,16 @@ public class TwilioFrontlineController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("eventType={} customerAddress={} projectedAddress={} authorAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, projectedAddress, authorAddress, conversationSid, participantSid, identity);
+
+    // TODO: The Frontline and Conversations team confirmed there's a timing issue (not sure if it's specific to
+    //  Group MMS) where this endpoint is called while the conversation is still in an initializing state. If you
+    //  attempt to do anything with it, you'll get API errors back. The advice was to use delays (and retries), likely
+    //  in combination with the onConversationStateUpdated event until the convo is fully activated. The only other
+    //  alternative is to avoid convo autocreation altogether, instead using messaging webhooks to create the convo
+    //  and add participants. That sounds TERRIBLE, so we're opting to simply wait.
+    //  IMPORTANT: Set this lower than the routing callback!
+    Thread.sleep(5000);
+
     Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
 
@@ -349,6 +359,16 @@ public class TwilioFrontlineController {
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("conversationSid={} friendlyName={} uniqueName={} attributesJson={} conversationServiceSid={} proxyAddress={} customerAddress={} projectedAddress={} authorAddress={} state={}", conversationSid, friendlyName, uniqueName, attributesJson, conversationServiceSid, proxyAddress, customerAddress, projectedAddress, authorAddress, state);
+
+    // TODO: The Frontline and Conversations team confirmed there's a timing issue (not sure if it's specific to
+    //  Group MMS) where this endpoint is called while the conversation is still in an initializing state. If you
+    //  attempt to do anything with it, you'll get API errors back. The advice was to use delays (and retries), likely
+    //  in combination with the onConversationStateUpdated event until the convo is fully activated. The only other
+    //  alternative is to avoid convo autocreation altogether, instead using messaging webhooks to create the convo
+    //  and add participants. That sounds TERRIBLE, so we're opting to simply wait.
+    //  IMPORTANT: Set this higher than the conversations callback!
+    Thread.sleep(10000);
+
     Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
 
