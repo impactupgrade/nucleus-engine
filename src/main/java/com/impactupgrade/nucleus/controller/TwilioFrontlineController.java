@@ -353,12 +353,20 @@ public class TwilioFrontlineController {
     CrmService crmService = env.primaryCrmService();
 
     // For P2P, customerAddress is the external sender.
-    // Confusingly, for Group MMS, customerAddress is the Twilio number, while authorAddress is the external sender.
+    // Confusingly, for Group MMS, customerAddress is all other participants (including the Twilio number), while authorAddress is the external sender.
     String sender;
     if (!Strings.isNullOrEmpty(authorAddress)) {
       sender = authorAddress;
     } else {
       sender = customerAddress;
+    }
+
+    // For Group MMS, authorAddress will be the message sender, then all other participants are listed
+    //   under customerAddress. Ex: customerAddress=+19035183081, +12602670709. One of those will be the projected
+    //   address, the other is another external participant. Break up the list and look for projectedAddresses
+    //   we've saved off. Otherwise, assume it's simple P2P.
+    if (!Strings.isNullOrEmpty(customerAddress)) {
+      projectedAddress = Arrays.stream(customerAddress.split(", ")).filter(a -> projectedAddresses.contains(a)).findFirst().orElse(null);
     }
 
     // If the proxy/projected address is explicitly assigned to a worker, always route it there directly.
@@ -396,12 +404,6 @@ public class TwilioFrontlineController {
       Optional<CrmUser> crmOwner = crmService.getUserById(crmContact.get().ownerId);
 
       if (crmOwner.isPresent()) {
-        // TODO: For Group MMS, authorAddress will be the message sender, then all other participants are listed
-        //   under customerAddress. Ex: customerAddress=+19035183081, +12602670709. One of those will be the projected
-        //   address, the other is another external participant. Break up the list and look for projectedAddresses
-        //   we've saved off. Otherwise, assume it's simple P2P.
-        projectedAddress = Arrays.stream(customerAddress.split(", ")).filter(a -> projectedAddresses.contains(a)).findFirst().orElse(null);
-
         if (!Strings.isNullOrEmpty(projectedAddress)) {
           log.info("adding projected participant {} to {}", crmOwner.get().email(), conversationSid);
           env.twilioClient().createConversationProjectedParticipant(conversationSid, crmOwner.get().email(), projectedAddress);
