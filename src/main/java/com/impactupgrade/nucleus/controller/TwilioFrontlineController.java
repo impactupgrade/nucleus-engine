@@ -266,7 +266,7 @@ public class TwilioFrontlineController {
     //  alternative is to avoid convo autocreation altogether, instead using messaging webhooks to create the convo
     //  and add participants. That sounds TERRIBLE, so we're opting to simply wait.
     //  IMPORTANT: Set this lower than the routing callback!
-    Thread.sleep(5000);
+    Thread.sleep(2000);
 
     Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
@@ -367,7 +367,7 @@ public class TwilioFrontlineController {
     //  alternative is to avoid convo autocreation altogether, instead using messaging webhooks to create the convo
     //  and add participants. That sounds TERRIBLE, so we're opting to simply wait.
     //  IMPORTANT: Set this higher than the conversations callback!
-    Thread.sleep(10000);
+    Thread.sleep(5000);
 
     Environment env = envFactory.init(request);
     CrmService crmService = env.primaryCrmService();
