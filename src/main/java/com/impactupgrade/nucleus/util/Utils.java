@@ -143,7 +143,8 @@ public class Utils {
       switch (cell.getCellType()) {
         case NUMERIC -> headerData.add(new DecimalFormat("#").format(cell.getNumericCellValue()));
         case BOOLEAN -> headerData.add(cell.getBooleanCellValue() + "");
-        default -> headerData.add(cell.getStringCellValue());
+        // note the use of trim -- vital since column names are used to fetch values
+        default -> headerData.add(cell.getStringCellValue().trim());
       }
     }
 
