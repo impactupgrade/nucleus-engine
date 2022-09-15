@@ -61,14 +61,20 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected final Environment env;
 
-  public SfdcClient(Environment env, String username, String password, boolean isSandbox) {
-    super(
-        username,
-        password,
-        isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION,
-        20 // objects are massive, so toning down the batch sizes
+  protected String ACCOUNT_FIELDS;
+  protected String CAMPAIGN_FIELDS;
+  protected String CONTACT_FIELDS;
+  protected String DONATION_FIELDS;
+  protected String RECURRINGDONATION_FIELDS;
+  protected String USER_FIELDS;
+
+  public SfdcClient(Environment env) {
+    this(
+        env,
+        env.getConfig().salesforce.username,
+        env.getConfig().salesforce.password,
+        env.getConfig().salesforce.sandbox
     );
-    this.env = env;
   }
 
   public SfdcClient(Environment env, String username, String password) {
@@ -80,19 +86,35 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     );
   }
 
-  public SfdcClient(Environment env) {
-    this(
-        env,
-        env.getConfig().salesforce.username,
-        env.getConfig().salesforce.password,
-        env.getConfig().salesforce.sandbox
+  public SfdcClient(Environment env, String username, String password, boolean isSandbox) {
+    super(
+        username,
+        password,
+        isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION,
+        20 // objects are massive, so toning down the batch sizes
     );
+    this.env = env;
+
+    boolean npsp = env.getConfig().salesforce.npsp;
+
+    ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, RecordTypeId, RecordType.Id, RecordType.Name";
+    CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
+    // TODO: Finding a few clients with no homephone, so taking that out for now.
+    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, phone, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, mobilephone";
+    DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type";
+    USER_FIELDS = "id, name, firstName, lastName, email, phone";
+
+    if (npsp) {
+      ACCOUNT_FIELDS += ", npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c";
+      CONTACT_FIELDS += ", account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, npe01__Home_Address__c, npe01__workphone__c, npe01__preferredphone__c";
+      DONATION_FIELDS += ", npe03__Recurring_Donation__c";
+      RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npe03__Contact__r.Phone, npsp__InstallmentFrequency__c, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name";
+    }
   }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  protected static final String ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, RecordTypeId, RecordType.Id, RecordType.Name";
 
   public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
@@ -128,8 +150,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  protected static final String CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
 
   public Optional<SObject> getCampaignById(String campaignId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign) + " from campaign where id = '" + campaignId + "'";
@@ -170,9 +190,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // TODO: Finding a few clients with no homephone, so taking that out for now.
-  protected static final String CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, name, phone, email, npe01__Home_Address__c, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, mobilephone, npe01__workphone__c, npe01__preferredphone__c";
 
   public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
@@ -526,8 +543,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, npe03__Recurring_Donation__c";
-
   public Optional<SObject> getDonationById(String donationId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where id = '" + donationId + "'";
     return querySingle(query);
@@ -631,8 +646,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // RECURRING DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected static final String RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npe03__Contact__r.Phone, npsp__InstallmentFrequency__c, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name";
-
   public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where id='" + id + "'";
     return querySingle(query);
@@ -673,8 +686,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  protected static final String USER_FIELDS = "id, name, firstName, lastName, email, phone";
 
   public Optional<SObject> getUserById(String userId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user) + " from user where id = '" + userId + "'";

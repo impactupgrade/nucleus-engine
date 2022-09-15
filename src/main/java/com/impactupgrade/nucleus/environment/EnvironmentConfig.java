@@ -176,6 +176,11 @@ public class EnvironmentConfig {
   public Salesforce salesforce = new Salesforce();
 
   public static class Salesforce extends Platform {
+    // default this to true since it was the original default if omitted
+    // TODO: I've only started wiring this into SfdcCrmService. At the moment, I'm purely focused on getting
+    //  SMS tools in Nucleus Portal to work. Still needs to be comprehensively used.
+    public boolean npsp = true;
+
     public boolean sandbox = false;
     public String url = "";
     public String forceUrl = "";
