@@ -317,7 +317,7 @@ public class TwilioFrontlineController {
         // TODO: will need tweaked for WhatsApp
         Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
         if (crmContact.isPresent()) {
-          Participant participant = env.twilioClient().fetchConversationParticipant(conversationSid, participantSid);
+          Participant participant = env.twilioClient().getConversationParticipant(conversationSid, participantSid);
           JSONObject attributes = new JSONObject(participant.getAttributes())
               // TODO
 //              .put("avatar", )

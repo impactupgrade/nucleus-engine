@@ -9,6 +9,8 @@ import com.twilio.rest.api.v2010.account.MessageCreator;
 import com.twilio.rest.conversations.v1.Conversation;
 import com.twilio.rest.conversations.v1.conversation.Participant;
 import com.twilio.type.PhoneNumber;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +21,8 @@ import java.util.Optional;
  * Twilio's Java SDK is really easy to work with, but we encapsulate some of it here to remove boilerplate.
  */
 public class TwilioClient {
+
+  private static final Logger log = LogManager.getLogger(TwilioClient.class);
 
   private final Environment env;
   private final TwilioRestClient restClient;
@@ -52,12 +56,17 @@ public class TwilioClient {
     return messageCreator.create(restClient);
   }
 
-  public Conversation createConversation(String friendlyName, boolean enableWebhooks) {
+  public Conversation createConversation(String friendlyName, String uniqueName, boolean enableWebhooks) {
     return Conversation.creator()
         .setFriendlyName(friendlyName)
+        .setUniqueName(uniqueName)
         // For enableWebhooks details, see https://www.twilio.com/docs/conversations/conversations-webhooks#triggering-webhooks-for-rest-api-events.
         .setXTwilioWebhookEnabled(enableWebhooks ? Conversation.WebhookEnabledType.TRUE : Conversation.WebhookEnabledType.FALSE)
         .create(restClient);
+  }
+
+  public void updateConversation(String conversationSid, String friendlyName, String uniqueName) {
+    Conversation.updater(conversationSid).setFriendlyName(friendlyName).setUniqueName(uniqueName).update(restClient);
   }
 
   public Participant createConversationProxyParticipant(String conversationSid, String identity) {
@@ -80,12 +89,13 @@ public class TwilioClient {
     return Participant.updater(conversationSid, participantSid).setAttributes(attributes).update(restClient);
   }
 
-  public Conversation fetchConversation(String conversationSid) {
-    return Conversation.fetcher(conversationSid).fetch(restClient);
+  public Conversation getConversation(String conversationSidOrUniqueName) {
+    return Conversation.fetcher(conversationSidOrUniqueName).fetch(restClient);
   }
 
-  public Optional<Conversation> findConversation(String friendlyName) {
-    // TODO: Is there not a search or by-friendly-name?
+  public Optional<Conversation> findConversationByFriendlyName(String friendlyName) {
+    // TODO: Temporarily using this method as a fallback, but tracking when it's used since it's so expensive. Annoying that we can't filter it further.
+    log.warn("findConversationByFriendlyName is pulling down the entire list of conversations");
     ResourceSet<Conversation> conversations = Conversation.reader().read(restClient).setAutoPaging(true);
     for (Conversation conversation : conversations) {
       if (conversation.getState() == Conversation.State.ACTIVE && conversation.getFriendlyName() != null && conversation.getFriendlyName().equalsIgnoreCase(friendlyName)) {
@@ -104,7 +114,7 @@ public class TwilioClient {
     return all;
   }
 
-  public Participant fetchConversationParticipant(String conversationSid, String participantSid) {
+  public Participant getConversationParticipant(String conversationSid, String participantSid) {
     return Participant.fetcher(conversationSid, participantSid).fetch(restClient);
   }
 
