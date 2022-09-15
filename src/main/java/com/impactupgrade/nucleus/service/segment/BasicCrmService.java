@@ -35,6 +35,10 @@ public interface BasicCrmService extends CrmService {
     return Optional.empty();
   }
 
+  default List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+    return Collections.emptyList();
+  }
+
   default Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
     return Optional.empty();
   }
