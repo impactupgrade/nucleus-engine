@@ -141,7 +141,7 @@ public class Utils {
     Row header = rowIterator.next();
     for (Cell cell : header) {
       switch (cell.getCellType()) {
-        case NUMERIC -> headerData.add(new DecimalFormat("#").format(cell.getNumericCellValue()));
+        case NUMERIC -> headerData.add(formatDouble(cell.getNumericCellValue()));
         case BOOLEAN -> headerData.add(cell.getBooleanCellValue() + "");
         // note the use of trim -- vital since column names are used to fetch values
         default -> headerData.add(cell.getStringCellValue().trim());
@@ -161,7 +161,7 @@ public class Utils {
               if (DateUtil.isCellDateFormatted(cell)) {
                 rowData.put(headerData.get(i), new SimpleDateFormat("yyyy-MM-dd").format(cell.getDateCellValue()));
               } else {
-                rowData.put(headerData.get(i), new DecimalFormat("#").format(cell.getNumericCellValue()));
+                rowData.put(headerData.get(i), formatDouble(cell.getNumericCellValue()));
               }
             }
             case BOOLEAN -> rowData.put(headerData.get(i), cell.getBooleanCellValue() + "");
@@ -173,5 +173,10 @@ public class Utils {
     }
 
     return data;
+  }
+
+  private static String formatDouble(double d) {
+    String formatPattern = d % 1 == 0 ? "#" : "#.##";
+    return new DecimalFormat(formatPattern).format(d);
   }
 }
