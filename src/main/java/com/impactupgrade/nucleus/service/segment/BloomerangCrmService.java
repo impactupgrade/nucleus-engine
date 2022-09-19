@@ -36,6 +36,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -209,7 +210,7 @@ public class BloomerangCrmService implements CrmService {
       return null;
     }
 
-    String date = new SimpleDateFormat("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate().getTime());
+    String date = DateTimeFormatter.ofPattern("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate());
 
     Donation donation = new Donation();
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
@@ -260,7 +261,7 @@ public class BloomerangCrmService implements CrmService {
       return null;
     }
 
-    String date = new SimpleDateFormat("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate().getTime());
+    String date = DateTimeFormatter.ofPattern("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate());
 
     Donation donation = new Donation();
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);

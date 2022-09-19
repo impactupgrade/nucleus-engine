@@ -25,10 +25,14 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,7 +76,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           Optional.of(charge.getBalanceTransactionObject()));
 
       PaymentGatewayTransaction transaction = new PaymentGatewayTransaction(
-          e.getTransactionDate(),
+          GregorianCalendar.from(e.getTransactionDate()),
           e.getTransactionAmountInDollars(),
           e.getTransactionNetAmountInDollars(),
           e.getTransactionFeeInDollars(),
@@ -400,9 +404,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         }
 
         paymentGatewayEvent.setDepositId(payout.getId());
-        Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(payout.getArrivalDate() * 1000);
-        paymentGatewayEvent.setDepositDate(c);
+        paymentGatewayEvent.setDepositDate(ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC")));
 
         paymentGatewayEvents.add(paymentGatewayEvent);
       } else if (balanceTransaction.getSourceObject() instanceof Refund refund) {
@@ -411,9 +413,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
         paymentGatewayEvent.initStripe(refund);
         paymentGatewayEvent.setDepositId(payout.getId());
-        Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(payout.getArrivalDate() * 1000);
-        paymentGatewayEvent.setDepositDate(c);
+        paymentGatewayEvent.setDepositDate(ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC")));
 
         paymentGatewayEvents.add(paymentGatewayEvent);
       }

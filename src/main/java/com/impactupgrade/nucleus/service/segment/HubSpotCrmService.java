@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -436,7 +437,7 @@ public class HubSpotCrmService implements CrmService {
       deal.setDealstage(env.getConfig().hubspot.donationPipeline.failedStageId);
     }
 
-    deal.setClosedate(paymentGatewayEvent.getTransactionDate());
+    deal.setClosedate(GregorianCalendar.from(paymentGatewayEvent.getTransactionDate()));
     deal.setDescription(paymentGatewayEvent.getTransactionDescription());
     deal.setDealname("Donation: " + paymentGatewayEvent.getCrmContact().fullName());
 
@@ -553,7 +554,7 @@ public class HubSpotCrmService implements CrmService {
     deal.setPipeline(env.getConfig().hubspot.recurringDonationPipeline.id);
     deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.openStageId);
 
-    deal.setClosedate(paymentGatewayEvent.getTransactionDate());
+    deal.setClosedate(GregorianCalendar.from(paymentGatewayEvent.getTransactionDate()));
     deal.setDealname("Recurring Donation: " + paymentGatewayEvent.getCrmContact().fullName());
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), deal.getOtherProperties());

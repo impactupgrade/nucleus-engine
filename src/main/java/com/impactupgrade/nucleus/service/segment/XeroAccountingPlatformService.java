@@ -31,9 +31,8 @@ import com.xero.models.accounting.LineItem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
-import org.threeten.bp.LocalDate;
 
-import java.util.Calendar;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -417,14 +416,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     protected Invoice toInvoice(AccountingTransaction transaction) {
         Invoice invoice = new Invoice();
 
-        Calendar transactionDate = transaction.date;
-        LocalDate localDate = LocalDate.of(
-                transactionDate.get(Calendar.YEAR),
-                transactionDate.get(Calendar.MONTH) + 1, // (valid values 1 - 12)
-                transactionDate.get(Calendar.DATE)
+        ZonedDateTime transactionDate = transaction.date;
+        org.threeten.bp.ZonedDateTime threetenTransactionDate = org.threeten.bp.ZonedDateTime.ofInstant(
+            org.threeten.bp.Instant.ofEpochSecond(transactionDate.toEpochSecond()),
+            org.threeten.bp.ZoneId.of(transactionDate.getZone().getId())
         );
-        invoice.setDate(localDate);
-        invoice.setDueDate(localDate);
+        org.threeten.bp.LocalDate threetenLocalDate = threetenTransactionDate.toLocalDate();
+        invoice.setDate(threetenLocalDate);
+        invoice.setDueDate(threetenLocalDate);
         Contact contact = new Contact();
         contact.setContactID(UUID.fromString(transaction.contactId));
         invoice.setContact(contact);

@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -427,7 +428,7 @@ public class SfdcCrmService implements CrmService {
 
     opportunity.setField("Amount", paymentGatewayEvent.getTransactionAmountInDollars());
     opportunity.setField("CampaignId", campaign.map(SObject::getId).orElse(null));
-    opportunity.setField("CloseDate", paymentGatewayEvent.getTransactionDate());
+    opportunity.setField("CloseDate", GregorianCalendar.from(paymentGatewayEvent.getTransactionDate()));
     opportunity.setField("Description", paymentGatewayEvent.getTransactionDescription());
 
     // purely a default, but we generally expect this to be overridden
@@ -455,7 +456,7 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId());
     }
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate)) {
-      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate());
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate, GregorianCalendar.from(paymentGatewayEvent.getRefundDate()));
     }
     // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
@@ -488,12 +489,12 @@ public class SfdcCrmService implements CrmService {
     // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
     if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, GregorianCalendar.from(paymentGatewayEvent.getDepositDate()));
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId());
       }
     } else {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)) {
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate());
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, GregorianCalendar.from(paymentGatewayEvent.getDepositDate()));
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId());
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars());
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars());
@@ -529,8 +530,8 @@ public class SfdcCrmService implements CrmService {
     recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
 //    recurringDonation.setDonation_Method__c(paymentGatewayEvent.getDonationMethod());
     recurringDonation.setField("Npe03__Installment_Period__c", paymentGatewayEvent.getSubscriptionInterval());
-    recurringDonation.setField("Npe03__Date_Established__c", paymentGatewayEvent.getSubscriptionStartDate());
-    recurringDonation.setField("Npe03__Next_Payment_Date__c", paymentGatewayEvent.getSubscriptionNextDate());
+    recurringDonation.setField("Npe03__Date_Established__c", GregorianCalendar.from(paymentGatewayEvent.getSubscriptionStartDate()));
+    recurringDonation.setField("Npe03__Next_Payment_Date__c", GregorianCalendar.from(paymentGatewayEvent.getSubscriptionNextDate()));
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(paymentGatewayEvent).map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.

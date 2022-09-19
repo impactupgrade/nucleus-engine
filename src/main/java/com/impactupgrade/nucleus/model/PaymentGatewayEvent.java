@@ -20,6 +20,9 @@ import com.stripe.model.SubscriptionItem;
 import com.stripe.util.CaseInsensitiveMap;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -49,17 +52,17 @@ public class PaymentGatewayEvent {
   //  need to refactor this to provide additional info, but let's see how it goes.
   protected List<String> products = new ArrayList<>();
   protected String refundId;
-  protected Calendar refundDate;
+  protected ZonedDateTime refundDate;
   protected Double subscriptionAmountInDollars;
   protected String subscriptionCurrency;
   protected String subscriptionDescription;
   protected String subscriptionId;
   protected String subscriptionInterval;
-  protected Calendar subscriptionNextDate;
-  protected Calendar subscriptionStartDate;
+  protected ZonedDateTime subscriptionNextDate;
+  protected ZonedDateTime subscriptionStartDate;
   protected Double transactionAmountInDollars;
   protected Double transactionNetAmountInDollars;
-  protected Calendar transactionDate;
+  protected ZonedDateTime transactionDate;
   protected String transactionDescription;
   protected Double transactionExchangeRate;
   protected Double transactionFeeInDollars;
@@ -74,7 +77,7 @@ public class PaymentGatewayEvent {
   // context set within processing steps OR pulled from event metadata
   protected String crmRecurringDonationId;
   protected String depositId;
-  protected Calendar depositDate;
+  protected ZonedDateTime depositDate;
 
   // Maps holding metadata content. We need to split these up in order to define an ordered hierarchy of values.
   // VITAL: Allow these to be case insensitive!
@@ -116,10 +119,9 @@ public class PaymentGatewayEvent {
     }
 
     if (stripeCharge.getCreated() != null) {
-      transactionDate = Calendar.getInstance();
-      transactionDate.setTimeInMillis(stripeCharge.getCreated() * 1000);
+      transactionDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeCharge.getCreated()), ZoneId.of("UTC"));
     } else {
-      transactionDate = Calendar.getInstance();
+      transactionDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
     }
 
     transactionDescription = stripeCharge.getDescription();
@@ -184,10 +186,9 @@ public class PaymentGatewayEvent {
     }
 
     if (stripePaymentIntent.getCreated() != null) {
-      transactionDate = Calendar.getInstance();
-      transactionDate.setTimeInMillis(stripePaymentIntent.getCreated() * 1000);
+      transactionDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripePaymentIntent.getCreated()), ZoneId.of("UTC"));
     } else {
-      transactionDate = Calendar.getInstance();
+      transactionDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
     }
 
     transactionDescription = stripePaymentIntent.getDescription();
@@ -244,10 +245,9 @@ public class PaymentGatewayEvent {
     }
 
     if (stripeRefund.getCreated() != null) {
-      refundDate = Calendar.getInstance();
-      refundDate.setTimeInMillis(stripeRefund.getCreated() * 1000);
+      refundDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeRefund.getCreated()), ZoneId.of("UTC"));
     } else {
-      refundDate = Calendar.getInstance();
+      refundDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
     }
   }
 
@@ -451,11 +451,9 @@ public class PaymentGatewayEvent {
   // Keep stripeCustomer, even though we don't use it here -- needed in subclasses.
   protected void initStripeSubscription(Subscription stripeSubscription, Customer stripeCustomer) {
     if (stripeSubscription.getTrialEnd() != null) {
-      subscriptionStartDate = Calendar.getInstance();
-      subscriptionStartDate.setTimeInMillis(stripeSubscription.getTrialEnd() * 1000);
+      subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getTrialEnd()), ZoneId.of("UTC"));
     } else {
-      subscriptionStartDate = Calendar.getInstance();
-      subscriptionStartDate.setTimeInMillis(stripeSubscription.getStartDate() * 1000);
+      subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getStartDate()), ZoneId.of("UTC"));
     }
     subscriptionNextDate = subscriptionStartDate;
 
@@ -644,11 +642,11 @@ public class PaymentGatewayEvent {
     this.refundId = refundId;
   }
 
-  public Calendar getRefundDate() {
+  public ZonedDateTime getRefundDate() {
     return refundDate;
   }
 
-  public void setRefundDate(Calendar refundDate) { this.refundDate = refundDate; }
+  public void setRefundDate(ZonedDateTime refundDate) { this.refundDate = refundDate; }
 
   public Double getSubscriptionAmountInDollars() {
     return subscriptionAmountInDollars;
@@ -690,19 +688,19 @@ public class PaymentGatewayEvent {
     this.subscriptionInterval = subscriptionInterval;
   }
 
-  public Calendar getSubscriptionNextDate() {
+  public ZonedDateTime getSubscriptionNextDate() {
     return subscriptionNextDate;
   }
 
-  public void setSubscriptionNextDate(Calendar subscriptionNextDate) {
+  public void setSubscriptionNextDate(ZonedDateTime subscriptionNextDate) {
     this.subscriptionNextDate = subscriptionNextDate;
   }
 
-  public Calendar getSubscriptionStartDate() {
+  public ZonedDateTime getSubscriptionStartDate() {
     return subscriptionStartDate;
   }
 
-  public void setSubscriptionStartDate(Calendar subscriptionStartDate) {
+  public void setSubscriptionStartDate(ZonedDateTime subscriptionStartDate) {
     this.subscriptionStartDate = subscriptionStartDate;
   }
 
@@ -722,11 +720,11 @@ public class PaymentGatewayEvent {
     this.transactionNetAmountInDollars = transactionNetAmountInDollars;
   }
 
-  public Calendar getTransactionDate() {
+  public ZonedDateTime getTransactionDate() {
     return transactionDate;
   }
 
-  public void setTransactionDate(Calendar transactionDate) {
+  public void setTransactionDate(ZonedDateTime transactionDate) {
     this.transactionDate = transactionDate;
   }
 
@@ -818,11 +816,11 @@ public class PaymentGatewayEvent {
     this.depositId = depositId;
   }
 
-  public Calendar getDepositDate() {
+  public ZonedDateTime getDepositDate() {
     return depositDate;
   }
 
-  public void setDepositDate(Calendar depositDate) {
+  public void setDepositDate(ZonedDateTime depositDate) {
     this.depositDate = depositDate;
   }
 

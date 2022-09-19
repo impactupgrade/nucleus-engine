@@ -1,6 +1,6 @@
 package com.impactupgrade.nucleus.model;
 
-import java.util.Calendar;
+import java.time.ZonedDateTime;
 
 /**
  * AccountingService has some rather complex logic to tie together deposits, transactions, contacts/accounts, etc.
@@ -9,7 +9,7 @@ import java.util.Calendar;
 public class AccountingTransaction {
 
   public Double amountInDollars;
-  public Calendar date;
+  public ZonedDateTime date;
   public String description;
   public Boolean recurring;
 
@@ -20,7 +20,7 @@ public class AccountingTransaction {
   public String contactId;
   public String crmContactId;
 
-  public AccountingTransaction(Double amountInDollars, Calendar date, String description, Boolean recurring, String paymentGatewayName, String paymentGatewayTransactionId, String contactId, String crmContactId) {
+  public AccountingTransaction(Double amountInDollars, ZonedDateTime date, String description, Boolean recurring, String paymentGatewayName, String paymentGatewayTransactionId, String contactId, String crmContactId) {
     this.amountInDollars = amountInDollars;
     this.date = date;
     this.description = description;

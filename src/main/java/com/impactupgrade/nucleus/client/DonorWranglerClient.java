@@ -19,7 +19,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -150,7 +150,7 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("action", "addUpdateDonation"));
     params.add(new BasicNameValuePair("id", "-1"));
     params.add(new BasicNameValuePair("donationInfo[giftType]", "Gift"));
-    params.add(new BasicNameValuePair("donationInfo[created]", new SimpleDateFormat("yyyy-MM-dd").format(paymentGatewayEvent.getTransactionDate().getTime())));
+    params.add(new BasicNameValuePair("donationInfo[created]", DateTimeFormatter.ofPattern("yyyy-MM-dd").format(paymentGatewayEvent.getTransactionDate())));
     params.add(new BasicNameValuePair("donationInfo[donorId]", paymentGatewayEvent.getCrmContact().id));
     params.add(new BasicNameValuePair("donationInfo[notes]", Strings.nullToEmpty(paymentGatewayEvent.getTransactionDescription())));
     params.add(new BasicNameValuePair("donationInfo[source]", paymentGatewayEvent.getGatewayName()));

@@ -19,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -434,7 +435,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
         gift.contactId = paymentGatewayEvent.getCrmContact().id;
         gift.giftType = "Credit"; // ?
-        gift.giftDate = new SimpleDateFormat(DATE_TIME_FORMAT).format(paymentGatewayEvent.getTransactionDate().getTime());
+        gift.giftDate = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT).format(paymentGatewayEvent.getTransactionDate());
         gift.amount = paymentGatewayEvent.getTransactionAmountInDollars();
         gift.transactionSource = paymentGatewayEvent.getGatewayName();
         gift.transactionId = paymentGatewayEvent.getTransactionId();
@@ -454,7 +455,7 @@ public class VirtuousCrmService implements BasicCrmService {
         giftTransaction.transactionId = paymentGatewayEvent.getTransactionId(); // ?
 
         giftTransaction.amount = paymentGatewayEvent.getTransactionAmountInDollars() + ""; // TODO: double check if string indeed
-        giftTransaction.giftDate = paymentGatewayEvent.getTransactionDate().getTime().toString();
+        giftTransaction.giftDate = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT).format(paymentGatewayEvent.getTransactionDate());
         giftTransaction.contact = asContact(paymentGatewayEvent.getCrmContact());
 
         giftTransaction.recurringGiftTransactionUpdate = false; // ?

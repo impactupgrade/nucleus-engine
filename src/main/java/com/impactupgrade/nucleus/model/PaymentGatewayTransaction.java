@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public record PaymentGatewayTransaction (
+    // TODO: switch to ZonedDateTime?
     Calendar date,
     double gross,
     double net,
