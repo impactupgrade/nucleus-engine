@@ -99,7 +99,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
   List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception;
   List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
-
+  List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DONATION EVENTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

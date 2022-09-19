@@ -670,7 +670,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where npe03__Open_Ended_Status__c = 'Open' and ((" + String.join(") AND (", clauses) + "))";
     return queryList(query);
   }
-
+  public List<SObject> searchRecurringDonations(List<String> clauses) throws InterruptedException, ConnectionException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where ((" + String.join(") AND (", clauses) + "))";
+    return queryList(query);
+  }
   public void refreshRecurringDonation(String donationId) throws ConnectionException {
     // TODO: set up 'FORCE_URL' env var and the appropriate apex enpoint for orgs so they this will work
     log.info("refreshing opportunities on {}...", donationId);

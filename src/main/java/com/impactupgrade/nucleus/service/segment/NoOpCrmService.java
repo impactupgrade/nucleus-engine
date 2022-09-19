@@ -117,7 +117,10 @@ public class NoOpCrmService implements CrmService {
   public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
     return Collections.emptyList();
   }
-
+  @Override
+  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+    return Collections.emptyList();
+  }
   @Override
   public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return null;

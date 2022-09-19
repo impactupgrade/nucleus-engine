@@ -448,7 +448,29 @@ public class BloomerangCrmService implements CrmService {
 
     return rds;
   }
+  @Override
+  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception{
+    ContactSearch contactSearch = new ContactSearch();
+    contactSearch.email = email.orElse(null);
+    contactSearch.phone = phone.orElse(null);
+    contactSearch.keywords = name.orElse(null);
+    // TODO: page them?
+    PagedResults<CrmContact> contacts = searchContacts(contactSearch);
 
+    List<CrmRecurringDonation> rds = new ArrayList<>();
+    for (CrmContact contact : contacts.getResults()) {
+      rds.addAll(
+              get(
+                      BLOOMERANG_URL + "transactions?type=RecurringDonation&accountId=" + contact.id + "&orderBy=Date&orderDirection=Desc",
+                      headers(),
+                      DonationResults.class
+              ).results.stream()
+                      .map(rd -> toCrmRecurringDonation(rd, contact))
+                      .collect(Collectors.toList())
+      );
+    }
+    return rds;
+  }
   @Override
   public void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
     // currently no deposit management
