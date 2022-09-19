@@ -144,6 +144,24 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
+    List<String> clauses = searchRecurringDonations(name, email, phone);
+
+    return sfdcClient.searchOpenRecurringDonations(clauses)
+        .stream()
+        .map(this::toCrmRecurringDonation)
+        .collect(Collectors.toList());
+  }
+  @Override
+  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
+    List<String> clauses = searchRecurringDonations(name, email, phone);
+
+    return sfdcClient.searchRecurringDonations(clauses)
+            .stream()
+            .map(this::toCrmRecurringDonation)
+            .collect(Collectors.toList());
+  }
+
+  protected List<String> searchRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone){
     List<String> clauses = new ArrayList<>();
 
     if (name.isPresent()) {
@@ -184,12 +202,8 @@ public class SfdcCrmService implements CrmService {
       return Collections.emptyList();
     }
 
-    return sfdcClient.searchOpenRecurringDonations(clauses)
-        .stream()
-        .map(this::toCrmRecurringDonation)
-        .collect(Collectors.toList());
+    return clauses;
   }
-
   @Override
   public Optional<CrmUser> getUserById(String id) throws Exception {
     return toCrmUser(sfdcClient.getUserById(id));

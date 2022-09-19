@@ -221,7 +221,11 @@ public class HubSpotCrmService implements CrmService {
     // TODO
     return Collections.emptyList();
   }
-
+  @Override
+  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+    // TODO
+    return Collections.emptyList();
+  }
   @Override
   public Optional<CrmUser> getUserById(String id) throws Exception {
     // TODO: will need to add User support to HS lib, if even possible
