@@ -42,6 +42,17 @@ public class ContactService {
       if (existingAccount.isPresent()) {
         log.info("found CRM account {} and contact {}",
             paymentGatewayEvent.getCrmAccount().id, paymentGatewayEvent.getCrmContact().id);
+
+        Optional<CrmContact> existingContact = crmService.getContactById(paymentGatewayEvent.getCrmContact().id);
+
+        // before setting the existing CRM data in the event, backfill any missing data
+        backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
+
+        paymentGatewayEvent.setCrmAccount(existingAccount.get());
+        if (existingContact.isPresent()) {
+          paymentGatewayEvent.setCrmContact(existingContact.get());
+        }
+
         return;
       } else {
         log.info("event included CRM account {} and contact {}, but the account didn't exist; trying by-email...",
@@ -54,9 +65,17 @@ public class ContactService {
     if (existingContact.isPresent()) {
       log.info("found CRM account {} and contact {} using email {}",
           existingContact.get().accountId, existingContact.get().id, paymentGatewayEvent.getCrmContact().email);
-      paymentGatewayEvent.setCrmAccountId(existingContact.get().accountId);
-      // Set the full Contact, which we need to populate donation names, etc.
+
+      Optional<CrmAccount> existingAccount = crmService.getAccountById(existingContact.get().accountId);
+
+      // before setting the existing CRM data in the event, backfill any missing data
+      backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
+
+      if (existingAccount.isPresent()) {
+        paymentGatewayEvent.setCrmAccount(existingAccount.get());
+      }
       paymentGatewayEvent.setCrmContact(existingContact.get());
+
       return;
     }
 
@@ -80,6 +99,42 @@ public class ContactService {
         crmService.deleteAccount(accountId);
         // also unset the ID, letting downstream know that it should also halt
         paymentGatewayEvent.setCrmAccountId(null);
+      }
+    }
+  }
+
+  public void backfillMissingData(PaymentGatewayEvent paymentGatewayEvent,
+      Optional<CrmAccount> existingAccount, Optional<CrmContact> existingContact) throws Exception {
+    if (existingAccount.isPresent()) {
+      if (Strings.isNullOrEmpty(existingAccount.get().address.street) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().address.street)) {
+        log.info("existing CRM account does not have a street, but the new payment did -- overwrite the whole address");
+        existingAccount.get().address = paymentGatewayEvent.getCrmAccount().address;
+        crmService.updateAccount(existingAccount.get());
+      }
+    }
+
+    if (existingContact.isPresent()) {
+      if (Strings.isNullOrEmpty(existingContact.get().address.street) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().address.street)) {
+        log.info("existing CRM contact does not have a street, but the new payment did -- overwriting the whole address");
+        existingContact.get().address = paymentGatewayEvent.getCrmContact().address;
+        crmService.updateContact(existingContact.get());
+      }
+
+      if (Strings.isNullOrEmpty(existingContact.get().firstName) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().firstName)) {
+        log.info("existing CRM contact does not have a firstName, but the new payment did -- overwriting it");
+        existingContact.get().firstName = paymentGatewayEvent.getCrmContact().firstName;
+        crmService.updateContact(existingContact.get());
+      }
+      if (Strings.isNullOrEmpty(existingContact.get().lastName) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().lastName)) {
+        log.info("existing CRM contact does not have a lastName, but the new payment did -- overwriting it");
+        existingContact.get().lastName = paymentGatewayEvent.getCrmContact().lastName;
+        crmService.updateContact(existingContact.get());
+      }
+
+      if (Strings.isNullOrEmpty(existingContact.get().mobilePhone) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().mobilePhone)) {
+        log.info("existing CRM contact does not have a mobilePhone, but the new payment did -- overwriting it");
+        existingContact.get().mobilePhone = paymentGatewayEvent.getCrmContact().mobilePhone;
+        crmService.updateContact(existingContact.get());
       }
     }
   }
