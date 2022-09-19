@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.client;
 
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
+import com.impactupgrade.integration.hubspot.crm.v3.ImportsCrmV3Client;
 import com.impactupgrade.integration.hubspot.form.v3.FormV3Client;
 import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
 import com.impactupgrade.integration.hubspot.v1.HubSpotV1Client;
@@ -27,4 +28,9 @@ public class HubSpotClientFactory {
     public static EngagementV1Client engagementV1Client(Environment env) {
         return new EngagementV1Client(env.getConfig().hubspot.secretKey);
     }
+
+    public static ImportsCrmV3Client importsCrmV3Client(Environment env) {
+        return new ImportsCrmV3Client(env.getConfig().hubspot.secretKey);
+    }
+
 }

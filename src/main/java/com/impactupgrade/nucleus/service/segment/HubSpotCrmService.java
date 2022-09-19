@@ -4,8 +4,13 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.AssociationSearchResults;
+import com.impactupgrade.integration.hubspot.ColumnMapping;
 import com.impactupgrade.integration.hubspot.Company;
 import com.impactupgrade.integration.hubspot.CompanyProperties;
 import com.impactupgrade.integration.hubspot.Contact;
@@ -13,10 +18,15 @@ import com.impactupgrade.integration.hubspot.ContactProperties;
 import com.impactupgrade.integration.hubspot.Deal;
 import com.impactupgrade.integration.hubspot.DealProperties;
 import com.impactupgrade.integration.hubspot.DealResults;
+import com.impactupgrade.integration.hubspot.FileImportPage;
 import com.impactupgrade.integration.hubspot.Filter;
 import com.impactupgrade.integration.hubspot.FilterGroup;
 import com.impactupgrade.integration.hubspot.HasId;
+import com.impactupgrade.integration.hubspot.ImportFile;
+import com.impactupgrade.integration.hubspot.ImportRequest;
+import com.impactupgrade.integration.hubspot.ImportResponse;
 import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
+import com.impactupgrade.integration.hubspot.crm.v3.ImportsCrmV3Client;
 import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.integration.hubspot.v1.model.Engagement;
@@ -41,21 +51,30 @@ import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.Writer;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.HOME;
@@ -73,6 +92,7 @@ public class HubSpotCrmService implements CrmService {
   protected Environment env;
   protected HubSpotCrmV3Client hsClient;
   protected EngagementV1Client engagementClient;
+  protected ImportsCrmV3Client importsClient;
 
   protected Set<String> companyFields;
   protected Set<String> contactFields;
@@ -91,6 +111,7 @@ public class HubSpotCrmService implements CrmService {
     this.env = env;
     hsClient = HubSpotClientFactory.crmV3Client(env);
     engagementClient = HubSpotClientFactory.engagementV1Client(env);
+    importsClient = HubSpotClientFactory.importsCrmV3Client(env);
 
     companyFields = getCustomFieldNames();
     companyFields.addAll(env.getConfig().hubspot.customQueryFields.company.stream().toList());
@@ -757,12 +778,289 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    throw new RuntimeException("not implemented");
+    String contactKeyPrefix = "contact_";
+    String dealKeyPrefix = "deal_";
+
+    List<Map<String, String>> listOfMap = toImportList(importEvents, contactKeyPrefix, dealKeyPrefix);
+    importRecords(listOfMap, "contact-deal-bulk-import", contactKeyPrefix, dealKeyPrefix);
+
+    log.info("bulk insert complete");
   }
 
   @Override
   public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-    throw new RuntimeException("not implemented");
+    String contactKeyPrefix = "contact_";
+    String dealKeyPrefix = "deal_";
+
+    // Updating contacts / deals in a separate requests
+    List<Map<String, String>> listOfContactMap = toUpdateContactsList(updateEvents, contactKeyPrefix);
+    importRecords(listOfContactMap, "contact-bulk-update", contactKeyPrefix, dealKeyPrefix);
+
+    List<Map<String, String>> listOfDealMaps = toUpdateDealsList(updateEvents, dealKeyPrefix);
+    importRecords(listOfDealMaps, "deal-bulk-update", contactKeyPrefix, dealKeyPrefix);
+
+    log.info("bulk update complete");
+  }
+
+  private List<Map<String, String>> toImportList(List<CrmImportEvent> importEvents, String contactKeyPrefix, String dealKeyPrefix) {
+    List<Map<String, String>> listOfMap = importEvents.stream()
+        .map(importEvent -> {
+          Map<String, String> contactPropertiesMap = toContactPropertiesMap(importEvent);
+          Map<String, String> dealPropertiesMap = toDealPropertiesMap(importEvent);
+
+          Map<String, String> csvMap = new HashMap<>();
+          contactPropertiesMap.forEach((k, v) -> csvMap.put(contactKeyPrefix + k, v));
+          dealPropertiesMap.forEach((k, v) -> csvMap.put(dealKeyPrefix + k, v));
+          return csvMap;
+        })
+        .collect(Collectors.toList());
+    return listOfMap;
+  }
+
+  private List<Map<String, String>> toUpdateContactsList(List<CrmUpdateEvent> updateEvents, String contactKeyPrefix) {
+    List<Map<String, String>> listOfMap = updateEvents.stream()
+        .filter(updateEvent ->
+            !Strings.isNullOrEmpty(updateEvent.getContactId())
+                || !Strings.isNullOrEmpty(updateEvent.getContactEmail()))
+        .map(updateEvent -> {
+          Map<String, String> contactPropertiesMap = toContactPropertiesUpdateMap(updateEvent);
+
+          Map<String, String> csvMap = new HashMap<>();
+          contactPropertiesMap.forEach((k, v) -> csvMap.put(contactKeyPrefix + k, v));
+          return csvMap;
+        })
+        .collect(Collectors.toList());
+    return listOfMap;
+  }
+
+  private List<Map<String, String>> toUpdateDealsList(List<CrmUpdateEvent> updateEvents, String dealKeyPrefix) {
+    List<Map<String, String>> listOfMap = updateEvents.stream()
+        .filter(updateEvent -> !Strings.isNullOrEmpty(updateEvent.getOpportunityId()))
+        .map(updateEvent -> {
+          Map<String, String> dealPropertiesMap = toDealPropertiesUpdateMap(updateEvent);
+
+          Map<String, String> csvMap = new HashMap<>();
+          dealPropertiesMap.forEach((k, v) -> csvMap.put(dealKeyPrefix + k, v));
+          return csvMap;
+        })
+        .collect(Collectors.toList());
+    return listOfMap;
+  }
+
+  private Map<String, String> toContactPropertiesMap(CrmImportEvent crmImportEvent) {
+    Map<String, String> map = new HashMap<>();
+    map.put("hubspot_owner_id", crmImportEvent.getOwnerId());
+    if (Strings.isNullOrEmpty(crmImportEvent.getContactLastName())) {
+      map.put("lastname", "Anonymous");
+    } else {
+      map.put("firstname", crmImportEvent.getContactFirstName());
+      map.put("lastname", crmImportEvent.getContactLastName());
+    }
+    // address
+    map.put("address", crmImportEvent.getContactMailingStreet());
+    map.put("city", crmImportEvent.getContactMailingCity());
+    map.put("state", crmImportEvent.getContactMailingState());
+    map.put("zip", crmImportEvent.getContactMailingZip());
+    map.put("country", crmImportEvent.getContactMailingCountry());
+    // phone/email
+    map.put("phone", crmImportEvent.getContactHomePhone());
+    map.put("mobilephone", crmImportEvent.getContactMobilePhone());
+    map.put("email", crmImportEvent.getContactEmail());
+
+    crmImportEvent.getRaw().entrySet().stream()
+        .filter(entry -> entry.getKey().startsWith("Contact Custom "))
+        .forEach(entry -> map.put(
+            entry.getKey().replace("Contact Custom ", ""),
+            entry.getValue()));
+    return map;
+  }
+
+  private Map<String, String> toContactPropertiesUpdateMap(CrmUpdateEvent crmUpdateEvent) {
+    Map<String, String> map = new HashMap<>();
+    // TODO: double-check this field (accepted OK by HS API but owner is not changed)
+    map.put("hubspot_owner_id", crmUpdateEvent.getOwnerId());
+    if (crmUpdateEvent.getContactId() != null) {
+      map.put("id", crmUpdateEvent.getContactId());
+    }
+    map.put("firstname", crmUpdateEvent.getContactFirstName());
+    map.put("lastname", crmUpdateEvent.getContactLastName());
+    // address
+    map.put("address", crmUpdateEvent.getContactMailingStreet());
+    map.put("city", crmUpdateEvent.getContactMailingCity());
+    map.put("state", crmUpdateEvent.getContactMailingState());
+    map.put("zip", crmUpdateEvent.getContactMailingZip());
+    map.put("country", crmUpdateEvent.getContactMailingCountry());
+    // phone/email
+    map.put("phone", crmUpdateEvent.getContactHomePhone());
+    map.put("mobilephone", crmUpdateEvent.getContactMobilePhone());
+    map.put("email", crmUpdateEvent.getContactEmail());
+
+    crmUpdateEvent.getRaw().entrySet().stream()
+        .filter(entry -> entry.getKey().startsWith("Contact Custom "))
+        .forEach(entry -> map.put(
+            entry.getKey().replace("Contact Custom ", ""),
+            entry.getValue()));
+    return map;
+  }
+
+  private Map<String, String> toDealPropertiesMap(CrmImportEvent crmImportEvent) {
+    Map<String, String> map = new HashMap<>();
+    map.put("hubspot_owner_id", crmImportEvent.getOwnerId());
+    map.put("dealname", crmImportEvent.getOpportunityName());
+    map.put("description", crmImportEvent.getOpportunityDescription());
+    if (crmImportEvent.getOpportunityAmount() != null) {
+      map.put("amount", "" + crmImportEvent.getOpportunityAmount().doubleValue());
+    }
+    map.put("dealstage", crmImportEvent.getOpportunityStageName());
+    if (crmImportEvent.getOpportunityDate() != null) {
+      DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+      dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+      map.put("closedate", dateFormat.format(crmImportEvent.getOpportunityDate().getTime()));
+    }
+    if (!Strings.isNullOrEmpty(crmImportEvent.getOpportunityRecordTypeId())) {
+      // TODO: matching deal field in HS?
+      map.put("RecordTypeId", crmImportEvent.getOpportunityRecordTypeId()); //
+    }
+
+    crmImportEvent.getRaw().entrySet().stream()
+        .filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
+        .forEach(entry -> map.put(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
+    return map;
+  }
+
+  private Map<String, String> toDealPropertiesUpdateMap(CrmUpdateEvent crmUpdateEvent) {
+    Map<String, String> map = new HashMap<>();
+    map.put("hubspot_owner_id", crmUpdateEvent.getOwnerId());
+    if (Strings.isNullOrEmpty(crmUpdateEvent.getOpportunityId())) {
+      map.put("id", crmUpdateEvent.getOpportunityId());
+    }
+    map.put("dealname", crmUpdateEvent.getOpportunityName());
+    map.put("description", crmUpdateEvent.getOpportunityDescription());
+    if (crmUpdateEvent.getOpportunityAmount() != null) {
+      map.put("amount", "" + crmUpdateEvent.getOpportunityAmount().doubleValue());
+    }
+    map.put("dealstage", crmUpdateEvent.getOpportunityStageName());
+    if (crmUpdateEvent.getOpportunityDate() != null) {
+      DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+      dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+      map.put("closedate", dateFormat.format(crmUpdateEvent.getOpportunityDate().getTime()));
+    }
+    if (!Strings.isNullOrEmpty(crmUpdateEvent.getOpportunityRecordTypeId())) {
+      // TODO: matching deal field in HS?
+      map.put("RecordTypeId", crmUpdateEvent.getOpportunityRecordTypeId()); //
+    }
+
+    crmUpdateEvent.getRaw().entrySet().stream()
+        .filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
+        .forEach(entry -> map.put(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
+    return map;
+  }
+
+  private File toCsvFile(String prefix, List<Map<String, String>> listOfMap) throws Exception {
+    // Create temp csv file out of mapped data (key -> header, value -> row)
+    Set<String> keys = listOfMap.stream()
+      .map(Map::keySet)
+      .flatMap(Collection::stream)
+      .collect(Collectors.toSet());
+
+    CsvSchema.Builder schemaBuilder = CsvSchema.builder();
+    for (String key : keys) {
+      schemaBuilder.addColumn(key);
+    }
+    CsvSchema csvSchema = schemaBuilder.build().withHeader();
+
+    log.debug("Creating temp file...");
+    File csvTempFile = File.createTempFile(prefix, ".csv", new File("."));
+    log.debug("Temp file created. File path: {}", csvTempFile.getAbsolutePath());
+
+    Writer writer = new FileWriter(csvTempFile);
+    CsvMapper csvMapper = new CsvMapper();
+    csvMapper.configure(JsonGenerator.Feature.IGNORE_UNKNOWN, true);
+    csvMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true);
+    csvMapper.writer(csvSchema).writeValues(writer).writeAll(listOfMap);
+    writer.flush();
+    return csvTempFile;
+  }
+
+  private ImportRequest toImportRequest(File csvTempFile, List<Map<String, String>> listOfMap, String contactKeyPrefix, String dealKeyPrefix) {
+    // Create import request mappings
+    Set<String> keys = listOfMap.stream()
+        .map(Map::keySet)
+        .flatMap(Collection::stream)
+        .collect(Collectors.toSet());
+    List<ColumnMapping> columnMappings = new ArrayList<>();
+
+    for (String key : keys) {
+      ColumnMapping columnMapping = new ColumnMapping();
+      columnMapping.setColumnName(key);
+
+      if (key.startsWith(contactKeyPrefix)) {
+        // Contact column
+        columnMapping.setColumnObjectTypeId("0-1"); // Contact
+        String propertyName = key.replace(contactKeyPrefix, "");
+        columnMapping.setPropertyName(propertyName);
+
+        if ("id".equalsIgnoreCase(propertyName)) {
+          columnMapping.setIdColumnType("HUBSPOT_OBJECT_ID");
+        }
+        if ("email".equalsIgnoreCase(propertyName)) {
+          columnMapping.setIdColumnType("HUBSPOT_ALTERNATE_ID");
+        }
+        columnMappings.add(columnMapping);
+      } else if (key.startsWith(dealKeyPrefix)) {
+        // Deal column
+        columnMapping.setColumnObjectTypeId("0-3"); // Deal
+        String propertyName = key.replace(dealKeyPrefix, "");
+        columnMapping.setPropertyName(propertyName);
+
+        if ("id".equalsIgnoreCase(propertyName)) {
+          columnMapping.setIdColumnType("HUBSPOT_OBJECT_ID");
+        }
+
+        columnMappings.add(columnMapping);
+      } else {
+        // ignore unknown keys
+      }
+    }
+
+    FileImportPage fileImportPage = new FileImportPage();
+    fileImportPage.setHasHeader(Boolean.TRUE);
+    fileImportPage.setColumnMappings(columnMappings);
+
+    ImportFile importFile = new ImportFile();
+    importFile.setFileName(csvTempFile.getName());
+    importFile.setFileFormat("CSV");
+    importFile.setDateFormat("MONTH_DAY_YEAR");
+    importFile.setFileImportPage(fileImportPage);
+
+    ImportRequest importRequest = new ImportRequest();
+    importRequest.setName("CRM Contact-Deal Import " + new Date());
+    importRequest.setFiles(List.of(importFile));
+
+    return importRequest;
+  }
+
+  private ImportResponse importRecords(List<Map<String, String>> listOfMap, String fileNamePrefix, String contactKeyPrefix, String dealKeyPrefix) throws Exception {
+    if (CollectionUtils.isEmpty(listOfMap)) {
+      return null;
+    }
+    File csv = null;
+    try {
+      // Generate temp csv file
+      csv = toCsvFile(fileNamePrefix, listOfMap);
+      ImportRequest importRequest = toImportRequest(csv, listOfMap, contactKeyPrefix, dealKeyPrefix);
+      ImportResponse importResponse = importsClient.importFiles(importRequest, csv);
+      log.info("importResponse: {}", importResponse);
+      return importResponse;
+
+    } catch (Exception e) {
+      if (csv != null) {
+        log.debug("Deleting temp file {}...", csv.getName());
+        csv.delete();
+        log.debug("Temp file {} deleted.", csv.getName());
+      }
+      throw e;
+    }
   }
 
   @Override
