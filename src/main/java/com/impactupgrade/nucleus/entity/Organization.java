@@ -86,8 +86,8 @@ public class Organization {
   }
 
   @Transient
-  public String setEnvironment(String environment) {
-    return encrypt(environment);
+  public void setEnvironment(String environment) {
+    environmentEncrypted = encrypt(environment);
   }
 
   @Transient
