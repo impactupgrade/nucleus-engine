@@ -82,10 +82,16 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     JsonNode messagesNode = getJsonNode(job.payload, "messages");
 
     Map<String, JobProgress> progressesByContacts = job.jobProgresses.stream()
-        .collect(Collectors.toMap(tp -> tp.targetId, tp -> tp));
+        .filter(jp -> !Strings.isNullOrEmpty(jp.targetId))
+        .collect(Collectors.toMap(jp -> jp.targetId, jp -> jp));
 
     for (CrmContact crmContact : crmContacts) {
       String contactId = crmContact.id;
+
+      if (Strings.isNullOrEmpty(contactId)) {
+        log.warn("Skipping contact with no ID...");
+        continue;
+      }
 
       try {
         int nextMessage;
