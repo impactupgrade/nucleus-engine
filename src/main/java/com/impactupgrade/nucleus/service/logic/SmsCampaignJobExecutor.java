@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobFrequency;
@@ -38,13 +37,13 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   private final HibernateDao<Long, Job> jobDao;
   private final HibernateDao<Long, JobProgress> jobProgressDao;
   private final CrmService crmService;
-  private final TwilioClient twilioClient;
+  private final MessagingService messagingService;
 
   public SmsCampaignJobExecutor(Environment env) {
     this.jobDao = new HibernateDao<>(Job.class);
     this.jobProgressDao = new HibernateDao<>(JobProgress.class);
     this.crmService = env.primaryCrmService();
-    this.twilioClient = env.twilioClient();
+    this.messagingService = env.messagingService();
   }
 
   @Override
@@ -135,14 +134,9 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         }
         String message = getMessage(messagesNode, nextMessage, languageCode);
 
-        String contactPhoneNumber = crmContact.phoneNumberForSMS();
-        if (Strings.isNullOrEmpty(contactPhoneNumber)) {
-          log.info("Contact id {} had no mobile phone number.", contactId);
-          continue;
-        }
+        String sender = getJsonText(job.payload, "campaign_phone");
 
-        log.info("Sending message id {} to contact id {} using phone number {}...", nextMessage, contactId, contactPhoneNumber);
-        twilioClient.sendMessage(contactPhoneNumber, message);
+        messagingService.sendMessage(message, crmContact, sender);
 
         updateJobProgress(jobProgress.payload, nextMessage);
         jobProgressDao.update(jobProgress);

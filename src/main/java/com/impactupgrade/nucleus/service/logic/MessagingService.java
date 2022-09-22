@@ -5,23 +5,96 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
+import com.twilio.exception.ApiException;
+import com.twilio.rest.api.v2010.account.Message;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MessagingService {
 
   private static final Logger log = LogManager.getLogger(MessagingService.class);
 
+  private final Environment env;
+  private final TwilioClient twilioClient;
   private final CrmService crmService;
 
   public MessagingService(Environment env) {
+    this.env = env;
+    twilioClient = env.twilioClient();
     crmService = env.messagingCrmService();
+  }
+
+  public void sendMessage(String message, CrmContact crmContact, String sender) {
+    try {
+      String pn = crmContact.phoneNumberForSMS();
+      pn = pn.replaceAll("[^0-9\\+]", "");
+
+      if (!Strings.isNullOrEmpty(pn)) {
+        String personalizedMessage = personalizeMessage(message, crmContact);
+
+        Message twilioMessage = twilioClient.sendMessage(pn, sender, personalizedMessage, null);
+
+        log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
+            twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+      }
+    } catch (ApiException e1) {
+      if (e1.getCode() == 21610) {
+        log.info("message to {} failed due to blacklist; updating contact in CRM", crmContact.phoneNumberForSMS());
+        try {
+          env.messagingService().optOut(crmContact);
+        } catch (Exception e2) {
+          log.error("CRM contact update failed", e2);
+        }
+      } else if (e1.getCode() == 21408 || e1.getCode() == 21211) {
+        log.info("invalid phone number: {}; updating contact in CRM", crmContact.phoneNumberForSMS());
+        try {
+          env.messagingService().optOut(crmContact);
+        } catch (Exception e2) {
+          log.error("CRM contact update failed", e2);
+        }
+      } else {
+        log.warn("message to {} failed: {} {}", crmContact.phoneNumberForSMS(), e1.getCode(), e1.getMessage(), e1);
+      }
+    } catch (Exception e) {
+      log.warn("message to {} failed", crmContact.phoneNumberForSMS(), e);
+    }
+  }
+
+  protected String personalizeMessage(String message, CrmContact crmContact) {
+    if (Strings.isNullOrEmpty(message) || Objects.isNull(crmContact)) {
+      return message;
+    }
+
+    // first, replace a few defaults
+    message = message
+        .replaceAll("\\{\\{first_name\\}\\}", crmContact.firstName)
+        .replaceAll("\\{\\{last_name\\}\\}", crmContact.lastName)
+        .replaceAll("\\{\\{contact_id\\}\\}", crmContact.id)
+        .replaceAll("\\{\\{account_id\\}\\}", crmContact.accountId);
+
+    // then, find all others and let the CRM raw object handle it
+    Pattern p = Pattern.compile("(\\{\\{[^\\}\\}]+\\}\\})+");
+    Matcher m = p.matcher(message);
+    while (m.find()) {
+      String fieldName = m.group(0).replaceAll("\\{\\{", "").replaceAll("\\}\\}", "");
+      Object value = crmContact.fieldFetcher.apply(fieldName);
+      // TODO: will probably need additional formatting for numerics, dates, times, etc.
+      String valueString = value == null ? "" : value.toString();
+      message = message.replaceAll("\\{\\{" + fieldName + "\\}\\}", valueString);
+    }
+
+    return message;
   }
 
   public void processSignup(

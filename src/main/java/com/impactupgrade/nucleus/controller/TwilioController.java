@@ -6,16 +6,14 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.security.SecurityUtil;
+import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.util.Utils;
-import com.twilio.exception.ApiException;
-import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
 import com.twilio.twiml.voice.Dial;
@@ -40,9 +38,6 @@ import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
@@ -75,7 +70,7 @@ public class TwilioController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    TwilioClient twilioClient = env.twilioClient();
+    MessagingService messagingService = env.messagingService();
 
     log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
 
@@ -87,56 +82,21 @@ public class TwilioController {
           List<CrmContact> contacts = env.messagingCrmService().getContactsFromList(listId);
           log.info("found {} contacts in list {}", contacts.size(), listId);
           contacts.stream()
-              .filter(c -> c.mobilePhone != null || c.homePhone != null)
+              .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
               .forEach(c -> {
-                try {
-                  String pn = c.mobilePhone;
-                  if (Strings.isNullOrEmpty(pn)) {
-                    // Just in case...
-                    pn = c.homePhone;
-                  }
-                  pn = pn.replaceAll("[^0-9\\+]", "");
-
-                  if (!Strings.isNullOrEmpty(pn)) {
-                    String personalizedMessage = personalizeMessage(message, c);
-
-                    Message twilioMessage;
-                    Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
-                    if (userToSenderPn != null && (userToSenderPn.containsKey(nucleusUsername) || userToSenderPn.containsKey(nucleusEmail))) {
-                      if (userToSenderPn.containsKey(nucleusUsername)) {
-                        twilioMessage = twilioClient.sendMessage(pn, userToSenderPn.get(nucleusUsername), personalizedMessage, null);
-                      } else {
-                        twilioMessage = twilioClient.sendMessage(pn, userToSenderPn.get(nucleusEmail), personalizedMessage, null);
-                      }
-                    } else {
-                      // will use the default sender pn
-                      twilioMessage = twilioClient.sendMessage(pn, personalizedMessage);
-                    }
-
-                    log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
-                        twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
-                  }
-                } catch (ApiException e1) {
-                  if (e1.getCode() == 21610) {
-                    log.info("message to {} failed due to blacklist; updating contact in CRM", c.mobilePhone);
-                    try {
-                      env.messagingService().optOut(c);
-                    } catch (Exception e2) {
-                      log.error("CRM contact update failed", e2);
-                    }
-                  } else if (e1.getCode() == 21408 || e1.getCode() == 21211) {
-                    log.info("invalid phone number: {}; updating contact in CRM", c.mobilePhone);
-                    try {
-                      env.messagingService().optOut(c);
-                    } catch (Exception e2) {
-                      log.error("CRM contact update failed", e2);
-                    }
+                Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
+                String sender;
+                if (userToSenderPn != null && (userToSenderPn.containsKey(nucleusUsername) || userToSenderPn.containsKey(nucleusEmail))) {
+                  if (userToSenderPn.containsKey(nucleusUsername)) {
+                    sender = userToSenderPn.get(nucleusUsername);
                   } else {
-                    log.warn("message to {} failed: {} {}", c.mobilePhone, e1.getCode(), e1.getMessage(), e1);
+                    sender = userToSenderPn.get(nucleusEmail);
                   }
-                } catch (Exception e) {
-                  log.warn("message to {} failed", c.mobilePhone, e);
+                } else {
+                  sender = env.getConfig().twilio.senderPn;
                 }
+
+                messagingService.sendMessage(message, c, sender);
               });
         } catch (Exception e) {
           log.warn("failed to retrieve contacts from list {}", listId, e);
@@ -147,32 +107,6 @@ public class TwilioController {
     new Thread(thread).start();
 
     return Response.ok().build();
-  }
-
-  protected String personalizeMessage(String message, CrmContact crmContact) {
-    if (Strings.isNullOrEmpty(message) || Objects.isNull(crmContact)) {
-      return message;
-    }
-
-    // first, replace a few defaults
-    message = message
-            .replaceAll("\\{\\{first_name\\}\\}", crmContact.firstName)
-            .replaceAll("\\{\\{last_name\\}\\}", crmContact.lastName)
-            .replaceAll("\\{\\{contact_id\\}\\}", crmContact.id)
-            .replaceAll("\\{\\{account_id\\}\\}", crmContact.accountId);
-
-    // then, find all others and let the CRM raw object handle it
-    Pattern p = Pattern.compile("(\\{\\{[^\\}\\}]+\\}\\})+");
-    Matcher m = p.matcher(message);
-    while (m.find()) {
-      String fieldName = m.group(0).replaceAll("\\{\\{", "").replaceAll("\\}\\}", "");
-      Object value = crmContact.fieldFetcher.apply(fieldName);
-      // TODO: will probably need additional formatting for numerics, dates, times, etc.
-      String valueString = value == null ? "" : value.toString();
-      message = message.replaceAll("\\{\\{" + fieldName + "\\}\\}", valueString);
-    }
-
-    return message;
   }
 
   /**
