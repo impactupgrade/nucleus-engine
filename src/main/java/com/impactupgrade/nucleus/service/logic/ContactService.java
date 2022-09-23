@@ -66,7 +66,12 @@ public class ContactService {
       log.info("found CRM account {} and contact {} using email {}",
           existingContact.get().accountId, existingContact.get().id, paymentGatewayEvent.getCrmContact().email);
 
-      Optional<CrmAccount> existingAccount = crmService.getAccountById(existingContact.get().accountId);
+      Optional<CrmAccount> existingAccount;
+      if (Strings.isNullOrEmpty(existingContact.get().accountId)) {
+        existingAccount = Optional.empty();
+      } else {
+        existingAccount = crmService.getAccountById(existingContact.get().accountId);
+      }
 
       // before setting the existing CRM data in the event, backfill any missing data
       backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
