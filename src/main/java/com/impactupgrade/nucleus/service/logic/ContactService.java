@@ -120,12 +120,12 @@ public class ContactService {
         crmService.updateContact(existingContact.get());
       }
 
-      if (Strings.isNullOrEmpty(existingContact.get().firstName) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().firstName)) {
+      if ((Strings.isNullOrEmpty(existingContact.get().firstName) || "Anonymous".equalsIgnoreCase(existingContact.get().firstName)) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().firstName)) {
         log.info("existing CRM contact does not have a firstName, but the new payment did -- overwriting it");
         existingContact.get().firstName = paymentGatewayEvent.getCrmContact().firstName;
         crmService.updateContact(existingContact.get());
       }
-      if (Strings.isNullOrEmpty(existingContact.get().lastName) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().lastName)) {
+      if ((Strings.isNullOrEmpty(existingContact.get().lastName) || "Anonymous".equalsIgnoreCase(existingContact.get().lastName)) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().lastName)) {
         log.info("existing CRM contact does not have a lastName, but the new payment did -- overwriting it");
         existingContact.get().lastName = paymentGatewayEvent.getCrmContact().lastName;
         crmService.updateContact(existingContact.get());
