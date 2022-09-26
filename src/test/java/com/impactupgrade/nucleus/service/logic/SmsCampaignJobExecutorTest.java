@@ -71,8 +71,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     """);
     jobDao.create(job);
 
-    CrmContact contact1 = new CrmContact("contact1");
-    CrmContact contact2 = new CrmContact("contact2");
+    CrmContact contact1 = crmContact("contact1", "EN");
+    CrmContact contact2 = crmContact("contact2", "EN");
     when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2));
 
     service.processJobSchedules(Instant.now());
