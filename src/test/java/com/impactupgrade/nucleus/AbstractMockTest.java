@@ -15,10 +15,16 @@ import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.twilio.rest.api.v2010.account.Message;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AbstractMockTest {
@@ -86,6 +92,12 @@ public abstract class AbstractMockTest {
     public TwilioClient twilioClient() {
       return twilioClientMock;
     }
+  }
+
+  @BeforeEach
+  public void beforeEach() {
+    Message message = mock(Message.class);
+    lenient().when(twilioClientMock.sendMessage(any(), any(), any(), any())).thenReturn(message);
   }
 
   // Rebuild the SessionFactory each time, letting hibernate.hbm2ddl.auto create-drop (see hibernate.properties)
