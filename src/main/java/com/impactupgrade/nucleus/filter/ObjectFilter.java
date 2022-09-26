@@ -12,6 +12,10 @@ public interface ObjectFilter<T> {
     boolean filter(T t);
 
     default boolean filter(T t, List<EnvironmentConfig.Expression> expressions) {
+        if (expressions.isEmpty()) {
+            return false;
+        }
+
         return expressions.stream()
                 .allMatch(expression -> evaluate(t, expression));
     }
