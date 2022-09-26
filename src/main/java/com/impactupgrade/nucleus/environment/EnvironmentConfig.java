@@ -63,7 +63,11 @@ public class EnvironmentConfig {
     public String refreshToken = "";
   }
 
-  public Platform stripe = new Platform();
+  public Stripe stripe = new Stripe();
+
+  public static class Stripe extends Platform {
+    public List<Expression> filteringExpressions = new ArrayList<>();
+  }
 
   public static class Notification {
     public String from = "";
@@ -87,9 +91,6 @@ public class EnvironmentConfig {
     public String operator;
     public String value;
   }
-
-  // TODO: find a better name
-  public List<Expression> stripeObjectFilteringExpressions = new ArrayList<>();
 
   // TODO: This currently assumes a CRM only has one single set of fields, agnostic to the specific gateway. But that's
   //  not often the case! Ex: LJI and TER have separate sets of fields for Stripe vs. PaymentSpring vs. Paypal. For now,
