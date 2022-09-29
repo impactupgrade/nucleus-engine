@@ -1251,6 +1251,8 @@ public class SfdcCrmService implements CrmService {
       status = CrmDonation.Status.SUCCESSFUL;
     } else if (statusName.contains("fail") || statusName.contains("Fail")) {
       status = CrmDonation.Status.FAILED;
+    } else if (statusName.contains("refund") || statusName.contains("Refund")) {
+      status = CrmDonation.Status.REFUNDED;
     } else {
       status = CrmDonation.Status.PENDING;
     }

@@ -26,7 +26,7 @@ public class CrmDonation {
   public String crmUrl;
 
   public enum Status {
-    PENDING, SUCCESSFUL, FAILED
+    PENDING, SUCCESSFUL, FAILED, REFUNDED
   }
 
   public CrmDonation() {}

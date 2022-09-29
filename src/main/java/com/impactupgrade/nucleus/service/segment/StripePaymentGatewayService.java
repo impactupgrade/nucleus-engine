@@ -215,13 +215,15 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
       stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0,  c));
       int count = 0;
+      int total = charges.size();
       for (Charge charge : charges) {
+        count++;
+        log.info("{} of {}", count, total);
+
         if (!charge.getStatus().equalsIgnoreCase("succeeded")
             || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
           continue;
         }
-
-        count++;
 
         try {
           String paymentIntentId = charge.getPaymentIntent();
