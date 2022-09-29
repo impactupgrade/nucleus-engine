@@ -483,7 +483,7 @@ public class HubSpotCrmService implements CrmService {
     deal.setDealstage(env.getConfig().hubspot.donationPipeline.refundedStageId);
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId, paymentGatewayEvent.getRefundId(), deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDate, paymentGatewayEvent.getRefundDate(), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDate, GregorianCalendar.from(paymentGatewayEvent.getRefundDate()), deal.getOtherProperties());
   }
 
   @Override
@@ -503,7 +503,7 @@ public class HubSpotCrmService implements CrmService {
         if (!Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId)
             && deal.getProperties().getOtherProperties().get(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundId) == null) {
           DealProperties dealProperties = new DealProperties();
-          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositDate, paymentGatewayEvent.getDepositDate(), dealProperties.getOtherProperties());
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositDate, GregorianCalendar.from(paymentGatewayEvent.getDepositDate()), dealProperties.getOtherProperties());
           setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositId, paymentGatewayEvent.getDepositId(), dealProperties.getOtherProperties());
           hsClient.deal().update(donation.get().id, dealProperties);
         } else {
@@ -516,7 +516,7 @@ public class HubSpotCrmService implements CrmService {
           DealProperties dealProperties = new DealProperties();
 
           setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositId, paymentGatewayEvent.getDepositId(), dealProperties.getOtherProperties());
-          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, paymentGatewayEvent.getDepositDate(), dealProperties.getOtherProperties());
+          setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositDate, GregorianCalendar.from(paymentGatewayEvent.getDepositDate()), dealProperties.getOtherProperties());
           setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositNetAmount, paymentGatewayEvent.getTransactionNetAmountInDollars(), dealProperties.getOtherProperties());
           setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayDepositFee, paymentGatewayEvent.getTransactionFeeInDollars(), dealProperties.getOtherProperties());
 
