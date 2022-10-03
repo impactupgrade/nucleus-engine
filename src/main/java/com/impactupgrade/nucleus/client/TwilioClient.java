@@ -3,6 +3,7 @@ package com.impactupgrade.nucleus.client;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.twilio.base.ResourceSet;
+import com.twilio.exception.TwilioException;
 import com.twilio.http.TwilioRestClient;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.rest.api.v2010.account.MessageCreator;
@@ -89,8 +90,13 @@ public class TwilioClient {
     return Participant.updater(conversationSid, participantSid).setAttributes(attributes).update(restClient);
   }
 
-  public Conversation getConversation(String conversationSidOrUniqueName) {
-    return Conversation.fetcher(conversationSidOrUniqueName).fetch(restClient);
+  public Optional<Conversation> findConversation(String conversationSidOrUniqueName) {
+    try {
+      return Optional.of(Conversation.fetcher(conversationSidOrUniqueName).fetch(restClient));
+    } catch (TwilioException e) {
+      // expected -- allowing the use of find-by-uniqueName, which may not exist
+      return Optional.empty();
+    }
   }
 
   public Optional<Conversation> findConversationByFriendlyName(String friendlyName) {
