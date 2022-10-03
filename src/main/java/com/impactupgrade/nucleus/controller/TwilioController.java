@@ -63,6 +63,7 @@ public class TwilioController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   public Response outboundToCrmList(
       @FormParam("list-id") List<String> listIds,
+      @FormParam("sender") String _sender,
       @FormParam("message") String message,
       @FormParam("nucleus-username") String nucleusUsername,
       @FormParam("nucleus-email") String nucleusEmail,
@@ -72,7 +73,23 @@ public class TwilioController {
 
     MessagingService messagingService = env.messagingService();
 
-    log.info("listIds={} message={}", Joiner.on(",").join(listIds), message);
+    log.info("listIds={} sender={} message={}", Joiner.on(",").join(listIds), _sender, message);
+
+    String sender;
+    if (!Strings.isNullOrEmpty(_sender)) {
+      sender = _sender;
+    } else {
+      Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
+      if (userToSenderPn != null && (userToSenderPn.containsKey(nucleusUsername) || userToSenderPn.containsKey(nucleusEmail))) {
+        if (userToSenderPn.containsKey(nucleusUsername)) {
+          sender = userToSenderPn.get(nucleusUsername);
+        } else {
+          sender = userToSenderPn.get(nucleusEmail);
+        }
+      } else {
+        sender = env.getConfig().twilio.senderPn;
+      }
+    }
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
@@ -83,21 +100,7 @@ public class TwilioController {
           log.info("found {} contacts in list {}", contacts.size(), listId);
           contacts.stream()
               .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
-              .forEach(c -> {
-                Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
-                String sender;
-                if (userToSenderPn != null && (userToSenderPn.containsKey(nucleusUsername) || userToSenderPn.containsKey(nucleusEmail))) {
-                  if (userToSenderPn.containsKey(nucleusUsername)) {
-                    sender = userToSenderPn.get(nucleusUsername);
-                  } else {
-                    sender = userToSenderPn.get(nucleusEmail);
-                  }
-                } else {
-                  sender = env.getConfig().twilio.senderPn;
-                }
-
-                messagingService.sendMessage(message, c, sender);
-              });
+              .forEach(c -> messagingService.sendMessage(message, c, sender));
         } catch (Exception e) {
           log.warn("failed to retrieve contacts from list {}", listId, e);
         }
