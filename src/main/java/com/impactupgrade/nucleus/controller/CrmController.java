@@ -334,6 +334,10 @@ public class CrmController {
     return Response.status(200).entity(donationsTotal).build();
   }
 
+  // TODO: This will need updated depending on the Portal onboarding strategy. More likely, we'll have checkboxes and
+  //  drop-downs to provision fields based on contexts (add all payment gateway fields, add text messaging fields, etc.)
+  //  Or in the very least, set this up to receive multiple field definitions at once (JSON)? And it likely needs combined
+  //  with the code we have in CrmSetupUtils, creating the fields as well (would need the type, length, etc)
   @Path("/provision-fields")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -347,7 +351,6 @@ public class CrmController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    // TODO: move to a service level?
     sfdcMetadataClient = new SfdcMetadataClient(env);
     SaveResult[] saveResults = sfdcMetadataClient.addField(layoutName, sectionLabel, field);
 
