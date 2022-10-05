@@ -392,7 +392,7 @@ public class SfdcCrmService implements CrmService {
 
     // check to see if the recurring donation was a failed attempt or successful
     if (paymentGatewayEvent.isTransactionSuccess()) {
-      // update existing pledged donation to "Posted"
+      // update existing pledged donation to Closed Won
       SObject updateOpportunity = new SObject("Opportunity");
       updateOpportunity.setId(pledgedOpportunity.getId());
       setOpportunityFields(updateOpportunity, campaign, paymentGatewayEvent);
@@ -434,8 +434,7 @@ public class SfdcCrmService implements CrmService {
 
     // check to see if this was a failed payment attempt and set the StageName accordingly
     if (paymentGatewayEvent.isTransactionSuccess()) {
-      // TODO: If LJI/TER end up being the only ones using this, default it to Closed Won
-      opportunity.setField("StageName", "Posted");
+      opportunity.setField("StageName", "Closed Won");
     } else {
       opportunity.setField("StageName", "Failed Attempt");
     }
@@ -537,19 +536,39 @@ public class SfdcCrmService implements CrmService {
       recurringDonation.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId());
     }
 
-    // TODO: Assign to contact if available? Can only do one or the other -- see DR.
-    recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getCrmAccount().id);
     recurringDonation.setField("Npe03__Amount__c", paymentGatewayEvent.getSubscriptionAmountInDollars());
     recurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
     recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
 //    recurringDonation.setDonation_Method__c(paymentGatewayEvent.getDonationMethod());
-    recurringDonation.setField("Npe03__Installment_Period__c", paymentGatewayEvent.getSubscriptionInterval());
+    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(paymentGatewayEvent.getSubscriptionInterval());
+    if (frequency != null) {
+      recurringDonation.setField("Npe03__Installment_Period__c", frequency.name());
+    }
     recurringDonation.setField("Npe03__Date_Established__c", GregorianCalendar.from(paymentGatewayEvent.getSubscriptionStartDate()));
     recurringDonation.setField("Npe03__Next_Payment_Date__c", GregorianCalendar.from(paymentGatewayEvent.getSubscriptionNextDate()));
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(paymentGatewayEvent).map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
     recurringDonation.setField("Name", paymentGatewayEvent.getCrmContact().fullName() + " Recurring Donation");
+
+    if (env.getConfig().salesforce.enhancedRecurringDonations) {
+      // NPSP Enhanced RDs will not allow you to associate the RD directly with an Account if it's a household, instead
+      // forcing us to use the contact. But, since we don't know at this point if this is a business gift, we
+      // unfortunately need to assume the existence of a contactId means we should use it.
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+        recurringDonation.setField("Npe03__Contact__c", paymentGatewayEvent.getCrmContact().id);
+      } else {
+        recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getCrmAccount().id);
+      }
+
+      recurringDonation.setField("npsp__RecurringType__c", "Open");
+      // It's a picklist, so it has to be a string and not numeric :(
+      recurringDonation.setField("npsp__Day_of_Month__c", paymentGatewayEvent.getSubscriptionStartDate().getDayOfMonth() + "");
+    } else {
+      // Legacy behavior was to always use the Account, regardless if it was a business or household. Stick with that
+      // by default -- we have some orgs that depend on it.
+      recurringDonation.setField("Npe03__Organization__c", paymentGatewayEvent.getCrmAccount().id);
+    }
   }
 
   @Override
@@ -946,7 +965,7 @@ public class SfdcCrmService implements CrmService {
     contact.setField("Email", importEvent.getContactEmail());
 
     importEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Contact Custom "))
-        .forEach(entry -> contact.setField(entry.getKey().replace("Contact Custom ", ""), entry.getValue()));
+        .forEach(entry -> contact.setField(entry.getKey().replace("Contact Custom ", ""), getCustomBulkValue(entry.getValue())));
   }
 
   protected void setBulkUpdateContactFields(SObject contact, CrmUpdateEvent updateEvent) {
@@ -963,7 +982,7 @@ public class SfdcCrmService implements CrmService {
     setField(contact, "Email", updateEvent.getContactEmail());
 
     updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Contact Custom "))
-        .forEach(entry -> contact.setField(entry.getKey().replace("Contact Custom ", ""), entry.getValue()));
+        .forEach(entry -> contact.setField(entry.getKey().replace("Contact Custom ", ""), getCustomBulkValue(entry.getValue())));
   }
 
   protected void setBulkUpdateAccountFields(SObject account, CrmUpdateEvent updateEvent) {
@@ -1048,6 +1067,21 @@ public class SfdcCrmService implements CrmService {
 
     updateEvent.getRaw().entrySet().stream().filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
         .forEach(entry -> opportunity.setField(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
+  }
+
+  // TODO: This is going to be a pain in the butt, but we'll try to dynamically support different data types for custom
+  //  fields in bulk imports/updates, without requiring the data type to be provided. This is going to be brittle...
+  protected Object getCustomBulkValue(String value) {
+    Calendar c = null;
+    try {
+      c = Utils.getCalendarFromDateString(value);
+    } catch (Exception e) {}
+
+    if (c != null) {
+      return c;
+    } else {
+      return value;
+    }
   }
 
   protected String getStringField(SObject sObject, String name) {

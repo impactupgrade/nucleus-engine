@@ -65,7 +65,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
     assertEquals("ch_3JWulhHAwJOu5brr1EEbHa4z", opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertNull(opp.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("Posted", opp.getField("StageName"));
+    assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-09-07", opp.getField("CloseDate"));
     assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("104.92", opp.getField("Amount"));
@@ -111,7 +111,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     assertEquals("52.62", rd.getField("npe03__Amount__c"));
     assertEquals("Open", rd.getField("npe03__Open_Ended_Status__c"));
     assertEquals("Multiply By", rd.getField("npe03__Schedule_Type__c"));
-    assertEquals("month", rd.getField("npe03__Installment_Period__c"));
+    assertEquals("Monthly", rd.getField("npe03__Installment_Period__c"));
     assertEquals("2021-09-07", rd.getField("npe03__Date_Established__c"));
     // TODO: periodically fails -- may have a timing issue where this isn't being updated fast enough
     assertEquals("2021-09-07", rd.getField("npe03__Next_Payment_Date__c"));
@@ -119,7 +119,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     assertEquals("cus_KBHqPAS8xHRjcM", rd.getField("Payment_Gateway_Customer_Id__c"));
     assertEquals("sub_KBHqz0v4OgY68l", rd.getField("Payment_Gateway_Subscription_Id__c"));
 
-    // verify the Posted opp
+    // verify the Closed Won opp
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
     assertEquals(1, opps.size());
     SObject opp = opps.get(0);
@@ -127,7 +127,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
     assertEquals("pi_3JWvHFHAwJOu5brr0jae8t9x", opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertEquals("cus_KBHqPAS8xHRjcM", rd.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("Posted", opp.getField("StageName"));
+    assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-09-07", opp.getField("CloseDate"));
     assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("52.62", opp.getField("Amount"));

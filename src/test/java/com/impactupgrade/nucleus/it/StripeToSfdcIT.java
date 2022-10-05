@@ -65,7 +65,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
     assertEquals("pi_1ImrOLHAwJOu5brrpQ71F1G9", opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertEquals("cus_JPgkris8GTsXIH", opp.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("Posted", opp.getField("StageName"));
+    assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-05-03", opp.getField("CloseDate"));
     assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));
@@ -106,7 +106,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("100.0", rd.getField("npe03__Amount__c"));
     assertEquals("Open", rd.getField("npe03__Open_Ended_Status__c"));
     assertEquals("Multiply By", rd.getField("npe03__Schedule_Type__c"));
-    assertEquals("month", rd.getField("npe03__Installment_Period__c"));
+    assertEquals("Monthly", rd.getField("npe03__Installment_Period__c"));
     assertEquals("2021-11-11", rd.getField("npe03__Date_Established__c"));
     // TODO: periodically fails -- may have a timing issue where this isn't being updated fast enough
     assertEquals("2021-11-11", rd.getField("npe03__Next_Payment_Date__c"));
@@ -114,7 +114,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("cus_JPgkris8GTsXIH", rd.getField("Payment_Gateway_Customer_Id__c"));
     assertEquals("sub_1JufwxHAwJOu5brrARMtj1Gb", rd.getField("Payment_Gateway_Subscription_Id__c"));
 
-    // verify the Posted opp
+    // verify the Closed Won opp
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
     assertEquals(1, opps.size());
     SObject opp = opps.get(0);
@@ -122,7 +122,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
     assertEquals("pi_3JufwxHAwJOu5brr0WP4aAVs", opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertEquals("cus_JPgkris8GTsXIH", opp.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("Posted", opp.getField("StageName"));
+    assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-11-11", opp.getField("CloseDate"));
     assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));
@@ -176,7 +176,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
     assertEquals("pi_1ImrOLHAwJOu5brrpQ71F1G9", opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertEquals("cus_JPgkris8GTsXIH", opp.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("Posted", opp.getField("StageName"));
+    assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-05-03", opp.getField("CloseDate"));
     assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));
@@ -236,7 +236,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
     assertEquals("pi_1ImrOLHAwJOu5brrpQ71F1G9", opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertEquals("cus_JPgkris8GTsXIH", opp.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("Posted", opp.getField("StageName"));
+    assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-05-03", opp.getField("CloseDate"));
     assertEquals("Integration Tester2 Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));

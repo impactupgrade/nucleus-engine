@@ -190,6 +190,8 @@ public class EnvironmentConfig {
     // TODO: I've only started wiring this into SfdcCrmService. At the moment, I'm purely focused on getting
     //  SMS tools in Nucleus Portal to work. Still needs to be comprehensively used.
     public boolean npsp = true;
+    // some differences in fields/operations
+    public boolean enhancedRecurringDonations = false;
 
     public boolean sandbox = false;
     public String url = "";
