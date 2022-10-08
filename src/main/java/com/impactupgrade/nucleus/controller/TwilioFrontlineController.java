@@ -18,30 +18,14 @@ import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.Response;
+import javax.ws.rs.*;
+import javax.ws.rs.core.*;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.capitalize;
@@ -397,22 +381,10 @@ public class TwilioFrontlineController {
           .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
           .forEach(e -> twilioAddressToUser.add(e.getValue(), e.getKey()));
       if (!Strings.isNullOrEmpty(projectedAddress) && twilioAddressToUser.containsKey(projectedAddress)) {
-        // If multiple users explicitly share the same phone number, randomly select.
-        Random random = new Random();
-        List<String> twilioAddresses = twilioAddressToUser.get(projectedAddress);
-        String twilioAddress = twilioAddresses.get(random.nextInt(twilioAddresses.size()));
-
-        log.info("routing through userToSenderPn -- adding projected participant {} to {}", twilioAddress, conversationSid);
-        env.twilioClient().createConversationProjectedParticipant(conversationSid, twilioAddress, projectedAddress);
+        routeToAssignedWorker(conversationSid, projectedAddress, twilioAddressToUser, env);
         return Response.ok().build();
       } else if (!Strings.isNullOrEmpty(proxyAddress) && twilioAddressToUser.containsKey(proxyAddress)) {
-        // If multiple users explicitly share the same phone number, randomly select.
-        Random random = new Random();
-        List<String> twilioAddresses = twilioAddressToUser.get(proxyAddress);
-        String twilioAddress = twilioAddresses.get(random.nextInt(twilioAddresses.size()));
-
-        log.info("routing through userToSenderPn -- adding proxy participant {} to {}", twilioAddress, conversationSid);
-        env.twilioClient().createConversationProxyParticipant(conversationSid, twilioAddress);
+        routeToAssignedWorker(conversationSid, proxyAddress, twilioAddressToUser, env);
         return Response.ok().build();
       }
     }
@@ -439,6 +411,27 @@ public class TwilioFrontlineController {
     // TODO: fall back to random routing? or a default worker?
     log.error("could not find CrmContact: " + sender);
     return Response.status(422).build();
+  }
+
+  protected void routeToAssignedWorker(String conversationSid, String twilioAddress, MultivaluedMap<String, String> twilioAddressToUser, Environment env) {
+    List<String> identities = twilioAddressToUser.get(twilioAddress);
+    List<String> activeIdentities = identities.stream().filter(i -> env.twilioClient().getFrontlineUserByIdentity(i).getIsAvailable()).collect(Collectors.toList());
+    // If we have online users, limit routing to them. Otherwise, if no one is currently online, fall back to the original list.
+    if (!activeIdentities.isEmpty()) {
+      identities = activeIdentities;
+    }
+
+    String identity;
+    if (identities.size() > 1) {
+      // If multiple users explicitly share the same phone number, randomly select.
+      Random random = new Random();
+      identity = identities.get(random.nextInt(identities.size()));
+    } else {
+      identity = identities.get(0);
+    }
+
+    log.info("routing through userToSenderPn -- adding participant {} to {}", identity, conversationSid);
+    env.twilioClient().createConversationProjectedParticipant(conversationSid, identity, twilioAddress);
   }
 
   // TODO: WA templates
