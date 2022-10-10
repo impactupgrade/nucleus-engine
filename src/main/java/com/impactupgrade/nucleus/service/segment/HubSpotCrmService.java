@@ -917,10 +917,6 @@ public class HubSpotCrmService implements CrmService {
       dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
       map.put("closedate", dateFormat.format(crmImportEvent.getOpportunityDate().getTime()));
     }
-    if (!Strings.isNullOrEmpty(crmImportEvent.getOpportunityRecordTypeId())) {
-      // TODO: matching deal field in HS?
-      map.put("RecordTypeId", crmImportEvent.getOpportunityRecordTypeId()); //
-    }
 
     crmImportEvent.getRaw().entrySet().stream()
         .filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
@@ -944,10 +940,6 @@ public class HubSpotCrmService implements CrmService {
       DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
       dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
       map.put("closedate", dateFormat.format(crmUpdateEvent.getOpportunityDate().getTime()));
-    }
-    if (!Strings.isNullOrEmpty(crmUpdateEvent.getOpportunityRecordTypeId())) {
-      // TODO: matching deal field in HS?
-      map.put("RecordTypeId", crmUpdateEvent.getOpportunityRecordTypeId()); //
     }
 
     crmUpdateEvent.getRaw().entrySet().stream()
