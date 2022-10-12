@@ -93,6 +93,10 @@ public class Environment {
     return headers;
   }
 
+  public Map<String, String> getQueryParams() {
+    return queryParams;
+  }
+
   public MultivaluedMap<String, String> getOtherContext() {
     return otherContext;
   }
