@@ -35,6 +35,7 @@ import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,7 +68,7 @@ public class TwilioController {
       @FormParam("message") String message,
       @FormParam("nucleus-username") String nucleusUsername,
       @FormParam("nucleus-email") String nucleusEmail,
-      @Context HttpServletRequest request) {
+      @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
@@ -91,20 +92,20 @@ public class TwilioController {
       }
     }
 
+    // first grab all the contacts, since we want to fail early if there's an issue and give a clear error in the portal
+    List<CrmContact> contacts = new ArrayList<>();
+    for (String listId : listIds) {
+      log.info("retrieving contacts from list {}", listId);
+      contacts.addAll(env.messagingCrmService().getContactsFromList(listId));
+      log.info("found {} contacts in list {}", contacts.size(), listId);
+    }
+
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
-      for (String listId : listIds) {
-        try {
-          log.info("retrieving contacts from list {}", listId);
-          List<CrmContact> contacts = env.messagingCrmService().getContactsFromList(listId);
-          log.info("found {} contacts in list {}", contacts.size(), listId);
-          contacts.stream()
-              .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
-              .forEach(c -> messagingService.sendMessage(message, c, sender));
-        } catch (Exception e) {
-          log.warn("failed to retrieve contacts from list {}", listId, e);
-        }
-      }
+      contacts.stream()
+          .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
+          .forEach(c -> messagingService.sendMessage(message, c, sender));
+
       log.info("FINISHED: outbound/crm-list");
     };
     new Thread(thread).start();
