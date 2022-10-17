@@ -4,6 +4,7 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
@@ -133,4 +134,6 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
+  default void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
+  }
 }

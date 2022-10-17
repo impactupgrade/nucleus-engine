@@ -3,15 +3,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
-import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.*;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -160,16 +152,6 @@ public class GoogleSheetCrmService implements BasicCrmService {
     @Override
     public double getDonationsTotal(String filter) throws Exception {
         return 0;
-    }
-
-    @Override
-    public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-
-    }
-
-    @Override
-    public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-
     }
 
     @Override

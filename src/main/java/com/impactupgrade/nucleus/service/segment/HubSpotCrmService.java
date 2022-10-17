@@ -49,7 +49,6 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
-import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
@@ -63,7 +62,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.Writer;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,14 +70,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.HOME;
@@ -828,177 +824,133 @@ public class HubSpotCrmService implements CrmService {
     throw new RuntimeException("not implemented");
   }
 
+  // TODO: imports are being reworked in a different PR, so purely commenting these out for now
+
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    String contactKeyPrefix = "contact_";
-    String dealKeyPrefix = "deal_";
-
-    List<Map<String, String>> listOfMap = toImportList(importEvents, contactKeyPrefix, dealKeyPrefix);
-    importRecords(listOfMap, "contact-deal-bulk-import", contactKeyPrefix, dealKeyPrefix);
-
-    log.info("bulk insert complete");
+//    String contactKeyPrefix = "contact_";
+//    String dealKeyPrefix = "deal_";
+//
+//    List<Map<String, String>> listOfMap = toImportList(importEvents, contactKeyPrefix, dealKeyPrefix);
+//    importRecords(listOfMap, "contact-deal-bulk-import", contactKeyPrefix, dealKeyPrefix);
+//
+//    log.info("bulk insert complete");
   }
 
-  @Override
-  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-    String contactKeyPrefix = "contact_";
-    String dealKeyPrefix = "deal_";
-
-    // Updating contacts / deals in a separate requests
-    List<Map<String, String>> listOfContactMap = toUpdateContactsList(updateEvents, contactKeyPrefix);
-    importRecords(listOfContactMap, "contact-bulk-update", contactKeyPrefix, dealKeyPrefix);
-
-    List<Map<String, String>> listOfDealMaps = toUpdateDealsList(updateEvents, dealKeyPrefix);
-    importRecords(listOfDealMaps, "deal-bulk-update", contactKeyPrefix, dealKeyPrefix);
-
-    log.info("bulk update complete");
-  }
-
-  private List<Map<String, String>> toImportList(List<CrmImportEvent> importEvents, String contactKeyPrefix, String dealKeyPrefix) {
-    List<Map<String, String>> listOfMap = importEvents.stream()
-        .map(importEvent -> {
-          Map<String, String> contactPropertiesMap = toContactPropertiesMap(importEvent);
-          Map<String, String> dealPropertiesMap = toDealPropertiesMap(importEvent);
-
-          Map<String, String> csvMap = new HashMap<>();
-          contactPropertiesMap.forEach((k, v) -> csvMap.put(contactKeyPrefix + k, v));
-          dealPropertiesMap.forEach((k, v) -> csvMap.put(dealKeyPrefix + k, v));
-          return csvMap;
-        })
-        .collect(Collectors.toList());
-    return listOfMap;
-  }
-
-  private List<Map<String, String>> toUpdateContactsList(List<CrmUpdateEvent> updateEvents, String contactKeyPrefix) {
-    List<Map<String, String>> listOfMap = updateEvents.stream()
-        .filter(updateEvent ->
-            !Strings.isNullOrEmpty(updateEvent.getContactId())
-                || !Strings.isNullOrEmpty(updateEvent.getContactEmail()))
-        .map(updateEvent -> {
-          Map<String, String> contactPropertiesMap = toContactPropertiesUpdateMap(updateEvent);
-
-          Map<String, String> csvMap = new HashMap<>();
-          contactPropertiesMap.forEach((k, v) -> csvMap.put(contactKeyPrefix + k, v));
-          return csvMap;
-        })
-        .collect(Collectors.toList());
-    return listOfMap;
-  }
-
-  private List<Map<String, String>> toUpdateDealsList(List<CrmUpdateEvent> updateEvents, String dealKeyPrefix) {
-    List<Map<String, String>> listOfMap = updateEvents.stream()
-        .filter(updateEvent -> !Strings.isNullOrEmpty(updateEvent.getOpportunityId()))
-        .map(updateEvent -> {
-          Map<String, String> dealPropertiesMap = toDealPropertiesUpdateMap(updateEvent);
-
-          Map<String, String> csvMap = new HashMap<>();
-          dealPropertiesMap.forEach((k, v) -> csvMap.put(dealKeyPrefix + k, v));
-          return csvMap;
-        })
-        .collect(Collectors.toList());
-    return listOfMap;
-  }
-
-  private Map<String, String> toContactPropertiesMap(CrmImportEvent crmImportEvent) {
-    Map<String, String> map = new HashMap<>();
-    map.put("hubspot_owner_id", crmImportEvent.getOwnerId());
-    if (Strings.isNullOrEmpty(crmImportEvent.getContactLastName())) {
-      map.put("lastname", "Anonymous");
-    } else {
-      map.put("firstname", crmImportEvent.getContactFirstName());
-      map.put("lastname", crmImportEvent.getContactLastName());
-    }
-    // address
-    map.put("address", crmImportEvent.getContactMailingStreet());
-    map.put("city", crmImportEvent.getContactMailingCity());
-    map.put("state", crmImportEvent.getContactMailingState());
-    map.put("zip", crmImportEvent.getContactMailingZip());
-    map.put("country", crmImportEvent.getContactMailingCountry());
-    // phone/email
-    map.put("phone", crmImportEvent.getContactHomePhone());
-    map.put("mobilephone", crmImportEvent.getContactMobilePhone());
-    map.put("email", crmImportEvent.getContactEmail());
-
-    crmImportEvent.getRaw().entrySet().stream()
-        .filter(entry -> entry.getKey().startsWith("Contact Custom "))
-        .forEach(entry -> map.put(
-            entry.getKey().replace("Contact Custom ", ""),
-            entry.getValue()));
-    return map;
-  }
-
-  private Map<String, String> toContactPropertiesUpdateMap(CrmUpdateEvent crmUpdateEvent) {
-    Map<String, String> map = new HashMap<>();
-    // TODO: double-check this field (accepted OK by HS API but owner is not changed)
-    map.put("hubspot_owner_id", crmUpdateEvent.getOwnerId());
-    if (crmUpdateEvent.getContactId() != null) {
-      map.put("id", crmUpdateEvent.getContactId());
-    }
-    map.put("firstname", crmUpdateEvent.getContactFirstName());
-    map.put("lastname", crmUpdateEvent.getContactLastName());
-    // address
-    map.put("address", crmUpdateEvent.getContactMailingStreet());
-    map.put("city", crmUpdateEvent.getContactMailingCity());
-    map.put("state", crmUpdateEvent.getContactMailingState());
-    map.put("zip", crmUpdateEvent.getContactMailingZip());
-    map.put("country", crmUpdateEvent.getContactMailingCountry());
-    // phone/email
-    map.put("phone", crmUpdateEvent.getContactHomePhone());
-    map.put("mobilephone", crmUpdateEvent.getContactMobilePhone());
-    map.put("email", crmUpdateEvent.getContactEmail());
-
-    crmUpdateEvent.getRaw().entrySet().stream()
-        .filter(entry -> entry.getKey().startsWith("Contact Custom "))
-        .forEach(entry -> map.put(
-            entry.getKey().replace("Contact Custom ", ""),
-            entry.getValue()));
-    return map;
-  }
-
-  private Map<String, String> toDealPropertiesMap(CrmImportEvent crmImportEvent) {
-    Map<String, String> map = new HashMap<>();
-    map.put("hubspot_owner_id", crmImportEvent.getOwnerId());
-    map.put("dealname", crmImportEvent.getOpportunityName());
-    map.put("description", crmImportEvent.getOpportunityDescription());
-    if (crmImportEvent.getOpportunityAmount() != null) {
-      map.put("amount", "" + crmImportEvent.getOpportunityAmount().doubleValue());
-    }
-    map.put("dealstage", crmImportEvent.getOpportunityStageName());
-    if (crmImportEvent.getOpportunityDate() != null) {
-      DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
-      dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-      map.put("closedate", dateFormat.format(crmImportEvent.getOpportunityDate().getTime()));
-    }
-
-    crmImportEvent.getRaw().entrySet().stream()
-        .filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
-        .forEach(entry -> map.put(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
-    return map;
-  }
-
-  private Map<String, String> toDealPropertiesUpdateMap(CrmUpdateEvent crmUpdateEvent) {
-    Map<String, String> map = new HashMap<>();
-    map.put("hubspot_owner_id", crmUpdateEvent.getOwnerId());
-    if (Strings.isNullOrEmpty(crmUpdateEvent.getOpportunityId())) {
-      map.put("id", crmUpdateEvent.getOpportunityId());
-    }
-    map.put("dealname", crmUpdateEvent.getOpportunityName());
-    map.put("description", crmUpdateEvent.getOpportunityDescription());
-    if (crmUpdateEvent.getOpportunityAmount() != null) {
-      map.put("amount", "" + crmUpdateEvent.getOpportunityAmount().doubleValue());
-    }
-    map.put("dealstage", crmUpdateEvent.getOpportunityStageName());
-    if (crmUpdateEvent.getOpportunityDate() != null) {
-      DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
-      dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-      map.put("closedate", dateFormat.format(crmUpdateEvent.getOpportunityDate().getTime()));
-    }
-
-    crmUpdateEvent.getRaw().entrySet().stream()
-        .filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
-        .forEach(entry -> map.put(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
-    return map;
-  }
+//  @Override
+//  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
+//    String contactKeyPrefix = "contact_";
+//    String dealKeyPrefix = "deal_";
+//
+//    // Updating contacts / deals in a separate requests
+//    List<Map<String, String>> listOfContactMap = toUpdateContactsList(updateEvents, contactKeyPrefix);
+//    importRecords(listOfContactMap, "contact-bulk-update", contactKeyPrefix, dealKeyPrefix);
+//
+//    List<Map<String, String>> listOfDealMaps = toUpdateDealsList(updateEvents, dealKeyPrefix);
+//    importRecords(listOfDealMaps, "deal-bulk-update", contactKeyPrefix, dealKeyPrefix);
+//
+//    log.info("bulk update complete");
+//  }
+//
+//  private List<Map<String, String>> toImportList(List<CrmImportEvent> importEvents, String contactKeyPrefix, String dealKeyPrefix) {
+//    List<Map<String, String>> listOfMap = importEvents.stream()
+//        .map(importEvent -> {
+//          Map<String, String> contactPropertiesMap = toContactPropertiesMap(importEvent);
+//          Map<String, String> dealPropertiesMap = toDealPropertiesMap(importEvent);
+//
+//          Map<String, String> csvMap = new HashMap<>();
+//          contactPropertiesMap.forEach((k, v) -> csvMap.put(contactKeyPrefix + k, v));
+//          dealPropertiesMap.forEach((k, v) -> csvMap.put(dealKeyPrefix + k, v));
+//          return csvMap;
+//        })
+//        .collect(Collectors.toList());
+//    return listOfMap;
+//  }
+//
+//  private List<Map<String, String>> toUpdateContactsList(List<CrmUpdateEvent> updateEvents, String contactKeyPrefix) {
+//    List<Map<String, String>> listOfMap = updateEvents.stream()
+//        .filter(updateEvent ->
+//            !Strings.isNullOrEmpty(updateEvent.getContactId())
+//                || !Strings.isNullOrEmpty(updateEvent.getContactEmail()))
+//        .map(updateEvent -> {
+//          Map<String, String> contactPropertiesMap = toContactPropertiesUpdateMap(updateEvent);
+//
+//          Map<String, String> csvMap = new HashMap<>();
+//          contactPropertiesMap.forEach((k, v) -> csvMap.put(contactKeyPrefix + k, v));
+//          return csvMap;
+//        })
+//        .collect(Collectors.toList());
+//    return listOfMap;
+//  }
+//
+//  private List<Map<String, String>> toUpdateDealsList(List<CrmUpdateEvent> updateEvents, String dealKeyPrefix) {
+//    List<Map<String, String>> listOfMap = updateEvents.stream()
+//        .filter(updateEvent -> !Strings.isNullOrEmpty(updateEvent.getOpportunityId()))
+//        .map(updateEvent -> {
+//          Map<String, String> dealPropertiesMap = toDealPropertiesUpdateMap(updateEvent);
+//
+//          Map<String, String> csvMap = new HashMap<>();
+//          dealPropertiesMap.forEach((k, v) -> csvMap.put(dealKeyPrefix + k, v));
+//          return csvMap;
+//        })
+//        .collect(Collectors.toList());
+//    return listOfMap;
+//  }
+//
+//  private Map<String, String> toContactPropertiesMap(CrmImportEvent crmImportEvent) {
+//    Map<String, String> map = new HashMap<>();
+//    map.put("hubspot_owner_id", crmImportEvent.getOwnerId());
+//    if (crmImportEvent.getContactId() != null) {
+//      map.put("id", crmImportEvent.getContactId());
+//    }
+//    if (Strings.isNullOrEmpty(crmImportEvent.getContactLastName())) {
+//      map.put("lastname", "Anonymous");
+//    } else {
+//      map.put("firstname", crmImportEvent.getContactFirstName());
+//      map.put("lastname", crmImportEvent.getContactLastName());
+//    }
+//    // address
+//    map.put("address", crmImportEvent.getContactMailingStreet());
+//    map.put("city", crmImportEvent.getContactMailingCity());
+//    map.put("state", crmImportEvent.getContactMailingState());
+//    map.put("zip", crmImportEvent.getContactMailingZip());
+//    map.put("country", crmImportEvent.getContactMailingCountry());
+//    // phone/email
+//    map.put("phone", crmImportEvent.getContactHomePhone());
+//    map.put("mobilephone", crmImportEvent.getContactMobilePhone());
+//    map.put("email", crmImportEvent.getContactEmail());
+//
+//    crmImportEvent.getRaw().entrySet().stream()
+//        .filter(entry -> entry.getKey().startsWith("Contact Custom "))
+//        .forEach(entry -> map.put(
+//            entry.getKey().replace("Contact Custom ", ""),
+//            entry.getValue()));
+//    return map;
+//  }
+//
+//  private Map<String, String> toDealPropertiesMap(CrmImportEvent crmImportEvent) {
+//    Map<String, String> map = new HashMap<>();
+//    map.put("hubspot_owner_id", crmImportEvent.getOwnerId());
+//    if (Strings.isNullOrEmpty(crmImportEvent.getOpportunityId())) {
+//      map.put("id", crmImportEvent.getOpportunityId());
+//    }
+//    map.put("dealname", crmImportEvent.getOpportunityName());
+//    map.put("description", crmImportEvent.getOpportunityDescription());
+//    if (crmImportEvent.getOpportunityAmount() != null) {
+//      map.put("amount", "" + crmImportEvent.getOpportunityAmount().doubleValue());
+//    }
+//    map.put("dealstage", crmImportEvent.getOpportunityStageName());
+//    if (crmImportEvent.getOpportunityDate() != null) {
+//      DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+//      dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+//      map.put("closedate", dateFormat.format(crmImportEvent.getOpportunityDate().getTime()));
+//    }
+//
+//    crmImportEvent.getRaw().entrySet().stream()
+//        .filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
+//        .forEach(entry -> map.put(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
+//    return map;
+//  }
 
   private File toCsvFile(String prefix, List<Map<String, String>> listOfMap) throws Exception {
     // Create temp csv file out of mapped data (key -> header, value -> row)
