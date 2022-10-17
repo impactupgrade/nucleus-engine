@@ -10,13 +10,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -123,16 +117,6 @@ public class DonorWranglerCrmService implements BasicCrmService {
   public double getDonationsTotal(String filter) throws Exception {
     // TODO
     return 0.0;
-  }
-
-  @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    // TODO
-  }
-
-  @Override
-  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-    // TODO
   }
 
   @Override

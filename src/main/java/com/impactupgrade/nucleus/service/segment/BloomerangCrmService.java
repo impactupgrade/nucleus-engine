@@ -22,7 +22,6 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
-import com.impactupgrade.nucleus.model.CrmUpdateEvent;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.OpportunityEvent;
@@ -327,11 +326,6 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
     throw new RuntimeException("not implemented");
   }
 

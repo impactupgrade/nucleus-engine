@@ -71,7 +71,8 @@ public class Utils {
   public static boolean checkboxToBool(String checkboxValue) {
     return "yes".equalsIgnoreCase(checkboxValue)
         || "on".equalsIgnoreCase(checkboxValue)
-        || "true".equalsIgnoreCase(checkboxValue);
+        || "true".equalsIgnoreCase(checkboxValue)
+        || "1".equalsIgnoreCase(checkboxValue);
   }
 
   public static String emptyStringToNull(String s) {

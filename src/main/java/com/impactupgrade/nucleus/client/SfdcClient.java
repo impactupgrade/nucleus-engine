@@ -16,7 +16,6 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jruby.embed.LocalContextScope;
@@ -28,14 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -100,7 +92,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, RecordTypeId, RecordType.Id, RecordType.Name";
     CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
     // TODO: Finding a few clients with no homephone, so taking that out for now.
-    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, MobilePhone, OtherPhone, Phone";
+    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, OtherPhone, Phone";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";
 
@@ -120,16 +112,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
     return querySingle(query);
   }
-
-  public List<SObject> getAccountsByIds(Set<String> accountIds) throws ConnectionException, InterruptedException {
-    if (CollectionUtils.isEmpty(accountIds)) {
-      return Collections.emptyList();
-    }
-    String ids = accountIds.stream()
-            .map(id -> "'" + id + "'")
-            .collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id in (" + ids + ") ORDER BY name";
-    return queryList(query);
+  public List<SObject> getAccountsByIds(List<String> ids) throws ConnectionException, InterruptedException {
+    return getBulkResults(ids, "Id", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account);
   }
 
   public List<SObject> getAccountsByName(String name) throws ConnectionException, InterruptedException {
@@ -159,6 +143,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public Optional<SObject> getCampaignByName(String campaignName) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign) + " from campaign where name = '" + campaignName.replaceAll("'", "\\\\'") + "'";
     return querySingle(query);
+  }
+  public List<SObject> getCampaignsByNames(List<String> names) throws ConnectionException, InterruptedException {
+    names = names.stream().map(n -> n.replaceAll("'", "\\\\'")).collect(Collectors.toList());
+    return getBulkResults(names, "Name", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign);
   }
 
   // See note on CrmService.getActiveCampaignsByContactIds. Retrieve in batches to preserve API limits!
@@ -199,12 +187,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' and " + filter + " ORDER BY name";
     return querySingle(query);
   }
-  public List<SObject> getContactsByIds(Collection<String> contactIds) throws ConnectionException, InterruptedException {
-    String ids = contactIds.stream()
-            .map(id -> "'" + id + "'")
-            .collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (" + ids + ") ORDER BY name";
-    return queryList(query);
+  public List<SObject> getContactsByIds(List<String> ids) throws ConnectionException, InterruptedException {
+    return getBulkResults(ids, "Id", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact);
   }
 
   public List<SObject> getContactsByAccountId(String accountId) throws ConnectionException, InterruptedException {
@@ -539,6 +523,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return PagedResults.getPagedResultsFromCurrentOffset(results, contactSearch);
   }
 
+  public List<SObject> getContactsByEmails(List<String> emails) throws ConnectionException, InterruptedException {
+    return getBulkResults(emails, "Email", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -714,5 +702,29 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected String getFieldsList(String list, Collection<String> customList) {
     return customList.size() > 0 ? list + ", " + Joiner.on(", ").join(customList) : list;
+  }
+
+  protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType, String defaultFields, Set<String> customFields)
+      throws ConnectionException, InterruptedException {
+    List<String> page;
+    List<String> more;
+    // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
+    if (conditions.size() > 1000) {
+      page = conditions.subList(0, 1000);
+      more = conditions.subList(1000, conditions.size());
+    } else {
+      page = conditions;
+      more = Collections.emptyList();
+    }
+
+    String conditionsJoin = page.stream().map(condition -> "'" + condition + "'").collect(Collectors.joining(","));
+    String query = "select " + getFieldsList(defaultFields, customFields) + " from " + objectType + " where " + conditionFieldName + " in (" + conditionsJoin + ")";
+    List<SObject> results = queryList(query);
+
+    if (!more.isEmpty()) {
+      results.addAll(getBulkResults(more, conditionFieldName, objectType, defaultFields, customFields));
+    }
+
+    return results;
   }
 }

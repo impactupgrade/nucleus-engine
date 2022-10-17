@@ -4,14 +4,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmAddress;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmUpdateEvent;
-import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.*;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -20,14 +13,7 @@ import org.apache.logging.log4j.Logger;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -492,16 +478,6 @@ public class VirtuousCrmService implements BasicCrmService {
     @Override
     public double getDonationsTotal(String filter) throws Exception {
         return 0;
-    }
-
-    @Override
-    public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-        // TODO:
-    }
-
-    @Override
-    public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {
-        //TODO:
     }
 
     @Override
