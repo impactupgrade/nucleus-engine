@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -76,7 +77,7 @@ public class SharePointCrmService implements CrmService {
                 .expireAfterWrite(5, TimeUnit.MINUTES)
                 .build(new CacheLoader<>() {
                     @Override
-                    public Map<String, List<Map<String, String>>> load(String cacheKey) {
+                    public Map<String, List<Map<String, String>>> load(String cacheKey) throws IOException {
                         return downloadCsvDataMap();
                     }
                 });
@@ -85,7 +86,7 @@ public class SharePointCrmService implements CrmService {
         }
     }
 
-    protected Map<String, List<Map<String, String>>> downloadCsvDataMap() {
+    protected Map<String, List<Map<String, String>>> downloadCsvDataMap() throws IOException {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
         String siteId = sharepoint.siteId;
 
@@ -100,7 +101,7 @@ public class SharePointCrmService implements CrmService {
         return dataMap;
     }
 
-    protected List<Map<String, String>> downloadCsvData(String siteId, String filePath) {
+    protected List<Map<String, String>> downloadCsvData(String siteId, String filePath) throws IOException {
         List<Map<String, String>> csvData = new ArrayList<>();
 
         try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, filePath)) {
@@ -109,10 +110,8 @@ public class SharePointCrmService implements CrmService {
             } else if (filePath.endsWith("xlsx")) {
                 csvData.addAll(Utils.getExcelData(inputStream));
             } else {
-                log.error("unexpected file extension for filePath {}", filePath);
+                throw new RuntimeException("unexpected file extension for filePath " + filePath);
             }
-        } catch (Exception e) {
-            log.error("Failed to get csv data! {}", e.getMessage());
         }
 
         return csvData;

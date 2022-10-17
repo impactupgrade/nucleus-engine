@@ -95,9 +95,14 @@ public class TwilioController {
     // first grab all the contacts, since we want to fail early if there's an issue and give a clear error in the portal
     List<CrmContact> contacts = new ArrayList<>();
     for (String listId : listIds) {
-      log.info("retrieving contacts from list {}", listId);
-      contacts.addAll(env.messagingCrmService().getContactsFromList(listId));
-      log.info("found {} contacts in list {}", contacts.size(), listId);
+      try {
+        log.info("retrieving contacts from list {}", listId);
+        contacts.addAll(env.messagingCrmService().getContactsFromList(listId));
+        log.info("found {} contacts in list {}", contacts.size(), listId);
+      } catch (Exception e) {
+        log.warn("failed to retrieve list {}", listId, e);
+        return Response.serverError().build();
+      }
     }
 
     // takes a while, so spin it off as a new thread
