@@ -1170,7 +1170,7 @@ public class HubSpotCrmService implements CrmService {
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
         contact,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/contact/" + contact.getId(),
-        null // fieldFetcher
+        fieldName -> contact.getProperties().getOtherProperties().get(fieldName)
     );
   }
 

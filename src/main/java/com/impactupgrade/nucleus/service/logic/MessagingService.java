@@ -76,19 +76,24 @@ public class MessagingService {
       return message;
     }
 
-    // first, replace a few defaults
-    message = message
-        .replaceAll("\\{\\{first_name\\}\\}", crmContact.firstName)
-        .replaceAll("\\{\\{last_name\\}\\}", crmContact.lastName)
-        .replaceAll("\\{\\{contact_id\\}\\}", crmContact.id)
-        .replaceAll("\\{\\{account_id\\}\\}", crmContact.accountId);
-
-    // then, find all others and let the CRM raw object handle it
     Pattern p = Pattern.compile("(\\{\\{[^\\}\\}]+\\}\\})+");
     Matcher m = p.matcher(message);
     while (m.find()) {
       String fieldName = m.group(0).replaceAll("\\{\\{", "").replaceAll("\\}\\}", "");
-      Object value = crmContact.fieldFetcher.apply(fieldName);
+
+      Object value;
+      // directly support a few of the common ones
+      if ("FirstName".equalsIgnoreCase(fieldName)) {
+        value = crmContact.firstName;
+      } else if ("LastName".equalsIgnoreCase(fieldName)) {
+        value = crmContact.lastName;
+      } else if ("ContactId".equalsIgnoreCase(fieldName)) {
+        value = crmContact.id;
+      } else if ("AccountId".equalsIgnoreCase(fieldName)) {
+        value = crmContact.accountId;
+      } else {
+        value = crmContact.fieldFetcher.apply(fieldName);
+      }
       // TODO: will probably need additional formatting for numerics, dates, times, etc.
       String valueString = value == null ? "" : value.toString();
       message = message.replaceAll("\\{\\{" + fieldName + "\\}\\}", valueString);
