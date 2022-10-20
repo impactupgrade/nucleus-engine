@@ -81,6 +81,10 @@ public class TwilioClient {
         .create(restClient);
   }
 
+  public void deleteConversationParticipant(String conversationSid, String participantSid) {
+    Participant.deleter(conversationSid, participantSid).delete(restClient);
+  }
+
   public Participant updateConversationParticipant(String conversationSid, String participantSid, String attributes) {
     return Participant.updater(conversationSid, participantSid).setAttributes(attributes).update(restClient);
   }
