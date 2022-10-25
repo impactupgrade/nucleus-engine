@@ -147,11 +147,18 @@ public class BloomerangCrmService implements CrmService {
   // TODO: refundId support?
   @Override
   public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    List<String> transactionIds = new ArrayList<>();
+    transactionIds.add(paymentGatewayEvent.getTransactionId());
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getTransactionSecondaryId())) {
+      // Sometimes null, so don't blindly add it without first checking.
+      transactionIds.add(paymentGatewayEvent.getTransactionSecondaryId());
+    }
+
     return getDonation(
         paymentGatewayEvent,
         List.of("Donation", "RecurringDonationPayment"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId,
-        List.of(paymentGatewayEvent.getTransactionId(), paymentGatewayEvent.getTransactionSecondaryId())
+        transactionIds
     ).map(this::toCrmDonation);
   }
 
@@ -217,6 +224,7 @@ public class BloomerangCrmService implements CrmService {
     donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
     donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
     donation.date = date;
+    donation.method = "Credit Card";
 
     Designation designation = new Designation();
     designation.amount = donation.amount;
@@ -235,7 +243,6 @@ public class BloomerangCrmService implements CrmService {
       Donation recurringDonation = getDonation(paymentGatewayEvent.getCrmRecurringDonationId());
       designation.recurringDonationId = recurringDonation.designations.get(0).id;
       designation.isExtraPayment = false;
-      donation.method = "Credit Card";
     } else {
       designation.type = "Donation";
     }
@@ -653,13 +660,16 @@ public class BloomerangCrmService implements CrmService {
     String householdId = constituent.householdId == null ? null : constituent.householdId + "";
     String primaryEmail = constituent.primaryEmail == null ? null : constituent.primaryEmail.value;
     String primaryPhone = constituent.primaryPhone == null ? null : constituent.primaryPhone.number;
-    CrmAddress address = constituent.primaryAddress == null ? null : new CrmAddress(
-        constituent.primaryAddress.street,
-        constituent.primaryAddress.city,
-        constituent.primaryAddress.state,
-        constituent.primaryAddress.postalCode,
-        constituent.primaryAddress.country
-    );
+    CrmAddress crmAddress = new CrmAddress();
+    if (constituent.primaryAddress != null){
+      crmAddress = new CrmAddress(
+          constituent.primaryAddress.street,
+          constituent.primaryAddress.city,
+          constituent.primaryAddress.state,
+          constituent.primaryAddress.postalCode,
+          constituent.primaryAddress.country
+      );
+    }
 
     return new CrmContact(
         constituent.id + "",
@@ -672,7 +682,7 @@ public class BloomerangCrmService implements CrmService {
         primaryEmail,
         primaryPhone, // home phone
         null, null, null, null, // other phone fields
-        address,
+        crmAddress,
         null, null, null, null, // opt in/out
         null, null, // owner
         null, null, null, null, // donation metrics

@@ -1223,7 +1223,7 @@ public class SfdcCrmService implements CrmService {
       preferredPhone = CrmContact.PreferredPhone.fromName((String) sObject.getField("npe01__PreferredPhone__c"));
     }
 
-    CrmAddress crmAddress = null;
+    CrmAddress crmAddress = new CrmAddress();
     Double totalOppAmount = null;
     Integer numberOfClosedOpps = null;
     Calendar firstCloseDate = null;
