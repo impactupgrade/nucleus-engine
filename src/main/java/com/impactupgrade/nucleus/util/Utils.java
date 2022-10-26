@@ -31,6 +31,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -69,10 +70,9 @@ public class Utils {
   }
 
   public static boolean checkboxToBool(String checkboxValue) {
-    return "yes".equalsIgnoreCase(checkboxValue)
-        || "on".equalsIgnoreCase(checkboxValue)
-        || "true".equalsIgnoreCase(checkboxValue)
-        || "1".equalsIgnoreCase(checkboxValue);
+    if (checkboxValue == null) return false;
+
+    return Set.of("yes", "on", "true", "1").contains(checkboxValue.toLowerCase(Locale.ROOT));
   }
 
   public static String emptyStringToNull(String s) {
