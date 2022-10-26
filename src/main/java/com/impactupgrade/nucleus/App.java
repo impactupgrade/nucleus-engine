@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.controller.DonationFormController;
 import com.impactupgrade.nucleus.controller.EmailController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
+import com.impactupgrade.nucleus.controller.PaymentIntentController;
 import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
@@ -95,6 +96,7 @@ public class App {
     apiConfig.register(twilioController());
     apiConfig.register(twilioFrontlineController());
     apiConfig.register(accountingController());
+    apiConfig.register(paymentIntentController());
 
     registerAPIControllers(apiConfig);
 
@@ -147,6 +149,7 @@ public class App {
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
   protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
   protected AccountingController accountingController() { return new AccountingController(envFactory); }
+  protected PaymentIntentController paymentIntentController() { return new PaymentIntentController(envFactory); }
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
   }

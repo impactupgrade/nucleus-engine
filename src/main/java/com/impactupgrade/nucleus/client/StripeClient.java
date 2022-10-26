@@ -34,6 +34,8 @@ import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerListParams;
 import com.stripe.param.CustomerRetrieveParams;
 import com.stripe.param.CustomerUpdateParams;
+import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentUpdateParams;
 import com.stripe.param.PaymentSourceCollectionCreateParams;
 import com.stripe.param.PayoutListParams;
 import com.stripe.param.PlanCreateParams;
@@ -338,11 +340,18 @@ public class StripeClient {
 
   public void updateSubscriptionAmount(String subscriptionId, double dollarAmount) throws StripeException {
     log.info("updating subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+    updateSubscriptionAmountAndCurrency(subscriptionId, dollarAmount, null);
+    log.info("updated subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+  }
+
+  public void updateSubscriptionAmountAndCurrency(String subscriptionId, double dollarAmount, String currencyCode) throws StripeException {
+    log.info("updating subscription amount to {} and currency to {} for subscription {}", dollarAmount, currencyCode, subscriptionId);
 
     Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
     Plan existingPlan = subscription.getItems().getData().get(0).getPlan();
+    String currency = Strings.isNullOrEmpty(currencyCode) ? existingPlan.getCurrency() : currencyCode;
 
-    Plan plan = createPlan(dollarAmount, existingPlan.getCurrency(), existingPlan.getInterval());
+    Plan plan = createPlan(dollarAmount, currency, existingPlan.getInterval());
 
     // update the subscription with the new plan
     SubscriptionUpdateParams subscriptionUpdateParams = SubscriptionUpdateParams.builder()
@@ -450,8 +459,24 @@ public class StripeClient {
         .setCurrency(currency);
   }
 
+  public PaymentIntentCreateParams.Builder defaultPaymentIntentBuilder(long amountInCents, String currency) {
+    return PaymentIntentCreateParams.builder()
+            .setAmount(amountInCents)
+            .setCurrency(currency);
+  }
+
   public Charge createCharge(ChargeCreateParams.Builder chargeBuilder) throws StripeException {
     return Charge.create(chargeBuilder.build(), requestOptions);
+  }
+
+  public PaymentIntent createPaymentIntent(PaymentIntentCreateParams.Builder paymentIntentBuilder) throws StripeException {
+    PaymentIntent paymentIntent = PaymentIntent.create(paymentIntentBuilder.build(), requestOptions);
+    return paymentIntent;
+  }
+
+  public PaymentIntent updatePaymentIntent(PaymentIntent paymentIntent, PaymentIntentUpdateParams.Builder paymentIntentUpdateBuilder) throws StripeException {
+    PaymentIntent updatedPaymentIntent = paymentIntent.update(paymentIntentUpdateBuilder.build(), requestOptions);
+    return updatedPaymentIntent;
   }
 
   public ProductCreateParams.Builder defaultProductBuilder(Customer customer, long amountInCents, String currency) {

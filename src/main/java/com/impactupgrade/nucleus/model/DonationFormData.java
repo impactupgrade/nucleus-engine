@@ -54,6 +54,7 @@ public class DonationFormData {
   @FormParam("custom-metadata-customer") private Map<String, String> customMetadataCustomer;
   @FormParam("custom-metadata-subscription") private Map<String, String> customMetadataSubscription;
   @FormParam("custom-metadata-charge") private Map<String, String> customMetadataCharge;
+  @FormParam("custom-metadata-payment-intent") private Map<String, String> customMetadataPaymentIntent;
 
   private final Calendar timestamp;
 
@@ -440,6 +441,14 @@ public class DonationFormData {
 
   public void setCustomMetadataCharge(Map<String, String> customMetadataCharge) {
     this.customMetadataCharge = customMetadataCharge;
+  }
+
+  public Map<String, String> getCustomMetadataPaymentIntent() {
+    return customMetadataPaymentIntent;
+  }
+
+  public void setCustomMetadataPaymentIntent(Map<String, String> customMetadataPaymentIntent) {
+    this.customMetadataPaymentIntent = customMetadataPaymentIntent;
   }
 
   public Calendar getTimestamp() {
