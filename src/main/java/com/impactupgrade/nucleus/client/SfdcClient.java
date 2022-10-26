@@ -27,7 +27,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,6 +47,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public static final String AUTH_URL_PRODUCTION = "https://login.salesforce.com/services/Soap/u/55.0/";
   public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/55.0/";
+
+  // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
+  private static final int MAX_ID_QUERY_LIST_SIZE = 1000;
 
   private static final String AUTH_URL;
   static {
@@ -155,10 +165,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     List<String> page;
     List<String> more;
-    // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-    if (contactIds.size() > 1000) {
-      page = contactIds.subList(0, 1000);
-      more = contactIds.subList(1000, contactIds.size());
+    if (contactIds.size() > MAX_ID_QUERY_LIST_SIZE) {
+      page = contactIds.subList(0, MAX_ID_QUERY_LIST_SIZE);
+      more = contactIds.subList(MAX_ID_QUERY_LIST_SIZE, contactIds.size());
     } else {
       page = contactIds;
       more = Collections.emptyList();
@@ -540,10 +549,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public List<SObject> getDonationsByIds(List<String> ids) throws ConnectionException, InterruptedException {
     List<String> page;
     List<String> more;
-    // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-    if (ids.size() > 1000) {
-      page = ids.subList(0, 1000);
-      more = ids.subList(1000, ids.size());
+    if (ids.size() > MAX_ID_QUERY_LIST_SIZE) {
+      page = ids.subList(0, MAX_ID_QUERY_LIST_SIZE);
+      more = ids.subList(MAX_ID_QUERY_LIST_SIZE, ids.size());
     } else {
       page = ids;
       more = Collections.emptyList();
@@ -570,9 +578,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<String> page;
     List<String> more;
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-    if (transactionIds.size() > 1000) {
-      page = transactionIds.subList(0, 1000);
-      more = transactionIds.subList(1000, transactionIds.size());
+    if (transactionIds.size() > MAX_ID_QUERY_LIST_SIZE) {
+      page = transactionIds.subList(0, MAX_ID_QUERY_LIST_SIZE);
+      more = transactionIds.subList(MAX_ID_QUERY_LIST_SIZE, transactionIds.size());
     } else {
       page = transactionIds;
       more = Collections.emptyList();
@@ -709,9 +717,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<String> page;
     List<String> more;
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-    if (conditions.size() > 1000) {
-      page = conditions.subList(0, 1000);
-      more = conditions.subList(1000, conditions.size());
+    if (conditions.size() > MAX_ID_QUERY_LIST_SIZE) {
+      page = conditions.subList(0, MAX_ID_QUERY_LIST_SIZE);
+      more = conditions.subList(MAX_ID_QUERY_LIST_SIZE, conditions.size());
     } else {
       page = conditions;
       more = Collections.emptyList();
