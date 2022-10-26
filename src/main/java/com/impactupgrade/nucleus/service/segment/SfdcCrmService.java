@@ -1262,6 +1262,13 @@ public class SfdcCrmService implements CrmService {
       emailGroups = Arrays.stream(emailGroupList.split(";")).toList();
     }
 
+    // ALWAYS use the standard Phone field as a default, as we need that for a backup for SMS tools when MobilePhone
+    // isn't present. HomePhone itself is rare and we've seen schemas where it's not even included.
+    String homePhone = (String) sObject.getField("Phone");
+    if (Strings.isNullOrEmpty(homePhone)) {
+      homePhone = (String) sObject.getField("HomePhone");
+    }
+
     return new CrmContact(
         sObject.getId(),
         (String) sObject.getField("AccountId"),
@@ -1269,7 +1276,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("LastName"),
         (String) sObject.getField("Name"),
         (String) sObject.getField("Email"),
-        (String) sObject.getField("HomePhone"),
+        homePhone,
         (String) sObject.getField("MobilePhone"),
         (String) sObject.getField("npe01__WorkPhone__c"),
         (String) sObject.getField("OtherPhone"),
