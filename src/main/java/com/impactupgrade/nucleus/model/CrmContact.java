@@ -55,7 +55,6 @@ public class CrmContact {
   public String homePhone;
   public String mobilePhone;
   public String workPhone;
-  public String otherPhone;
   public PreferredPhone preferredPhone;
   public CrmAddress address = new CrmAddress();
   public Boolean emailOptIn;
@@ -95,7 +94,7 @@ public class CrmContact {
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmContact(String id, String accountId, String firstName, String lastName, String fullName, String email, String homePhone,
-      String mobilePhone, String workPhone, String otherPhone, PreferredPhone preferredPhone, CrmAddress address,
+      String mobilePhone, String workPhone, PreferredPhone preferredPhone, CrmAddress address,
       Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, String ownerName, Double totalDonationAmount, Integer numDonations, Calendar firstDonationDate, Calendar lastDonationDate,  List<String> emailGroups, String contactLanguage,
       Object rawObject, String crmUrl, Function<String, Object> fieldFetcher) {
     this.id = id;
@@ -107,7 +106,6 @@ public class CrmContact {
     this.homePhone = homePhone;
     this.mobilePhone = mobilePhone;
     this.workPhone = workPhone;
-    this.otherPhone = otherPhone;
     this.preferredPhone = preferredPhone;
     this.address = address;
     this.emailOptIn = emailOptIn;

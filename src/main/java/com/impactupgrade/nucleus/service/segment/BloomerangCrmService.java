@@ -675,7 +675,7 @@ public class BloomerangCrmService implements CrmService {
         constituent.firstName + " " + constituent.lastName,
         primaryEmail,
         primaryPhone, // home phone
-        null, null, null, null, // other phone fields
+        null, null, null, // other phone fields
         crmAddress,
         null, null, null, null, // opt in/out
         null, null, // owner

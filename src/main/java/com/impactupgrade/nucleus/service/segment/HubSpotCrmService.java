@@ -1159,7 +1159,6 @@ public class HubSpotCrmService implements CrmService {
         null, // home phone
         contact.getProperties().getMobilephone(),
         null, // work phone
-        null, // other phone
         preferredPhone,
         crmAddress,
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.emailOptIn, contact.getProperties().getOtherProperties()),
@@ -1201,7 +1200,6 @@ public class HubSpotCrmService implements CrmService {
         getValue(contact.getProperties().getEmail()),
         getValue(contact.getProperties().getPhone()),
         getValue(contact.getProperties().getMobilePhone()),
-        null,
         null,
         null,
         null,

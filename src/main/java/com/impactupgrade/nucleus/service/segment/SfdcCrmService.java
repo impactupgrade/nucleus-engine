@@ -200,7 +200,6 @@ public class SfdcCrmService implements CrmService {
         phoneClauses.add("npe03__Contact__r.phone LIKE '" + phoneClean + "'");
         phoneClauses.add("npe03__Contact__r.MobilePhone LIKE '" + phoneClean + "'");
         phoneClauses.add("npe03__Contact__r.HomePhone LIKE '" + phoneClean + "'");
-        phoneClauses.add("npe03__Contact__r.OtherPhone LIKE '" + phoneClean + "'");
         clauses.add(String.join(" OR ", phoneClauses));
       }
     }
@@ -1238,7 +1237,6 @@ public class SfdcCrmService implements CrmService {
         homePhone,
         (String) sObject.getField("MobilePhone"),
         (String) sObject.getField("npe01__WorkPhone__c"),
-        (String) sObject.getField("OtherPhone"),
         preferredPhone,
         crmAddress,
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptIn),

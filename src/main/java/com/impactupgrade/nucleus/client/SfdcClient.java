@@ -102,7 +102,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, RecordTypeId, RecordType.Id, RecordType.Name";
     CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
     // TODO: Finding a few clients with no homephone, so taking that out for now.
-    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, OtherPhone, Phone";
+    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, Phone";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";
 
@@ -487,8 +487,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       // TODO: Finding a few clients with no homephone, so taking that out for now.
       StringBuilder phoneClause = new StringBuilder()
           .append("Phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR OtherPhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
+          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
       clauses.add(phoneClause.toString());
     }
 

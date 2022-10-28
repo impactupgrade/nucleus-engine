@@ -221,7 +221,6 @@ public class VirtuousCrmService implements BasicCrmService {
         crmContact.homePhone = getContactMethodValue(contactIndividual, "Home Phone");
         crmContact.mobilePhone = getContactMethodValue(contactIndividual, "Mobile Phone");
         crmContact.workPhone = getContactMethodValue(contactIndividual, "Work Phone");
-        crmContact.otherPhone = getContactMethodValue(contactIndividual, "Other Phone");
         //crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE // ?
 
         crmContact.address = getCrmAddress(contact.address);
@@ -327,8 +326,7 @@ public class VirtuousCrmService implements BasicCrmService {
                 contactMethod("Home Email", crmContact.email, true, Boolean.TRUE == crmContact.emailOptIn),
                 contactMethod("Home Phone", crmContact.homePhone, crmContact.preferredPhone == CrmContact.PreferredPhone.HOME, false),
                 contactMethod("Mobile Phone", crmContact.mobilePhone, crmContact.preferredPhone == CrmContact.PreferredPhone.MOBILE, false),
-                contactMethod("Work Phone", crmContact.workPhone, crmContact.preferredPhone == CrmContact.PreferredPhone.WORK, false),
-                contactMethod("Other Phone", crmContact.otherPhone, crmContact.preferredPhone == CrmContact.PreferredPhone.OTHER, false)
+                contactMethod("Work Phone", crmContact.workPhone, crmContact.preferredPhone == CrmContact.PreferredPhone.WORK, false)
         ).filter(Objects::nonNull).collect(Collectors.toList());
 
         contact.contactIndividuals = List.of(contactIndividual);
