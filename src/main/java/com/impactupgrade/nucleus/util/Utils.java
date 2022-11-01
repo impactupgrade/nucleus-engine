@@ -42,6 +42,11 @@ public class Utils {
     return s.trim();
   }
 
+  public static String lowercase(String s) {
+    if (s == null) return null;
+    return s.toLowerCase(Locale.ROOT);
+  }
+
   public static String noWhitespace(String s) {
     if (s == null) return null;
     return s.replaceAll("\\s", "");
