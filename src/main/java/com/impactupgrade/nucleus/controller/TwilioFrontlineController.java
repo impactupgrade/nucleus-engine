@@ -431,7 +431,16 @@ public class TwilioFrontlineController {
 
   protected void routeToAssignedWorker(String conversationSid, String twilioAddress, MultivaluedMap<String, String> twilioAddressToUser, Environment env) {
     List<String> identities = twilioAddressToUser.get(twilioAddress);
-    List<String> activeIdentities = identities.stream().filter(i -> env.twilioClient().getFrontlineUserByIdentity(i).getIsAvailable()).collect(Collectors.toList());
+    List<String> activeIdentities = identities.stream().filter(i -> {
+      try {
+        return env.twilioClient().getFrontlineUserByIdentity(i).getIsAvailable();
+      } catch (Exception e) {
+        // Hit issues where a new user was set up in routing configs, but had not yet logged into Frontline, so
+        // technically the user doesn't exist yet...
+        log.warn("unable to get Frontline user's status", e);
+        return false;
+      }
+    }).collect(Collectors.toList());
     // If we have online users, limit routing to them. Otherwise, if no one is currently online, fall back to the original list.
     if (!activeIdentities.isEmpty()) {
       identities = activeIdentities;
