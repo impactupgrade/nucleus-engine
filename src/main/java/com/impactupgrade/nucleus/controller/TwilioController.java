@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -80,12 +81,12 @@ public class TwilioController {
     if (!Strings.isNullOrEmpty(_sender)) {
       sender = _sender;
     } else {
-      Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
-      if (userToSenderPn != null && (userToSenderPn.containsKey(nucleusUsername) || userToSenderPn.containsKey(nucleusEmail))) {
-        if (userToSenderPn.containsKey(nucleusUsername)) {
-          sender = userToSenderPn.get(nucleusUsername);
+      Map<String, EnvironmentConfig.TwilioUser> users = env.getConfig().twilio.users;
+      if (users != null && (users.containsKey(nucleusUsername) || users.containsKey(nucleusEmail))) {
+        if (users.containsKey(nucleusUsername)) {
+          sender = users.get(nucleusUsername).senderPn;
         } else {
-          sender = userToSenderPn.get(nucleusEmail);
+          sender = users.get(nucleusEmail).senderPn;
         }
       } else {
         sender = env.getConfig().twilio.senderPn;

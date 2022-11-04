@@ -224,7 +224,12 @@ public class EnvironmentConfig {
 
   public static class Twilio extends Platform {
     public String senderPn = "";
-    public Map<String, String> userToSenderPn = new HashMap<>();
+    public Map<String, TwilioUser> users = new HashMap<>();
+  }
+
+  public static class TwilioUser {
+    public String senderPn;
+    public boolean recordOwnerFilter = true;
   }
 
   public enum EmailListType {

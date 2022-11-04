@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -86,19 +87,24 @@ public class TwilioFrontlineController {
         frontlineResponse.objects.customer = toFullFrontlineCustomer(crmContact.get(), workerIdentity, crmName, env);
         break;
       case "GetCustomersList":
-        Optional<CrmUser> owner = crmService.getUserByEmail(workerIdentity);
-        if (owner.isEmpty()) {
-          log.error("unexpected owner: " + workerIdentity);
-          return Response.status(422).build();
-        }
-        String ownerId = owner.get().id();
-
         ContactSearch contactSearch = new ContactSearch();
         contactSearch.keywords = searchQuery;
-        contactSearch.ownerId = ownerId;
         contactSearch.hasPhone = true;
         contactSearch.pageSize = pageSize;
         contactSearch.pageToken = nextPageToken;
+
+        Map<String, EnvironmentConfig.TwilioUser> users = env.getConfig().twilio.users;
+        // A little odd looking. We're defaulting to INCLUDING the filter if the user doesn't have a specific config
+        // in env.json. If they do have a config, only then incorporate the check.
+        if (!users.containsKey(workerIdentity) || users.get(workerIdentity).recordOwnerFilter) {
+          Optional<CrmUser> owner = crmService.getUserByEmail(workerIdentity);
+          if (owner.isEmpty()) {
+            log.error("unexpected owner: " + workerIdentity);
+            return Response.status(422).build();
+          }
+          contactSearch.ownerId = owner.get().id();
+        }
+
         PagedResults<CrmContact> crmContacts = crmService.searchContacts(contactSearch);
         frontlineResponse.objects.customers = crmContacts.getResults().stream()
             .sorted(Comparator.comparing(CrmContact::fullName))
@@ -229,9 +235,9 @@ public class TwilioFrontlineController {
 
   // DRY. Spin this off so subclasses can use it.
   protected String getSenderPn(String workerIdentity, Environment env) {
-    Map<String, String> userToSenderPn = env.getConfig().twilio.userToSenderPn;
-    if (userToSenderPn.containsKey(workerIdentity) && !Strings.isNullOrEmpty(userToSenderPn.get(workerIdentity))) {
-      return userToSenderPn.get(workerIdentity);
+    Map<String, EnvironmentConfig.TwilioUser> users = env.getConfig().twilio.users;
+    if (users.containsKey(workerIdentity) && !Strings.isNullOrEmpty(users.get(workerIdentity).senderPn)) {
+      return users.get(workerIdentity).senderPn;
     } else {
       return env.getConfig().twilio.senderPn;
     }
@@ -390,12 +396,12 @@ public class TwilioFrontlineController {
     }
 
     // If the proxy/projected address is explicitly assigned to a worker, always route it there directly.
-    if (env.getConfig().twilio.userToSenderPn.size() > 0) {
+    if (env.getConfig().twilio.users.size() > 0) {
       // reverse the map so we can look users up using their assigned phone numbers
       MultivaluedMap<String, String> twilioAddressToUser = new MultivaluedHashMap<>();
-      env.getConfig().twilio.userToSenderPn.entrySet().stream()
-          .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
-          .forEach(e -> twilioAddressToUser.add(e.getValue(), e.getKey()));
+      env.getConfig().twilio.users.entrySet().stream()
+          .filter(e -> !Strings.isNullOrEmpty(e.getValue().senderPn))
+          .forEach(e -> twilioAddressToUser.add(e.getValue().senderPn, e.getKey()));
       if (!Strings.isNullOrEmpty(projectedAddress) && twilioAddressToUser.containsKey(projectedAddress)) {
         routeToAssignedWorker(conversationSid, projectedAddress, twilioAddressToUser, env);
         return Response.ok().build();
@@ -455,7 +461,7 @@ public class TwilioFrontlineController {
       identity = identities.get(0);
     }
 
-    log.info("routing through userToSenderPn -- adding participant {} to {}", identity, conversationSid);
+    log.info("routing: adding participant {} to {}", identity, conversationSid);
     env.twilioClient().createConversationProjectedParticipant(conversationSid, identity, twilioAddress);
   }
 
