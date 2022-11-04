@@ -149,6 +149,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(id));
+  }
+
+  @Override
   public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
     // TODO
     return null;
@@ -434,8 +439,13 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public String insertDonation(CrmDonation donation) throws Exception {
-
+    // TODO
     return null;
+  }
+
+  @Override
+  public void updateDonation(CrmDonation donation) throws Exception {
+    // TODO
   }
 
   protected String processPledgedDonation(SObject pledgedOpportunity, Optional<SObject> campaign,
@@ -769,6 +779,11 @@ public class SfdcCrmService implements CrmService {
   @Override
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
     // likely not relevant in SFDC
+  }
+
+  @Override
+  public Optional<CrmDonation> getDonationById(String id) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationById(id));
   }
 
   @Override
@@ -1294,8 +1309,6 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmDonation toCrmDonation(SObject sObject) {
     String id = sObject.getId();
-    String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
-    String paymentGatewayTransactionId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId);
     Double amount = Double.valueOf(sObject.getField("Amount").toString());
     Calendar closeDate = null;
     try {
@@ -1331,8 +1344,9 @@ public class SfdcCrmService implements CrmService {
         id,
         (String) sObject.getField("Name"),
         amount,
-        paymentGatewayName,
-        paymentGatewayTransactionId,
+        getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName),
+        getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId),
+        getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId),
         status,
         closeDate,
         account,
@@ -1360,6 +1374,13 @@ public class SfdcCrmService implements CrmService {
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(sObject.getField("npe03__Installment_Period__c").toString());
     String donationName = getStringField(sObject, "Name");
 
+    Calendar startDate = null;
+    try {
+      startDate = Utils.getCalendarFromDateString((String) sObject.getField("Npe03__Date_Established__c"));
+    } catch (ParseException e) {
+      log.warn("unable to parse date", e);
+    }
+
     CrmAccount account = null;
     if (sObject.getChild("npe03__Organization__r") != null && sObject.getChild("npe03__Organization__r").hasChildren())
       account = toCrmAccount((SObject) sObject.getChild("npe03__Organization__r"));
@@ -1376,6 +1397,7 @@ public class SfdcCrmService implements CrmService {
         active,
         frequency,
         donationName,
+        startDate,
         account,
         contact,
         sObject,

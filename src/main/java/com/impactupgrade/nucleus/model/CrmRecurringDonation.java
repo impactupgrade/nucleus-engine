@@ -53,7 +53,7 @@ public class CrmRecurringDonation extends HasId {
   public String paymentGatewayName;
   public Boolean active;
   public Frequency frequency;
-  public Calendar closeDate;
+  public Calendar startDate;
   public CrmAccount account;
   public CrmContact contact;
 
@@ -79,11 +79,11 @@ public class CrmRecurringDonation extends HasId {
     this.paymentGatewayName = paymentGatewayName;
     this.active = active;
     this.frequency = frequency;
+    this.startDate = closeDate;
     this.donationName = donationName;
     this.contact = contact;
     this.rawObject = rawObject;
     this.account = account;
     this.crmUrl = crmUrl;
-    this.closeDate = closeDate;
   }
 }

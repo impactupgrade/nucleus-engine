@@ -221,29 +221,8 @@ public class HubSpotCrmService implements CrmService {
       return Optional.empty();
     }
 
-    Deal result = results.getResults().get(0);
-    String id = result.getId();
-    CrmDonation.Status status;
-    if (env.getConfig().hubspot.donationPipeline.successStageId.equalsIgnoreCase(result.getProperties().getDealstage())) {
-      status = CrmDonation.Status.SUCCESSFUL;
-    } else if (env.getConfig().hubspot.donationPipeline.failedStageId.equalsIgnoreCase(result.getProperties().getDealstage())) {
-      status = CrmDonation.Status.FAILED;
-    } else {
-      status = CrmDonation.Status.PENDING;
-    }
-    return Optional.of(new CrmDonation(
-        id,
-        result.getProperties().getDealname(),
-        result.getProperties().getAmount(),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, result.getProperties().getOtherProperties()),
-        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, result.getProperties().getOtherProperties()),
-        transactionId,
-        status,
-        result.getProperties().getClosedate(),
-        null, null,
-        result,
-        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + id
-    ));
+    Deal deal = results.getResults().get(0);
+    return Optional.of(toCrmDonation(deal));
   }
 
   @Override
@@ -491,7 +470,13 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmDonation> getDonationById(String id) throws Exception {
-    TODO;
+    Deal deal = hsClient.deal().read(id, dealFields);
+
+    if (deal == null) {
+      return Optional.empty();
+    }
+
+    return Optional.of(toCrmDonation(deal));
   }
 
   @Override
@@ -587,7 +572,13 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public void updateDonation(CrmDonation donation) throws Exception {
-    TODO;
+    DealProperties deal = new DealProperties();
+    setDonationFields(deal, donation);
+
+    Deal response = hsClient.deal().update(donation.id, deal);
+    if (response != null) {
+      insertDealAssociation(donation.account.id, donation.contact.id, response.getId());
+    }
   }
 
   @Override
@@ -658,7 +649,13 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    TODO;
+    Deal deal = hsClient.deal().read(id, dealFields);
+
+    if (deal == null) {
+      return Optional.empty();
+    }
+
+    return Optional.of(toCrmRecurringDonation(deal));
   }
 
   @Override
@@ -733,7 +730,7 @@ public class HubSpotCrmService implements CrmService {
     deal.setPipeline(env.getConfig().hubspot.recurringDonationPipeline.id);
     deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.openStageId);
 
-    deal.setClosedate(recurringDonation.closeDate);
+    deal.setClosedate(recurringDonation.startDate);
     deal.setDealname(recurringDonation.donationName);
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, recurringDonation.paymentGatewayName, deal.getOtherProperties());
@@ -1380,7 +1377,7 @@ public class HubSpotCrmService implements CrmService {
         deal.getProperties().getAmount(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties()),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, deal.getProperties().getOtherProperties()),
-        null, // TODO: transactionId, may need otherProperties added to the HS lib?
+        (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, deal.getProperties().getOtherProperties()),
         status,
         deal.getProperties().getClosedate(),
         null, null,

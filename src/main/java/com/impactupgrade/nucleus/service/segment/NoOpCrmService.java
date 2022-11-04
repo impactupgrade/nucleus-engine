@@ -34,6 +34,11 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmAccount> getAccountByName(String name) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
     return Optional.empty();
   }
@@ -99,7 +104,17 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmDonation> getDonationById(String id) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     return Optional.empty();
   }
 
@@ -127,6 +142,16 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
+  public String insertDonation(CrmDonation donation) throws Exception {
+    return null;
+  }
+
+  @Override
+  public void updateDonation(CrmDonation donation) throws Exception {
+
+  }
+
+  @Override
   public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
 
   }
@@ -144,6 +169,16 @@ public class NoOpCrmService implements CrmService {
   @Override
   public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return null;
+  }
+
+  @Override
+  public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+    return null;
+  }
+
+  @Override
+  public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+
   }
 
   @Override

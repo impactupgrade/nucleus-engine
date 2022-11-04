@@ -2,7 +2,7 @@
   "crmPrimary": "hubspot",
 
   "hubspot": {
-    "secretKey": "9e36977c-ceaa-4b44-a772-f07ffa496887",
+    "secretKey": "pat-na1-9a1c6e19-536f-4376-b66b-bf2696aa8b09",
     "portalId": "21069334",
 
     "donationPipeline": {
