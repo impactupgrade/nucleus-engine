@@ -403,10 +403,18 @@ public class TwilioFrontlineController {
           .filter(e -> !Strings.isNullOrEmpty(e.getValue().senderPn))
           .forEach(e -> twilioAddressToUser.add(e.getValue().senderPn, e.getKey()));
       if (!Strings.isNullOrEmpty(projectedAddress) && twilioAddressToUser.containsKey(projectedAddress)) {
-        routeToAssignedWorker(conversationSid, projectedAddress, twilioAddressToUser, env);
+        String identity = getAssignedWorkerIdentity(projectedAddress, twilioAddressToUser, env);
+
+        log.info("routing: adding participant {} to {}", identity, conversationSid);
+        env.twilioClient().createConversationProjectedParticipant(conversationSid, identity, projectedAddress);
+
         return Response.ok().build();
       } else if (!Strings.isNullOrEmpty(proxyAddress) && twilioAddressToUser.containsKey(proxyAddress)) {
-        routeToAssignedWorker(conversationSid, proxyAddress, twilioAddressToUser, env);
+        String identity = getAssignedWorkerIdentity(proxyAddress, twilioAddressToUser, env);
+
+        log.info("routing: adding participant {} to {}", identity, conversationSid);
+        env.twilioClient().createConversationProxyParticipant(conversationSid, identity);
+
         return Response.ok().build();
       }
     }
@@ -435,7 +443,7 @@ public class TwilioFrontlineController {
     return Response.status(422).build();
   }
 
-  protected void routeToAssignedWorker(String conversationSid, String twilioAddress, MultivaluedMap<String, String> twilioAddressToUser, Environment env) {
+  protected String getAssignedWorkerIdentity(String twilioAddress, MultivaluedMap<String, String> twilioAddressToUser, Environment env) {
     List<String> identities = twilioAddressToUser.get(twilioAddress);
     List<String> activeIdentities = identities.stream().filter(i -> {
       try {
@@ -452,17 +460,13 @@ public class TwilioFrontlineController {
       identities = activeIdentities;
     }
 
-    String identity;
     if (identities.size() > 1) {
       // If multiple users explicitly share the same phone number, randomly select.
       Random random = new Random();
-      identity = identities.get(random.nextInt(identities.size()));
+      return identities.get(random.nextInt(identities.size()));
     } else {
-      identity = identities.get(0);
+      return identities.get(0);
     }
-
-    log.info("routing: adding participant {} to {}", identity, conversationSid);
-    env.twilioClient().createConversationProjectedParticipant(conversationSid, identity, twilioAddress);
   }
 
   // TODO: WA templates
