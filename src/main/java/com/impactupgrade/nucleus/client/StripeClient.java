@@ -368,6 +368,9 @@ public class StripeClient {
     subscription.update(subscriptionUpdateParams, requestOptions);
 
     log.info("updated subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+    if (!Strings.isNullOrEmpty(currencyCode)) {
+      log.info("updated subscription currency to {} for subscription {}", currencyCode, subscriptionId);
+    }
   }
 
   public void updateSubscriptionDate(String subscriptionId, Calendar nextPaymentDate) throws StripeException {
@@ -389,7 +392,7 @@ public class StripeClient {
 
     SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
     pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
-    if (pauseUntilDate != null){
+    if (pauseUntilDate != null) {
       pauseBuilder.setResumesAt(pauseUntilDate.getTimeInMillis() / 1000);
     }
 
@@ -461,8 +464,8 @@ public class StripeClient {
 
   public PaymentIntentCreateParams.Builder defaultPaymentIntentBuilder(long amountInCents, String currency) {
     return PaymentIntentCreateParams.builder()
-            .setAmount(amountInCents)
-            .setCurrency(currency);
+        .setAmount(amountInCents)
+        .setCurrency(currency);
   }
 
   public Charge createCharge(ChargeCreateParams.Builder chargeBuilder) throws StripeException {
