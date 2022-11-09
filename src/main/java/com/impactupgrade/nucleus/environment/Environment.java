@@ -19,6 +19,7 @@ import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -143,6 +144,9 @@ public class Environment {
     return crmService(getConfig().crmPrimary);
   }
 
+  public EnrichmentService enrichmentService(){
+    return  segmentService(getConfig().enrichmentService, EnrichmentService.class);
+  }
   public CrmService donationsCrmService() {
     return crmService(getConfig().crmDonations);
   }

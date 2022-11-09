@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.stripe.model.Card;
@@ -104,6 +105,8 @@ public class StripeController {
 
   // Public so that utilities can call this directly.
   public void processEvent(String eventType, StripeObject stripeObject, Environment env) throws Exception {
+    EnrichmentService enrichmentService = env.enrichmentService();
+
     StripePaymentGatewayService stripePaymentGatewayService = (StripePaymentGatewayService) env.paymentGatewayService("stripe");
     if (stripePaymentGatewayService.filter(stripeObject)) {
       log.info("Skipping stripe object...");
@@ -129,9 +132,16 @@ public class StripeController {
         log.info("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
+        if (enrichmentService.eventIsFromPlatform(paymentGatewayEvent)) {
+          for ( PaymentGatewayEvent enrichedEvent : enrichmentService.enrich(paymentGatewayEvent)){
+            env.donationService().createDonation(enrichedEvent);
+            env.accountingService().processTransaction(enrichedEvent);
+          }
+        } else { // going the separate event route here, leads to redundant code though...
+          env.donationService().createDonation(paymentGatewayEvent);
+          env.accountingService().processTransaction(paymentGatewayEvent);
+        }
         env.contactService().processDonor(paymentGatewayEvent);
-        env.donationService().createDonation(paymentGatewayEvent);
-        env.accountingService().processTransaction(paymentGatewayEvent);
       }
       case "charge.failed" -> {
         Charge charge = (Charge) stripeObject;
