@@ -45,6 +45,7 @@ public class EnvironmentConfig {
   public String crmMessaging = "";
 
   public String emailTransactional = "";
+  public String enrichmentService = "";
 
   public static class Platform {
     // if keys
@@ -128,6 +129,8 @@ public class EnvironmentConfig {
     public String smsOptOut = "";
 
     public String contactLanguage = "";
+
+    public String opportunityRecordType = "";
   }
 
   public Bloomerang bloomerang = new Bloomerang();
@@ -259,6 +262,17 @@ public class EnvironmentConfig {
 
   public List<EmailPlatform> mailchimp = new ArrayList<>();
   public List<EmailPlatform> sendgrid = new ArrayList<>();
+
+  public Map<paymentEventType, String> paymentEventTypeIds = new HashMap<>();
+
+  public enum paymentEventType {
+    SALES, DONATION //Make this TAXED,DONATION?
+  }
+  public static class Raisely extends Platform{
+    public String stripeAppId = "";
+  }
+
+  public Raisely raisely= new Raisely();
 
   public Backblaze backblaze = new Backblaze();
 
