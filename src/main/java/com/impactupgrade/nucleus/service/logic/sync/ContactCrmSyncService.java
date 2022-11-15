@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus.util.crmsync;
+package com.impactupgrade.nucleus.service.logic.sync;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -6,9 +6,9 @@ import com.impactupgrade.nucleus.model.CrmContact;
 
 import java.util.Optional;
 
-public class ContactSyncHelper extends SyncHelper<CrmContact> {
+public class ContactCrmSyncService extends CrmSyncService<CrmContact> {
 
-  public ContactSyncHelper(Environment env){
+  public ContactCrmSyncService(Environment env){
     super(env);
   }
 

@@ -1,13 +1,13 @@
-package com.impactupgrade.nucleus.util.crmsync;
+package com.impactupgrade.nucleus.service.logic.sync;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmAccount;
 
 import java.util.Optional;
 
-public class AccountSyncHelper extends SyncHelper<CrmAccount> {
+public class AccountCrmSyncService extends CrmSyncService<CrmAccount> {
 
-  public AccountSyncHelper(Environment env) {
+  public AccountCrmSyncService(Environment env) {
     super(env);
   }
 

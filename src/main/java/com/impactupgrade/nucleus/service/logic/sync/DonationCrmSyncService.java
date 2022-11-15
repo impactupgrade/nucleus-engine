@@ -1,13 +1,13 @@
-package com.impactupgrade.nucleus.util.crmsync;
+package com.impactupgrade.nucleus.service.logic.sync;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmDonation;
 
 import java.util.Optional;
 
-public class DonationSyncHelper extends SyncHelper<CrmDonation> {
+public class DonationCrmSyncService extends CrmSyncService<CrmDonation> {
 
-  public DonationSyncHelper(Environment env) {
+  public DonationCrmSyncService(Environment env) {
     super(env);
   }
 

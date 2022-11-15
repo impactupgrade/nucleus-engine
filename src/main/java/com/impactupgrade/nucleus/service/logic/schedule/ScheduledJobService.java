@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus.service.logic;
+package com.impactupgrade.nucleus.service.logic.schedule;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.dao.HibernateDao;

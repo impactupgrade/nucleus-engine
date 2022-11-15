@@ -16,7 +16,7 @@ import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
-import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
+import com.impactupgrade.nucleus.service.logic.schedule.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailService;

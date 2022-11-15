@@ -17,11 +17,11 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
-import com.impactupgrade.nucleus.util.crmsync.AccountSyncHelper;
-import com.impactupgrade.nucleus.util.crmsync.ContactSyncHelper;
-import com.impactupgrade.nucleus.util.crmsync.DonationSyncHelper;
-import com.impactupgrade.nucleus.util.crmsync.RecurringDonationSyncHelper;
-import com.impactupgrade.nucleus.util.crmsync.SyncHelper;
+import com.impactupgrade.nucleus.service.logic.sync.AccountCrmSyncService;
+import com.impactupgrade.nucleus.service.logic.sync.ContactCrmSyncService;
+import com.impactupgrade.nucleus.service.logic.sync.DonationCrmSyncService;
+import com.impactupgrade.nucleus.service.logic.sync.RecurringDonationCrmSyncService;
+import com.impactupgrade.nucleus.service.logic.sync.CrmSyncService;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -313,20 +314,24 @@ public class CrmController {
           @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
-    SyncHelper syncHelper;
+    CrmSyncService crmSyncService;
+
+    if (recordType != null) {
+      recordType = recordType.trim().toLowerCase(Locale.ROOT);
+    }
 
     switch (recordType) {
-      case "contact" -> syncHelper = new ContactSyncHelper(env);
-      case "account" -> syncHelper = new AccountSyncHelper(env);
-      case "donation" -> syncHelper = new DonationSyncHelper(env);
-      case "recurring_donation" -> syncHelper = new RecurringDonationSyncHelper(env);
+      case "contact" -> crmSyncService = new ContactCrmSyncService(env);
+      case "account" -> crmSyncService = new AccountCrmSyncService(env);
+      case "donation" -> crmSyncService = new DonationCrmSyncService(env);
+      case "recurring_donation" -> crmSyncService = new RecurringDonationCrmSyncService(env);
       default -> {
         log.error("Record update failed, Invalid record type!");
         return Response.serverError().build();
       }
     }
 
-    syncHelper.sync(recordId);
+    crmSyncService.sync(recordId);
 
     return Response.ok().build();
   }

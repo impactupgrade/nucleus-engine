@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus.service.logic;
+package com.impactupgrade.nucleus.service.logic.schedule;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.entity.JobSequenceOrder;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;

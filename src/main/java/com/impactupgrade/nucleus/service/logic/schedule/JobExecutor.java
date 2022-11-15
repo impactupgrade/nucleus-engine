@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus.service.logic;
+package com.impactupgrade.nucleus.service.logic.schedule;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.impactupgrade.nucleus.entity.Job;

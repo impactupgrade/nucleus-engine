@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus.util.crmsync;
+package com.impactupgrade.nucleus.service.logic.sync;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.HasId;
@@ -8,14 +8,14 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Optional;
 
-public abstract class SyncHelper<T extends HasId> {
+public abstract class CrmSyncService<T extends HasId> {
 
-  private static final Logger log = LogManager.getLogger(SyncHelper.class.getName());
+  private static final Logger log = LogManager.getLogger(CrmSyncService.class.getName());
 
   protected final CrmService primaryCrm;
   protected final CrmService secondaryCrm;
 
-  protected SyncHelper(Environment env) {
+  protected CrmSyncService(Environment env) {
     this.primaryCrm = env.primaryCrmService();
     this.secondaryCrm = env.secondaryCrmService();
   }
