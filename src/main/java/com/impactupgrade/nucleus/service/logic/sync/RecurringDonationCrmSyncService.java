@@ -17,8 +17,8 @@ public class RecurringDonationCrmSyncService extends CrmSyncService<CrmRecurring
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getSecondaryRecord(CrmRecurringDonation secondaryCrmRecord) throws Exception {
-    return primaryCrm.getRecurringDonationBySubscriptionId(secondaryCrmRecord.paymentGatewaySubscriptionId);
+  public Optional<CrmRecurringDonation> getSecondaryRecord(CrmRecurringDonation primaryCrmRecord) throws Exception {
+    return primaryCrm.getRecurringDonationBySubscriptionId(primaryCrmRecord.paymentGatewaySubscriptionId);
   }
 
   @Override

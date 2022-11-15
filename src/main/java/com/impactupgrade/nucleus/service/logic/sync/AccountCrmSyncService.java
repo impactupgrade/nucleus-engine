@@ -17,8 +17,9 @@ public class AccountCrmSyncService extends CrmSyncService<CrmAccount> {
   }
 
   @Override
-  public Optional<CrmAccount> getSecondaryRecord(CrmAccount secondaryCrmRecord) throws Exception {
-    return secondaryCrm.getAccountByName(secondaryCrmRecord.name);
+  public Optional<CrmAccount> getSecondaryRecord(CrmAccount primaryCrmRecord) throws Exception {
+    // TODO: Include another field? Concerned about name-only
+    return secondaryCrm.getAccountByName(primaryCrmRecord.name);
   }
 
   @Override

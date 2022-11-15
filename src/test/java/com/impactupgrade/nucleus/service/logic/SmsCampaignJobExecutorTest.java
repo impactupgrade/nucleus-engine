@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.service.logic.schedule.ScheduledJobService;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
 

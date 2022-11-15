@@ -17,8 +17,9 @@ public class DonationCrmSyncService extends CrmSyncService<CrmDonation> {
   }
 
   @Override
-  public Optional<CrmDonation> getSecondaryRecord(CrmDonation secondaryCrmRecord) throws Exception {
-    return secondaryCrm.getDonationByTransactionId(secondaryCrmRecord.paymentGatewayTransactionId);
+  public Optional<CrmDonation> getSecondaryRecord(CrmDonation primaryCrmRecord) throws Exception {
+    // TODO: What about checks?
+    return secondaryCrm.getDonationByTransactionId(primaryCrmRecord.paymentGatewayTransactionId);
   }
 
   @Override

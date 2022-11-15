@@ -1,5 +1,6 @@
 {
   "crmPrimary": "salesforce",
+  "crmSecondary": "hubspot",
 
   "salesforce": {
     "username": "brett@impactupgrade.com",
@@ -48,9 +49,5 @@
       "deal": ["payment_gateway_name","payment_gateway_transaction_id","payment_gateway_customer_id","payment_gateway_subscription_id","recurring_donation_frequency"]
     },
     "defaultSmsOptInList": ""
-  },
-
-  "stripe": {
-    "secretKey": "sk_test_51Imqu3HAwJOu5brrFI1LeFsnRbGSKo01FLQ9tJijlMtTZPXl4XyB2Kidg9qrWqCP6VlDK5EO0YxSXAbPcWZBp7ey00dhw2OuZg"
   }
 }
