@@ -34,6 +34,8 @@ import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerListParams;
 import com.stripe.param.CustomerRetrieveParams;
 import com.stripe.param.CustomerUpdateParams;
+import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentUpdateParams;
 import com.stripe.param.PaymentSourceCollectionCreateParams;
 import com.stripe.param.PayoutListParams;
 import com.stripe.param.PlanCreateParams;
@@ -450,8 +452,27 @@ public class StripeClient {
         .setCurrency(currency);
   }
 
+  public PaymentIntentCreateParams.Builder defaultPaymentIntentBuilder(long amountInCents, String currency) {
+    return PaymentIntentCreateParams.builder()
+            .setAmount(amountInCents)
+            .setCurrency(currency)
+            .setAutomaticPaymentMethods(
+              PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build()
+            );
+  }
+
   public Charge createCharge(ChargeCreateParams.Builder chargeBuilder) throws StripeException {
     return Charge.create(chargeBuilder.build(), requestOptions);
+  }
+
+  public PaymentIntent createPaymentIntent(PaymentIntentCreateParams.Builder paymentIntentBuilder) throws StripeException {
+    PaymentIntent paymentIntent = PaymentIntent.create(paymentIntentBuilder.build(), requestOptions);
+    return paymentIntent;
+  }
+
+  public PaymentIntent updatePaymentIntent(PaymentIntent paymentIntent, PaymentIntentUpdateParams.Builder paymentIntentUpdateBuilder) throws StripeException {
+    PaymentIntent updatedPaymentIntent = paymentIntent.update(paymentIntentUpdateBuilder.build(), requestOptions);
+    return updatedPaymentIntent;
   }
 
   public ProductCreateParams.Builder defaultProductBuilder(Customer customer, long amountInCents, String currency) {
