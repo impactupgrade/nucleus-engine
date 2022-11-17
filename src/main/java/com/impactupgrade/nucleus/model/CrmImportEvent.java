@@ -62,7 +62,9 @@ public class CrmImportEvent {
   private String contactMailingZip;
   private String contactMailingCountry;
   private Boolean contactOptInEmail;
+  private Boolean contactOptOutEmail;
   private Boolean contactOptInSms;
+  private Boolean contactOptOutSms;
   private String contactRecordTypeId;
   private String contactRecordTypeName;
 
@@ -132,7 +134,9 @@ public class CrmImportEvent {
     importEvent.contactMailingZip = data.get("Contact Mailing PostCode");
     importEvent.contactMailingCountry = data.get("Contact Mailing Country");
     importEvent.contactOptInEmail = "yes".equalsIgnoreCase(data.get("Contact Email Opt In")) || "true".equalsIgnoreCase(data.get("Contact Email Opt In")) || "1".equalsIgnoreCase(data.get("Contact Email Opt In"));
+    importEvent.contactOptOutEmail = "no".equalsIgnoreCase(data.get("Contact Email Opt In")) || "false".equalsIgnoreCase(data.get("Contact Email Opt In")) || "0".equalsIgnoreCase(data.get("Contact Email Opt In"));
     importEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "1".equalsIgnoreCase(data.get("Contact SMS Opt In"));
+    importEvent.contactOptOutSms = "no".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "false".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "0".equalsIgnoreCase(data.get("Contact SMS Opt In"));
     importEvent.contactRecordTypeId = data.get("Contact Record Type ID");
     importEvent.contactRecordTypeName = data.get("Contact Record Type Name");
 
@@ -339,8 +343,16 @@ public class CrmImportEvent {
     return contactOptInEmail;
   }
 
+  public Boolean getContactOptOutEmail() {
+    return contactOptOutEmail;
+  }
+
   public Boolean getContactOptInSms() {
     return contactOptInSms;
+  }
+
+  public Boolean getContactOptOutSms() {
+    return contactOptOutSms;
   }
 
   public String getContactRecordTypeId() {

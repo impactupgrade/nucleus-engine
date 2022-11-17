@@ -1015,9 +1015,17 @@ public class SfdcCrmService implements CrmService {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
     }
+    if (importEvent.getContactOptOutEmail() != null && importEvent.getContactOptOutEmail()) {
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
+    }
     if (importEvent.getContactOptInSms() != null && importEvent.getContactOptInSms()) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, false);
+    }
+    if (importEvent.getContactOptOutSms() != null && importEvent.getContactOptOutSms()) {
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
 
     contact.setField("OwnerId", importEvent.getOwnerId());
@@ -1078,6 +1086,10 @@ public class SfdcCrmService implements CrmService {
 
     if (c != null) {
       return c;
+    } else if ("true".equalsIgnoreCase(value)) {
+      return true;
+    } else if ("false".equalsIgnoreCase(value)) {
+      return false;
     } else {
       return value;
     }
