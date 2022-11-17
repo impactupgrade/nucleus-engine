@@ -127,12 +127,14 @@ public class DonationService {
       targetId = recurringDonation.get().contact.id;
     }
 
-    notificationservice.sendNotification(
-        "Recurring Donation Closed",
-        "Recurring donation " + recurringDonation.get().id + " has been closed.",
-        targetId,
-        "donations:close-recurring-donation"
-    );
+    if (!"draft-incomplete-cancelled".equalsIgnoreCase(paymentGatewayEvent.getAllMetadata().get("status"))) {
+      notificationservice.sendNotification(
+          "Recurring Donation Closed",
+          "Recurring donation " + recurringDonation.get().id + " has been closed.",
+          targetId,
+          "donations:close-recurring-donation"
+      );
+    }
   }
 
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
