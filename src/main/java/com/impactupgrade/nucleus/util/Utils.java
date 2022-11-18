@@ -54,13 +54,13 @@ public class Utils {
 
   public static String[] fullNameToFirstLast(String fullName) {
     String[] split = fullName.split("\s+");
-    String firstName = split[0];
-    String lastName = null;
+    String firstName = null;
+    String lastName = split[split.length - 1];
     // Some donors are using a single-word business name in the individual name field, so this won't exist.
     if (split.length > 1) {
-      // But we might also have some multi-word last names. So, catch them all. Rather than dealing with an array
-      // slice, simply remove the first name, then trim leading whitespace.
-      lastName = fullName.replace(firstName, "").trim();
+      // But we might also have some multi-word first names (or family first names in a list). So, catch them all.
+      // Rather than dealing with an array slice, simply remove the last name, then trim whitespace.
+      firstName = fullName.replace(lastName, "").trim();
     }
     return new String[]{firstName, lastName};
   }

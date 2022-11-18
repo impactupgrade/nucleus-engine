@@ -22,13 +22,13 @@ public class PaymentGatewayEventMockTest extends AbstractMockTest {
     {
       PaymentGatewayEvent event = new PaymentGatewayEvent(env);
       Customer customer = new Customer();
-      customer.setName("Brett Meyer The First");
+      customer.setName("Brett The Dork Meyer");
       customer.setMetadata(Collections.emptyMap());
       event.initStripeCustomerName(Optional.of(customer), Optional.empty());
 
-      assertEquals("Brett Meyer The First", event.getCrmAccount().name);
-      assertEquals("Brett", event.crmContact.firstName);
-      assertEquals("Meyer The First", event.crmContact.lastName);
+      assertEquals("Brett The Dork Meyer", event.getCrmAccount().name);
+      assertEquals("Brett The Dork", event.crmContact.firstName);
+      assertEquals("Meyer", event.crmContact.lastName);
     }
   }
 }

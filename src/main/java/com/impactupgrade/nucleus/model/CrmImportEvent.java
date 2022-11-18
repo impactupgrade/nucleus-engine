@@ -6,7 +6,6 @@ package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.util.CaseInsensitiveMap;
 import org.apache.logging.log4j.LogManager;
@@ -23,77 +22,77 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.impactupgrade.nucleus.util.Utils.fullNameToFirstLast;
+
 public class CrmImportEvent {
 
   private static final Logger log = LogManager.getLogger(CrmImportEvent.class.getName());
 
-  protected final Environment env;
-
   // Be case-insensitive, for sources that aren't always consistent.
-  private final CaseInsensitiveMap<String> raw;
+  public CaseInsensitiveMap<String> raw = new CaseInsensitiveMap<>();
 
   // For updates only, used for retrieval.
-  private String accountId;
-  private String contactId;
-  private String opportunityId;
+  public String accountId;
+  public String contactId;
+  public String opportunityId;
 
   // Can also be used for update retrieval, as well as inserts.
-  private String contactEmail;
+  public String contactEmail;
   
-  private String ownerId;
+  public String ownerId;
 
-  private String accountBillingStreet;
-  private String accountBillingCity;
-  private String accountBillingState;
-  private String accountBillingZip;
-  private String accountBillingCountry;
-  private String accountRecordTypeId;
-  private String accountRecordTypeName;
+  public String accountBillingStreet;
+  public String accountBillingCity;
+  public String accountBillingState;
+  public String accountBillingZip;
+  public String accountBillingCountry;
+  public String accountRecordTypeId;
+  public String accountRecordTypeName;
 
-  private String contactCampaignId;
-  private String contactCampaignName;
-  private String contactFirstName;
-  private String contactHomePhone;
-  private String contactLastName;
-  private String contactMobilePhone;
-  private String contactMailingStreet;
-  private String contactMailingCity;
-  private String contactMailingState;
-  private String contactMailingZip;
-  private String contactMailingCountry;
-  private Boolean contactOptInEmail;
-  private Boolean contactOptOutEmail;
-  private Boolean contactOptInSms;
-  private Boolean contactOptOutSms;
-  private String contactRecordTypeId;
-  private String contactRecordTypeName;
+  public String contactCampaignId;
+  public String contactCampaignName;
+  public String contactFirstName;
+  public String contactFullName;
+  public String contactHomePhone;
+  public String contactLastName;
+  public String contactMobilePhone;
+  public String contactMailingStreet;
+  public String contactMailingCity;
+  public String contactMailingState;
+  public String contactMailingZip;
+  public String contactMailingCountry;
+  public Boolean contactOptInEmail;
+  public Boolean contactOptOutEmail;
+  public Boolean contactOptInSms;
+  public Boolean contactOptOutSms;
+  public String contactRecordTypeId;
+  public String contactRecordTypeName;
 
-  private BigDecimal opportunityAmount;
-  private String opportunityCampaignId;
-  private String opportunityCampaignName;
-  private Calendar opportunityDate;
-  private String opportunityDescription;
-  private String opportunityName;
-  private String opportunityRecordTypeId;
-  private String opportunityRecordTypeName;
-  private String opportunitySource;
-  private String opportunityStageName;
-  private String opportunityTerminal;
+  public BigDecimal opportunityAmount;
+  public String opportunityCampaignId;
+  public String opportunityCampaignName;
+  public Calendar opportunityDate;
+  public String opportunityDescription;
+  public String opportunityName;
+  public String opportunityRecordTypeId;
+  public String opportunityRecordTypeName;
+  public String opportunitySource;
+  public String opportunityStageName;
+  public String opportunityTerminal;
 
-  public CrmImportEvent(CaseInsensitiveMap<String> raw, Environment env) {
-    this.raw = raw;
-    this.env = env;
+  // TODO: Add this to the Portal task. But for now, defaulting it to false out of caution.
+  public Boolean opportunitySkipDuplicateCheck = false;
+
+  public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data) {
+    return data.stream().map(CrmImportEvent::fromGeneric).collect(Collectors.toList());
   }
 
-  public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data, Environment env) {
-    return data.stream().map(d -> fromGeneric(d, env)).collect(Collectors.toList());
-  }
-
-  public static CrmImportEvent fromGeneric(Map<String, String> _data, Environment env) {
+  public static CrmImportEvent fromGeneric(Map<String, String> _data) {
     // Be case-insensitive, for sources that aren't always consistent.
     CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
 
-    CrmImportEvent importEvent = new CrmImportEvent(data, env);
+    CrmImportEvent importEvent = new CrmImportEvent();
+    importEvent.raw = data;
 
     importEvent.accountId = data.get("Account ID");
     importEvent.contactId = data.get("Contact ID");
@@ -119,11 +118,18 @@ public class CrmImportEvent {
     importEvent.accountRecordTypeId = data.get("Account Record Type ID");
     importEvent.accountRecordTypeName = data.get("Account Record Type Name");
 
+    importEvent.contactFirstName = data.get("Contact First Name");
+    importEvent.contactLastName = data.get("Contact Last Name");
+    importEvent.contactFullName = data.get("Contact Full Name");
+    if (Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactFullName)) {
+      String[] split = fullNameToFirstLast(importEvent.contactFullName);
+      importEvent.contactFirstName = split[0];
+      importEvent.contactLastName = split[1];
+    }
+
     importEvent.contactCampaignId = data.get("Contact Campaign ID");
     importEvent.contactCampaignName = data.get("Contact Campaign Name");
-    importEvent.contactFirstName = data.get("Contact First Name");
     importEvent.contactHomePhone = data.get("Contact Home Phone");
-    importEvent.contactLastName = data.get("Contact Last Name");
     importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
     importEvent.contactMailingStreet = data.get("Contact Mailing Address");
     if (!Strings.isNullOrEmpty(data.get("Contact Mailing Address 2"))) {
@@ -141,17 +147,24 @@ public class CrmImportEvent {
     importEvent.contactRecordTypeName = data.get("Contact Record Type Name");
 
     // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
-    importEvent.opportunityDate = Calendar.getInstance();
     try {
       if (data.containsKey("Opportunity Date dd/mm/yyyy")) {
+        importEvent.opportunityDate = Calendar.getInstance();
         importEvent.opportunityDate.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get("Opportunity Date dd/mm/yyyy")));
       } else if (data.containsKey("Opportunity Date dd-mm-yyyy")) {
+        importEvent.opportunityDate = Calendar.getInstance();
         importEvent.opportunityDate.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(data.get("Opportunity Date dd-mm-yyyy")));
       } else if (data.containsKey("Opportunity Date mm/dd/yyyy")) {
+        importEvent.opportunityDate = Calendar.getInstance();
         importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get("Opportunity Date mm/dd/yyyy")));
+      } else if (data.containsKey("Opportunity Date mm/dd/yy")) {
+        importEvent.opportunityDate = Calendar.getInstance();
+        importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yy").parse(data.get("Opportunity Date mm/dd/yy")));
       } else if (data.containsKey("Opportunity Date mm-dd-yyyy")) {
+        importEvent.opportunityDate = Calendar.getInstance();
         importEvent.opportunityDate.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(data.get("Opportunity Date mm-dd-yyyy")));
       } else if (data.containsKey("Opportunity Date yyyy-mm-dd")) {
+        importEvent.opportunityDate = Calendar.getInstance();
         importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Opportunity Date yyyy-mm-dd")));
       }
     } catch (ParseException e) {
@@ -171,17 +184,18 @@ public class CrmImportEvent {
     return importEvent;
   }
 
-  public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data, Environment env) {
-    return data.stream().map(d -> fromFBFundraiser(d, env)).collect(Collectors.toList());
+  public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
+    return data.stream().map(CrmImportEvent::fromFBFundraiser).collect(Collectors.toList());
   }
 
-  public static CrmImportEvent fromFBFundraiser(Map<String, String> _data, Environment env) {
+  public static CrmImportEvent fromFBFundraiser(Map<String, String> _data) {
     // Be case-insensitive, for sources that aren't always consistent.
     CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
 
 //  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
-      CrmImportEvent importEvent = new CrmImportEvent(data, env);
+      CrmImportEvent importEvent = new CrmImportEvent();
+      importEvent.raw = data;
 
 //    TODO: support for initial amount, any fees, and net amount
 //    importEvent. = data.get("Donation Amount");
@@ -241,169 +255,5 @@ public class CrmImportEvent {
     }
     return new BigDecimal(data.get(columnName).replace("$", "").replace(",", "")
         .trim()).setScale(2, RoundingMode.CEILING);
-  }
-
-  public CaseInsensitiveMap<String> getRaw() {
-    return raw;
-  }
-
-  public String getAccountId() {
-    return accountId;
-  }
-
-  public String getContactId() {
-    return contactId;
-  }
-
-  public String getOpportunityId() {
-    return opportunityId;
-  }
-
-  public String getContactEmail() {
-    return contactEmail;
-  }
-
-  public String getOwnerId() {
-    return ownerId;
-  }
-
-  public String getAccountBillingStreet() {
-    return accountBillingStreet;
-  }
-
-  public String getAccountBillingCity() {
-    return accountBillingCity;
-  }
-
-  public String getAccountBillingState() {
-    return accountBillingState;
-  }
-
-  public String getAccountBillingZip() {
-    return accountBillingZip;
-  }
-
-  public String getAccountBillingCountry() {
-    return accountBillingCountry;
-  }
-
-  public String getAccountRecordTypeId() {
-    return accountRecordTypeId;
-  }
-
-  public String getAccountRecordTypeName() {
-    return accountRecordTypeName;
-  }
-
-  public String getContactCampaignId() {
-    return contactCampaignId;
-  }
-
-  public String getContactCampaignName() {
-    return contactCampaignName;
-  }
-
-  public String getContactFirstName() {
-    return contactFirstName;
-  }
-
-  public String getContactHomePhone() {
-    return contactHomePhone;
-  }
-
-  public String getContactLastName() {
-    return contactLastName;
-  }
-
-  public String getContactMobilePhone() {
-    return contactMobilePhone;
-  }
-
-  public String getContactMailingStreet() {
-    return contactMailingStreet;
-  }
-
-  public String getContactMailingCity() {
-    return contactMailingCity;
-  }
-
-  public String getContactMailingState() {
-    return contactMailingState;
-  }
-
-  public String getContactMailingZip() {
-    return contactMailingZip;
-  }
-
-  public String getContactMailingCountry() {
-    return contactMailingCountry;
-  }
-
-  public Boolean getContactOptInEmail() {
-    return contactOptInEmail;
-  }
-
-  public Boolean getContactOptOutEmail() {
-    return contactOptOutEmail;
-  }
-
-  public Boolean getContactOptInSms() {
-    return contactOptInSms;
-  }
-
-  public Boolean getContactOptOutSms() {
-    return contactOptOutSms;
-  }
-
-  public String getContactRecordTypeId() {
-    return contactRecordTypeId;
-  }
-
-  public String getContactRecordTypeName() {
-    return contactRecordTypeName;
-  }
-
-  public BigDecimal getOpportunityAmount() {
-    return opportunityAmount;
-  }
-
-  public String getOpportunityCampaignId() {
-    return opportunityCampaignId;
-  }
-
-  public String getOpportunityCampaignName() {
-    return opportunityCampaignName;
-  }
-
-  public Calendar getOpportunityDate() {
-    return opportunityDate;
-  }
-
-  public String getOpportunityDescription() {
-    return opportunityDescription;
-  }
-
-  public String getOpportunityName() {
-    return opportunityName;
-  }
-
-  public String getOpportunityRecordTypeId() {
-    return opportunityRecordTypeId;
-  }
-
-  public String getOpportunityRecordTypeName() {
-    return opportunityRecordTypeName;
-  }
-
-  public String getOpportunitySource() {
-    return opportunitySource;
-  }
-
-  public String getOpportunityStageName() {
-    return opportunityStageName;
-  }
-
-  public String getOpportunityTerminal() {
-    return opportunityTerminal;
   }
 }
