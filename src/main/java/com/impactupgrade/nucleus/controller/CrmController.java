@@ -131,7 +131,7 @@ public class CrmController {
       data.add(csvRecord.toMap());
     }
 
-    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
     Runnable thread = () -> {
       try {
@@ -159,7 +159,7 @@ public class CrmController {
     gsheetUrl = noWhitespace(gsheetUrl);
 
     List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data, env);
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
     Runnable thread = () -> {
       try {
@@ -199,7 +199,7 @@ public class CrmController {
       data.add(csvRecord.toMap());
     }
 
-    List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data, env);
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
 
     Runnable thread = () -> {
       try {

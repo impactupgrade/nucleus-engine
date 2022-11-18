@@ -601,6 +601,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryListAutoPaged(query);
   }
 
+  public List<SObject> searchDonations(String accountId, String contactId, Calendar date, double amount) throws ConnectionException, InterruptedException {
+    String accountClause = Strings.isNullOrEmpty(accountId) ? "" : "accountid='" + accountId + "' AND ";
+    String contactClause = Strings.isNullOrEmpty(contactId) ? "" : "contactid='" + contactId + "' AND ";
+
+    String dateString = new SimpleDateFormat("yyyy-MM-dd").format(date.getTime());
+
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + accountClause + contactClause + "closedate=" + dateString + " and amount=" + amount;
+    return queryListAutoPaged(query);
+  }
+
   public List<SObject> getFailingDonationsLastMonthByAccountId(String accountId) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where stageName = 'Failed Attempt' AND CloseDate = LAST_MONTH AND AccountId = '" + accountId + "'";
     return queryList(query);
