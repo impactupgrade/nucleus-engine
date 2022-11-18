@@ -311,6 +311,8 @@ public class EnvironmentConfig {
 
   public Xero xero = new Xero();
 
+  public Platform facts = new Platform();
+
   public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys {
