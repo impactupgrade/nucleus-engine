@@ -54,6 +54,9 @@ public class SharePointCrmService implements CrmService {
     // For complex rules, like filters based on directories/files, we need to know the origin and prevent flattening.
     // TODO: If this gets worse, wrap it in a class...
     protected static LoadingCache<String, Map<String, List<Map<String, String>>>> sharepointCsvCache;
+    // But since this is a heavy lift, allow Nucleus to be run in a mode that is NOT holding the cache. Useful
+    // to split up the instances.
+    protected static final boolean DISABLE_SHAREPOINT_CACHE = "true".equalsIgnoreCase(System.getenv("DISABLE_SHAREPOINT_CACHE"));
 
     protected Environment env;
     protected MSGraphClient msGraphClient;
@@ -72,21 +75,23 @@ public class SharePointCrmService implements CrmService {
     public void init(Environment env) {
         this.env = env;
         msGraphClient = new MSGraphClient(env.getConfig().sharePoint);
-        if (sharepointCsvCache == null) {
+        if (sharepointCsvCache == null && !DISABLE_SHAREPOINT_CACHE) {
             sharepointCsvCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(5, TimeUnit.MINUTES)
                 .build(new CacheLoader<>() {
                     @Override
-                    public Map<String, List<Map<String, String>>> load(String cacheKey) throws IOException {
+                    public Map<String, List<Map<String, String>>> load(String cacheKey) {
                         return downloadCsvDataMap();
                     }
                 });
             // warm the cache
-            getCsvDataMap();
+            if (!DISABLE_SHAREPOINT_CACHE) {
+                getCsvDataMap();
+            }
         }
     }
 
-    protected Map<String, List<Map<String, String>>> downloadCsvDataMap() throws IOException {
+    protected Map<String, List<Map<String, String>>> downloadCsvDataMap() {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
         String siteId = sharepoint.siteId;
 
@@ -101,7 +106,7 @@ public class SharePointCrmService implements CrmService {
         return dataMap;
     }
 
-    protected List<Map<String, String>> downloadCsvData(String siteId, String filePath) throws IOException {
+    protected List<Map<String, String>> downloadCsvData(String siteId, String filePath) {
         List<Map<String, String>> csvData = new ArrayList<>();
 
         try (InputStream inputStream = msGraphClient.getSiteDriveItemByPath(siteId, filePath)) {
@@ -112,12 +117,18 @@ public class SharePointCrmService implements CrmService {
             } else {
                 throw new RuntimeException("unexpected file extension for filePath " + filePath);
             }
+        } catch (IOException e) {
+            log.error("unable to download CSV data for {} {}", siteId, filePath, e);
         }
 
         return csvData;
     }
 
     protected Map<String, List<Map<String, String>>> getCsvDataMap() {
+        if (DISABLE_SHAREPOINT_CACHE) {
+            return downloadCsvDataMap();
+        }
+
         return sharepointCsvCache.getUnchecked(CACHE_KEY);
     }
 
