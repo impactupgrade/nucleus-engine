@@ -346,14 +346,18 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   }
 
   public PaymentGatewayEvent paymentIntentToPaymentGatewayEvent(PaymentIntent paymentIntent, boolean fullObjects) throws StripeException {
+    // TODO: 2022 versions of the Stripe API introduced breaking changes to paymentIntent.getCharges(). Until we upgrade
+    // all clients' webhooks (or introduce version-specific dependencies and code), we'll instead retrieve
+    // the full intent using our own version.
+    paymentIntent = stripeClient.getPaymentIntent(paymentIntent.getId());
+
     Optional<BalanceTransaction> chargeBalanceTransaction = Optional.empty();
-    if (paymentIntent.getCharges() != null && !paymentIntent.getCharges().getData().isEmpty()) {
-      if (paymentIntent.getCharges().getData().size() == 1) {
-        String balanceTransactionId = paymentIntent.getCharges().getData().get(0).getBalanceTransaction();
-        if (fullObjects && !Strings.isNullOrEmpty(balanceTransactionId)) {
-          chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(balanceTransactionId));
-          log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
-        }
+    // TODO: Does latest_charge need expanded?
+    if (paymentIntent.getLatestChargeObject() != null) {
+      String balanceTransactionId = paymentIntent.getLatestChargeObject().getBalanceTransaction();
+      if (fullObjects && !Strings.isNullOrEmpty(balanceTransactionId)) {
+        chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(balanceTransactionId));
+        log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
       }
     }
 

@@ -169,6 +169,9 @@ public class StripeController {
         paymentGatewayEvent.initStripe(refund);
         env.donationService().refundDonation(paymentGatewayEvent);
       }
+      case "charge.updated" -> {
+
+      }
       case "customer.subscription.created" -> {
         Subscription subscription = (Subscription) stripeObject;
         log.info("found subscription {}", subscription.getId());

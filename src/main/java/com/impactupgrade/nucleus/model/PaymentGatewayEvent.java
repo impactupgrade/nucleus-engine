@@ -13,7 +13,6 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
-import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
@@ -163,7 +162,7 @@ public class PaymentGatewayEvent {
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     gatewayName = "Stripe";
-    String stripePaymentMethod = stripePaymentIntent.getCharges().getData().stream().findFirst().map(c -> c.getPaymentMethodDetails().getType()).orElse("");
+    String stripePaymentMethod = stripePaymentIntent.getLatestChargeObject().getPaymentMethodDetails().getType();
     if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
       paymentMethod = "ACH";
     } else {
@@ -193,7 +192,7 @@ public class PaymentGatewayEvent {
 
     transactionDescription = stripePaymentIntent.getDescription();
     transactionId = stripePaymentIntent.getId();
-    transactionSecondaryId = stripePaymentIntent.getCharges().getData().stream().findFirst().map(Charge::getId).orElse(null);
+    transactionSecondaryId = stripePaymentIntent.getLatestCharge();
     // note this is different than a charge, which uses !"failed" -- intents have multiple phases of "didn't work",
     // so explicitly search for succeeded
     transactionSuccess = "succeeded".equalsIgnoreCase(stripePaymentIntent.getStatus());
@@ -260,7 +259,7 @@ public class PaymentGatewayEvent {
     initStripeCustomer(Optional.of(stripeCustomer), Optional.empty());
   }
 
-  protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
+  protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<Charge.BillingDetails> billingDetails) {
     Map<String, String> metadata = getAllMetadata();
 
     if (__stripeCustomer.isPresent()) {
@@ -294,7 +293,7 @@ public class PaymentGatewayEvent {
   // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
   // Some donation forms and vendors use true Customer names, others use metadata on Customer, other still only put
   // names in metadata on the Charge or Subscription. Madness. But let's be helpful...
-  protected void initStripeCustomerName(Optional<Customer> stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
+  protected void initStripeCustomerName(Optional<Customer> stripeCustomer, Optional<Charge.BillingDetails> billingDetails) {
     Map<String, String> metadata = getAllMetadata();
 
     // For the full name, start with Customer name. Generally this is populated, but a few vendors don't always do it.
@@ -371,7 +370,7 @@ public class PaymentGatewayEvent {
     }
   }
 
-  protected void initStripeAddress(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
+  protected void initStripeAddress(Optional<Customer> __stripeCustomer, Optional<Charge.BillingDetails> billingDetails) {
     CrmAddress crmAddress = new CrmAddress();
 
     if (__stripeCustomer.isPresent()) {
