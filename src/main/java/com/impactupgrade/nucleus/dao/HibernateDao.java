@@ -88,10 +88,16 @@ public class HibernateDao<I extends Serializable, E> {
   }
 
   public List<E> getQueryResultList(String queryString, Consumer<Query> queryConsumer) {
+    return getQueryResultList(queryString, queryConsumer, entities -> {});
+  }
+
+  public List<E> getQueryResultList(String queryString, Consumer<Query> queryConsumer, Consumer<List<E>> subselectConsumer) {
     final Session session = openSession();
     Query query = session.createQuery(queryString, clazz);
     queryConsumer.accept(query);
     List<E> entities = query.getResultList();
+    // A little ridiculous, but this gives callers the opportunity to initialize any lazy collections using FetchMode.SUBSELECT.
+    subselectConsumer.accept(entities);
     session.close();
     return entities;
   }

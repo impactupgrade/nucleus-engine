@@ -38,6 +38,12 @@ public class ScheduledJobService {
         query -> {
           query.setParameter("now", now, TemporalType.TIMESTAMP);
           query.setParameter("nucleusApiKey", env.getConfig().apiKey);
+        },
+        entities -> {
+          if (!entities.isEmpty()) {
+            // initialize the jobProgresses subselect
+            entities.get(0).jobProgresses.size();
+          }
         }
     );
 
