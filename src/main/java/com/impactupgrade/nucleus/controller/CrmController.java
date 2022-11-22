@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.FactsClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -17,6 +18,7 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -40,6 +42,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -299,4 +302,47 @@ public class CrmController {
     return Response.ok(insertedFields).build();
   }
 
+  //TODO: remove once done with testing
+  @Path("/facts")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response provisionFields(
+      //@FormParam("fromDate") String fromDate,
+      //@FormParam("toDate") String toDate,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    FactsClient factsClient = new FactsClient(env);
+
+    LocalDateTime to = LocalDateTime.now();
+    LocalDateTime from = to.minusDays(2);
+
+    List<FactsClient.Person> people = factsClient.findPeopleModifiedBetween(from, to);
+
+    if (CollectionUtils.isNotEmpty(people)) {
+      FactsClient.Person p1 = people.get(0);
+
+      log.info("person: {}", p1);
+
+      FactsClient.Address address = factsClient.getAddress(p1.addressID);
+
+      log.info("address: {}", address);
+
+      FactsClient.PersonFamily pf1 = factsClient.getPersonFamily(p1.personId);
+
+      log.info("person-family: {}", pf1);
+
+      List<FactsClient.PersonFamily> family = factsClient.getPersonFamilies(pf1.familyId);
+
+      log.info("family: {}", family);
+
+      List<FactsClient.Person> parents = factsClient.getParents(p1.personId);
+
+      log.info("parents: {}", parents);
+    }
+
+
+    return Response.ok(people).build();
+  }
 }
