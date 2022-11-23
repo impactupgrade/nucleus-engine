@@ -452,12 +452,23 @@ public class SfdcCrmService implements CrmService {
     SObject opportunity = new SObject("Opportunity");
 
     opportunity.setField("AccountId", paymentGatewayEvent.getCrmAccount().id);
-    // TODO: Shouldn't this be doing ContactId?
     opportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
 
     setOpportunityFields(opportunity, campaign, paymentGatewayEvent);
 
-    return sfdcClient.insert(opportunity).getId();
+    String oppId = sfdcClient.insert(opportunity).getId();
+
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+      SObject contactRole = new SObject("OpportunityContactRole");
+      contactRole.setField("OpportunityId", oppId);
+      contactRole.setField("ContactId", paymentGatewayEvent.getCrmContact().id);
+      contactRole.setField("IsPrimary", true);
+      // TODO: Not present by default at all orgs.
+//      contactRole.setField("Role", "Donor");
+      sfdcClient.insert(contactRole);
+    }
+
+    return oppId;
   }
 
   protected void setOpportunityFields(SObject opportunity, Optional<SObject> campaign, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
