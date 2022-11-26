@@ -22,5 +22,5 @@ public interface PaymentGatewayService extends SegmentService {
   void verifyAndReplayDeposits(Date startDate, Date endDate);
 
   void updateSubscription(ManageDonationEvent manageDonationEvent) throws Exception;
-  void closeSubscription(ManageDonationEvent manageDonationEvent) throws Exception;
+  void closeSubscription(String subscriptionId) throws Exception;
 }

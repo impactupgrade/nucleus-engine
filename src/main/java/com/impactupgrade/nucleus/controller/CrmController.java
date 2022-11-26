@@ -230,7 +230,7 @@ public class CrmController {
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response donorRecurringDonations(
+  public Response searchRecurringDonations(
       @FormParam("name") String name,
       @FormParam("email") String email,
       @FormParam("phone") String phone,

@@ -11,7 +11,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.util.Utils;
@@ -148,7 +148,6 @@ public class TwilioController {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
         from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, _listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
     Environment env = envFactory.init(request);
-    OpportunityEvent opportunityEvent = new OpportunityEvent(env);
 
     _firstName = trim(_firstName);
     _lastName = trim(_lastName);
@@ -176,8 +175,7 @@ public class TwilioController {
 
     Runnable thread = () -> {
       try {
-        env.messagingService().processSignup(
-            opportunityEvent,
+        CrmContact crmContact = env.messagingService().processSignup(
             from,
             firstName,
             lastName,
@@ -190,13 +188,16 @@ public class TwilioController {
         );
 
         // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
+        CrmOpportunity crmOpportunity = new CrmOpportunity();
+        crmOpportunity.contact = crmContact;
+
         if (!Strings.isNullOrEmpty(opportunityName)) {
-          opportunityEvent.setName(opportunityName);
-          opportunityEvent.setRecordTypeId(opportunityRecordTypeId);
-          opportunityEvent.setOwnerId(opportunityOwnerId);
-          opportunityEvent.setCampaignId(campaignId);
-          opportunityEvent.setNotes(opportunityNotes);
-          env.messagingCrmService().insertOpportunity(opportunityEvent);
+          crmOpportunity.name = opportunityName;
+          crmOpportunity.recordTypeId = opportunityRecordTypeId;
+          crmOpportunity.ownerId = opportunityOwnerId;
+          crmOpportunity.campaignId = campaignId;
+          crmOpportunity.notes = opportunityNotes;
+          env.messagingCrmService().insertOpportunity(crmOpportunity);
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);

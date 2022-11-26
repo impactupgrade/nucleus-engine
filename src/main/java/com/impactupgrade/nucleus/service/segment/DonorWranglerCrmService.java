@@ -102,7 +102,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO
   }
 

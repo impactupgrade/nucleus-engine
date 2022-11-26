@@ -12,11 +12,11 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
@@ -98,8 +98,8 @@ public interface CrmService extends SegmentService {
   }
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
   List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception;
-  List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
   List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DONATION EVENTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,45 +150,24 @@ public interface CrmService extends SegmentService {
 
     return getDonationsByTransactionIds(transactionIds.stream().toList());
   }
+  String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
   String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
-  void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
   void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception;
+  Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
   default Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     return getRecurringDonationBySubscriptionId(paymentGatewayEvent.getSubscriptionId());
   }
   String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
-  void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+  // Provide the full CRM model in case additional context is needed (close reasons, etc.)
+  void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // RECURRING DONATION MANAGEMENT EVENTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
   void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
-  void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // NON-DONATION OPPORTUNITY EVENTS
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // We allow custom impls, but most orgs only insert the CrmContact, so do that as a default.
-  default String insertContact(OpportunityEvent opportunityEvent) throws Exception {
-    return insertContact(opportunityEvent.getCrmContact());
-  }
-  // We allow custom impls, but most orgs only insert the CrmContact, so do that as a default.
-  default void updateContact(OpportunityEvent opportunityEvent) throws Exception {
-    updateContact(opportunityEvent.getCrmContact());
-  }
-  String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // DONOR PORTAL
-  // TODO: Hoping we can genericize these (or move them to DP-specific projects)
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // TODO: potentially a performance issue for long-term donors
-  List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // EMAIL SYNC
