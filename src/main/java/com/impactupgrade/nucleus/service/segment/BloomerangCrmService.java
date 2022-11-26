@@ -20,11 +20,11 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.HttpClient;
@@ -129,17 +129,11 @@ public class BloomerangCrmService implements CrmService {
     return PagedResults.getPagedResultsFromCurrentOffset(crmContacts, contactSearch);
   }
 
-  @Override
-  public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
-    // Doesn't appear possible? But I believe this was mainly for Donor Portal.
-    return Collections.emptyList();
-  }
-
   // TODO: Similar issue as getRecurringDonationBySubscriptionId.
   //  Try this and refactor upstream to remove the need for getDonationByTransactionId?
   @Override
   public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-    // Retrieving donations by Stripe IDs are not possible.
+    // Retrieving donations by Stripe IDs are not possible without the full PaymentGatewayEvent.
     return Optional.empty();
   }
 
@@ -162,7 +156,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
   }
 
@@ -426,31 +420,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
-    ContactSearch contactSearch = new ContactSearch();
-    contactSearch.email = email.orElse(null);
-    contactSearch.phone = phone.orElse(null);
-    contactSearch.keywords = name.orElse(null);
-    // TODO: page them?
-    PagedResults<CrmContact> contacts = searchContacts(contactSearch);
-
-    List<CrmRecurringDonation> rds = new ArrayList<>();
-    for (CrmContact contact : contacts.getResults()) {
-      rds.addAll(
-          get(
-              BLOOMERANG_URL + "transactions?type=RecurringDonation&accountId=" + contact.id + "&orderBy=Date&orderDirection=Desc",
-              headers(),
-              DonationResults.class
-          ).results.stream()
-              .map(rd -> toCrmRecurringDonation(rd, contact))
-              .filter(rd -> rd.active)
-              .collect(Collectors.toList())
-      );
-    }
-
-    return rds;
-  }
-  @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception{
     ContactSearch contactSearch = new ContactSearch();
     contactSearch.email = email.orElse(null);
@@ -479,39 +448,23 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<Donation> rd = getDonation(
-        paymentGatewayEvent,
-        List.of("RecurringDonation"),
-        env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId,
-        List.of(paymentGatewayEvent.getSubscriptionId())
-    );
-
-    if (rd.isPresent()) {
-      closeRecurringDonation(rd.get());
-    } else {
-      log.warn("could not find RecurringDonation for subscription {}", paymentGatewayEvent.getSubscriptionId());
-    }
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Donation recurringDonation = getDonation(manageDonationEvent.getDonationId());
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    Donation recurringDonation = getDonation(id);
     return Optional.ofNullable(toCrmRecurringDonation(recurringDonation));
   }
 
   @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
     // TODO: We need a refactor. Upstream (DonationService), we're already retrieving this once to confirm the RD's
-    //  existence. But here we need it again in order to get the designations. Maybe we need to introduce the raw object
-    //  as a field in ManageDonationEvent?
-    Donation recurringDonation = getDonation(manageDonationEvent.getDonationId());
+    //  existence. But here we need it again in order to get the designations. Can we trust crmRecurringDonation.raw?
+    Donation recurringDonation = getDonation(crmRecurringDonation.id);
 
-    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
-      recurringDonation.amount = manageDonationEvent.getAmount();
+    if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
+      recurringDonation.amount = crmRecurringDonation.amount;
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus))
-          .forEach(rd -> rd.amount = manageDonationEvent.getAmount());
-      log.info("Updating amount to {}...", manageDonationEvent.getAmount());
+          .forEach(rd -> rd.amount = crmRecurringDonation.amount);
+      log.info("Updating amount to {}...", crmRecurringDonation.amount);
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
       // TODO: RecurringDonationNextInstallmentDate
@@ -538,14 +491,14 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO: Avoid the double hit? DonationService already retrieved this once.
-    Donation recurringDonation = getDonation(manageDonationEvent.getDonationId());
+  public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+    // TODO: Avoid the double hit? Upstream already retrieved this once. Doesn't crmRecurringDonation.raw ALWAYS have Donation in it?
+    Donation recurringDonation = getDonation(crmRecurringDonation.id);
     closeRecurringDonation(recurringDonation);
   }
 
   @Override
-  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
+  public String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
     // bulk imports
     return null;
   }
@@ -721,6 +674,10 @@ public class BloomerangCrmService implements CrmService {
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId),
         CrmDonation.Status.SUCCESSFUL, // Bloomerang has no notion of non-successful transactions.
         c,
+        null, // notes
+        null, // campaignId
+        null, // ownerId
+        null, // recordTypeId
         crmAccount,
         crmContact,
         donation,

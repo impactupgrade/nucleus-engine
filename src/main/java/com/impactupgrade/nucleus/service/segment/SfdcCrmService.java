@@ -22,11 +22,11 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.Utils;
@@ -129,12 +129,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
-    // TODO
-    return null;
-  }
-
-  @Override
   public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
     return toCrmDonation(sfdcClient.getDonationByTransactionId(transactionId));
   }
@@ -150,15 +144,6 @@ public class SfdcCrmService implements CrmService {
     return null;
   }
 
-  @Override
-  public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
-    List<String> clauses = searchRecurringDonations(name, email, phone);
-
-    return sfdcClient.searchOpenRecurringDonations(clauses)
-        .stream()
-        .map(this::toCrmRecurringDonation)
-        .collect(Collectors.toList());
-  }
   @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
     List<String> clauses = searchRecurringDonations(name, email, phone);
@@ -296,20 +281,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    if (!Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
-      log.info("attempting to retrieve recurring donation by ID {}...", manageDonationEvent.getDonationId());
-      return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(manageDonationEvent.getDonationId()));
-    } else if (!Strings.isNullOrEmpty(manageDonationEvent.getDonationName())) {
-      log.info("attempting to retrieve recurring donation by name {}...", manageDonationEvent.getDonationName());
-      return toCrmRecurringDonation(sfdcClient.getRecurringDonationByName(manageDonationEvent.getDonationName()));
-    } else {
-      return Optional.empty();
-    }
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(id));
   }
 
   @Override
-  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
 
     SObject opportunity = new SObject("Opportunity");
@@ -626,103 +603,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(paymentGatewayEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find SFDC recurring donation using subscriptionId {}",
-          paymentGatewayEvent.getSubscriptionId());
-      return;
-    }
-
+  public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(recurringDonation.get().id);
+    toUpdate.setId(crmRecurringDonation.id);
     toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
-    setRecurringDonationFieldsForClose(toUpdate, paymentGatewayEvent);
+    setRecurringDonationFieldsForClose(toUpdate, crmRecurringDonation);
     sfdcClient.update(toUpdate);
-  }
-
-  @Override
-  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getDonationId());
-      return;
-    }
-
-    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(recurringDonation.get().id);
-    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
-    setRecurringDonationFieldsForClose(toUpdate, manageDonationEvent);
-    sfdcClient.update(toUpdate);
-  }
-
-  // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
-  protected void setRecurringDonationFieldsForClose(SObject recurringDonation,
-      PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-  }
-
-  // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
-  protected void setRecurringDonationFieldsForClose(SObject recurringDonation,
-      ManageDonationEvent manageDonationEvent) throws Exception {
-  }
-
-  // Give orgs an opportunity to set anything else that's unique to them, prior to pause
-  protected void setRecurringDonationFieldsForPause(SObject recurringDonation,
-      ManageDonationEvent manageDonationEvent) throws Exception {
-  }
-
-  // Give orgs an opportunity to set anything else that's unique to them, prior to resume
-  protected void setRecurringDonationFieldsForResume(SObject recurringDonation,
-      ManageDonationEvent manageDonationEvent) throws Exception {
-  }
-
-  public void pauseRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      return;
-    }
-
-    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(manageDonationEvent.getDonationId());
-    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
-    toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
-
-    if (manageDonationEvent.getPauseDonationUntilDate() == null) {
-      log.info("pausing {} indefinitely...", manageDonationEvent.getDonationId());
-    } else {
-      log.info("pausing {} until {}...", manageDonationEvent.getDonationId(), manageDonationEvent.getPauseDonationUntilDate().getTime());
-    }
-    setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
-    sfdcClient.update(toUpdate);
-  }
-
-  public void resumeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      return;
-    }
-
-    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(manageDonationEvent.getDonationId());
-    toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
-
-    if (manageDonationEvent.getResumeDonationOnDate() == null) {
-      log.info("resuming {} immediately...", manageDonationEvent.getDonationId());
-      toUpdate.setField("Npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
-    } else {
-      log.info("resuming {} on {}...", manageDonationEvent.getDonationId(), manageDonationEvent.getResumeDonationOnDate().getTime());
-      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
-    }
-    setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
-    sfdcClient.update(toUpdate);
-
-    sfdcClient.refreshRecurringDonation(manageDonationEvent.getDonationId());
   }
 
   @Override
@@ -777,52 +663,77 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
+  public String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
     SObject opportunity = new SObject("Opportunity");
-    opportunity.setField("RecordTypeId", opportunityEvent.getRecordTypeId());
-    opportunity.setField("Name", opportunityEvent.getName());
-    opportunity.setField("npsp__Primary_Contact__c", opportunityEvent.getCrmContact().id);
+    opportunity.setField("RecordTypeId", crmOpportunity.recordTypeId);
+    opportunity.setField("Name", crmOpportunity.name);
+    opportunity.setField("npsp__Primary_Contact__c", crmOpportunity.contact.id);
     opportunity.setField("CloseDate", Calendar.getInstance());
     // TODO: Good enough for now, but likely needs to be customized.
     opportunity.setField("StageName", "Pledged");
-    opportunity.setField("OwnerId", opportunityEvent.getOwnerId());
-    opportunity.setField("CampaignId", opportunityEvent.getCampaignId());
-    opportunity.setField("Description", opportunityEvent.getNotes());
+    opportunity.setField("OwnerId", crmOpportunity.ownerId);
+    opportunity.setField("CampaignId", crmOpportunity.campaignId);
+    opportunity.setField("Description", crmOpportunity.notes);
     return sfdcClient.insert(opportunity).getId();
   }
 
   @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      if (Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
-        log.warn("unable to find SFDC recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      } else {
-        log.warn("unable to find SFDC recurring donation using donationName {}", manageDonationEvent.getDonationName());
-      }
-      return;
-    }
+    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
 
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
-    toUpdate.setId(manageDonationEvent.getDonationId());
-    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
-      toUpdate.setField("Npe03__Amount__c", manageDonationEvent.getAmount());
-      log.info("Updating Npe03__Amount__c to {}...", manageDonationEvent.getAmount());
+    toUpdate.setId(crmRecurringDonation.id);
+    if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
+      toUpdate.setField("Npe03__Amount__c", crmRecurringDonation.amount);
+      log.info("Updating Npe03__Amount__c to {}...", crmRecurringDonation.amount);
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
       toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
       log.info("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
     }
-    sfdcClient.update(toUpdate);
 
     if (manageDonationEvent.getPauseDonation() == true) {
-      pauseRecurringDonation(manageDonationEvent);
+      toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
+      toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
+
+      if (manageDonationEvent.getPauseDonationUntilDate() == null) {
+        log.info("pausing {} indefinitely...", crmRecurringDonation.id);
+      } else {
+        log.info("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
+      }
+      setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
     }
 
     if (manageDonationEvent.getResumeDonation() == true) {
-      resumeRecurringDonation(manageDonationEvent);
+      toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
+
+      if (manageDonationEvent.getResumeDonationOnDate() == null) {
+        log.info("resuming {} immediately...", crmRecurringDonation.id);
+        toUpdate.setField("Npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
+      } else {
+        log.info("resuming {} on {}...", crmRecurringDonation.id, manageDonationEvent.getResumeDonationOnDate().getTime());
+        toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
+      }
+      setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
     }
+
+    sfdcClient.update(toUpdate);
+    sfdcClient.refreshRecurringDonation(crmRecurringDonation.id);
+  }
+
+  // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
+  protected void setRecurringDonationFieldsForClose(SObject recurringDonation,
+      CrmRecurringDonation crmRecurringDonation) throws Exception {
+  }
+
+  // Give orgs an opportunity to set anything else that's unique to them, prior to pause
+  protected void setRecurringDonationFieldsForPause(SObject recurringDonation,
+      ManageDonationEvent manageDonationEvent) throws Exception {
+  }
+
+  // Give orgs an opportunity to set anything else that's unique to them, prior to resume
+  protected void setRecurringDonationFieldsForResume(SObject recurringDonation,
+      ManageDonationEvent manageDonationEvent) throws Exception {
   }
 
   // TODO: Much of this bulk import code needs genericized and pulled upstream!
@@ -1463,6 +1374,10 @@ public class SfdcCrmService implements CrmService {
         paymentGatewayTransactionId,
         status,
         closeDate,
+        (String) sObject.getField("Description"),
+        (String) sObject.getField("CampaignId"),
+        (String) sObject.getField("OwnerId"),
+        (String) sObject.getField("RecordTypeId"),
         account,
         contact,
         sObject,

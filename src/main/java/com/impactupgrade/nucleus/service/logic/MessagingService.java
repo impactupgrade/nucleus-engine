@@ -9,7 +9,6 @@ import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
@@ -102,8 +101,7 @@ public class MessagingService {
     return message;
   }
 
-  public void processSignup(
-      OpportunityEvent opportunityEvent,
+  public CrmContact processSignup(
       String phone,
       String firstName,
       String lastName,
@@ -156,45 +154,39 @@ public class MessagingService {
       crmContact.smsOptIn = smsOptIn;
       crmContact.contactLanguage = language;
 
-      opportunityEvent.setCrmContact(crmContact);
-
-
-      crmContact.id = crmService.insertContact(opportunityEvent);
+      crmContact.id = crmService.insertContact(crmContact);
     } else {
       // Existed, so use it
       log.info("contact already existed in CRM: {}", crmContact.id);
 
-      opportunityEvent.setCrmContact(crmContact);
-
       boolean update = emailOptIn || smsOptIn;
 
-      opportunityEvent.getCrmContact().emailOptIn = emailOptIn;
-      opportunityEvent.getCrmContact().smsOptIn = smsOptIn;
-
+      crmContact.emailOptIn = emailOptIn;
+      crmContact.smsOptIn = smsOptIn;
 
       if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
         log.info("contact {} missing firstName; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().firstName = firstName;
+        crmContact.firstName = firstName;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
         log.info("contact {} missing lastName; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().lastName = lastName;
+        crmContact.lastName = lastName;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
         log.info("contact {} missing email; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().email = email;
+        crmContact.email = email;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.mobilePhone) && !Strings.isNullOrEmpty(phone)) {
         log.info("contact {} missing mobilePhone; updating it...", crmContact.id);
-        opportunityEvent.getCrmContact().mobilePhone = phone;
+        crmContact.mobilePhone = phone;
         update = true;
       }
 
       if (update) {
-        crmService.updateContact(opportunityEvent);
+        crmService.updateContact(crmContact);
       }
     }
 
@@ -205,6 +197,8 @@ public class MessagingService {
     if (!Strings.isNullOrEmpty(listId)) {
       crmService.addContactToList(crmContact, listId);
     }
+
+    return crmContact;
   }
 
   public void optIn(String phone) throws Exception {

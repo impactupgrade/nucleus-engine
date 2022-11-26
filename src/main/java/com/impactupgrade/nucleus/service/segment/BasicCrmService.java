@@ -3,13 +3,12 @@ package com.impactupgrade.nucleus.service.segment;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
-import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
 import java.util.Collections;
@@ -55,15 +54,7 @@ public interface BasicCrmService extends CrmService {
   default void deleteAccount(String accountId) throws Exception {
   }
 
-  default List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
-    return Collections.emptyList();
-  }
-
   default List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    return null;
-  }
-
-  default List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
     return null;
   }
 
@@ -79,19 +70,14 @@ public interface BasicCrmService extends CrmService {
     return Optional.empty();
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     return Optional.empty();
   }
 
-  default void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  default void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
   }
 
   default void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  default void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    throw new RuntimeException("not implemented");
   }
 
   default void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
@@ -110,7 +96,7 @@ public interface BasicCrmService extends CrmService {
   default void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
   }
 
-  default String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
+  default String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
     return null;
   }
 

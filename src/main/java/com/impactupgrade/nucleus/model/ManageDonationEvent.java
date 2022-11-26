@@ -5,9 +5,9 @@
 package com.impactupgrade.nucleus.model;
 
 
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.Utils;
+
 import java.text.ParseException;
 import java.util.Calendar;
 
@@ -15,11 +15,9 @@ public class ManageDonationEvent {
 
   protected final Environment env;
 
-  protected String donationId;
-  // TODO: donationName is likely DR-specific (their unique, incrementing identifiers) -- pull to dr-nucleus?
-  protected String donationName;
-  protected String subscriptionId;
-  protected Double amount;
+  // For convenience's sake, making use of CRM models, here, to make downstream processing cleaner.
+  protected CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
+
   protected Calendar pauseDonationUntilDate;
   protected Boolean pauseDonation;
   protected Calendar resumeDonationOnDate;
@@ -35,16 +33,19 @@ public class ManageDonationEvent {
   public ManageDonationEvent(ManageDonationFormData formData, Environment env) throws ParseException {
     this.env = env;
 
-    if (formData.recurringDonationId.isPresent() && !Strings.isNullOrEmpty(formData.recurringDonationId.get())) this.donationId = formData.recurringDonationId.get();
-    if (formData.recurringDonationName.isPresent() && !Strings.isNullOrEmpty(formData.recurringDonationName.get())) this.donationName = formData.recurringDonationName.get();
+    crmRecurringDonation.id = formData.recurringDonationId;
 
     formData.stripeToken.ifPresent(s -> this.stripeToken = s);
 
-    if (formData.amount != null && formData.amount.isPresent()) this.amount = formData.amount.get();
+    if (formData.amount != null && formData.amount.isPresent())
+      crmRecurringDonation.amount = formData.amount.get();
 
-    if (formData.pauseDonationUntilDate != null && formData.pauseDonationUntilDate.isPresent()) this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
-    if (formData.resumeDonationOnDate != null && formData.resumeDonationOnDate.isPresent()) this.resumeDonationOnDate = Utils.getCalendarFromDateString(formData.resumeDonationOnDate.get());
-    if (formData.nextPaymentDate != null && formData.nextPaymentDate.isPresent()) this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
+    if (formData.pauseDonationUntilDate != null && formData.pauseDonationUntilDate.isPresent())
+      this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
+    if (formData.resumeDonationOnDate != null && formData.resumeDonationOnDate.isPresent())
+      this.resumeDonationOnDate = Utils.getCalendarFromDateString(formData.resumeDonationOnDate.get());
+    if (formData.nextPaymentDate != null && formData.nextPaymentDate.isPresent())
+      this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
 
     this.pauseDonation = formData.pauseDonation.isPresent() && formData.pauseDonation.get();
     this.resumeDonation = formData.resumeDonation.isPresent() && formData.resumeDonation.get();
@@ -53,21 +54,14 @@ public class ManageDonationEvent {
 
   // ACCESSORS
 
-  public String getDonationId() { return this.donationId; }
 
-  public void setDonationId(String donationId) { this.donationId = donationId; }
+  public CrmRecurringDonation getCrmRecurringDonation() {
+    return crmRecurringDonation;
+  }
 
-  public String getDonationName() { return this.donationName; }
-
-  public void setDonationName(String donationName) { this.donationName = donationName; }
-
-  public Double getAmount() { return this.amount; }
-
-  public void setAmount(Double amount) { this.amount = amount; }
-
-  public String getSubscriptionId() { return this.subscriptionId; }
-
-  public void setSubscriptionId(String subscriptionId) { this.subscriptionId = subscriptionId; }
+  public void setCrmRecurringDonation(CrmRecurringDonation crmRecurringDonation) {
+    this.crmRecurringDonation = crmRecurringDonation;
+  }
 
   public Boolean getPauseDonation() { return this.pauseDonation; }
 
@@ -99,10 +93,7 @@ public class ManageDonationEvent {
 
   public String toString() {
     return "ManageDonationEvent {" +
-        ",\n donationId: " + this.donationId +
-        ",\n donationName: " + this.donationName +
-        ",\n amount: " + this.amount +
-        ",\n subscriptionId: " + this.subscriptionId +
+        ",\n crmRecurringDonation: " + this.crmRecurringDonation +
         ",\n pauseDonation: " + this.pauseDonation +
         ",\n pauseDonationUntilDate: " + this.pauseDonationUntilDate +
         ",\n resumeDonation: " + this.resumeDonation +

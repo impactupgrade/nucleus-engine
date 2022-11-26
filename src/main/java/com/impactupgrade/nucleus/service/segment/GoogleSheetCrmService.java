@@ -6,8 +6,6 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
@@ -54,11 +52,6 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
-        return BasicCrmService.super.getContactsByIds(ids);
-    }
-
-    @Override
     public List<CrmContact> getContactsFromList(String listId) throws Exception {
         // listId is assumed to be the full URL of a GSheet
         return GoogleSheetsUtil.getSheetData(listId).stream()
@@ -81,43 +74,8 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public void batchUpdateContact(CrmContact crmContact) throws Exception {
-        BasicCrmService.super.batchUpdateContact(crmContact);
-    }
-
-    @Override
-    public void batchFlush() throws Exception {
-        BasicCrmService.super.batchFlush();
-    }
-
-    @Override
     public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
         return Optional.empty();
-    }
-
-    @Override
-    public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
-        return BasicCrmService.super.getDonationsByTransactionIds(transactionIds);
-    }
-
-    @Override
-    public String insertAccount(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        return BasicCrmService.super.insertAccount(paymentGatewayEvent);
-    }
-
-    @Override
-    public String insertContact(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        return BasicCrmService.super.insertContact(paymentGatewayEvent);
-    }
-
-    @Override
-    public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        return BasicCrmService.super.getDonation(paymentGatewayEvent);
-    }
-
-    @Override
-    public List<CrmDonation> getDonations(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
-        return BasicCrmService.super.getDonations(paymentGatewayEvents);
     }
 
     @Override
@@ -126,28 +84,13 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
 
     }
 
     @Override
     public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
 
-    }
-
-    @Override
-    public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        return BasicCrmService.super.getRecurringDonation(paymentGatewayEvent);
-    }
-
-    @Override
-    public String insertContact(OpportunityEvent opportunityEvent) throws Exception {
-        return BasicCrmService.super.insertContact(opportunityEvent);
-    }
-
-    @Override
-    public void updateContact(OpportunityEvent opportunityEvent) throws Exception {
-        BasicCrmService.super.updateContact(opportunityEvent);
     }
 
     @Override

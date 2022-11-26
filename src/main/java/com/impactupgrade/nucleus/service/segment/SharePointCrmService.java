@@ -13,11 +13,11 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.Utils;
@@ -314,10 +314,6 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
-        return null;
-    }
-    @Override
     public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
         return null;
     }
@@ -327,7 +323,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
 
     }
 
@@ -347,12 +343,12 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
 
     }
 
     @Override
-    public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
         return Optional.empty();
     }
 
@@ -362,17 +358,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-
-    }
-
-    @Override
-    public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
-        return null;
-    }
-
-    @Override
-    public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
+    public String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
         return null;
     }
 
