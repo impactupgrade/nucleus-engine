@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
@@ -8,15 +9,16 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import static com.impactupgrade.nucleus.util.HttpClient.get;
 
 public class FactsClient {
 
@@ -24,7 +26,11 @@ public class FactsClient {
 
   private static final String FACTS_API_URL = "https://api.factsmgt.com";
   private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
+
+  private static final Integer DEFAULT_PAGE = 1;
   private static final Integer DEFAULT_PAGE_SIZE = 50;
+
+  private ObjectMapper objectMapper = new ObjectMapper();
 
   private String subscriptionKey;
   private String apiKey;
@@ -40,88 +46,94 @@ public class FactsClient {
 
   // Person/People
   public Person getPerson(Integer id) {
-    return get(FACTS_API_URL + "/People/" + id, headers(), Person.class);
+    return HttpClient.get(FACTS_API_URL + "/People/" + id, headers(), Person.class);
   }
 
-  public List<Person> getPeople() throws Exception {
-    return findPeople(null);
+  public List<Person> getPersons(List<Filter> filters) throws Exception {
+    return get("/People", filters, Person.class);
   }
 
-  public List<Person> findPeople(List<Filter> filters) throws Exception {
-    return findPeople(filters, null, null, null);
-  }
-
-  public List<Person> findPeople(List<Filter> filters, String sortBy, Integer page, Integer pageSize) throws Exception {
-    PeopleResponse peopleResponse = get(FACTS_API_URL + "/People" + toParametersUrl(filters, sortBy, page, pageSize), headers(), PeopleResponse.class);
-    // TODO: handle 429
-    //{ "statusCode": 429, "message": "Rate limit is exceeded. Try again in 40 seconds." }
-
-    List<Person> people = new ArrayList<>();
-    people.addAll(peopleResponse.results);
-    // TODO: extract generic method to find with paging
-//    if (peopleResponse.pageCount > 1) {
-//      for (int p = 1; p <= peopleResponse.pageCount; p++) {
-//        peopleResponse = get(FACTS_API_URL + "/People" + toParametersUrl(filters, sortBy, p, pageSize), headers(), PeopleResponse.class);
-//        people.addAll(peopleResponse.results);
-//      }
-//    }
-    return people;
-  }
-
-  public List<Person> findPeopleModifiedBetween(LocalDateTime fromDate, LocalDateTime toDate) throws Exception {
+  public List<Person> getPersonsModifiedBetween(LocalDateTime fromDate, LocalDateTime toDate) throws Exception {
     DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
-    Filter fromFilter = new Filter("modifiedDate", FactsClient.Operator.GREATER_THAN_OR_EQUAL_TO, dateTimeFormatter.format(fromDate));
+    Filter fromFilter = new Filter("modifiedDate", Operator.GREATER_THAN_OR_EQUAL_TO, dateTimeFormatter.format(fromDate));
     Filter toFilter = new Filter("modifiedDate", Operator.LESS_THAN_OR_EQUAL_TO, dateTimeFormatter.format(toDate));
-    return findPeople(List.of(fromFilter, toFilter));
+    return getPersons(List.of(fromFilter, toFilter));
   }
 
-  // Person-Family
+  //Student
+  public List<Student> getStudents(List<Filter> filters) throws Exception {
+    return get("/Students", filters, Student.class);
+  }
+
+  public List<Student> getStudentsEnrolledBetween(LocalDateTime fromDate, LocalDateTime toDate) throws Exception {
+    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
+    Filter statusFilter = new Filter("school.status", Operator.EQUALS_CASE_INSENSITIVE, "Enrolled");
+    Filter fromFilter = new Filter("school.enrollDate", Operator.GREATER_THAN_OR_EQUAL_TO, dateTimeFormatter.format(fromDate));
+    Filter toFilter = new Filter("school.enrollDate", Operator.LESS_THAN_OR_EQUAL_TO, dateTimeFormatter.format(toDate));
+    return getStudents(List.of(statusFilter, fromFilter, toFilter));
+  }
+
+  //Parent-Student
   public List<Person> getParents(Integer personId) throws Exception {
-    PersonFamily personFamily = getPersonFamily(personId);
-    if (personFamily == null) {
-      return null;
-    }
-    Filter familyIdFilter = new Filter("familyId", Operator.EQUALS, personFamily.familyId + "");
-    Filter isParentFilter = new Filter("parent", Operator.EQUALS, Boolean.TRUE + "");
-    List<PersonFamily> personFamilies = findPersonFamilies(List.of(familyIdFilter, isParentFilter));
+    Filter studentIdFilter = new Filter("studentID", Operator.EQUALS, personId + "");
+    List<ParentStudent> parentStudents = get("/People/ParentStudent", List.of(studentIdFilter), ParentStudent.class);
 
-    List<Person> parents = personFamilies.stream()
-        .map(pf -> getPerson(pf.personId)).collect(Collectors.toList());
+    Set<Integer> parentsIds = parentStudents.stream()
+        .map(parentStudent -> parentStudent.parentID)
+        .collect(Collectors.toSet());
+    String ids = parentsIds.stream().map(id -> id + "").collect(Collectors.joining("|"));
 
-    return parents;
+    Filter idsFilter = new Filter("personId", Operator.EQUALS, ids);
+    List<Person> persons = get("/People", List.of(idsFilter), Person.class);
+    return persons;
   }
 
+  // Person-Family // ?
   public PersonFamily getPersonFamily(Integer personId) throws Exception {
-    List<PersonFamily> personFamilies = findPersonFamilies(List.of(new Filter("personId", Operator.EQUALS, personId + "")));
+    Filter personIdFilter = new Filter("personId", Operator.EQUALS, personId + "");
+    List<PersonFamily> personFamilies = get("/People/PersonFamily", List.of(personIdFilter), PersonFamily.class);
     if (personFamilies.isEmpty()) {
       return null;
     }
     if (personFamilies.size() > 1) {
-      log.warn("Found more than 1 person family records for person id {}!" + personId);
+      log.warn("Found more than 1 person-family records for person id {}!" + personId);
     }
     return personFamilies.get(0);
   }
 
-  public List<PersonFamily> getPersonFamilies(Integer familyId) throws Exception {
-    Filter familyIdFilter = new Filter("familyId", Operator.EQUALS, familyId + "");
-    return findPersonFamilies(List.of(familyIdFilter));
-  }
-
-  public List<PersonFamily> findPersonFamilies(List<Filter> filters) throws Exception {
-    return findPersonFamilies(filters, null, null, null);
-  }
-
-  public List<PersonFamily> findPersonFamilies(List<Filter> filters, String sortBy, Integer page, Integer pageSize) throws Exception {
-    PersonFamilyResponse personFamilyResponse = get(FACTS_API_URL + "/People/PersonFamily" + toParametersUrl(filters, sortBy, page, pageSize), headers(), PersonFamilyResponse.class);
-    return personFamilyResponse.results;
-  }
-
   // Address
   public Address getAddress(Integer id) {
-    return get(FACTS_API_URL + "/people/Address/" + id, headers(), Address.class);
+    return HttpClient.get(FACTS_API_URL + "/people/Address/" + id, headers(), Address.class);
   }
 
   // Utils
+  private <T> List<T> get(String url, List<Filter> filters, Class<T> clazz) throws Exception {
+    return get(url, filters, null, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, clazz);
+  }
+
+  private <T> List<T> get(String url, List<Filter> filters, String sortBy, Integer page, Integer pageSize, Class<T> clazz) throws Exception {
+    FilteredResponse<T> filteredResponse = getFilteredResponse(url, filters, sortBy, page, pageSize, clazz);
+    List<T> items = new LinkedList<>();
+    items.addAll(filteredResponse.results);
+
+    if (filteredResponse.pageCount > page) {
+      int pageCount = filteredResponse.pageCount;
+      for (int nextPage = page + 1; nextPage <= pageCount; nextPage++) {
+        filteredResponse = getFilteredResponse(url, filters, sortBy, nextPage, pageSize, clazz);
+        items.addAll(filteredResponse.results);
+      }
+    }
+    return items;
+  }
+
+  private <T> FilteredResponse<T> getFilteredResponse(String url, List<Filter> filters, String sortBy, Integer page, Integer pageSize, Class<T> clazz) throws Exception {
+    String fullUrl = FACTS_API_URL + url + toParametersUrl(filters, sortBy, page, pageSize);
+    log.info("URL: {}", fullUrl);
+    Response response = getWithAutoRetry(fullUrl);
+    String responseString = response.readEntity(String.class);
+    return objectMapper.readValue(responseString, objectMapper.getTypeFactory().constructParametricType(FilteredResponse.class, clazz));
+  }
+
   private String toParametersUrl(List<Filter> filters, String sortBy, Integer page, Integer pageSize) throws Exception {
     List<String> parameters = new ArrayList<>();
     if (CollectionUtils.isNotEmpty(filters)) {
@@ -152,6 +164,19 @@ public class FactsClient {
         .collect(Collectors.joining(","));
     String encodedParameters = URLEncoder.encode(parameters, "UTF-8");
     return encodedParameters;
+  }
+
+  private Response getWithAutoRetry(String url) {
+    Response response = HttpClient.get(url, headers());
+    if (response.getStatus() == 200) {
+      return response;
+    } else if (response.getStatus() == 429) {
+      //TODO:
+      log.warn("429/API limit! {}", response.readEntity(String.class));
+      return HttpClient.get(url, headers());
+    }
+    log.error("Failed to get response! Status/Body {}/{}", response.getStatus(), response.readEntity(String.class));
+    return null;
   }
 
   private HttpClient.HeaderBuilder headers() {
@@ -217,13 +242,84 @@ public class FactsClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class PeopleResponse {
-    public List<Person> results;
-    public Integer currentPage;
-    public Integer pageCount;
-    public Integer pageSize;
-    public Integer rowCount;
-    public String nextPage;
+  public static class Student {
+    public Integer personStudentId;
+    public Integer studentId;
+    public Integer configSchoolId;
+    public String schoolCode;
+    public School school;
+    public List<Locker> locker;
+
+    @Override
+    public String toString() {
+      return "Student{" +
+          "personStudentId=" + personStudentId +
+          ", studentId=" + studentId +
+          ", configSchoolId=" + configSchoolId +
+          ", schoolCode='" + schoolCode + '\'' +
+          ", school=" + school +
+          ", locker=" + locker +
+          '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class School {
+    public String status;
+    public String enrollDate;
+    public String gradeLevel;
+    public String nextStatus;
+    public String nextSchoolCode;
+    public String nextGradeLevel;
+
+    @Override
+    public String toString() {
+      return "School{" +
+          "status='" + status + '\'' +
+          ", enrollDate='" + enrollDate + '\'' +
+          ", gradeLevel='" + gradeLevel + '\'' +
+          ", nextStatus='" + nextStatus + '\'' +
+          ", nextSchoolCode='" + nextSchoolCode + '\'' +
+          ", nextGradeLevel='" + nextGradeLevel + '\'' +
+          '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Locker {
+    public Integer id;
+    public String name;
+
+    @Override
+    public String toString() {
+      return "Locker{" +
+          "id=" + id +
+          ", name='" + name + '\'' +
+          '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class ParentStudent {
+    public Integer parentID;
+    public Integer studentID;
+    public Boolean custody;
+    public Boolean correspondence;
+    public String relationship;
+    public Boolean grandparent;
+    public Boolean emergencyContact;
+    public Boolean reportCard;
+    public Boolean pickUp;
+    public Boolean parentsWeb;
+
+    @Override
+    public String toString() {
+      return "ParentStudent{" +
+          "parentID=" + parentID +
+          ", studentID=" + studentID +
+          ", relationship='" + relationship + '\'' +
+          '}';
+    }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -244,15 +340,6 @@ public class FactsClient {
           ", student=" + student +
           '}';
     }
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class PersonFamilyResponse {
-    public List<PersonFamily> results;
-    public Integer currentPage;
-    public Integer pageCount;
-    public Integer pageSize;
-    public Integer rowCount;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -283,12 +370,12 @@ public class FactsClient {
     }
   }
 
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class AddressResponse {
-    public List<Address> results;
+  public static class FilteredResponse<T> {
+    public List<T> results;
     public Integer currentPage;
     public Integer pageCount;
     public Integer pageSize;
     public Integer rowCount;
+    public String nextPage;
   }
 }

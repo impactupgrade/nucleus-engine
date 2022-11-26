@@ -18,7 +18,6 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -278,24 +277,24 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response provisionFields(
-          @FormParam("layout-name") String layoutName, //TODO: custom request model?
-          List<CrmCustomField> crmCustomFields,
-          @Context HttpServletRequest request
+      @FormParam("layout-name") String layoutName, //TODO: custom request model?
+      List<CrmCustomField> crmCustomFields,
+      @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     // TODO: use input fields
     List<CrmCustomField> defaultCustomFields = List.of(
-            new CrmCustomField("Opportunity", "Payment_Gateway_Name__c", "Payment Gateway Name", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Transaction_ID__c", "Payment Gateway Transaction ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Subscription_ID__c", "Payment Gateway Subscription ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_ID__c", "Payment Gateway Deposit ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Date__c", "Payment Gateway Deposit Date", CrmCustomField.Type.DATE, 16, 2),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Net_Amount__c", "Payment Gateway Deposit Net Amount", CrmCustomField.Type.CURRENCY, 18, 2),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Fee__c", "Payment Gateway Deposit Fee", CrmCustomField.Type.CURRENCY, 18, 2)
+        new CrmCustomField("Opportunity", "Payment_Gateway_Name__c", "Payment Gateway Name", CrmCustomField.Type.TEXT, 100),
+        new CrmCustomField("Opportunity", "Payment_Gateway_Transaction_ID__c", "Payment Gateway Transaction ID", CrmCustomField.Type.TEXT, 100),
+        new CrmCustomField("Opportunity", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
+        new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
+        new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Subscription_ID__c", "Payment Gateway Subscription ID", CrmCustomField.Type.TEXT, 100),
+        new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_ID__c", "Payment Gateway Deposit ID", CrmCustomField.Type.TEXT, 100),
+        new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Date__c", "Payment Gateway Deposit Date", CrmCustomField.Type.DATE, 16, 2),
+        new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Net_Amount__c", "Payment Gateway Deposit Net Amount", CrmCustomField.Type.CURRENCY, 18, 2),
+        new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Fee__c", "Payment Gateway Deposit Fee", CrmCustomField.Type.CURRENCY, 18, 2)
     );
     List<CrmCustomField> insertedFields = env.primaryCrmService().insertCustomFields(layoutName, defaultCustomFields);
 
@@ -316,33 +315,23 @@ public class CrmController {
     FactsClient factsClient = new FactsClient(env);
 
     LocalDateTime to = LocalDateTime.now();
-    LocalDateTime from = to.minusDays(2);
+    LocalDateTime from = to.minusMonths(1);
 
-    List<FactsClient.Person> people = factsClient.findPeopleModifiedBetween(from, to);
+    List<FactsClient.Student> students = factsClient.getStudentsEnrolledBetween(from, to);
+    log.info("students {}", students);
 
-    if (CollectionUtils.isNotEmpty(people)) {
-      FactsClient.Person p1 = people.get(0);
+    for (FactsClient.Student student : students) {
+      Integer personId = student.studentId; // (!) student id actually refers to person id
 
-      log.info("person: {}", p1);
+      FactsClient.Person person = factsClient.getPerson(personId);
+      log.info("Person: {}", person);
+      List<FactsClient.Person> parents = factsClient.getParents(personId);
+      log.info("Parents: {}", parents);
 
-      FactsClient.Address address = factsClient.getAddress(p1.addressID);
-
-      log.info("address: {}", address);
-
-      FactsClient.PersonFamily pf1 = factsClient.getPersonFamily(p1.personId);
-
-      log.info("person-family: {}", pf1);
-
-      List<FactsClient.PersonFamily> family = factsClient.getPersonFamilies(pf1.familyId);
-
-      log.info("family: {}", family);
-
-      List<FactsClient.Person> parents = factsClient.getParents(p1.personId);
-
-      log.info("parents: {}", parents);
+      FactsClient.Address address = factsClient.getAddress(person.addressID);
+      log.info("Address: {}", address);
     }
 
-
-    return Response.ok(people).build();
+    return Response.ok().build();
   }
 }
