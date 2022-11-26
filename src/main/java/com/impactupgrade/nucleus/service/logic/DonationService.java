@@ -46,7 +46,7 @@ public class DonationService {
         // allow updates to non-posted transactions occur, especially to catch cases where it initially failed is reattempted and succeeds
         log.info("found existing CRM donation {} using transaction {}, but in a non-final state; updating it with the reattempt...",
             existingDonation.get().id, paymentGatewayEvent.getTransactionId());
-        crmService.insertDonationReattempt(paymentGatewayEvent);
+        crmService.updateDonation(paymentGatewayEvent);
         return;
       }
       // posted donation already exists in the CRM with the transactionId - do not process the donation
@@ -118,7 +118,7 @@ public class DonationService {
       return;
     }
 
-    crmService.closeRecurringDonation(paymentGatewayEvent);
+    crmService.closeRecurringDonation(recurringDonation.get());
 
     String targetId = null;
     if (recurringDonation.get().account != null && !Strings.isNullOrEmpty(recurringDonation.get().account.id)) {
@@ -138,23 +138,19 @@ public class DonationService {
   }
 
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(manageDonationEvent);
+    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonationById(manageDonationEvent.getCrmRecurringDonation().id);
 
     if (recurringDonation.isEmpty()) {
-      log.warn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getDonationId());
+      log.warn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getCrmRecurringDonation().id);
       return;
     }
 
     PaymentGatewayService paymentGatewayService = env.paymentGatewayService(recurringDonation.get().paymentGatewayName);
 
-    if (manageDonationEvent.getDonationId() == null) {
-      manageDonationEvent.setDonationId(recurringDonation.get().id);
-    }
-
-    manageDonationEvent.setSubscriptionId(recurringDonation.get().subscriptionId);
+    manageDonationEvent.getCrmRecurringDonation().subscriptionId = recurringDonation.get().subscriptionId;
     if (manageDonationEvent.getCancelDonation()) {
-      crmService.closeRecurringDonation(manageDonationEvent);
-      paymentGatewayService.closeSubscription(manageDonationEvent);
+      crmService.closeRecurringDonation(manageDonationEvent.getCrmRecurringDonation());
+      paymentGatewayService.closeSubscription(recurringDonation.get().subscriptionId);
     } else {
       crmService.updateRecurringDonation(manageDonationEvent);
       paymentGatewayService.updateSubscription(manageDonationEvent);

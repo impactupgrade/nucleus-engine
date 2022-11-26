@@ -47,11 +47,11 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.OpportunityEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.collections.CollectionUtils;
@@ -182,7 +182,7 @@ public class HubSpotCrmService implements CrmService {
     }
   }
 
-  @Override
+  // Needed by an IT.
   public List<CrmDonation> getDonationsByAccountId(String accountId) throws Exception {
     AssociationSearchResults associations = hsClient.association().search("company", accountId, "deal");
     List<String> dealIds = associations.getResults().stream().flatMap(r -> r.getTo().stream()).map(HasId::getId).collect(Collectors.toList());
@@ -203,29 +203,8 @@ public class HubSpotCrmService implements CrmService {
       return Optional.empty();
     }
 
-    Deal result = results.getResults().get(0);
-    String id = result.getId();
-    String paymentGatewayName = (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, result.getProperties().getOtherProperties());
-    CrmDonation.Status status;
-    if (env.getConfig().hubspot.donationPipeline.successStageId.equalsIgnoreCase(result.getProperties().getDealstage())) {
-      status = CrmDonation.Status.SUCCESSFUL;
-    } else if (env.getConfig().hubspot.donationPipeline.failedStageId.equalsIgnoreCase(result.getProperties().getDealstage())) {
-      status = CrmDonation.Status.FAILED;
-    } else {
-      status = CrmDonation.Status.PENDING;
-    }
-    return Optional.of(new CrmDonation(
-        id,
-        result.getProperties().getDealname(),
-        result.getProperties().getAmount(),
-        paymentGatewayName,
-        transactionId,
-        status,
-        result.getProperties().getClosedate(),
-        null, null,
-        result,
-        "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + id
-    ));
+    Deal deal = results.getResults().get(0);
+    return Optional.of(toCrmDonation(deal));
   }
 
   @Override
@@ -240,11 +219,6 @@ public class HubSpotCrmService implements CrmService {
     return toCrmRecurringDonation(deals);
   }
 
-  @Override
-  public List<CrmRecurringDonation> searchOpenRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
-    // TODO
-    return Collections.emptyList();
-  }
   @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
     // TODO
@@ -364,7 +338,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO
   }
 
@@ -658,133 +632,66 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(paymentGatewayEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find HS recurring donation using subscriptionId {}",
-          paymentGatewayEvent.getSubscriptionId());
-      return;
+  public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+    DealProperties dealProperties = new DealProperties();
+    dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
+    if (env.getConfig().hubspot.enableRecurring) {
+      dealProperties.setRecurringRevenueInactiveDate(Calendar.getInstance());
+      dealProperties.setRecurringRevenueInactiveReason("CHURNED");
     }
+    setRecurringDonationFieldsForClose(dealProperties, crmRecurringDonation);
 
-    DealProperties deal = new DealProperties();
-    deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
-    setRecurringDonationFieldsForClose(deal, paymentGatewayEvent);
-
-    hsClient.deal().update(recurringDonation.get().id, deal);
+    hsClient.deal().update(crmRecurringDonation.id, dealProperties);
   }
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
-  protected void setRecurringDonationFieldsForClose(DealProperties deal, PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    if (env.getConfig().hubspot.enableRecurring) {
-      deal.setRecurringRevenueInactiveDate(Calendar.getInstance());
-      deal.setRecurringRevenueInactiveReason("CHURNED");
-    }
+  protected void setRecurringDonationFieldsForClose(DealProperties deal,
+      CrmRecurringDonation crmRecurringDonation) throws Exception {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Deal deal = hsClient.deal().read(manageDonationEvent.getDonationId(), dealFields);
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    Deal deal = hsClient.deal().read(id, dealFields);
     CrmRecurringDonation crmRecurringDonation = toCrmRecurringDonation(deal);
     return Optional.of(crmRecurringDonation);
   }
 
   @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    // TODO: duplicates nearly all of SfdcCrmService...
-
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      if (Strings.isNullOrEmpty(manageDonationEvent.getDonationId())) {
-        log.warn("unable to find HS recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      } else {
-        log.warn("unable to find HS recurring donation using donationName {}", manageDonationEvent.getDonationName());
-      }
-      return;
-    }
-
     DealProperties dealProperties = new DealProperties();
-    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
-      dealProperties.setAmount(manageDonationEvent.getAmount());
-      log.info("Updating amount to {}...", manageDonationEvent.getAmount());
+
+    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+
+    if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
+      dealProperties.setAmount(crmRecurringDonation.amount);
+      log.info("Updating amount to {}...", crmRecurringDonation.amount);
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
       // TODO
     }
-    hsClient.deal().update(manageDonationEvent.getDonationId(), dealProperties);
 
     if (manageDonationEvent.getPauseDonation() == true) {
-      pauseRecurringDonation(manageDonationEvent);
+      dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
+      // TODO: Close reason?
+
+      if (manageDonationEvent.getPauseDonationUntilDate() == null) {
+        log.info("pausing {} indefinitely...", crmRecurringDonation.id);
+      } else {
+        log.info("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
+      }
+      setRecurringDonationFieldsForPause(dealProperties, manageDonationEvent);
     }
 
     if (manageDonationEvent.getResumeDonation() == true) {
-      resumeRecurringDonation(manageDonationEvent);
-    }
-  }
-
-  @Override
-  public void closeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find HS recurring donation using donationId {}",
-          manageDonationEvent.getDonationId());
-      return;
+      // TODO: Likely a new Deal with type/dates set appropriately
     }
 
-    DealProperties dealProperties = new DealProperties();
-    dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
-    setRecurringDonationFieldsForClose(dealProperties, manageDonationEvent);
-
-    hsClient.deal().update(recurringDonation.get().id, dealProperties);
-  }
-
-  // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
-  protected void setRecurringDonationFieldsForClose(DealProperties deal,
-      ManageDonationEvent manageDonationEvent) throws Exception {
+    hsClient.deal().update(crmRecurringDonation.id, dealProperties);
   }
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to pause
   protected void setRecurringDonationFieldsForPause(DealProperties deal,
       ManageDonationEvent manageDonationEvent) throws Exception {
-  }
-
-  // Give orgs an opportunity to set anything else that's unique to them, prior to resume
-  protected void setRecurringDonationFieldsForResume(DealProperties deal,
-      ManageDonationEvent manageDonationEvent) throws Exception {
-  }
-
-  public void pauseRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find HS recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      return;
-    }
-
-    DealProperties dealProperties = new DealProperties();
-    dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
-    // TODO: Close reason?
-
-    if (manageDonationEvent.getPauseDonationUntilDate() == null) {
-      log.info("pausing {} indefinitely...", manageDonationEvent.getDonationId());
-    } else {
-      log.info("pausing {} until {}...", manageDonationEvent.getDonationId(), manageDonationEvent.getPauseDonationUntilDate().getTime());
-    }
-    setRecurringDonationFieldsForPause(dealProperties, manageDonationEvent);
-    hsClient.deal().update(manageDonationEvent.getDonationId(), dealProperties);
-  }
-
-  public void resumeRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = getRecurringDonation(manageDonationEvent);
-
-    if (recurringDonation.isEmpty()) {
-      log.warn("unable to find HS recurring donation using donationId {}", manageDonationEvent.getDonationId());
-      return;
-    }
-
-    // TODO: Likely a new Deal with type/dates set appropriately
   }
 
   @Override
@@ -820,7 +727,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertOpportunity(OpportunityEvent opportunityEvent) throws Exception {
+  public String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
     throw new RuntimeException("not implemented");
   }
 
@@ -1265,6 +1172,10 @@ public class HubSpotCrmService implements CrmService {
         null, // TODO: transactionId, may need otherProperties added to the HS lib?
         status,
         deal.getProperties().getClosedate(),
+        deal.getProperties().getDescription(),
+        null, // campaignId
+        deal.getProperties().getOwnerId(),
+        null, // recordTypeId
         null, null,
         deal,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/deal/" + deal.getId()

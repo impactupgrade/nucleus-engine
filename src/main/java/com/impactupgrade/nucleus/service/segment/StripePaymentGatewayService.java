@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.filter.StripeObjectFilter;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
@@ -283,30 +284,32 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
   @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {
-    if (manageDonationEvent.getAmount() != null && manageDonationEvent.getAmount() > 0) {
-      stripeClient.updateSubscriptionAmount(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getAmount());
+    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+    
+    if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
+      stripeClient.updateSubscriptionAmount(crmRecurringDonation.subscriptionId, crmRecurringDonation.amount);
     }
 
     if (manageDonationEvent.getNextPaymentDate() != null) {
-      stripeClient.updateSubscriptionDate(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getNextPaymentDate());
+      stripeClient.updateSubscriptionDate(crmRecurringDonation.subscriptionId, manageDonationEvent.getNextPaymentDate());
     }
 
     if (manageDonationEvent.getPauseDonation() == true) {
-      stripeClient.pauseSubscription(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getPauseDonationUntilDate());
+      stripeClient.pauseSubscription(crmRecurringDonation.subscriptionId, manageDonationEvent.getPauseDonationUntilDate());
     }
 
     if (manageDonationEvent.getResumeDonation() == true) {
-      stripeClient.resumeSubscription(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getResumeDonationOnDate());
+      stripeClient.resumeSubscription(crmRecurringDonation.subscriptionId, manageDonationEvent.getResumeDonationOnDate());
     }
 
     if (manageDonationEvent.getStripeToken() != null) {
-      stripeClient.updateSubscriptionPaymentMethod(manageDonationEvent.getSubscriptionId(), manageDonationEvent.getStripeToken());
+      stripeClient.updateSubscriptionPaymentMethod(crmRecurringDonation.subscriptionId, manageDonationEvent.getStripeToken());
     }
   }
 
   @Override
-  public void closeSubscription(ManageDonationEvent manageDonationEvent) throws StripeException {
-    stripeClient.cancelSubscription(manageDonationEvent.getSubscriptionId());
+  public void closeSubscription(String subscriptionId) throws StripeException {
+    stripeClient.cancelSubscription(subscriptionId);
   }
 
   public PaymentGatewayEvent chargeToPaymentGatewayEvent(Charge charge, boolean fullObjects) throws StripeException {

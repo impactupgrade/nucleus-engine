@@ -4,13 +4,12 @@
 
 package com.impactupgrade.nucleus.model;
 
-import java.util.Optional;
 import javax.ws.rs.FormParam;
+import java.util.Optional;
 
 public class ManageDonationFormData {
 
-  @FormParam("rd_id") Optional<String> recurringDonationId;
-  @FormParam("rd_name") Optional<String> recurringDonationName;
+  @FormParam("rd_id") String recurringDonationId;
   @FormParam("amount") Optional<Double> amount;
   @FormParam("pause_donation") Optional<Boolean> pauseDonation;
   @FormParam("pause_donation_until") Optional<String> pauseDonationUntilDate;
@@ -24,7 +23,6 @@ public class ManageDonationFormData {
   public String toString() {
     return "ManageDonationFormData{" +
         ",\n recurringDonationId='" + recurringDonationId +
-        ",\n recurringDonationName='" + recurringDonationName +
         ",\n amount=" + amount +
         ",\n pauseDonation=" + pauseDonation +
         ",\n pauseDonationUntilDate=" + pauseDonationUntilDate +

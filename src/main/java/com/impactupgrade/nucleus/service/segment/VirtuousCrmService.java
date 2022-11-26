@@ -386,7 +386,7 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     @Override
-    public void insertDonationReattempt(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
         CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
         VirtuousClient.Gift gift = asGift(paymentGatewayEvent);
         try {
