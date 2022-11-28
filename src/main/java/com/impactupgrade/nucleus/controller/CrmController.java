@@ -300,38 +300,4 @@ public class CrmController {
 
     return Response.ok(insertedFields).build();
   }
-
-  //TODO: remove once done with testing
-  @Path("/facts")
-  @GET
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response provisionFields(
-      //@FormParam("fromDate") String fromDate,
-      //@FormParam("toDate") String toDate,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    Environment env = envFactory.init(request);
-
-    FactsClient factsClient = new FactsClient(env);
-
-    LocalDateTime to = LocalDateTime.now();
-    LocalDateTime from = to.minusMonths(1);
-
-    List<FactsClient.Student> students = factsClient.getStudentsEnrolledBetween(from, to);
-    log.info("students {}", students);
-
-    for (FactsClient.Student student : students) {
-      Integer personId = student.studentId; // (!) student id actually refers to person id
-
-      FactsClient.Person person = factsClient.getPerson(personId);
-      log.info("Person: {}", person);
-      List<FactsClient.Person> parents = factsClient.getParents(personId);
-      log.info("Parents: {}", parents);
-
-      FactsClient.Address address = factsClient.getAddress(person.addressID);
-      log.info("Address: {}", address);
-    }
-
-    return Response.ok().build();
-  }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -30,10 +31,10 @@ public class FactsClient {
   private static final Integer DEFAULT_PAGE = 1;
   private static final Integer DEFAULT_PAGE_SIZE = 50;
 
-  private ObjectMapper objectMapper = new ObjectMapper();
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  private String subscriptionKey;
-  private String apiKey;
+  private final String subscriptionKey;
+  private final String apiKey;
 
   protected Environment env;
 
@@ -45,6 +46,7 @@ public class FactsClient {
   }
 
   // Person/People
+
   public Person getPerson(Integer id) {
     return HttpClient.get(FACTS_API_URL + "/People/" + id, headers(), Person.class);
   }
@@ -61,6 +63,7 @@ public class FactsClient {
   }
 
   //Student
+
   public List<Student> getStudents(List<Filter> filters) throws Exception {
     return get("/Students", filters, Student.class);
   }
@@ -73,7 +76,13 @@ public class FactsClient {
     return getStudents(List.of(statusFilter, fromFilter, toFilter));
   }
 
+  public List<Student> getAdmissions() throws Exception {
+    Filter statusFilter = new Filter("school.status", Operator.EQUALS_CASE_INSENSITIVE, "Admissions");
+    return getStudents(List.of(statusFilter));
+  }
+
   //Parent-Student
+
   public List<Person> getParents(Integer personId) throws Exception {
     Filter studentIdFilter = new Filter("studentID", Operator.EQUALS, personId + "");
     List<ParentStudent> parentStudents = get("/People/ParentStudent", List.of(studentIdFilter), ParentStudent.class);
@@ -84,8 +93,7 @@ public class FactsClient {
     String ids = parentsIds.stream().map(id -> id + "").collect(Collectors.joining("|"));
 
     Filter idsFilter = new Filter("personId", Operator.EQUALS, ids);
-    List<Person> persons = get("/People", List.of(idsFilter), Person.class);
-    return persons;
+    return get("/People", List.of(idsFilter), Person.class);
   }
 
   // Person-Family // ?
@@ -96,25 +104,26 @@ public class FactsClient {
       return null;
     }
     if (personFamilies.size() > 1) {
-      log.warn("Found more than 1 person-family records for person id {}!" + personId);
+      log.warn("Found more than 1 person-family records for person id {}!", personId);
     }
     return personFamilies.get(0);
   }
 
   // Address
+
   public Address getAddress(Integer id) {
     return HttpClient.get(FACTS_API_URL + "/people/Address/" + id, headers(), Address.class);
   }
 
   // Utils
+
   private <T> List<T> get(String url, List<Filter> filters, Class<T> clazz) throws Exception {
     return get(url, filters, null, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, clazz);
   }
 
   private <T> List<T> get(String url, List<Filter> filters, String sortBy, Integer page, Integer pageSize, Class<T> clazz) throws Exception {
     FilteredResponse<T> filteredResponse = getFilteredResponse(url, filters, sortBy, page, pageSize, clazz);
-    List<T> items = new LinkedList<>();
-    items.addAll(filteredResponse.results);
+    List<T> items = new LinkedList<>(filteredResponse.results);
 
     if (filteredResponse.pageCount > page) {
       int pageCount = filteredResponse.pageCount;
@@ -149,7 +158,7 @@ public class FactsClient {
       parameters.add("pageSize=" + pageSize);
     }
     if (CollectionUtils.isNotEmpty(parameters)) {
-      return "?" + parameters.stream().collect(Collectors.joining("&"));
+      return "?" + String.join("&", parameters);
     } else {
       return null;
     }
@@ -162,8 +171,7 @@ public class FactsClient {
     String parameters = filters.stream()
         .map(filter -> filter.name + filter.operator.value + filter.value)
         .collect(Collectors.joining(","));
-    String encodedParameters = URLEncoder.encode(parameters, "UTF-8");
-    return encodedParameters;
+    return URLEncoder.encode(parameters, "UTF-8");
   }
 
   private Response getWithAutoRetry(String url) {
@@ -377,5 +385,39 @@ public class FactsClient {
     public Integer pageSize;
     public Integer rowCount;
     public String nextPage;
+  }
+
+  //TODO: remove once done with testing
+  public static void main(String[] args) throws Exception {
+    Environment env = new Environment() {
+      @Override
+      public EnvironmentConfig getConfig() {
+        EnvironmentConfig envConfig = new EnvironmentConfig();
+        envConfig.facts.publicKey = "5081164fcbb24d53a0e5be36e6256d38";
+        envConfig.facts.secretKey = "McDIwBX3GiBoX41BDehJyX151h5w/i4609IiD6LaFvw31Yi81y/xdJhQgFqzPKKz/ITW+TzFSzHmw3mNJieTPwt0CkQQitX1o5PyCMHSYPg=";
+        return envConfig;
+      }
+    };
+
+    FactsClient factsClient = new FactsClient(env);
+
+    LocalDateTime to = LocalDateTime.now();
+    LocalDateTime from = to.minusMonths(1);
+
+//    List<FactsClient.Student> students = factsClient.getStudentsEnrolledBetween(from, to);
+    List<FactsClient.Student> students = factsClient.getAdmissions();
+    log.info("students {}", students);
+
+    for (FactsClient.Student student : students) {
+      Integer personId = student.studentId; // (!) student id actually refers to person id
+
+      FactsClient.Person person = factsClient.getPerson(personId);
+      log.info("Person: {}", person);
+      List<FactsClient.Person> parents = factsClient.getParents(personId);
+      log.info("Parents: {}", parents);
+
+      FactsClient.Address address = factsClient.getAddress(person.addressID);
+      log.info("Address: {}", address);
+    }
   }
 }
