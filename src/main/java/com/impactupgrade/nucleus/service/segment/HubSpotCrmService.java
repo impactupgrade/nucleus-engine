@@ -221,8 +221,38 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
-    // TODO
-    return Collections.emptyList();
+    List<CrmRecurringDonation> results = new ArrayList<>();
+    List<Contact> contactResults = new ArrayList<>();
+
+
+    //Find contacts using the search params
+
+    if (name.isPresent()) {
+      FilterGroup filterGroup = new FilterGroup(List.of(
+              new Filter("firstname", "CONTAINS_TOKEN", "*" + name.get() + "*"),
+              new Filter("lastname", "CONTAINS_TOKEN", "*" + name.get() + "*")));
+      List<FilterGroup> filterGroups = List.of(filterGroup);
+      contactResults.addAll(hsClient.contact().search(filterGroups, contactFields).getResults());
+    }
+
+    if (email.isPresent()) {
+      contactResults.addAll(hsClient.contact().searchByEmail(email.get(), contactFields).getResults());
+    }
+
+    if (phone.isPresent()) {
+      contactResults.addAll(hsClient.contact().searchByPhone(phone.get(), contactFields).getResults());
+    }
+    if(contactResults.isEmpty()){
+      log.info("No results found");
+      return Collections.emptyList();
+    }
+
+    List<FilterGroup> filters = new ArrayList<>();
+    for(Contact contact : contactResults){
+      filters.add(new FilterGroup(List.of(new Filter("associations.contact", "EQ", contact.getId()))));
+    }
+
+    return toCrmRecurringDonation(hsClient.deal().search(filters, dealFields).getResults());
   }
   @Override
   public Optional<CrmUser> getUserById(String id) throws Exception {
