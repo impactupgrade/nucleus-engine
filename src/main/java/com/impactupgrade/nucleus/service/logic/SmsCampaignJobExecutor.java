@@ -83,7 +83,14 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
     Map<String, JobProgress> progressesByContacts = job.jobProgresses.stream()
         .filter(jp -> !Strings.isNullOrEmpty(jp.targetId))
-        .collect(Collectors.toMap(jp -> jp.targetId, jp -> jp));
+        .collect(Collectors.toMap(
+            jp -> jp.targetId,
+            jp -> jp,
+            (jp1, jp2) -> {
+              log.info("ignoring duplicate: {}", jp2.targetId);
+              return jp1;
+            }
+        ));
 
     for (CrmContact crmContact : crmContacts) {
       String contactId = crmContact.id;
