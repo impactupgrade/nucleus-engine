@@ -489,25 +489,35 @@ public class StripeClient {
   }
 
   public SubscriptionCreateParams.Builder defaultSubscriptionBuilder(Customer customer, PaymentSource source) {
-    return defaultSubscriptionBuilder(customer, source, null);
+    return defaultSubscriptionBuilder(customer, source, null, null);
+  }
+
+  public SubscriptionCreateParams.Builder defaultSubscriptionBuilder(Customer customer, PaymentSource source, Integer autoCancelMonths) {
+    return defaultSubscriptionBuilder(customer, source, null, autoCancelMonths);
   }
 
   public SubscriptionCreateParams.Builder defaultSubscriptionBuilder(Customer customer, PaymentSource source,
-      Integer autoCancelMonths) {
-    Long cancelAt = null;
+     SubscriptionCreateParams.PaymentBehavior behavior, Integer autoCancelMonths) {
+    SubscriptionCreateParams.Builder subscriptionCreateParamsBuilder = SubscriptionCreateParams.builder();
+    subscriptionCreateParamsBuilder.setCustomer(customer.getId());
+    if (source != null) {
+      subscriptionCreateParamsBuilder.setDefaultSource(source.getId());
+    }
+    if (behavior != null) {
+      subscriptionCreateParamsBuilder.setPaymentBehavior(behavior);
+    } else {
+      // fail immediately if zip/cvc fails, just like a onetime charge -- default is to allow
+      // incomplete invoices, which doesn't give immediate donor feedback
+      subscriptionCreateParamsBuilder.setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.ERROR_IF_INCOMPLETE);
+    }
     if (autoCancelMonths != null) {
       Calendar future = Calendar.getInstance();
       future.add(Calendar.MONTH, autoCancelMonths);
-      cancelAt = future.getTimeInMillis() / 1000;
-    }
+      Long cancelAt = future.getTimeInMillis() / 1000;
 
-    return SubscriptionCreateParams.builder()
-        .setCustomer(customer.getId())
-        .setDefaultSource(source.getId())
-        .setCancelAt(cancelAt)
-        // fail immediately if zip/cvc fails, just like a onetime charge -- default is to allow
-        // incomplete invoices, which doesn't give immediate donor feedback
-        .setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.ERROR_IF_INCOMPLETE);
+      subscriptionCreateParamsBuilder.setCancelAt(cancelAt);
+    }
+    return subscriptionCreateParamsBuilder;
   }
 
   public Subscription createSubscription(ProductCreateParams.Builder productBuilder,
