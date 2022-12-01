@@ -33,7 +33,7 @@ public class ScheduledJobController {
         Instant now = Instant.now();
         env.scheduledJobService().processJobSchedules(now);
       } catch (Exception e) {
-        log.error("scheduled job failed", e);
+        log.error("scheduled jobs failed", e);
       }
     }).start();
     return Response.ok().build();

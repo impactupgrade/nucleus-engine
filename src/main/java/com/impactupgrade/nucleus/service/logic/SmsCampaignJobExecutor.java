@@ -73,6 +73,8 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       return;
     }
 
+    log.info("Retrieving contacts for job id {} using contactListId {}", job.id, contactListId);
+
     List<CrmContact> crmContacts = crmService.getContactsFromList(contactListId);
     if (CollectionUtils.isEmpty(crmContacts)) {
       log.info("No contacts returned for job id {}! Skipping...", job.id);

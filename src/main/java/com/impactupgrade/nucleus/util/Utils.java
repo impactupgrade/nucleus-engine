@@ -163,7 +163,7 @@ public class Utils {
           rowData.put(headerData.get(i), "");
         } else {
           switch (cell.getCellType()) {
-            case NUMERIC -> {
+            case NUMERIC, FORMULA -> {
               if (DateUtil.isCellDateFormatted(cell)) {
                 rowData.put(headerData.get(i), new SimpleDateFormat("yyyy-MM-dd").format(cell.getDateCellValue()));
               } else {
