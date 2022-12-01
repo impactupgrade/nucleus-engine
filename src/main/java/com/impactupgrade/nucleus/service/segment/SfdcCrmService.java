@@ -899,11 +899,6 @@ public class SfdcCrmService implements CrmService {
       for (int i = 0; i < importEvents.size(); i++) {
         CrmImportEvent importEvent = importEvents.get(i);
 
-        // If the account and contact upserts both failed, avoid creating an orphaned opp.
-        if (nonBatchAccountIds.get(i) == null && nonBatchContactIds.get(i) == null) {
-          continue;
-        }
-
         log.info("import processing opportunities on row {} of {}", i + 2, importEvents.size() + 1);
 
         if (!importEvent.opportunitySkipDuplicateCheck && Strings.isNullOrEmpty(importEvent.opportunityId)) {
@@ -925,6 +920,8 @@ public class SfdcCrmService implements CrmService {
           opportunity.setField("CampaignId", campaignNameToId.get(importEvent.opportunityCampaignName));
         }
 
+        setBulkImportOpportunityFields(opportunity, importEvent);
+
         if (!Strings.isNullOrEmpty(importEvent.opportunityId)) {
           opportunity.setId(importEvent.opportunityId);
           bulkUpdateOpportunities.put(importEvent.opportunityId, opportunity);
@@ -939,10 +936,13 @@ public class SfdcCrmService implements CrmService {
             bulkInsertOpportunityContactRoles.put(importEvent.opportunityId, contactRole);
           }
         } else {
+          // If the account and contact upserts both failed, avoid creating an orphaned opp.
+          if (nonBatchAccountIds.get(i) == null && nonBatchContactIds.get(i) == null) {
+            continue;
+          }
+
           bulkInsertOpportunities.add(opportunity);
         }
-
-        setBulkImportOpportunityFields(opportunity, importEvent);
       }
 
       sfdcClient.batchInsert(bulkInsertOpportunities.toArray());
