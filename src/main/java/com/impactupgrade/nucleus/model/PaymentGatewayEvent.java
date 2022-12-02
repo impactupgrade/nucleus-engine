@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
@@ -19,6 +20,7 @@ import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.util.CaseInsensitiveMap;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -36,14 +38,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class PaymentGatewayEvent {
+public class PaymentGatewayEvent implements Serializable {
 
-  protected final Environment env;
+  protected final EnvironmentConfig envConfig;
 
   // For convenience's sake, making use of CRM models, here, to make downstream processing cleaner.
   protected CrmAccount crmAccount = new CrmAccount();
   protected CrmContact crmContact = new CrmContact();
 
+  protected String application;
   protected String customerId;
   protected String depositTransactionId;
   protected String gatewayName;
@@ -87,7 +90,7 @@ public class PaymentGatewayEvent {
   private final Map<String, String> customerMetadata = new CaseInsensitiveMap<>();
 
   public PaymentGatewayEvent(Environment env) {
-    this.env = env;
+    envConfig = env.getConfig();
   }
 
   // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
@@ -96,6 +99,7 @@ public class PaymentGatewayEvent {
   public void initStripe(Charge stripeCharge, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     gatewayName = "Stripe";
+    application = stripeCharge.getApplication();
     String stripePaymentMethod = stripeCharge.getPaymentMethodDetails().getType();
     if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
       paymentMethod = "ACH";
@@ -138,7 +142,7 @@ public class PaymentGatewayEvent {
       transactionFeeInDollars = bt.getFee() / 100.0;
     });
 
-    if (env.getConfig().currency.equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
+    if (envConfig.currency.equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
     } else {
@@ -163,6 +167,7 @@ public class PaymentGatewayEvent {
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     gatewayName = "Stripe";
+    application = stripePaymentIntent.getApplication();
     String stripePaymentMethod = stripePaymentIntent.getCharges().getData().stream().findFirst().map(c -> c.getPaymentMethodDetails().getType()).orElse("");
     if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
       paymentMethod = "ACH";
@@ -208,7 +213,7 @@ public class PaymentGatewayEvent {
       transactionFeeInDollars = bt.getFee() / 100.0;
     });
 
-    if (env.getConfig().currency.equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
+    if (envConfig.currency.equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
       transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
     } else {
@@ -536,7 +541,7 @@ public class PaymentGatewayEvent {
   public CrmAccount getCrmAccount() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmAccount.id)) {
-      crmAccount.id = getMetadataValue(env.getConfig().metadataKeys.account);
+      crmAccount.id = getMetadataValue(envConfig.metadataKeys.account);
     }
     return crmAccount;
   }
@@ -553,7 +558,7 @@ public class PaymentGatewayEvent {
   public CrmContact getCrmContact() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmContact.id)) {
-      crmContact.id = getMetadataValue(env.getConfig().metadataKeys.contact);
+      crmContact.id = getMetadataValue(envConfig.metadataKeys.contact);
     }
     return crmContact;
   }
@@ -593,6 +598,15 @@ public class PaymentGatewayEvent {
 
   // GETTERS/SETTERS
   // Note that we allow setters here, as orgs sometimes need to override the values based on custom logic.
+
+
+  public String getApplication() {
+    return application;
+  }
+
+  public void setApplication(String application) {
+    this.application = application;
+  }
 
   public String getCustomerId() {
     return customerId;

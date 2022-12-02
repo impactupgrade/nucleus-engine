@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Strings;
 
+import java.io.Serializable;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
-public class CrmContact {
+public class CrmContact implements Serializable {
 
   public enum PreferredPhone {
     HOME(List.of("home", "household")),
