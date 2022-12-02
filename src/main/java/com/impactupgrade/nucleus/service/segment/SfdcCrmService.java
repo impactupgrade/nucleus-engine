@@ -466,8 +466,11 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.fund, paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund));
     }
 
-    if(!paymentGatewayEvent.getMetadataValue(env.getConfig().salesforce.fieldDefinitions.opportunityRecordType).isEmpty()){
-      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.opportunityRecordType, paymentGatewayEvent.getMetadataValue(env.getConfig().salesforce.fieldDefinitions.opportunityRecordType));
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getMetadataValue("payment_type"))) {
+      EnvironmentConfig.PaymentEventType paymentType = EnvironmentConfig.PaymentEventType.valueOf(paymentGatewayEvent.getMetadataValue("payment_type"));
+
+      String recordTypeId = env.getConfig().salesforce.paymentEventTypeToRecordTypeIds.get(paymentType);
+      opportunity.setField("RecordTypeId", recordTypeId);
     }
 
     // check to see if this was a failed payment attempt and set the StageName accordingly

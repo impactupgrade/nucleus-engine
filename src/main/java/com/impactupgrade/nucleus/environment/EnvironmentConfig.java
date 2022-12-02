@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,7 +26,7 @@ import java.util.Set;
  * See environment-default.json for the base layer! Then, organizations can provide their own environment.json file
  * to overwrite specific values from the default. environment.json is assumed to be on the thread's classpath.
  */
-public class EnvironmentConfig {
+public class EnvironmentConfig implements Serializable {
 
   private static final Logger log = LogManager.getLogger(EnvironmentConfig.class.getName());
 
@@ -45,9 +46,8 @@ public class EnvironmentConfig {
   public String crmMessaging = "";
 
   public String emailTransactional = "";
-  public String enrichmentService = "";
 
-  public static class Platform {
+  public static class Platform implements Serializable {
     // if keys
     public String publicKey = "";
     public String secretKey = "";
@@ -70,16 +70,16 @@ public class EnvironmentConfig {
     public List<Expression> filteringExpressions = new ArrayList<>();
   }
 
-  public static class Notification {
+  public static class Notification implements Serializable {
     public String from = "";
     public Set<String> to = new HashSet<>();
   }
 
-  public static class Task {
+  public static class Task implements Serializable {
     public String assignTo = "";
   }
 
-  public static class Notifications {
+  public static class Notifications implements Serializable {
     public Notification email = null;
     public Notification sms = null;
     public Task task = null;
@@ -87,7 +87,7 @@ public class EnvironmentConfig {
 
   public Map<String, Notifications> notifications = new HashMap<>();
 
-  public static class Expression {
+  public static class Expression implements Serializable {
     public String key;
     public String operator;
     public String value;
@@ -101,7 +101,7 @@ public class EnvironmentConfig {
   //  time (payment gateway webhook controllers, etc). But in some cases, we don't! Ex: PaymentGatewayService isn't
   //  currently told ahead of time what gateway to expect, so that wouldn't know which set of these fields to grab.
   //  Needs careful thought...
-  public static class CRMFieldDefinitions {
+  public static class CRMFieldDefinitions implements Serializable {
     public String paymentGatewayName = "";
 
     public String paymentGatewayTransactionId = "";
@@ -129,8 +129,10 @@ public class EnvironmentConfig {
     public String smsOptOut = "";
 
     public String contactLanguage = "";
+  }
 
-    public String opportunityRecordType = "";
+  public enum PaymentEventType {
+    DONATION, TICKET
   }
 
   public Bloomerang bloomerang = new Bloomerang();
@@ -153,14 +155,14 @@ public class EnvironmentConfig {
     public boolean enableRecurring = false;
     public EmailPlatform email = new EmailPlatform();
 
-    public static class HubSpotDonationPipeline {
+    public static class HubSpotDonationPipeline implements Serializable {
       public String id = "";
       public String successStageId = "";
       public String failedStageId = "";
       public String refundedStageId = "";
     }
 
-    public static class HubSpotRecurringDonationPipeline {
+    public static class HubSpotRecurringDonationPipeline implements Serializable {
       public String id = "";
       public String openStageId = "";
       public String closedStageId = "";
@@ -179,7 +181,7 @@ public class EnvironmentConfig {
       public String paymentGatewayAmountExchangeRate = "";
     }
 
-    public static class HubspotCustomFields {
+    public static class HubspotCustomFields implements Serializable {
       public Set<String> company = new HashSet<>();
       public Set<String> contact = new HashSet<>();
       public Set<String> deal = new HashSet<>();
@@ -202,9 +204,12 @@ public class EnvironmentConfig {
 
     public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
     public SalesforceCustomFields customQueryFields = new SalesforceCustomFields();
+
     public String defaultCampaignId = "";
 
-    public static class SalesforceCustomFields {
+    public Map<PaymentEventType, String> paymentEventTypeToRecordTypeIds = new HashMap<>();
+
+    public static class SalesforceCustomFields implements Serializable {
       public Set<String> account = new HashSet<>();
       public Set<String> campaign = new HashSet<>();
       public Set<String> contact = new HashSet<>();
@@ -212,9 +217,6 @@ public class EnvironmentConfig {
       public Set<String> recurringDonation = new HashSet<>();
       public Set<String> user = new HashSet<>();
     }
-
-    public Set<String> supportedContactsReportTypes = new HashSet<>();
-    public Set<String> supportedContactReportColumns = new HashSet<>();
   }
 
   public Donorwrangler donorwrangler = new Donorwrangler();
@@ -230,7 +232,7 @@ public class EnvironmentConfig {
     public Map<String, TwilioUser> users = new HashMap<>();
   }
 
-  public static class TwilioUser {
+  public static class TwilioUser implements Serializable {
     public String senderPn;
     public boolean recordOwnerFilter = true;
   }
@@ -239,13 +241,13 @@ public class EnvironmentConfig {
     MARKETING, TRANSACTIONAL
   }
 
-  public static class EmailTagFilters {
+  public static class EmailTagFilters implements Serializable {
     public Integer majorDonorAmount = null;
     public Integer recentDonorDays = null;
     public Integer frequentDonorCount = null;
   }
 
-  public static class EmailList {
+  public static class EmailList implements Serializable {
     public String id = "";
     public EmailListType type = EmailListType.MARKETING;
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
@@ -263,16 +265,11 @@ public class EnvironmentConfig {
   public List<EmailPlatform> mailchimp = new ArrayList<>();
   public List<EmailPlatform> sendgrid = new ArrayList<>();
 
-  public Map<paymentEventType, String> paymentEventTypeIds = new HashMap<>();
-
-  public enum paymentEventType {
-    SALES, DONATION //Make this TAXED,DONATION?
-  }
-  public static class Raisely extends Platform{
+  public static class Raisely extends Platform {
     public String stripeAppId = "";
   }
 
-  public Raisely raisely= new Raisely();
+  public Raisely raisely = new Raisely();
 
   public Backblaze backblaze = new Backblaze();
 
@@ -282,7 +279,7 @@ public class EnvironmentConfig {
 
   public Recaptcha recaptcha = new Recaptcha();
 
-  public static class Recaptcha {
+  public static class Recaptcha implements Serializable {
     public String siteSecret = "";
   }
 
@@ -295,7 +292,7 @@ public class EnvironmentConfig {
     public String url = "";
     public List<OdkProject> projects = new ArrayList<>();
   }
-  public static class OdkProject {
+  public static class OdkProject implements Serializable {
     public Integer projectId = null;
     public String form = "";
   }
@@ -327,7 +324,7 @@ public class EnvironmentConfig {
 
   public MetadataKeys metadataKeys = new MetadataKeys();
 
-  public static class MetadataKeys {
+  public static class MetadataKeys implements Serializable {
     public Set<String> account = new HashSet<>();
     public Set<String> campaign = new HashSet<>();
     public Set<String> fund = new HashSet<>();

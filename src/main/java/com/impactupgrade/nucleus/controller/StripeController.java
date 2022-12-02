@@ -105,8 +105,6 @@ public class StripeController {
 
   // Public so that utilities can call this directly.
   public void processEvent(String eventType, StripeObject stripeObject, Environment env) throws Exception {
-    EnrichmentService enrichmentService = env.enrichmentService();
-
     StripePaymentGatewayService stripePaymentGatewayService = (StripePaymentGatewayService) env.paymentGatewayService("stripe");
     if (stripePaymentGatewayService.filter(stripeObject)) {
       log.info("Skipping stripe object...");
@@ -122,9 +120,12 @@ public class StripeController {
           log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
+
           env.contactService().processDonor(paymentGatewayEvent);
-          env.donationService().createDonation(paymentGatewayEvent);
-          env.accountingService().processTransaction(paymentGatewayEvent);
+          for (PaymentGatewayEvent enrichedEvent : getEnrichedEvents(paymentGatewayEvent, env)) {
+            env.donationService().createDonation(enrichedEvent);
+            env.accountingService().processTransaction(enrichedEvent);
+          }
         }
       }
       case "payment_intent.succeeded" -> {
@@ -132,16 +133,12 @@ public class StripeController {
         log.info("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
-        if (enrichmentService.eventIsFromPlatform(paymentGatewayEvent)) {
-          for ( PaymentGatewayEvent enrichedEvent : enrichmentService.enrich(paymentGatewayEvent)){
-            env.donationService().createDonation(enrichedEvent);
-            env.accountingService().processTransaction(enrichedEvent);
-          }
-        } else { // going the separate event route here, leads to redundant code though...
-          env.donationService().createDonation(paymentGatewayEvent);
-          env.accountingService().processTransaction(paymentGatewayEvent);
-        }
+
         env.contactService().processDonor(paymentGatewayEvent);
+        for (PaymentGatewayEvent enrichedEvent : getEnrichedEvents(paymentGatewayEvent, env)) {
+          env.donationService().createDonation(enrichedEvent);
+          env.accountingService().processTransaction(enrichedEvent);
+        }
       }
       case "charge.failed" -> {
         Charge charge = (Charge) stripeObject;
@@ -293,6 +290,21 @@ public class StripeController {
         }
       }
       default -> log.info("unhandled Stripe webhook event type: {}", eventType);
+    }
+  }
+
+  private List<PaymentGatewayEvent> getEnrichedEvents(PaymentGatewayEvent paymentGatewayEvent, Environment env)
+      throws Exception {
+    List<EnrichmentService> enrichmentServices = env.allEnrichmentServices().stream()
+        .filter(es -> es.eventIsFromPlatform(paymentGatewayEvent)).toList();
+    if (enrichmentServices.isEmpty()) {
+      return List.of(paymentGatewayEvent);
+    } else {
+      List<PaymentGatewayEvent> enrichedEvents = new ArrayList<>();
+      for (EnrichmentService enrichmentService : enrichmentServices) {
+        enrichedEvents.addAll(enrichmentService.enrich(paymentGatewayEvent));
+      }
+      return enrichedEvents;
     }
   }
 }

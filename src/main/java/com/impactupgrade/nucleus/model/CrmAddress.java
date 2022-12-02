@@ -6,9 +6,10 @@ package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class CrmAddress {
+public class CrmAddress implements Serializable {
 
   public String street;
   public String city;

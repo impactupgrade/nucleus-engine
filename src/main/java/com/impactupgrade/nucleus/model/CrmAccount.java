@@ -6,7 +6,9 @@ package com.impactupgrade.nucleus.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-public class CrmAccount {
+import java.io.Serializable;
+
+public class CrmAccount implements Serializable {
 
   public enum Type {
     HOUSEHOLD, ORGANIZATION

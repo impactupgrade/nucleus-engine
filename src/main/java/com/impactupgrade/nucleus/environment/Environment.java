@@ -144,9 +144,6 @@ public class Environment {
     return crmService(getConfig().crmPrimary);
   }
 
-  public EnrichmentService enrichmentService(){
-    return  segmentService(getConfig().enrichmentService, EnrichmentService.class);
-  }
   public CrmService donationsCrmService() {
     return crmService(getConfig().crmDonations);
   }
@@ -173,6 +170,10 @@ public class Environment {
 
   public List<EmailService> allEmailServices() {
     return segmentServices(EmailService.class);
+  }
+
+  public List<EnrichmentService> allEnrichmentServices() {
+    return segmentServices(EnrichmentService.class);
   }
 
   public Optional<AccountingPlatformService> accountingPlatformService() {
