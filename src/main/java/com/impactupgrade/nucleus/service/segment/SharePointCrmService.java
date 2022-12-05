@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -77,13 +78,13 @@ public class SharePointCrmService implements CrmService {
         msGraphClient = new MSGraphClient(env.getConfig().sharePoint);
         if (sharepointCsvCache == null && !DISABLE_SHAREPOINT_CACHE) {
             sharepointCsvCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(5, TimeUnit.MINUTES)
-                .build(new CacheLoader<>() {
+                .refreshAfterWrite(5, TimeUnit.MINUTES)
+                .build(CacheLoader.asyncReloading(new CacheLoader<>() {
                     @Override
                     public Map<String, List<Map<String, String>>> load(String cacheKey) {
                         return downloadCsvDataMap();
                     }
-                });
+                }, Executors.newSingleThreadExecutor()));
             // warm the cache
             if (!DISABLE_SHAREPOINT_CACHE) {
                 getCsvDataMap();
