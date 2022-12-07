@@ -55,6 +55,11 @@
       <artifactId>azure-identity</artifactId>
       <version>1.2.5</version>
     </dependency>
+    <dependency>
+      <groupId>com.stripe</groupId>
+      <artifactId>stripe-java</artifactId>
+      <version>22.1.0</version>
+    </dependency>
   </dependencies>
 
   <build>
