@@ -82,6 +82,10 @@ public class PaymentGatewayEvent implements Serializable {
   protected String depositId;
   protected ZonedDateTime depositDate;
 
+  // If enrichment results in multiple events (ex: a split of a deductible and non-deductible transaction),
+  // nest the secondary events under the primary so downstream processing is aware of the connection.
+  protected List<PaymentGatewayEvent> secondaryEvents = new ArrayList<>();
+
   // Maps holding metadata content. We need to split these up in order to define an ordered hierarchy of values.
   // VITAL: Allow these to be case insensitive!
   private final Map<String, String> contextMetadata = new CaseInsensitiveMap<>();
@@ -836,6 +840,14 @@ public class PaymentGatewayEvent implements Serializable {
 
   public void setDepositDate(ZonedDateTime depositDate) {
     this.depositDate = depositDate;
+  }
+
+  public List<PaymentGatewayEvent> getSecondaryEvents() {
+    return secondaryEvents;
+  }
+
+  public void setSecondaryEvents(List<PaymentGatewayEvent> secondaryEvents) {
+    this.secondaryEvents = secondaryEvents;
   }
 
   // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.

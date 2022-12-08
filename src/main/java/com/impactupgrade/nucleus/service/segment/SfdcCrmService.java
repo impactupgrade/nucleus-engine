@@ -471,6 +471,9 @@ public class SfdcCrmService implements CrmService {
 
       String recordTypeId = env.getConfig().salesforce.paymentEventTypeToRecordTypeIds.get(paymentType);
       opportunity.setField("RecordTypeId", recordTypeId);
+    } else {
+      String recordTypeId = paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.recordType);
+      opportunity.setField("RecordTypeId", recordTypeId);
     }
 
     // check to see if this was a failed payment attempt and set the StageName accordingly
