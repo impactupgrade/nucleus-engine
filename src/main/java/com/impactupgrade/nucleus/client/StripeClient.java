@@ -466,13 +466,11 @@ public class StripeClient {
   }
 
   public PaymentIntent createPaymentIntent(PaymentIntentCreateParams.Builder paymentIntentBuilder) throws StripeException {
-    PaymentIntent paymentIntent = PaymentIntent.create(paymentIntentBuilder.build(), requestOptions);
-    return paymentIntent;
+    return PaymentIntent.create(paymentIntentBuilder.build(), requestOptions);
   }
 
   public PaymentIntent updatePaymentIntent(PaymentIntent paymentIntent, PaymentIntentUpdateParams.Builder paymentIntentUpdateBuilder) throws StripeException {
-    PaymentIntent updatedPaymentIntent = paymentIntent.update(paymentIntentUpdateBuilder.build(), requestOptions);
-    return updatedPaymentIntent;
+    return paymentIntent.update(paymentIntentUpdateBuilder.build(), requestOptions);
   }
 
   public ProductCreateParams.Builder defaultProductBuilder(Customer customer, long amountInCents, String currency) {
