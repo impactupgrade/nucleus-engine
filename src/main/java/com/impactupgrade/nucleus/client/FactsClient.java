@@ -5,6 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmAddress;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -400,24 +406,133 @@ public class FactsClient {
     };
 
     FactsClient factsClient = new FactsClient(env);
+    CrmService crmService = env.primaryCrmService();
 
     LocalDateTime to = LocalDateTime.now();
     LocalDateTime from = to.minusMonths(1);
 
 //    List<FactsClient.Student> students = factsClient.getStudentsEnrolledBetween(from, to);
     List<FactsClient.Student> students = factsClient.getAdmissions();
+
+    students = students.subList(0, Math.min(1, students.size())); // only 1s one for now
     log.info("students {}", students);
 
     for (FactsClient.Student student : students) {
+
       Integer personId = student.studentId; // (!) student id actually refers to person id
 
       FactsClient.Person person = factsClient.getPerson(personId);
       log.info("Person: {}", person);
+      FactsClient.Address address = factsClient.getAddress(person.addressID);
+      log.info("Address: {}", address);
       List<FactsClient.Person> parents = factsClient.getParents(personId);
       log.info("Parents: {}", parents);
 
-      FactsClient.Address address = factsClient.getAddress(person.addressID);
-      log.info("Address: {}", address);
+      upsertStudent(person, address, parents, crmService);
+    }
+  }
+
+  private static void upsertStudent(Person person, Address address, List<Person> parents, CrmService crmService) throws Exception {
+    CrmContact contact = toCrmContact(person, address);
+    contact = upsertCrmContact(contact, null, crmService);
+    log.info("Upserted student contact for person id: {}", person.personId);
+
+    for (Person parent: parents) {
+      // TODO: decide if we need to track address for parents (extra calls to FACTS API)
+      CrmContact parentContact = toCrmContact(parent, null);
+      parentContact = upsertCrmContact(parentContact, contact.accountId, crmService);
+      log.info("Upserted parent contact for person id: {}", parent.personId);
+    }
+  }
+
+  private static CrmContact upsertCrmContact(CrmContact crmContact, String crmAccountId, CrmService crmService) throws Exception {
+    if (Strings.isNullOrEmpty(crmContact.email)) {
+      log.warn("Can not identify contact (does not have an email). Returning...");
+      return crmContact;
+    }
+    CrmContact existing = getCrmContactForEmail(crmContact.email, crmService);
+    if (existing == null) {
+      // Create new contact
+      if (Strings.isNullOrEmpty(crmAccountId)) {
+        CrmAccount crmAccount = createHouseholdAccount(crmContact);
+        String accountId = crmService.insertAccount(crmAccount);
+        crmContact.accountId = accountId;
+      } else {
+        crmContact.accountId = crmAccountId;
+      }
+      crmService.insertContact(crmContact);
+    } else {
+      // Update existing contact
+      updateCrmContact(existing, crmContact);
+      crmService.updateContact(existing);
+    }
+    return crmContact;
+  }
+
+  private static CrmContact getCrmContactForEmail(String email, CrmService crmService) throws Exception {
+    ContactSearch contactSearch = new ContactSearch();
+    contactSearch.email = email;
+    PagedResults<CrmContact> pagedResults = crmService.searchContacts(contactSearch);
+    List<CrmContact> foundContacts = pagedResults.getResults();
+    return CollectionUtils.isNotEmpty(foundContacts) ? foundContacts.stream().findFirst().get() : null;
+  }
+
+  private static CrmAccount createHouseholdAccount(CrmContact crmContact) {
+    CrmAccount crmAccount = new CrmAccount();
+    crmAccount.name = crmContact.lastName + " Family";
+    crmAccount.type = CrmAccount.Type.HOUSEHOLD;
+    return crmAccount;
+  }
+
+  // TODO: Mapstruct?
+  private static CrmContact toCrmContact(Person person, Address address) {
+    CrmContact crmContact = new CrmContact();
+    crmContact.firstName = person.firstName;
+    crmContact.lastName = person.lastName;
+    crmContact.fullName = person.firstName + " " + person.middleName + " " + person.lastName;
+    crmContact.email = person.email;
+    crmContact.homePhone = person.homePhone;
+    crmContact.mobilePhone = person.cellPhone;
+    crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE; // ?
+    crmContact.address = toCrmAddress(address);
+    return crmContact;
+  }
+
+  private static CrmAddress toCrmAddress(Address address) {
+    if (address == null) {
+      return null;
+    }
+    CrmAddress crmAddress = new CrmAddress();
+    crmAddress.street = address.address1 + address.address2;
+    crmAddress.city = address.city;
+    crmAddress.state = address.state;
+    crmAddress.postalCode = address.zip;
+    crmAddress.country = address.country;
+    return crmAddress;
+  }
+
+  private static void updateCrmContact(CrmContact existing, CrmContact update) {
+    existing.homePhone = update.homePhone;
+    existing.workPhone = update.workPhone;
+    existing.preferredPhone = update.preferredPhone;
+    updateCrmAddress(existing.address, update.address);
+  }
+
+  private static void updateCrmAddress(CrmAddress existing, CrmAddress update) {
+    if (update.street != null) {
+      existing.street = update.street;
+    }
+    if (update.city != null) {
+      existing.city = update.city;
+    }
+    if (update.state != null) {
+      existing.state = update.state;
+    }
+    if (update.postalCode != null) {
+      existing.postalCode = update.postalCode;
+    }
+    if (update.country != null) {
+      existing.country = update.country;
     }
   }
 }
