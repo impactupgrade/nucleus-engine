@@ -9,7 +9,6 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,14 +43,13 @@ public class RaiselyEnrichmentService implements EnrichmentService {
   }
 
   @Override
-  public List<PaymentGatewayEvent> enrich(PaymentGatewayEvent event) throws Exception {
+  public void enrich(PaymentGatewayEvent event) throws Exception {
     String donationId = parseDonationId(event.getTransactionDescription());
 
     RaiselyClient.Donation donation = raiselyClient.getDonation(donationId);
 
     if (donation.items == null || donation.items.size() <= 1) {
       // not a split transaction -- return the original
-      return List.of(event);
     } else {
       // TODO: Are there other types of items? Could there be a ticket + products + donation?
       List<RaiselyClient.DonationItem> donationItems = donation.items.stream().filter(i -> !"ticket".equalsIgnoreCase(i.type)).toList();
@@ -59,36 +57,29 @@ public class RaiselyEnrichmentService implements EnrichmentService {
       if (ticketItems.isEmpty()) {
         // donations only, but this should never happen?
         event.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.DONATION.name());
-        return List.of(event);
       } else if (donationItems.isEmpty()) {
         // tickets only
         event.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.TICKET.name());
-        return List.of(event);
       } else if (donationItems.size() > 1 || ticketItems.size() > 1) {
         log.warn("Raisely donation {} had multiple donations and/or tickets; expected one of each, so skipping out of caution", donationId);
       } else {
-        // one of each
+        // one of each -- let the ticket be the primary and donation secondary
 
-        event.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.DONATION.name());
-        event.setTransactionAmountInDollars((double) ((donationItems.get(0).amount/100)));
+        event.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.TICKET.name());
+        // if fees are covered, stick them on the TICKET, not the DONATION
+        double coveredFee = donation.feeCovered ? donation.fee : 0.0;
+        event.setTransactionAmountInDollars((double) ((ticketItems.get(0).amount/100) + coveredFee));
 
         // TODO: This will have the same Stripe IDs! For most clients, this won't work, since we skip processing
         //  gifts if their Stripe ID already exists in the CRM. Talking to DR AU about how to handle. Nuke the IDs
         //  for one or the other?
         PaymentGatewayEvent clonedEvent = SerializationUtils.clone(event);
-        clonedEvent.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.TICKET.name());
-        // if fees are covered, stick them on the TICKET, not the DONATION
-        double coveredFee = donation.feeCovered ? donation.fee : 0.0;
-        clonedEvent.setTransactionAmountInDollars((double) ((ticketItems.get(0).amount/100) + coveredFee));
+        clonedEvent.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.DONATION.name());
+        clonedEvent.setTransactionAmountInDollars((double) ((donationItems.get(0).amount/100)));
+
+        event.getSecondaryEvents().add(clonedEvent);
       }
     }
-
-    List<PaymentGatewayEvent> items = new ArrayList<>();
-    for (RaiselyClient.DonationItem item : donation.items) {
-      items.add(toPaymentGatewayEvent(donation, item, event));
-    }
-
-    return items;
   }
 
   //HELPERS

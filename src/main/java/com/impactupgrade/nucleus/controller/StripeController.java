@@ -121,11 +121,13 @@ public class StripeController {
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
 
+          // must first process the account/contact so they're available for the enricher
           env.contactService().processDonor(paymentGatewayEvent);
-          for (PaymentGatewayEvent enrichedEvent : getEnrichedEvents(paymentGatewayEvent, env)) {
-            env.donationService().createDonation(enrichedEvent);
-            env.accountingService().processTransaction(enrichedEvent);
-          }
+
+          enrich(paymentGatewayEvent, env);
+
+          env.donationService().createDonation(paymentGatewayEvent);
+          env.accountingService().processTransaction(paymentGatewayEvent);
         }
       }
       case "payment_intent.succeeded" -> {
@@ -134,11 +136,13 @@ public class StripeController {
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
 
+        // must first process the account/contact so they're available for the enricher
         env.contactService().processDonor(paymentGatewayEvent);
-        for (PaymentGatewayEvent enrichedEvent : getEnrichedEvents(paymentGatewayEvent, env)) {
-          env.donationService().createDonation(enrichedEvent);
-          env.accountingService().processTransaction(enrichedEvent);
-        }
+
+        enrich(paymentGatewayEvent, env);
+
+        env.donationService().createDonation(paymentGatewayEvent);
+        env.accountingService().processTransaction(paymentGatewayEvent);
       }
       case "charge.failed" -> {
         Charge charge = (Charge) stripeObject;
@@ -293,18 +297,12 @@ public class StripeController {
     }
   }
 
-  private List<PaymentGatewayEvent> getEnrichedEvents(PaymentGatewayEvent paymentGatewayEvent, Environment env)
+  private void enrich(PaymentGatewayEvent paymentGatewayEvent, Environment env)
       throws Exception {
     List<EnrichmentService> enrichmentServices = env.allEnrichmentServices().stream()
         .filter(es -> es.eventIsFromPlatform(paymentGatewayEvent)).toList();
-    if (enrichmentServices.isEmpty()) {
-      return List.of(paymentGatewayEvent);
-    } else {
-      List<PaymentGatewayEvent> enrichedEvents = new ArrayList<>();
-      for (EnrichmentService enrichmentService : enrichmentServices) {
-        enrichedEvents.addAll(enrichmentService.enrich(paymentGatewayEvent));
-      }
-      return enrichedEvents;
+    for (EnrichmentService enrichmentService : enrichmentServices) {
+      enrichmentService.enrich(paymentGatewayEvent);
     }
   }
 }
