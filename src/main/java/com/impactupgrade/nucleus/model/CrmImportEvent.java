@@ -39,13 +39,12 @@ public class CrmImportEvent {
   // Can also be used for update retrieval, as well as inserts.
   public String contactEmail;
   
-  public String ownerId;
-
   public String accountBillingStreet;
   public String accountBillingCity;
   public String accountBillingState;
   public String accountBillingZip;
   public String accountBillingCountry;
+  public String accountOwnerId;
   public String accountRecordTypeId;
   public String accountRecordTypeName;
 
@@ -65,6 +64,7 @@ public class CrmImportEvent {
   public Boolean contactOptOutEmail;
   public Boolean contactOptInSms;
   public Boolean contactOptOutSms;
+  public String contactOwnerId;
   public String contactRecordTypeId;
   public String contactRecordTypeName;
 
@@ -74,6 +74,7 @@ public class CrmImportEvent {
   public Calendar opportunityDate;
   public String opportunityDescription;
   public String opportunityName;
+  public String opportunityOwnerId;
   public String opportunityRecordTypeId;
   public String opportunityRecordTypeName;
   public String opportunitySource;
@@ -105,8 +106,6 @@ public class CrmImportEvent {
       importEvent.contactEmail = importEvent.contactEmail.toLowerCase(Locale.ROOT);
     }
 
-    importEvent.ownerId = data.get("Owner ID");
-
     importEvent.accountBillingStreet = data.get("Account Billing Address");
     if (!Strings.isNullOrEmpty(data.get("Account Billing Address 2"))) {
       importEvent.accountBillingStreet += ", " + data.get("Account Billing Address 2");
@@ -115,6 +114,7 @@ public class CrmImportEvent {
     importEvent.accountBillingState = data.get("Account Billing State");
     importEvent.accountBillingZip = data.get("Account Billing PostCode");
     importEvent.accountBillingCountry = data.get("Account Billing Country");
+    importEvent.accountOwnerId = data.get("Account Owner ID");
     importEvent.accountRecordTypeId = data.get("Account Record Type ID");
     importEvent.accountRecordTypeName = data.get("Account Record Type Name");
 
@@ -143,6 +143,7 @@ public class CrmImportEvent {
     importEvent.contactOptOutEmail = "no".equalsIgnoreCase(data.get("Contact Email Opt In")) || "false".equalsIgnoreCase(data.get("Contact Email Opt In")) || "0".equalsIgnoreCase(data.get("Contact Email Opt In"));
     importEvent.contactOptInSms = "yes".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "true".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "1".equalsIgnoreCase(data.get("Contact SMS Opt In"));
     importEvent.contactOptOutSms = "no".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "false".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "0".equalsIgnoreCase(data.get("Contact SMS Opt In"));
+    importEvent.contactOwnerId = data.get("Contact Owner ID");
     importEvent.contactRecordTypeId = data.get("Contact Record Type ID");
     importEvent.contactRecordTypeName = data.get("Contact Record Type Name");
 
@@ -176,6 +177,7 @@ public class CrmImportEvent {
     importEvent.opportunityCampaignName = data.get("Opportunity Campaign Name");
     importEvent.opportunityDescription = data.get("Opportunity Description");
     importEvent.opportunityName = data.get("Opportunity Name");
+    importEvent.opportunityOwnerId = data.get("Opportunity Owner Name");
     importEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
     importEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
     importEvent.opportunityStageName = data.get("Opportunity Stage Name");

@@ -1076,7 +1076,7 @@ public class SfdcCrmService implements CrmService {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
 
-    contact.setField("OwnerId", importEvent.ownerId);
+    contact.setField("OwnerId", importEvent.contactOwnerId);
 
     importEvent.raw.entrySet().stream().filter(entry -> entry.getKey().startsWith("Contact Custom "))
         .forEach(entry -> contact.setField(entry.getKey().replace("Contact Custom ", ""), getCustomBulkValue(entry.getValue())));
@@ -1098,7 +1098,7 @@ public class SfdcCrmService implements CrmService {
     setField(account, "BillingPostalCode", importEvent.accountBillingZip);
     setField(account, "BillingCountry", importEvent.accountBillingCountry);
 
-    account.setField("OwnerId", importEvent.ownerId);
+    account.setField("OwnerId", importEvent.accountOwnerId);
 
     importEvent.raw.entrySet().stream().filter(entry -> entry.getKey().startsWith("Account Custom "))
         .forEach(entry -> account.setField(entry.getKey().replace("Account Custom ", ""), entry.getValue()));
@@ -1119,7 +1119,7 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("StageName", importEvent.opportunityStageName);
     opportunity.setField("CloseDate", importEvent.opportunityDate);
 
-    opportunity.setField("OwnerId", importEvent.ownerId);
+    opportunity.setField("OwnerId", importEvent.opportunityOwnerId);
 
     importEvent.raw.entrySet().stream().filter(entry -> entry.getKey().startsWith("Opportunity Custom "))
         .forEach(entry -> opportunity.setField(entry.getKey().replace("Opportunity Custom ", ""), entry.getValue()));
