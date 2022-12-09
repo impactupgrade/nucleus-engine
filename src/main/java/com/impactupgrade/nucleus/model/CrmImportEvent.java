@@ -35,6 +35,7 @@ public class CrmImportEvent {
   public String accountId;
   public String contactId;
   public String opportunityId;
+  public String recurringDonationId;
 
   // Can also be used for update retrieval, as well as inserts.
   public String contactEmail;
@@ -81,6 +82,16 @@ public class CrmImportEvent {
   public String opportunityStageName;
   public String opportunityTerminal;
 
+  public BigDecimal recurringDonationAmount;
+  public String recurringDonationCampaignId;
+  public String recurringDonationCampaignName;
+  public String recurringDonationInterval;
+  public String recurringDonationName;
+  public Calendar recurringDonationNextPaymentDate;
+  public String recurringDonationOwnerId;
+  public Calendar recurringDonationStartDate;
+  public String recurringDonationStatus;
+
   // TODO: Add this to the Portal task. But for now, defaulting it to false out of caution.
   public Boolean opportunitySkipDuplicateCheck = false;
 
@@ -98,6 +109,7 @@ public class CrmImportEvent {
     importEvent.accountId = data.get("Account ID");
     importEvent.contactId = data.get("Contact ID");
     importEvent.opportunityId = data.get("Opportunity ID");
+    importEvent.recurringDonationId = data.get("Recurring Donation ID");
 
     importEvent.contactEmail = data.get("Contact Email");
     if (importEvent.contactEmail != null) {
@@ -147,43 +159,59 @@ public class CrmImportEvent {
     importEvent.contactRecordTypeId = data.get("Contact Record Type ID");
     importEvent.contactRecordTypeName = data.get("Contact Record Type Name");
 
-    // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
-    try {
-      if (data.containsKey("Opportunity Date dd/mm/yyyy")) {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get("Opportunity Date dd/mm/yyyy")));
-      } else if (data.containsKey("Opportunity Date dd-mm-yyyy")) {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(data.get("Opportunity Date dd-mm-yyyy")));
-      } else if (data.containsKey("Opportunity Date mm/dd/yyyy")) {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get("Opportunity Date mm/dd/yyyy")));
-      } else if (data.containsKey("Opportunity Date mm/dd/yy")) {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yy").parse(data.get("Opportunity Date mm/dd/yy")));
-      } else if (data.containsKey("Opportunity Date mm-dd-yyyy")) {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(data.get("Opportunity Date mm-dd-yyyy")));
-      } else if (data.containsKey("Opportunity Date yyyy-mm-dd")) {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Opportunity Date yyyy-mm-dd")));
-      }
-    } catch (ParseException e) {
-      log.warn("failed to parse date", e);
-    }
-
     importEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
     importEvent.opportunityCampaignId = data.get("Opportunity Campaign ID");
     importEvent.opportunityCampaignName = data.get("Opportunity Campaign Name");
+    importEvent.opportunityDate = getDate(data, "Opportunity Date");
     importEvent.opportunityDescription = data.get("Opportunity Description");
     importEvent.opportunityName = data.get("Opportunity Name");
-    importEvent.opportunityOwnerId = data.get("Opportunity Owner Name");
+    importEvent.opportunityOwnerId = data.get("Opportunity Owner ID");
     importEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
     importEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
     importEvent.opportunityStageName = data.get("Opportunity Stage Name");
 
+    importEvent.recurringDonationAmount = getAmount(data, "Recurring Donation Amount");
+    importEvent.recurringDonationCampaignId = data.get("Recurring Donation Campaign ID");
+    importEvent.recurringDonationCampaignName = data.get("Recurring Donation Campaign Name");
+    importEvent.recurringDonationInterval = data.get("Recurring Donation Interval");
+    importEvent.recurringDonationName = data.get("Recurring Donation Name");
+    importEvent.recurringDonationNextPaymentDate = getDate(data, "Recurring Donation Next Payment Date");
+    importEvent.recurringDonationOwnerId = data.get("Recurring Donation Owner Name");
+    importEvent.recurringDonationStartDate = getDate(data, "Recurring Donation Start Date");
+    importEvent.recurringDonationStatus = data.get("Recurring Donation Status");
 
     return importEvent;
+  }
+
+  // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
+  private static Calendar getDate(CaseInsensitiveMap<String> data, String columnName) {
+    Calendar c = null;
+    
+    try {
+      if (data.containsKey(columnName + " dd/mm/yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get(columnName + " dd/mm/yyyy")));
+      } else if (data.containsKey("Opportunity Date dd-mm-yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(data.get(columnName + " dd-mm-yyyy")));
+      } else if (data.containsKey(columnName + " mm/dd/yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get(columnName + " mm/dd/yyyy")));
+      } else if (data.containsKey(columnName + " mm/dd/yy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM/dd/yy").parse(data.get(columnName + " mm/dd/yy")));
+      } else if (data.containsKey(columnName + " mm-dd-yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(data.get(columnName + " mm-dd-yyyy")));
+      } else if (data.containsKey(columnName + " yyyy-mm-dd")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get(columnName + " yyyy-mm-dd")));
+      }
+    } catch (ParseException e) {
+      log.warn("failed to parse date", e);
+    }
+    
+    return c;
   }
 
   public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {

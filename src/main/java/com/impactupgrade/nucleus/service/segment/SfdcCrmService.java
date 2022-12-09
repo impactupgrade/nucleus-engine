@@ -780,20 +780,20 @@ public class SfdcCrmService implements CrmService {
     List<SObject> bulkInsertOpportunities = new ArrayList<>();
     Map<String, SObject> bulkUpdateOpportunities = new HashMap<>();
     Map<String, SObject> bulkInsertOpportunityContactRoles = new HashMap<>();
+    List<SObject> bulkInsertRecurringDonations = new ArrayList<>();
+    Map<String, SObject> bulkUpdateRecurringDonations = new HashMap<>();
 
-    // If we're doing Opportunity inserts or Campaign updates, we unfortunately can't use batch inserts/updates of accounts/contacts.
+    // If we're doing Opportunity/RD inserts or Campaign updates, we unfortunately can't use batch inserts/updates of accounts/contacts.
     // TODO: We probably *can*, but the code will be rather complex to manage the variety of batch actions paired with CSV rows.
-    // Need a way to ensure an Opportunity insert is actually intended. Date seems like a safe assumption...
     boolean oppMode = importEvents.get(0).opportunityDate != null || importEvents.get(0).opportunityId != null;
-    boolean nonBatchMode = oppMode || importEvents.get(0).contactCampaignId != null || importEvents.get(0).contactCampaignName != null;
+    boolean rdMode = importEvents.get(0).recurringDonationAmount != null || importEvents.get(0).recurringDonationId != null;
+    boolean nonBatchMode = oppMode || rdMode || importEvents.get(0).contactCampaignId != null || importEvents.get(0).contactCampaignName != null;
 
     List<String> nonBatchAccountIds = new ArrayList<>();
     List<String> nonBatchContactIds = new ArrayList<>();
 
-    // TODO: BUGS
-    //  1) DONE
-    //  2) We're overwriting names each time, which isn't a good idea if the contact already existed. Set Contact names
-    //     on insert only, not update.
+    // TODO: We're overwriting names each time, which isn't a good idea if the contact already existed. Set Contact names
+    //  on insert only, not update.
 
     for (int i = 0; i < importEvents.size(); i++) {
       CrmImportEvent importEvent = importEvents.get(i);
@@ -894,6 +894,52 @@ public class SfdcCrmService implements CrmService {
     sfdcClient.batchFlush();
     sfdcClient.batchUpdate(bulkUpdateContacts.values().toArray());
     sfdcClient.batchFlush();
+
+    if (rdMode) {
+      for (int i = 0; i < importEvents.size(); i++) {
+        CrmImportEvent importEvent = importEvents.get(i);
+
+        log.info("import processing recurring donations on row {} of {}", i + 2, importEvents.size() + 1);
+
+        SObject recurringDonation = new SObject("npe03__Recurring_Donation__c");
+
+        // TODO: duplicates setRecurringDonationFields
+        if (env.getConfig().salesforce.enhancedRecurringDonations) {
+          if (nonBatchContactIds.get(i) != null) {
+            recurringDonation.setField("Npe03__Contact__c", nonBatchContactIds.get(i));
+          } else {
+            recurringDonation.setField("Npe03__Organization__c", nonBatchAccountIds.get(i));
+          }
+        } else {
+          recurringDonation.setField("Npe03__Organization__c", nonBatchAccountIds.get(i));
+        }
+
+        if (!Strings.isNullOrEmpty(importEvent.recurringDonationCampaignId)) {
+          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", importEvent.recurringDonationCampaignId);
+        } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName)) {
+          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", campaignNameToId.get(importEvent.opportunityCampaignName));
+        }
+
+        setBulkImportRecurringDonationFields(recurringDonation, importEvent);
+
+        if (!Strings.isNullOrEmpty(importEvent.recurringDonationId)) {
+          recurringDonation.setId(importEvent.recurringDonationId);
+          bulkUpdateRecurringDonations.put(importEvent.recurringDonationId, recurringDonation);
+        } else {
+          // If the account and contact upserts both failed, avoid creating an orphaned rd.
+          if (nonBatchAccountIds.get(i) == null && nonBatchContactIds.get(i) == null) {
+            continue;
+          }
+
+          bulkInsertRecurringDonations.add(recurringDonation);
+        }
+      }
+
+      sfdcClient.batchInsert(bulkInsertRecurringDonations.toArray());
+      sfdcClient.batchFlush();
+      sfdcClient.batchUpdate(bulkUpdateRecurringDonations.values().toArray());
+      sfdcClient.batchFlush();
+    }
 
     if (oppMode) {
       for (int i = 0; i < importEvents.size(); i++) {
@@ -1102,6 +1148,32 @@ public class SfdcCrmService implements CrmService {
 
     importEvent.raw.entrySet().stream().filter(entry -> entry.getKey().startsWith("Account Custom "))
         .forEach(entry -> account.setField(entry.getKey().replace("Account Custom ", ""), entry.getValue()));
+  }
+
+  // TODO: duplicates setRecurringDonationFields
+  protected void setBulkImportRecurringDonationFields(SObject recurringDonation, CrmImportEvent importEvent) throws ConnectionException, InterruptedException {
+    if (importEvent.recurringDonationAmount != null) {
+      recurringDonation.setField("Npe03__Amount__c", importEvent.recurringDonationAmount.doubleValue());
+    }
+    recurringDonation.setField("Npe03__Open_Ended_Status__c", importEvent.recurringDonationStatus);
+    recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
+    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(importEvent.recurringDonationInterval);
+    if (frequency != null) {
+      recurringDonation.setField("Npe03__Installment_Period__c", frequency.name());
+    }
+    recurringDonation.setField("Npe03__Date_Established__c", importEvent.recurringDonationStartDate);
+    recurringDonation.setField("Npe03__Next_Payment_Date__c", importEvent.recurringDonationNextPaymentDate);
+
+    if (env.getConfig().salesforce.enhancedRecurringDonations) {
+      recurringDonation.setField("npsp__RecurringType__c", "Open");
+      // It's a picklist, so it has to be a string and not numeric :(
+      recurringDonation.setField("npsp__Day_of_Month__c", importEvent.recurringDonationStartDate.get(Calendar.DAY_OF_MONTH) + "");
+    }
+
+    recurringDonation.setField("OwnerId", importEvent.recurringDonationOwnerId);
+
+    importEvent.raw.entrySet().stream().filter(entry -> entry.getKey().startsWith("Recurring Donation Custom "))
+        .forEach(entry -> recurringDonation.setField(entry.getKey().replace("Recurring Donation Custom ", ""), entry.getValue()));
   }
 
   protected void setBulkImportOpportunityFields(SObject opportunity, CrmImportEvent importEvent) throws ConnectionException, InterruptedException {
