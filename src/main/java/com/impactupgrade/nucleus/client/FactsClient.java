@@ -3,6 +3,7 @@ package com.impactupgrade.nucleus.client;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -22,8 +23,11 @@ import java.net.URLEncoder;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,6 +40,8 @@ public class FactsClient {
 
   private static final Integer DEFAULT_PAGE = 1;
   private static final Integer DEFAULT_PAGE_SIZE = 50;
+  private static final Integer BATCH_REQUEST_IDS_LIMIT = 100;
+  private static final Integer AUTO_RETRY_TIMEOUT_SECONDS = 10;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -52,24 +58,19 @@ public class FactsClient {
   }
 
   // Person/People
-
   public Person getPerson(Integer id) {
     return HttpClient.get(FACTS_API_URL + "/People/" + id, headers(), Person.class);
   }
 
-  public List<Person> getPersons(List<Filter> filters) throws Exception {
-    return get("/People", filters, Person.class);
+  public List<Person> getPersons(List<Integer> ids) throws Exception {
+    return getByIds("/People", "personId", ids, Person.class);
   }
 
-  public List<Person> getPersonsModifiedBetween(LocalDateTime fromDate, LocalDateTime toDate) throws Exception {
-    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
-    Filter fromFilter = new Filter("modifiedDate", Operator.GREATER_THAN_OR_EQUAL_TO, dateTimeFormatter.format(fromDate));
-    Filter toFilter = new Filter("modifiedDate", Operator.LESS_THAN_OR_EQUAL_TO, dateTimeFormatter.format(toDate));
-    return getPersons(List.of(fromFilter, toFilter));
+  public List<Person> getPersons(Filter... filters) throws Exception {
+    return get("/People", Arrays.asList(filters), Person.class);
   }
 
   //Student
-
   public List<Student> getStudents(List<Filter> filters) throws Exception {
     return get("/Students", filters, Student.class);
   }
@@ -88,6 +89,9 @@ public class FactsClient {
   }
 
   //Parent-Student
+  public List<ParentStudent> getParentStudents(List<Integer> personIds) throws Exception {
+    return getByIds("/people/ParentStudent", "studentID", personIds, ParentStudent.class);
+  }
 
   public List<Person> getParents(Integer personId) throws Exception {
     Filter studentIdFilter = new Filter("studentID", Operator.EQUALS, personId + "");
@@ -102,26 +106,30 @@ public class FactsClient {
     return get("/People", List.of(idsFilter), Person.class);
   }
 
-  // Person-Family // ?
-  public PersonFamily getPersonFamily(Integer personId) throws Exception {
-    Filter personIdFilter = new Filter("personId", Operator.EQUALS, personId + "");
-    List<PersonFamily> personFamilies = get("/People/PersonFamily", List.of(personIdFilter), PersonFamily.class);
-    if (personFamilies.isEmpty()) {
-      return null;
-    }
-    if (personFamilies.size() > 1) {
-      log.warn("Found more than 1 person-family records for person id {}!", personId);
-    }
-    return personFamilies.get(0);
-  }
-
   // Address
-
   public Address getAddress(Integer id) {
     return HttpClient.get(FACTS_API_URL + "/people/Address/" + id, headers(), Address.class);
   }
 
+  public List<Address> getAddresses(List<Integer> ids) throws Exception {
+    return getByIds("/people/Address", "addressID", ids, Address.class);
+  }
+
   // Utils
+  private <T> List<T> getByIds(String path, String idFieldName, List<Integer> ids, Class<T> clazz) throws Exception {
+    List<List<Integer>> subLists = Lists.partition(ids, BATCH_REQUEST_IDS_LIMIT);
+    List<T> items = new ArrayList<>();
+    for (List<Integer> partitionIds : subLists) {
+      Filter idsFilter = toIdsFilter(idFieldName, partitionIds);
+      items.addAll(get(path, List.of(idsFilter), clazz));
+    }
+    return items;
+  }
+
+  private Filter toIdsFilter(String idFieldName, List<Integer> ids) {
+    String joinedIds = ids.stream().map(id -> id + "").collect(Collectors.joining("|"));
+    return new Filter(idFieldName, Operator.EQUALS, joinedIds);
+  }
 
   private <T> List<T> get(String url, List<Filter> filters, Class<T> clazz) throws Exception {
     return get(url, filters, null, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, clazz);
@@ -180,14 +188,14 @@ public class FactsClient {
     return URLEncoder.encode(parameters, "UTF-8");
   }
 
-  private Response getWithAutoRetry(String url) {
+  private Response getWithAutoRetry(String url) throws Exception {
     Response response = HttpClient.get(url, headers());
     if (response.getStatus() == 200) {
       return response;
     } else if (response.getStatus() == 429) {
-      //TODO:
-      log.warn("429/API limit! {}", response.readEntity(String.class));
-      return HttpClient.get(url, headers());
+      log.warn("API limit response! Status/Body {}/{}", response.getStatus(), response.readEntity(String.class));
+      Thread.sleep(AUTO_RETRY_TIMEOUT_SECONDS * 1000);
+      return getWithAutoRetry(url);
     }
     log.error("Failed to get response! Status/Body {}/{}", response.getStatus(), response.readEntity(String.class));
     return null;
@@ -248,9 +256,21 @@ public class FactsClient {
     @Override
     public String toString() {
       return "Person{" +
-          "firstName='" + firstName + '\'' +
+          "personId=" + personId +
+          ", firstName='" + firstName + '\'' +
           ", lastName='" + lastName + '\'' +
           ", middleName='" + middleName + '\'' +
+          ", nickName='" + nickName + '\'' +
+          ", salutation='" + salutation + '\'' +
+          ", suffix='" + suffix + '\'' +
+          ", email='" + email + '\'' +
+          ", email2='" + email2 + '\'' +
+          ", username='" + username + '\'' +
+          ", homePhone='" + homePhone + '\'' +
+          ", cellPhone='" + cellPhone + '\'' +
+          ", addressID=" + addressID +
+          ", deceased=" + deceased +
+          ", modifiedDate='" + modifiedDate + '\'' +
           '}';
     }
   }
@@ -337,26 +357,6 @@ public class FactsClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class PersonFamily {
-    public Integer personId;
-    public Integer familyId;
-    public Boolean parent;
-    public Boolean student;
-    public Boolean financialResponsibility;
-    public Boolean factsCustomer;
-
-    @Override
-    public String toString() {
-      return "PersonFamily{" +
-          "personId=" + personId +
-          ", familyId=" + familyId +
-          ", parent=" + parent +
-          ", student=" + student +
-          '}';
-    }
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Address {
     public Integer addressID;
     public String address1;
@@ -401,6 +401,12 @@ public class FactsClient {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.facts.publicKey = "5081164fcbb24d53a0e5be36e6256d38";
         envConfig.facts.secretKey = "McDIwBX3GiBoX41BDehJyX151h5w/i4609IiD6LaFvw31Yi81y/xdJhQgFqzPKKz/ITW+TzFSzHmw3mNJieTPwt0CkQQitX1o5PyCMHSYPg=";
+
+
+        envConfig.crmPrimary = "salesforce";
+        envConfig.salesforce.username = "vsydor@unstopables.com";
+        envConfig.salesforce.password = "macbookPRO2019FN7k1sgpEiQbFInvoqPNWcNT";
+
         return envConfig;
       }
     };
@@ -411,46 +417,71 @@ public class FactsClient {
     LocalDateTime to = LocalDateTime.now();
     LocalDateTime from = to.minusMonths(1);
 
-//    List<FactsClient.Student> students = factsClient.getStudentsEnrolledBetween(from, to);
     List<FactsClient.Student> students = factsClient.getAdmissions();
 
-    students = students.subList(0, Math.min(1, students.size())); // only 1s one for now
-    log.info("students {}", students);
+    students = students.subList(0, Math.min(10, students.size())); // Only first 10
 
-    for (FactsClient.Student student : students) {
+    List<Integer> personIds = students.stream().map(s -> s.studentId).collect(Collectors.toList());
+    log.info("Student ids.count: {}", personIds.size());
+    log.info("Student ids: {}", personIds);
 
-      Integer personId = student.studentId; // (!) student id actually refers to person id
+    List<Person> persons = factsClient.getPersons(personIds);
 
-      FactsClient.Person person = factsClient.getPerson(personId);
+    List<Integer> addressIds = persons.stream()
+        .map(person -> person.addressID)
+        .collect(Collectors.toList());
+    List<Address> addresses = factsClient.getAddresses(addressIds);
+    Map<Integer, Address> addressesMap = addresses.stream()
+        .collect(Collectors.toMap(
+            address -> address.addressID, address -> address
+        ));
+
+    List<ParentStudent> parentStudents = factsClient.getParentStudents(personIds);
+    List<Integer> parentIds = parentStudents.stream()
+        .map(parentStudent -> parentStudent.parentID)
+        .collect(Collectors.toList());
+    List<Person> parents = factsClient.getPersons(parentIds);
+    Map<Integer, Person> parentsMap = parents.stream()
+        .collect(Collectors.toMap(
+            person -> person.personId, person -> person
+        ));
+
+    Map<Integer, List<Person>> studentToParentsMap = new HashMap<>();
+    for (ParentStudent parentStudent: parentStudents) {
+      Integer studentId = parentStudent.studentID;
+      Integer parentId = parentStudent.parentID;
+
+      Person parent = parentsMap.get(parentId);
+      studentToParentsMap.computeIfAbsent(studentId, id -> new ArrayList<>());
+      studentToParentsMap.get(studentId).add(parent);
+    }
+
+    for (FactsClient.Person person : persons) {
       log.info("Person: {}", person);
-      FactsClient.Address address = factsClient.getAddress(person.addressID);
+      FactsClient.Address address = addressesMap.get(person.addressID);
       log.info("Address: {}", address);
-      List<FactsClient.Person> parents = factsClient.getParents(personId);
-      log.info("Parents: {}", parents);
-
+      List<Person> studentsParents = studentToParentsMap.get(person.personId);
+      log.info("Parents: {}", studentsParents);
       upsertStudent(person, address, parents, crmService);
     }
   }
 
   private static void upsertStudent(Person person, Address address, List<Person> parents, CrmService crmService) throws Exception {
     CrmContact contact = toCrmContact(person, address);
+    log.info("Upserting student contact for person id: {}...", person.personId);
     contact = upsertCrmContact(contact, null, crmService);
-    log.info("Upserted student contact for person id: {}", person.personId);
 
-    for (Person parent: parents) {
+    for (Person parent : parents) {
       // TODO: decide if we need to track address for parents (extra calls to FACTS API)
       CrmContact parentContact = toCrmContact(parent, null);
+      log.info("Upserting parent contact for person id: {}...", parent.personId);
       parentContact = upsertCrmContact(parentContact, contact.accountId, crmService);
-      log.info("Upserted parent contact for person id: {}", parent.personId);
     }
   }
 
   private static CrmContact upsertCrmContact(CrmContact crmContact, String crmAccountId, CrmService crmService) throws Exception {
-    if (Strings.isNullOrEmpty(crmContact.email)) {
-      log.warn("Can not identify contact (does not have an email). Returning...");
-      return crmContact;
-    }
-    CrmContact existing = getCrmContactForEmail(crmContact.email, crmService);
+    String name = crmContact.firstName + " " + crmContact.lastName;
+    CrmContact existing = getCrmContactForFullNameAndEmail(name, crmContact.email, crmService);
     if (existing == null) {
       // Create new contact
       if (Strings.isNullOrEmpty(crmAccountId)) {
@@ -460,17 +491,20 @@ public class FactsClient {
       } else {
         crmContact.accountId = crmAccountId;
       }
+      log.info("Inserting contact...");
       crmService.insertContact(crmContact);
     } else {
       // Update existing contact
       updateCrmContact(existing, crmContact);
+      log.info("Updating contact...");
       crmService.updateContact(existing);
     }
     return crmContact;
   }
 
-  private static CrmContact getCrmContactForEmail(String email, CrmService crmService) throws Exception {
+  private static CrmContact getCrmContactForFullNameAndEmail(String fullName, String email, CrmService crmService) throws Exception {
     ContactSearch contactSearch = new ContactSearch();
+    contactSearch.keywords = fullName;
     contactSearch.email = email;
     PagedResults<CrmContact> pagedResults = crmService.searchContacts(contactSearch);
     List<CrmContact> foundContacts = pagedResults.getResults();
@@ -489,7 +523,11 @@ public class FactsClient {
     CrmContact crmContact = new CrmContact();
     crmContact.firstName = person.firstName;
     crmContact.lastName = person.lastName;
-    crmContact.fullName = person.firstName + " " + person.middleName + " " + person.lastName;
+    crmContact.fullName = person.firstName;
+    if (!Strings.isNullOrEmpty(person.middleName)) {
+      crmContact.fullName = crmContact.fullName + " " + person.middleName;
+    }
+    crmContact.fullName = crmContact.fullName + " " + person.lastName;
     crmContact.email = person.email;
     crmContact.homePhone = person.homePhone;
     crmContact.mobilePhone = person.cellPhone;
@@ -519,6 +557,9 @@ public class FactsClient {
   }
 
   private static void updateCrmAddress(CrmAddress existing, CrmAddress update) {
+    if (update == null) {
+      return;
+    }
     if (update.street != null) {
       existing.street = update.street;
     }
