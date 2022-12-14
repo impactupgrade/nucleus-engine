@@ -868,12 +868,18 @@ public class SfdcCrmService implements CrmService {
         } else {
           contact = insertBulkImportContact(account, importEvent, bulkInsertContactsByEmail, bulkInsertContactsByName,
               existingContactsByEmail, nonBatchMode);
+          // a little odd, but we need the accountId later on and the contact insert created one by default
+          account = new SObject("Account");
+          account.setId((String) contact.getField("AccountId"));
         }
       }
       // Otherwise, abandon all hope and insert, but only if we at least have a lastname or email.
       else if (!Strings.isNullOrEmpty(importEvent.contactEmail) || !Strings.isNullOrEmpty(importEvent.contactLastName)) {
         contact = insertBulkImportContact(account, importEvent, bulkInsertContactsByEmail, bulkInsertContactsByName,
             existingContactsByEmail, nonBatchMode);
+        // a little odd, but we need the accountId later on and the contact insert created one by default
+        account = new SObject("Account");
+        account.setId((String) contact.getField("AccountId"));
       }
 
       if (contact != null) {
@@ -981,7 +987,8 @@ public class SfdcCrmService implements CrmService {
             contactRole.setField("OpportunityId", importEvent.opportunityId);
             contactRole.setField("ContactId", nonBatchContactIds.get(i));
             contactRole.setField("IsPrimary", true);
-            contactRole.setField("Role", "Donor");
+            // TODO: Not present by default at all orgs.
+//            contactRole.setField("Role", "Donor");
             bulkInsertOpportunityContactRoles.put(importEvent.opportunityId, contactRole);
           }
         } else {
@@ -990,7 +997,20 @@ public class SfdcCrmService implements CrmService {
             continue;
           }
 
-          bulkInsertOpportunities.add(opportunity);
+          // TODO: Can't currently batch this, since it's an opp insert and we need the opp id to add the OpportunityContactRole.
+          //  Rethink this!
+//          bulkInsertOpportunities.add(opportunity);
+          SaveResult saveResult = sfdcClient.insert(opportunity);
+
+          if (!Strings.isNullOrEmpty(nonBatchContactIds.get(i))) {
+            SObject contactRole = new SObject("OpportunityContactRole");
+            contactRole.setField("OpportunityId", saveResult.getId());
+            contactRole.setField("ContactId", nonBatchContactIds.get(i));
+            contactRole.setField("IsPrimary", true);
+            // TODO: Not present by default at all orgs.
+//            contactRole.setField("Role", "Donor");
+            bulkInsertOpportunityContactRoles.put(importEvent.opportunityId, contactRole);
+          }
         }
       }
 
