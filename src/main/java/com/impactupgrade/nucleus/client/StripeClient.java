@@ -498,9 +498,17 @@ public class StripeClient {
      SubscriptionCreateParams.PaymentBehavior behavior, Integer autoCancelMonths) {
     SubscriptionCreateParams.Builder subscriptionCreateParamsBuilder = SubscriptionCreateParams.builder();
     subscriptionCreateParamsBuilder.setCustomer(customer.getId());
+
     if (source != null) {
       subscriptionCreateParamsBuilder.setDefaultSource(source.getId());
+    } else {
+      subscriptionCreateParamsBuilder.setPaymentSettings(SubscriptionCreateParams.PaymentSettings.builder()
+          // TODO: Is there a way to enable *all*, like we do with defaultPaymentIntentBuilder?
+          .addPaymentMethodType(SubscriptionCreateParams.PaymentSettings.PaymentMethodType.CARD)
+          .addPaymentMethodType(SubscriptionCreateParams.PaymentSettings.PaymentMethodType.US_BANK_ACCOUNT)
+          .build());
     }
+
     if (behavior != null) {
       subscriptionCreateParamsBuilder.setPaymentBehavior(behavior);
     } else {
