@@ -220,13 +220,16 @@ public class SfdcCrmService implements CrmService {
       // Create custom fields
       for (CrmCustomField crmCustomField: crmCustomFields) {
         sfdcMetadataClient.createCustomField(
-                crmCustomField.objectName,
-                crmCustomField.name,
-                crmCustomField.label,
-                toCustomFieldType(crmCustomField.type),
-                crmCustomField.length,
-                crmCustomField.precision,
-                crmCustomField.scale
+            crmCustomField.objectName,
+            crmCustomField.name,
+            crmCustomField.label,
+            toCustomFieldType(crmCustomField.type),
+            crmCustomField.length,
+            crmCustomField.precision,
+            crmCustomField.scale,
+            // TODO: picklist support in CrmCustomField
+            null,
+            null
         );
         fieldNames.add(crmCustomField.name);
       }
