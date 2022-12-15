@@ -233,7 +233,8 @@ public class AccountingService {
                 newPaymentGatewayEvent.getGatewayName(),
                 newPaymentGatewayEvent.getTransactionId(),
                 accountingContactId,
-                crmContactId
+                crmContactId,
+                newPaymentGatewayEvent.getPaymentEventType()
         );
     }
 }

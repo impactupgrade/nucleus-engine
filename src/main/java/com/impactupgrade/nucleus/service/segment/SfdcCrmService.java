@@ -466,10 +466,8 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.fund, paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund));
     }
 
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getMetadataValue("payment_type"))) {
-      EnvironmentConfig.PaymentEventType paymentType = EnvironmentConfig.PaymentEventType.valueOf(paymentGatewayEvent.getMetadataValue("payment_type"));
-
-      String recordTypeId = env.getConfig().salesforce.paymentEventTypeToRecordTypeIds.get(paymentType);
+    if (paymentGatewayEvent.getPaymentEventType() != null) {
+      String recordTypeId = env.getConfig().salesforce.paymentEventTypeToRecordTypeIds.get(paymentGatewayEvent.getPaymentEventType());
       opportunity.setField("RecordTypeId", recordTypeId);
     } else {
       String recordTypeId = paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.recordType);

@@ -1,5 +1,7 @@
 package com.impactupgrade.nucleus.model;
 
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+
 import java.time.ZonedDateTime;
 
 /**
@@ -20,7 +22,11 @@ public class AccountingTransaction {
   public String contactId;
   public String crmContactId;
 
-  public AccountingTransaction(Double amountInDollars, ZonedDateTime date, String description, Boolean recurring, String paymentGatewayName, String paymentGatewayTransactionId, String contactId, String crmContactId) {
+  public EnvironmentConfig.PaymentEventType paymentEventType;
+
+  public AccountingTransaction(Double amountInDollars, ZonedDateTime date, String description, Boolean recurring,
+      String paymentGatewayName, String paymentGatewayTransactionId, String contactId, String crmContactId,
+      EnvironmentConfig.PaymentEventType paymentEventType) {
     this.amountInDollars = amountInDollars;
     this.date = date;
     this.description = description;
@@ -29,5 +35,6 @@ public class AccountingTransaction {
     this.paymentGatewayTransactionId = paymentGatewayTransactionId;
     this.contactId = contactId;
     this.crmContactId = crmContactId;
+    this.paymentEventType = paymentEventType;
   }
 }
