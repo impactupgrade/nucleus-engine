@@ -14,6 +14,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
@@ -446,7 +447,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         lineItem.setTaxType("EXEMPTOUTPUT");
 
         // TODO: DR TEST -- need to be able to override with code
-        if (accountingTransaction.recurring) {
+        if (accountingTransaction.paymentEventType == EnvironmentConfig.PaymentEventType.TICKET) {
+            lineItem.setAccountCode("160");
+            lineItem.setItemCode("Events Income");
+        } else if (accountingTransaction.recurring) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
         } else {
