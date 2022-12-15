@@ -1017,7 +1017,7 @@ public class SfdcCrmService implements CrmService {
             contactRole.setField("IsPrimary", true);
             // TODO: Not present by default at all orgs.
 //            contactRole.setField("Role", "Donor");
-            bulkInsertOpportunityContactRoles.put(importEvent.opportunityId, contactRole);
+            bulkInsertOpportunityContactRoles.put(saveResult.getId(), contactRole);
           }
         }
       }
