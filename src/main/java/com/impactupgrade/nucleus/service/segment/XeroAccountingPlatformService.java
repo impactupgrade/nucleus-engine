@@ -41,16 +41,16 @@ import java.util.UUID;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService {
 
-    private static final Logger log = LogManager.getLogger(XeroAccountingPlatformService.class);
+    protected static final Logger log = LogManager.getLogger(XeroAccountingPlatformService.class);
 
-    private static final String SUPPORTER_ID_FIELD_NAME = "Supporter_ID__c";
+    protected static final String SUPPORTER_ID_FIELD_NAME = "Supporter_ID__c";
     // If false return 200 OK and mix of successfully created objects and any with validation errors
-    private static final Boolean SUMMARIZE_ERRORS = Boolean.TRUE;
+    protected static final Boolean SUMMARIZE_ERRORS = Boolean.TRUE;
     // e.g. unitdp=4 – (Unit Decimal Places) You can opt in to use four decimal places for unit amounts
-    private static final Integer UNITDP = 4;
+    protected static final Integer UNITDP = 4;
 
-    private final ApiClient apiClient;
-    private final AccountingApi xeroApi;
+    protected final ApiClient apiClient;
+    protected final AccountingApi xeroApi;
 
     protected Environment env;
 
@@ -376,7 +376,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return accessToken;
     }
 
-    private String getExceptionDetails(Exception e) {
+    protected String getExceptionDetails(Exception e) {
         return e == null ? null : e.getClass() + ":" + e;
     }
 
@@ -458,7 +458,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     protected AccountingTransaction toAccountingTransaction(Invoice invoice) {
-        AccountingTransaction accountingTransaction = new AccountingTransaction(
+        return new AccountingTransaction(
                 null,
                 null,
                 null,
@@ -466,16 +466,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 null,
                 getPaymentGatewayTransactionId(invoice),
                 null,
+                null,
                 null
         );
-        return accountingTransaction;
     }
 
     protected String getPaymentGatewayTransactionId(Invoice invoice) {
         // references are, ex, Stripe:ch______
         String reference = invoice.getReference().toLowerCase(Locale.ROOT);
-        String paymentGatewayTransactionId = reference.startsWith("stripe:") ?
-                reference.replace("stripe:", "") : null;
-        return paymentGatewayTransactionId;
+        return reference.startsWith("stripe:") ? reference.replace("stripe:", "") : null;
     }
 }

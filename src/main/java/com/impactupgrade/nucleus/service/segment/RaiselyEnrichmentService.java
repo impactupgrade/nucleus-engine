@@ -56,16 +56,16 @@ public class RaiselyEnrichmentService implements EnrichmentService {
       List<RaiselyClient.DonationItem> ticketItems = donation.items.stream().filter(i -> "ticket".equalsIgnoreCase(i.type)).toList();
       if (ticketItems.isEmpty()) {
         // donations only, but this should never happen?
-        event.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.DONATION.name());
+        event.setPaymentEventType(EnvironmentConfig.PaymentEventType.DONATION);
       } else if (donationItems.isEmpty()) {
         // tickets only
-        event.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.TICKET.name());
+        event.setPaymentEventType(EnvironmentConfig.PaymentEventType.TICKET);
       } else if (donationItems.size() > 1 || ticketItems.size() > 1) {
         log.warn("Raisely donation {} had multiple donations and/or tickets; expected one of each, so skipping out of caution", donationId);
       } else {
         // one of each -- let the ticket be the primary and donation secondary
 
-        event.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.TICKET.name());
+        event.setPaymentEventType(EnvironmentConfig.PaymentEventType.TICKET);
         // if fees are covered, stick them on the TICKET, not the DONATION
         double coveredFee = donation.feeCovered ? donation.fee : 0.0;
         event.setTransactionAmountInDollars((double) ((ticketItems.get(0).amount/100) + coveredFee));
@@ -74,7 +74,7 @@ public class RaiselyEnrichmentService implements EnrichmentService {
         //  gifts if their Stripe ID already exists in the CRM. Talking to DR AU about how to handle. Nuke the IDs
         //  for one or the other?
         PaymentGatewayEvent clonedEvent = SerializationUtils.clone(event);
-        clonedEvent.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.DONATION.name());
+        clonedEvent.setPaymentEventType(EnvironmentConfig.PaymentEventType.DONATION);
         clonedEvent.setTransactionAmountInDollars((double) ((donationItems.get(0).amount/100)));
 
         event.getSecondaryEvents().add(clonedEvent);
@@ -99,10 +99,10 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     Double feeAmount = Double.valueOf(donation.fee);
 
     if (item.type.equalsIgnoreCase("ticket") && donation.feeCovered){
-      clonedEvent.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.TICKET.name());
+      clonedEvent.setPaymentEventType(EnvironmentConfig.PaymentEventType.TICKET);
       clonedEvent.setTransactionAmountInDollars((double) ((item.amount/100) + feeAmount));
     } else {
-      clonedEvent.addMetadata("payment_type", EnvironmentConfig.PaymentEventType.DONATION.name());
+      clonedEvent.setPaymentEventType(EnvironmentConfig.PaymentEventType.DONATION);
       clonedEvent.setTransactionAmountInDollars((double) ((item.amount/100)));
     }
     return clonedEvent;

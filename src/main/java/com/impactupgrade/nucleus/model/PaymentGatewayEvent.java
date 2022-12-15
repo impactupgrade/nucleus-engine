@@ -81,6 +81,7 @@ public class PaymentGatewayEvent implements Serializable {
   protected String crmRecurringDonationId;
   protected String depositId;
   protected ZonedDateTime depositDate;
+  protected EnvironmentConfig.PaymentEventType paymentEventType;
 
   // If enrichment results in multiple events (ex: a split of a deductible and non-deductible transaction),
   // nest the secondary events under the primary so downstream processing is aware of the connection.
@@ -840,6 +841,14 @@ public class PaymentGatewayEvent implements Serializable {
 
   public void setDepositDate(ZonedDateTime depositDate) {
     this.depositDate = depositDate;
+  }
+
+  public EnvironmentConfig.PaymentEventType getPaymentEventType() {
+    return paymentEventType;
+  }
+
+  public void setPaymentEventType(EnvironmentConfig.PaymentEventType paymentEventType) {
+    this.paymentEventType = paymentEventType;
   }
 
   public List<PaymentGatewayEvent> getSecondaryEvents() {
