@@ -205,7 +205,7 @@ public class SfdcMetadataClient {
   }
 
   // cache it
-  private List<Profile> profiles = null;
+  private FileProperties[] profilesMetadata = null;
 
   public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType,
 			Integer fieldLength, Integer fieldPrecision, Integer fieldScale, List<String> values, String globalPicklistName) throws ConnectionException {
@@ -248,24 +248,24 @@ public class SfdcMetadataClient {
     Arrays.stream(metadataConn.createMetadata(new Metadata[]{customField})).forEach(log::info);
 
     // TODO: Allow multiple fields to be created at once, then do a single set of profile updates.
-    if (profiles == null) {
+    if (profilesMetadata == null) {
       ListMetadataQuery listMetadataQuery = new ListMetadataQuery();
       listMetadataQuery.setType("Profile");
-
-      profiles = Arrays.stream(metadataConn.listMetadata(new ListMetadataQuery[]{listMetadataQuery}, 0.0))
-          .map(p -> {
-            Profile profile = new Profile();
-            profile.setFullName(p.getFullName());
-
-            ProfileFieldLevelSecurity fieldSec = new ProfileFieldLevelSecurity();
-            fieldSec.setField(fullName);
-            fieldSec.setEditable(true);
-            fieldSec.setReadable(true);
-            profile.setFieldPermissions(new ProfileFieldLevelSecurity[]{fieldSec});
-
-            return profile;
-          }).collect(Collectors.toList());
+      profilesMetadata = metadataConn.listMetadata(new ListMetadataQuery[]{listMetadataQuery}, 0.0);
     }
+
+    List<Profile> profiles = Arrays.stream(profilesMetadata).map(p -> {
+          Profile profile = new Profile();
+          profile.setFullName(p.getFullName());
+
+          ProfileFieldLevelSecurity fieldSec = new ProfileFieldLevelSecurity();
+          fieldSec.setField(fullName);
+          fieldSec.setEditable(true);
+          fieldSec.setReadable(true);
+          profile.setFieldPermissions(new ProfileFieldLevelSecurity[]{fieldSec});
+
+          return profile;
+        }).collect(Collectors.toList());
 
     // API limits us to a max of 10 at a time (by default, NPSP has 17).
     final List<List<Profile>> profileBatches = Lists.partition(profiles, 10);
