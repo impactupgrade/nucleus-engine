@@ -211,6 +211,10 @@ public class SfdcMetadataClient {
 			Integer fieldLength, Integer fieldPrecision, Integer fieldScale, List<String> values, String globalPicklistName) throws ConnectionException {
     MetadataConnection metadataConn = metadataConn();
 
+    if (!fieldName.endsWith("__c")) {
+      fieldName += "__c";
+    }
+
     String fullName = objectName + "." + fieldName;
 
     CustomField customField = new CustomField();
@@ -220,10 +224,11 @@ public class SfdcMetadataClient {
     if (fieldLength != null) customField.setLength(fieldLength);
     if (fieldPrecision != null) customField.setPrecision(fieldPrecision);
     if (fieldScale != null) customField.setScale(fieldScale);
+    if (fieldType == FieldType.LongTextArea) customField.setVisibleLines(4);
     if (fieldType == FieldType.MultiselectPicklist) customField.setVisibleLines(4);
     if (fieldType == FieldType.Checkbox)  customField.setDefaultValue("false");
 
-    if (values != null && !values.isEmpty()) {
+    if (values != null) {
       ValueSet valueSet = new ValueSet();
       ValueSetValuesDefinition valuesDefinition = new ValueSetValuesDefinition();
       // TODO: could set sorted, but for now, assuming the caller passed in the order they want
