@@ -53,7 +53,7 @@ public class MailchimpClient {
     return client.execute(getMemberMethod);
   }
 
-  public void upsertContact(String listId, MemberInfo contact) throws IOException {
+  public void upsertContact(String listId, MemberInfo contact) throws IOException, MailchimpException {
     EditMemberMethod.CreateOrUpdate upsertMemberMethod = new EditMemberMethod.CreateOrUpdate(listId, contact.email_address);
     upsertMemberMethod.status_if_new = contact.status;
     upsertMemberMethod.mapping.putAll(contact.mapping);
@@ -70,10 +70,10 @@ public class MailchimpClient {
       if (contact.merge_fields.mapping.containsKey(ADDRESS)) {
         log.info("Mailchimp upsertContact failed: {}", error);
         log.info("retrying upsertContact without ADDRESS");
-        contact.merge_fields.mapping.remove(ADDRESS);
-        upsertContact(listId, contact);
+        upsertMemberMethod.merge_fields.mapping.remove(ADDRESS);
+        client.execute(upsertMemberMethod);
       } else {
-        log.warn("Mailchimp upsertContact failed: {}", error);
+        throw e;
       }
     }
   }
@@ -94,8 +94,7 @@ public class MailchimpClient {
       if (e.code == 404) {
         // swallow it -- contact doesn't exist
       } else {
-        String error = exceptionToString(e);
-        log.warn("Mailchimp archiveContact failed: {}", error);
+        throw e;
       }
     }
   }
@@ -148,7 +147,7 @@ public class MailchimpClient {
     return client.execute(createMergeField);
   }
 
-  private String exceptionToString(MailchimpException e) {
+  public String exceptionToString(MailchimpException e) {
     String description = e.description;
     if (e.errors != null) {
       description += String.join(" ; ", e.errors);

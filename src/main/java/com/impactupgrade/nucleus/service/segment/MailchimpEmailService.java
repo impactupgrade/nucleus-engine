@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.ecwid.maleorang.MailchimpException;
 import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
@@ -76,14 +77,18 @@ public class MailchimpEmailService extends AbstractEmailService {
       EnvironmentConfig.EmailPlatform mailchimpConfig, EnvironmentConfig.EmailList emailList) throws Exception {
     MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
 
-    // transactional is always subscribed
-    if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL || crmContact.canReceiveEmail()) {
-      Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
-      mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
-      // if they can't, they're archived, and will be failed to be retrieved for update
-      updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
-    } else if (!crmContact.canReceiveEmail()) {
-      mailchimpClient.archiveContact(emailList.id, crmContact.email);
+    try {
+      // transactional is always subscribed
+      if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL || crmContact.canReceiveEmail()) {
+        Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
+        mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
+        // if they can't, they're archived, and will be failed to be retrieved for update
+        updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
+      } else if (!crmContact.canReceiveEmail()) {
+        mailchimpClient.archiveContact(emailList.id, crmContact.email);
+      }
+    } catch (MailchimpException e) {
+      log.warn("Mailchimp syncContact failed: {}", mailchimpClient.exceptionToString(e));
     }
   }
 
