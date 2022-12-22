@@ -131,6 +131,10 @@ public class EnvironmentConfig implements Serializable {
     public String contactLanguage = "";
   }
 
+  public enum AccountType {
+    HOUSEHOLD, ORGANIZATION
+  }
+
   public enum PaymentEventType {
     DONATION, TICKET
   }
@@ -207,6 +211,7 @@ public class EnvironmentConfig implements Serializable {
 
     public String defaultCampaignId = "";
 
+    public Map<AccountType, String> accountTypeToRecordTypeIds = new HashMap<>();
     public Map<PaymentEventType, String> paymentEventTypeToRecordTypeIds = new HashMap<>();
 
     public static class SalesforceCustomFields implements Serializable {

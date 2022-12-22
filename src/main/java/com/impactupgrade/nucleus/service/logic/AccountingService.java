@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -67,7 +68,7 @@ public class AccountingService {
         if (!StringUtils.isEmpty(accountId)) {
             CrmAccount crmAccount = env.donationsCrmService().getAccountById(accountId).orElse(null);
             // Get contact for org type account
-            if (crmAccount != null && crmAccount.type == CrmAccount.Type.ORGANIZATION) {
+            if (crmAccount != null && crmAccount.type == EnvironmentConfig.AccountType.ORGANIZATION) {
                 crmContact = new CrmContact();
                 crmContact.id = crmAccount.id;
                 crmContact.fullName = crmAccount.name;

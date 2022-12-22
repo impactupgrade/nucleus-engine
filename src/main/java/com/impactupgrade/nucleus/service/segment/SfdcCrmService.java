@@ -311,6 +311,11 @@ public class SfdcCrmService implements CrmService {
     account.setField("BillingState", crmAccount.address.state);
     account.setField("BillingPostalCode", crmAccount.address.postalCode);
     account.setField("BillingCountry", crmAccount.address.country);
+
+    Map<EnvironmentConfig.AccountType, String> accountTypeToRecordTypeIds = env.getConfig().salesforce.accountTypeToRecordTypeIds;
+    if (crmAccount.type != null && accountTypeToRecordTypeIds.containsKey(crmAccount.type)) {
+      account.setField("RecordTypeId", accountTypeToRecordTypeIds.get(crmAccount.type));
+    }
   }
 
   @Override
@@ -1315,13 +1320,13 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("BillingCountry")
     );
 
-    CrmAccount.Type type = CrmAccount.Type.HOUSEHOLD;
+    EnvironmentConfig.AccountType type = EnvironmentConfig.AccountType.HOUSEHOLD;
     if (sObject.getChild("RecordType") != null) {
       String recordTypeName = (String) sObject.getChild("RecordType").getField("Name");
       recordTypeName = recordTypeName == null ? "" : recordTypeName.toLowerCase(Locale.ROOT);
       // TODO: Customize record type names through env.json?
       if (recordTypeName.contains("business") || recordTypeName.contains("church") || recordTypeName.contains("org") || recordTypeName.contains("group"))  {
-        type = CrmAccount.Type.ORGANIZATION;
+        type = EnvironmentConfig.AccountType.ORGANIZATION;
       }
     }
 

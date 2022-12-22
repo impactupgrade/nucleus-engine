@@ -1037,7 +1037,7 @@ public class HubSpotCrmService implements CrmService {
         company.getProperties().getName(),
         crmAddress,
         // TODO: Differentiate between Household and Organization?
-        CrmAccount.Type.HOUSEHOLD,
+        EnvironmentConfig.AccountType.HOUSEHOLD,
         company,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/company/" + company.getId()
     );
