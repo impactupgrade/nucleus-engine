@@ -36,6 +36,7 @@ import com.sforce.ws.ConnectorConfig;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.C;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,6 +91,40 @@ public class SfdcMetadataClient {
     this.env = env;
     this.username = env.getConfig().salesforce.username;
     this.password = env.getConfig().salesforce.password;
+  }
+
+  /**
+   * For updating C1's form data provider object
+   * @param globalPicklistApiName
+   * @param values
+   * @throws ConnectionException
+   */
+  public void updatePicklist(String globalPicklistApiName, List<String> values) throws ConnectionException {
+    log.info("updating values of {}", globalPicklistApiName);
+
+    //get the existing picklist
+    MetadataConnection metadataConn = metadataConn();
+    List<CustomValue> customValues = new ArrayList<>();
+    ReadResult globalValueSetResult = metadataConn.readMetadata(GlobalValueSet.class.getSimpleName(), new String[]{globalPicklistApiName});
+    GlobalValueSet globalValueSet = (GlobalValueSet) globalValueSetResult.getRecords()[0];
+
+    //creates the list of custom values
+    for(String value : values){
+      CustomValue customValue = new CustomValue();
+      customValue.setDefault(false);
+      customValue.setFullName(value);
+      customValue.setIsActive(true);
+      customValue.setLabel(value);
+
+      customValues.add(customValue);
+    }
+    // sort alphabetically and convert back to an array
+    globalValueSet.setCustomValue(
+            customValues.stream().sorted(Comparator.comparing(CustomValue::getLabel)).toArray(CustomValue[]::new)
+    );
+    // update the global picklist
+    Arrays.stream(metadataConn.updateMetadata(new Metadata[]{globalValueSet})).forEach(log::info);
+
   }
 
   /**
