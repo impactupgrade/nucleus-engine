@@ -4,37 +4,34 @@
 
 package com.impactupgrade.nucleus.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 
-import java.io.Serializable;
+public class CrmAccount extends CrmRecord {
 
-public class CrmAccount implements Serializable {
-
-  public String id;
-  public String name;
   public CrmAddress address = new CrmAddress();
-  public EnvironmentConfig.AccountType type;
-
-  @JsonIgnore
-  public Object rawObject;
-  @JsonIgnore
-  public String crmUrl;
+  public String name;
+  public EnvironmentConfig.AccountType type = EnvironmentConfig.AccountType.HOUSEHOLD;
 
   public CrmAccount() {}
 
   // A few cases where we only care about existence and require only the id.
   public CrmAccount(String id) {
-    this.id = id;
+    super(id);
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmAccount(String id, String name, CrmAddress address, EnvironmentConfig.AccountType type, Object rawObject, String crmUrl) {
-    this.id = id;
-    this.name = name;
+  public CrmAccount(
+      String id,
+      CrmAddress address,
+      String name,
+      EnvironmentConfig.AccountType type,
+      Object crmRawObject,
+      String crmUrl
+  ) {
+    super(id, crmRawObject, crmUrl);
+
     this.address = address;
-    this.type = type;
-    this.rawObject = rawObject;
-    this.crmUrl = crmUrl;
+    this.name = name;
+    if (type != null) this.type = type;
   }
 }

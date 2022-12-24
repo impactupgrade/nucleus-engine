@@ -26,15 +26,14 @@ import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.HttpClient;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -129,34 +128,24 @@ public class BloomerangCrmService implements CrmService {
     return PagedResults.getPagedResultsFromCurrentOffset(crmContacts, contactSearch);
   }
 
-  // TODO: Similar issue as getRecurringDonationBySubscriptionId.
-  //  Try this and refactor upstream to remove the need for getDonationByTransactionId?
   @Override
-  public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-    // Retrieving donations by Stripe IDs are not possible without the full PaymentGatewayEvent.
-    return Optional.empty();
-  }
-
-  // TODO: refundId support?
-  @Override
-  public Optional<CrmDonation> getDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    List<String> transactionIds = new ArrayList<>();
-    transactionIds.add(paymentGatewayEvent.getTransactionId());
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getTransactionSecondaryId())) {
-      // Sometimes null, so don't blindly add it without first checking.
-      transactionIds.add(paymentGatewayEvent.getTransactionSecondaryId());
-    }
-
+  public Optional<CrmDonation> getDonationByTransactionIds(List<String> transactionIds, String accountId, String contactId) {
     return getDonation(
-        paymentGatewayEvent,
+        contactId,
         List.of("Donation", "RecurringDonationPayment"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId,
         transactionIds
     ).map(this::toCrmDonation);
   }
 
+  // Not able to retrieve donations purely by transactionIds -- must have the Constituent.
   @Override
-  public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public void updateDonation(CrmDonation crmDonation) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
   }
 
@@ -165,7 +154,7 @@ public class BloomerangCrmService implements CrmService {
     Constituent constituent = new Constituent();
     constituent.firstName = crmContact.firstName;
     constituent.lastName = crmContact.lastName;
-    constituent.householdId = crmContact.accountId == null ? null : Integer.parseInt(crmContact.accountId);
+    constituent.householdId = crmContact.account.id == null ? null : Integer.parseInt(crmContact.account.id);
 
     if (!Strings.isNullOrEmpty(crmContact.email)) {
       final Email constituentEmail = new Email();
@@ -204,18 +193,18 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public String insertDonation(CrmDonation crmDonation) throws Exception {
     // Bloomerang has no notion of non-successful transactions.
-    if (!paymentGatewayEvent.isTransactionSuccess()) {
-      log.info("skipping the non-successful transaction: {}", paymentGatewayEvent.getTransactionId());
+    if (crmDonation.status != CrmDonation.Status.SUCCESSFUL) {
+      log.info("skipping the non-successful transaction: {}", crmDonation.transactionId);
       return null;
     }
 
-    String date = DateTimeFormatter.ofPattern("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate());
+    String date = DateTimeFormatter.ofPattern("MM/dd/yyyy").format(crmDonation.closeDate);
 
     Donation donation = new Donation();
-    donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
-    donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
+    donation.accountId = Integer.parseInt(crmDonation.contact.id);
+    donation.amount = crmDonation.amount;
     donation.date = date;
     donation.method = "Credit Card";
 
@@ -223,26 +212,26 @@ public class BloomerangCrmService implements CrmService {
     designation.amount = donation.amount;
 
     // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund))) {
-      designation.fundId = Integer.parseInt(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund));
+    if (!Strings.isNullOrEmpty(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
     } else {
       designation.fundId = env.getConfig().bloomerang.defaultFundId;
     }
 
-    if (paymentGatewayEvent.isTransactionRecurring()) {
+    if (crmDonation.isRecurring()) {
       designation.type = "RecurringDonationPayment";
       // This is a little odd, but it appears Bloomerang wants the ID of the *designation* within the RecurringDonation,
       // not the donation itself. So we unfortunately need to grab that from the API.
-      Donation recurringDonation = getDonation(paymentGatewayEvent.getCrmRecurringDonationId());
+      Donation recurringDonation = getDonation(crmDonation.recurringDonation.id);
       designation.recurringDonationId = recurringDonation.designations.get(0).id;
       designation.isExtraPayment = false;
     } else {
       designation.type = "Donation";
     }
 
-    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), designation.customFields);
-    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId, paymentGatewayEvent.getTransactionId(), designation.customFields);
-    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName, crmDonation.gatewayName, designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId, crmDonation.transactionId, designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId, crmDonation.customerId, designation.customFields);
 
     donation.designations.add(designation);
 
@@ -256,36 +245,30 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    if (!paymentGatewayEvent.isTransactionSuccess()) {
-      log.info("skipping the non-successful transaction: {}", paymentGatewayEvent.getTransactionId());
-      return null;
-    }
-
-    String date = DateTimeFormatter.ofPattern("MM/dd/yyyy").format(paymentGatewayEvent.getTransactionDate());
+  public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+    String date = DateTimeFormatter.ofPattern("MM/dd/yyyy").format(crmRecurringDonation.subscriptionStartDate);
 
     Donation donation = new Donation();
-    donation.accountId = Integer.parseInt(paymentGatewayEvent.getCrmContact().id);
-    donation.amount = paymentGatewayEvent.getTransactionAmountInDollars();
+    donation.accountId = Integer.parseInt(crmRecurringDonation.contact.id);
+    donation.amount = crmRecurringDonation.amount;
     donation.date = date;
 
     Designation designation = new Designation();
     designation.amount = donation.amount;
     // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
-    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund))) {
-      designation.fundId = Integer.parseInt(paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund));
+    if (!Strings.isNullOrEmpty(crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
     } else {
       designation.fundId = env.getConfig().bloomerang.defaultFundId;
     }
     designation.type = "RecurringDonation";
     designation.recurringDonationStatus = "Active";
     designation.recurringDonationStartDate = date;
-    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(paymentGatewayEvent.getSubscriptionInterval());
-    designation.recurringDonationFrequency = frequency.name();
+    designation.recurringDonationFrequency = crmRecurringDonation.frequency.name();
 
-    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName, paymentGatewayEvent.getGatewayName(), designation.customFields);
-    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId, paymentGatewayEvent.getSubscriptionId(), designation.customFields);
-    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId, paymentGatewayEvent.getCustomerId(), designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName, crmRecurringDonation.gatewayName, designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId, crmRecurringDonation.subscriptionId, designation.customFields);
+    setProperty(env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId, crmRecurringDonation.customerId, designation.customFields);
 
     donation.designations.add(designation);
 
@@ -314,7 +297,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void refundDonation(CrmDonation crmDonation) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
   }
 
@@ -396,27 +379,14 @@ public class BloomerangCrmService implements CrmService {
     // SMS opt out
   }
 
-  // TODO: Refactoring idea: We don't need this since we override both the PaymentGatewayEvent and ManageDonationEvent
-  //  flavors. This method is purely used in the default interface. Refactor further upstream?
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
     return getDonation(
-        paymentGatewayEvent,
+        contactId,
         List.of("RecurringDonation"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId,
-        List.of(paymentGatewayEvent.getSubscriptionId())
+        List.of(subscriptionId)
     ).map(this::toCrmRecurringDonation);
-  }
-
-  @Override
-  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    // Only used by ITs and we're currently skipping households.
-    return Collections.emptyList();
   }
 
   @Override
@@ -443,7 +413,7 @@ public class BloomerangCrmService implements CrmService {
     return rds;
   }
   @Override
-  public void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+  public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
     // currently no deposit management
   }
 
@@ -532,7 +502,12 @@ public class BloomerangCrmService implements CrmService {
     return null;
   }
 
-  protected Optional<Donation> getDonation(PaymentGatewayEvent paymentGatewayEvent, List<String> donationTypes,
+  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
+      String customFieldKey, String customFieldValue) {
+    return getDonation(constituentId, donationTypes, customFieldKey, List.of(customFieldValue));
+  }
+
+  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
       String customFieldKey, List<String> _customFieldValues) {
     if (Strings.isNullOrEmpty(customFieldKey)) {
       return Optional.empty();
@@ -544,7 +519,7 @@ public class BloomerangCrmService implements CrmService {
     }
 
     for (String donationType : donationTypes) {
-      Optional<Donation> donation = getDonations(paymentGatewayEvent.getCrmContact().id, donationType).stream().filter(d -> {
+      Optional<Donation> donation = getDonations(constituentId, donationType).stream().filter(d -> {
         String customFieldValue = getCustomFieldValue(d, customFieldKey);
         return customFieldValues.contains(customFieldValue);
       }).findFirst();
@@ -620,21 +595,27 @@ public class BloomerangCrmService implements CrmService {
 
     return new CrmContact(
         constituent.id + "",
-        householdId,
-        constituent.firstName,
-        constituent.lastName,
-        // TODO: See below note on Contact.FullName
-//        constituent.fullName,
-        constituent.firstName + " " + constituent.lastName,
-        primaryEmail,
-        primaryPhone, // home phone
-        null, null, null, // other phone fields
+        new CrmAccount(householdId),
         crmAddress,
-        null, null, null, null, // opt in/out
-        null, null, // owner
-        null, null, null, null, // donation metrics
-        null, // emailGroups
-        null, // contactLanguage
+        primaryEmail,
+        Collections.emptyList(), // List<String> emailGroups,
+        null, // Boolean emailOptIn,
+        null, // Boolean emailOptOut,
+        null, // Calendar firstDonationDate,
+        constituent.firstName,
+        primaryPhone,
+        null, // Calendar lastDonationDate,
+        constituent.lastName,
+        null, // String language,
+        null, // String mobilePhone,
+        null, // Integer numDonations,
+        null, // String ownerId,
+        null, // String ownerName,
+        null, // CrmContact.PreferredPhone preferredPhone,
+        null, // Boolean smsOptIn,
+        null, // Boolean smsOptOut,
+        null, // Double totalDonationAmount,
+        null, // String workPhone,
         constituent,
         "https://crm.bloomerang.co/Constituent/" + constituent.id + "/Profile",
         null // fieldFetcher
@@ -653,13 +634,6 @@ public class BloomerangCrmService implements CrmService {
       return null;
     }
 
-    Calendar c = Calendar.getInstance();
-    try {
-      c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(donation.date));
-    } catch (ParseException e) {
-      log.error("unparseable date: {}", donation.date, e);
-    }
-
     // TODO
     CrmAccount crmAccount = new CrmAccount();
 
@@ -668,18 +642,35 @@ public class BloomerangCrmService implements CrmService {
 
     return new CrmDonation(
         donation.id + "",
-        null, // name
-        donation.amount,
-        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
-        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId),
-        CrmDonation.Status.SUCCESSFUL, // Bloomerang has no notion of non-successful transactions.
-        c,
-        null, // notes
-        null, // campaignId
-        null, // ownerId
-        null, // recordTypeId
         crmAccount,
         crmContact,
+        null, // CrmRecurringDonation recurringDonation,
+        donation.amount,
+        null, // String customerId,
+        null, // ZonedDateTime depositDate,
+        null, // String depositId,
+        null, // String depositTransactionId,
+        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
+        null, // EnvironmentConfig.PaymentEventType paymentEventType,
+        null, // String paymentMethod,
+        null, // String refundId,
+        null, // ZonedDateTime refundDate,
+        CrmDonation.Status.SUCCESSFUL, // Bloomerang has no notion of non-successful transactions.
+        false, // boolean transactionCurrencyConverted,
+        null, // Double transactionExchangeRate,
+        null, // Double transactionFeeInDollars,
+        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId),
+        null, // Double transactionNetAmountInDollars,
+        null, // Double transactionOriginalAmountInDollars,
+        null, // String transactionOriginalCurrency,
+        null, // String transactionSecondaryId,
+        null, // String transactionUrl,
+        null, // String campaignId,
+        Utils.getZonedDateFromDateString(donation.date),
+        null, // String description,
+        null, // String name,
+        null, // String ownerId,
+        null, // String recordTypeId,
         donation,
         "https://crm.bloomerang.co/Constituent/" + donation.accountId + "/Transaction/Edit/" + donation.id
     );
@@ -704,15 +695,19 @@ public class BloomerangCrmService implements CrmService {
 
     return new CrmRecurringDonation(
         donation.id + "",
-        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId),
-        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId),
-        donation.amount,
-        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
-        "Active".equalsIgnoreCase(designation.recurringDonationStatus),
-        CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
-        "Recurring Donation",
         crmAccount,
         crmContact,
+        "Active".equalsIgnoreCase(designation.recurringDonationStatus),
+        donation.amount,
+        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId),
+        null, // String description,
+        "Recurring Donation",
+        CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
+        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
+        null, // String subscriptionCurrency,
+        getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId),
+        null, // ZonedDateTime subscriptionNextDate,
+        null, // ZonedDateTime subscriptionStartDate,
         donation,
         "https://crm.bloomerang.co/Constituent/" + donation.accountId + "/Transaction/Edit/" + donation.id
     );

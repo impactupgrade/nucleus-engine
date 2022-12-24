@@ -140,7 +140,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         // TODO: getMessage assumes the code ("EN") use, not the language name ("English"). The SMS campaign JSON
         //  technically includes a "languages" array with both. So if the CRM uses the full name, may need to convert
         //  here using the JSON mappings.
-        String languageCode = crmContact.contactLanguage;
+        String languageCode = crmContact.language;
         if (Strings.isNullOrEmpty(languageCode)) {
           log.info("Failed to get contact language for contact id {}; assuming EN", contactId);
           languageCode = "EN";

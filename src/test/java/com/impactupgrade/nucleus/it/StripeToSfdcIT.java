@@ -140,7 +140,8 @@ public class StripeToSfdcIT extends AbstractIT {
     String existingAccountId = sfdcClient.insert(existingAccount).getId();
     SObject existingContact = new SObject("Contact");
     existingContact.setField("AccountId", existingAccountId);
-    existingContact.setField("FirstName", "Integration");
+    // no FirstName
+    existingContact.setField("LastName", "Tester");
     existingContact.setField("Email", "team+integration+tester@impactupgrade.com");
     String existingContactId = sfdcClient.insert(existingContact).getId();
 

@@ -21,6 +21,7 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -52,7 +53,7 @@ public class StripeToHubspotIT extends AbstractIT {
     Optional<CrmContact> contactO = hsCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
-    String accountId = contact.accountId;
+    String accountId = contact.account.id;
     Optional<CrmAccount> accountO = hsCrmService.getAccountById(accountId);
     assertTrue(accountO.isPresent());
     CrmAccount account = accountO.get();
@@ -70,9 +71,9 @@ public class StripeToHubspotIT extends AbstractIT {
     List<CrmDonation> donations = hsCrmService.getDonationsByAccountId(accountId);
     assertEquals(1, donations.size());
     CrmDonation donation = donations.get(0);
-    Deal deal = (Deal) donation.rawObject;
+    Deal deal = (Deal) donation.crmRawObject;
     // TODO: assert no association to an RD
-    assertEquals("Stripe", donation.paymentGatewayName);
+    assertEquals("Stripe", donation.gatewayName);
     assertEquals("pi_1ImrOLHAwJOu5brrpQ71F1G9", deal.getProperties().getOtherProperties().get("payment_gateway_transaction_id"));
     assertEquals("cus_JPgkris8GTsXIH", deal.getProperties().getOtherProperties().get("payment_gateway_customer_id"));
     assertEquals(CrmDonation.Status.SUCCESSFUL, donation.status);
@@ -99,7 +100,7 @@ public class StripeToHubspotIT extends AbstractIT {
     Optional<CrmContact> contactO = hsCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
-    String accountId = contact.accountId;
+    String accountId = contact.account.id;
     Optional<CrmAccount> accountO = hsCrmService.getAccountById(accountId);
     assertTrue(accountO.isPresent());
     CrmAccount account = accountO.get();
@@ -114,15 +115,15 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals("team+integration+tester@impactupgrade.com", contact.email);
     assertEquals("+12603495732", contact.mobilePhone);
 
-    List<CrmRecurringDonation> rds = hsCrmService.getOpenRecurringDonationsByAccountId(accountId);
-    assertEquals(1, rds.size());
-    CrmRecurringDonation rd = rds.get(0);
-    Deal rdDeal = (Deal) rd.rawObject;
+    Optional<CrmRecurringDonation> _rd = hsCrmService.getRecurringDonationBySubscriptionId("sub_1JufwxHAwJOu5brrARMtj1Gb", null, null);
+    assertTrue(_rd.isPresent());
+    CrmRecurringDonation rd = _rd.get();
+    Deal rdDeal = (Deal) rd.crmRawObject;
     assertEquals(100.0, rd.amount);
     assertTrue(rd.active);
     assertEquals(CrmRecurringDonation.Frequency.MONTHLY, rd.frequency);
     assertEquals("2021-11-11", new SimpleDateFormat("yyyy-MM-dd").format(rdDeal.getProperties().getClosedate().getTime()));
-    assertEquals("Stripe", rd.paymentGatewayName);
+    assertEquals("Stripe", rd.gatewayName);
     assertEquals("cus_JPgkris8GTsXIH", rd.customerId);
     assertEquals("sub_1JufwxHAwJOu5brrARMtj1Gb", rd.subscriptionId);
 
@@ -130,13 +131,13 @@ public class StripeToHubspotIT extends AbstractIT {
     List<CrmDonation> donations = hsCrmService.getDonationsByAccountId(accountId);
     assertEquals(1, donations.size());
     CrmDonation donation = donations.get(0);
-    Deal donationDeal = (Deal) donation.rawObject;
+    Deal donationDeal = (Deal) donation.crmRawObject;
     // TODO: assert an association to an RD
-    assertEquals("Stripe", donation.paymentGatewayName);
+    assertEquals("Stripe", donation.gatewayName);
     assertEquals("pi_3JufwxHAwJOu5brr0WP4aAVs", donationDeal.getProperties().getOtherProperties().get("payment_gateway_transaction_id"));
     assertEquals("cus_JPgkris8GTsXIH", donationDeal.getProperties().getOtherProperties().get("payment_gateway_customer_id"));
     assertEquals(CrmDonation.Status.SUCCESSFUL, donation.status);
-    assertEquals("2021-11-11", new SimpleDateFormat("yyyy-MM-dd").format(donation.closeDate.getTime()));
+    assertEquals("2021-11-11", DateTimeFormatter.ofPattern("yyyy-MM-dd").format(donation.closeDate));
     assertEquals("Donation: Integration Tester", donation.name);
     assertEquals(100.0, donation.amount);
   }

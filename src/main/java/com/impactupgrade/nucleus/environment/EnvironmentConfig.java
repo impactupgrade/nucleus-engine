@@ -135,7 +135,7 @@ public class EnvironmentConfig implements Serializable {
     HOUSEHOLD, ORGANIZATION
   }
 
-  public enum PaymentEventType {
+  public enum TransactionType {
     DONATION, TICKET
   }
 
@@ -212,7 +212,9 @@ public class EnvironmentConfig implements Serializable {
     public String defaultCampaignId = "";
 
     public Map<AccountType, String> accountTypeToRecordTypeIds = new HashMap<>();
-    public Map<PaymentEventType, String> paymentEventTypeToRecordTypeIds = new HashMap<>();
+    public Map<TransactionType, String> transactionTypeToRecordTypeIds = new HashMap<>();
+    @Deprecated
+    public Map<TransactionType, String> paymentEventTypeToRecordTypeIds = transactionTypeToRecordTypeIds;
 
     public static class SalesforceCustomFields implements Serializable {
       public Set<String> account = new HashSet<>();

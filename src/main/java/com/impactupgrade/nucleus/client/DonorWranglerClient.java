@@ -3,7 +3,7 @@ package com.impactupgrade.nucleus.client;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -143,32 +143,32 @@ public class DonorWranglerClient {
     return donations;
   }
 
-  // TODO: For now, cheating and using PaymentGatewayEvent. But if we pull this to a separate lib in the future, will need
+  // TODO: For now, cheating and using CrmDonation. But if we pull this to a separate lib in the future, will need
   //  to expand the generic model.
-  public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public String insertDonation(CrmDonation crmDonation) throws Exception {
     List<NameValuePair> params = new ArrayList<>();
     params.add(new BasicNameValuePair("action", "addUpdateDonation"));
     params.add(new BasicNameValuePair("id", "-1"));
     params.add(new BasicNameValuePair("donationInfo[giftType]", "Gift"));
-    params.add(new BasicNameValuePair("donationInfo[created]", DateTimeFormatter.ofPattern("yyyy-MM-dd").format(paymentGatewayEvent.getTransactionDate())));
-    params.add(new BasicNameValuePair("donationInfo[donorId]", paymentGatewayEvent.getCrmContact().id));
-    params.add(new BasicNameValuePair("donationInfo[notes]", Strings.nullToEmpty(paymentGatewayEvent.getTransactionDescription())));
-    params.add(new BasicNameValuePair("donationInfo[source]", paymentGatewayEvent.getGatewayName()));
+    params.add(new BasicNameValuePair("donationInfo[created]", DateTimeFormatter.ofPattern("yyyy-MM-dd").format(crmDonation.closeDate)));
+    params.add(new BasicNameValuePair("donationInfo[donorId]", crmDonation.contact.id));
+    params.add(new BasicNameValuePair("donationInfo[notes]", Strings.nullToEmpty(crmDonation.description)));
+    params.add(new BasicNameValuePair("donationInfo[source]", crmDonation.gatewayName));
     params.add(new BasicNameValuePair("donationInfo[solicitor]", SOLICITOR));
 //    params.add(new BasicNameValuePair("donationInfo[campaign]", Strings.nullToEmpty(campaign)));
-    params.add(new BasicNameValuePair("donationInfo[giftAmount]", paymentGatewayEvent.getTransactionAmountInDollars().toString()));
+    params.add(new BasicNameValuePair("donationInfo[giftAmount]", crmDonation.amount + ""));
     // TODO: need to update this on payout events
 //    params.add(new BasicNameValuePair("donationInfo[feeAmount]", donation.getStripeFeeInDollars() + ""));
-    params.add(new BasicNameValuePair("donationInfo[referenceNum]", paymentGatewayEvent.getTransactionId()));
+    params.add(new BasicNameValuePair("donationInfo[referenceNum]", crmDonation.transactionId));
 
     // if DS provided a configurable key/value, use them -- otherwise, default to General
-    String subselectionValue = paymentGatewayEvent.getMetadataValue("Subselection Value");
+    String subselectionValue = crmDonation.getMetadataValue("Subselection Value");
     if (!Strings.isNullOrEmpty(subselectionValue) && !"general".equalsIgnoreCase(subselectionValue)) {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", paymentGatewayEvent.getMetadataValue("Subselection Key")));
-      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", Strings.nullToEmpty(paymentGatewayEvent.getMetadataValue("Subselection Value"))));
-    } else if (paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund) != null) {
+      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", Strings.nullToEmpty(crmDonation.getMetadataValue("Subselection Value"))));
+    } else if (crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund) != null) {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", "Fund"));
-      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", paymentGatewayEvent.getMetadataValue(env.getConfig().metadataKeys.fund)));
+      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund)));
     } else {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", "General"));
     }

@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface AccountingPlatformService extends SegmentService {
 
+    // TODO
     Optional<AccountingTransaction> getTransaction(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
 
     String updateOrCreateContact(CrmContact crmContact) throws Exception;

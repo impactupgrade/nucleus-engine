@@ -9,7 +9,6 @@ import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -17,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -210,7 +210,6 @@ public class VirtuousCrmService implements BasicCrmService {
         VirtuousClient.ContactIndividual contactIndividual = getPrimaryContactIndividual(contact);
         crmContact.firstName = contactIndividual.firstName;
         crmContact.lastName = contactIndividual.lastName;
-        crmContact.fullName = contact.name;
 
         Optional<VirtuousClient.ContactMethod> emailContactMethodOptional = getContactMethod(contactIndividual, "Home Email");
         if (emailContactMethodOptional.isPresent()) {
@@ -274,16 +273,9 @@ public class VirtuousCrmService implements BasicCrmService {
         return crmAddress;
     }
 
-    private Calendar getDateTime(String dateTimeString) {
-        try {
-            Date date = new SimpleDateFormat(DATE_TIME_FORMAT).parse(dateTimeString);
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(date);
-            return calendar;
-        } catch (ParseException e) {
-            log.error("Failed to parse date from string {}!", dateTimeString);
-        }
-        return null;
+    private ZonedDateTime getDateTime(String dateTimeString) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT);
+        return ZonedDateTime.parse(dateTimeString, dtf);
     }
 
     private Calendar getDate(String dateString) {
@@ -308,7 +300,7 @@ public class VirtuousCrmService implements BasicCrmService {
         if (!Strings.isNullOrEmpty(crmContact.id)) {
             contact.id = Integer.parseInt(crmContact.id);
         }
-        contact.name = crmContact.fullName;
+        contact.name = crmContact.fullName();
         contact.isPrivate = false;
         contact.contactType =
                 "Household"; // Foundation/Organization/Household ?
@@ -361,17 +353,23 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     // Donations
-    @Override
-    public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-        // TODO: For now, safe to assume Stripe here,
-        //  but might need an interface change...
-        VirtuousClient.Gift gift = virtuousClient.getGiftByTransactionSourceAndId("stripe", transactionId);
-        return Optional.ofNullable(asCrmDonation(gift));
+     @Override
+    public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+        // TODO: possible to query for the whole list at once?
+        // TODO: For now, safe to assume Stripe here, but might need an interface change...
+         List<CrmDonation> donations = new ArrayList<>();
+         for (String transactionId : transactionIds) {
+             VirtuousClient.Gift gift = virtuousClient.getGiftByTransactionSourceAndId("stripe", transactionId);
+             if (gift != null) {
+                 donations.add(asCrmDonation(gift));
+             }
+         }
+         return donations;
     }
 
     @Override
-    public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        VirtuousClient.Gift gift = asGift(paymentGatewayEvent);
+    public String insertDonation(CrmDonation crmDonation) throws Exception {
+        VirtuousClient.Gift gift = asGift(crmDonation);
         VirtuousClient.Gift createdGift = virtuousClient.createGift(gift);
         if (Objects.nonNull(createdGift)) {
             return createdGift.id + "";
@@ -380,27 +378,26 @@ public class VirtuousCrmService implements BasicCrmService {
         }
     }
 
-    public void insertDonationAsync(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        VirtuousClient.GiftTransaction giftTransaction = asGiftTransaction(paymentGatewayEvent);
+    public void insertDonationAsync(CrmDonation crmDonation) throws Exception {
+        VirtuousClient.GiftTransaction giftTransaction = asGiftTransaction(crmDonation);
         virtuousClient.createGiftAsync(giftTransaction);
     }
 
     @Override
-    public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        CrmDonation existingDonation = getDonation(paymentGatewayEvent).get();
-        VirtuousClient.Gift gift = asGift(paymentGatewayEvent);
+    public void updateDonation(CrmDonation crmDonation) throws Exception {
+        VirtuousClient.Gift gift = asGift(crmDonation);
         try {
-            gift.id = Integer.parseInt(existingDonation.id);
+            gift.id = Integer.parseInt(crmDonation.id);
         } catch (NumberFormatException nfe) {
-            log.error("Failed to parse numeric id from string {}!", existingDonation.id);
+            log.error("Failed to parse numeric id from string {}!", crmDonation.id);
             return;
         }
         virtuousClient.updateGift(gift);
     }
 
     @Override
-    public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-        VirtuousClient.Gift gift = virtuousClient.getGiftByTransactionSourceAndId(paymentGatewayEvent.getGatewayName(), paymentGatewayEvent.getTransactionId());
+    public void refundDonation(CrmDonation crmDonation) throws Exception {
+        VirtuousClient.Gift gift = virtuousClient.getGiftByTransactionSourceAndId(crmDonation.gatewayName, crmDonation.transactionId);
         if (Objects.nonNull(gift)) {
             virtuousClient.createReversingTransaction(gift);
         }
@@ -414,7 +411,7 @@ public class VirtuousCrmService implements BasicCrmService {
         crmDonation.id = gift.id + "";
         crmDonation.name = gift.transactionSource + "/" + gift.transactionId; //?
         crmDonation.amount = gift.amount;
-        crmDonation.paymentGatewayName = gift.transactionSource; // ?
+        crmDonation.gatewayName = gift.transactionSource; // ?
         // TODO: Need this so that DonationService doesn't flag it as a "non-posted state". But it doesn't look like
         //  Virtuous actually has a status to even have a failed state?
         crmDonation.status = CrmDonation.Status.SUCCESSFUL;
@@ -423,36 +420,36 @@ public class VirtuousCrmService implements BasicCrmService {
         return crmDonation;
     }
 
-    private VirtuousClient.Gift asGift(PaymentGatewayEvent paymentGatewayEvent) {
-        if (paymentGatewayEvent == null) {
+    private VirtuousClient.Gift asGift(CrmDonation crmDonation) {
+        if (crmDonation == null) {
             return null;
         }
         VirtuousClient.Gift gift = new VirtuousClient.Gift();
 
-        gift.contactId = paymentGatewayEvent.getCrmContact().id;
+        gift.contactId = crmDonation.contact.id;
         gift.giftType = "Credit"; // ?
-        gift.giftDate = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT).format(paymentGatewayEvent.getTransactionDate());
-        gift.amount = paymentGatewayEvent.getTransactionAmountInDollars();
-        gift.transactionSource = paymentGatewayEvent.getGatewayName();
-        gift.transactionId = paymentGatewayEvent.getTransactionId();
+        gift.giftDate = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT).format(crmDonation.closeDate);
+        gift.amount = crmDonation.amount;
+        gift.transactionSource = crmDonation.gatewayName;
+        gift.transactionId = crmDonation.transactionId;
         gift.isPrivate = false; // ?
         gift.isTaxDeductible = true; // ?
 
         return gift;
     }
 
-    private VirtuousClient.GiftTransaction asGiftTransaction(PaymentGatewayEvent paymentGatewayEvent) {
-        if (paymentGatewayEvent == null) {
+    private VirtuousClient.GiftTransaction asGiftTransaction(CrmDonation crmDonation) {
+        if (crmDonation == null) {
             return null;
         }
         VirtuousClient.GiftTransaction giftTransaction = new VirtuousClient.GiftTransaction();
 
-        giftTransaction.transactionSource = paymentGatewayEvent.getGatewayName(); // ?
-        giftTransaction.transactionId = paymentGatewayEvent.getTransactionId(); // ?
+        giftTransaction.transactionSource = crmDonation.gatewayName; // ?
+        giftTransaction.transactionId = crmDonation.transactionId; // ?
 
-        giftTransaction.amount = paymentGatewayEvent.getTransactionAmountInDollars() + ""; // TODO: double check if string indeed
-        giftTransaction.giftDate = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT).format(paymentGatewayEvent.getTransactionDate());
-        giftTransaction.contact = asContact(paymentGatewayEvent.getCrmContact());
+        giftTransaction.amount = crmDonation.amount + ""; // TODO: double check if string indeed
+        giftTransaction.giftDate = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT).format(crmDonation.closeDate);
+        giftTransaction.contact = asContact(crmDonation.contact);
 
         giftTransaction.recurringGiftTransactionUpdate = false; // ?
         giftTransaction.isPrivate = false; // ?

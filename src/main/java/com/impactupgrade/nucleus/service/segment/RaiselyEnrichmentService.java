@@ -46,7 +46,7 @@ public class RaiselyEnrichmentService implements EnrichmentService {
 
   @Override
   public void enrich(PaymentGatewayEvent event) throws Exception {
-    String donationId = parseDonationId(event.getTransactionDescription());
+    String donationId = parseDonationId(event.getCrmDonation().description);
 
     RaiselyClient.Donation donation = raiselyClient.getDonation(donationId);
 
@@ -58,19 +58,19 @@ public class RaiselyEnrichmentService implements EnrichmentService {
       List<RaiselyClient.DonationItem> ticketItems = donation.items.stream().filter(i -> "ticket".equalsIgnoreCase(i.type)).toList();
       if (ticketItems.isEmpty()) {
         // donations only, but this should never happen?
-        event.setPaymentEventType(EnvironmentConfig.PaymentEventType.DONATION);
+        event.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.DONATION;
       } else if (donationItems.isEmpty()) {
         // tickets only
-        event.setPaymentEventType(EnvironmentConfig.PaymentEventType.TICKET);
+        event.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.TICKET;
       } else if (donationItems.size() > 1 || ticketItems.size() > 1) {
         log.warn("Raisely donation {} had multiple donations and/or tickets; expected one of each, so skipping out of caution", donationId);
       } else {
         // one of each -- let the ticket be the primary and donation secondary
 
-        event.setPaymentEventType(EnvironmentConfig.PaymentEventType.TICKET);
+        event.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.TICKET;
         // if fees are covered, stick them on the TICKET, not the DONATION
         double coveredFee = donation.feeCovered ? (donation.fee / 100.0) : 0.0;
-        event.setTransactionAmountInDollars((double) ((ticketItems.get(0).amount / 100.0) + coveredFee));
+        event.getCrmDonation().amount = (ticketItems.get(0).amount / 100.0) + coveredFee;
 
         // TODO: This will have the same Stripe IDs! For most clients, this won't work, since we skip processing
         //  gifts if their Stripe ID already exists in the CRM. Talking to DR AU about how to handle. Nuke the IDs
@@ -89,8 +89,8 @@ public class RaiselyEnrichmentService implements EnrichmentService {
         clonedEvent.setCrmAccount(crmAccount);
         clonedEvent.setCrmContact(crmContact);
 
-        clonedEvent.setPaymentEventType(EnvironmentConfig.PaymentEventType.DONATION);
-        clonedEvent.setTransactionAmountInDollars((double) ((donationItems.get(0).amount / 100.0)));
+        clonedEvent.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.DONATION;
+        clonedEvent.getCrmDonation().amount = donationItems.get(0).amount / 100.0;
 
         event.getSecondaryEvents().add(clonedEvent);
       }
@@ -114,11 +114,11 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     Double feeAmount = Double.valueOf(donation.fee);
 
     if (item.type.equalsIgnoreCase("ticket") && donation.feeCovered){
-      clonedEvent.setPaymentEventType(EnvironmentConfig.PaymentEventType.TICKET);
-      clonedEvent.setTransactionAmountInDollars((double) ((item.amount/100) + feeAmount));
+      clonedEvent.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.TICKET;
+      clonedEvent.getCrmDonation().amount = (item.amount / 100.0) + feeAmount;
     } else {
-      clonedEvent.setPaymentEventType(EnvironmentConfig.PaymentEventType.DONATION);
-      clonedEvent.setTransactionAmountInDollars((double) ((item.amount/100)));
+      clonedEvent.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.DONATION;
+      clonedEvent.getCrmDonation().amount = item.amount / 100.0;
     }
     return clonedEvent;
   }

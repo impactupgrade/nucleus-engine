@@ -3,13 +3,13 @@ package com.impactupgrade.nucleus.service.segment;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
 import java.util.Collections;
 import java.util.List;
@@ -54,19 +54,15 @@ public interface BasicCrmService extends CrmService {
   default void deleteAccount(String accountId) throws Exception {
   }
 
-  default List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
-    return null;
-  }
-
   default List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
     return null;
   }
 
-  default String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  default String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     return null;
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
     return Optional.empty();
   }
 
@@ -80,7 +76,7 @@ public interface BasicCrmService extends CrmService {
   default void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
   }
 
-  default void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+  default void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
   }
 
   default void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {

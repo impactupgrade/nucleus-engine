@@ -189,14 +189,14 @@ public class TwilioController {
 
         // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
         CrmOpportunity crmOpportunity = new CrmOpportunity();
-        crmOpportunity.contact = crmContact;
+        crmOpportunity.contact.id = crmContact.id;
 
         if (!Strings.isNullOrEmpty(opportunityName)) {
           crmOpportunity.name = opportunityName;
           crmOpportunity.recordTypeId = opportunityRecordTypeId;
           crmOpportunity.ownerId = opportunityOwnerId;
           crmOpportunity.campaignId = campaignId;
-          crmOpportunity.notes = opportunityNotes;
+          crmOpportunity.description = opportunityNotes;
           env.messagingCrmService().insertOpportunity(crmOpportunity);
         }
       } catch (Exception e) {

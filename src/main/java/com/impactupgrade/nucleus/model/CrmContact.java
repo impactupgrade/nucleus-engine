@@ -7,15 +7,13 @@ package com.impactupgrade.nucleus.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Strings;
 
-import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.function.Function;
 
-public class CrmContact implements Serializable {
+public class CrmContact extends CrmRecord {
 
   public enum PreferredPhone {
     HOME(List.of("home", "household")),
@@ -47,82 +45,95 @@ public class CrmContact implements Serializable {
     }
   }
 
-  public String id;
-  public String accountId;
-  public String firstName;
-  public String lastName;
-  public String fullName;
-  public String email;
-  public String homePhone;
-  public String mobilePhone;
-  public String workPhone;
-  public PreferredPhone preferredPhone;
+  public CrmAccount account = new CrmAccount();
+
   public CrmAddress address = new CrmAddress();
+  public String language;
+  public String email;
+  public List<String> emailGroups = new ArrayList<>();
   public Boolean emailOptIn;
   public Boolean emailOptOut;
-  public Boolean smsOptIn;
-  public Boolean smsOptOut;
+  public Calendar firstDonationDate;
+  public String firstName;
+  public String homePhone;
+  public Calendar lastDonationDate;
+  public String lastName;
+  public String mobilePhone;
+  public String notes;
+  public Integer numDonations;
   public String ownerId;
   public String ownerName;
+  public PreferredPhone preferredPhone = PreferredPhone.MOBILE;
+  public Boolean smsOptIn;
+  public Boolean smsOptOut;
   public Double totalDonationAmount;
-  public Integer numDonations;
-  public Calendar firstDonationDate;
-  public Calendar lastDonationDate;
-  public String notes;
-  public List<String> emailGroups;
-  public String contactLanguage;
+  public String workPhone;
 
-  @JsonIgnore
-  public Object rawObject;
-  @JsonIgnore
-  public String crmUrl;
   // Using FP, allow this object to retrieve fields from its rawObject. Calls to the constructor provide a
   // CRM-specific function.
   @JsonIgnore
   public Function<String, Object> fieldFetcher;
 
-  // Mainly to allow orgs to provide custom context at the CrmService level, available for processing back up at the
-  // logic service or controller level.
-  @JsonIgnore
-  public Map<String, Object> additionalContext = new HashMap<>();
-
   public CrmContact() {}
 
   // A few cases where we only care about existence and require only the id.
   public CrmContact(String id) {
-    this.id = id;
+    super(id);
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmContact(String id, String accountId, String firstName, String lastName, String fullName, String email, String homePhone,
-      String mobilePhone, String workPhone, PreferredPhone preferredPhone, CrmAddress address,
-      Boolean emailOptIn, Boolean emailOptOut, Boolean smsOptIn, Boolean smsOptOut, String ownerId, String ownerName, Double totalDonationAmount, Integer numDonations, Calendar firstDonationDate, Calendar lastDonationDate,  List<String> emailGroups, String contactLanguage,
-      Object rawObject, String crmUrl, Function<String, Object> fieldFetcher) {
-    this.id = id;
-    this.accountId = accountId;
-    this.firstName = firstName;
-    this.lastName = lastName;
-    this.fullName = fullName;
-    this.email = email;
-    this.homePhone = homePhone;
-    this.mobilePhone = mobilePhone;
-    this.workPhone = workPhone;
-    this.preferredPhone = preferredPhone;
+  public CrmContact(
+      String id,
+      CrmAccount account,
+      CrmAddress address,
+      String email,
+      List<String> emailGroups,
+      Boolean emailOptIn,
+      Boolean emailOptOut,
+      Calendar firstDonationDate,
+      String firstName,
+      String homePhone,
+      Calendar lastDonationDate,
+      String lastName,
+      String language,
+      String mobilePhone,
+      Integer numDonations,
+      String ownerId,
+      String ownerName,
+      PreferredPhone preferredPhone,
+      Boolean smsOptIn,
+      Boolean smsOptOut,
+      Double totalDonationAmount,
+      String workPhone,
+      Object crmRawObject,
+      String crmUrl,
+      Function<String, Object> fieldFetcher
+  ) {
+    super(id, crmRawObject, crmUrl);
+
+    if (account != null) this.account = account;
+
     this.address = address;
+    this.email = email;
+    if (emailGroups != null) this.emailGroups = emailGroups;
     this.emailOptIn = emailOptIn;
     this.emailOptOut = emailOptOut;
-    this.smsOptIn = smsOptIn;
-    this.smsOptOut = smsOptOut;
+    this.firstDonationDate = firstDonationDate;
+    this.firstName = firstName;
+    this.homePhone = homePhone;
+    this.language = language;
+    this.lastDonationDate = lastDonationDate;
+    this.lastName = lastName;
+    this.mobilePhone = mobilePhone;
+    this.numDonations = numDonations;
     this.ownerId = ownerId;
     this.ownerName = ownerName;
+    if (preferredPhone != null) this.preferredPhone = preferredPhone;
+    this.smsOptIn = smsOptIn;
+    this.smsOptOut = smsOptOut;
     this.totalDonationAmount = totalDonationAmount;
-    this.numDonations = numDonations;
-    this.firstDonationDate = firstDonationDate;
-    this.lastDonationDate = lastDonationDate;
-    this.emailGroups = emailGroups;
-    this.contactLanguage = contactLanguage;
-    this.rawObject = rawObject;
-    this.crmUrl = crmUrl;
+    this.workPhone = workPhone;
+
     this.fieldFetcher = fieldFetcher;
   }
 
@@ -142,9 +153,6 @@ public class CrmContact implements Serializable {
   }
 
   public String fullName() {
-    if (!Strings.isNullOrEmpty(fullName)) {
-      return fullName;
-    }
     return firstName + " " + lastName;
   }
 
