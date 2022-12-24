@@ -35,99 +35,123 @@ public class DonationService {
   public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
-      log.warn("payment gateway event {} failed to process the donor; skipping donation processing", paymentGatewayEvent.getTransactionId());
+      log.warn("payment gateway event {} failed to process the donor; skipping donation processing", paymentGatewayEvent.getCrmDonation().transactionId);
       return;
     }
 
-    Optional<CrmDonation> existingDonation = crmService.getDonation(paymentGatewayEvent);
+    Optional<CrmDonation> existingDonation = crmService.getDonationByTransactionIds(
+        paymentGatewayEvent.getCrmDonation().getTransactionIds(),
+        paymentGatewayEvent.getCrmAccount().id,
+        paymentGatewayEvent.getCrmContact().id
+    );
 
     if (existingDonation.isPresent()) {
       if (existingDonation.get().status != CrmDonation.Status.SUCCESSFUL && existingDonation.get().status != CrmDonation.Status.REFUNDED) {
         // allow updates to non-posted transactions occur, especially to catch cases where it initially failed is reattempted and succeeds
         log.info("found existing CRM donation {} using transaction {}, but in a non-final state; updating it with the reattempt...",
-            existingDonation.get().id, paymentGatewayEvent.getTransactionId());
-        crmService.updateDonation(paymentGatewayEvent);
+            existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
+        crmService.updateDonation(paymentGatewayEvent.getCrmDonation());
         return;
       }
       // posted donation already exists in the CRM with the transactionId - do not process the donation
       log.info("found existing, posted CRM donation {} using transaction {}; skipping creation...",
-          existingDonation.get().id, paymentGatewayEvent.getTransactionId());
+          existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
       return;
     }
 
     if (paymentGatewayEvent.isTransactionRecurring()) {
-      Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(paymentGatewayEvent);
+      Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
+          paymentGatewayEvent.getCrmRecurringDonation().id,
+          paymentGatewayEvent.getCrmRecurringDonation().subscriptionId,
+          paymentGatewayEvent.getCrmAccount().id,
+          paymentGatewayEvent.getCrmContact().id
+      );
 
       if (recurringDonation.isEmpty()) {
         log.info("unable to find CRM recurring donation using subscriptionId {}; creating it...",
-            paymentGatewayEvent.getSubscriptionId());
+            paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
         // NOTE: See the note on the customer.subscription.created event handling. We insert recurring donations
         // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
         // first donation do it in order to prevent timing issues.
-        String recurringDonationId = crmService.insertRecurringDonation(paymentGatewayEvent);
+        String recurringDonationId = crmService.insertRecurringDonation(paymentGatewayEvent.getCrmRecurringDonation());
         paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
       } else {
         String recurringDonationId = recurringDonation.get().id;
         log.info("found CRM recurring donation {} using subscriptionId {}",
-            recurringDonationId, paymentGatewayEvent.getSubscriptionId());
+            recurringDonationId, paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
         paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
       }
     }
 
-    crmService.insertDonation(paymentGatewayEvent);
+    crmService.insertDonation(paymentGatewayEvent.getCrmDonation());
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmDonation> donation = crmService.getDonation(paymentGatewayEvent);
+    Optional<CrmDonation> donation = crmService.getDonationByTransactionIds(
+        paymentGatewayEvent.getCrmDonation().getTransactionIds(),
+        paymentGatewayEvent.getCrmAccount().id,
+        paymentGatewayEvent.getCrmContact().id
+    );
 
     // make sure that a donation was found and that only 1 donation was found
     if (donation.isPresent()) {
-      log.info("refunding CRM donation {} with refunded charge {}", donation.get().id, paymentGatewayEvent.getTransactionId());
+      log.info("refunding CRM donation {} with refunded charge {}", donation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
       // Refund the transaction in the CRM
-      crmService.refundDonation(paymentGatewayEvent);
+      crmService.refundDonation(paymentGatewayEvent.getCrmDonation());
     } else {
-      log.warn("unable to find CRM donation using transaction {}", paymentGatewayEvent.getTransactionId());
+      log.warn("unable to find CRM donation using transaction {}", paymentGatewayEvent.getCrmDonation().transactionId);
     }
   }
 
   public void processSubscription(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
-      log.warn("payment gateway event {} failed to process the donor; skipping subscription processing", paymentGatewayEvent.getTransactionId());
+      log.warn("payment gateway event {} failed to process the donor; skipping subscription processing", paymentGatewayEvent.getCrmDonation().transactionId);
       return;
     }
 
-    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(paymentGatewayEvent);
+    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
+        paymentGatewayEvent.getCrmRecurringDonation().id,
+        paymentGatewayEvent.getCrmRecurringDonation().subscriptionId,
+        paymentGatewayEvent.getCrmAccount().id,
+        paymentGatewayEvent.getCrmContact().id
+    );
 
     if (recurringDonation.isEmpty()) {
       log.info("unable to find CRM recurring donation using subscription {}; creating it...",
-          paymentGatewayEvent.getSubscriptionId());
-      crmService.insertRecurringDonation(paymentGatewayEvent);
+          paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
+      String recurringDonationId = crmService.insertRecurringDonation(paymentGatewayEvent.getCrmRecurringDonation());
+      paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
     } else {
       log.info("found an existing CRM recurring donation using subscription {}",
-          paymentGatewayEvent.getSubscriptionId());
+          paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
     }
   }
 
   public void closeRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(paymentGatewayEvent);
+    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
+        paymentGatewayEvent.getCrmRecurringDonation().id,
+        paymentGatewayEvent.getCrmRecurringDonation().subscriptionId,
+        paymentGatewayEvent.getCrmAccount().id,
+        paymentGatewayEvent.getCrmContact().id
+    );
 
     if (recurringDonation.isEmpty()) {
       log.warn("unable to find CRM recurring donation using subscriptionId {}",
-          paymentGatewayEvent.getSubscriptionId());
+          paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
       return;
     }
 
     crmService.closeRecurringDonation(recurringDonation.get());
 
     String targetId = null;
-    if (recurringDonation.get().account != null && !Strings.isNullOrEmpty(recurringDonation.get().account.id)) {
+    if (!Strings.isNullOrEmpty(recurringDonation.get().account.id)) {
       targetId = recurringDonation.get().account.id;
-    } else if (recurringDonation.get().contact != null && !Strings.isNullOrEmpty(recurringDonation.get().contact.id)) {
+    } else if (!Strings.isNullOrEmpty(recurringDonation.get().contact.id)) {
       targetId = recurringDonation.get().contact.id;
     }
 
-    if (!"draft-incomplete-cancelled".equalsIgnoreCase(paymentGatewayEvent.getAllMetadata().get("status"))) {
+    if (!"draft-incomplete-cancelled".equalsIgnoreCase(paymentGatewayEvent.getMetadataValue(List.of("status")))) {
       notificationservice.sendNotification(
           "Recurring Donation Closed",
           "Recurring donation " + recurringDonation.get().id + " has been closed.",
@@ -145,7 +169,7 @@ public class DonationService {
       return;
     }
 
-    PaymentGatewayService paymentGatewayService = env.paymentGatewayService(recurringDonation.get().paymentGatewayName);
+    PaymentGatewayService paymentGatewayService = env.paymentGatewayService(recurringDonation.get().gatewayName);
 
     manageDonationEvent.getCrmRecurringDonation().subscriptionId = recurringDonation.get().subscriptionId;
     if (manageDonationEvent.getCancelDonation()) {
@@ -158,6 +182,6 @@ public class DonationService {
   }
 
   public void processDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
-    crmService.insertDonationDeposit(paymentGatewayEvents);
+    crmService.insertDonationDeposit(paymentGatewayEvents.stream().map(e -> e.getCrmDonation()).toList());
   }
 }

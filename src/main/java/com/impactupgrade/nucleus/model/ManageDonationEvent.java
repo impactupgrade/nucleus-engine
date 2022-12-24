@@ -15,7 +15,6 @@ public class ManageDonationEvent {
 
   protected final Environment env;
 
-  // For convenience's sake, making use of CRM models, here, to make downstream processing cleaner.
   protected CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
 
   protected Calendar pauseDonationUntilDate;

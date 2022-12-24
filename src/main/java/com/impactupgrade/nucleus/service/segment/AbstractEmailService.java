@@ -55,8 +55,8 @@ public abstract class AbstractEmailService implements EmailService {
     }
 
     customFields.add(new CustomField("crm_contact_id", CustomFieldType.STRING, crmContact.id));
-    if (crmContact.accountId != null) {
-      customFields.add(new CustomField("crm_account_id", CustomFieldType.STRING, crmContact.accountId));
+    if (crmContact.account.id != null) {
+      customFields.add(new CustomField("crm_account_id", CustomFieldType.STRING, crmContact.account.id));
     }
     if (crmContact.firstDonationDate != null) {
       customFields.add(new CustomField("date_of_first_donation", CustomFieldType.DATE, crmContact.firstDonationDate));

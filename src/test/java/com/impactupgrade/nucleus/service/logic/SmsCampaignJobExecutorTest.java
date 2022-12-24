@@ -632,7 +632,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
   private CrmContact crmContact(String id, String lang) {
     CrmContact crmContact = new CrmContact(id);
     crmContact.mobilePhone = "+12345678900";
-    crmContact.contactLanguage = lang;
+    crmContact.language = lang;
     return crmContact;
   }
 }

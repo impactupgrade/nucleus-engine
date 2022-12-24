@@ -265,7 +265,12 @@ public class StripeController {
             paymentGatewayEvent.initStripe(subscription, customer);
             // For each open subscription using that payment source,
             // look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
-            Optional<CrmRecurringDonation> crmRecurringDonationOptional = crmService.getRecurringDonation(paymentGatewayEvent);
+            Optional<CrmRecurringDonation> crmRecurringDonationOptional = crmService.getRecurringDonation(
+                paymentGatewayEvent.getCrmRecurringDonation().id,
+                paymentGatewayEvent.getCrmRecurringDonation().subscriptionId,
+                paymentGatewayEvent.getCrmAccount().id,
+                paymentGatewayEvent.getCrmContact().id
+            );
 
             if (crmRecurringDonationOptional.isPresent()) {
               String targetId = null;
@@ -275,7 +280,7 @@ public class StripeController {
               } else {
                 Optional<CrmContact> crmContactOptional = crmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
                 if (crmContactOptional.isPresent()) {
-                  targetId = crmContactOptional.get().accountId;
+                  targetId = crmContactOptional.get().account.id;
                 }
               }
 

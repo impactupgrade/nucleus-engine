@@ -117,8 +117,8 @@ public class PaymentGatewayDeposit {
     ledgers.get(fund).refunds += refund;
   }
 
-  // TODO: Should PaymentGatewayEvent have some concept of fund within it?
-  public void addTransaction(PaymentGatewayEvent transaction, String fund) {
+  // TODO: Should CrmDonation have some concept of fund within it?
+  public void addTransaction(CrmDonation transaction, String fund) {
     if (Strings.isNullOrEmpty(fund)) {
       fund = "General";
     }
@@ -136,9 +136,9 @@ public class PaymentGatewayDeposit {
 //    ledgers.get(fund).refunds += refund;
       log.warn("IMPLEMENT ME! Skipping refund {}", transaction.refundId);
     } else {
-      ledgers.get(fund).gross += transaction.transactionAmountInDollars;
-      ledgers.get(fund).net += transaction.transactionNetAmountInDollars;
-      ledgers.get(fund).fees += (transaction.transactionAmountInDollars - transaction.transactionNetAmountInDollars);
+      ledgers.get(fund).gross += transaction.amount;
+      ledgers.get(fund).net += transaction.netAmountInDollars;
+      ledgers.get(fund).fees += (transaction.amount - transaction.netAmountInDollars);
     }
   }
 
@@ -147,7 +147,8 @@ public class PaymentGatewayDeposit {
     private double net = 0.0;
     private double fees = 0.0;
     private double refunds = 0.0;
-    private List<PaymentGatewayEvent> transactions = new ArrayList<>();
+    // TODO: will require a Portal change
+    private List<CrmDonation> transactions = new ArrayList<>();
 
     private final Map<String, Ledger> subLedgers = new HashMap<>();
 
@@ -169,7 +170,7 @@ public class PaymentGatewayDeposit {
       return subLedgers;
     }
 
-    public List<PaymentGatewayEvent> getTransactions() {
+    public List<CrmDonation> getTransactions() {
       return transactions;
     }
   }

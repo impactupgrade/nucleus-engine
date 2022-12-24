@@ -18,7 +18,6 @@ import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
-import com.stripe.util.CaseInsensitiveMap;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -26,15 +25,12 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -43,78 +39,49 @@ public class PaymentGatewayEvent implements Serializable {
   protected final EnvironmentConfig envConfig;
 
   // For convenience's sake, making use of CRM models, here, to make downstream processing cleaner.
+  // Important to not make these public -- note how the setters are multistep!
   protected CrmAccount crmAccount = new CrmAccount();
   protected CrmContact crmContact = new CrmContact();
+  protected CrmDonation crmDonation = new CrmDonation();
+  protected CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
 
   protected String application;
-  protected String customerId;
-  protected String depositTransactionId;
-  protected String gatewayName;
-  protected String paymentMethod;
-  // TODO: Ex: If the payment involved a Stripe invoice, capture the product ID for each line item. We eventually may
-  //  need to refactor this to provide additional info, but let's see how it goes.
-  protected List<String> products = new ArrayList<>();
-  protected String refundId;
-  protected ZonedDateTime refundDate;
-  protected Double subscriptionAmountInDollars;
-  protected String subscriptionCurrency;
-  protected String subscriptionDescription;
-  protected String subscriptionId;
-  protected String subscriptionInterval;
-  protected ZonedDateTime subscriptionNextDate;
-  protected ZonedDateTime subscriptionStartDate;
-  protected Double transactionAmountInDollars;
-  protected Double transactionNetAmountInDollars;
-  protected ZonedDateTime transactionDate;
-  protected String transactionDescription;
-  protected Double transactionExchangeRate;
-  protected Double transactionFeeInDollars;
-  protected String transactionId; // ex: Stripe PaymentIntent ID, or the Charge ID if this was a simple Charge API use
-  protected String transactionSecondaryId; // ex: Stripe Charge ID if this was the Payment Intent API
-  protected Double transactionOriginalAmountInDollars;
-  protected String transactionOriginalCurrency;
-  protected boolean transactionCurrencyConverted;
-  protected boolean transactionSuccess;
-  protected String transactionUrl;
-
-  // context set within processing steps OR pulled from event metadata
-  protected String crmRecurringDonationId;
-  protected String depositId;
-  protected ZonedDateTime depositDate;
-  protected EnvironmentConfig.PaymentEventType paymentEventType;
 
   // If enrichment results in multiple events (ex: a split of a deductible and non-deductible transaction),
   // nest the secondary events under the primary so downstream processing is aware of the connection.
   protected List<PaymentGatewayEvent> secondaryEvents = new ArrayList<>();
 
-  // Maps holding metadata content. We need to split these up in order to define an ordered hierarchy of values.
-  // VITAL: Allow these to be case insensitive!
-  private final Map<String, String> contextMetadata = new CaseInsensitiveMap<>();
-  private final Map<String, String> transactionMetadata = new CaseInsensitiveMap<>();
-  private final Map<String, String> subscriptionMetadata = new CaseInsensitiveMap<>();
-  private final Map<String, String> customerMetadata = new CaseInsensitiveMap<>();
-
   public PaymentGatewayEvent(Environment env) {
     envConfig = env.getConfig();
+
+    crmDonation.account = crmAccount;
+    crmDonation.contact = crmContact;
+    crmRecurringDonation.account = crmAccount;
+    crmRecurringDonation.contact = crmContact;
   }
 
-  // IMPORTANT! We're remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
+  // IMPORTANT! We remove all non-numeric chars on all metadata fields -- it appears a few campaign IDs were pasted
   // into forms and contain NBSP characters :(
 
   public void initStripe(Charge stripeCharge, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    gatewayName = "Stripe";
+    crmDonation.metadata.putAll(stripeCharge.getMetadata());
+    // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
+    crmAccount.metadata.putAll(stripeCharge.getMetadata());
+    crmContact.metadata.putAll(stripeCharge.getMetadata());
+
+    crmDonation.gatewayName = "Stripe";
     application = stripeCharge.getApplication();
     String stripePaymentMethod = stripeCharge.getPaymentMethodDetails().getType();
     if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
-      paymentMethod = "ACH";
+      crmDonation.paymentMethod = "ACH";
     } else {
-      paymentMethod = "Credit Card";
+      crmDonation.paymentMethod = "Credit Card";
     }
 
     if (stripeInvoice.isPresent()) {
       if (stripeInvoice.get().getLines() != null) {
-        products = stripeInvoice.get().getLines().getData().stream().map(
+        crmDonation.products = stripeInvoice.get().getLines().getData().stream().map(
             line -> line.getPrice() == null || line.getPrice().getProduct() == null ? null : line.getPrice().getProduct()
         ).filter(Objects::nonNull).collect(Collectors.toList());
       }
@@ -128,61 +95,61 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripeCharge.getCreated() != null) {
-      transactionDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeCharge.getCreated()), ZoneId.of("UTC"));
+      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeCharge.getCreated()), ZoneId.of("UTC"));
     } else {
-      transactionDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
     }
 
-    transactionDescription = stripeCharge.getDescription();
-    transactionId = stripeCharge.getId();
-    transactionSuccess = !"failed".equalsIgnoreCase(stripeCharge.getStatus());
-    transactionUrl = "https://dashboard.stripe.com/charges/" + stripeCharge.getId();
+    crmDonation.description = stripeCharge.getDescription();
+    crmDonation.transactionId = stripeCharge.getId();
+    crmDonation.status = "failed".equalsIgnoreCase(stripeCharge.getStatus()) ? CrmDonation.Status.FAILED : CrmDonation.Status.SUCCESSFUL;
+    crmDonation.url = "https://dashboard.stripe.com/charges/" + stripeCharge.getId();
 
-    transactionOriginalAmountInDollars = stripeCharge.getAmount() / 100.0;
-    transactionOriginalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
+    crmDonation.originalAmountInDollars = stripeCharge.getAmount() / 100.0;
+    crmDonation.originalCurrency = stripeCharge.getCurrency().toUpperCase(Locale.ROOT);
 
     stripeBalanceTransaction.ifPresent(bt -> {
-      depositTransactionId = bt.getId();
-      transactionNetAmountInDollars = bt.getNet() / 100.0;
-      transactionFeeInDollars = bt.getFee() / 100.0;
+      crmDonation.depositTransactionId = bt.getId();
+      crmDonation.netAmountInDollars = bt.getNet() / 100.0;
+      crmDonation.feeInDollars = bt.getFee() / 100.0;
     });
 
     if (envConfig.currency.equalsIgnoreCase(stripeCharge.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
-      transactionAmountInDollars = stripeCharge.getAmount() / 100.0;
+      crmDonation.amount = stripeCharge.getAmount() / 100.0;
     } else {
-      transactionCurrencyConverted = true;
+      crmDonation.currencyConverted = true;
       // currency is different than what the org is expecting, so assume it was converted
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
-        transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;
-        transactionExchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
+        crmDonation.amount = stripeBalanceTransaction.get().getAmount() / 100.0;
+        crmDonation.exchangeRate = stripeBalanceTransaction.get().getExchangeRate().doubleValue();
       }
     }
 
-    transactionDescription = stripeCharge.getDescription();
-
-    addMetadata(stripeCharge.getMetadata(), transactionMetadata);
-
     // Always do this last! We need all the metadata context to fill out the customer details.
-    addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
     initStripeCustomer(stripeCustomer, Optional.ofNullable(stripeCharge.getBillingDetails()));
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    gatewayName = "Stripe";
+    crmDonation.metadata.putAll(stripePaymentIntent.getMetadata());
+    // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
+    crmAccount.metadata.putAll(stripePaymentIntent.getMetadata());
+    crmContact.metadata.putAll(stripePaymentIntent.getMetadata());
+
+    crmDonation.gatewayName = "Stripe";
     application = stripePaymentIntent.getApplication();
     String stripePaymentMethod = stripePaymentIntent.getCharges().getData().stream().findFirst().map(c -> c.getPaymentMethodDetails().getType()).orElse("");
     if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
-      paymentMethod = "ACH";
+      crmDonation.paymentMethod = "ACH";
     } else {
-      paymentMethod = "Credit Card";
+      crmDonation.paymentMethod = "Credit Card";
     }
 
     if (stripeInvoice.isPresent()) {
       if (stripeInvoice.get().getLines() != null) {
-        products = stripeInvoice.get().getLines().getData().stream().map(
+        crmDonation.products = stripeInvoice.get().getLines().getData().stream().map(
             line -> line.getPrice() == null || line.getPrice().getProduct() == null ? null : line.getPrice().getProduct()
         ).filter(Objects::nonNull).collect(Collectors.toList());
       }
@@ -196,73 +163,68 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripePaymentIntent.getCreated() != null) {
-      transactionDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripePaymentIntent.getCreated()), ZoneId.of("UTC"));
+      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripePaymentIntent.getCreated()), ZoneId.of("UTC"));
     } else {
-      transactionDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
     }
 
-    transactionDescription = stripePaymentIntent.getDescription();
-    transactionId = stripePaymentIntent.getId();
-    transactionSecondaryId = stripePaymentIntent.getCharges().getData().stream().findFirst().map(Charge::getId).orElse(null);
+    crmDonation.description = stripePaymentIntent.getDescription();
+    crmDonation.transactionId = stripePaymentIntent.getId();
+    crmDonation.secondaryId = stripePaymentIntent.getCharges().getData().stream().findFirst().map(Charge::getId).orElse(null);
     // note this is different than a charge, which uses !"failed" -- intents have multiple phases of "didn't work",
     // so explicitly search for succeeded
-    transactionSuccess = "succeeded".equalsIgnoreCase(stripePaymentIntent.getStatus());
-    transactionUrl = "https://dashboard.stripe.com/payments/" + stripePaymentIntent.getId();
+    crmDonation.status = "succeeded".equalsIgnoreCase(stripePaymentIntent.getStatus()) ? CrmDonation.Status.SUCCESSFUL : CrmDonation.Status.FAILED;
+    crmDonation.url = "https://dashboard.stripe.com/payments/" + stripePaymentIntent.getId();
 
-    transactionOriginalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
-    transactionOriginalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
+    crmDonation.originalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
+    crmDonation.originalCurrency = stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT);
 
     stripeBalanceTransaction.ifPresent(bt -> {
-      depositTransactionId = bt.getId();
-      transactionNetAmountInDollars = bt.getNet() / 100.0;
-      transactionFeeInDollars = bt.getFee() / 100.0;
+      crmDonation.depositTransactionId = bt.getId();
+      crmDonation.netAmountInDollars = bt.getNet() / 100.0;
+      crmDonation.feeInDollars = bt.getFee() / 100.0;
     });
 
     if (envConfig.currency.equalsIgnoreCase(stripePaymentIntent.getCurrency().toUpperCase(Locale.ROOT))) {
       // currency is the same as the org receiving the funds, so no conversion necessary
-      transactionAmountInDollars = stripePaymentIntent.getAmount() / 100.0;
+      crmDonation.amount = stripePaymentIntent.getAmount() / 100.0;
     } else {
-      transactionCurrencyConverted = true;
+      crmDonation.currencyConverted = true;
       // currency is different than what the org is expecting, so assume it was converted
       // TODO: this implies the values will *not* be set for failed transactions!
       if (stripeBalanceTransaction.isPresent()) {
-        transactionAmountInDollars = stripeBalanceTransaction.get().getAmount() / 100.0;
+        crmDonation.amount = stripeBalanceTransaction.get().getAmount() / 100.0;
         BigDecimal exchangeRate = stripeBalanceTransaction.get().getExchangeRate();
         if (exchangeRate != null) {
-          transactionExchangeRate = exchangeRate.doubleValue();
+          crmDonation.exchangeRate = exchangeRate.doubleValue();
         }
       }
     }
 
-    transactionDescription = stripePaymentIntent.getDescription();
-
-    addMetadata(stripePaymentIntent.getMetadata(), transactionMetadata);
-
     // Always do this last! We need all the metadata context to fill out the customer details.
-    addMetadata(stripeCustomer.map(Customer::getMetadata).orElse(null), customerMetadata);
     initStripeCustomer(stripeCustomer, Optional.empty());
   }
 
   public void initStripe(Refund stripeRefund) {
-    gatewayName = "Stripe";
+    crmDonation.gatewayName = "Stripe";
 
-    refundId = stripeRefund.getId();
+    crmDonation.refundId = stripeRefund.getId();
     if (!Strings.isNullOrEmpty(stripeRefund.getPaymentIntent())) {
-      transactionId = stripeRefund.getPaymentIntent();
-      transactionSecondaryId = stripeRefund.getCharge();
+      crmDonation.transactionId = stripeRefund.getPaymentIntent();
+      crmDonation.secondaryId = stripeRefund.getCharge();
     } else {
-      transactionId = stripeRefund.getCharge();
+      crmDonation.transactionId = stripeRefund.getCharge();
     }
 
     if (stripeRefund.getCreated() != null) {
-      refundDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeRefund.getCreated()), ZoneId.of("UTC"));
+      crmDonation.refundDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeRefund.getCreated()), ZoneId.of("UTC"));
     } else {
-      refundDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.refundDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
     }
   }
 
   public void initStripe(Subscription stripeSubscription, Customer stripeCustomer) {
-    gatewayName = "Stripe";
+    crmDonation.gatewayName = "Stripe";
 
     initStripeSubscription(stripeSubscription, stripeCustomer);
 
@@ -271,12 +233,14 @@ public class PaymentGatewayEvent implements Serializable {
   }
 
   protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
-    Map<String, String> metadata = getAllMetadata();
-
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
-      customerId = stripeCustomer.getId();
+      crmAccount.metadata.putAll(stripeCustomer.getMetadata());
+      crmContact.metadata.putAll(stripeCustomer.getMetadata());
+
+      crmDonation.customerId = stripeCustomer.getId();
+      crmRecurringDonation.customerId = stripeCustomer.getId();
 
       crmContact.email = stripeCustomer.getEmail();
       crmContact.mobilePhone = stripeCustomer.getPhone();
@@ -284,17 +248,17 @@ public class PaymentGatewayEvent implements Serializable {
 
     // backfill with metadata if needed
     if (Strings.isNullOrEmpty(crmContact.email)) {
-      crmContact.email = metadata.entrySet().stream().filter(e -> {
+      crmContact.email = crmContact.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("email"));
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
     if (Strings.isNullOrEmpty(crmContact.mobilePhone)) {
       // TODO: Do we need to break this down into the different phone numbers?
-      crmContact.mobilePhone = metadata.entrySet().stream().filter(e -> {
+      crmContact.mobilePhone = crmContact.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("phone"));
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
 
     initStripeCustomerName(__stripeCustomer, billingDetails);
@@ -305,23 +269,21 @@ public class PaymentGatewayEvent implements Serializable {
   // Some donation forms and vendors use true Customer names, others use metadata on Customer, other still only put
   // names in metadata on the Charge or Subscription. Madness. But let's be helpful...
   protected void initStripeCustomerName(Optional<Customer> stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
-    Map<String, String> metadata = getAllMetadata();
-
     // For the full name, start with Customer name. Generally this is populated, but a few vendors don't always do it.
     crmAccount.name = stripeCustomer.map(Customer::getName).orElse(null);
     // If that didn't work, look in the metadata. We've seen variations of "customer" or "full" name used.
     if (Strings.isNullOrEmpty(crmAccount.name)) {
-      crmAccount.name = metadata.entrySet().stream().filter(e -> {
+      crmAccount.name = crmAccount.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
     // If that still didn't work, look in the backup metadata (typically a charge or subscription).
     if (Strings.isNullOrEmpty(crmAccount.name)) {
-      crmAccount.name = metadata.entrySet().stream().filter(e -> {
+      crmAccount.name = crmAccount.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
     // Still nothing? Try the billing details.
     if (Strings.isNullOrEmpty(crmAccount.name) && billingDetails.isPresent()
@@ -338,27 +300,27 @@ public class PaymentGatewayEvent implements Serializable {
 
     // Now do first name, again using metadata. Don't do "contains 'first' and contains 'name'", since that would also
     // pick up, as an example, Raisely's use of fundraiser_first_name. Instead, use regex that's a little more explicit.
-    crmContact.firstName = metadata.entrySet().stream().filter(e -> {
+    crmContact.firstName = crmContact.metadata.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.matches("(?i)first.*name");
-    }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.firstName)) {
-      crmContact.firstName = metadata.entrySet().stream().filter(e -> {
+      crmContact.firstName = crmContact.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.matches("(?i)first.*name");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
 
     // And now the last name.
-    crmContact.lastName = metadata.entrySet().stream().filter(e -> {
+    crmContact.lastName = crmContact.metadata.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.matches("(?i)last.*name");
-    }).findFirst().map(Map.Entry::getValue).orElse(null);
+    }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.lastName)) {
-      crmContact.lastName = metadata.entrySet().stream().filter(e -> {
+      crmContact.lastName = crmContact.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.matches("(?i)last.*name");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
 
     // If we still don't have a first/last name, but do have full name, fall back to using a split.
@@ -429,29 +391,27 @@ public class PaymentGatewayEvent implements Serializable {
 
     // If the customer and sources didn't have the full address, try metadata from both.
     if (Strings.isNullOrEmpty(crmAddress.street)) {
-      Map<String, String> metadata = getAllMetadata();
-
       // TODO: The stream and filter are getting repetitive (see initStripeCustomerName as well). DRY it up
-      crmAddress.street = metadata.entrySet().stream().filter(e -> {
+      crmAddress.street = crmAccount.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("street") || key.contains("address");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
-      crmAddress.city = metadata.entrySet().stream().filter(e -> {
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
+      crmAddress.city = crmAccount.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("city");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
-      crmAddress.state = metadata.entrySet().stream().filter(e -> {
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
+      crmAddress.state = crmAccount.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("state");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
-      crmAddress.postalCode = metadata.entrySet().stream().filter(e -> {
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
+      crmAddress.postalCode = crmAccount.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("postal") || key.contains("zip");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
-      crmAddress.country = metadata.entrySet().stream().filter(e -> {
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
+      crmAddress.country = crmAccount.metadata.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("country");
-      }).findFirst().map(Map.Entry::getValue).orElse(null);
+      }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
 
     crmAccount.address = crmAddress;
@@ -460,78 +420,41 @@ public class PaymentGatewayEvent implements Serializable {
 
   // Keep stripeCustomer, even though we don't use it here -- needed in subclasses.
   protected void initStripeSubscription(Subscription stripeSubscription, Customer stripeCustomer) {
-    if (stripeSubscription.getTrialEnd() != null) {
-      subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getTrialEnd()), ZoneId.of("UTC"));
-    } else {
-      subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getStartDate()), ZoneId.of("UTC"));
-    }
-    subscriptionNextDate = subscriptionStartDate;
+    crmRecurringDonation.metadata.putAll(stripeSubscription.getMetadata());
+    // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
+    crmAccount.metadata.putAll(stripeSubscription.getMetadata());
+    crmContact.metadata.putAll(stripeSubscription.getMetadata());
 
-    subscriptionId = stripeSubscription.getId();
+    crmRecurringDonation.gatewayName = "Stripe";
+
+    if (stripeSubscription.getTrialEnd() != null) {
+      crmRecurringDonation.subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getTrialEnd()), ZoneId.of("UTC"));
+    } else {
+      crmRecurringDonation.subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getStartDate()), ZoneId.of("UTC"));
+    }
+    crmRecurringDonation.subscriptionNextDate = crmRecurringDonation.subscriptionStartDate;
+
+    crmRecurringDonation.subscriptionId = stripeSubscription.getId();
     if (stripeSubscription.getPendingInvoiceItemInterval() != null) {
-      subscriptionInterval = stripeSubscription.getPendingInvoiceItemInterval().getInterval();
+      crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.fromName(stripeSubscription.getPendingInvoiceItemInterval().getInterval());
     }
     // by default, assume monthly
-    if (Strings.isNullOrEmpty(subscriptionInterval)) subscriptionInterval = "month";
+    if (crmRecurringDonation.frequency == null) crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.MONTHLY;
 
     // Stripe is in cents
     // TODO: currency conversion support? This is eventually updated as charges are received, but for brand new ones
     // with a trial, this could throw off future forecasting!
     SubscriptionItem item = stripeSubscription.getItems().getData().get(0);
-    subscriptionAmountInDollars = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
-    subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
-
-    addMetadata(stripeSubscription.getMetadata(), subscriptionMetadata);
-    addMetadata(stripeCustomer.getMetadata(), customerMetadata);
+    crmRecurringDonation.amount = item.getPrice().getUnitAmountDecimal().doubleValue() * item.getQuantity() / 100.0;
+    crmRecurringDonation.subscriptionCurrency = item.getPrice().getCurrency().toUpperCase(Locale.ROOT);
 
     // TODO: We could shift this to MetadataRetriever, but odds are we're the only ones setting it...
-    subscriptionDescription = stripeSubscription.getMetadata().get("description");
-  }
-
-  private void addMetadata(Map<String, String> newEntries, Map<String, String> currentEntries) {
-    if (newEntries != null) {
-      currentEntries.putAll(newEntries);
-    }
-  }
-
-  public void addMetadata(String key, String value) {
-    contextMetadata.put(key, value);
-  }
-
-  public String getMetadataValue(String metadataKey) {
-    return getMetadataValue(Set.of(metadataKey));
-  }
-
-  public String getMetadataValue(Collection<String> metadataKeys) {
-    String metadataValue = null;
-
-    for (String metadataKey : metadataKeys) {
-      // Always start with the raw context and let it trump everything else.
-      if (contextMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(contextMetadata.get(metadataKey))) {
-        metadataValue = contextMetadata.get(metadataKey);
-      } else if (transactionMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(transactionMetadata.get(metadataKey))) {
-        metadataValue = transactionMetadata.get(metadataKey);
-      } else if (subscriptionMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(subscriptionMetadata.get(metadataKey))) {
-        metadataValue = subscriptionMetadata.get(metadataKey);
-      } else if (customerMetadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(customerMetadata.get(metadataKey))) {
-        metadataValue = customerMetadata.get(metadataKey);
-      }
-    }
-
-    if (metadataValue != null) {
-      // IMPORTANT: The keys and values are sometimes copy/pasted by a human and we've had issues with whitespace.
-      // Strip it! But note that sometimes it's something like a non-breaking space char (pasted from a doc?),
-      // so convert that to a standard space first.
-      metadataValue = metadataValue.replaceAll("[\\h+]", " ");
-      metadataValue = metadataValue.trim();
-    }
-
-    return metadataValue;
+    crmRecurringDonation.description = stripeSubscription.getMetadata().get("description");
   }
 
   public Map<String, String> getAllMetadata() {
     // In order!
-    return Stream.of(contextMetadata, transactionMetadata, subscriptionMetadata, customerMetadata)
+    return Stream.of(crmDonation.metadata, crmRecurringDonation.metadata, crmContact.metadata, crmAccount.metadata)
         .flatMap(map -> map.entrySet().stream())
         .collect(Collectors.toMap(
             Map.Entry::getKey,
@@ -541,7 +464,19 @@ public class PaymentGatewayEvent implements Serializable {
         ));
   }
 
-  // DO NOT LET THESE BE AUTO-GENERATED, ALLOWING METADATARETRIEVER TO PROVIDE DEFAULTS
+  public String getMetadataValue(Collection<String> keys) {
+    Collection<String> filteredKeys = keys.stream().filter(k -> !Strings.isNullOrEmpty(k)).toList();
+
+    // In order!
+    return Stream.of(crmDonation.metadata, crmRecurringDonation.metadata, crmContact.metadata, crmAccount.metadata)
+        .flatMap(map -> map.entrySet().stream())
+        .filter(e -> filteredKeys.contains(e.getKey()))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
+  }
+
+  // TRANSIENT
 
   public CrmAccount getCrmAccount() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
@@ -551,13 +486,18 @@ public class PaymentGatewayEvent implements Serializable {
     return crmAccount;
   }
 
-  public void setCrmAccount(CrmAccount crmAccount) {
-    this.crmAccount = crmAccount;
-  }
-
   public void setCrmAccountId(String crmAccountId) {
     crmAccount.id = crmAccountId;
-    crmContact.accountId = crmAccountId;
+    crmContact.account.id = crmAccountId;
+    crmDonation.account.id = crmAccountId;
+    crmRecurringDonation.account.id = crmAccountId;
+  }
+
+  public void setCrmAccount(CrmAccount crmAccount) {
+    this.crmAccount = crmAccount;
+    crmContact.account = crmAccount;
+    crmDonation.account = crmAccount;
+    crmRecurringDonation.account = crmAccount;
   }
 
   public CrmContact getCrmContact() {
@@ -568,42 +508,50 @@ public class PaymentGatewayEvent implements Serializable {
     return crmContact;
   }
 
-  public void setCrmContact(CrmContact crmContact) {
-    this.crmContact = crmContact;
-  }
-
   public void setCrmContactId(String crmContactId) {
     crmContact.id = crmContactId;
+    crmDonation.contact.id = crmContactId;
+    crmRecurringDonation.contact.id = crmContactId;
   }
 
-  public String getCrmRecurringDonationId() {
-    // TODO: should we support looking up metadata on the Subscription?
-    return crmRecurringDonationId;
+  public void setCrmContact(CrmContact crmContact) {
+    this.crmContact = crmContact;
+    crmDonation.contact = crmContact;
+    crmRecurringDonation.contact = crmContact;
+  }
+
+  public CrmDonation getCrmDonation() {
+    return crmDonation;
+  }
+
+  public void setCrmDonationId(String crmDonationId) {
+    crmDonation.id = crmDonationId;
+  }
+
+  public void setCrmDonation(CrmDonation crmDonation) {
+    this.crmDonation = crmDonation;
+  }
+
+  public CrmRecurringDonation getCrmRecurringDonation() {
+    return crmRecurringDonation;
   }
 
   public void setCrmRecurringDonationId(String crmRecurringDonationId) {
-    this.crmRecurringDonationId = crmRecurringDonationId;
+    crmRecurringDonation.id = crmRecurringDonationId;
+    crmDonation.recurringDonation.id = crmRecurringDonationId;
   }
 
-  // TRANSIENT
+  public void setCrmRecurringDonationId(CrmRecurringDonation crmRecurringDonation) {
+    this.crmRecurringDonation = crmRecurringDonation;
+    crmDonation.recurringDonation = crmRecurringDonation;
+  }
 
   public boolean isTransactionRecurring() {
-    return !Strings.isNullOrEmpty(subscriptionId);
-  }
-
-  private Calendar getTransactionDate(Date date) {
-    if (date != null) {
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTime(date);
-      return calendar;
-    } else {
-      return Calendar.getInstance();
-    }
+    return !Strings.isNullOrEmpty(crmRecurringDonation.subscriptionId);
   }
 
   // GETTERS/SETTERS
   // Note that we allow setters here, as orgs sometimes need to override the values based on custom logic.
-
 
   public String getApplication() {
     return application;
@@ -611,244 +559,6 @@ public class PaymentGatewayEvent implements Serializable {
 
   public void setApplication(String application) {
     this.application = application;
-  }
-
-  public String getCustomerId() {
-    return customerId;
-  }
-
-  public void setCustomerId(String customerId) {
-    this.customerId = customerId;
-  }
-
-  public String getDepositTransactionId() {
-    return depositTransactionId;
-  }
-
-  public void setDepositTransactionId(String depositTransactionId) {
-    this.depositTransactionId = depositTransactionId;
-  }
-
-  public String getGatewayName() {
-    return gatewayName;
-  }
-
-  public void setGatewayName(String gatewayName) {
-    this.gatewayName = gatewayName;
-  }
-
-  public String getPaymentMethod() {
-    return paymentMethod;
-  }
-
-  public void setPaymentMethod(String paymentMethod) {
-    this.paymentMethod = paymentMethod;
-  }
-
-  public List<String> getProducts() {
-    return products;
-  }
-
-  public void setProducts(List<String> products) {
-    this.products = products;
-  }
-
-  public String getRefundId() {
-    return refundId;
-  }
-
-  public void setRefundId(String refundId) {
-    this.refundId = refundId;
-  }
-
-  public ZonedDateTime getRefundDate() {
-    return refundDate;
-  }
-
-  public void setRefundDate(ZonedDateTime refundDate) { this.refundDate = refundDate; }
-
-  public Double getSubscriptionAmountInDollars() {
-    return subscriptionAmountInDollars;
-  }
-
-  public void setSubscriptionAmountInDollars(Double subscriptionAmountInDollars) {
-    this.subscriptionAmountInDollars = subscriptionAmountInDollars;
-  }
-
-  public String getSubscriptionCurrency() {
-    return subscriptionCurrency;
-  }
-
-  public void setSubscriptionCurrency(String subscriptionCurrency) {
-    this.subscriptionCurrency = subscriptionCurrency;
-  }
-
-  public String getSubscriptionDescription() {
-    return subscriptionDescription;
-  }
-
-  public void setSubscriptionDescription(String subscriptionDescription) {
-    this.subscriptionDescription = subscriptionDescription;
-  }
-
-  public String getSubscriptionId() {
-    return subscriptionId;
-  }
-
-  public void setSubscriptionId(String subscriptionId) {
-    this.subscriptionId = subscriptionId;
-  }
-
-  public String getSubscriptionInterval() {
-    return subscriptionInterval;
-  }
-
-  public void setSubscriptionInterval(String subscriptionInterval) {
-    this.subscriptionInterval = subscriptionInterval;
-  }
-
-  public ZonedDateTime getSubscriptionNextDate() {
-    return subscriptionNextDate;
-  }
-
-  public void setSubscriptionNextDate(ZonedDateTime subscriptionNextDate) {
-    this.subscriptionNextDate = subscriptionNextDate;
-  }
-
-  public ZonedDateTime getSubscriptionStartDate() {
-    return subscriptionStartDate;
-  }
-
-  public void setSubscriptionStartDate(ZonedDateTime subscriptionStartDate) {
-    this.subscriptionStartDate = subscriptionStartDate;
-  }
-
-  public Double getTransactionAmountInDollars() {
-    return transactionAmountInDollars;
-  }
-
-  public void setTransactionAmountInDollars(Double transactionAmountInDollars) {
-    this.transactionAmountInDollars = transactionAmountInDollars;
-  }
-
-  public Double getTransactionNetAmountInDollars() {
-    return transactionNetAmountInDollars;
-  }
-
-  public void setTransactionNetAmountInDollars(Double transactionNetAmountInDollars) {
-    this.transactionNetAmountInDollars = transactionNetAmountInDollars;
-  }
-
-  public ZonedDateTime getTransactionDate() {
-    return transactionDate;
-  }
-
-  public void setTransactionDate(ZonedDateTime transactionDate) {
-    this.transactionDate = transactionDate;
-  }
-
-  public String getTransactionDescription() {
-    return transactionDescription;
-  }
-
-  public void setTransactionDescription(String transactionDescription) {
-    this.transactionDescription = transactionDescription;
-  }
-
-  public Double getTransactionExchangeRate() {
-    return transactionExchangeRate;
-  }
-
-  public void setTransactionExchangeRate(Double transactionExchangeRate) {
-    this.transactionExchangeRate = transactionExchangeRate;
-  }
-
-  public Double getTransactionFeeInDollars() {
-    return transactionFeeInDollars;
-  }
-
-  public void setTransactionFeeInDollars(Double transactionFeeInDollars) {
-    this.transactionFeeInDollars = transactionFeeInDollars;
-  }
-
-  public String getTransactionId() {
-    return transactionId;
-  }
-
-  public void setTransactionId(String transactionId) {
-    this.transactionId = transactionId;
-  }
-
-  public String getTransactionSecondaryId() {
-    return transactionSecondaryId;
-  }
-
-  public void setTransactionSecondaryId(String transactionSecondaryId) {
-    this.transactionSecondaryId = transactionSecondaryId;
-  }
-
-  public Double getTransactionOriginalAmountInDollars() {
-    return transactionOriginalAmountInDollars;
-  }
-
-  public void setTransactionOriginalAmountInDollars(Double transactionOriginalAmountInDollars) {
-    this.transactionOriginalAmountInDollars = transactionOriginalAmountInDollars;
-  }
-
-  public String getTransactionOriginalCurrency() {
-    return transactionOriginalCurrency;
-  }
-
-  public void setTransactionOriginalCurrency(String transactionOriginalCurrency) {
-    this.transactionOriginalCurrency = transactionOriginalCurrency;
-  }
-
-  public boolean isTransactionCurrencyConverted() {
-    return transactionCurrencyConverted;
-  }
-
-  public void setTransactionCurrencyConverted(boolean transactionCurrencyConverted) {
-    this.transactionCurrencyConverted = transactionCurrencyConverted;
-  }
-
-  public boolean isTransactionSuccess() {
-    return transactionSuccess;
-  }
-
-  public void setTransactionSuccess(boolean transactionSuccess) {
-    this.transactionSuccess = transactionSuccess;
-  }
-
-  public String getTransactionUrl() {
-    return transactionUrl;
-  }
-
-  public void setTransactionUrl(String transactionUrl) {
-    this.transactionUrl = transactionUrl;
-  }
-
-  public String getDepositId() {
-    return depositId;
-  }
-
-  public void setDepositId(String depositId) {
-    this.depositId = depositId;
-  }
-
-  public ZonedDateTime getDepositDate() {
-    return depositDate;
-  }
-
-  public void setDepositDate(ZonedDateTime depositDate) {
-    this.depositDate = depositDate;
-  }
-
-  public EnvironmentConfig.PaymentEventType getPaymentEventType() {
-    return paymentEventType;
-  }
-
-  public void setPaymentEventType(EnvironmentConfig.PaymentEventType paymentEventType) {
-    this.paymentEventType = paymentEventType;
   }
 
   public List<PaymentGatewayEvent> getSecondaryEvents() {
@@ -861,54 +571,55 @@ public class PaymentGatewayEvent implements Serializable {
 
   // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.
   // We might be better off breaking this out into a separate, dedicated method.
-  @Override
-  public String toString() {
-    return "PaymentGatewayEvent{" +
-
-        "fullName='" + crmAccount.name + '\'' +
-        ", firstName='" + crmContact.firstName + '\'' +
-        ", lastName='" + crmContact.lastName + '\'' +
-        ", email='" + crmContact.email + '\'' +
-        ", mobilePhone='" + crmContact.mobilePhone + '\'' +
-
-        ", street='" + crmContact.address.street + '\'' +
-        ", city='" + crmContact.address.city + '\'' +
-        ", state='" + crmContact.address.state + '\'' +
-        ", zip='" + crmContact.address.postalCode + '\'' +
-        ", country='" + crmContact.address.country + '\'' +
-
-        ", gatewayName='" + gatewayName + '\'' +
-        ", paymentMethod='" + paymentMethod + '\'' +
-
-        ", customerId='" + customerId + '\'' +
-        ", transactionId='" + transactionId + '\'' +
-        ", transactionSecondaryId='" + transactionSecondaryId + '\'' +
-        ", subscriptionId='" + subscriptionId + '\'' +
-
-        ", products='" + String.join(",", products) + '\'' +
-
-        ", transactionDate=" + transactionDate +
-        ", transactionSuccess=" + transactionSuccess +
-        ", transactionDescription='" + transactionDescription + '\'' +
-        ", transactionAmountInDollars=" + transactionAmountInDollars +
-        ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
-        ", transactionExchangeRate=" + transactionExchangeRate +
-        ", transactionFeeInDollars=" + transactionFeeInDollars +
-        ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
-        ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
-        ", transactionCurrencyConverted='" + transactionCurrencyConverted + '\'' +
-        ", transactionUrl=" + transactionUrl +
-
-        ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
-        ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
-        ", subscriptionDescription='" + subscriptionDescription + '\'' +
-        ", subscriptionInterval='" + subscriptionInterval + '\'' +
-        ", subscriptionStartDate=" + subscriptionStartDate +
-        ", subscriptionNextDate=" + subscriptionNextDate +
-
-        ", primaryCrmAccountId='" + crmAccount.id + '\'' +
-        ", primaryCrmContactId='" + crmContact.id + '\'' +
-        ", primaryCrmRecurringDonationId='" + crmRecurringDonationId +
-        '}';
-  }
+  // TODO: redo
+//  @Override
+//  public String toString() {
+//    return "PaymentGatewayEvent{" +
+//
+//        "fullName='" + crmAccount.name + '\'' +
+//        ", firstName='" + crmContact.firstName + '\'' +
+//        ", lastName='" + crmContact.lastName + '\'' +
+//        ", email='" + crmContact.email + '\'' +
+//        ", mobilePhone='" + crmContact.mobilePhone + '\'' +
+//
+//        ", street='" + crmContact.address.street + '\'' +
+//        ", city='" + crmContact.address.city + '\'' +
+//        ", state='" + crmContact.address.state + '\'' +
+//        ", zip='" + crmContact.address.postalCode + '\'' +
+//        ", country='" + crmContact.address.country + '\'' +
+//
+//        ", gatewayName='" + gatewayName + '\'' +
+//        ", paymentMethod='" + paymentMethod + '\'' +
+//
+//        ", customerId='" + customerId + '\'' +
+//        ", transactionId='" + transactionId + '\'' +
+//        ", transactionSecondaryId='" + transactionSecondaryId + '\'' +
+//        ", subscriptionId='" + subscriptionId + '\'' +
+//
+//        ", products='" + String.join(",", products) + '\'' +
+//
+//        ", transactionDate=" + transactionDate +
+//        ", transactionSuccess=" + transactionSuccess +
+//        ", transactionDescription='" + transactionDescription + '\'' +
+//        ", transactionAmountInDollars=" + transactionAmountInDollars +
+//        ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
+//        ", transactionExchangeRate=" + transactionExchangeRate +
+//        ", transactionFeeInDollars=" + transactionFeeInDollars +
+//        ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
+//        ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
+//        ", transactionCurrencyConverted='" + transactionCurrencyConverted + '\'' +
+//        ", transactionUrl=" + transactionUrl +
+//
+//        ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
+//        ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
+//        ", subscriptionDescription='" + subscriptionDescription + '\'' +
+//        ", subscriptionInterval='" + subscriptionInterval + '\'' +
+//        ", subscriptionStartDate=" + subscriptionStartDate +
+//        ", subscriptionNextDate=" + subscriptionNextDate +
+//
+//        ", primaryCrmAccountId='" + crmAccount.id + '\'' +
+//        ", primaryCrmContactId='" + crmContact.id + '\'' +
+//        ", primaryCrmRecurringDonationId='" + crmRecurringDonationId +
+//        '}';
+//  }
 }

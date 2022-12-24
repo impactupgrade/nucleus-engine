@@ -14,7 +14,6 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -91,23 +90,23 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
     // TODO: Josh?
-    return Optional.empty();
+    return Collections.emptyList();
   }
 
   @Override
-  public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    return dwClient.insertDonation(paymentGatewayEvent);
+  public String insertDonation(CrmDonation crmDonation) throws Exception {
+    return dwClient.insertDonation(crmDonation);
   }
 
   @Override
-  public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void updateDonation(CrmDonation crmDonation) throws Exception {
     // TODO
   }
 
   @Override
-  public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void refundDonation(CrmDonation crmDonation) throws Exception {
     // no refund support
   }
 

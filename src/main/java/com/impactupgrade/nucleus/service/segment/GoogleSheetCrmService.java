@@ -7,12 +7,12 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -74,22 +74,22 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-        return Optional.empty();
+    public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+        return Collections.emptyList();
     }
 
     @Override
-    public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public String insertDonation(CrmDonation crmDonation) throws Exception {
         return null;
     }
 
     @Override
-    public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public void updateDonation(CrmDonation crmDonation) throws Exception {
 
     }
 
     @Override
-    public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public void refundDonation(CrmDonation crmDonation) throws Exception {
 
     }
 
@@ -125,7 +125,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
         else if (!Strings.isNullOrEmpty(map.get("Phone")))
             crmContact.mobilePhone = map.get("Phone");
 
-        crmContact.rawObject = map;
+        crmContact.crmRawObject = map;
         crmContact.fieldFetcher = map::get;
         return crmContact;
     }

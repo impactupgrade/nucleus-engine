@@ -81,10 +81,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           Optional.of(charge.getBalanceTransactionObject()));
 
       PaymentGatewayTransaction transaction = new PaymentGatewayTransaction(
-          GregorianCalendar.from(e.getTransactionDate()),
-          e.getTransactionAmountInDollars(),
-          e.getTransactionNetAmountInDollars(),
-          e.getTransactionFeeInDollars(),
+          GregorianCalendar.from(e.getCrmDonation().closeDate),
+          e.getCrmDonation().amount,
+          e.getCrmDonation().netAmountInDollars,
+          e.getCrmDonation().feeInDollars,
           e.getCrmContact().firstName + " " + e.getCrmContact().lastName,
           e.getCrmContact().email,
           e.getCrmContact().mobilePhone,
@@ -110,8 +110,8 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
 
       payoutToPaymentGatewayEvents(payout).forEach(e -> {
-        String fund = e.getMetadataValue(env.getConfig().metadataKeys.fund);
-        deposit.addTransaction(e, fund);
+        String fund = e.getCrmDonation().getMetadataValue(env.getConfig().metadataKeys.fund);
+        deposit.addTransaction(e.getCrmDonation(), fund);
       });
 
       Calendar c = Calendar.getInstance();
@@ -412,8 +412,8 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction), false);
         }
 
-        paymentGatewayEvent.setDepositId(payout.getId());
-        paymentGatewayEvent.setDepositDate(ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC")));
+        paymentGatewayEvent.getCrmDonation().depositId = payout.getId();
+        paymentGatewayEvent.getCrmDonation().depositDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC"));
 
         paymentGatewayEvents.add(paymentGatewayEvent);
       } else if (balanceTransaction.getSourceObject() instanceof Refund refund) {
@@ -421,8 +421,8 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
         paymentGatewayEvent.initStripe(refund);
-        paymentGatewayEvent.setDepositId(payout.getId());
-        paymentGatewayEvent.setDepositDate(ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC")));
+        paymentGatewayEvent.getCrmDonation().depositId = payout.getId();
+        paymentGatewayEvent.getCrmDonation().depositDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC"));
 
         paymentGatewayEvents.add(paymentGatewayEvent);
       }

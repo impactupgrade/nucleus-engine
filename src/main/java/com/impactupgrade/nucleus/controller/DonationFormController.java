@@ -187,7 +187,7 @@ public class DonationFormController {
         } else {
           formData.setCrmContactId(existingContact.get().id);
           // Existing account -- first set the accountId so that we can look for an existing customer.
-          formData.setCrmAccountId(existingContact.get().accountId);
+          formData.setCrmAccountId(existingContact.get().account.id);
 
           log.info("found CRM contact {} and account {} using email {}; updating them...",
               formData.getCrmContactId(), formData.getCrmAccountId(), formData.getEmail());
@@ -290,7 +290,7 @@ public class DonationFormController {
 
   protected String createHouseholdContact(DonationFormData formData, Environment env) throws Exception {
     CrmContact contact = new CrmContact();
-    contact.accountId = formData.getCrmAccountId();
+    contact.account.id = formData.getCrmAccountId();
 
     contact.firstName = formData.getFirstName();
     contact.lastName = formData.getLastName();

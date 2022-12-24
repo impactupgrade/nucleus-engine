@@ -89,7 +89,7 @@ public class MessagingService {
       } else if ("ContactId".equalsIgnoreCase(fieldName)) {
         value = crmContact.id;
       } else if ("AccountId".equalsIgnoreCase(fieldName)) {
-        value = crmContact.accountId;
+        value = crmContact.account.id;
       } else {
         value = crmContact.fieldFetcher.apply(fieldName);
       }
@@ -152,7 +152,7 @@ public class MessagingService {
       crmContact.email = email;
       crmContact.emailOptIn = emailOptIn;
       crmContact.smsOptIn = smsOptIn;
-      crmContact.contactLanguage = language;
+      crmContact.language = language;
 
       crmContact.id = crmService.insertContact(crmContact);
     } else {

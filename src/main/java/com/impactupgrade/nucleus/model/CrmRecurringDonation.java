@@ -4,13 +4,13 @@
 
 package com.impactupgrade.nucleus.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Strings;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Locale;
 
-public class CrmRecurringDonation {
+public class CrmRecurringDonation extends CrmRecord {
 
   public enum Frequency {
     WEEKLY(List.of("weekly", "week")),
@@ -45,43 +45,62 @@ public class CrmRecurringDonation {
     }
   }
 
-  public String id;
-  public String subscriptionId;
-  public String customerId;
-  public String donationName;
-  public Double amount;
-  public String paymentGatewayName;
-  public Boolean active;
-  public Frequency frequency;
-  public CrmAccount account;
-  public CrmContact contact;
+  public CrmAccount account = new CrmAccount();
+  public CrmContact contact = new CrmContact();
 
-  @JsonIgnore
-  public Object rawObject;
-  @JsonIgnore
-  public String crmUrl;
+  public Boolean active;
+  public Double amount;
+  public String customerId;
+  public String description;
+  public String donationName;
+  public Frequency frequency = Frequency.MONTHLY;
+  public String gatewayName;
+  public String subscriptionCurrency;
+  public String subscriptionId;
+  public ZonedDateTime subscriptionNextDate;
+  public ZonedDateTime subscriptionStartDate;
 
   public CrmRecurringDonation() {}
 
   // A few cases where we only care about existence and require only the id.
   public CrmRecurringDonation(String id) {
-    this.id = id;
+    super(id);
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmRecurringDonation(String id, String subscriptionId, String customerId, Double amount,
-      String paymentGatewayName, Boolean active, Frequency frequency, String donationName, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
-    this.id = id;
-    this.subscriptionId = subscriptionId;
-    this.customerId = customerId;
-    this.amount = amount;
-    this.paymentGatewayName = paymentGatewayName;
+  public CrmRecurringDonation(
+      String id,
+      CrmAccount account,
+      CrmContact contact,
+      Boolean active,
+      Double amount,
+      String customerId,
+      String description,
+      String donationName,
+      Frequency frequency,
+      String gatewayName,
+      String subscriptionCurrency,
+      String subscriptionId,
+      ZonedDateTime subscriptionNextDate,
+      ZonedDateTime subscriptionStartDate,
+      Object crmRawObject,
+      String crmUrl
+  ) {
+    super(id, crmRawObject, crmUrl);
+
+    if (account != null) this.account = account;
+    if (contact != null) this.contact = contact;
+
     this.active = active;
-    this.frequency = frequency;
+    this.amount = amount;
+    this.customerId = customerId;
+    this.description = description;
     this.donationName = donationName;
-    this.contact = contact;
-    this.rawObject = rawObject;
-    this.account = account;
-    this.crmUrl = crmUrl;
+    if (frequency != null) this.frequency = frequency;
+    this.gatewayName = gatewayName;
+    this.subscriptionCurrency = subscriptionCurrency;
+    this.subscriptionId = subscriptionId;
+    this.subscriptionNextDate = subscriptionNextDate;
+    this.subscriptionStartDate = subscriptionStartDate;
   }
 }

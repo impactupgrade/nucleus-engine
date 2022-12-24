@@ -22,6 +22,10 @@ import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -53,7 +57,11 @@ public class Utils {
   }
 
   public static String[] fullNameToFirstLast(String fullName) {
-    String[] split = fullName.split("\s+");
+    if (Strings.isNullOrEmpty(fullName)) {
+      return new String[]{null, null};
+    }
+
+    String[] split = fullName.split("\\s+");
     String firstName = null;
     String lastName = split[split.length - 1];
     // Some donors are using a single-word business name in the individual name field, so this won't exist.
@@ -92,6 +100,17 @@ public class Utils {
     if (date != null && !date.isEmpty()) {
       Date localDate = new SimpleDateFormat("yyyy-MM-dd").parse(date);
       return new Calendar.Builder().setInstant(localDate.getTime()).build();
+    }
+    return null;
+  }
+
+  public static ZonedDateTime getZonedDateFromDateString(String date) {
+    if (date != null && !date.isEmpty()) {
+      // TODO: Seems off?
+      DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+      LocalDate ld = LocalDate.parse(date, dtf);
+      // TODO: TZ?
+      return ld.atStartOfDay(ZoneId.systemDefault());
     }
     return null;
   }

@@ -34,7 +34,7 @@ public class ContactService {
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
-      log.warn("payment gateway event {} had no email address or CRM IDs; skipping processing", paymentGatewayEvent.getTransactionId());
+      log.warn("payment gateway event {} had no email address or CRM IDs; skipping processing", paymentGatewayEvent.getCrmDonation().transactionId);
       return;
     }
 
@@ -56,10 +56,10 @@ public class ContactService {
       if (existingContact.isPresent()) {
         log.info("found CRM contact {}", existingContact.get().id);
 
-        if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().accountId)) {
-          existingAccount = crmService.getAccountById(existingContact.get().accountId);
+        if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().account.id)) {
+          existingAccount = crmService.getAccountById(existingContact.get().account.id);
           if (existingAccount.isPresent()) {
-            log.info("found CRM account {}", existingContact.get().accountId);
+            log.info("found CRM account {}", existingContact.get().account.id);
           }
         }
       } else {
@@ -73,10 +73,10 @@ public class ContactService {
       if (existingContact.isPresent()) {
         log.info("found CRM contact {}", existingContact.get().id);
 
-        if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().accountId)) {
-          existingAccount = crmService.getAccountById(existingContact.get().accountId);
+        if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().account.id)) {
+          existingAccount = crmService.getAccountById(existingContact.get().account.id);
           if (existingAccount.isPresent()) {
-            log.info("found CRM account {}", existingContact.get().accountId);
+            log.info("found CRM account {}", existingContact.get().account.id);
           }
         }
       }
@@ -95,12 +95,12 @@ public class ContactService {
     log.info("unable to find CRM records; creating a new account and contact");
 
     // create new Household Account
-    String accountId = crmService.insertAccount(paymentGatewayEvent);
+    String accountId = crmService.insertAccount(paymentGatewayEvent.getCrmAccount());
     paymentGatewayEvent.setCrmAccountId(accountId);
 
     try {
       // create new Contact
-      String contactId = crmService.insertContact(paymentGatewayEvent);
+      String contactId = crmService.insertContact(paymentGatewayEvent.getCrmContact());
       // Don't need to set the full Contact here, since the event already has all the details.
       paymentGatewayEvent.setCrmContactId(contactId);
     } catch (Exception e) {
@@ -171,7 +171,7 @@ public class ContactService {
       log.info("inserting contact {}", formCrmContact.toString());
       crmService.insertContact(formCrmContact);
     } else {
-      log.info("found existing CRM account {} and contact {} using email {}", crmContact.get().accountId, crmContact.get().id, formCrmContact.email);
+      log.info("found existing CRM account {} and contact {} using email {}", crmContact.get().account.id, crmContact.get().id, formCrmContact.email);
     }
   }
 }

@@ -14,7 +14,6 @@ import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 
 import java.util.Calendar;
 import java.util.Collections;
@@ -99,18 +98,13 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
-  public List<CrmRecurringDonation> getOpenRecurringDonationsByAccountId(String accountId) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
     return Collections.emptyList();
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+    return Optional.empty();
   }
 
   @Override
@@ -118,27 +112,27 @@ public class NoOpCrmService implements CrmService {
     return Collections.emptyList();
   }
   @Override
-  public String insertDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public String insertDonation(CrmDonation crmDonation) throws Exception {
     return null;
   }
 
   @Override
-  public void updateDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void updateDonation(CrmDonation crmDonation) throws Exception {
 
   }
 
   @Override
-  public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public void refundDonation(CrmDonation crmDonation) throws Exception {
 
   }
 
   @Override
-  public void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+  public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
 
   }
 
   @Override
-  public String insertRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+  public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     return null;
   }
 

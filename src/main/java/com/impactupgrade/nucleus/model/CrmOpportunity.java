@@ -1,46 +1,49 @@
 package com.impactupgrade.nucleus.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.time.ZonedDateTime;
 
-import java.util.Calendar;
+public class CrmOpportunity extends CrmRecord {
+  public CrmAccount account = new CrmAccount();
+  public CrmContact contact = new CrmContact();
 
-public class CrmOpportunity {
-  public String id;
-  public String name;
-  public Calendar closeDate;
-  public String notes;
   public String campaignId;
+  public ZonedDateTime closeDate;
+  public String description;
+  public String name;
   public String ownerId;
   public String recordTypeId;
-
-  public CrmAccount account;
-  public CrmContact contact;
-
-  @JsonIgnore
-  public Object rawObject;
-  @JsonIgnore
-  public String crmUrl;
 
   public CrmOpportunity() {}
 
   // A few cases where we only care about existence and require only the id.
   public CrmOpportunity(String id) {
-    this.id = id;
+    super(id);
   }
 
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
-  public CrmOpportunity(String id, String name, Calendar closeDate, String notes, String campaignId, String ownerId,
-      String recordTypeId, CrmAccount account, CrmContact contact, Object rawObject, String crmUrl) {
-    this.id = id;
-    this.name = name;
-    this.closeDate = closeDate;
-    this.notes = notes;
+  public CrmOpportunity(
+      String id,
+      CrmAccount account,
+      CrmContact contact,
+      String campaignId,
+      ZonedDateTime closeDate,
+      String description,
+      String name,
+      String ownerId,
+      String recordTypeId,
+      Object crmRawObject,
+      String crmUrl
+  ) {
+    super(id, crmRawObject, crmUrl);
+
+    if (account != null) this.account = account;
+    if (contact != null) this.contact = contact;
+
     this.campaignId = campaignId;
+    this.closeDate = closeDate;
+    this.description = description;
+    this.name = name;
     this.ownerId = ownerId;
     this.recordTypeId = recordTypeId;
-    this.rawObject = rawObject;
-    this.crmUrl = crmUrl;
-    this.account = account;
-    this.contact = contact;
   }
 }
