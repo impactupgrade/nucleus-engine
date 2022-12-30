@@ -81,6 +81,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountsByIds(ids));
+  }
+
+  @Override
   public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
     return toCrmAccount(sfdcClient.getAccountByCustomerId(customerId));
   }
@@ -98,6 +103,11 @@ public class SfdcCrmService implements CrmService {
   @Override
   public List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
     return toCrmContact(sfdcClient.getContactsByIds(ids));
+  }
+
+  @Override
+  public List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByEmails(emails));
   }
 
   @Override
@@ -1342,6 +1352,10 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmAccount> toCrmAccount(Optional<SObject> sObject) {
     return sObject.map(this::toCrmAccount);
+  }
+
+  protected List<CrmAccount> toCrmAccount(List<SObject> sObjects) {
+    return sObjects.stream().map(this::toCrmAccount).collect(Collectors.toList());
   }
 
   protected CrmContact toCrmContact(SObject sObject) {

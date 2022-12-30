@@ -79,11 +79,21 @@ public class MailchimpClient {
   }
 
   public List<MemberInfo> getListMembers(String listId, String status) throws IOException, MailchimpException {
+
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
     getMembersMethod.status = status;
-    getMembersMethod.count = 1000; // max
+    getMembersMethod.count = 500; // subjective, but this is timing out periodically -- may need to dial it back further
+    log.info("retrieving list {} contacts", listId);
     GetMembersMethod.Response getMemberResponse = client.execute(getMembersMethod);
-    return getMemberResponse.members;
+    List<MemberInfo> members = new ArrayList<>(getMemberResponse.members);
+    while(getMemberResponse.total_items > members.size()) {
+      getMembersMethod.offset = members.size();
+      log.info("retrieving list {} contacts (offset {} of total {})", listId, getMembersMethod.offset, getMemberResponse.total_items);
+      getMemberResponse = client.execute(getMembersMethod);
+      members.addAll(getMemberResponse.members);
+    }
+
+    return members;
   }
 
   public void archiveContact(String listId, String email) throws IOException, MailchimpException {

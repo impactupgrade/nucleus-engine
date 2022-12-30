@@ -8,7 +8,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
@@ -19,6 +18,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -109,16 +109,19 @@ public class MailchimpEmailService extends AbstractEmailService {
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
 
+    List<String> unsubscribeEmails = unsubscribes.stream().map(u -> u.email_address).filter(Objects::nonNull).distinct().sorted().toList();
+    if (unsubscribeEmails.isEmpty()) {
+      return;
+    }
+    List<CrmContact> unsubscribeContacts = crmService.getContactsByEmails(unsubscribeEmails);
+
     int count = 0;
-    for (MemberInfo unsubscribe : unsubscribes) {
-      Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byEmail(unsubscribe.email_address)).getSingleResult();
-      if (crmContact.isPresent()) {
-        log.info("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.get().email, count++, unsubscribes.size());
-        CrmContact updateContact = new CrmContact();
-        updateContact.id = crmContact.get().id;
-        updateContact.emailOptOut = true;
-        crmService.batchUpdateContact(updateContact);
-      }
+    for (CrmContact crmContact : unsubscribeContacts) {
+      log.info("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, unsubscribeContacts.size());
+      CrmContact updateContact = new CrmContact();
+      updateContact.id = crmContact.id;
+      updateContact.emailOptOut = true;
+      crmService.batchUpdateContact(updateContact);
     }
     crmService.batchFlush();
   }

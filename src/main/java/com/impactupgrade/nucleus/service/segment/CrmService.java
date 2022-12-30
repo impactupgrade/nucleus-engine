@@ -59,6 +59,14 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
+  default List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
+    List<CrmContact> contacts = new ArrayList<>();
+    for (String email : emails) {
+      Optional<CrmContact> contact = searchContacts(ContactSearch.byEmail(email)).getSingleResult();
+      contact.ifPresent(contacts::add);
+    }
+    return contacts;
+  }
   // TODO: Pagination initially needed for Twilio Frontline, but should we start introducing pagination across the board?
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
