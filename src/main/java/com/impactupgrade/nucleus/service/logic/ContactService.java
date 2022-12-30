@@ -32,63 +32,67 @@ public class ContactService {
   public void processDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: Happens both here and DonationService, since we need both processes to halt. Refactor?
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
-      log.warn("payment gateway event {} had no email address or CRM ID; skipping processing", paymentGatewayEvent.getTransactionId());
+      log.warn("payment gateway event {} had no email address or CRM IDs; skipping processing", paymentGatewayEvent.getTransactionId());
       return;
     }
 
+    Optional<CrmAccount> existingAccount = Optional.empty();
+    Optional<CrmContact> existingContact = Optional.empty();
+
     if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
-      Optional<CrmAccount> existingAccount = crmService.getAccountById(paymentGatewayEvent.getCrmAccount().id);
+      existingAccount = crmService.getAccountById(paymentGatewayEvent.getCrmAccount().id);
       if (existingAccount.isPresent()) {
-        log.info("found CRM account {} and contact {}",
-            paymentGatewayEvent.getCrmAccount().id, paymentGatewayEvent.getCrmContact().id);
-
-        Optional<CrmContact> existingContact = Optional.empty();
-        if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
-          existingContact = crmService.getContactById(paymentGatewayEvent.getCrmContact().id);
-        }
-
-        // before setting the existing CRM data in the event, backfill any missing data
-        backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
-
-        paymentGatewayEvent.setCrmAccount(existingAccount.get());
-        if (existingContact.isPresent()) {
-          paymentGatewayEvent.setCrmContact(existingContact.get());
-        }
-
-        return;
+        log.info("found CRM account {}", existingAccount.get().id);
       } else {
-        log.info("event included CRM account {} and contact {}, but the account didn't exist; trying by-email...",
-            paymentGatewayEvent.getCrmAccount().id, paymentGatewayEvent.getCrmContact().id);
+        log.info("event included CRM account {}, but the account didn't exist; trying through the contact...",
+            paymentGatewayEvent.getCrmAccount().id);
       }
     }
 
-    // attempt to find a Contact using the email
-    Optional<CrmContact> existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
-    if (existingContact.isPresent()) {
-      log.info("found CRM account {} and contact {} using email {}",
-          existingContact.get().accountId, existingContact.get().id, paymentGatewayEvent.getCrmContact().email);
+    if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+      existingContact = crmService.getContactById(paymentGatewayEvent.getCrmContact().id);
+      if (existingContact.isPresent()) {
+        log.info("found CRM contact {}", existingContact.get().id);
 
-      Optional<CrmAccount> existingAccount;
-      if (Strings.isNullOrEmpty(existingContact.get().accountId)) {
-        existingAccount = Optional.empty();
+        if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().accountId)) {
+          existingAccount = crmService.getAccountById(existingContact.get().accountId);
+          if (existingAccount.isPresent()) {
+            log.info("found CRM account {}", existingContact.get().accountId);
+          }
+        }
       } else {
-        existingAccount = crmService.getAccountById(existingContact.get().accountId);
+        log.info("event included CRM contact {}, but the contact didn't exist; trying through the contact email...",
+            paymentGatewayEvent.getCrmContact().id);
       }
+    }
 
+    if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)) {
+      existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
+      if (existingContact.isPresent()) {
+        log.info("found CRM contact {}", existingContact.get().id);
+
+        if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().accountId)) {
+          existingAccount = crmService.getAccountById(existingContact.get().accountId);
+          if (existingAccount.isPresent()) {
+            log.info("found CRM account {}", existingContact.get().accountId);
+          }
+        }
+      }
+    }
+
+    if (existingAccount.isPresent() || existingContact.isPresent()){
       // before setting the existing CRM data in the event, backfill any missing data
       backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
 
-      if (existingAccount.isPresent()) {
-        paymentGatewayEvent.setCrmAccount(existingAccount.get());
-      }
-      paymentGatewayEvent.setCrmContact(existingContact.get());
+      existingAccount.ifPresent(paymentGatewayEvent::setCrmAccount);
+      existingContact.ifPresent(paymentGatewayEvent::setCrmContact);
 
       return;
     }
 
-    log.info("unable to find CRM contact using email {}; creating a new account and contact",
-        paymentGatewayEvent.getCrmContact().email);
+    log.info("unable to find CRM records; creating a new account and contact");
 
     // create new Household Account
     String accountId = crmService.insertAccount(paymentGatewayEvent);
@@ -108,6 +112,16 @@ public class ContactService {
         // also unset the ID, letting downstream know that it should also halt
         paymentGatewayEvent.setCrmAccountId(null);
       }
+    }
+
+    // before setting the existing CRM data in the event, backfill any missing data
+    backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
+
+    if (existingAccount.isPresent()) {
+      paymentGatewayEvent.setCrmAccount(existingAccount.get());
+    }
+    if (existingContact.isPresent()) {
+      paymentGatewayEvent.setCrmContact(existingContact.get());
     }
   }
 
