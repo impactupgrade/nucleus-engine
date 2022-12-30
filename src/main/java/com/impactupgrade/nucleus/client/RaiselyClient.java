@@ -2,7 +2,6 @@ package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.logging.log4j.LogManager;
@@ -18,21 +17,13 @@ public class RaiselyClient{
   private static final Logger log = LogManager.getLogger(RaiselyClient.class);
   private static final String RAISELY_API_URL = "https://api.raisely.com/v3/";
   private static final String APPLICATION_JSON = "application/json";
-  private final String accessToken;
 
   protected final Environment env;
 
+  private String _accessToken = null;
+
   public RaiselyClient(Environment env){
     this.env = env;
-
-    String username = env.getConfig().raisely.username;
-    String password = env.getConfig().raisely.password;
-
-    log.info("Getting token...");
-    HttpClient.HeaderBuilder headers = HttpClient.HeaderBuilder.builder();
-    TokenResponse response = post(RAISELY_API_URL + "login", Map.of("requestAdminToken", "true", "username", username, "password", password), APPLICATION_JSON, headers, TokenResponse.class);
-    log.info("Token: {}", response.token);
-    this.accessToken = response.token;
   }
 
   //*Note this uses the donation ID from the Stripe metadata. Different from the donation UUID
@@ -46,7 +37,7 @@ public class RaiselyClient{
   public RaiselyClient.Donation getDonation(String donationId){
     DonationResponse response = get(
         RAISELY_API_URL + "donations?idGTE=" + donationId + "&idLTE=" + donationId + "&private=true",
-        HttpClient.HeaderBuilder.builder().authBearerToken(accessToken),
+        HttpClient.HeaderBuilder.builder().authBearerToken(getAccessToken()),
         DonationResponse.class
     );
 
@@ -55,6 +46,21 @@ public class RaiselyClient{
     }
 
     return null;
+  }
+
+  protected String getAccessToken() {
+    if (_accessToken == null) {
+      String username = env.getConfig().raisely.username;
+      String password = env.getConfig().raisely.password;
+
+      log.info("Getting token...");
+      HttpClient.HeaderBuilder headers = HttpClient.HeaderBuilder.builder();
+      TokenResponse response = post(RAISELY_API_URL + "login", Map.of("requestAdminToken", "true", "username", username, "password", password), APPLICATION_JSON, headers, TokenResponse.class);
+      log.info("Token: {}", response.token);
+      this._accessToken = response.token;
+    }
+
+    return this._accessToken;
   }
 
   //Response Objects
