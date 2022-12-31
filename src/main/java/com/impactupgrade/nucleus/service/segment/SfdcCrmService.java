@@ -534,6 +534,8 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void insertDonationDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
+    Map<String, SObject> opportunityUpdates = new HashMap<>();
+
     for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
       // make use of additional logic in getDonation
       Optional<CrmDonation> crmDonation = getDonation(paymentGatewayEvent);
@@ -543,9 +545,18 @@ public class SfdcCrmService implements CrmService {
         continue;
       }
 
+      // Note that the opportunityUpdates map is in place for situations where a charge and its refund are in the same
+      // deposit. In that situation, the Donation CRM ID would wind up in the batch update twice, which causes errors
+      // downstream. Instead, ensure we're setting the fields for both situations, but on a single object.
       SObject opportunity = (SObject) crmDonation.get().rawObject;
-      SObject opportunityUpdate = new SObject("Opportunity");
-      opportunityUpdate.setId(opportunity.getId());
+      SObject opportunityUpdate;
+      if (opportunityUpdates.containsKey(opportunity.getId())) {
+        opportunityUpdate = opportunityUpdates.get(opportunity.getId());
+      } else {
+        opportunityUpdate = new SObject("Opportunity");
+        opportunityUpdate.setId(opportunity.getId());
+        opportunityUpdates.put(opportunity.getId(), opportunityUpdate);
+      }
       setDonationDepositFields(opportunity, opportunityUpdate, paymentGatewayEvent);
 
       sfdcClient.batchUpdate(opportunityUpdate);
