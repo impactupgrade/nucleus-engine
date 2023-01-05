@@ -682,7 +682,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String data = "{\"recurringDonationId\": \"" + donationId + "\"}";
     String sessionId = login().getSessionId();
 
-    String sfdcEndpoint = env.getConfig().salesforce.forceUrl + "/services/apexrest/refreshrecurringdonation";
+    String sfdcEndpoint = "https://" + env.getConfig().salesforce.forceUrl + "/services/apexrest/refreshrecurringdonation";
 
     post(sfdcEndpoint, data, APPLICATION_JSON, HttpClient.HeaderBuilder.builder().authBearerToken(sessionId));
   }
