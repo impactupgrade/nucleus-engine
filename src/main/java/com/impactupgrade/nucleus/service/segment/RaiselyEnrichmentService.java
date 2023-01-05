@@ -4,6 +4,8 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.RaiselyClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
@@ -67,15 +69,28 @@ public class RaiselyEnrichmentService implements EnrichmentService {
 
         event.setPaymentEventType(EnvironmentConfig.PaymentEventType.TICKET);
         // if fees are covered, stick them on the TICKET, not the DONATION
-        double coveredFee = donation.feeCovered ? donation.fee : 0.0;
-        event.setTransactionAmountInDollars((double) ((ticketItems.get(0).amount/100) + coveredFee));
+        double coveredFee = donation.feeCovered ? (donation.fee / 100.0) : 0.0;
+        event.setTransactionAmountInDollars((double) ((ticketItems.get(0).amount / 100.0) + coveredFee));
 
         // TODO: This will have the same Stripe IDs! For most clients, this won't work, since we skip processing
         //  gifts if their Stripe ID already exists in the CRM. Talking to DR AU about how to handle. Nuke the IDs
         //  for one or the other?
+
+        // TODO: Total hack. These contain raw CRM objects, which often are not serializable. Back them up, then restore.
+        CrmAccount crmAccount = event.getCrmAccount();
+        CrmContact crmContact = event.getCrmContact();
+        event.setCrmAccount(null);
+        event.setCrmContact(null);
+
         PaymentGatewayEvent clonedEvent = SerializationUtils.clone(event);
+
+        event.setCrmAccount(crmAccount);
+        event.setCrmContact(crmContact);
+        clonedEvent.setCrmAccount(crmAccount);
+        clonedEvent.setCrmContact(crmContact);
+
         clonedEvent.setPaymentEventType(EnvironmentConfig.PaymentEventType.DONATION);
-        clonedEvent.setTransactionAmountInDollars((double) ((donationItems.get(0).amount/100)));
+        clonedEvent.setTransactionAmountInDollars((double) ((donationItems.get(0).amount / 100.0)));
 
         event.getSecondaryEvents().add(clonedEvent);
       }
