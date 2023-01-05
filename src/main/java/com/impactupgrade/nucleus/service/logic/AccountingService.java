@@ -35,6 +35,11 @@ public class AccountingService {
         }
         AccountingPlatformService accountingPlatformService = _accountingPlatformService.get();
 
+        // recursive, making sure we don't exit too early if the parent already exists
+        for (PaymentGatewayEvent secondaryEvent : paymentGatewayEvent.getSecondaryEvents()) {
+            processTransaction(secondaryEvent);
+        }
+
         Optional<AccountingTransaction> accountingTransactionO = accountingPlatformService.getTransaction(paymentGatewayEvent);
         if (accountingTransactionO.isPresent()) {
             log.info("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getTransactionId());

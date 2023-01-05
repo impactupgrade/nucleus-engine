@@ -143,7 +143,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     protected String getReference(PaymentGatewayEvent paymentGatewayEvent) {
-        return (paymentGatewayEvent.getGatewayName() + ":" + paymentGatewayEvent.getTransactionId()).toLowerCase(Locale.ROOT);
+        return paymentGatewayEvent.getGatewayName() + ":" + paymentGatewayEvent.getTransactionId();
     }
 
     @Override
@@ -449,7 +449,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         // TODO: DR TEST -- need to be able to override with code
         if (accountingTransaction.paymentEventType == EnvironmentConfig.PaymentEventType.TICKET) {
             lineItem.setAccountCode("160");
-            lineItem.setItemCode("Events Income");
+            lineItem.setItemCode("EI");
         } else if (accountingTransaction.recurring) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
