@@ -331,6 +331,12 @@ public class EnvironmentConfig implements Serializable {
 
   public Xero xero = new Xero();
 
+  public static class Sycamore extends Platform {
+    public Integer schoolId = null;
+  }
+
+  public Sycamore sycamore = new Sycamore();
+
   public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys implements Serializable {
