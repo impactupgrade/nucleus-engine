@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -37,9 +38,11 @@ import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Path("/sfdc")
 public class SfdcController {
@@ -61,45 +64,74 @@ public class SfdcController {
       @FormDataParam("google-sheet-url") String gsheetUrl,
       @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request) {
+      @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
+    // Important to do this outside of the new thread -- ensures the InputStream is still open.
+    List<Map<String, String>> data;
+    if (!Strings.isNullOrEmpty(gsheetUrl)) {
+      data = GoogleSheetsUtil.getSheetData(gsheetUrl);
+    } else if (inputStream != null) {
+      CSVParser csvParser = CSVParser.parse(
+          inputStream,
+          Charset.defaultCharset(),
+          CSVFormat.DEFAULT
+              .withFirstRecordAsHeader()
+              .withIgnoreHeaderCase()
+              .withTrim()
+      );
+      data = new ArrayList<>();
+      for (CSVRecord csvRecord : csvParser) {
+        data.add(csvRecord.toMap());
+      }
+    } else {
+      log.warn("no GSheet/CSV provided; skipping");
+      return Response.status(400).build();
+    }
+
     Runnable thread = () -> {
       try {
-        List<Map<String, String>> data;
-        if (!Strings.isNullOrEmpty(gsheetUrl)) {
-          data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-        } else if (inputStream != null) {
-          CSVParser csvParser = CSVParser.parse(
-              inputStream,
-              Charset.defaultCharset(),
-              CSVFormat.DEFAULT
-                  .withFirstRecordAsHeader()
-                  .withIgnoreHeaderCase()
-                  .withTrim()
-          );
-          data = new ArrayList<>();
-          for (CSVRecord csvRecord : csvParser) {
-            data.add(csvRecord.toMap());
-          }
-        } else {
-          log.warn("no GSheet/CSV provided; skipping");
-          return;
-        }
+        SfdcClient sfdcClient = env.sfdcClient();
+
+        Set<String> opportunityIds = new HashSet<>();
+        Set<String> contactIds = new HashSet<>();
+        Set<String> accountIds = new HashSet<>();
 
         for (int i = 0; i < data.size(); i++) {
           Map<String, String> row = data.get(i);
 
           log.info("processing row {} of {}: {}", i + 2, data.size() + 1, row);
 
-          // TODO: support others
-          String opportunityId = row.get("Opportunity ID");
+          if (row.containsKey("Opportunity ID")) {
+            opportunityIds.add(row.get("Opportunity ID"));
+          }
+          if (row.containsKey("Contact ID")) {
+            contactIds.add(row.get("Contact ID"));
+
+          }
+          if (row.containsKey("Account ID")) {
+            accountIds.add(row.get("Account ID"));
+          }
+        }
+
+        for (String opportunityId : opportunityIds) {
           SObject opportunity = new SObject("Opportunity");
           opportunity.setId(opportunityId);
-          env.sfdcClient().batchDelete(opportunity);
+          sfdcClient.batchDelete(opportunity);
         }
-        env.sfdcClient().batchFlush();;
+        for (String contactId : contactIds) {
+          SObject contact = new SObject("Contact");
+          contact.setId(contactId);
+          sfdcClient.batchDelete(contact);
+        }
+        for (String accountId : accountIds) {
+          SObject account = new SObject("Account");
+          account.setId(accountId);
+          sfdcClient.batchDelete(account);
+        }
+
+        sfdcClient.batchFlush();
       } catch (Exception e) {
         log.error("bulkDelete failed", e);
       }
