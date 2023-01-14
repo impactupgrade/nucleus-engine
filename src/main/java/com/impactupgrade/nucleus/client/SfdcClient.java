@@ -118,26 +118,26 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getAccountById(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where id = '" + accountId + "'";
+  public Optional<SObject> getAccountById(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where id = '" + accountId + "'";
     return querySingle(query);
   }
-  public List<SObject> getAccountsByIds(List<String> ids) throws ConnectionException, InterruptedException {
-    return getBulkResults(ids, "Id", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account);
+  public List<SObject> getAccountsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(ids, "Id", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
   }
 
-  public List<SObject> getAccountsByName(String name) throws ConnectionException, InterruptedException {
+  public List<SObject> getAccountsByName(String name, String... extraFields) throws ConnectionException, InterruptedException {
     String escapedName = name.replaceAll("'", "\\\\'");
     // Note the formal greeting -- super important, as that's often used in numerous imports/exports
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where name like '%" + escapedName + "%' or npo02__Formal_Greeting__c='%" + escapedName + "%'";
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where name like '%" + escapedName + "%' or npo02__Formal_Greeting__c='%" + escapedName + "%'";
     return queryList(query);
   }
 
-  public Optional<SObject> getAccountByCustomerId(String customerId) throws ConnectionException, InterruptedException {
+  public Optional<SObject> getAccountByCustomerId(String customerId, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
       return Optional.empty();
     }
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account) + " from account where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId + " = '" + customerId + "'";
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId + " = '" + customerId + "'";
     return querySingle(query);
   }
 
@@ -145,18 +145,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CAMPAIGNS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getCampaignById(String campaignId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign) + " from campaign where id = '" + campaignId + "'";
+  public Optional<SObject> getCampaignById(String campaignId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) + " from campaign where id = '" + campaignId + "'";
     return querySingle(query);
   }
 
-  public Optional<SObject> getCampaignByName(String campaignName) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign) + " from campaign where name = '" + campaignName.replaceAll("'", "\\\\'") + "'";
+  public Optional<SObject> getCampaignByName(String campaignName, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) +  " from campaign where name = '" + campaignName.replaceAll("'", "\\\\'") + "'";
     return querySingle(query);
   }
-  public List<SObject> getCampaignsByNames(List<String> names) throws ConnectionException, InterruptedException {
+  public List<SObject> getCampaignsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
     names = names.stream().map(n -> n.replaceAll("'", "\\\\'")).collect(Collectors.toList());
-    return getBulkResults(names, "Name", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign);
+    return getBulkResults(names, "Name", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields);
   }
 
   // See note on CrmService.getActiveCampaignsByContactIds. Retrieve in batches to preserve API limits!
@@ -188,39 +188,39 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // CONTACTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getContactById(String contactId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' ORDER BY name";
+  public Optional<SObject> getContactById(String contactId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id = '" + contactId + "' ORDER BY name";
     return querySingle(query);
   }
-  public Optional<SObject> getFilteredContactById(String contactId, String filter) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id = '" + contactId + "' and " + filter + " ORDER BY name";
+  public Optional<SObject> getFilteredContactById(String contactId, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id = '" + contactId + "' and " + filter + " ORDER BY name";
     return querySingle(query);
   }
-  public List<SObject> getContactsByIds(List<String> ids) throws ConnectionException, InterruptedException {
-    return getBulkResults(ids, "Id", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact);
+  public List<SObject> getContactsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(ids, "Id", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
-  public List<SObject> getContactsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where accountId = '" + accountId + "' ORDER BY name";
+  public List<SObject> getContactsByAccountId(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where accountId = '" + accountId + "' ORDER BY name";
     return queryList(query);
   }
 
   // the context map allows overrides to be given additional hints (such as DR's FNs)
-  public List<SObject> getContactsByName(String name, Map<String, String> context) throws ConnectionException, InterruptedException {
+  public List<SObject> getContactsByName(String name, Map<String, String> context, String... extraFields) throws ConnectionException, InterruptedException {
     String escapedName = name.replaceAll("'", "\\\\'");
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where name like '%" + escapedName + "%' ORDER BY name";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where name like '%" + escapedName + "%' ORDER BY name";
     return queryList(query);
   }
 
   // the context map allows overrides to be given additional hints (such as DR's FNs)
-  public List<SObject> getContactsByName(String firstName, String lastName, Map<String, String> context) throws ConnectionException, InterruptedException {
+  public List<SObject> getContactsByName(String firstName, String lastName, Map<String, String> context, String... extraFields) throws ConnectionException, InterruptedException {
     String escapedFirstName = firstName.replaceAll("'", "\\\\'");
     String escapedLastName = lastName.replaceAll("'", "\\\\'");
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
     return queryList(query);
   }
 
-  public List<SObject> getDupContactsByName(String firstName, String lastName) throws ConnectionException, InterruptedException {
+  public List<SObject> getDupContactsByName(String firstName, String lastName, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(firstName) && Strings.isNullOrEmpty(lastName)){
       return Collections.emptyList();
     }
@@ -228,30 +228,30 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<SObject> contacts = Collections.emptyList();
 
     if (!Strings.isNullOrEmpty(firstName) && !Strings.isNullOrEmpty(lastName)) {
-      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where firstname = '" + firstName.replaceAll("'", "\\\\'") + "' AND lastname = '" + lastName.replaceAll("'", "\\\\'") + "'";
+      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where firstname = '" + firstName.replaceAll("'", "\\\\'") + "' AND lastname = '" + lastName.replaceAll("'", "\\\\'") + "'";
       contacts = queryList(query);
     }
     if (contacts.isEmpty()) {
-      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where lastname = '" + lastName.replaceAll("'", "\\\\'") + "'";
+      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where lastname = '" + lastName.replaceAll("'", "\\\\'") + "'";
       contacts = queryList(query);
     }
 
     return contacts;
   }
 
-  public List<SObject> getContactsByAddress(String street, String city, String state, String zip, String country) throws ConnectionException, InterruptedException {
+  public List<SObject> getContactsByAddress(String street, String city, String state, String zip, String country, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(street)){
       return Collections.emptyList();
     }
 
     // TODO: Test and make sure this format actually works for a variety of addresses, or if we need to try several
     String address = street + ", " + city + ", " + state + " " + zip + ", " + country;
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where npe01__Home_Address__c LIKE '" + street + "%'";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where npe01__Home_Address__c LIKE '" + street + "%'";
     return queryList(query);
   }
 
-  public List<SObject> getContactsByCampaignId(String campaignId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select contactid from CampaignMember where id='" + campaignId + "' and contactid != null)";
+  public List<SObject> getContactsByCampaignId(String campaignId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id in (select contactid from CampaignMember where id='" + campaignId + "' and contactid != null)";
     return queryListAutoPaged(query);
   }
 
@@ -335,7 +335,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //    return queryListAutoPaged(query);
 //  }
 
-  public List<SObject> getContactsByReportId(String reportId) throws ConnectionException, InterruptedException, IOException {
+  public List<SObject> getContactsByReportId(String reportId, String... extraFields) throws ConnectionException, InterruptedException, IOException {
     if (Strings.isNullOrEmpty(reportId)) {
       return Collections.emptyList();
     }
@@ -370,7 +370,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     } else {
       // Get contacts using ID column
       String where = resultIds.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
-      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (" + where + ")";
+      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id in (" + where + ")";
       return queryListAutoPaged(query);
     }
   }
@@ -433,12 +433,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return Files.readString(reportFile.toPath(), StandardCharsets.UTF_8);
   }
 
-  public List<SObject> getContactsByOpportunityName(String opportunityName) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where id in (select contactid from Opportunity where name='" + opportunityName.replaceAll("'", "\\\\'") + "' and contactid != null)";
+  public List<SObject> getContactsByOpportunityName(String opportunityName, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id in (select contactid from Opportunity where name='" + opportunityName.replaceAll("'", "\\\\'") + "' and contactid != null)";
     return queryListAutoPaged(query);
   }
 
-  public Collection<SObject> getEmailContacts(Calendar updatedSince, String filter) throws ConnectionException, InterruptedException {
+  public Collection<SObject> getEmailContacts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     String updatedSinceClause = "";
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
@@ -448,7 +448,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       filter = " and " + filter;
     }
 
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where Email != null" + updatedSinceClause + filter;
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter;
     List<SObject> contacts = queryListAutoPaged(query);
 
     // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
@@ -462,7 +462,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
 
-  public PagedResults<SObject> searchContacts(ContactSearch contactSearch)
+  public PagedResults<SObject> searchContacts(ContactSearch contactSearch, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<String> clauses = new ArrayList<>();
 
@@ -517,7 +517,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String fullClause = String.join( " AND ", clauses);
-    String query ="select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact) + " from contact where " + fullClause + " ORDER BY LastName, FirstName";
+    String query ="select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where " + fullClause + " ORDER BY LastName, FirstName";
 
     if (contactSearch.pageSize != null && contactSearch.pageSize > 0) {
       query += " LIMIT " + contactSearch.pageSize;
@@ -531,49 +531,30 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return PagedResults.getPagedResultsFromCurrentOffset(results, contactSearch);
   }
 
-  public List<SObject> getContactsByEmails(List<String> emails) throws ConnectionException, InterruptedException {
-    return getBulkResults(emails, "Email", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact);
+  public List<SObject> getContactsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(emails, "Email", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getDonationById(String donationId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where id = '" + donationId + "'";
+  public Optional<SObject> getDonationById(String donationId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where id = '" + donationId + "'";
+    return querySingle(query);
+  }
+
+  public List<SObject> getDonationsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(ids, "Id", "Opportunity", DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields);
+  }
+
+  public Optional<SObject> getDonationByTransactionId(String transactionId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " = '" + transactionId + "'";
     return querySingle(query);
   }
 
   // For processes like payout handling, we need to retrieve a lot of donations at once. Retrieve in batches to preserve API limits!
-  public List<SObject> getDonationsByIds(List<String> ids) throws ConnectionException, InterruptedException {
-    List<String> page;
-    List<String> more;
-    if (ids.size() > MAX_ID_QUERY_LIST_SIZE) {
-      page = ids.subList(0, MAX_ID_QUERY_LIST_SIZE);
-      more = ids.subList(MAX_ID_QUERY_LIST_SIZE, ids.size());
-    } else {
-      page = ids;
-      more = Collections.emptyList();
-    }
-
-    String idsJoin = page.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where id in (" + idsJoin + ")";
-    List<SObject> results = queryList(query);
-
-    if (!more.isEmpty()) {
-      results.addAll(getDonationsByIds(more));
-    }
-
-    return results;
-  }
-
-  public Optional<SObject> getDonationByTransactionId(String transactionId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " = '" + transactionId + "'";
-    return querySingle(query);
-  }
-
-  // For processes like payout handling, we need to retrieve a lot of donations at once. Retrieve in batches to preserve API limits!
-  public List<SObject> getDonationsByTransactionIds(List<String> transactionIds) throws ConnectionException, InterruptedException {
+  public List<SObject> getDonationsByTransactionIds(List<String> transactionIds, String... extraFields) throws ConnectionException, InterruptedException {
     List<String> page;
     List<String> more;
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
@@ -586,7 +567,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String transactionIdsJoin = page.stream().map(transactionId -> "'" + transactionId + "'").collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " in (" + transactionIdsJoin + ")";
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " in (" + transactionIdsJoin + ")";
     List<SObject> results = queryList(query);
 
     if (!more.isEmpty()) {
@@ -596,45 +577,45 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return results;
   }
 
-  public List<SObject> getDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where accountid = '" + accountId + "' AND StageName != 'Pledged' ORDER BY CloseDate DESC";
+  public List<SObject> getDonationsByAccountId(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where accountid = '" + accountId + "' AND StageName != 'Pledged' ORDER BY CloseDate DESC";
     return queryListAutoPaged(query);
   }
 
-  public List<SObject> searchDonations(String accountId, String contactId, Calendar date, double amount) throws ConnectionException, InterruptedException {
+  public List<SObject> searchDonations(String accountId, String contactId, Calendar date, double amount, String... extraFields) throws ConnectionException, InterruptedException {
     String accountClause = Strings.isNullOrEmpty(accountId) ? "" : "accountid='" + accountId + "' AND ";
     String contactClause = Strings.isNullOrEmpty(contactId) ? "" : "contactid='" + contactId + "' AND ";
 
     String dateString = new SimpleDateFormat("yyyy-MM-dd").format(date.getTime());
 
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + accountClause + contactClause + "closedate=" + dateString + " and amount=" + amount;
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + accountClause + contactClause + "closedate=" + dateString + " and amount=" + amount;
     return queryListAutoPaged(query);
   }
 
-  public List<SObject> getFailingDonationsLastMonthByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where stageName = 'Failed Attempt' AND CloseDate = LAST_MONTH AND AccountId = '" + accountId + "'";
+  public List<SObject> getFailingDonationsLastMonthByAccountId(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where stageName = 'Failed Attempt' AND CloseDate = LAST_MONTH AND AccountId = '" + accountId + "'";
     return queryList(query);
   }
 
-  public Optional<SObject> getLatestPostedDonation(String recurringDonationId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' and stageName = 'Posted' order by CloseDate desc limit 1";
+  public Optional<SObject> getLatestPostedDonation(String recurringDonationId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' and stageName = 'Posted' order by CloseDate desc limit 1";
     return querySingle(query);
   }
 
-  public List<SObject> getDonationsInDeposit(String depositId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId + " = '" + depositId + "'";
+  public List<SObject> getDonationsInDeposit(String depositId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId + " = '" + depositId + "'";
     return queryListAutoPaged(query);
   }
 
-  public List<SObject> getRefundsInDeposit(String depositId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId + " = '" + depositId + "'";
+  public List<SObject> getRefundsInDeposit(String depositId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId + " = '" + depositId + "'";
     return queryListAutoPaged(query);
   }
 
-  public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId) throws ConnectionException, InterruptedException {
+  public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId, String... extraFields) throws ConnectionException, InterruptedException {
     // TODO: Using TOMORROW to account for timezone issues -- we can typically get away with that approach
     // since most RDs are monthly...
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation) + " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
     return querySingle(query);
   }
 
@@ -651,28 +632,31 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // RECURRING DONATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getRecurringDonationById(String id) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where id='" + id + "'";
+  public Optional<SObject> getRecurringDonationById(String id, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation, extraFields) +  " from npe03__Recurring_Donation__c where id='" + id + "'";
+    return querySingle(query);
+  }
+  public List<SObject> getRecurringDonationsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(ids, "Id", "npe03__Recurring_Donation__c", RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation, extraFields);
+  }
+
+  public Optional<SObject> getRecurringDonationByName(String name, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation, extraFields) +  " from npe03__Recurring_Donation__c where name='" + name.replaceAll("'", "\\\\'") + "'";
     return querySingle(query);
   }
 
-  public Optional<SObject> getRecurringDonationByName(String name) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where name='" + name.replaceAll("'", "\\\\'") + "'";
+  public Optional<SObject> getRecurringDonationBySubscriptionId(String subscriptionId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation, extraFields) +  " from npe03__Recurring_Donation__c where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId + " = '" + subscriptionId + "'";
     return querySingle(query);
   }
 
-  public Optional<SObject> getRecurringDonationBySubscriptionId(String subscriptionId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId + " = '" + subscriptionId + "'";
-    return querySingle(query);
-  }
-
-  public List<SObject> getRecurringDonationsByAccountId(String accountId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where Npe03__Organization__c = '" + accountId + "'";
+  public List<SObject> getRecurringDonationsByAccountId(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation, extraFields) +  " from npe03__Recurring_Donation__c where Npe03__Organization__c = '" + accountId + "'";
     return queryList(query);
   }
 
-  public List<SObject> searchRecurringDonations(List<String> clauses) throws InterruptedException, ConnectionException {
-    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation) + " from npe03__Recurring_Donation__c where ((" + String.join(") AND (", clauses) + "))";
+  public List<SObject> searchRecurringDonations(List<String> clauses, String... extraFields) throws InterruptedException, ConnectionException {
+    String query = "select " + getFieldsList(RECURRINGDONATION_FIELDS, env.getConfig().salesforce.customQueryFields.recurringDonation, extraFields) +  " from npe03__Recurring_Donation__c where ((" + String.join(") AND (", clauses) + "))";
     return queryList(query);
   }
   public void refreshRecurringDonation(String donationId) throws ConnectionException {
@@ -691,13 +675,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getUserById(String userId) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user) + " from user where id = '" + userId + "'";
+  public Optional<SObject> getUserById(String userId, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user, extraFields) +  " from user where id = '" + userId + "'";
     return querySingle(query);
   }
 
-  public Optional<SObject> getUserByEmail(String email) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user) + " from user where isActive = true and email = '" + email + "'";
+  public Optional<SObject> getUserByEmail(String email, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user, extraFields) +  " from user where isActive = true and email = '" + email + "'";
     return querySingle(query);
   }
 
@@ -713,12 +697,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // INTERNAL
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected String getFieldsList(String list, Collection<String> customList) {
-    return customList.size() > 0 ? list + ", " + Joiner.on(", ").join(customList) : list;
+  protected String getFieldsList(String fields, Collection<String> customFields, String[] extraFields) {
+    if (!customFields.isEmpty()) {
+      fields += ", " + Joiner.on(", ").join(customFields);
+    }
+    if (extraFields.length > 0) {
+      fields += ", " + Joiner.on(", ").join(extraFields);
+    }
+    return fields;
   }
 
-  protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType, String defaultFields, Set<String> customFields)
-      throws ConnectionException, InterruptedException {
+  protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType,
+      String fields, Set<String> customFields, String[] extraFields) throws ConnectionException, InterruptedException {
     List<String> page;
     List<String> more;
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
@@ -731,11 +721,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String conditionsJoin = page.stream().map(condition -> "'" + condition + "'").collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(defaultFields, customFields) + " from " + objectType + " where " + conditionFieldName + " in (" + conditionsJoin + ")";
+    String query = "select " + getFieldsList(fields, customFields, extraFields) + " from " + objectType + " where " + conditionFieldName + " in (" + conditionsJoin + ")";
     List<SObject> results = queryList(query);
 
     if (!more.isEmpty()) {
-      results.addAll(getBulkResults(more, conditionFieldName, objectType, defaultFields, customFields));
+      results.addAll(getBulkResults(more, conditionFieldName, objectType, fields, customFields, extraFields));
     }
 
     return results;
