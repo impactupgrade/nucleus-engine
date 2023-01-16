@@ -95,6 +95,13 @@ public class CrmImportEvent {
   // TODO: Add this to the Portal task. But for now, defaulting it to false out of caution.
   public Boolean opportunitySkipDuplicateCheck = false;
 
+  public String contactFullName() {
+    if (!Strings.isNullOrEmpty(contactFullName)) {
+      return contactFullName;
+    }
+    return contactFirstName + " " + contactLastName;
+  }
+
   public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data) {
     return data.stream().map(CrmImportEvent::fromGeneric).collect(Collectors.toList());
   }

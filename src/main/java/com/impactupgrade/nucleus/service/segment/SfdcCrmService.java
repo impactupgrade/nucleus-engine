@@ -880,12 +880,22 @@ public class SfdcCrmService implements CrmService {
 
       SObject contact = null;
 
+      // A few situations have come up where there were not cleanly-split first vs. last name columns, but instead a
+      // "salutation" (firstname) and then a full name. Allow users to provide the former as the firstname
+      // and the latter as the "lastname", but clean it up. This must happen before the first names are split up, below!
+      if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
+          && importEvent.contactLastName.contains(importEvent.contactFirstName)) {
+        importEvent.contactLastName = importEvent.contactLastName.replace(importEvent.contactFirstName, "").trim();
+      }
+
       // Some sources combine multiple contacts into a single comma-separated list of first names. The above
       // would deal with that if there were an ID or Email match. But here, before we insert, we'll split it up
       // into multiple contacts. Allow the first listed contact to be the primary.
       List<String> secondaryFirstNames = new ArrayList<>();
       if (!Strings.isNullOrEmpty(importEvent.contactFirstName)) {
-        String[] split = importEvent.contactFirstName.replace(", and ", ",").replace(", & ", ",").split("[,\\s]+");
+        String[] split = importEvent.contactFirstName
+            .replaceAll(",*\\s+and\\s+", ",").replaceAll(",*\\s+&\\s+", ",")
+            .split("[,\\s]+");
         importEvent.contactFirstName = split[0];
         secondaryFirstNames = Arrays.stream(split).skip(1).toList();
       }
@@ -921,15 +931,18 @@ public class SfdcCrmService implements CrmService {
       // A little weird looking, but if importing with constituent full names, often it could be either a household
       // name (and email would likely exist) or a business name (almost never email). In either case, hard for us to know
       // which to choose, so by default simply upsert the Account and ignore the contact altogether.
-      else if (Strings.isNullOrEmpty(importEvent.contactEmail) && !Strings.isNullOrEmpty(importEvent.contactFullName)) {
-        Optional<SObject> existingAccount = sfdcClient.getAccountsByName(importEvent.contactFullName, accountCustomFields).stream().findFirst();
+      // Similarly, if we only have a last name, treat it the same way.
+      else if (Strings.isNullOrEmpty(importEvent.contactEmail) && (!Strings.isNullOrEmpty(importEvent.contactFullName)
+          || (Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)))) {
+        String fullname = !Strings.isNullOrEmpty(importEvent.contactFullName) ? importEvent.contactFullName : importEvent.contactLastName;
+        Optional<SObject> existingAccount = sfdcClient.getAccountsByName(fullname, accountCustomFields).stream().findFirst();
         if (existingAccount.isPresent()) {
           account = updateBulkImportAccount(existingAccount.get(), importEvent, bulkUpdateAccounts);
         } else {
-          account = insertBulkImportAccount(importEvent.contactFullName, importEvent);
+          account = insertBulkImportAccount(fullname, importEvent);
         }
       }
-      // Else if we have a first and last name, try searching for an existing contact by name.
+      // If we have a first and last name, try searching for an existing contact by name.
       // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
       else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)) {
         List<SObject> existingContacts = sfdcClient.getContactsByName(importEvent.contactFirstName, importEvent.contactLastName, importEvent.raw, contactCustomFields);
@@ -1139,7 +1152,7 @@ public class SfdcCrmService implements CrmService {
   protected SObject updateBulkImportAccount(SObject existingAccount, CrmImportEvent importEvent,
       Map<String, SObject> updateAccounts) throws InterruptedException, ConnectionException {
     SObject account = new SObject("Account");
-    account.setId(account.getId());
+    account.setId(existingAccount.getId());
 
     setBulkImportAccountFields(account, existingAccount, importEvent);
     updateAccounts.put(account.getId(), account);
@@ -1318,12 +1331,20 @@ public class SfdcCrmService implements CrmService {
       SObject salesRecordType = sfdcClient.getRecordTypeByName(importEvent.opportunityRecordTypeName).get();
       opportunity.setField("RecordTypeId", salesRecordType.getId());
     }
-    opportunity.setField("Name", importEvent.opportunityName);
+    if (!Strings.isNullOrEmpty(importEvent.opportunityName)) {
+      opportunity.setField("Name", importEvent.opportunityName);
+    } else {
+      opportunity.setField("Name", importEvent.contactFullName() + " Donation");
+    }
     opportunity.setField("Description", importEvent.opportunityDescription);
     if (importEvent.opportunityAmount != null) {
       opportunity.setField("Amount", importEvent.opportunityAmount.doubleValue());
     }
-    opportunity.setField("StageName", importEvent.opportunityStageName);
+    if (!Strings.isNullOrEmpty(importEvent.opportunityStageName)) {
+      opportunity.setField("StageName", importEvent.opportunityStageName);
+    } else {
+      opportunity.setField("StageName", "Closed Won");
+    }
     opportunity.setField("CloseDate", importEvent.opportunityDate);
 
     opportunity.setField("OwnerId", importEvent.opportunityOwnerId);
