@@ -50,7 +50,7 @@ public class MailchimpEmailService extends AbstractEmailService {
   }
 
   @Override
-  public void sendEmailTemplate(String template, String to) {
+  public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from) {
     // TODO
   }
 

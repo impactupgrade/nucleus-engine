@@ -1,6 +1,8 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import java.util.Calendar;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Supports sending transactional emails and syncing contacts.
@@ -8,9 +10,7 @@ import java.util.Calendar;
 public interface EmailService extends SegmentService {
 
   void sendEmailText(String subject, String body, boolean isHtml, String to, String from);
-  // TODO: details TBD as we wire in HS and MC transactional email
-  // TODO: may still need a from?
-  void sendEmailTemplate(String template, String to);
+  void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from);
 
   // TODO: May not need these...
 //  List<CrmContact> getListMembers(String listName) throws Exception;

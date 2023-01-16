@@ -1,12 +1,12 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Calendar;
+import java.util.List;
+import java.util.Map;
 
 public class HubSpotEmailService extends SmtpEmailService {
 
@@ -23,7 +23,7 @@ public class HubSpotEmailService extends SmtpEmailService {
   }
 
   @Override
-  public void sendEmailTemplate(String template, String to) {
+  public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from) {
     // TODO
   }
 

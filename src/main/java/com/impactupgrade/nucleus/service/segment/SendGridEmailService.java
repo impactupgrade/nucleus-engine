@@ -11,6 +11,9 @@ import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
 import com.sendgrid.SendGrid;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Email;
+import com.sendgrid.helpers.mail.objects.Personalization;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -20,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SendGridEmailService extends SmtpEmailService {
@@ -41,9 +45,46 @@ public class SendGridEmailService extends SmtpEmailService {
   }
 
   @Override
-  public void sendEmailTemplate(String template, String to) {
-    log.info("not implemented: sendEmailTemplate");
-    // TODO
+  public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from) {
+    Optional<EnvironmentConfig.EmailPlatform> _sg = env.getConfig().sendgrid.stream().filter(sg -> sg.transactionalSender).findFirst();
+    if (_sg.isEmpty()) {
+      log.error("unable to find SendGrid config with transactionalSender=true");
+      return;
+    }
+
+    SendGrid sg = new SendGrid(_sg.get().secretKey);
+    Request request = new Request();
+    request.setMethod(Method.POST);
+    request.setEndpoint("/mail/send");
+
+    Mail mail = new Mail();
+
+    for (String to : tos) {
+      Personalization personalization = new Personalization();
+      personalization.addTo(new Email(to));
+      for (Map.Entry<String, Object> d : data.entrySet()) {
+        personalization.addDynamicTemplateData(d.getKey(), d.getValue());
+      }
+      mail.addPersonalization(personalization);
+    }
+
+    if (from.contains("<") && from.contains(">")) {
+      // ex: Brett Meyer <brett@impactupgrade.com>
+      String[] split = from.split("<");
+      mail.setFrom(new Email(split[1].replace(">", "").trim(), split[0].trim()));
+    } else {
+      mail.setFrom(new Email(from));
+    }
+    mail.setSubject(subject);
+    mail.templateId = template;
+
+    try {
+      request.setBody(mail.build());
+      Response response = sg.api(request);
+      log.info("SendGrid response: code={} body={}", response.getStatusCode(), response.getBody());
+    } catch (Exception e) {
+      log.error("failed to send email to {} from {}", String.join(",", tos), from, e);
+    }
   }
 
   @Override
