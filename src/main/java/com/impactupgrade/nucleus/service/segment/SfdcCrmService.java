@@ -1333,7 +1333,7 @@ public class SfdcCrmService implements CrmService {
     }
     if (!Strings.isNullOrEmpty(importEvent.opportunityName)) {
       opportunity.setField("Name", importEvent.opportunityName);
-    } else {
+    } else if (existingOpportunity == null || Strings.isNullOrEmpty((String) existingOpportunity.getField("Name"))) {
       opportunity.setField("Name", importEvent.contactFullName() + " Donation");
     }
     opportunity.setField("Description", importEvent.opportunityDescription);
