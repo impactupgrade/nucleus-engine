@@ -28,9 +28,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -698,11 +700,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   protected String getFieldsList(String fields, Collection<String> customFields, String[] extraFields) {
-    if (!customFields.isEmpty()) {
-      fields += ", " + Joiner.on(", ").join(customFields);
-    }
-    if (extraFields.length > 0) {
-      fields += ", " + Joiner.on(", ").join(extraFields);
+    // deal with duplicates
+    Set<String> customFieldsDeduped = new HashSet<>();
+    customFieldsDeduped.addAll(customFields);
+    customFieldsDeduped.addAll(Arrays.stream(extraFields).toList());
+
+    if (!customFieldsDeduped.isEmpty()) {
+      fields += ", " + Joiner.on(", ").join(customFieldsDeduped);
     }
     return fields;
   }
