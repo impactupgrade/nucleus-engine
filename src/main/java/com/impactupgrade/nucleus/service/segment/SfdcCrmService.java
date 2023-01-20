@@ -950,7 +950,7 @@ public class SfdcCrmService implements CrmService {
 
         if (existingContacts.size() > 1) {
           // To be safe, let's skip this row for now and deal with it manually...
-          log.warn("skipping contact in row {} due to multiple contacts found by-name", i);
+          log.warn("skipping contact in row {} due to multiple contacts found by-name", i + 2);
         } else if (existingContacts.size() == 1) {
           SObject existingContact = existingContacts.get(0);
 
@@ -1079,15 +1079,6 @@ public class SfdcCrmService implements CrmService {
 
         log.info("import processing opportunities on row {} of {}", i + 2, importEvents.size() + 1);
 
-        if (!importEvent.opportunitySkipDuplicateCheck && Strings.isNullOrEmpty(importEvent.opportunityId)) {
-          List<SObject> existingOpportunities = sfdcClient.searchDonations(nonBatchAccountIds.get(i), nonBatchContactIds.get(i),
-              importEvent.opportunityDate, importEvent.opportunityAmount.doubleValue(), opportunityCustomFields);
-          if (!existingOpportunities.isEmpty()) {
-            log.info("skipping opp {} import, due to possible duplicate: {}", i, existingOpportunities.get(0).getId());
-            continue;
-          }
-        }
-
         SObject opportunity = new SObject("Opportunity");
 
         opportunity.setField("AccountId", nonBatchAccountIds.get(i));
@@ -1116,7 +1107,16 @@ public class SfdcCrmService implements CrmService {
         } else {
           // If the account and contact upserts both failed, avoid creating an orphaned opp.
           if (nonBatchAccountIds.get(i) == null && nonBatchContactIds.get(i) == null) {
+            log.info("skipping opp {} import, due to account/contact failure", i + 2);
             continue;
+          }
+          if (!importEvent.opportunitySkipDuplicateCheck && Strings.isNullOrEmpty(importEvent.opportunityId)) {
+            List<SObject> existingOpportunities = sfdcClient.searchDonations(nonBatchAccountIds.get(i), nonBatchContactIds.get(i),
+                importEvent.opportunityDate, importEvent.opportunityAmount.doubleValue(), opportunityCustomFields);
+            if (!existingOpportunities.isEmpty()) {
+              log.info("skipping opp {} import, due to possible duplicate: {}", i + 2, existingOpportunities.get(0).getId());
+              continue;
+            }
           }
 
           setBulkImportOpportunityFields(opportunity, null, importEvent);
