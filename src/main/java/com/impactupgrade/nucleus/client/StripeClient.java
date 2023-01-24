@@ -326,11 +326,20 @@ public class StripeClient {
       // TODO: Assumes new donations are card only -- will break for Plaid!
       if (existingSource instanceof Card existingCard) {
         Card newCard = (Card) newSource;
-        if (existingCard.getFingerprint().equals(newCard.getFingerprint())
-            && existingCard.getExpMonth().equals(newCard.getExpMonth()) && existingCard.getExpYear().equals(newCard.getExpYear())) {
-          log.info("card duplicated an existing source; removing it and reusing the existing one");
-          newCard.delete(requestOptions);
-          return existingCard;
+        boolean sameCard = existingCard.getFingerprint().equals(newCard.getFingerprint())
+            && existingCard.getExpMonth().equals(newCard.getExpMonth())
+            && existingCard.getExpYear().equals(newCard.getExpYear());
+        boolean cvcOverride = "pass".equals(newCard.getCvcCheck()) && !"pass".equals(existingCard.getCvcCheck());
+        if (sameCard) {
+          if (cvcOverride) {
+            // replace existing card with a new one
+            existingCard.delete(requestOptions);
+          } else {
+            // keep existing one
+            log.info("card duplicated an existing source; removing it and reusing the existing one");
+            newCard.delete(requestOptions);
+            return existingCard;
+          }
         }
       }
     }
