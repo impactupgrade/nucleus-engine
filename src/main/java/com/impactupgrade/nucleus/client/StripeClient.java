@@ -332,8 +332,8 @@ public class StripeClient {
         boolean cvcOverride = "pass".equals(newCard.getCvcCheck()) && !"pass".equals(existingCard.getCvcCheck());
         if (sameCard) {
           if (cvcOverride) {
-            // replace existing card with a new one
-            existingCard.delete(requestOptions);
+            // keep existing card and just insert the new one
+            log.info("card duplicated an existing source; keeping the old card and simply inserting the new one");
           } else {
             // keep existing one
             log.info("card duplicated an existing source; removing it and reusing the existing one");
