@@ -296,6 +296,98 @@ public class CrmImportEvent {
     }
   }
 
+  public static List<CrmImportEvent> fromGreaterGiving(List<Map<String, String>> data) {
+    return data.stream().map(CrmImportEvent::fromGreaterGiving).collect(Collectors.toList());
+  }
+
+  public static CrmImportEvent fromGreaterGiving(Map<String, String> _data) {
+    // Be case-insensitive, for sources that aren't always consistent.
+    CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
+
+    // TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
+    if (data.get("Pay Type").equalsIgnoreCase("S")) {
+      CrmImportEvent importEvent = new CrmImportEvent();
+      importEvent.raw = data;
+
+      // TODO: support for initial amount, any fees, and net amount
+      //importEvent. = data.get("Gift Amount");
+      //importEvent. = data.get("???");
+      //importEvent. = getAmount(data, "Paid Amount");
+      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
+
+      // TODO: support for different currencies will likely be needed in the future
+      //importEvent. = data.get("???");
+      if (!Strings.isNullOrEmpty(data.get("Gift Name"))) {
+        importEvent.opportunityName = "Greater Giving: " + data.get("Gift Name") + " (" + data.get("Gift Type") + ")";
+      } else {
+        importEvent.opportunityName = "Greater Giving: " + data.get("Gift Type");
+      }
+      try {
+        importEvent.opportunityDate = Calendar.getInstance();
+        importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get("Gift Date")));
+      } catch (ParseException e) {
+        log.warn("failed to parse date", e);
+      }
+
+      importEvent.contactFirstName = Utils.nameToTitleCase(data.get("Account Name"));
+      importEvent.contactLastName = Utils.nameToTitleCase(data.get("Last Name")); // ?
+      importEvent.contactFullName = importEvent.contactFirstName + " " + importEvent.contactLastName;
+      importEvent.contactEmail = data.get("Email");
+      if (!Strings.isNullOrEmpty(data.get("Gift Name"))) {
+        importEvent.opportunitySource = data.get("Gift Name");
+      } else {
+        importEvent.opportunitySource = data.get("Gift Type");
+      }
+      //importEvent.opportunityTerminal = data.get("Payment Processor"); // ? Greater Giving?
+      if (data.containsKey("Fully Paid")) {
+        if ("y".equalsIgnoreCase(data.get("Fully Paid"))) {
+          importEvent.opportunityStageName = "Fully Paid";
+        } else if ("n".equalsIgnoreCase(data.get("Fully Paid"))) {
+          importEvent.opportunityStageName = "Not Fully Paid"; // Partially Paid?
+        }
+      }
+
+      // ?
+      //if (data.containsKey("Fund")) {
+      //  importEvent.opportunityCampaignId = data.get("Fund");
+      //}
+
+      List<String> description = new ArrayList<>();
+      description.add("Gift Name: " + data.get("Gift Name"));
+      description.add("Gift Type: " + data.get("Gift Type"));
+      // Depending on the context, Campaign ID might be the CRM, but it might be vendor-specific (ie, Facebook)
+      //description.add("Campaign ID: " + data.get("Fund")); // ?
+      description.add("CRM Campaign ID: " + data.get("CRM Campaign ID"));
+      description.add("Payment ID: " + data.get("Card Reference/Check Number"));  // One field of means either "Card Reference" or "Check Number" ?
+      //description.add("Source Name: " + data.get("???"));
+      importEvent.opportunityDescription = Joiner.on("\n").join(description);
+
+      // ?
+      //importEvent. = data.get("Account Number"); // ?
+      //importEvent. = data.get("Account Name"); // ?
+      //importEvent. = data.get("Account Type"); // ?
+      importEvent.accountId = data.get("Account SupporterId"); // ?
+      importEvent.contactId = data.get("Contact SupporterId"); // ?
+      //importEvent. = data.get("Sort Name"); // ?
+      //importEvent. = data.get("WorkPhone"); // ?
+      importEvent.contactHomePhone = data.get("HomePhone"); // ?
+      importEvent.contactMobilePhone = data.get("Mobile"); // ?
+      //importEvent. = data.get("Fax"); // ?
+      importEvent.accountBillingStreet = data.get("Address1"); // ?
+      if (!Strings.isNullOrEmpty(data.get("Address2"))) {
+        importEvent.accountBillingStreet += " " + data.get("Address2");
+      }
+      importEvent.accountBillingCity = data.get("City"); // ?
+      importEvent.accountBillingState = data.get("State"); // ?
+      importEvent.accountBillingZip = data.get("ZIP"); // ?
+      //importEvent. = data.get("Short Salutation"); // ?
+
+      return importEvent;
+    } else {
+      return null;
+    }
+  }
+
   private static BigDecimal getAmount(CaseInsensitiveMap<String> data, String columnName) {
     if (!data.containsKey(columnName)) {
       return null;
