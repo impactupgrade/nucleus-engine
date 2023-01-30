@@ -213,6 +213,46 @@ public class CrmController {
     return Response.status(200).build();
   }
 
+  @Path("/bulk-import/greater-giving")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response bulkImportGreaterGiving(
+      @FormDataParam("file") InputStream inputStream,
+      @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    // Important to do this outside of the new thread -- ensures the InputStream is still open.
+    CSVParser csvParser = CSVParser.parse(
+        inputStream,
+        Charset.defaultCharset(),
+        CSVFormat.DEFAULT
+            .withFirstRecordAsHeader()
+            .withIgnoreHeaderCase()
+            .withTrim()
+    );
+    List<Map<String, String>> data = new ArrayList<>();
+    for (CSVRecord csvRecord : csvParser) {
+      data.add(csvRecord.toMap());
+    }
+
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromGreaterGiving(data);
+
+    Runnable thread = () -> {
+      try {
+        env.primaryCrmService().processBulkImport(importEvents);
+      } catch (Exception e) {
+        log.error("bulkImport failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
   @Path("/contact-form")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
