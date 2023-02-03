@@ -111,7 +111,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
     // TODO: lastUpdate field now available
     return Collections.emptyList();
   }

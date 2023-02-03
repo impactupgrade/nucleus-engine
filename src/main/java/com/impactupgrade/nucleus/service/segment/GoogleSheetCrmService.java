@@ -94,7 +94,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
+    public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
         return null;
     }
 

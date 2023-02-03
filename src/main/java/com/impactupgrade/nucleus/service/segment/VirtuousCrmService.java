@@ -458,14 +458,14 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
+    public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
         List<VirtuousClient.Contact> contacts = virtuousClient.getContactsModifiedAfter(updatedSince);
         if (CollectionUtils.isEmpty(contacts)) {
             return Collections.emptyList();
         }
 
-        if (!Strings.isNullOrEmpty(filter)) {
-            List<VirtuousClient.ContactIndividualShort> contactIndividuals = virtuousClient.getContactIndividuals(filter);
+        if (!Strings.isNullOrEmpty(emailList.crmFilter)) {
+            List<VirtuousClient.ContactIndividualShort> contactIndividuals = virtuousClient.getContactIndividuals(emailList.crmFilter);
             if (CollectionUtils.isEmpty(contactIndividuals)) {
                 return Collections.emptyList();
             }

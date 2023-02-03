@@ -220,6 +220,7 @@ public class EnvironmentConfig implements Serializable {
       public Set<String> account = new HashSet<>();
       public Set<String> campaign = new HashSet<>();
       public Set<String> contact = new HashSet<>();
+      public Set<String> lead = new HashSet<>();
       public Set<String> donation = new HashSet<>();
       public Set<String> recurringDonation = new HashSet<>();
       public Set<String> user = new HashSet<>();
@@ -259,6 +260,7 @@ public class EnvironmentConfig implements Serializable {
     public EmailListType type = EmailListType.MARKETING;
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
     public String crmFilter = "";
+    public String crmLeadFilter = "";
   }
 
   public static class EmailPlatform extends Platform {

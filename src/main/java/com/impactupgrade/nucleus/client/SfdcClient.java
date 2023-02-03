@@ -68,6 +68,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected String ACCOUNT_FIELDS;
   protected String CAMPAIGN_FIELDS;
   protected String CONTACT_FIELDS;
+  protected String LEAD_FIELDS;
   protected String DONATION_FIELDS;
   protected String RECURRINGDONATION_FIELDS;
   protected String USER_FIELDS;
@@ -105,6 +106,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
     // TODO: Finding a few clients with no homephone, so taking that out for now.
     CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, Phone";
+    LEAD_FIELDS = "Id, FirstName, LastName, Email";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";
 
@@ -535,6 +537,33 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public List<SObject> getContactsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(emails, "Email", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // LEADS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public Collection<SObject> getEmailLeads(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select " + getFieldsList(LEAD_FIELDS, env.getConfig().salesforce.customQueryFields.lead, extraFields) +  " from lead where Email != null" + updatedSinceClause + filter;
+    List<SObject> leads = queryListAutoPaged(query);
+
+    // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
+    Map<String, SObject> uniqueLeads = leads.stream().collect(Collectors.toMap(
+        so -> so.getField("Email").toString(),
+        Function.identity(),
+        // FIFO
+        (so1, so2) -> so1
+    ));
+    return uniqueLeads.values();
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

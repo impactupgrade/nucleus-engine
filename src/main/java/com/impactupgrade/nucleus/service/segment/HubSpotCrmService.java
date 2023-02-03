@@ -940,7 +940,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
     List<Filter> filters = new ArrayList<>();
     filters.add(new Filter("email", "HAS_PROPERTY", null));
     if (updatedSince != null) {
@@ -949,11 +949,11 @@ public class HubSpotCrmService implements CrmService {
     }
 
     // TODO: more than one query? support and vs. or?
-    if (!Strings.isNullOrEmpty(filter)) {
+    if (!Strings.isNullOrEmpty(emailList.crmFilter)) {
       // TODO: more than one query? support and vs. or?
       // ex: type eq Foo Bar <-- note that Foo Bar needs to be reassembled back into one value
-      String[] filterSplit = filter.split(" ");
-      String filterValue = filter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
+      String[] filterSplit = emailList.crmFilter.split(" ");
+      String filterValue = emailList.crmFilter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
       filters.add(new Filter(filterSplit[0], filterSplit[1], filterValue));
     }
 

@@ -746,8 +746,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
-    return sfdcClient.getEmailContacts(updatedSince, filter).stream().map(this::toCrmContact).collect(Collectors.toList());
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
+    List<CrmContact> contacts = sfdcClient.getEmailContacts(updatedSince, emailList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
+    if (!Strings.isNullOrEmpty(emailList.crmLeadFilter)) {
+      contacts.addAll(sfdcClient.getEmailLeads(updatedSince, emailList.crmLeadFilter).stream().map(this::toCrmContact).toList());
+    }
+    return contacts;
   }
 
   @Override

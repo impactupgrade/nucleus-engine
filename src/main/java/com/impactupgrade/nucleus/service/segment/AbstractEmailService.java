@@ -26,7 +26,7 @@ public abstract class AbstractEmailService implements EmailService {
   }
 
   protected List<CrmContact> getCrmContacts(EnvironmentConfig.EmailList emailList, Calendar lastSync) throws Exception {
-      return env.primaryCrmService().getEmailContacts(lastSync, emailList.crmFilter);
+      return env.primaryCrmService().getEmailContacts(lastSync, emailList);
   }
 
   protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts) throws Exception {

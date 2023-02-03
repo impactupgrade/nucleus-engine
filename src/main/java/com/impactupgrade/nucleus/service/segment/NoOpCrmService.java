@@ -157,7 +157,7 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, String filter) throws Exception {
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
     return Collections.emptyList();
   }
 
