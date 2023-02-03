@@ -1336,18 +1336,23 @@ public class SfdcCrmService implements CrmService {
       if (key.startsWith("Append ")) {
         // appending to a multiselect picklist
         key = key.replace("Append ", "");
-        if (existingSObject != null) {
-          String existingValue = (String) existingSObject.getField(key);
-          if (!Strings.isNullOrEmpty(existingValue) && !existingValue.contains(entry.getValue())) {
-            String value = Strings.isNullOrEmpty(existingValue) ? entry.getValue() : existingValue + ";" + entry.getValue();
-            sObject.setField(key, getCustomBulkValue(value));
-            return;
-          }
-        }
+        String existingValue = (String) existingSObject.getField(key);
+        String value = getMultiselectPicklistValue(key, existingValue, existingSObject);
+        sObject.setField(key, getCustomBulkValue(value));
       }
 
       sObject.setField(key, getCustomBulkValue(entry.getValue()));
     });
+  }
+  
+  protected String getMultiselectPicklistValue(String key, String value, SObject existingSObject) {
+    if (existingSObject != null) {
+      String existingValue = (String) existingSObject.getField(key);
+      if (!Strings.isNullOrEmpty(existingValue) && !existingValue.contains(value)) {
+        return Strings.isNullOrEmpty(existingValue) ? value : existingValue + ";" + value;
+      }
+    }
+    return value;
   }
 
   // When querying for existing records, we need to include the custom values the import event cares about. We will need
