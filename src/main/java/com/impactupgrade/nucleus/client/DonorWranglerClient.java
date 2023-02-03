@@ -100,7 +100,7 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("donorInfo[phone]", Strings.nullToEmpty(crmContact.mobilePhone)));
     params.add(new BasicNameValuePair("donorInfo[first]", crmContact.firstName));
     params.add(new BasicNameValuePair("donorInfo[last]", crmContact.lastName));
-    params.add(new BasicNameValuePair("donorInfo[display]", crmContact.fullName()));
+    params.add(new BasicNameValuePair("donorInfo[display]", crmContact.getFullName()));
 
     HttpResponse response = executePost(params);
     String responseString = getResponseString(response);

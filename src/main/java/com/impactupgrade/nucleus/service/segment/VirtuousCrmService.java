@@ -300,7 +300,7 @@ public class VirtuousCrmService implements BasicCrmService {
         if (!Strings.isNullOrEmpty(crmContact.id)) {
             contact.id = Integer.parseInt(crmContact.id);
         }
-        contact.name = crmContact.fullName();
+        contact.name = crmContact.getFullName();
         contact.isPrivate = false;
         contact.contactType =
                 "Household"; // Foundation/Organization/Household ?

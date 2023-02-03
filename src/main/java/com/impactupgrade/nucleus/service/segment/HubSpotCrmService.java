@@ -474,7 +474,7 @@ public class HubSpotCrmService implements CrmService {
 
     deal.setClosedate(GregorianCalendar.from(crmDonation.closeDate));
     deal.setDescription(crmDonation.description);
-    deal.setDealname("Donation: " + crmDonation.contact.fullName());
+    deal.setDealname("Donation: " + crmDonation.contact.getFullName());
 
     if (crmDonation.isRecurring()) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationDealId, crmDonation.recurringDonation.id, deal.getOtherProperties());
@@ -576,7 +576,7 @@ public class HubSpotCrmService implements CrmService {
     deal.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.openStageId);
 
     deal.setClosedate(GregorianCalendar.from(crmRecurringDonation.subscriptionStartDate));
-    deal.setDealname("Recurring Donation: " + crmRecurringDonation.contact.fullName());
+    deal.setDealname("Recurring Donation: " + crmRecurringDonation.contact.getFullName());
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, crmRecurringDonation.gatewayName, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, crmRecurringDonation.subscriptionId, deal.getOtherProperties());

@@ -69,6 +69,8 @@ public class CrmContact extends CrmRecord {
   public Double totalDonationAmount;
   public String workPhone;
 
+  protected String fullNameOverride;
+
   // Using FP, allow this object to retrieve fields from its rawObject. Calls to the constructor provide a
   // CRM-specific function.
   @JsonIgnore
@@ -152,7 +154,15 @@ public class CrmContact extends CrmRecord {
     return true;
   }
 
-  public String fullName() {
+  public void setFullNameOverride(String fullNameOverride) {
+    this.fullNameOverride = fullNameOverride;
+  }
+
+  public String getFullName() {
+    if (!Strings.isNullOrEmpty(fullNameOverride)) {
+      return fullNameOverride;
+    }
+
     return firstName + " " + lastName;
   }
 

@@ -107,7 +107,7 @@ public class TwilioFrontlineController {
 
         PagedResults<CrmContact> crmContacts = crmService.searchContacts(contactSearch);
         frontlineResponse.objects.customers = crmContacts.getResults().stream()
-            .sorted(Comparator.comparing(CrmContact::fullName))
+            .sorted(Comparator.comparing(CrmContact::getFullName))
             .map(c -> toBasicFrontlineCustomer(c, workerIdentity, crmName, env))
             .collect(Collectors.toList());
         // TODO: If I'm reading https://www.twilio.com/docs/frontline/my-customers#customer-search correctly,
@@ -130,7 +130,7 @@ public class TwilioFrontlineController {
   protected FrontlineCustomer toBasicFrontlineCustomer(CrmContact crmContact, String workerIdentity, String crmName, Environment env) {
     FrontlineCustomer frontlineCustomer = new FrontlineCustomer();
     frontlineCustomer.customer_id = crmContact.id;
-    frontlineCustomer.display_name = crmContact.fullName();
+    frontlineCustomer.display_name = crmContact.getFullName();
     if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
       frontlineCustomer.display_name += " :: " + crmContact.phoneNumberForSMS();
     }
@@ -289,7 +289,7 @@ public class TwilioFrontlineController {
           Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(authorAddress)).getSingleResult();
           if (crmContact.isPresent()) {
             // Don't append the phone number here, since it might be a Group.
-            frontlineConversation.friendly_name = "EXTERNAL GROUP (with " + crmContact.get().fullName() + ")";
+            frontlineConversation.friendly_name = "EXTERNAL GROUP (with " + crmContact.get().getFullName() + ")";
             // TODO
 //          frontlineConversation.attributes.avatar = ;
           } else {
@@ -300,7 +300,7 @@ public class TwilioFrontlineController {
           Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(customerAddress)).getSingleResult();
           if (crmContact.isPresent()) {
             // Don't append the phone number here, since it might be a Group.
-            frontlineConversation.friendly_name = crmContact.get().fullName();
+            frontlineConversation.friendly_name = crmContact.get().getFullName();
             // TODO
 //          frontlineConversation.attributes.avatar = ;
           } else {
@@ -329,7 +329,7 @@ public class TwilioFrontlineController {
 //              .put("avatar", )
               .put("customer_id", crmContact.get().id)
               // TODO: Append the phone number too? Phone number only if no name?
-              .put("display_name", crmContact.get().fullName());
+              .put("display_name", crmContact.get().getFullName());
           env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
         } else {
           log.info("could not find CrmContact: " + customerAddress);

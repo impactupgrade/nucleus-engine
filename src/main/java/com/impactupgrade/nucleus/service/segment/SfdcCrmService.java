@@ -491,7 +491,7 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("Description", crmDonation.description);
 
     // purely a default, but we generally expect this to be overridden
-    opportunity.setField("Name", crmDonation.contact.fullName() + " Donation");
+    opportunity.setField("Name", crmDonation.contact.getFullName() + " Donation");
   }
 
   @Override
@@ -589,7 +589,7 @@ public class SfdcCrmService implements CrmService {
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(crmRecurringDonation).map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
-    recurringDonation.setField("Name", crmRecurringDonation.contact.fullName() + " Recurring Donation");
+    recurringDonation.setField("Name", crmRecurringDonation.contact.getFullName() + " Recurring Donation");
 
     if (env.getConfig().salesforce.enhancedRecurringDonations) {
       // NPSP Enhanced RDs will not allow you to associate the RD directly with an Account if it's a household, instead

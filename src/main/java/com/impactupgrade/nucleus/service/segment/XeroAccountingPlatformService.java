@@ -389,7 +389,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         Contact contact = new Contact();
         contact.setFirstName(crmContact.firstName);
         contact.setLastName(crmContact.lastName);
-        contact.setName(crmContact.fullName());
+        contact.setName(crmContact.getFullName());
         contact.setEmailAddress(crmContact.email);
         if (!Strings.isNullOrEmpty(crmContact.address.street)) {
             Address address = new Address()
