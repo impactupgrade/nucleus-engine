@@ -213,6 +213,40 @@ public class SfdcMetadataClient {
 
   // TODO: createCustomField methods are getting out of control -- shift to a builder pattern?
 
+  private String generateFieldName(String fieldLabel) {
+    return fieldLabel.replaceAll("\\s+", "_") + "__c";
+  }
+
+  public void createCustomField(String objectName, String fieldLabel, FieldType fieldType)
+      throws ConnectionException {
+    createCustomField(objectName, generateFieldName(fieldLabel), fieldLabel, fieldType, null, null, null, null, null);
+  }
+
+  public void createCustomField(String objectName, String fieldLabel, FieldType fieldType,
+      Integer fieldLength) throws ConnectionException {
+    createCustomField(objectName, generateFieldName(fieldLabel), fieldLabel, fieldType, fieldLength, null, null, null, null);
+  }
+
+  public void createCustomField(String objectName, String fieldLabel, FieldType fieldType,
+      Integer fieldPrecision, Integer fieldScale) throws ConnectionException {
+    createCustomField(objectName, generateFieldName(fieldLabel), fieldLabel, fieldType, null, fieldPrecision, fieldScale, null, null);
+  }
+
+  public void createCustomField(String objectName, String fieldLabel, FieldType fieldType, List<String> values)
+      throws ConnectionException {
+    createCustomField(objectName, generateFieldName(fieldLabel), fieldLabel, fieldType, null, null, null, values, null);
+  }
+
+  public void createCustomField(String objectName, String fieldLabel, FieldType fieldType, String globalPicklistName)
+      throws ConnectionException {
+    createCustomField(objectName, generateFieldName(fieldLabel), fieldLabel, fieldType, null, null, null, null, globalPicklistName);
+  }
+
+  public void createCustomField(String objectName, String fieldLabel, FieldType fieldType,
+      Integer fieldLength, Integer fieldPrecision, Integer fieldScale, List<String> values, String globalPicklistName) throws ConnectionException {
+    createCustomField(objectName, generateFieldName(fieldLabel), fieldLabel, fieldType, fieldLength, fieldPrecision, fieldScale, values, globalPicklistName);
+  }
+
   public void createCustomField(String objectName, String fieldName, String fieldLabel, FieldType fieldType)
       throws ConnectionException {
     createCustomField(objectName, fieldName, fieldLabel, fieldType, null, null, null, null, null);
