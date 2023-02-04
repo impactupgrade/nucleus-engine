@@ -305,11 +305,16 @@ public class SfdcCrmService implements CrmService {
   protected void setAccountFields(SObject account, CrmAccount crmAccount) {
     account.setField("Name", crmAccount.name);
 
-    account.setField("BillingStreet", crmAccount.address.street);
-    account.setField("BillingCity", crmAccount.address.city);
-    account.setField("BillingState", crmAccount.address.state);
-    account.setField("BillingPostalCode", crmAccount.address.postalCode);
-    account.setField("BillingCountry", crmAccount.address.country);
+    account.setField("BillingStreet", crmAccount.billingAddress.street);
+    account.setField("BillingCity", crmAccount.billingAddress.city);
+    account.setField("BillingState", crmAccount.billingAddress.state);
+    account.setField("BillingPostalCode", crmAccount.billingAddress.postalCode);
+    account.setField("BillingCountry", crmAccount.billingAddress.country);
+    account.setField("ShippingStreet", crmAccount.mailingAddress.street);
+    account.setField("ShippingCity", crmAccount.mailingAddress.city);
+    account.setField("ShippingState", crmAccount.mailingAddress.state);
+    account.setField("ShippingPostalCode", crmAccount.mailingAddress.postalCode);
+    account.setField("ShippingCountry", crmAccount.mailingAddress.country);
 
     Map<EnvironmentConfig.AccountType, String> accountTypeToRecordTypeIds = env.getConfig().salesforce.accountTypeToRecordTypeIds;
     if (crmAccount.type != null && accountTypeToRecordTypeIds.containsKey(crmAccount.type)) {
@@ -1457,12 +1462,19 @@ public class SfdcCrmService implements CrmService {
   // TODO: starting to feel like we need an object mapper lib...
 
   protected CrmAccount toCrmAccount(SObject sObject) {
-    CrmAddress crmAddress = new CrmAddress(
+    CrmAddress billingAddress = new CrmAddress(
         (String) sObject.getField("BillingStreet"),
         (String) sObject.getField("BillingCity"),
         (String) sObject.getField("BillingState"),
         (String) sObject.getField("BillingPostalCode"),
         (String) sObject.getField("BillingCountry")
+    );
+    CrmAddress shippingAddress = new CrmAddress(
+        (String) sObject.getField("ShippingStreet"),
+        (String) sObject.getField("ShippingCity"),
+        (String) sObject.getField("ShippingState"),
+        (String) sObject.getField("ShippingPostalCode"),
+        (String) sObject.getField("ShippingCountry")
     );
 
     EnvironmentConfig.AccountType type = EnvironmentConfig.AccountType.HOUSEHOLD;
@@ -1477,7 +1489,8 @@ public class SfdcCrmService implements CrmService {
 
     return new CrmAccount(
         sObject.getId(),
-        crmAddress,
+        billingAddress,
+        shippingAddress,
         (String) sObject.getField("Name"),
         type,
         sObject,

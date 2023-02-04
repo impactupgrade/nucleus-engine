@@ -414,8 +414,8 @@ public class PaymentGatewayEvent implements Serializable {
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
 
-    crmAccount.address = crmAddress;
-    crmContact.address = crmAddress;
+    crmAccount.billingAddress = crmAddress;
+    crmContact.mailingAddress = crmAddress;
   }
 
   // Keep stripeCustomer, even though we don't use it here -- needed in subclasses.

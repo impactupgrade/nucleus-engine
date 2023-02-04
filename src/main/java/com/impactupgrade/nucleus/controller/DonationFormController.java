@@ -239,11 +239,11 @@ public class DonationFormController {
 
     // If it's a biz donation, this will all be the biz billing info and we shouldn't set it on the individual.
 //    if (!formData.isBusiness()) {
-      account.address.street = formData.getFullBillingAddress();
-      account.address.city = formData.getBillingCity();
-      account.address.state = formData.getBillingState();
-      account.address.postalCode = formData.getBillingZip();
-      account.address.country = formData.getBillingCountryFullName();
+      account.billingAddress.street = formData.getFullBillingAddress();
+      account.billingAddress.city = formData.getBillingCity();
+      account.billingAddress.state = formData.getBillingState();
+      account.billingAddress.postalCode = formData.getBillingZip();
+      account.billingAddress.country = formData.getBillingCountryFullName();
 //    }
 
     return env.donationsCrmService().insertAccount(account);  }
@@ -251,11 +251,11 @@ public class DonationFormController {
   protected void updateHouseholdAccount(DonationFormData formData, Environment env) throws Exception {
     CrmAccount account = new CrmAccount();
     account.id = formData.getCrmAccountId();
-    account.address.street = emptyStringToNull(formData.getFullBillingAddress());
-    account.address.city = emptyStringToNull(formData.getBillingCity());
-    account.address.state = emptyStringToNull(formData.getBillingState());
-    account.address.postalCode = emptyStringToNull(formData.getBillingZip());
-    account.address.country = emptyStringToNull(formData.getBillingCountryFullName());
+    account.billingAddress.street = emptyStringToNull(formData.getFullBillingAddress());
+    account.billingAddress.city = emptyStringToNull(formData.getBillingCity());
+    account.billingAddress.state = emptyStringToNull(formData.getBillingState());
+    account.billingAddress.postalCode = emptyStringToNull(formData.getBillingZip());
+    account.billingAddress.country = emptyStringToNull(formData.getBillingCountryFullName());
 
     env.donationsCrmService().updateAccount(account);
   }
@@ -298,11 +298,11 @@ public class DonationFormController {
     contact.mobilePhone = formData.getPhone();
 
     // If it's a biz donation, this will all be the biz billing info and we shouldn't set it on the individual.
-    contact.address.street = formData.getFullBillingAddress();
-    contact.address.city = formData.getBillingCity();
-    contact.address.state = formData.getBillingState();
-    contact.address.postalCode = formData.getBillingZip();
-    contact.address.country = formData.getBillingCountryFullName();
+    contact.mailingAddress.street = formData.getFullBillingAddress();
+    contact.mailingAddress.city = formData.getBillingCity();
+    contact.mailingAddress.state = formData.getBillingState();
+    contact.mailingAddress.postalCode = formData.getBillingZip();
+    contact.mailingAddress.country = formData.getBillingCountryFullName();
 
     // TODO: leadsource?
 
@@ -314,11 +314,11 @@ public class DonationFormController {
     contact.id = formData.getCrmContactId();
     contact.mobilePhone = emptyStringToNull(formData.getPhone());
 
-    contact.address.street = emptyStringToNull(formData.getFullBillingAddress());
-    contact.address.city = emptyStringToNull(formData.getBillingCity());
-    contact.address.state = emptyStringToNull(formData.getBillingState());
-    contact.address.postalCode = emptyStringToNull(formData.getBillingZip());
-    contact.address.country = emptyStringToNull(formData.getBillingCountryFullName());
+    contact.mailingAddress.street = emptyStringToNull(formData.getFullBillingAddress());
+    contact.mailingAddress.city = emptyStringToNull(formData.getBillingCity());
+    contact.mailingAddress.state = emptyStringToNull(formData.getBillingState());
+    contact.mailingAddress.postalCode = emptyStringToNull(formData.getBillingZip());
+    contact.mailingAddress.country = emptyStringToNull(formData.getBillingCountryFullName());
 
     env.donationsCrmService().updateContact(contact);
   }

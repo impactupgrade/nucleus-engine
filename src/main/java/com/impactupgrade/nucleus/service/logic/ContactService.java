@@ -128,17 +128,17 @@ public class ContactService {
   public void backfillMissingData(PaymentGatewayEvent paymentGatewayEvent,
       Optional<CrmAccount> existingAccount, Optional<CrmContact> existingContact) throws Exception {
     if (existingAccount.isPresent()) {
-      if (Strings.isNullOrEmpty(existingAccount.get().address.street) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().address.street)) {
+      if (Strings.isNullOrEmpty(existingAccount.get().billingAddress.street) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().billingAddress.street)) {
         log.info("existing CRM account does not have a street, but the new payment did -- overwrite the whole address");
-        existingAccount.get().address = paymentGatewayEvent.getCrmAccount().address;
+        existingAccount.get().billingAddress = paymentGatewayEvent.getCrmAccount().billingAddress;
         crmService.updateAccount(existingAccount.get());
       }
     }
 
     if (existingContact.isPresent()) {
-      if (Strings.isNullOrEmpty(existingContact.get().address.street) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().address.street)) {
+      if (Strings.isNullOrEmpty(existingContact.get().mailingAddress.street) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().mailingAddress.street)) {
         log.info("existing CRM contact does not have a street, but the new payment did -- overwriting the whole address");
-        existingContact.get().address = paymentGatewayEvent.getCrmContact().address;
+        existingContact.get().mailingAddress = paymentGatewayEvent.getCrmContact().mailingAddress;
         crmService.updateContact(existingContact.get());
       }
 

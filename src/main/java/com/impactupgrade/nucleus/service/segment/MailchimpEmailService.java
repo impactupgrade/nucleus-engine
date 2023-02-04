@@ -276,8 +276,8 @@ public class MailchimpEmailService extends AbstractEmailService {
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
     // MC only allows "complete" addresses, so only fill this out if that's the case. As a backup, we're creating
     // separate, custom fields for city/state/zip/country.
-    if (!Strings.isNullOrEmpty(crmContact.address.street)) {
-      mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(crmContact.address));
+    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
+      mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(crmContact.mailingAddress));
     }
     mcContact.merge_fields.mapping.putAll(customFields);
     mcContact.status = SUBSCRIBED;

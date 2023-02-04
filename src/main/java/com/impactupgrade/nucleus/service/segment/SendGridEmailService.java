@@ -152,11 +152,11 @@ public class SendGridEmailService extends SmtpEmailService {
       contact.first_name = crmContact.firstName;
       contact.last_name = crmContact.lastName;
       // TODO: CRM street does not handle multiple address lines eg. addr1 & addr2
-      contact.address_line_1 = crmContact.address.street;
-      contact.city = crmContact.address.city;
-      contact.state_province_region = crmContact.address.state;
-      contact.postal_code = crmContact.address.postalCode;
-      contact.country = crmContact.address.country;
+      contact.address_line_1 = crmContact.mailingAddress.street;
+      contact.city = crmContact.mailingAddress.city;
+      contact.state_province_region = crmContact.mailingAddress.state;
+      contact.postal_code = crmContact.mailingAddress.postalCode;
+      contact.country = crmContact.mailingAddress.country;
       // TODO: contact.canReceiveEmail()? Is there a "status" field, or do we instead need to simply remove from the list?
 
       List<String> activeTags = getContactTagsCleaned(crmContact, campaignNames, emailPlatform);

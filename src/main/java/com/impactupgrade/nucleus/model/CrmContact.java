@@ -47,7 +47,7 @@ public class CrmContact extends CrmRecord {
 
   public CrmAccount account = new CrmAccount();
 
-  public CrmAddress address = new CrmAddress();
+  public CrmAddress mailingAddress = new CrmAddress();
   public String language;
   public String email;
   public List<String> emailGroups = new ArrayList<>();
@@ -87,7 +87,7 @@ public class CrmContact extends CrmRecord {
   public CrmContact(
       String id,
       CrmAccount account,
-      CrmAddress address,
+      CrmAddress mailingAddress,
       String email,
       List<String> emailGroups,
       Boolean emailOptIn,
@@ -115,7 +115,7 @@ public class CrmContact extends CrmRecord {
 
     if (account != null) this.account = account;
 
-    this.address = address;
+    this.mailingAddress = mailingAddress;
     this.email = email;
     if (emailGroups != null) this.emailGroups = emailGroups;
     this.emailOptIn = emailOptIn;

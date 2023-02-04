@@ -8,7 +8,8 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 
 public class CrmAccount extends CrmRecord {
 
-  public CrmAddress address = new CrmAddress();
+  public CrmAddress billingAddress = new CrmAddress();
+  public CrmAddress mailingAddress = new CrmAddress();
   public String name;
   public EnvironmentConfig.AccountType type = EnvironmentConfig.AccountType.HOUSEHOLD;
 
@@ -22,7 +23,8 @@ public class CrmAccount extends CrmRecord {
   // Keep this up to date! Creates a contract with all required fields, helpful for mapping.
   public CrmAccount(
       String id,
-      CrmAddress address,
+      CrmAddress billingAddress,
+      CrmAddress mailingAddress,
       String name,
       EnvironmentConfig.AccountType type,
       Object crmRawObject,
@@ -30,7 +32,8 @@ public class CrmAccount extends CrmRecord {
   ) {
     super(id, crmRawObject, crmUrl);
 
-    this.address = address;
+    this.billingAddress = billingAddress;
+    this.mailingAddress = mailingAddress;
     this.name = name;
     if (type != null) this.type = type;
   }

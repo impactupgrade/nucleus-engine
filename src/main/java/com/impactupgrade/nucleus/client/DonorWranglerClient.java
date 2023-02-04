@@ -92,10 +92,10 @@ public class DonorWranglerClient {
     List<NameValuePair> params = new ArrayList<>();
     params.add(new BasicNameValuePair("action", "addUpdateDonor"));
     params.add(new BasicNameValuePair("id", crmContact.id == null ? "-1" : crmContact.id));
-    params.add(new BasicNameValuePair("donorInfo[address1]", Strings.nullToEmpty(crmContact.address.street)));
-    params.add(new BasicNameValuePair("donorInfo[city]", Strings.nullToEmpty(crmContact.address.city)));
-    params.add(new BasicNameValuePair("donorInfo[state]", Strings.nullToEmpty(crmContact.address.state)));
-    params.add(new BasicNameValuePair("donorInfo[zip]", Strings.nullToEmpty(crmContact.address.postalCode)));
+    params.add(new BasicNameValuePair("donorInfo[address1]", Strings.nullToEmpty(crmContact.mailingAddress.street)));
+    params.add(new BasicNameValuePair("donorInfo[city]", Strings.nullToEmpty(crmContact.mailingAddress.city)));
+    params.add(new BasicNameValuePair("donorInfo[state]", Strings.nullToEmpty(crmContact.mailingAddress.state)));
+    params.add(new BasicNameValuePair("donorInfo[zip]", Strings.nullToEmpty(crmContact.mailingAddress.postalCode)));
     params.add(new BasicNameValuePair("donorInfo[email]", Strings.nullToEmpty(crmContact.email)));
     params.add(new BasicNameValuePair("donorInfo[phone]", Strings.nullToEmpty(crmContact.mobilePhone)));
     params.add(new BasicNameValuePair("donorInfo[first]", crmContact.firstName));

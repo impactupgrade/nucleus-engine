@@ -222,7 +222,7 @@ public class VirtuousCrmService implements BasicCrmService {
         crmContact.workPhone = getContactMethodValue(contactIndividual, "Work Phone");
         //crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE // ?
 
-        crmContact.address = getCrmAddress(contact.address);
+        crmContact.mailingAddress = getCrmAddress(contact.address);
 
         //crmContact.emailOptIn;
         //crmContact.emailOptOut;
@@ -305,7 +305,7 @@ public class VirtuousCrmService implements BasicCrmService {
         contact.contactType =
                 "Household"; // Foundation/Organization/Household ?
 
-        contact.contactAddresses.add(asAddress(crmContact.address));
+        contact.contactAddresses.add(asAddress(crmContact.mailingAddress));
 
         VirtuousClient.ContactIndividual contactIndividual = new VirtuousClient.ContactIndividual();
         contactIndividual.contactId = contact.id;

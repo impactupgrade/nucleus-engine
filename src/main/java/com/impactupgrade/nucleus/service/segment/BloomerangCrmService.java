@@ -168,13 +168,13 @@ public class BloomerangCrmService implements CrmService {
       constituent.primaryPhone = constituentPhone;
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.address.street)) {
+    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
       final Address constituentAddress = new Address();
-      constituentAddress.street = crmContact.address.street;
-      constituentAddress.city = crmContact.address.city;
-      constituentAddress.state = crmContact.address.state;
-      constituentAddress.postalCode = crmContact.address.postalCode;
-      constituentAddress.country = crmContact.address.country;
+      constituentAddress.street = crmContact.mailingAddress.street;
+      constituentAddress.city = crmContact.mailingAddress.city;
+      constituentAddress.state = crmContact.mailingAddress.state;
+      constituentAddress.postalCode = crmContact.mailingAddress.postalCode;
+      constituentAddress.country = crmContact.mailingAddress.country;
       constituent.primaryAddress = constituentAddress;
     }
 

@@ -348,11 +348,11 @@ public class HubSpotCrmService implements CrmService {
   protected void setAccountFields(CompanyProperties account, CrmAccount crmAccount) {
     account.setName(crmAccount.name);
 
-    account.setAddress(crmAccount.address.street);
-    account.setCity(crmAccount.address.city);
-    account.setState(crmAccount.address.state);
-    account.setZip(crmAccount.address.postalCode);
-    account.setCountry(crmAccount.address.country);
+    account.setAddress(crmAccount.billingAddress.street);
+    account.setCity(crmAccount.billingAddress.city);
+    account.setState(crmAccount.billingAddress.state);
+    account.setZip(crmAccount.billingAddress.postalCode);
+    account.setCountry(crmAccount.billingAddress.country);
   }
 
   @Override
@@ -1008,6 +1008,7 @@ public class HubSpotCrmService implements CrmService {
     return new CrmAccount(
         company.getId(),
         crmAddress,
+        null,
         company.getProperties().getName(),
         // TODO: Differentiate between Household and Organization?
         EnvironmentConfig.AccountType.HOUSEHOLD,

@@ -180,12 +180,12 @@ public class TwilioFrontlineController {
       frontlineCustomer.links.add(emailLink);
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.address.street)) {
+    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
       FrontlineLink addressLink = new FrontlineLink();
       addressLink.type = "Address";
-      addressLink.display_name = crmContact.address.toString();
+      addressLink.display_name = crmContact.mailingAddress.toString();
       try {
-        addressLink.value = "https://www.google.com/maps/search/?api=1&query=" + URLEncoder.encode(crmContact.address.toString(), StandardCharsets.UTF_8.toString());
+        addressLink.value = "https://www.google.com/maps/search/?api=1&query=" + URLEncoder.encode(crmContact.mailingAddress.toString(), StandardCharsets.UTF_8.toString());
       } catch (UnsupportedEncodingException e) {
         // will never happen
       }

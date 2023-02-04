@@ -391,13 +391,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         contact.setLastName(crmContact.lastName);
         contact.setName(crmContact.getFullName());
         contact.setEmailAddress(crmContact.email);
-        if (!Strings.isNullOrEmpty(crmContact.address.street)) {
+        if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
             Address address = new Address()
-                    .addressLine1(crmContact.address.street)
-                    .city(crmContact.address.city)
-                    .region(crmContact.address.state)
-                    .postalCode(crmContact.address.postalCode)
-                    .country(crmContact.address.country);
+                    .addressLine1(crmContact.mailingAddress.street)
+                    .city(crmContact.mailingAddress.city)
+                    .region(crmContact.mailingAddress.state)
+                    .postalCode(crmContact.mailingAddress.postalCode)
+                    .country(crmContact.mailingAddress.country);
             contact.setAddresses(List.of(address));
         }
 

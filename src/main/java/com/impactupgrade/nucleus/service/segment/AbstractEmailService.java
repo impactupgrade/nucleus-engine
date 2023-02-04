@@ -41,17 +41,17 @@ public abstract class AbstractEmailService implements EmailService {
       EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
     List<CustomField> customFields = new ArrayList<>();
 
-    if (!Strings.isNullOrEmpty(crmContact.address.city)) {
-      customFields.add(new CustomField("city", CustomFieldType.STRING, crmContact.address.city));
+    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.city)) {
+      customFields.add(new CustomField("city", CustomFieldType.STRING, crmContact.mailingAddress.city));
     }
-    if (!Strings.isNullOrEmpty(crmContact.address.state)) {
-      customFields.add(new CustomField("state", CustomFieldType.STRING, crmContact.address.state));
+    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.state)) {
+      customFields.add(new CustomField("state", CustomFieldType.STRING, crmContact.mailingAddress.state));
     }
-    if (!Strings.isNullOrEmpty(crmContact.address.postalCode)) {
-      customFields.add(new CustomField("postal_code", CustomFieldType.STRING, crmContact.address.postalCode));
+    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.postalCode)) {
+      customFields.add(new CustomField("postal_code", CustomFieldType.STRING, crmContact.mailingAddress.postalCode));
     }
-    if (!Strings.isNullOrEmpty(crmContact.address.country)) {
-      customFields.add(new CustomField("country", CustomFieldType.STRING, crmContact.address.country));
+    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.country)) {
+      customFields.add(new CustomField("country", CustomFieldType.STRING, crmContact.mailingAddress.country));
     }
 
     customFields.add(new CustomField("crm_contact_id", CustomFieldType.STRING, crmContact.id));

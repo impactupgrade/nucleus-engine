@@ -83,7 +83,7 @@ public class AccountingService {
                 String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);
                 crmContact.firstName = firstLastName[0];
                 crmContact.lastName = firstLastName[1];
-                crmContact.address = crmAccount.address;
+                crmContact.mailingAddress = crmAccount.billingAddress;
             }
         }
         if (crmContact == null) {
