@@ -4,8 +4,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.RaiselyClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CrmAccount;
-import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
@@ -77,20 +75,23 @@ public class RaiselyEnrichmentService implements EnrichmentService {
         //  for one or the other?
 
         // TODO: Total hack. These contain raw CRM objects, which often are not serializable. Back them up, then restore.
-        CrmAccount crmAccount = event.getCrmAccount();
-        CrmContact crmContact = event.getCrmContact();
-        event.setCrmAccount(null);
-        event.setCrmContact(null);
+        Object crmAccountRawObject = event.getCrmAccount().crmRawObject;
+        Object crmContactRawObject = event.getCrmContact().crmRawObject;
+        event.getCrmAccount().crmRawObject = null;
+        event.getCrmContact().crmRawObject = null;
 
         PaymentGatewayEvent clonedEvent = SerializationUtils.clone(event);
 
-        event.setCrmAccount(crmAccount);
-        event.setCrmContact(crmContact);
-        clonedEvent.setCrmAccount(crmAccount);
-        clonedEvent.setCrmContact(crmContact);
+        event.getCrmAccount().crmRawObject = crmAccountRawObject;
+        event.getCrmContact().crmRawObject = crmContactRawObject;
+        clonedEvent.getCrmAccount().crmRawObject = crmAccountRawObject;
+        clonedEvent.getCrmContact().crmRawObject = crmContactRawObject;
 
         clonedEvent.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.DONATION;
         clonedEvent.getCrmDonation().amount = donationItems.get(0).amount / 100.0;
+        // Downstream, we need a notion of parent/child to handle secondary events within the CrmServices.
+        clonedEvent.getCrmDonation().parent = event.getCrmDonation();
+        event.getCrmDonation().children.add(clonedEvent.getCrmDonation());
 
         event.getSecondaryEvents().add(clonedEvent);
       }

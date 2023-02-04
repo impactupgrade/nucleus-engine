@@ -51,9 +51,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/55.0/";
 
   // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-  private static final int MAX_ID_QUERY_LIST_SIZE = 1000;
+  protected static final int MAX_ID_QUERY_LIST_SIZE = 1000;
 
-  private static final String AUTH_URL;
+  protected static final String AUTH_URL;
   static {
     String profile = System.getenv("PROFILE");
     if ("production".equalsIgnoreCase(profile)) {
@@ -742,6 +742,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType,
       String fields, Set<String> customFields, String[] extraFields) throws ConnectionException, InterruptedException {
+    if (conditions.isEmpty()) {
+      return List.of();
+    }
+
     List<String> page;
     List<String> more;
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...

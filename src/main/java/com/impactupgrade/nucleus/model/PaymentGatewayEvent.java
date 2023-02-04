@@ -57,6 +57,7 @@ public class PaymentGatewayEvent implements Serializable {
     crmContact.account = crmAccount;
     crmDonation.account = crmAccount;
     crmDonation.contact = crmContact;
+    crmDonation.recurringDonation = crmRecurringDonation;
     crmRecurringDonation.account = crmAccount;
     crmRecurringDonation.contact = crmContact;
   }
@@ -542,7 +543,7 @@ public class PaymentGatewayEvent implements Serializable {
     crmDonation.recurringDonation.id = crmRecurringDonationId;
   }
 
-  public void setCrmRecurringDonationId(CrmRecurringDonation crmRecurringDonation) {
+  public void setCrmRecurringDonation(CrmRecurringDonation crmRecurringDonation) {
     this.crmRecurringDonation = crmRecurringDonation;
     crmDonation.recurringDonation = crmRecurringDonation;
   }
