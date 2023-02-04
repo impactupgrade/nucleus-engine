@@ -47,6 +47,8 @@ public class CrmDonation extends CrmOpportunity {
   public String secondaryId; // ex: Stripe Charge ID if this was the Payment Intent API
   public String url;
 
+  public String application;
+
   public boolean isRecurring() {
     return !Strings.isNullOrEmpty(recurringDonation.id);
   }

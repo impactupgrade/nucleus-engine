@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.RaiselyClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
@@ -38,62 +39,59 @@ public class RaiselyEnrichmentService implements EnrichmentService {
 
 
   @Override
-  public boolean eventIsFromPlatform(PaymentGatewayEvent event) {
-    return RAISELY_APPLICATION_ID.equalsIgnoreCase(event.getApplication());
+  public boolean eventIsFromPlatform(CrmDonation crmDonation) {
+    return RAISELY_APPLICATION_ID.equalsIgnoreCase(crmDonation.application);
   }
 
   @Override
-  public void enrich(PaymentGatewayEvent event) throws Exception {
-    String donationId = parseDonationId(event.getCrmDonation().description);
+  public void enrich(CrmDonation crmDonation) throws Exception {
+    String donationId = parseDonationId(crmDonation.description);
+    RaiselyClient.Donation raiselyDonation = raiselyClient.getDonation(donationId);
 
-    RaiselyClient.Donation donation = raiselyClient.getDonation(donationId);
-
-    if (donation.items == null || donation.items.size() <= 1) {
+    if (raiselyDonation.items == null || raiselyDonation.items.size() <= 1) {
       // not a split transaction -- return the original
     } else {
       // TODO: Are there other types of items? Could there be a ticket + products + donation?
-      List<RaiselyClient.DonationItem> donationItems = donation.items.stream().filter(i -> !"ticket".equalsIgnoreCase(i.type)).toList();
-      List<RaiselyClient.DonationItem> ticketItems = donation.items.stream().filter(i -> "ticket".equalsIgnoreCase(i.type)).toList();
+      List<RaiselyClient.DonationItem> donationItems = raiselyDonation.items.stream().filter(i -> !"ticket".equalsIgnoreCase(i.type)).toList();
+      List<RaiselyClient.DonationItem> ticketItems = raiselyDonation.items.stream().filter(i -> "ticket".equalsIgnoreCase(i.type)).toList();
       if (ticketItems.isEmpty()) {
         // donations only, but this should never happen?
-        event.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.DONATION;
+        crmDonation.transactionType = EnvironmentConfig.TransactionType.DONATION;
       } else if (donationItems.isEmpty()) {
         // tickets only
-        event.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.TICKET;
+        crmDonation.transactionType = EnvironmentConfig.TransactionType.TICKET;
       } else if (donationItems.size() > 1 || ticketItems.size() > 1) {
         log.warn("Raisely donation {} had multiple donations and/or tickets; expected one of each, so skipping out of caution", donationId);
       } else {
         // one of each -- let the ticket be the primary and donation secondary
 
-        event.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.TICKET;
+        crmDonation.transactionType = EnvironmentConfig.TransactionType.TICKET;
         // if fees are covered, stick them on the TICKET, not the DONATION
-        double coveredFee = donation.feeCovered ? (donation.fee / 100.0) : 0.0;
-        event.getCrmDonation().amount = (ticketItems.get(0).amount / 100.0) + coveredFee;
+        double coveredFee = raiselyDonation.feeCovered ? (raiselyDonation.fee / 100.0) : 0.0;
+        crmDonation.amount = (ticketItems.get(0).amount / 100.0) + coveredFee;
 
         // TODO: This will have the same Stripe IDs! For most clients, this won't work, since we skip processing
         //  gifts if their Stripe ID already exists in the CRM. Talking to DR AU about how to handle. Nuke the IDs
         //  for one or the other?
 
         // TODO: Total hack. These contain raw CRM objects, which often are not serializable. Back them up, then restore.
-        Object crmAccountRawObject = event.getCrmAccount().crmRawObject;
-        Object crmContactRawObject = event.getCrmContact().crmRawObject;
-        event.getCrmAccount().crmRawObject = null;
-        event.getCrmContact().crmRawObject = null;
+        Object crmAccountRawObject = crmDonation.account.crmRawObject;
+        Object crmContactRawObject = crmDonation.contact.crmRawObject;
+        crmDonation.account.crmRawObject = null;
+        crmDonation.contact.crmRawObject = null;
 
-        PaymentGatewayEvent clonedEvent = SerializationUtils.clone(event);
+        CrmDonation clonedCrmDonation = SerializationUtils.clone(crmDonation);
 
-        event.getCrmAccount().crmRawObject = crmAccountRawObject;
-        event.getCrmContact().crmRawObject = crmContactRawObject;
-        clonedEvent.getCrmAccount().crmRawObject = crmAccountRawObject;
-        clonedEvent.getCrmContact().crmRawObject = crmContactRawObject;
+        crmDonation.account.crmRawObject = crmAccountRawObject;
+        crmDonation.contact.crmRawObject = crmContactRawObject;
+        clonedCrmDonation.account.crmRawObject = crmAccountRawObject;
+        clonedCrmDonation.contact.crmRawObject = crmContactRawObject;
 
-        clonedEvent.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.DONATION;
-        clonedEvent.getCrmDonation().amount = donationItems.get(0).amount / 100.0;
+        clonedCrmDonation.transactionType = EnvironmentConfig.TransactionType.DONATION;
+        clonedCrmDonation.amount = donationItems.get(0).amount / 100.0;
         // Downstream, we need a notion of parent/child to handle secondary events within the CrmServices.
-        clonedEvent.getCrmDonation().parent = event.getCrmDonation();
-        event.getCrmDonation().children.add(clonedEvent.getCrmDonation());
-
-        event.getSecondaryEvents().add(clonedEvent);
+        clonedCrmDonation.parent = crmDonation;
+        crmDonation.children.add(clonedCrmDonation);
       }
     }
   }

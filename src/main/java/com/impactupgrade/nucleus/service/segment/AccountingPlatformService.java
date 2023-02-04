@@ -2,14 +2,13 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.CrmDonation;
 
 import java.util.Optional;
 
 public interface AccountingPlatformService extends SegmentService {
 
-    // TODO
-    Optional<AccountingTransaction> getTransaction(PaymentGatewayEvent paymentGatewayEvent) throws Exception;
+    Optional<AccountingTransaction> getTransaction(CrmDonation crmDonation) throws Exception;
 
     String updateOrCreateContact(CrmContact crmContact) throws Exception;
 

@@ -17,7 +17,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
 import com.xero.api.XeroBadRequestException;
@@ -103,12 +103,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public Optional<AccountingTransaction> getTransaction(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    public Optional<AccountingTransaction> getTransaction(CrmDonation crmDonation) throws Exception {
         Invoices invoicesResponse = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
                 // OffsetDateTime ifModifiedSince
                 null,
                 //String where,
-                "Reference==\"" + getReference(paymentGatewayEvent) + "\"",
+                "Reference==\"" + getReference(crmDonation) + "\"",
                 // String order,
                 null,
                 // List<UUID> ids,
@@ -142,8 +142,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
     }
 
-    protected String getReference(PaymentGatewayEvent paymentGatewayEvent) {
-        return (paymentGatewayEvent.getCrmDonation().gatewayName + ":" + paymentGatewayEvent.getCrmDonation().transactionId);
+    protected String getReference(CrmDonation crmDonation) {
+        return (crmDonation.gatewayName + ":" + crmDonation.transactionId);
     }
 
     @Override

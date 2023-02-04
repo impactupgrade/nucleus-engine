@@ -305,9 +305,9 @@ public class StripeController {
   private void enrich(PaymentGatewayEvent paymentGatewayEvent, Environment env)
       throws Exception {
     List<EnrichmentService> enrichmentServices = env.allEnrichmentServices().stream()
-        .filter(es -> es.eventIsFromPlatform(paymentGatewayEvent)).toList();
+        .filter(es -> es.eventIsFromPlatform(paymentGatewayEvent.getCrmDonation())).toList();
     for (EnrichmentService enrichmentService : enrichmentServices) {
-      enrichmentService.enrich(paymentGatewayEvent);
+      enrichmentService.enrich(paymentGatewayEvent.getCrmDonation());
     }
   }
 }

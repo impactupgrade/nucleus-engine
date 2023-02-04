@@ -24,9 +24,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -44,12 +42,6 @@ public class PaymentGatewayEvent implements Serializable {
   protected CrmContact crmContact = new CrmContact();
   protected CrmDonation crmDonation = new CrmDonation();
   protected CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
-
-  protected String application;
-
-  // If enrichment results in multiple events (ex: a split of a deductible and non-deductible transaction),
-  // nest the secondary events under the primary so downstream processing is aware of the connection.
-  protected List<PaymentGatewayEvent> secondaryEvents = new ArrayList<>();
 
   public PaymentGatewayEvent(Environment env) {
     envConfig = env.getConfig();
@@ -73,7 +65,7 @@ public class PaymentGatewayEvent implements Serializable {
     crmContact.metadata.putAll(stripeCharge.getMetadata());
 
     crmDonation.gatewayName = "Stripe";
-    application = stripeCharge.getApplication();
+    crmDonation.application = stripeCharge.getApplication();
     String stripePaymentMethod = stripeCharge.getPaymentMethodDetails().getType();
     if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
       crmDonation.paymentMethod = "ACH";
@@ -141,7 +133,7 @@ public class PaymentGatewayEvent implements Serializable {
     crmContact.metadata.putAll(stripePaymentIntent.getMetadata());
 
     crmDonation.gatewayName = "Stripe";
-    application = stripePaymentIntent.getApplication();
+    crmDonation.application = stripePaymentIntent.getApplication();
     String stripePaymentMethod = stripePaymentIntent.getCharges().getData().stream().findFirst().map(c -> c.getPaymentMethodDetails().getType()).orElse("");
     if (stripePaymentMethod.toLowerCase(Locale.ROOT).contains("ach")) {
       crmDonation.paymentMethod = "ACH";
@@ -550,25 +542,6 @@ public class PaymentGatewayEvent implements Serializable {
 
   public boolean isTransactionRecurring() {
     return !Strings.isNullOrEmpty(crmRecurringDonation.subscriptionId);
-  }
-
-  // GETTERS/SETTERS
-  // Note that we allow setters here, as orgs sometimes need to override the values based on custom logic.
-
-  public String getApplication() {
-    return application;
-  }
-
-  public void setApplication(String application) {
-    this.application = application;
-  }
-
-  public List<PaymentGatewayEvent> getSecondaryEvents() {
-    return secondaryEvents;
-  }
-
-  public void setSecondaryEvents(List<PaymentGatewayEvent> secondaryEvents) {
-    this.secondaryEvents = secondaryEvents;
   }
 
   // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.
