@@ -54,6 +54,7 @@ public class PaymentGatewayEvent implements Serializable {
   public PaymentGatewayEvent(Environment env) {
     envConfig = env.getConfig();
 
+    crmContact.account = crmAccount;
     crmDonation.account = crmAccount;
     crmDonation.contact = crmContact;
     crmRecurringDonation.account = crmAccount;

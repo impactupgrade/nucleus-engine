@@ -14,7 +14,7 @@ public class CrmRecord implements Serializable {
   public String id;
 
   @JsonIgnore
-  public Map<String, String> metadata = new CaseInsensitiveMap<>();
+  protected Map<String, String> metadata = new CaseInsensitiveMap<>();
 
   @JsonIgnore
   public Object crmRawObject;
