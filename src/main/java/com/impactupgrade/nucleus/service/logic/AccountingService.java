@@ -34,42 +34,43 @@ public class AccountingService {
         if (_accountingPlatformService.isEmpty()) {
             return;
         }
-        AccountingPlatformService accountingPlatformService = _accountingPlatformService.get();
 
-        // recursive, making sure we don't exit too early if the parent already exists
-        // TODO
-//        for (PaymentGatewayEvent secondaryEvent : paymentGatewayEvent.getSecondaryEvents()) {
-//            processTransaction(secondaryEvent);
-//        }
-
-        Optional<AccountingTransaction> accountingTransactionO = accountingPlatformService.getTransaction(paymentGatewayEvent.getCrmDonation());
+        Optional<AccountingTransaction> accountingTransactionO = _accountingPlatformService.get().getTransaction(paymentGatewayEvent.getCrmDonation());
         if (accountingTransactionO.isPresent()) {
             log.info("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getCrmDonation().transactionId);
             return;
         }
 
-        Optional<CrmDonation> crmDonationO = env.donationsCrmService().getDonationByTransactionIds(
-            paymentGatewayEvent.getCrmDonation().getTransactionIds(),
-            paymentGatewayEvent.getCrmAccount().id,
-            paymentGatewayEvent.getCrmContact().id
+        processTransaction(paymentGatewayEvent.getCrmDonation());
+
+        for (CrmDonation child : paymentGatewayEvent.getCrmDonation().children) {
+            processTransaction(child);
+        }
+    }
+
+    protected void processTransaction(CrmDonation crmDonation) throws Exception {
+        Optional<CrmDonation> existingDonation = env.donationsCrmService().getDonationByTransactionIds(
+            crmDonation.getTransactionIds(),
+            crmDonation.account.id,
+            crmDonation.contact.id
         );
-        if (crmDonationO.isEmpty()) {
+        if (existingDonation.isEmpty()) {
             // Should be unreachable
-            log.warn("Failed to find donation for payment gateway event {}! Returning...", paymentGatewayEvent);
+            log.warn("Failed to find donation for payment gateway event! Returning...");
             return;
         }
-        CrmDonation crmDonation = crmDonationO.get();
-        CrmContact crmContact = getDonationContact(crmDonation);
+        CrmContact crmContact = getDonationContact(existingDonation.get());
         if (crmContact == null) {
             // Should be unreachable
-            log.warn("Failed to find crm contact for crm donation {}!", crmDonation.id);
+            log.warn("Failed to find crm contact for crm donation {}!", existingDonation.get().id);
+            return;
         }
 
-        String contactId = accountingPlatformService.updateOrCreateContact(crmContact);
+        String contactId = _accountingPlatformService.get().updateOrCreateContact(crmContact);
         log.info("Upserted contact: {}", contactId);
 
-        AccountingTransaction accountingTransaction = toAccountingTransaction(paymentGatewayEvent, contactId, crmContact.id);
-        String transactionId = accountingPlatformService.createTransaction(accountingTransaction);
+        AccountingTransaction accountingTransaction = toAccountingTransaction(existingDonation.get(), contactId, crmContact.id);
+        String transactionId = _accountingPlatformService.get().createTransaction(accountingTransaction);
         log.info("Created transaction: {}", transactionId);
     }
 
@@ -235,18 +236,17 @@ public class AccountingService {
 //        }).collect(Collectors.toList());
 //    }
 
-    private AccountingTransaction toAccountingTransaction(PaymentGatewayEvent newPaymentGatewayEvent,
-                                                          String accountingContactId, String crmContactId) {
+    private AccountingTransaction toAccountingTransaction(CrmDonation crmDonation, String accountingContactId, String crmContactId) {
         return new AccountingTransaction(
             accountingContactId,
             crmContactId,
-            newPaymentGatewayEvent.getCrmDonation().amount,
-            newPaymentGatewayEvent.getCrmDonation().closeDate,
-            newPaymentGatewayEvent.getCrmDonation().description,
-            newPaymentGatewayEvent.getCrmDonation().transactionType,
-            newPaymentGatewayEvent.getCrmDonation().gatewayName,
-            newPaymentGatewayEvent.getCrmDonation().transactionId,
-            newPaymentGatewayEvent.isTransactionRecurring()
+            crmDonation.amount,
+            crmDonation.closeDate,
+            crmDonation.description,
+            crmDonation.transactionType,
+            crmDonation.gatewayName,
+            crmDonation.transactionId,
+            crmDonation.isRecurring()
         );
     }
 }

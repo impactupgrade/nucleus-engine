@@ -50,7 +50,7 @@ public class CrmDonation extends CrmOpportunity {
   public String application;
 
   public boolean isRecurring() {
-    return !Strings.isNullOrEmpty(recurringDonation.id);
+    return !Strings.isNullOrEmpty(recurringDonation.id) || !Strings.isNullOrEmpty(recurringDonation.subscriptionId);
   }
 
   public CrmDonation() {}

@@ -41,8 +41,8 @@ public class DonationService {
 
     Optional<CrmDonation> existingDonation = crmService.getDonationByTransactionIds(
         paymentGatewayEvent.getCrmDonation().getTransactionIds(),
-        paymentGatewayEvent.getCrmAccount().id,
-        paymentGatewayEvent.getCrmContact().id
+        paymentGatewayEvent.getCrmDonation().account.id,
+        paymentGatewayEvent.getCrmDonation().contact.id
     );
 
     if (existingDonation.isPresent()) {
@@ -59,31 +59,39 @@ public class DonationService {
       return;
     }
 
-    if (paymentGatewayEvent.isTransactionRecurring()) {
+    paymentGatewayEvent.getCrmDonation().id = createDonation(paymentGatewayEvent.getCrmDonation());
+
+    for (CrmDonation child : paymentGatewayEvent.getCrmDonation().children) {
+      child.id = createDonation(child);
+      child.parent.id = paymentGatewayEvent.getCrmDonation().id;
+    }
+  }
+
+  protected String createDonation(CrmDonation crmDonation) throws Exception {
+    if (crmDonation.isRecurring()) {
       Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
-          paymentGatewayEvent.getCrmRecurringDonation().id,
-          paymentGatewayEvent.getCrmRecurringDonation().subscriptionId,
-          paymentGatewayEvent.getCrmAccount().id,
-          paymentGatewayEvent.getCrmContact().id
+          crmDonation.recurringDonation.id,
+          crmDonation.recurringDonation.subscriptionId,
+          crmDonation.account.id,
+          crmDonation.contact.id
       );
 
       if (recurringDonation.isEmpty()) {
         log.info("unable to find CRM recurring donation using subscriptionId {}; creating it...",
-            paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
+            crmDonation.recurringDonation.subscriptionId);
         // NOTE: See the note on the customer.subscription.created event handling. We insert recurring donations
         // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
         // first donation do it in order to prevent timing issues.
-        String recurringDonationId = crmService.insertRecurringDonation(paymentGatewayEvent.getCrmRecurringDonation());
-        paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
+        crmDonation.recurringDonation.id = crmService.insertRecurringDonation(crmDonation.recurringDonation);
       } else {
         String recurringDonationId = recurringDonation.get().id;
         log.info("found CRM recurring donation {} using subscriptionId {}",
-            recurringDonationId, paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
-        paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
+            recurringDonationId, crmDonation.recurringDonation.subscriptionId);
+        crmDonation.recurringDonation.id = recurringDonationId;
       }
     }
 
-    crmService.insertDonation(paymentGatewayEvent.getCrmDonation());
+    return crmService.insertDonation(crmDonation);
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {

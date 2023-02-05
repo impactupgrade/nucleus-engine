@@ -418,6 +418,7 @@ public class PaymentGatewayEvent implements Serializable {
     // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
     crmAccount.metadata.putAll(stripeSubscription.getMetadata());
     crmContact.metadata.putAll(stripeSubscription.getMetadata());
+    crmDonation.metadata.putAll(stripeSubscription.getMetadata());
 
     crmRecurringDonation.gatewayName = "Stripe";
 
@@ -538,10 +539,6 @@ public class PaymentGatewayEvent implements Serializable {
   public void setCrmRecurringDonation(CrmRecurringDonation crmRecurringDonation) {
     this.crmRecurringDonation = crmRecurringDonation;
     crmDonation.recurringDonation = crmRecurringDonation;
-  }
-
-  public boolean isTransactionRecurring() {
-    return !Strings.isNullOrEmpty(crmRecurringDonation.subscriptionId);
   }
 
   // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.
