@@ -416,7 +416,7 @@ public class EnvironmentConfig implements Serializable {
     try {
       mapper.readerForUpdating(this).readValue(jsonOrg);
     } catch (JsonProcessingException e) {
-      log.error("Unable to read environment JSON!", e);
+      log.error("Unable to read environment JSON! {}", jsonOrg, e);
     }
   }
 }
