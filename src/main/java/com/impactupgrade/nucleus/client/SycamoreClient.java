@@ -1,8 +1,6 @@
 package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Strings;
-import com.google.gson.Gson;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -50,11 +48,13 @@ public class SycamoreClient {
   }
 
   public Family getFamily(Integer familyId) {
-    return get("/Family/" + familyId, new GenericType<>() {});
+    return get("/Family/" + familyId, new GenericType<>() {
+    });
   }
 
   public List<FamilyContact> getFamilyContacts(Integer familyId) {
-    return get("/Family/" + familyId + "/Contacts", new GenericType<>() {});
+    return get("/Family/" + familyId + "/Contacts", new GenericType<>() {
+    });
   }
 
   private <T> T get(String url, GenericType<T> genericType) {
@@ -221,7 +221,6 @@ public class SycamoreClient {
     CrmContact crmContact = new CrmContact();
     crmContact.firstName = student.firstName;
     crmContact.lastName = student.lastName;
-    crmContact.fullName = crmContact.firstName + " " + crmContact.lastName;
     crmContact.email = student.email;
     crmContact.mobilePhone = student.cellPhone;
     crmContact.preferredPhone = CrmContact.PreferredPhone.MOBILE; // ?
@@ -241,11 +240,34 @@ public class SycamoreClient {
     return crmAddress;
   }
 
+  private List<CrmContact> getParents(List<FamilyContact> familyContacts) {
+    List<CrmContact> parents = familyContacts.stream()
+        .filter(familyContact -> isParent(familyContact))
+        .map(familyContent -> toCrmContact(familyContent))
+        .collect(Collectors.toList());
+    return parents;
+  }
+
+  private List<CrmContact> getGrandParents(List<FamilyContact> familyContacts) {
+    List<CrmContact> parents = familyContacts.stream()
+        .filter(familyContact -> isGrandParent(familyContact))
+        .map(familyContent -> toCrmContact(familyContent))
+        .collect(Collectors.toList());
+    return parents;
+  }
+
+  private static boolean isParent(FamilyContact familyContact) {
+    return familyContact != null && ("Mother".equalsIgnoreCase(familyContact.relation) || "Father".equalsIgnoreCase(familyContact.relation));
+  }
+
+  private static boolean isGrandParent(FamilyContact familyContact) {
+    return familyContact != null && ("Grandmother".equalsIgnoreCase(familyContact.relation) || "Grandfather".equalsIgnoreCase(familyContact.relation));
+  }
+
   private CrmContact toCrmContact(FamilyContact familyContact) {
     CrmContact crmContact = new CrmContact();
     crmContact.firstName = familyContact.firstName;
     crmContact.lastName = familyContact.lastName;
-    crmContact.fullName = familyContact.firstName + " " + crmContact.lastName;
     crmContact.email = familyContact.email;
     crmContact.homePhone = familyContact.homePhone;
     crmContact.mobilePhone = familyContact.cellPhone;
@@ -255,32 +277,42 @@ public class SycamoreClient {
   }
 
   public void upsertStudent(Student student, Family family, List<FamilyContact> familyContacts, CrmService crmService) throws Exception {
-    CrmContact contact = toCrmContact(student);
+    CrmContact studentContact = toCrmContact(student);
+    List<CrmContact> parentContacts = getParents(familyContacts);
+    List<CrmContact> grandParentContacts = getGrandParents(familyContacts);
+
     CrmAddress address = getCrmAddress(family);
-    List<CrmContact> parents = familyContacts.stream()
-        .map(familyContent -> toCrmContact(familyContent))
-        .collect(Collectors.toList());
-    contact.address = address;
-    parents.forEach(parent -> parent.address = address);
+    studentContact.mailingAddress = address;
+    parentContacts.forEach(parent -> parent.mailingAddress = address);
+    grandParentContacts.forEach(grandParent -> grandParent.mailingAddress = address);
+
     log.info("Upserting student contact for student code: {}...", student.code);
-    upsertCrmContact(contact, null, crmService);
-    for (CrmContact parent : parents) {
+    upsertCrmContact(studentContact, null, crmService);
+    for (CrmContact parent : parentContacts) {
       log.info("Upserting parent contact for student code: {}...", student.code);
-      upsertCrmContact(parent, contact.accountId, crmService);
+      upsertCrmContact(parent, studentContact.account, crmService);
+    }
+
+    CrmAccount crmAccount = null;
+    for (CrmContact grandParent : grandParentContacts) {
+      log.info("Upserting grand parent contact for student code: {}...", student.code);
+      upsertCrmContact(grandParent, crmAccount, crmService);
+      crmAccount = grandParent.account;
     }
   }
 
-  private CrmContact upsertCrmContact(CrmContact crmContact, String crmAccountId, CrmService crmService) throws Exception {
+  private CrmContact upsertCrmContact(CrmContact crmContact, CrmAccount crmAccount, CrmService crmService) throws Exception {
     String name = crmContact.firstName + " " + crmContact.lastName;
     CrmContact existing = getCrmContactForFullNameAndEmail(name, crmContact.email, crmService);
     if (existing == null) {
       // Create new contact/new household account
-      if (Strings.isNullOrEmpty(crmAccountId)) {
-        CrmAccount crmAccount = createHouseholdAccount(crmContact);
-        String accountId = crmService.insertAccount(crmAccount);
-        crmContact.accountId = accountId;
+      if (crmAccount == null) {
+        CrmAccount houseHoldAccount = createHouseholdAccount(crmContact);
+        String accountId = crmService.insertAccount(houseHoldAccount);
+        houseHoldAccount.id = accountId;
+        crmContact.account = houseHoldAccount;
       } else {
-        crmContact.accountId = crmAccountId;
+        crmContact.account = crmAccount;
       }
       log.info("Inserting contact...");
       crmService.insertContact(crmContact);
@@ -313,7 +345,7 @@ public class SycamoreClient {
     existing.homePhone = update.homePhone;
     existing.workPhone = update.workPhone;
     existing.preferredPhone = update.preferredPhone;
-    updateCrmAddress(existing.address, update.address);
+    updateCrmAddress(existing.mailingAddress, update.mailingAddress);
   }
 
   private void updateCrmAddress(CrmAddress existing, CrmAddress update) {
