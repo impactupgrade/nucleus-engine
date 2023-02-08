@@ -133,7 +133,7 @@ public class MailchimpEmailService extends AbstractEmailService {
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
         Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, emailList.crmFilter);
-        if (crmContact.isPresent()) {
+        if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().email)) {
           log.info("updating contact {} {} on list {}", crmContact.get().id, crmContact.get().email, emailList.id);
           Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(List.of(crmContact.get()));
           syncContact(crmContact.get(), crmContactCampaignNames, mailchimpConfig, emailList);
