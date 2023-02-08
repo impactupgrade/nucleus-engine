@@ -50,6 +50,7 @@ public class DonationService {
         // allow updates to non-posted transactions occur, especially to catch cases where it initially failed is reattempted and succeeds
         log.info("found existing CRM donation {} using transaction {}, but in a non-final state; updating it with the reattempt...",
             existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
+        paymentGatewayEvent.getCrmDonation().id = existingDonation.get().id;
         crmService.updateDonation(paymentGatewayEvent.getCrmDonation());
         return;
       }
