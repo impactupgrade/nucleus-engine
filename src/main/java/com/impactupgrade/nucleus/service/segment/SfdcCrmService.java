@@ -1635,7 +1635,7 @@ public class SfdcCrmService implements CrmService {
         id,
         account,
         contact,
-        null, // CrmRecurringDonation recurringDonation,
+        new CrmRecurringDonation(),
         amount,
         null, // String customerId,
         null, // ZonedDateTime depositDate,
