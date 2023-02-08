@@ -48,7 +48,7 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     String donationId = parseDonationId(crmDonation.description);
     RaiselyClient.Donation raiselyDonation = raiselyClient.getDonation(donationId);
 
-    if (raiselyDonation.items == null || raiselyDonation.items.size() <= 1) {
+    if (raiselyDonation == null || raiselyDonation.items == null || raiselyDonation.items.size() <= 1) {
       // not a split transaction -- return the original
     } else {
       // TODO: Are there other types of items? Could there be a ticket + products + donation?
