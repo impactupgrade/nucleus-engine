@@ -162,6 +162,7 @@ public class SfdcCrmService implements CrmService {
       String[] nameParts = name.get().split("\\s+");
 
       for (String part : nameParts) {
+        part = part.replaceAll("'", "\\\\'");
         List<String> nameClauses = new ArrayList<>();
         nameClauses.add("npe03__Organization__r.name LIKE '%" + part + "%'");
         nameClauses.add("npe03__Contact__r.name LIKE '%" + part + "%'");
