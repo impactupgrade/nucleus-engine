@@ -23,7 +23,7 @@ public class AntiFraudService {
   private static Logger log = LoggerFactory.getLogger(AntiFraudService.class);
 
   private static final String RECAPTCHA_SITE_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
-  private static final double MIN_SCORE = 0.5;
+  private static final double MIN_SCORE = 0.3;
 
   private final String siteSecret;
 
