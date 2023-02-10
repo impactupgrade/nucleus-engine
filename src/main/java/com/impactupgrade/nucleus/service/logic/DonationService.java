@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -191,6 +192,21 @@ public class DonationService {
   }
 
   public void processDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
-    crmService.insertDonationDeposit(paymentGatewayEvents.stream().map(e -> e.getCrmDonation()).toList());
+    List<CrmDonation> crmDonations = new ArrayList<>();
+    for (PaymentGatewayEvent e : paymentGatewayEvents) {
+      Optional<CrmDonation> donation = crmService.getDonationByTransactionIds(
+          e.getCrmDonation().getTransactionIds(),
+          e.getCrmAccount().id,
+          e.getCrmContact().id
+      );
+      if (donation.isPresent()) {
+        e.getCrmDonation().id = donation.get().id;
+        e.getCrmDonation().crmRawObject = donation.get().crmRawObject;
+        crmDonations.add(e.getCrmDonation());
+      } else {
+        log.warn("unable to find SFDC opportunity using transaction {}", e.getCrmDonation().transactionId);
+      }
+    }
+    crmService.insertDonationDeposit(crmDonations);
   }
 }

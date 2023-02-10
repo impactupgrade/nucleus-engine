@@ -528,16 +528,15 @@ public class SfdcCrmService implements CrmService {
       // Note that the opportunityUpdates map is in place for situations where a charge and its refund are in the same
       // deposit. In that situation, the Donation CRM ID would wind up in the batch update twice, which causes errors
       // downstream. Instead, ensure we're setting the fields for both situations, but on a single object.
-      SObject opportunity = (SObject) crmDonation.crmRawObject;
       SObject opportunityUpdate;
-      if (opportunityUpdates.containsKey(opportunity.getId())) {
-        opportunityUpdate = opportunityUpdates.get(opportunity.getId());
+      if (opportunityUpdates.containsKey(crmDonation.id)) {
+        opportunityUpdate = opportunityUpdates.get(crmDonation.id);
       } else {
         opportunityUpdate = new SObject("Opportunity");
-        opportunityUpdate.setId(opportunity.getId());
-        opportunityUpdates.put(opportunity.getId(), opportunityUpdate);
+        opportunityUpdate.setId(crmDonation.id);
+        opportunityUpdates.put(crmDonation.id, opportunityUpdate);
       }
-      setDonationDepositFields(opportunity, opportunityUpdate, crmDonation);
+      setDonationDepositFields((SObject) crmDonation.crmRawObject, opportunityUpdate, crmDonation);
 
       sfdcClient.batchUpdate(opportunityUpdate);
     }
