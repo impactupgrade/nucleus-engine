@@ -77,7 +77,7 @@ public class StripeController {
     if (dataObjectDeserializer.getObject().isPresent()) {
       stripeObject = dataObjectDeserializer.getObject().get();
     } else {
-      log.error("Stripe deserialization failed, probably due to an API version mismatch.");
+      log.warn("Stripe deserialization failed, probably due to an API version mismatch.");
       return Response.status(500).build();
     }
 
