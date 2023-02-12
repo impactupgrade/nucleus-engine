@@ -590,6 +590,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(ids, "Id", "Opportunity", DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields);
   }
 
+
+  public List<SObject> getDonationsByUniqueField(String fieldName, List<String> values, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(values, fieldName, "Opportunity", DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields);
+  }
+
   public Optional<SObject> getDonationByTransactionId(String transactionId, String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " = '" + transactionId + "'";
     return querySingle(query);

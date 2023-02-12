@@ -852,6 +852,18 @@ public class SfdcCrmService implements CrmService {
       sfdcClient.getDonationsByIds(opportunityIds, opportunityCustomFields).forEach(c -> existingOpportunitiesById.put(c.getId(), c));
     }
 
+    Optional<String> opportunityExternalRefKey = importEvents.get(0).raw.keySet().stream()
+        .filter(k -> k.startsWith("Opportunity ExtRef ")).findFirst();
+    Map<String, SObject> existingOpportunitiesByExRefId = new HashMap<>();
+    if (opportunityExternalRefKey.isPresent()) {
+      List<String> opportunityExRefIds = importEvents.stream().map(e -> e.raw.get(opportunityExternalRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
+      if (opportunityExRefIds.size() > 0) {
+        String fieldName = opportunityExternalRefKey.get().replace("Opportunity ExtRef ", "");
+        sfdcClient.getDonationsByUniqueField(fieldName, opportunityExRefIds, opportunityCustomFields)
+            .forEach(c -> existingOpportunitiesByExRefId.put((String) c.getField(fieldName), c));
+      }
+    }
+
     // we use by-id maps for batch inserts/updates, since the sheet can contain duplicate contacts/accounts
     // (especially when importing opportunities)
     List<String> batchUpdateAccounts = new ArrayList<>();
@@ -1147,24 +1159,19 @@ public class SfdcCrmService implements CrmService {
 
         if (!Strings.isNullOrEmpty(importEvent.opportunityId)) {
           opportunity.setId(importEvent.opportunityId);
-          setBulkImportOpportunityFields(opportunity, existingOpportunitiesById.get(importEvent.opportunityId), importEvent);
-          if (!batchUpdateOpportunities.contains(importEvent.opportunityId)) {
-            batchUpdateOpportunities.add(importEvent.opportunityId);
+          setBulkImportOpportunityFields(opportunity, existingOpportunitiesById.get(opportunity.getId()), importEvent);
+          if (!batchUpdateOpportunities.contains(opportunity.getId())) {
+            batchUpdateOpportunities.add(opportunity.getId());
             sfdcClient.batchUpdate(opportunity);
           }
+        } else if (opportunityExternalRefKey.isPresent() && existingOpportunitiesByExRefId.containsKey(importEvent.raw.get(opportunityExternalRefKey.get()))) {
+          SObject existingOpportunity = existingOpportunitiesByExRefId.get(importEvent.raw.get(opportunityExternalRefKey.get()));
 
-          // TODO: Do this in a second pass and support opp inserts.
-          if (!Strings.isNullOrEmpty(nonBatchContactIds.get(i))) {
-            SObject contactRole = new SObject("OpportunityContactRole");
-            contactRole.setField("OpportunityId", importEvent.opportunityId);
-            contactRole.setField("ContactId", nonBatchContactIds.get(i));
-            contactRole.setField("IsPrimary", true);
-            // TODO: Not present by default at all orgs.
-//            contactRole.setField("Role", "Donor");
-            if (!batchInsertOpportunityContactRoles.contains(importEvent.opportunityId)) {
-              batchInsertOpportunityContactRoles.add(importEvent.opportunityId);
-              sfdcClient.batchInsert(contactRole);
-            }
+          opportunity.setId(existingOpportunity.getId());
+          setBulkImportOpportunityFields(opportunity, existingOpportunity, importEvent);
+          if (!batchUpdateOpportunities.contains(opportunity.getId())) {
+            batchUpdateOpportunities.add(opportunity.getId());
+            sfdcClient.batchUpdate(opportunity);
           }
         } else {
           // If the account and contact upserts both failed, avoid creating an orphaned opp.

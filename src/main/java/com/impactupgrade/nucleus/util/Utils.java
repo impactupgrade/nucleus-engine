@@ -98,7 +98,10 @@ public class Utils {
 
   public static Calendar getCalendarFromDateString(String date) throws ParseException {
     if (date != null && !date.isEmpty()) {
-      Date localDate = new SimpleDateFormat("yyyy-MM-dd").parse(date);
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+      // must not be lenient, otherwise this will pick up phone numbers, etc.
+      sdf.setLenient(false);
+      Date localDate = sdf.parse(date);
       return new Calendar.Builder().setInstant(localDate.getTime()).build();
     }
     return null;
