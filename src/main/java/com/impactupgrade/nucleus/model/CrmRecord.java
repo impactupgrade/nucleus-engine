@@ -40,6 +40,10 @@ public class CrmRecord implements Serializable {
     metadata.put(key, value);
   }
 
+  public Map<String, String> getAllMetadata() {
+    return metadata;
+  }
+
   public String getMetadataValue(String metadataKey) {
     return getMetadataValue(Set.of(metadataKey));
   }
