@@ -9,7 +9,7 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.sforce.soap.partner.sobject.SObject;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.util.IOUtils;
@@ -18,9 +18,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -79,88 +77,89 @@ public class RaisersEdgeToSalesforce {
     // Mostly basing this on Bulk Upsert, but cheating in places and going straight to SFDC.
     SfdcClient sfdcClient = new SfdcClient(env);
 
-//    File file = new File("/home/brmeyer/Downloads/Constituent+Spouse-v3-25relationships.xlsx");
-//    InputStream inputStream = new FileInputStream(file);
-//    List<Map<String, String>> rows = Utils.getExcelData(inputStream);
+    File file = new File("/home/brmeyer/Downloads/Constituent+Spouse-v3-25relationships.xlsx");
+    InputStream inputStream = new FileInputStream(file);
+    List<Map<String, String>> rows = Utils.getExcelData(inputStream);
 
     List<Map<String, String>> primaryRows = new ArrayList<>();
     List<Map<String, String>> secondaryRows = new ArrayList<>();
 
-//    Map<String, String> constituentIdsToHouseholdIds = new HashMap<>();
-//
-//    // Make one pass to discover all heads of households. This is unfortunately not at the Constituent level, but is
-//    // instead buried in the lists of relationships :(
-//    for (Map<String, String> row : rows) {
-//      // households only
-//      if (!Strings.isNullOrEmpty(row.get("CnBio_Org_Name"))) {
-//        continue;
-//      }
-//
-//      String id = row.get("CnBio_ID");
-//
-//      for (int i = 1; i <= 25; i++) {
-//        String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
-//        if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Headofhousehold"))) {
-//          String headOfHouseholdId = row.get(prefix + "ID");
-//          constituentIdsToHouseholdIds.put(id, headOfHouseholdId);
-//          break;
-//        }
-//      }
-//    }
-//
-//    // The next pass inserts all constituents that were discovered to be heads of households, ensuring that they're
-//    // the primary contact on households as they're created.
-//    for (Map<String, String> row : rows) {
-//      String id = row.get("CnBio_ID");
-//      if (constituentIdsToHouseholdIds.containsValue(id)) {
-//        migrate(row, constituentIdsToHouseholdIds, primaryRows, secondaryRows);
-//      }
-//    }
-//
-//    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
-//    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
-//    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
-//    //  complicated logic to update the account after the fact.
-//    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
-//    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
-//    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(primaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//
-//    primaryRows.clear();
-//    secondaryRows.clear();
-//
-//    // Then do another pass to insert everyone else. Doing this after the above ensure households already exist.
-//    for (Map<String, String> row : rows) {
-//      String id = row.get("CnBio_ID");
-//      if (!constituentIdsToHouseholdIds.containsValue(id)) {
-//        migrate(row, constituentIdsToHouseholdIds, primaryRows, secondaryRows);
-//      }
-//    }
-//
-//    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
-//    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
-//    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
-//    //  complicated logic to update the account after the fact.
-//    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
-//    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
-//    importEvents = CrmImportEvent.fromGeneric(primaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//
-//    primaryRows.clear();
-//    secondaryRows.clear();
+    Map<String, String> spouseIdsToHouseholdIds = new HashMap<>();
 
-    File giftsFile = new File("/home/brmeyer/Downloads/Gifts-with-Installments-v4-more-info.xlsx");
-    InputStream giftInputStream = new FileInputStream(giftsFile);
-    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
+    // Make one pass to discover all heads of households. This is unfortunately not at the Constituent level, but is
+    // instead buried in the lists of relationships :(
+    for (Map<String, String> row : rows) {
+      // households only
+      if (!Strings.isNullOrEmpty(row.get("CnBio_Org_Name"))) {
+        continue;
+      }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // CAMPAIGNS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      String id = row.get("CnBio_ID");
 
+      for (int i = 1; i <= 25; i++) {
+        String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
+        if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Headofhousehold"))) {
+          String headOfHouseholdId = row.get(prefix + "ID");
+          // the relationship is the head of household, not this constituent itself
+          spouseIdsToHouseholdIds.put(id, headOfHouseholdId);
+          break;
+        }
+      }
+    }
+
+    // The next pass inserts all constituents that were discovered to be heads of households, ensuring that they're
+    // the primary contact on households as they're created.
+    for (Map<String, String> row : rows) {
+      String id = row.get("CnBio_ID");
+      if (spouseIdsToHouseholdIds.containsValue(id)) {
+        migrate(row, spouseIdsToHouseholdIds, primaryRows, secondaryRows);
+      }
+    }
+
+    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
+    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
+    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
+    //  complicated logic to update the account after the fact.
+    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
+    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(primaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+
+    primaryRows.clear();
+    secondaryRows.clear();
+
+    // Then do another pass to insert everyone else. Doing this after the above ensure households already exist.
+    for (Map<String, String> row : rows) {
+      String id = row.get("CnBio_ID");
+      if (!spouseIdsToHouseholdIds.containsValue(id)) {
+        migrate(row, spouseIdsToHouseholdIds, primaryRows, secondaryRows);
+      }
+    }
+
+    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
+    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
+    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
+    //  complicated logic to update the account after the fact.
+    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
+    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
+    importEvents = CrmImportEvent.fromGeneric(primaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+
+    primaryRows.clear();
+    secondaryRows.clear();
+
+//    File giftsFile = new File("/home/brmeyer/Downloads/Gifts-with-Installments-v4-more-info.xlsx");
+//    InputStream giftInputStream = new FileInputStream(giftsFile);
+//    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
+//
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // CAMPAIGNS
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //    int counter = 1;
 //    Map<String, String> parentCampaigns = new HashMap<>();
 //    Set<String> subCampaigns = new HashSet<>();
@@ -196,8 +195,8 @@ public class RaisersEdgeToSalesforce {
 //
 //    int counter = 1;
 //
-    Map<String, String> campaignIds = new HashMap<>();
-    sfdcClient.getCampaigns().forEach(c -> campaignIds.put((String) c.getField("Name"), c.getId()));
+//    Map<String, String> campaignIds = new HashMap<>();
+//    sfdcClient.getCampaigns().forEach(c -> campaignIds.put((String) c.getField("Name"), c.getId()));
 //
 //    for (Map<String, String> giftRow : giftRows) {
 //      counter++;
@@ -279,99 +278,99 @@ public class RaisersEdgeToSalesforce {
 //    }
 //
 //    sfdcClient.batchFlush();
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // DONATIONS
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // TODO: The following completely skips Bulk Upsert!
-
-    int counter = 1;
-
-    Map<String, SObject> contactsByConstituentIds = new HashMap<>();
-    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
-    for (SObject contact : contacts) {
-      contactsByConstituentIds.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
-    }
-
-    Map<String, SObject> accountsByConstituentIds = new HashMap<>();
-    // businesses only
-    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!='' AND RecordTypeId='" + ORGANIZATION_RECORD_TYPE_ID + "'");
-    for (SObject account : accounts) {
-      accountsByConstituentIds.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
-    }
-
-    for (Map<String, String> giftRow : giftRows) {
-      counter++;
-
-      log.info("processing row {}", counter);
-
-      // TODO: Gift-in-Kind, MG Pay-Cash, MG Pledge, Pay-Cash, Pledge, Recurring Gift Pay-Cash, Stock/Property, Pay-Gift-in-Kind, Pay-Stock/Property
-      if ("Cash".equalsIgnoreCase(giftRow.get("Gf_Type"))) {
-        String id = giftRow.get("Gf_Gift_ID");
-
-        // TODO: Some old gifts with no IDs, skipping for now
-        if (Strings.isNullOrEmpty(id)) {
-          continue;
-        }
-
-        SObject sfdcOpportunity = new SObject("Opportunity");
-
-        sfdcOpportunity.setField("RecordTypeId", DONATION_RECORD_TYPE_ID);
-        sfdcOpportunity.setField("Blackbaud_Gift_ID__c", id);
-        Double amount = null;
-        if (!Strings.isNullOrEmpty(giftRow.get("Gf_Amount"))) {
-          amount = Double.parseDouble(giftRow.get("Gf_Amount").replace("$", "").replace(",", ""));
-        }
-        sfdcOpportunity.setField("Amount", amount);
-        sfdcOpportunity.setField("Name", giftRow.get("Gf_Description"));
-        sfdcOpportunity.setField("Fund__c", giftRow.get("Gf_Fund"));
-        sfdcOpportunity.setField("Payment_Method__c", giftRow.get("Gf_Pay_method"));
-        sfdcOpportunity.setField("Reference__c", giftRow.get("Gf_Reference"));
-        sfdcOpportunity.setField("StageName", "Closed Won");
-        if (!Strings.isNullOrEmpty(giftRow.get("Gf_Date"))) {
-          Date d = new SimpleDateFormat("MM/dd/yyyy").parse(giftRow.get("Gf_Date"));
-          sfdcOpportunity.setField("CloseDate", d);
-        }
-
-        String campaignId = null;
-        String campaign = giftRow.get("Gf_Campaign");
-        String appeal = giftRow.get("Gf_Appeal");
-        if (!Strings.isNullOrEmpty(campaign) && !Strings.isNullOrEmpty(appeal)) {
-          campaignId = campaignIds.get(campaign + ": " + appeal);
-        } else if (!Strings.isNullOrEmpty(campaign)) {
-          campaignId = campaignIds.get(campaign);
-        } else if (!Strings.isNullOrEmpty(appeal)) {
-          campaignId = campaignIds.get(appeal);
-        }
-        sfdcOpportunity.setField("CampaignId", campaignId);
-
-        // TODO
-//        sfdcOpportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
-
-        String constituentId = giftRow.get("Gf_CnBio_ID");
-        SObject contact = contactsByConstituentIds.get(constituentId);
-        SObject account = accountsByConstituentIds.get(constituentId);
-        if (contact != null) {
-          sfdcOpportunity.setField("ContactId", contact.getId());
-          sfdcOpportunity.setField("AccountId", contact.getField("AccountId"));
-        } else {
-          if (account != null) {
-            sfdcOpportunity.setField("AccountId", account.getId());
-          } else {
-            log.warn("MISSING CONSTITUENT: {}", constituentId);
-            continue;
-          }
-        }
-
-        sfdcClient.batchInsert(sfdcOpportunity);
-      }
-    }
-
-    sfdcClient.batchFlush();
+//
+//    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // DONATIONS
+//    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    // TODO: The following completely skips Bulk Upsert!
+//
+//    int counter = 1;
+//
+//    Map<String, SObject> contactsByConstituentIds = new HashMap<>();
+//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+//    for (SObject contact : contacts) {
+//      contactsByConstituentIds.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
+//    }
+//
+//    Map<String, SObject> accountsByConstituentIds = new HashMap<>();
+//    // businesses only
+//    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!='' AND RecordTypeId='" + ORGANIZATION_RECORD_TYPE_ID + "'");
+//    for (SObject account : accounts) {
+//      accountsByConstituentIds.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
+//    }
+//
+//    for (Map<String, String> giftRow : giftRows) {
+//      counter++;
+//
+//      log.info("processing row {}", counter);
+//
+//      // TODO: Gift-in-Kind, MG Pay-Cash, MG Pledge, Pay-Cash, Pledge, Recurring Gift Pay-Cash, Stock/Property, Pay-Gift-in-Kind, Pay-Stock/Property
+//      if ("Cash".equalsIgnoreCase(giftRow.get("Gf_Type"))) {
+//        String id = giftRow.get("Gf_Gift_ID");
+//
+//        // TODO: Some old gifts with no IDs, skipping for now
+//        if (Strings.isNullOrEmpty(id)) {
+//          continue;
+//        }
+//
+//        SObject sfdcOpportunity = new SObject("Opportunity");
+//
+//        sfdcOpportunity.setField("RecordTypeId", DONATION_RECORD_TYPE_ID);
+//        sfdcOpportunity.setField("Blackbaud_Gift_ID__c", id);
+//        Double amount = null;
+//        if (!Strings.isNullOrEmpty(giftRow.get("Gf_Amount"))) {
+//          amount = Double.parseDouble(giftRow.get("Gf_Amount").replace("$", "").replace(",", ""));
+//        }
+//        sfdcOpportunity.setField("Amount", amount);
+//        sfdcOpportunity.setField("Name", giftRow.get("Gf_Description"));
+//        sfdcOpportunity.setField("Fund__c", giftRow.get("Gf_Fund"));
+//        sfdcOpportunity.setField("Payment_Method__c", giftRow.get("Gf_Pay_method"));
+//        sfdcOpportunity.setField("Reference__c", giftRow.get("Gf_Reference"));
+//        sfdcOpportunity.setField("StageName", "Closed Won");
+//        if (!Strings.isNullOrEmpty(giftRow.get("Gf_Date"))) {
+//          Date d = new SimpleDateFormat("MM/dd/yyyy").parse(giftRow.get("Gf_Date"));
+//          sfdcOpportunity.setField("CloseDate", d);
+//        }
+//
+//        String campaignId = null;
+//        String campaign = giftRow.get("Gf_Campaign");
+//        String appeal = giftRow.get("Gf_Appeal");
+//        if (!Strings.isNullOrEmpty(campaign) && !Strings.isNullOrEmpty(appeal)) {
+//          campaignId = campaignIds.get(campaign + ": " + appeal);
+//        } else if (!Strings.isNullOrEmpty(campaign)) {
+//          campaignId = campaignIds.get(campaign);
+//        } else if (!Strings.isNullOrEmpty(appeal)) {
+//          campaignId = campaignIds.get(appeal);
+//        }
+//        sfdcOpportunity.setField("CampaignId", campaignId);
+//
+//        // TODO
+////        sfdcOpportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
+//
+//        String constituentId = giftRow.get("Gf_CnBio_ID");
+//        SObject contact = contactsByConstituentIds.get(constituentId);
+//        SObject account = accountsByConstituentIds.get(constituentId);
+//        if (contact != null) {
+//          sfdcOpportunity.setField("ContactId", contact.getId());
+//          sfdcOpportunity.setField("AccountId", contact.getField("AccountId"));
+//        } else {
+//          if (account != null) {
+//            sfdcOpportunity.setField("AccountId", account.getId());
+//          } else {
+//            log.warn("MISSING CONSTITUENT: {}", constituentId);
+//            continue;
+//          }
+//        }
+//
+//        sfdcClient.batchInsert(sfdcOpportunity);
+//      }
+//    }
+//
+//    sfdcClient.batchFlush();
   }
 
-  private static void migrate(Map<String, String> row, Map<String, String> constituentIdsToHouseholdIds,
+  private static void migrate(Map<String, String> row, Map<String, String> spouseIdsToHouseholdIds,
       List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows) {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -385,9 +384,9 @@ public class RaisersEdgeToSalesforce {
     List<Map<String, String>> secondaryContactData = new ArrayList<>();
 
     String id = row.get("CnBio_ID");
-    if (constituentIdsToHouseholdIds.containsKey(id)) {
-      accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", constituentIdsToHouseholdIds.get(id));
-      accountData.put("Account Custom Blackbaud_Constituent_ID__c", constituentIdsToHouseholdIds.get(id));
+    if (spouseIdsToHouseholdIds.containsKey(id)) {
+      accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", spouseIdsToHouseholdIds.get(id));
+      accountData.put("Account Custom Blackbaud_Constituent_ID__c", spouseIdsToHouseholdIds.get(id));
     } else {
       accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", id);
       accountData.put("Account Custom Blackbaud_Constituent_ID__c", id);
