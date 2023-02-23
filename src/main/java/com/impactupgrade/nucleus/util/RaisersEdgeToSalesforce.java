@@ -84,7 +84,14 @@ public class RaisersEdgeToSalesforce {
     List<Map<String, String>> primaryRows = new ArrayList<>();
     List<Map<String, String>> secondaryRows = new ArrayList<>();
 
+    // TODO: There's unfortunately a wide, inconsistent mix of ways that households can be defined in RE data.
+    //  Relationships between spouses will usually identify one as the head-of-household, so we first use those heads
+    //  as the primary contacts of accounts. But then students/children do *not* have a parent relationship that's
+    //  defined as HoH, so we can't globally rely on that to give away household groupings. We instead opt to use
+    //  mailing addresses, since RE at least makes these consistent (at least for CLHS).
+    List<String> headOfHouseholdIds = new ArrayList<>();
     Map<String, String> spouseIdsToHouseholdIds = new HashMap<>();
+    Map<String, String> addressesToHouseholdIds = new HashMap<>();
 
     // Make one pass to discover all heads of households. This is unfortunately not at the Constituent level, but is
     // instead buried in the lists of relationships :(
@@ -99,20 +106,48 @@ public class RaisersEdgeToSalesforce {
       for (int i = 1; i <= 25; i++) {
         String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
         if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Headofhousehold"))) {
-          String headOfHouseholdId = row.get(prefix + "ID");
           // the relationship is the head of household, not this constituent itself
+          String headOfHouseholdId = row.get(prefix + "ID");
+          headOfHouseholdIds.add(headOfHouseholdId);
+          // since we have the direct relationship, might as well save it off and use it later
           spouseIdsToHouseholdIds.put(id, headOfHouseholdId);
           break;
         }
       }
     }
 
+    // Make another pass to discover the heads of households' addresses.
+    for (Map<String, String> row : rows) {
+      String id = row.get("CnBio_ID");
+      if (headOfHouseholdIds.contains(id)) {
+        Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
+        for (int i = 1; i <= 4; i++) {
+          String field = "CnAdrPrf_Addrline" + i;
+          if (!Strings.isNullOrEmpty(row.get(field))) {
+            cnAdrPrfAddr.add(row.get(field));
+          }
+        }
+        String street = String.join(", ", cnAdrPrfAddr);
+        String zip = row.get("CnAdrPrf_ZIP");
+        String address = street + " " + zip;
+        address = address.trim();
+        if (!Strings.isNullOrEmpty(address) && !addressesToHouseholdIds.containsKey(address)) {
+          addressesToHouseholdIds.put(address, id);
+        }
+      }
+    }
+
+    // TODO: If any addresses do NOT have a HoH, should we make another pass and specifically look for parents,
+    //  guardians, or grandparents first? Prevent kids from becomings heads of households?
+
     // The next pass inserts all constituents that were discovered to be heads of households, ensuring that they're
     // the primary contact on households as they're created.
     for (Map<String, String> row : rows) {
       String id = row.get("CnBio_ID");
-      if (spouseIdsToHouseholdIds.containsValue(id)) {
-        migrate(row, spouseIdsToHouseholdIds, primaryRows, secondaryRows);
+      if (headOfHouseholdIds.contains(id)) {
+        // We use the head of household's ID as the account's extref key.
+        String householdId = id;
+        migrate(row, householdId, primaryRows, secondaryRows);
       }
     }
 
@@ -133,8 +168,30 @@ public class RaisersEdgeToSalesforce {
     // Then do another pass to insert everyone else. Doing this after the above ensure households already exist.
     for (Map<String, String> row : rows) {
       String id = row.get("CnBio_ID");
-      if (!spouseIdsToHouseholdIds.containsValue(id)) {
-        migrate(row, spouseIdsToHouseholdIds, primaryRows, secondaryRows);
+      if (!headOfHouseholdIds.contains(id)) {
+        Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
+        for (int i = 1; i <= 4; i++) {
+          String field = "CnAdrPrf_Addrline" + i;
+          if (!Strings.isNullOrEmpty(row.get(field))) {
+            cnAdrPrfAddr.add(row.get(field));
+          }
+        }
+        String street = String.join(", ", cnAdrPrfAddr);
+        String zip = row.get("CnAdrPrf_ZIP");
+        String address = street + " " + zip;
+        address = address.trim();
+
+        String householdId;
+        if (spouseIdsToHouseholdIds.containsKey(id)) {
+          householdId = spouseIdsToHouseholdIds.get(id);
+        } else if (!Strings.isNullOrEmpty(address) && addressesToHouseholdIds.containsKey(address)) {
+          householdId = addressesToHouseholdIds.get(address);
+        } else {
+          // business or single-contact household (IE, no defined HoH) -- use their ID for the household extref
+          householdId = id;
+        }
+
+        migrate(row, householdId, primaryRows, secondaryRows);
       }
     }
 
@@ -370,12 +427,7 @@ public class RaisersEdgeToSalesforce {
 //    sfdcClient.batchFlush();
   }
 
-  private static void migrate(Map<String, String> row, Map<String, String> spouseIdsToHouseholdIds,
-      List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows) {
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // ACCOUNT
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  private static void migrate(Map<String, String> row, String householdId, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows) {
 
     // these eventually get combined, but separating them so that (as an ex) spouses can repurpose the account
     // data we've already parsed
@@ -384,13 +436,13 @@ public class RaisersEdgeToSalesforce {
     List<Map<String, String>> secondaryContactData = new ArrayList<>();
 
     String id = row.get("CnBio_ID");
-    if (spouseIdsToHouseholdIds.containsKey(id)) {
-      accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", spouseIdsToHouseholdIds.get(id));
-      accountData.put("Account Custom Blackbaud_Constituent_ID__c", spouseIdsToHouseholdIds.get(id));
-    } else {
-      accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", id);
-      accountData.put("Account Custom Blackbaud_Constituent_ID__c", id);
-    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // ACCOUNT
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", householdId);
+    accountData.put("Account Custom Blackbaud_Constituent_ID__c", householdId);
 
     boolean isBusiness = !Strings.isNullOrEmpty(row.get("CnBio_Org_Name"));
 
@@ -411,8 +463,7 @@ public class RaisersEdgeToSalesforce {
         cnAdrPrfAddr.add(row.get(field));
       }
     }
-    // TODO: TESTING NEEDED - will \n separated multi-line address transfer to SFDC ok?
-    String cnAdrPrfAddrStr = String.join("\n", cnAdrPrfAddr);
+    String cnAdrPrfAddrStr = String.join(", ", cnAdrPrfAddr);
     accountData.put("Account Billing Address", cnAdrPrfAddrStr);
     accountData.put("Account Billing City", row.get("CnAdrPrf_City"));
     accountData.put("Account Billing State", row.get("CnAdrPrf_State"));
@@ -540,7 +591,7 @@ public class RaisersEdgeToSalesforce {
         cnAdrAllAddr1.add(row.get(field));
       }
     }
-    String cnAdrAllAddrStr = String.join("\n", cnAdrAllAddr1);
+    String cnAdrAllAddrStr = String.join(", ", cnAdrAllAddr1);
     contactData.put("Contact Custom BB_Address1_Street__c", cnAdrAllAddrStr);
     contactData.put("Contact Custom BB_Address1_City__c", row.get("CnAdrAll_1_01_City"));
     contactData.put("Contact Custom BB_Address1_State__c", row.get("CnAdrAll_1_01_State"));
@@ -569,7 +620,7 @@ public class RaisersEdgeToSalesforce {
         cnAdrAllAddr2.add(row.get(field));
       }
     }
-    String cnAdrAllAddr2Str = String.join("\n", cnAdrAllAddr2);
+    String cnAdrAllAddr2Str = String.join(", ", cnAdrAllAddr2);
     contactData.put("Contact Custom BB_Address2_Street__c", cnAdrAllAddr2Str);
     contactData.put("Contact Custom BB_Address2_City__c", row.get("CnAdrAll_1_02_City"));
     contactData.put("Contact Custom BB_Address2_State__c", row.get("CnAdrAll_1_02_State"));
