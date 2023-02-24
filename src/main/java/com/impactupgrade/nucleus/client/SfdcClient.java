@@ -105,7 +105,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, RecordTypeId, RecordType.Id, RecordType.Name";
     CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
     // TODO: Finding a few clients with no homephone, so taking that out for now.
-    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, account.id, account.name, account.BillingStreet, account.BillingCity, account.BillingPostalCode, account.BillingState, account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, Phone";
+    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, Account.Id, Account.Name, Account.BillingStreet, Account.BillingCity, Account.BillingPostalCode, Account.BillingState, Account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, Phone";
     LEAD_FIELDS = "Id, FirstName, LastName, Email";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";

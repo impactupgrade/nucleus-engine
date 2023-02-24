@@ -958,29 +958,33 @@ public class SfdcCrmService implements CrmService {
       if (!Strings.isNullOrEmpty(importEvent.contactId) && existingContactsById.containsKey(importEvent.contactId)) {
         SObject existingContact = existingContactsById.get(importEvent.contactId);
 
+        String accountId = (String) existingContact.getField("AccountId");
         if (account == null) {
-          String accountId = (String) existingContact.getField("AccountId");
           if (!Strings.isNullOrEmpty(accountId)) {
             SObject existingAccount = (SObject) existingContact.getChild("Account");
             account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
           }
         }
 
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
+        // use accountId, not account.id -- if the contact was recently imported by this current process,
+        // the contact.account child relationship will not yet exist in the existingContactsById map
+        contact = updateBulkImportContact(existingContact, accountId, importEvent, batchUpdateContacts);
       }
       // Similarly, if we have an external ref ID, check that next.
       else if (contactExternalRefKey.isPresent() && existingContactsByExRefId.containsKey(importEvent.raw.get(contactExternalRefKey.get()))) {
         SObject existingContact = existingContactsByExRefId.get(importEvent.raw.get(contactExternalRefKey.get()));
 
+        String accountId = (String) existingContact.getField("AccountId");
         if (account == null) {
-          String accountId = (String) existingContact.getField("AccountId");
           if (!Strings.isNullOrEmpty(accountId)) {
             SObject existingAccount = (SObject) existingContact.getChild("Account");
             account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
           }
         }
 
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
+        // use accountId, not account.id -- if the contact was recently imported by this current process,
+        // the contact.account child relationship will not yet exist in the existingContactsByExRefId map
+        contact = updateBulkImportContact(existingContact, accountId, importEvent, batchUpdateContacts);
       }
       // Else if a contact already exists with the given email address, update.
       else if (!Strings.isNullOrEmpty(importEvent.contactEmail) && existingContactsByEmail.containsKey(importEvent.contactEmail)) {
@@ -988,15 +992,17 @@ public class SfdcCrmService implements CrmService {
         SObject existingContact = existingContactsByEmail.get(importEvent.contactEmail).stream()
             .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate")))).get();
 
+        String accountId = (String) existingContact.getField("AccountId");
         if (account == null) {
-          String accountId = (String) existingContact.getField("AccountId");
           if (!Strings.isNullOrEmpty(accountId)) {
             SObject existingAccount = (SObject) existingContact.getChild("Account");
             account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
           }
         }
 
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
+        // use accountId, not account.id -- if the contact was recently imported by this current process,
+        // the contact.account child relationship will not yet exist in the existingContactsByEmail map
+        contact = updateBulkImportContact(existingContact, accountId, importEvent, batchUpdateContacts);
       }
       // A little weird looking, but if importing with constituent full names, often it could be either a household
       // name (and email would likely exist) or a business name (almost never email). In either case, hard for us to know
@@ -1045,15 +1051,15 @@ public class SfdcCrmService implements CrmService {
         } else if (existingContacts.size() == 1) {
           SObject existingContact = existingContacts.get(0);
 
+          String accountId = (String) existingContact.getField("AccountId");
           if (account == null) {
-            String accountId = (String) existingContact.getField("AccountId");
             if (!Strings.isNullOrEmpty(accountId)) {
               SObject existingAccount = (SObject) existingContact.getChild("Account");
               account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
             }
           }
 
-          contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
+          contact = updateBulkImportContact(existingContact, accountId, importEvent, batchUpdateContacts);
         } else {
           if (accountExternalRefKey.isPresent() && existingAccountsByExRefId.containsKey(importEvent.raw.get(accountExternalRefKey.get()))) {
             // If we have an external ref, try that first.
@@ -1063,7 +1069,7 @@ public class SfdcCrmService implements CrmService {
             account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent);
           }
 
-          contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
+          contact = insertBulkImportContact(importEvent, account.getId(), batchInsertContacts,
               existingContactsByEmail, nonBatchMode);
         }
       }
@@ -1077,7 +1083,7 @@ public class SfdcCrmService implements CrmService {
           account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent);
         }
 
-        contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
+        contact = insertBulkImportContact(importEvent, account.getId(), batchInsertContacts,
             existingContactsByEmail, nonBatchMode);
       }
 
@@ -1113,9 +1119,9 @@ public class SfdcCrmService implements CrmService {
           if (existingContacts.size() == 1) {
             SObject existingContact = existingContacts.get(0);
 
-            updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
+            updateBulkImportContact(existingContact, account.getId(), importEvent, batchUpdateContacts);
           } else if (existingContacts.size() == 0) {
-            insertBulkImportContact(importEvent, account, batchInsertContacts,
+            insertBulkImportContact(importEvent, account.getId(), batchInsertContacts,
                 existingContactsByEmail, nonBatchMode);
           }
         }
@@ -1281,11 +1287,11 @@ public class SfdcCrmService implements CrmService {
     return account;
   }
 
-  protected SObject updateBulkImportContact(SObject existingContact, SObject existingAccount, CrmImportEvent importEvent,
+  protected SObject updateBulkImportContact(SObject existingContact, String accountId, CrmImportEvent importEvent,
       List<String> bulkUpdateContacts) throws InterruptedException, ConnectionException {
     SObject contact = new SObject("Contact");
     contact.setId(existingContact.getId());
-    contact.setField("AccountId", existingAccount.getId());
+    contact.setField("AccountId", accountId);
 
     contact.setField("FirstName", importEvent.contactFirstName);
     contact.setField("LastName", importEvent.contactLastName);
@@ -1301,7 +1307,7 @@ public class SfdcCrmService implements CrmService {
 
   protected SObject insertBulkImportContact(
       CrmImportEvent importEvent,
-      SObject account,
+      String accountId,
       List<String> bulkInsertContacts,
       Multimap<String, SObject> existingContactsByEmail,
       boolean nonBatchMode
@@ -1318,7 +1324,7 @@ public class SfdcCrmService implements CrmService {
 
     setBulkImportContactFields(contact, null, importEvent);
 
-    contact.setField("AccountId", account.getId());
+    contact.setField("AccountId", accountId);
 
     if (nonBatchMode) {
       SaveResult saveResult = sfdcClient.insert(contact);
