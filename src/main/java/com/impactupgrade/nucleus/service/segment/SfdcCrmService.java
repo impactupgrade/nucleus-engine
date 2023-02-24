@@ -926,7 +926,7 @@ public class SfdcCrmService implements CrmService {
           // TODO: This was mainly due to CLHS, where an original FACTS migration created isolated households or, worse,
           //  combined grandparents into the student's household. Raiser's Edge has the correct relationships and
           //  and households, so we're using this to override the past.
-          account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent);
+//          account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent);
         }
       }
 
