@@ -443,23 +443,12 @@ public class SfdcCrmService implements CrmService {
     SObject opportunity = new SObject("Opportunity");
 
     opportunity.setField("AccountId", crmDonation.account.id);
+    opportunity.setField("ContactId", crmDonation.contact.id);
     opportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
 
     setOpportunityFields(opportunity, campaign, crmDonation);
 
-    String oppId = sfdcClient.insert(opportunity).getId();
-
-    if (!Strings.isNullOrEmpty(crmDonation.contact.id)) {
-      SObject contactRole = new SObject("OpportunityContactRole");
-      contactRole.setField("OpportunityId", oppId);
-      contactRole.setField("ContactId", crmDonation.contact.id);
-      contactRole.setField("IsPrimary", true);
-      // TODO: Not present by default at all orgs.
-//      contactRole.setField("Role", "Donor");
-      sfdcClient.insert(contactRole);
-    }
-
-    return oppId;
+    return sfdcClient.insert(opportunity).getId();
   }
 
   protected void setOpportunityFields(SObject opportunity, Optional<SObject> campaign, CrmDonation crmDonation) throws Exception {
