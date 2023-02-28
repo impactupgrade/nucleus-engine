@@ -6,6 +6,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.logging.log4j.LogManager;
@@ -91,6 +92,21 @@ public class GoogleSheetCrmService implements BasicCrmService {
     @Override
     public void refundDonation(CrmDonation crmDonation) throws Exception {
 
+    }
+
+    @Override
+    public List<CrmUser> getUsers() throws Exception {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public Map<String, String> getContactLists() throws Exception {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public List<String> getSMSOptInFieldOptions() throws Exception {
+        return Collections.emptyList();
     }
 
     @Override

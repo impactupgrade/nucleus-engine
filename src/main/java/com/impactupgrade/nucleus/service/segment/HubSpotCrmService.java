@@ -32,6 +32,8 @@ import com.impactupgrade.integration.hubspot.crm.v3.ImportsCrmV3Client;
 import com.impactupgrade.integration.hubspot.crm.v3.PropertiesCrmV3Client;
 import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
+import com.impactupgrade.integration.hubspot.v1.model.ContactList;
+import com.impactupgrade.integration.hubspot.v1.model.ContactListArray;
 import com.impactupgrade.integration.hubspot.v1.model.Engagement;
 import com.impactupgrade.integration.hubspot.v1.model.EngagementAssociations;
 import com.impactupgrade.integration.hubspot.v1.model.EngagementRequest;
@@ -71,6 +73,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -964,6 +967,27 @@ public class HubSpotCrmService implements CrmService {
     List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
     List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, getCustomFieldNames());
     return results.stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<CrmUser> getUsers() throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public Map<String, String> getContactLists() throws Exception {
+    Map<String, String> listNameToId = new HashMap<>();
+    List<ContactList> listResults = HubSpotClientFactory.v1Client(env).contactList().getAll().getLists();
+
+    for(ContactList list: listResults){
+      listNameToId.put(list.getName(), String.valueOf(list.getListId()));
+    }
+    return listNameToId;
+  }
+
+  @Override
+  public List<String> getSMSOptInFieldOptions() throws Exception {
+    return Collections.emptyList();
   }
 
   @Override

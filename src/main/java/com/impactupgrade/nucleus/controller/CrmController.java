@@ -299,4 +299,19 @@ public class CrmController {
     return Response.ok(insertedFields).build();
   }
 
+  @Path("/contact-lists")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getContactLists(
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+    CrmService crmService = env.primaryCrmService();
+
+    Map<String, String> lists = crmService.getContactLists();
+
+    return Response.status(200).entity(lists).build();
+  }
+
 }

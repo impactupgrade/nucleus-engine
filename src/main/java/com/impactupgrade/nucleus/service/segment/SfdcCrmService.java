@@ -760,6 +760,29 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmUser> getUsers() throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public Map<String, String> getContactLists() throws Exception {
+    Map<String, String> lists = new HashMap<>();
+    List<SObject> listRecords = new ArrayList<>();
+    listRecords.addAll(sfdcClient.getCampaigns());
+    listRecords.addAll(sfdcClient.getReports());
+
+    for(SObject list: listRecords){
+      lists.put((String) list.getField("name"), (String) list.getField("id"));
+    }
+    return lists;
+  }
+
+  @Override
+  public List<String> getSMSOptInFieldOptions() throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
   public double getDonationsTotal(String filter) throws Exception {
     // TODO
     return 0.0;

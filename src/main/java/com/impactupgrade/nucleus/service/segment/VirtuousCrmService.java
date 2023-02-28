@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +24,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -480,6 +482,21 @@ public class VirtuousCrmService implements BasicCrmService {
         return contacts.stream()
                 .map(this::asCrmContact)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CrmUser> getUsers() throws Exception {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public Map<String, String> getContactLists() throws Exception {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public List<String> getSMSOptInFieldOptions() throws Exception {
+        return Collections.emptyList();
     }
 
     @Override

@@ -72,6 +72,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected String DONATION_FIELDS;
   protected String RECURRINGDONATION_FIELDS;
   protected String USER_FIELDS;
+  protected String REPORT_FIELDS;
+  protected String OPPORTUNITY_FIELDS;
 
   public SfdcClient(Environment env) {
     this(
@@ -109,6 +111,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     LEAD_FIELDS = "Id, FirstName, LastName, Email";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";
+    REPORT_FIELDS = "id, name";
+    OPPORTUNITY_FIELDS = "id, name";
 
     if (npsp) {
       ACCOUNT_FIELDS += ", npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c";
@@ -664,6 +668,14 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     // since most RDs are monthly...
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
     return querySingle(query);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // REPORTS
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public List<SObject> getReports() throws InterruptedException, ConnectionException {
+    String query = "select " + REPORT_FIELDS + " FROM Report";
+    return queryList(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
