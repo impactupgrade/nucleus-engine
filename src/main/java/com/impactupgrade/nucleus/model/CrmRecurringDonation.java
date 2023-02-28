@@ -25,6 +25,10 @@ public class CrmRecurringDonation extends CrmRecord {
       this.names = names;
     }
 
+    public String primaryName() {
+      return names.get(0);
+    }
+
     public static Frequency fromName(String name) {
       if (Strings.isNullOrEmpty(name)) {
         return null;

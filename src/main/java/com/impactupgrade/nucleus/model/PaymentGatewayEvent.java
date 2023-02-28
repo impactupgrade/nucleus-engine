@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -457,6 +458,10 @@ public class PaymentGatewayEvent implements Serializable {
             // If there's a duplicate key, always keep the first! We define the order of precedence, above.
             (v1, v2) -> v1
         ));
+  }
+
+  public String getMetadataValue(String key) {
+    return getMetadataValue(List.of(key));
   }
 
   public String getMetadataValue(Collection<String> keys) {
