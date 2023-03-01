@@ -330,8 +330,9 @@ public class StripeClient {
             && existingCard.getExpMonth().equals(newCard.getExpMonth())
             && existingCard.getExpYear().equals(newCard.getExpYear());
         boolean cvcOverride = "pass".equals(newCard.getCvcCheck()) && !"pass".equals(existingCard.getCvcCheck());
+        boolean zipOverride = "pass".equals(newCard.getAddressZipCheck()) && !"pass".equals(existingCard.getAddressZipCheck());
         if (sameCard) {
-          if (cvcOverride) {
+          if (cvcOverride || zipOverride) {
             // keep existing card and just insert the new one
             log.info("card duplicated an existing source; keeping the old card and simply inserting the new one");
           } else {
