@@ -56,17 +56,20 @@ public class CrmContact extends CrmRecord {
   public Calendar firstDonationDate;
   public String firstName;
   public String homePhone;
+  public Double largestDonationAmount;
   public Calendar lastDonationDate;
   public String lastName;
   public String mobilePhone;
   public String notes;
   public Integer numDonations;
+  public Integer numDonationsYtd;
   public String ownerId;
   public String ownerName;
   public PreferredPhone preferredPhone = PreferredPhone.MOBILE;
   public Boolean smsOptIn;
   public Boolean smsOptOut;
   public Double totalDonationAmount;
+  public Double totalDonationAmountYtd;
   public String workPhone;
 
   protected String fullNameOverride;
@@ -95,17 +98,20 @@ public class CrmContact extends CrmRecord {
       Calendar firstDonationDate,
       String firstName,
       String homePhone,
+      Double largestDonationAmount,
       Calendar lastDonationDate,
       String lastName,
       String language,
       String mobilePhone,
       Integer numDonations,
+      Integer numDonationsYtd,
       String ownerId,
       String ownerName,
       PreferredPhone preferredPhone,
       Boolean smsOptIn,
       Boolean smsOptOut,
       Double totalDonationAmount,
+      Double totalDonationAmountYtd,
       String workPhone,
       Object crmRawObject,
       String crmUrl,
@@ -124,16 +130,19 @@ public class CrmContact extends CrmRecord {
     this.firstName = firstName;
     this.homePhone = homePhone;
     this.language = language;
+    this.largestDonationAmount = largestDonationAmount;
     this.lastDonationDate = lastDonationDate;
     this.lastName = lastName;
     this.mobilePhone = mobilePhone;
     this.numDonations = numDonations;
+    this.numDonationsYtd = numDonationsYtd;
     this.ownerId = ownerId;
     this.ownerName = ownerName;
     if (preferredPhone != null) this.preferredPhone = preferredPhone;
     this.smsOptIn = smsOptIn;
     this.smsOptOut = smsOptOut;
     this.totalDonationAmount = totalDonationAmount;
+    this.totalDonationAmountYtd = totalDonationAmountYtd;
     this.workPhone = workPhone;
 
     this.fieldFetcher = fieldFetcher;

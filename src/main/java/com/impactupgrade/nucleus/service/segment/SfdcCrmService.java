@@ -1630,9 +1630,10 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("ShippingCountry")
     );
 
+    String recordTypeName = null;
     EnvironmentConfig.AccountType type = EnvironmentConfig.AccountType.HOUSEHOLD;
     if (sObject.getChild("RecordType") != null) {
-      String recordTypeName = (String) sObject.getChild("RecordType").getField("Name");
+      recordTypeName = (String) sObject.getChild("RecordType").getField("Name");
       recordTypeName = recordTypeName == null ? "" : recordTypeName.toLowerCase(Locale.ROOT);
       // TODO: Customize record type names through env.json?
       if (recordTypeName.contains("business") || recordTypeName.contains("church") || recordTypeName.contains("org") || recordTypeName.contains("group"))  {
@@ -1646,6 +1647,7 @@ public class SfdcCrmService implements CrmService {
         shippingAddress,
         (String) sObject.getField("Name"),
         type,
+        recordTypeName,
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Account/" + sObject.getId() + "/view"
     );
@@ -1666,8 +1668,11 @@ public class SfdcCrmService implements CrmService {
     }
 
     CrmAddress crmAddress = new CrmAddress();
-    Double totalOppAmount = null;
-    Integer numberOfClosedOpps = null;
+    Double totalDonationAmount = null;
+    Double totalDonationAmountYtd = null;
+    Double largestDonationAmount = null;
+    Integer numberOfDonations = null;
+    Integer numberOfDonationsYtd = null;
     Calendar firstCloseDate = null;
     Calendar lastCloseDate = null;
 
@@ -1682,8 +1687,13 @@ public class SfdcCrmService implements CrmService {
           (String) sObject.getChild("Account").getField("BillingCountry")
       );
 
-      totalOppAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"));
-      numberOfClosedOpps = Double.valueOf((String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c")).intValue();
+      totalDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"));
+      totalDonationAmountYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppAmountThisYear__c"));
+      if (sObject.getChild("Account").getField("npo02__LargestAmount__c") != null) {
+        largestDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__LargestAmount__c"));
+      }
+      numberOfDonations = Double.valueOf((String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c")).intValue();
+      numberOfDonationsYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppsClosedThisYear__c")).intValue();
       try {
         firstCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
         lastCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
@@ -1722,17 +1732,20 @@ public class SfdcCrmService implements CrmService {
         firstCloseDate,
         (String) sObject.getField("FirstName"),
         homePhone,
+        largestDonationAmount,
         lastCloseDate,
         (String) sObject.getField("LastName"),
         getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.contactLanguage),
         (String) sObject.getField("MobilePhone"),
-        numberOfClosedOpps,
+        numberOfDonations,
+        numberOfDonationsYtd,
         (String) sObject.getField("Owner.Id"),
         ownerName,
         preferredPhone,
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
-        totalOppAmount,
+        totalDonationAmount,
+        totalDonationAmountYtd,
         (String) sObject.getField("npe01__WorkPhone__c"),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getId() + "/view",
