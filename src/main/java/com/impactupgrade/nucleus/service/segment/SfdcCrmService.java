@@ -778,8 +778,10 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<String> getSMSOptInFieldOptions() throws Exception {
-    return Collections.emptyList();
+  public Map<String, String> getSMSOptInFieldOptions() throws Exception {
+    String component = "Contact";
+    String regexFilter = "sms|ops|subscribe|text|sign";
+    return sfdcMetadataClient.getObjectFields(component, regexFilter);
   }
 
   @Override

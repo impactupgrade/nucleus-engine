@@ -313,5 +313,18 @@ public class CrmController {
 
     return Response.status(200).entity(lists).build();
   }
+  @Path("/contact-fields")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getContactFields(
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+    CrmService crmService = env.primaryCrmService();
 
+    Map<String, String> list = crmService.getSMSOptInFieldOptions();
+
+    return Response.status(200).entity(list).build();
+  }
 }
