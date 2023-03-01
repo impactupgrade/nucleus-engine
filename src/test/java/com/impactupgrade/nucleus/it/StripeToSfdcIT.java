@@ -245,7 +245,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("cus_JPgkris8GTsXIH", opp.getField("Payment_Gateway_Customer_Id__c"));
     assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-05-03", opp.getField("CloseDate"));
-    assertEquals("Integration Tester2 Donation", opp.getField("Name"));
+    // Allow the donation to accurately reflect the transaction's details, even if it doesn't exactly match
+    // the Contact/Account the CRM itself (data wasn't overwritten).
+    assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));
   }
 }

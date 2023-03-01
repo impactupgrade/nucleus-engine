@@ -47,14 +47,16 @@ public class DonationService {
     );
 
     if (existingDonation.isPresent()) {
+      paymentGatewayEvent.getCrmDonation().id = existingDonation.get().id;
+
       if (existingDonation.get().status != CrmDonation.Status.SUCCESSFUL && existingDonation.get().status != CrmDonation.Status.REFUNDED) {
         // allow updates to non-posted transactions occur, especially to catch cases where it initially failed is reattempted and succeeds
         log.info("found existing CRM donation {} using transaction {}, but in a non-final state; updating it with the reattempt...",
             existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
-        paymentGatewayEvent.getCrmDonation().id = existingDonation.get().id;
         crmService.updateDonation(paymentGatewayEvent.getCrmDonation());
         return;
       }
+
       // posted donation already exists in the CRM with the transactionId - do not process the donation
       log.info("found existing, posted CRM donation {} using transaction {}; skipping creation...",
           existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);

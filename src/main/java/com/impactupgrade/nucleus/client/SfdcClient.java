@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -755,7 +756,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType,
-      String fields, Set<String> customFields, String[] extraFields) throws ConnectionException, InterruptedException {
+      String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
     if (conditions.isEmpty()) {
       return List.of();
     }
@@ -771,6 +772,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       more = Collections.emptyList();
     }
 
+    // the provided Set might be immutable
+    Set<String> customFields = new HashSet<>(_customFields);
     // sometimes searching using external ref IDs or another unique fields -- make sure results include it
     if (!"id".equalsIgnoreCase(conditionFieldName) && !"email".equalsIgnoreCase(conditionFieldName)) {
       customFields.add(conditionFieldName);

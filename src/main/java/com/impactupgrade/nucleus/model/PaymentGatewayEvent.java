@@ -493,13 +493,6 @@ public class PaymentGatewayEvent implements Serializable {
     crmRecurringDonation.account.id = crmAccountId;
   }
 
-  public void setCrmAccount(CrmAccount crmAccount) {
-    this.crmAccount = crmAccount;
-    crmContact.account = crmAccount;
-    crmDonation.account = crmAccount;
-    crmRecurringDonation.account = crmAccount;
-  }
-
   public CrmContact getCrmContact() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmContact.id)) {
@@ -514,22 +507,12 @@ public class PaymentGatewayEvent implements Serializable {
     crmRecurringDonation.contact.id = crmContactId;
   }
 
-  public void setCrmContact(CrmContact crmContact) {
-    this.crmContact = crmContact;
-    crmDonation.contact = crmContact;
-    crmRecurringDonation.contact = crmContact;
-  }
-
   public CrmDonation getCrmDonation() {
     return crmDonation;
   }
 
   public void setCrmDonationId(String crmDonationId) {
     crmDonation.id = crmDonationId;
-  }
-
-  public void setCrmDonation(CrmDonation crmDonation) {
-    this.crmDonation = crmDonation;
   }
 
   public CrmRecurringDonation getCrmRecurringDonation() {
@@ -539,11 +522,6 @@ public class PaymentGatewayEvent implements Serializable {
   public void setCrmRecurringDonationId(String crmRecurringDonationId) {
     crmRecurringDonation.id = crmRecurringDonationId;
     crmDonation.recurringDonation.id = crmRecurringDonationId;
-  }
-
-  public void setCrmRecurringDonation(CrmRecurringDonation crmRecurringDonation) {
-    this.crmRecurringDonation = crmRecurringDonation;
-    crmDonation.recurringDonation = crmRecurringDonation;
   }
 
   // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.

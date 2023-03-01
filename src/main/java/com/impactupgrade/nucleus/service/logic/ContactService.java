@@ -83,11 +83,10 @@ public class ContactService {
     }
 
     if (existingAccount.isPresent() || existingContact.isPresent()){
-      // before setting the existing CRM data in the event, backfill any missing data
       backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
 
-      existingAccount.ifPresent(paymentGatewayEvent::setCrmAccount);
-      existingContact.ifPresent(paymentGatewayEvent::setCrmContact);
+      existingAccount.ifPresent(a -> paymentGatewayEvent.setCrmAccountId(a.id));
+      existingContact.ifPresent(c -> paymentGatewayEvent.setCrmContactId(c.id));
 
       return;
     }
@@ -114,15 +113,7 @@ public class ContactService {
       }
     }
 
-    // before setting the existing CRM data in the event, backfill any missing data
     backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
-
-    if (existingAccount.isPresent()) {
-      paymentGatewayEvent.setCrmAccount(existingAccount.get());
-    }
-    if (existingContact.isPresent()) {
-      paymentGatewayEvent.setCrmContact(existingContact.get());
-    }
   }
 
   public void backfillMissingData(PaymentGatewayEvent paymentGatewayEvent,
