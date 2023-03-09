@@ -78,7 +78,11 @@ public class AntiFraudService {
       double score = jsonObject.has("score") ? jsonObject.getDouble("score") : 0.0;
       String hostname = jsonObject.has("hostname") ? jsonObject.getString("hostname") : "";
 
-      log.info("recaptcha: success={} score={} hostname={}", success, score, hostname);
+      if (!success) {
+        log.warn("recaptcha failed: {}", jsonObject);
+      } else {
+        log.info("recaptcha: score={} hostname={}", score, hostname);
+      }
 
       return success && score >= MIN_SCORE;
     } catch (Exception e) {
