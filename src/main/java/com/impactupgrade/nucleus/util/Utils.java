@@ -22,13 +22,15 @@ import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -97,25 +99,47 @@ public class Utils {
   }
 
   public static Calendar getCalendarFromDateString(String date) throws ParseException {
-    if (date != null && !date.isEmpty()) {
-      SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-      // must not be lenient, otherwise this will pick up phone numbers, etc.
-      sdf.setLenient(false);
-      Date localDate = sdf.parse(date);
-      return new Calendar.Builder().setInstant(localDate.getTime()).build();
+    return toCalendar(getZonedDateTimeFromDateString(date));
+  }
+
+  public static ZonedDateTime getZonedDateTimeFromDateString(String date) {
+    return getZonedDateTimeFromDateString(date, "UTC");
+  }
+
+  public static ZonedDateTime getZonedDateTimeFromDateString(String date, String timezoneId) {
+    if (!Strings.isNullOrEmpty(date)) {
+      DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+      LocalDate localDate = LocalDate.parse(date, dtf);
+      return localDate.atStartOfDay(ZoneId.of(timezoneId));
     }
     return null;
   }
 
-  public static ZonedDateTime getZonedDateFromDateString(String date) {
-    if (date != null && !date.isEmpty()) {
-      // TODO: Seems off?
-      DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-      LocalDate ld = LocalDate.parse(date, dtf);
-      // TODO: TZ?
-      return ld.atStartOfDay(ZoneId.systemDefault());
+  public static Calendar getCalendarFromDateTimeString(String dateTime) {
+    return toCalendar(getZonedDateTimeFromDateTimeString(dateTime));
+  }
+
+  public static ZonedDateTime getZonedDateTimeFromDateTimeString(String dateTime) {
+    if (!Strings.isNullOrEmpty(dateTime)) {
+      try {
+        return ZonedDateTime.parse(dateTime);
+      } catch (DateTimeParseException e) {
+        return getZonedDateTimeFromDateString(dateTime, "UTC");
+      }
     }
     return null;
+  }
+
+  public static ZonedDateTime now(String timezoneId) {
+    return ZonedDateTime.ofInstant(Instant.now(), ZoneId.of(timezoneId));
+  }
+
+  public static ZonedDateTime toZonedDateTime(Long epochSecond, String timezoneId) {
+    return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond), ZoneId.of(timezoneId));
+  }
+
+  public static Calendar toCalendar(ZonedDateTime zonedDateTime) {
+    return zonedDateTime != null ? GregorianCalendar.from(zonedDateTime) : null;
   }
 
   public static String cleanUnicode(String s) {

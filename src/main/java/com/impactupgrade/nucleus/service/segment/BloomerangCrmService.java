@@ -669,7 +669,7 @@ public class BloomerangCrmService implements CrmService {
         null, // String transactionSecondaryId,
         null, // String transactionUrl,
         null, // String campaignId,
-        Utils.getZonedDateFromDateString(donation.date),
+        Utils.getZonedDateTimeFromDateTimeString(donation.date),
         null, // String description,
         null, // String name,
         null, // String ownerId,
