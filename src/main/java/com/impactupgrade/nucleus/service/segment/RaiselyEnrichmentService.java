@@ -5,7 +5,6 @@ import com.impactupgrade.nucleus.client.RaiselyClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -106,20 +105,6 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     } else {
       return null;
     }
-  }
-
-  protected PaymentGatewayEvent toPaymentGatewayEvent(RaiselyClient.Donation donation, RaiselyClient.DonationItem item, PaymentGatewayEvent originalEvent) {
-    PaymentGatewayEvent clonedEvent = SerializationUtils.clone(originalEvent);
-    Double feeAmount = Double.valueOf(donation.fee);
-
-    if (item.type.equalsIgnoreCase("ticket") && donation.feeCovered){
-      clonedEvent.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.TICKET;
-      clonedEvent.getCrmDonation().amount = (item.amount / 100.0) + feeAmount;
-    } else {
-      clonedEvent.getCrmDonation().transactionType = EnvironmentConfig.TransactionType.DONATION;
-      clonedEvent.getCrmDonation().amount = item.amount / 100.0;
-    }
-    return clonedEvent;
   }
 
 }
