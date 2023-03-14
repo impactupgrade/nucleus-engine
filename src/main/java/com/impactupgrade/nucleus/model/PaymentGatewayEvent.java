@@ -90,9 +90,9 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripeCharge.getCreated() != null) {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeCharge.getCreated()), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.toZonedDateTime(stripeCharge.getCreated(), "UTC");
     } else {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.now("UTC");
     }
 
     crmDonation.description = stripeCharge.getDescription();
@@ -158,9 +158,9 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripePaymentIntent.getCreated() != null) {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripePaymentIntent.getCreated()), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.toZonedDateTime(stripePaymentIntent.getCreated(), "UTC");
     } else {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.now("UTC");
     }
 
     crmDonation.description = stripePaymentIntent.getDescription();
@@ -212,9 +212,9 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripeRefund.getCreated() != null) {
-      crmDonation.refundDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeRefund.getCreated()), ZoneId.of("UTC"));
+      crmDonation.refundDate = Utils.toZonedDateTime(stripeRefund.getCreated(), "UTC");
     } else {
-      crmDonation.refundDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.refundDate = Utils.now("UTC");
     }
   }
 
@@ -424,9 +424,9 @@ public class PaymentGatewayEvent implements Serializable {
     crmRecurringDonation.gatewayName = "Stripe";
 
     if (stripeSubscription.getTrialEnd() != null) {
-      crmRecurringDonation.subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getTrialEnd()), ZoneId.of("UTC"));
+      crmRecurringDonation.subscriptionStartDate = Utils.toZonedDateTime(stripeSubscription.getTrialEnd(), "UTC");
     } else {
-      crmRecurringDonation.subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getStartDate()), ZoneId.of("UTC"));
+      crmRecurringDonation.subscriptionStartDate = Utils.toZonedDateTime(stripeSubscription.getStartDate(), "UTC");
     }
     crmRecurringDonation.subscriptionNextDate = crmRecurringDonation.subscriptionStartDate;
 

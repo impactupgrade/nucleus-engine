@@ -38,14 +38,12 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.text.ParseException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -482,7 +480,7 @@ public class SfdcCrmService implements CrmService {
 
     opportunity.setField("Amount", crmDonation.amount);
     opportunity.setField("CampaignId", campaign.map(SObject::getId).orElse(null));
-    opportunity.setField("CloseDate", GregorianCalendar.from(crmDonation.closeDate));
+    opportunity.setField("CloseDate", Utils.toCalendar(crmDonation.closeDate));
     opportunity.setField("Description", crmDonation.description);
 
     // purely a default, but we generally expect this to be overridden
@@ -503,7 +501,7 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId, crmDonation.refundId);
     }
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate)) {
-      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate, GregorianCalendar.from(crmDonation.refundDate));
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate, Utils.toCalendar(crmDonation.refundDate));
     }
     // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
@@ -563,12 +561,12 @@ public class SfdcCrmService implements CrmService {
     // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
     if (!Strings.isNullOrEmpty(crmDonation.refundId)) {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, GregorianCalendar.from(crmDonation.depositDate));
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, Utils.toCalendar(crmDonation.depositDate));
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, crmDonation.depositId);
       }
     } else {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)) {
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, GregorianCalendar.from(crmDonation.depositDate));
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, Utils.toCalendar(crmDonation.depositDate));
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, crmDonation.depositId);
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, crmDonation.netAmountInDollars);
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, crmDonation.feeInDollars);
@@ -603,8 +601,8 @@ public class SfdcCrmService implements CrmService {
     if (crmRecurringDonation.frequency != null) {
       recurringDonation.setField("Npe03__Installment_Period__c", crmRecurringDonation.frequency.name());
     }
-    recurringDonation.setField("Npe03__Date_Established__c", GregorianCalendar.from(crmRecurringDonation.subscriptionStartDate));
-    recurringDonation.setField("Npe03__Next_Payment_Date__c", GregorianCalendar.from(crmRecurringDonation.subscriptionNextDate));
+    recurringDonation.setField("Npe03__Date_Established__c", Utils.toCalendar(crmRecurringDonation.subscriptionStartDate));
+    recurringDonation.setField("Npe03__Next_Payment_Date__c", Utils.toCalendar(crmRecurringDonation.subscriptionNextDate));
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(crmRecurringDonation).map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
@@ -1720,9 +1718,9 @@ public class SfdcCrmService implements CrmService {
       numberOfDonations = Double.valueOf((String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c")).intValue();
       numberOfDonationsYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppsClosedThisYear__c")).intValue();
       try {
-        firstCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
-        lastCloseDate = Utils.getCalendarFromDateString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
-      } catch (ParseException e) {
+        firstCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
+        lastCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
+      } catch (Exception e) {
         log.error("unable to parse first/last close date", e);
       }
     }
@@ -1796,7 +1794,7 @@ public class SfdcCrmService implements CrmService {
     String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     String paymentGatewayTransactionId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId);
     Double amount = Double.valueOf(sObject.getField("Amount").toString());
-    ZonedDateTime closeDate = Utils.getZonedDateFromDateString((String) sObject.getField("CloseDate"));
+    ZonedDateTime closeDate = Utils.getZonedDateTimeFromDateTimeString((String) sObject.getField("CloseDate"));
 
     // TODO: yuck -- allow subclasses to more easily define custom mappers?
     Object statusNameO = sObject.getField("StageName");
