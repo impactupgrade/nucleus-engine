@@ -105,7 +105,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public Map<String, String> getSMSOptInFieldOptions() throws Exception {
+    public Map<String, String> getFieldOptions(String object) throws Exception {
         return Collections.emptyMap();
     }
 

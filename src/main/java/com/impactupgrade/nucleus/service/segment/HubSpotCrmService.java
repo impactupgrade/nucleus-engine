@@ -33,7 +33,6 @@ import com.impactupgrade.integration.hubspot.crm.v3.PropertiesCrmV3Client;
 import com.impactupgrade.integration.hubspot.v1.EngagementV1Client;
 import com.impactupgrade.integration.hubspot.v1.model.ContactArray;
 import com.impactupgrade.integration.hubspot.v1.model.ContactList;
-import com.impactupgrade.integration.hubspot.v1.model.ContactListArray;
 import com.impactupgrade.integration.hubspot.v1.model.Engagement;
 import com.impactupgrade.integration.hubspot.v1.model.EngagementAssociations;
 import com.impactupgrade.integration.hubspot.v1.model.EngagementRequest;
@@ -986,8 +985,16 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, String> getSMSOptInFieldOptions() throws Exception {
-    return Collections.emptyMap();
+  public Map<String, String> getFieldOptions(String object) throws Exception {
+    Map<String, String> propertyLabelToName = new HashMap<>();
+    PropertiesResponse response = propertiesClient.readAll(object);
+
+    for(Property property : response.getResults()){
+      propertyLabelToName.put(property.getLabel(), property.getName());
+    }
+
+
+    return propertyLabelToName;
   }
 
   @Override

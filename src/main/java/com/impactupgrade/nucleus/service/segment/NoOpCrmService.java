@@ -172,7 +172,7 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, String> getSMSOptInFieldOptions() throws Exception {
+  public Map<String, String> getFieldOptions(String object) throws Exception {
     return Collections.emptyMap();
   }
 

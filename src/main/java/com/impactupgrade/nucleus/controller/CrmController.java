@@ -41,9 +41,11 @@ import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
@@ -308,23 +310,52 @@ public class CrmController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
     CrmService crmService = env.primaryCrmService();
-
     Map<String, String> lists = crmService.getContactLists();
+    Map<String, String> filteredLists = new HashMap<>();
+    String filter = "sample|npsp|"; //TODO: refine filters
+    Pattern pattern = Pattern.compile(filter);
 
-    return Response.status(200).entity(lists).build();
+    for (Map.Entry<String, String> entry : lists.entrySet()) {
+      String value = entry.getValue();
+      if (!pattern.matcher(value).matches()) { //*note* in this case we are filtering out matches and not filtering for matches
+        filteredLists.put(entry.getKey(), value);
+      }
+    }
+
+    return Response.status(200).entity(filteredLists).build();
   }
+
   @Path("/contact-fields")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContactFields(
+          @QueryParam("type") String type,
           @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
     CrmService crmService = env.primaryCrmService();
+    String filter = "";
 
-    Map<String, String> list = crmService.getSMSOptInFieldOptions();
+    switch (type){
+      case "sms":
+        filter = "sms|ops|subscribe|text|sign"; //TODO: refine filters
+      default:
+        filter = "(?s).*";
+    }
 
-    return Response.status(200).entity(list).build();
+    Map<String, String> fullList = crmService.getFieldOptions("contact" );
+
+    Map<String, String> filteredList = new HashMap<>();
+    Pattern pattern = Pattern.compile(filter);
+
+    for (Map.Entry<String, String> entry : fullList.entrySet()) {
+      String value = entry.getValue();
+      if (pattern.matcher(value).matches()) {
+        filteredList.put(entry.getKey(), value);
+      }
+    }
+
+    return Response.status(200).entity(filteredList).build();
   }
 }

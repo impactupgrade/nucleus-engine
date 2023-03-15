@@ -177,7 +177,6 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // EMAIL SYNC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception;
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
@@ -185,6 +184,13 @@ public interface CrmService extends SegmentService {
   // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
   // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
   Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Users
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  List<CrmUser> getUsers() throws Exception;
+  Optional<CrmUser> getUserById(String id) throws Exception;
+  Optional<CrmUser> getUserByEmail(String email) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // STATS
@@ -204,16 +210,12 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // PORTAL FIELD UTILS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  List<CrmUser> getUsers() throws Exception;
   Map<String, String> getContactLists() throws Exception;
-  Map<String, String> getSMSOptInFieldOptions() throws Exception;
+  Map<String, String> getFieldOptions(String object) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  Optional<CrmUser> getUserById(String id) throws Exception;
-  Optional<CrmUser> getUserByEmail(String email) throws Exception;
   String insertTask(CrmTask crmTask) throws Exception;
 
   List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields);

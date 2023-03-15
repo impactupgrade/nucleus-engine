@@ -388,7 +388,7 @@ public class SfdcMetadataClient {
    * @return A map of field labels to their api name, will use the API name for the label if the label is missing
    * @throws ConnectionException
    */
-  public Map<String, String> getObjectFields(String component, String regexFilter) throws ConnectionException {
+  public Map<String, String> getObjectFields(String component) throws ConnectionException {
     Map<String, String> fieldLabelToAPIName = new HashMap<>();
 
     SfdcMetadataClient sfdcMetadataClient = new SfdcMetadataClient(env);
@@ -396,22 +396,16 @@ public class SfdcMetadataClient {
     ReadResult readResult = metadataConnection.readMetadata("CustomObject", new String[] {component });
     Metadata[] mdInfo = readResult.getRecords();
 
-    Pattern pattern = Pattern.compile(regexFilter);
 
     for (Metadata md : mdInfo) { //Loop through each field
       CustomObject customObject = (CustomObject) md;
 
       for (CustomField field : customObject.getFields()) {
-        Matcher matcher = pattern.matcher(field.getFullName());
-        if (matcher.find()) { //Filter fields
-          if (field.getLabel().equals(null)){ //Add field to the map if not filtered
+          if (field.getLabel().equals(null)) { //Add field to the map if not filtered
             fieldLabelToAPIName.put(field.getFullName(), field.getFullName());
-          }else{
+          } else {
             fieldLabelToAPIName.put(field.getLabel(), field.getFullName());
           }
-        }else{
-          continue;
-        }
       }
     }
     return fieldLabelToAPIName;
