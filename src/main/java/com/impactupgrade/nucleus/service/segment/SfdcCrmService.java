@@ -511,32 +511,51 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
-    Map<String, SObject> opportunityUpdates = new HashMap<>();
-    List<CrmDonation> crmDonationsByDate = crmDonations.stream()
-        .sorted(Comparator.comparing(crmDonation -> crmDonation.closeDate))
-        .collect(Collectors.toList());
+    // Group donation by id to check if we have more than 1 update for each crm donation id
+    Map<String, List<CrmDonation>> crmDonationsById = crmDonations.stream()
+        .collect(Collectors.groupingBy(crmDonation -> crmDonation.id));
 
-    for (CrmDonation crmDonation : crmDonationsByDate) {
-      // Note that the opportunityUpdates map is in place for situations where a charge and its refund are in the same
-      // deposit. In that situation, the Donation CRM ID would wind up in the batch update twice, which causes errors
-      // downstream. Instead, ensure we're setting the fields for both situations, but on a single object.
+    List<CrmDonation> batchUpdates = new ArrayList<>();
+    List<CrmDonation> singleUpdates = new ArrayList<>();
+
+    // One update for id -> can be processed in a batch
+    // More than one update for id -> should be processed one by one
+    crmDonationsById.entrySet().forEach(e -> {
+      List<CrmDonation> donations = e.getValue();
+      if (donations.size() > 1) {
+        singleUpdates.addAll(donations);
+      } else {
+        batchUpdates.addAll(donations);
+      }
+    });
+
+    for (CrmDonation crmDonation : batchUpdates) {
+      SObject opportunityUpdate = new SObject("Opportunity");
+      opportunityUpdate.setId(crmDonation.id);
+      setDonationDepositFields((SObject) crmDonation.crmRawObject, opportunityUpdate, crmDonation);
+      sfdcClient.batchUpdate(opportunityUpdate);
+    }
+    sfdcClient.batchFlush();
+
+    // Note that the opportunityUpdates map is in place for situations where a charge and its refund are in the same
+    // deposit. In that situation, the Donation CRM ID would wind up in the batch update twice, which causes errors
+    // downstream. Instead, ensure we're setting the fields for both situations, but on a single object.
+    Map<String, SObject> opportunityUpdates = new HashMap<>();
+
+    Collections.sort(singleUpdates, Comparator.comparing(crmDonation -> crmDonation.closeDate));
+    for (CrmDonation crmDonation : singleUpdates) {
       SObject opportunityUpdate;
       if (opportunityUpdates.containsKey(crmDonation.id)) {
         opportunityUpdate = opportunityUpdates.get(crmDonation.id);
-        setDonationDepositFields((SObject) crmDonation.crmRawObject, opportunityUpdate, crmDonation);
-        // more than 1 update for given crm donation id
-        // should be applied in non-batch mode
-        sfdcClient.update(opportunityUpdate);
       } else {
         opportunityUpdate = new SObject("Opportunity");
         opportunityUpdate.setId(crmDonation.id);
         opportunityUpdates.put(crmDonation.id, opportunityUpdate);
-        setDonationDepositFields((SObject) crmDonation.crmRawObject, opportunityUpdate, crmDonation);
-        sfdcClient.batchUpdate(opportunityUpdate);
       }
-    }
+      setDonationDepositFields((SObject) crmDonation.crmRawObject, opportunityUpdate, crmDonation);
 
-    sfdcClient.batchFlush();
+      sfdcClient.update(opportunityUpdate);
+    }
   }
 
   protected void setDonationDepositFields(SObject existingOpportunity, SObject opportunityUpdate,
