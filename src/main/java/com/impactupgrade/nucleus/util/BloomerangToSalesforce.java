@@ -9,10 +9,8 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
-import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 
@@ -20,8 +18,6 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -29,8 +25,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// TODO: Temporary utility to eventually be worked into a reusable strategy. Square up migrations, bulk imports,
-//  and the generic CRM model.
+// TODO: Shift to using the Bloomerang API, instead of exports.
+// TODO: Rework this to use Bulk Upsert, like the Raiser's Edge migration.
+// TODO: Currently doing inserts only, no updates.
 public class BloomerangToSalesforce {
 
   public static void main(String[] args) throws Exception {
@@ -40,16 +37,15 @@ public class BloomerangToSalesforce {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.crmPrimary = "salesforce";
         envConfig.salesforce.sandbox = false;
-        envConfig.salesforce.url = "esmlutheranschool.my.salesforce.com";
-        envConfig.salesforce.username = "team+esm@impactupgrade.com";
-        envConfig.salesforce.password = "byr3zaz7WMK.yqr.qvebUTYymkcVLjB8O2ouccHFOvJ";
+        envConfig.salesforce.url = "communityone.my.salesforce.com";
+        envConfig.salesforce.username = "team+c1@impactupgrade.com";
+        envConfig.salesforce.password = "hmn0YMZ@huj*bth!dvulmszN6oFKlUXoZ3VZg8TMlyb";
         envConfig.salesforce.enhancedRecurringDonations = true;
         return envConfig;
       }
     };
 
-//    new BloomerangToSalesforce(env).provisionFields();
-//    new BloomerangToSalesforce(env).migrate();
+    new BloomerangToSalesforce(env).migrate();
   }
 
   private final Environment env;
@@ -58,76 +54,23 @@ public class BloomerangToSalesforce {
     this.env = env;
   }
 
-  public void provisionFields() throws Exception {
-    SfdcMetadataClient sfdcMetadataClient = new SfdcMetadataClient(env);
-
-    // DEFAULT FIELDS
-
-    sfdcMetadataClient.createCustomField("Opportunity", "Payment_Gateway_Name__c", "Payment Gateway Name", FieldType.Picklist, List.of("Stripe"));
-    sfdcMetadataClient.createCustomField("Opportunity", "Payment_Gateway_Transaction_ID__c", "Payment Gateway Transaction ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Opportunity", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Opportunity", "Payment_Gateway_Deposit_ID__c", "Payment Gateway Deposit ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Opportunity", "Payment_Gateway_Deposit_Date__c", "Payment Gateway Deposit Date", FieldType.Date);
-    sfdcMetadataClient.createCustomField("Opportunity", "Payment_Gateway_Deposit_Net_Amount__c", "Payment Gateway Deposit Net Amount", FieldType.Currency, 18, 2);
-    sfdcMetadataClient.createCustomField("Opportunity", "Payment_Gateway_Deposit_Fee__c", "Payment Gateway Deposit Fee", FieldType.Currency, 18, 2);
-    sfdcMetadataClient.createCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Subscription_ID__c", "Payment Gateway Subscription ID", FieldType.Text, 100);
-
-    sfdcMetadataClient.createCustomField("Account", "Bloomerang_ID__c", "Bloomerang ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Account", "Envelope_Name__c", "Envelope Name", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Account", "Recognition_Name__c", "Recognition Name", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Account", "Status__c", "Status", FieldType.Text, 100);
-
-    sfdcMetadataClient.createCustomField("Contact", "Bloomerang_ID__c", "Bloomerang ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Contact", "Preferred_Communication_Channel__c", "Preferred Communication Channel", FieldType.Picklist, List.of("Email"));
-    sfdcMetadataClient.createCustomField("Contact", "Gender__c", "Gender", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Contact", "Middle_Name__c", "Middle Name", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Contact", "Prefix__c", "Prefix", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Contact", "Status__c", "Status", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Contact", "Employer__c", "Employer", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Contact", "Communication_Restrictions__c", "Communication Restrictions", FieldType.MultiselectPicklist, List.of("DoNotMail"));
-
-    sfdcMetadataClient.createCustomField("Opportunity", "Bloomerang_ID__c", "Bloomerang ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Opportunity", "Non_Deductible__c", "Non Deductible", FieldType.Checkbox);
-    sfdcMetadataClient.createCustomField("Opportunity", "Fund__c", "Fund", FieldType.Picklist, List.of("General Support"));
-    sfdcMetadataClient.createCustomField("Opportunity", "Appeal__c", "Appeal", FieldType.Picklist, List.of("Golf Outing 2022"));
-    sfdcMetadataClient.createCustomField("Opportunity", "Check_Number__c", "Check Number", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Opportunity", "In_Kind_Market_Value__c", "In Kind Market Value", FieldType.Number, 8, 2);
-
-    sfdcMetadataClient.createCustomField("Npe03__Recurring_Donation__c", "Bloomerang_ID__c", "Bloomerang ID", FieldType.Text, 100);
-    sfdcMetadataClient.createCustomField("Npe03__Recurring_Donation__c", "Fund__c", "Fund", FieldType.Picklist, List.of("General Support"));
-    sfdcMetadataClient.createCustomField("Npe03__Recurring_Donation__c", "Appeal__c", "Appeal", FieldType.Picklist, List.of(""));
-
-    provisionCustomFields(sfdcMetadataClient);
-  }
-
-  public void provisionCustomFields(SfdcMetadataClient sfdcMetadataClient) throws Exception {
-    // CLHS
-
-//    sfdcMetadataClient.createCustomField("Account", "Church_Affiliation__c", "Church Affiliation", FieldType.Text, 100);
-//    sfdcMetadataClient.createCustomField("Account", "Services_Offered__c", "Services Offered", FieldType.MultiselectPicklist, List.of("Home Improvement"));
-//    sfdcMetadataClient.createCustomField("Account", "Organization_Type__c", "Organization Type", FieldType.Picklist, List.of("Corporation / Business"));
-//    sfdcMetadataClient.createCustomField("Contact", "Birth_Year__c", "Birth Year", FieldType.Number, 4, 0);
-//    sfdcMetadataClient.createCustomField("Contact", "Classification__c", "Classification", FieldType.MultiselectPicklist, List.of("Volunteer"));
-  }
-
   public void migrate() throws Exception {
     SfdcClient sfdcClient = new SfdcClient(env);
 
     // TODO: Bloomerang exports a ZIP with a few dozen CSV files. We should accept that ZIP and expand it on our own.
-    String addressFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/Addresses.csv";
-    String constituentFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/Constituents.csv";
-    String donationFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/Donations.csv";
-    String emailFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/Emails.csv";
-    String householdFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/Households.csv";
-    String phoneFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/Phones.csv";
-    String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/RecurringDonations.csv";
-    String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/RecurringDonationPayments.csv";
-    String transactionFile = "/home/brmeyer/Downloads/DataExport-2022-11-18/Transactions.csv";
+    String addressFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Addresses.csv";
+    String constituentFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Constituents.csv";
+    String donationFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Donations.csv";
+    String emailFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Emails.csv";
+    String householdFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Households.csv";
+    String phoneFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Phones.csv";
+    String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/RecurringDonations.csv";
+    String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/RecurringDonationPayments.csv";
+    String transactionFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Transactions.csv";
 
     // TODO: pull to config
-    String HOUSEHOLD_RECORD_TYPE_ID = "0124x000001kfliAAA";
-    String ORGANIZATION_RECORD_TYPE_ID = "0124x000001kfljAAA";
+    String HOUSEHOLD_RECORD_TYPE_ID = "0128c000001xDX2AAM";
+    String ORGANIZATION_RECORD_TYPE_ID = "0128c000001xDX3AAM";
 
     // First, we need to go through multiple sheets with lookup data we need. Hold them in memory using simple Maps.
 
@@ -163,11 +106,42 @@ public class BloomerangToSalesforce {
       }
     }
 
-    // We also need Maps to keep track of what we've upserted, needed as references later on.
+    // We also need Maps to keep track of what we've insert, needed as references later on.
     Map<String, String> constituentIdToAccountId = new HashMap<>();
     Map<String, String> constituentIdToContactId = new HashMap<>();
     Map<String, Boolean> constituentIdToIsBusiness = new HashMap<>();
     Map<String, String> referenceDesignationNumberToRdId = new HashMap<>();
+
+    // Then finally, grab what already exists in SFDC so we can skip them.
+
+    Map<String, SObject> accountsByBloomerangIds = new HashMap<>();
+    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c, RecordTypeId FROM Account WHERE Bloomerang_ID__c!=''");
+    for (SObject account : accounts) {
+      accountsByBloomerangIds.put((String) account.getField("Bloomerang_ID__c"), account);
+      boolean isBusiness = account.getField("RecordTypeId").equals(ORGANIZATION_RECORD_TYPE_ID);
+      constituentIdToIsBusiness.put((String) account.getField("Bloomerang_ID__c"), isBusiness);
+    }
+
+    Map<String, SObject> contactsByBloomerangIds = new HashMap<>();
+    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Bloomerang_ID__c FROM Contact WHERE Bloomerang_ID__c!=''");
+    for (SObject contact : contacts) {
+      contactsByBloomerangIds.put((String) contact.getField("Bloomerang_ID__c"), contact);
+      constituentIdToAccountId.put((String) contact.getField("Bloomerang_ID__c"), contact.getField("AccountId").toString());
+      constituentIdToContactId.put((String) contact.getField("Bloomerang_ID__c"), contact.getId());
+    }
+
+    Map<String, SObject> rdsByBloomerangIds = new HashMap<>();
+    List<SObject> rds = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c FROM Npe03__Recurring_Donation__c WHERE Bloomerang_ID__c!=''");
+    for (SObject rd : rds) {
+      rdsByBloomerangIds.put((String) rd.getField("Bloomerang_ID__c"), rd);
+      referenceDesignationNumberToRdId.put((String) rd.getField("Bloomerang_ID__c"), rd.getId());
+    }
+
+    Map<String, SObject> opportunitiesByBloomerangIds = new HashMap<>();
+    List<SObject> opportunities = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c FROM Opportunity WHERE Bloomerang_ID__c!=''");
+    for (SObject opportunity : opportunities) {
+      opportunitiesByBloomerangIds.put((String) opportunity.getField("Bloomerang_ID__c"), opportunity);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ACCOUNT
@@ -179,26 +153,27 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> householdRows;
     try (InputStream is = new FileInputStream(householdFile)) {
       householdRows = Utils.getCsvData(is);
-      for (Map<String, String> householdRow : householdRows) {
-        String accountNumber = householdRow.get("AccountNumber");
+      householdRows = householdRows.stream().filter(r -> !accountsByBloomerangIds.containsKey(r.get("AccountNumber"))).toList();
+    }
 
-        SObject sfdcAccount = new SObject("Account");
-        sfdcAccount.setField("Bloomerang_ID__c", accountNumber);
-        sfdcAccount.setField("RecordTypeId", HOUSEHOLD_RECORD_TYPE_ID);
-        sfdcAccount.setField("Name", householdRow.get("FullName"));
-        sfdcAccount.setField("npo02__Formal_Greeting__c", householdRow.get("FormalName"));
-        sfdcAccount.setField("npo02__Informal_Greeting__c", householdRow.get("InformalName"));
-        sfdcAccount.setField("Recognition_Name__c", householdRow.get("RecognitionName"));
+    for (Map<String, String> householdRow : householdRows) {
+      String accountNumber = householdRow.get("AccountNumber");
 
-        setCustomAccountFields(sfdcAccount, householdRow);
+      SObject sfdcAccount = new SObject("Account");
+      sfdcAccount.setField("Bloomerang_ID__c", accountNumber);
+      sfdcAccount.setField("RecordTypeId", HOUSEHOLD_RECORD_TYPE_ID);
+      sfdcAccount.setField("Name", householdRow.get("FullName"));
+      sfdcAccount.setField("npo02__Formal_Greeting__c", householdRow.get("FormalName"));
+      sfdcAccount.setField("npo02__Informal_Greeting__c", householdRow.get("InformalName"));
+      sfdcAccount.setField("Recognition_Name__c", householdRow.get("RecognitionName"));
 
-        sfdcClient.batchInsert(sfdcAccount);
-      }
+      sfdcClient.batchInsert(sfdcAccount);
     }
 
     SFDCPartnerAPIClient.BatchResults results = sfdcClient.batchFlush();
     // Run through the loop again and gather the results.
     for (int i = 0; i < householdRows.size(); i++) {
+      // TODO: Wouldn't this make some of the Bulk Upsert logic simpler in SfdcCrmService?
       SaveResult result = results.batchInsertResults().get(i);
       if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
         Map<String, String> householdRow = householdRows.get(i);
@@ -217,6 +192,7 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> constituentRows;
     try (InputStream is = new FileInputStream(constituentFile)) {
       constituentRows = Utils.getCsvData(is);
+      constituentRows = constituentRows.stream().filter(r -> !contactsByBloomerangIds.containsKey(r.get("AccountNumber"))).toList();
     }
 
     List<Map<String, String>> constituentRowsFiltered = new ArrayList<>();
@@ -289,8 +265,6 @@ public class BloomerangToSalesforce {
           }
         }
 
-        setCustomAccountFields(sfdcAccount, constituentRow);
-
         sfdcClient.batchInsert(sfdcAccount);
       }
     }
@@ -324,7 +298,7 @@ public class BloomerangToSalesforce {
 
         SObject sfdcContact = new SObject("Contact");
 
-        // TODO: business contact household + affiliation with business
+        // TODO: business contact household + affiliation with business?
         sfdcContact.setField("AccountId", constituentIdToAccountId.get(accountNumber));
 
         sfdcContact.setField("Bloomerang_ID__c", accountNumber);
@@ -345,7 +319,12 @@ public class BloomerangToSalesforce {
         // TODO: affiliation?
         sfdcContact.setField("Employer__c", constituentRow.get("Employer"));
         sfdcContact.setField("Communication_Restrictions__c", constituentRow.get("CommunicationRestrictions").replaceAll("[|]+", ","));
-        sfdcContact.setField("HasOptedOutOfEmail", "OptedOut".equalsIgnoreCase(constituentRow.get("EmailInterestType")));
+        if ("OptedOut".equalsIgnoreCase(constituentRow.get("EmailInterestType"))) {
+          sfdcContact.setField("HasOptedOutOfEmail", true);
+        } else {
+          sfdcContact.setField("Email_Opt_In__c", true);
+        }
+        sfdcContact.setField("Church_Affiliation__c", constituentRow.get("Custom: Church Affiliation"));
 
         // TODO: remaining contact fields
         /*
@@ -386,8 +365,6 @@ public class BloomerangToSalesforce {
           }
         }
 
-        setCustomContactFields(sfdcContact, constituentRow);
-
         sfdcClient.batchInsert(sfdcContact);
       }
     }
@@ -403,115 +380,120 @@ public class BloomerangToSalesforce {
         constituentIdToContactId.put(constituentRow.get("AccountNumber"), sfdcContactId);
       }
     }
-
-    // TODO: Attachments, notes, and relationships not added
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // RECURRING DONATION
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // TODO: This starts using a lot of the logic from SfdcCrmService.setRecurringDonationFields. Better to wrap
-    //  Bloomerang data with our CRM data model, then call the service directly?
-
-    // Then loop over all Recurring Donations, combining them with Transaction data, and insert Recurring Donations in SFDC
-
-    List<Map<String, String>> recurringDonationRows;
-    try (InputStream is = new FileInputStream(recurringDonationFile)) {
-      recurringDonationRows = Utils.getCsvData(is);
-    }
-
-    for (Map<String, String> recurringDonationRow : recurringDonationRows) {
-      SObject sfdcRecurringDonation = new SObject("Npe03__Recurring_Donation__c");
-      String transactionNumber = recurringDonationRow.get("TransactionNumber");
-      String accountNumber = transactionRowsByTransactionNumber.get(transactionNumber).get("AccountNumber");
-
-      sfdcRecurringDonation.setField("Bloomerang_ID__c", recurringDonationRow.get("DesignationNumber"));
-      sfdcRecurringDonation.setField("npe03__Amount__c", recurringDonationRow.get("Amount"));
-      if (!Strings.isNullOrEmpty(recurringDonationRow.get("StartDate"))) {
-        Date d = new SimpleDateFormat("MM/dd/yyyy").parse(recurringDonationRow.get("StartDate"));
-        sfdcRecurringDonation.setField("npe03__Date_Established__c", d);
-      }
-      // TODO: *might* need to set Npe03__Next_Payment_Date__c so that pledge generation does the right thing, but it should also be self-correcting as new donations come in
-      sfdcRecurringDonation.setField("npsp__InstallmentFrequency__c", 1);
-      // TODO
-//      sfdcRecurringDonation.setField("npe03__Recurring_Donation_Campaign__c", recurringDonationRow.get("CampaignName"));
-      // TODO: to eventually be replaced with campaigns
-      sfdcRecurringDonation.setField("Fund__c", recurringDonationRow.get("FundName"));
-      sfdcRecurringDonation.setField("Appeal__c", recurringDonationRow.get("AppealName"));
-      sfdcRecurringDonation.setField("npe03__Installment_Period__c", recurringDonationRow.get("Frequency"));
-      sfdcRecurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
-
-      if (!Strings.isNullOrEmpty(recurringDonationRow.get("EndDate"))) {
-        Date d = new SimpleDateFormat("MM/dd/yyyy").parse(recurringDonationRow.get("EndDate"));
-        sfdcRecurringDonation.setField("npsp__EndDate__c", d);
-        sfdcRecurringDonation.setField("Npe03__Open_Ended_Status__c", "Closed");
-      } else {
-        sfdcRecurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
-      }
-
-      if (env.getConfig().salesforce.enhancedRecurringDonations) {
-        // NPSP Enhanced RDs will not allow you to associate the RD directly with an Account if it's a household, instead
-        // forcing us to use the contact.
-        if (constituentIdToIsBusiness.get(accountNumber)) {
-          sfdcRecurringDonation.setField("Npe03__Organization__c", constituentIdToAccountId.get(accountNumber));
-        } else {
-          sfdcRecurringDonation.setField("Npe03__Contact__c", constituentIdToContactId.get(accountNumber));
-        }
-
-        sfdcRecurringDonation.setField("npsp__RecurringType__c", "Open");
-        // It's a picklist, so it has to be a string and not numeric :(
-        LocalDate d = LocalDate.parse(recurringDonationRow.get("StartDate").split(" ")[0], DateTimeFormatter.ofPattern("M/d/yyyy"));
-        sfdcRecurringDonation.setField("npsp__Day_of_Month__c", d.getDayOfMonth() + "");
-      } else {
-        // Legacy behavior was to always use the Account, regardless if it was a business or household. Stick with that
-        // by default -- we have some orgs that depend on it.
-        sfdcRecurringDonation.setField("Npe03__Organization__c", constituentIdToAccountId.get(accountNumber));
-      }
-
-      sfdcClient.batchInsert(sfdcRecurringDonation);
-    }
-
-    results = sfdcClient.batchFlush();
-    // Run through the loop again and gather the results.
-    for (int i = 0; i < recurringDonationRows.size(); i++) {
-      SaveResult result = results.batchInsertResults().get(i);
-      if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
-        Map<String, String> recurringDonationRow = recurringDonationRows.get(i);
-        String sfdcRdId = result.getId();
-
-        referenceDesignationNumberToRdId.put(recurringDonationRow.get("TransactionNumber"), sfdcRdId);
-      }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // DONATIONS
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // Then loop over all Donations, combine them with the Transactions data, and insert Opportunities in SFDC
-
-    List<Map<String, String>> donationRows;
-    try (InputStream is = new FileInputStream(donationFile)) {
-      donationRows = Utils.getCsvData(is);
-    }
-
-    for (Map<String, String> donationRow : donationRows) {
-      createOpportunity(donationRow, transactionRowsByTransactionNumber, constituentIdToAccountId, constituentIdToContactId, referenceDesignationNumberToRdId, sfdcClient);
-    }
-
-    //Then loop over all Recurring Donation Payments, combine them with the Transactions data, and insert Opportunities in SFDC (tied to the recurring donation ID)
-
-    List<Map<String, String>> recurringDonationPaymentRows;
-    try (InputStream is = new FileInputStream(recurringDonationPaymentFile)) {
-      recurringDonationPaymentRows = Utils.getCsvData(is);
-    }
-
-    for (Map<String, String> recurringDonationPaymentsRow : recurringDonationPaymentRows) {
-      createOpportunity(recurringDonationPaymentsRow, transactionRowsByTransactionNumber, constituentIdToAccountId, constituentIdToContactId, referenceDesignationNumberToRdId, sfdcClient);
-    }
-
-    sfdcClient.batchFlush();
-
-    // TODO: Pledges and PledgePayments could be combined into single Opportunities, but there's only a handful from 2014/2015
+//
+//    // TODO: Attachments, notes, and relationships not added
+//
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // RECURRING DONATION
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    // TODO: This starts using a lot of the logic from SfdcCrmService.setRecurringDonationFields. Better to wrap
+//    //  Bloomerang data with our CRM data model, then call the service directly?
+//
+//    // Then loop over all Recurring Donations, combining them with Transaction data, and insert Recurring Donations in SFDC
+//
+//    List<Map<String, String>> recurringDonationRows;
+//    try (InputStream is = new FileInputStream(recurringDonationFile)) {
+//      recurringDonationRows = Utils.getCsvData(is);
+//      recurringDonationRows = recurringDonationRows.stream().filter(r -> !rdsByBloomerangIds.containsKey(r.get("DesignationNumber"))).toList();
+//    }
+//
+//    for (Map<String, String> recurringDonationRow : recurringDonationRows) {
+//      SObject sfdcRecurringDonation = new SObject("Npe03__Recurring_Donation__c");
+//      String transactionNumber = recurringDonationRow.get("TransactionNumber");
+//      String accountNumber = transactionRowsByTransactionNumber.get(transactionNumber).get("AccountNumber");
+//
+//      sfdcRecurringDonation.setField("Bloomerang_ID__c", recurringDonationRow.get("DesignationNumber"));
+//      sfdcRecurringDonation.setField("npe03__Amount__c", recurringDonationRow.get("Amount"));
+//      if (!Strings.isNullOrEmpty(recurringDonationRow.get("StartDate"))) {
+//        Date d = new SimpleDateFormat("MM/dd/yyyy").parse(recurringDonationRow.get("StartDate"));
+//        sfdcRecurringDonation.setField("npe03__Date_Established__c", d);
+//      }
+//      // TODO: *might* need to set Npe03__Next_Payment_Date__c so that pledge generation does the right thing, but it should also be self-correcting as new donations come in
+//      sfdcRecurringDonation.setField("npsp__InstallmentFrequency__c", 1);
+//      // TODO
+////      sfdcRecurringDonation.setField("npe03__Recurring_Donation_Campaign__c", recurringDonationRow.get("CampaignName"));
+//      // TODO: to eventually be replaced with campaigns
+//      sfdcRecurringDonation.setField("Fund__c", recurringDonationRow.get("FundName"));
+//      sfdcRecurringDonation.setField("Appeal__c", recurringDonationRow.get("AppealName"));
+//      sfdcRecurringDonation.setField("npe03__Installment_Period__c", recurringDonationRow.get("Frequency"));
+//      sfdcRecurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
+//
+//      if (!Strings.isNullOrEmpty(recurringDonationRow.get("EndDate"))) {
+//        Date d = new SimpleDateFormat("MM/dd/yyyy").parse(recurringDonationRow.get("EndDate"));
+//        sfdcRecurringDonation.setField("npsp__EndDate__c", d);
+//        sfdcRecurringDonation.setField("Npe03__Open_Ended_Status__c", "Closed");
+//      } else {
+//        sfdcRecurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
+//      }
+//
+//      if (env.getConfig().salesforce.enhancedRecurringDonations) {
+//        // NPSP Enhanced RDs will not allow you to associate the RD directly with an Account if it's a household, instead
+//        // forcing us to use the contact.
+//        if (constituentIdToIsBusiness.get(accountNumber) != null && constituentIdToIsBusiness.get(accountNumber)) {
+//          sfdcRecurringDonation.setField("Npe03__Organization__c", constituentIdToAccountId.get(accountNumber));
+//        } else {
+//          sfdcRecurringDonation.setField("Npe03__Contact__c", constituentIdToContactId.get(accountNumber));
+//        }
+//
+//        sfdcRecurringDonation.setField("npsp__RecurringType__c", "Open");
+//        // It's a picklist, so it has to be a string and not numeric :(
+//        LocalDate d = LocalDate.parse(recurringDonationRow.get("StartDate").split(" ")[0], DateTimeFormatter.ofPattern("M/d/yyyy"));
+//        sfdcRecurringDonation.setField("npsp__Day_of_Month__c", d.getDayOfMonth() + "");
+//      } else {
+//        // Legacy behavior was to always use the Account, regardless if it was a business or household. Stick with that
+//        // by default -- we have some orgs that depend on it.
+//        sfdcRecurringDonation.setField("Npe03__Organization__c", constituentIdToAccountId.get(accountNumber));
+//      }
+//
+//      sfdcClient.batchInsert(sfdcRecurringDonation);
+//    }
+//
+//    SFDCPartnerAPIClient.BatchResults results = sfdcClient.batchFlush();
+//    // Run through the loop again and gather the results.
+//    for (int i = 0; i < recurringDonationRows.size(); i++) {
+//      SaveResult result = results.batchInsertResults().get(i);
+//      if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
+//        Map<String, String> recurringDonationRow = recurringDonationRows.get(i);
+//        String sfdcRdId = result.getId();
+//
+//        referenceDesignationNumberToRdId.put(recurringDonationRow.get("DesignationNumber"), sfdcRdId);
+//      }
+//    }
+//
+//    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // DONATIONS
+//    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    // Then loop over all Donations, combine them with the Transactions data, and insert Opportunities in SFDC
+//
+//    List<Map<String, String>> donationRows;
+//    try (InputStream is = new FileInputStream(donationFile)) {
+//      donationRows = Utils.getCsvData(is);
+//      donationRows = donationRows.stream().filter(r -> !opportunitiesByBloomerangIds.containsKey(r.get("TransactionNumber"))).toList();
+//    }
+//
+//    for (Map<String, String> donationRow : donationRows) {
+//      createOpportunity(donationRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
+//          constituentIdToContactId, referenceDesignationNumberToRdId, sfdcClient);
+//    }
+//
+//    //Then loop over all Recurring Donation Payments, combine them with the Transactions data, and insert Opportunities in SFDC (tied to the recurring donation ID)
+//
+//    List<Map<String, String>> recurringDonationPaymentRows;
+//    try (InputStream is = new FileInputStream(recurringDonationPaymentFile)) {
+//      recurringDonationPaymentRows = Utils.getCsvData(is);
+//      recurringDonationPaymentRows = recurringDonationPaymentRows.stream().filter(r -> !opportunitiesByBloomerangIds.containsKey(r.get("TransactionNumber"))).toList();
+//    }
+//
+//    for (Map<String, String> recurringDonationPaymentsRow : recurringDonationPaymentRows) {
+//      createOpportunity(recurringDonationPaymentsRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
+//          constituentIdToContactId, referenceDesignationNumberToRdId, sfdcClient);
+//    }
+//
+//    sfdcClient.batchFlush();
+//
+//    // TODO: Pledges and PledgePayments could be combined into single Opportunities, but there's only a handful from 2014/2015
   }
 
   private void createOpportunity(
@@ -578,21 +560,7 @@ public class BloomerangToSalesforce {
 
     // TODO: This is resulting in many locked-entity retries, likely due to opportunities being grouped together
     //  by constituent.
-    sfdcClient.batchInsert(sfdcOpportunity);
-  }
-
-  // TODO: Breaking these out. To be worked into sane patterns...
-
-  private void setCustomAccountFields(SObject sfdcAccount, Map<String, String> accountRow) {
-    // CLHS
-//    sfdcAccount.setField("Church_Affiliation__c", accountRow.get("Custom: Church Affiliation"));
-//    sfdcAccount.setField("Services_Offered__c", accountRow.get("Custom: Business Type / Service Offered").replaceAll("[|]+", ","));
-//    sfdcAccount.setField("Organization_Type__c", accountRow.get("Custom: Organization Type").replaceAll("[|]+", ","));
-  }
-
-  private void setCustomContactFields(SObject sfdcContact, Map<String, String> contactRow) {
-    // CLHS
-//    sfdcContact.setField("Birth_Year__c", contactRow.get("Custom: Birth Year"));
-//    sfdcContact.setField("Classification__c", contactRow.get("Custom: Individuals").replaceAll("[|]+", ","));
+//    sfdcClient.batchInsert(sfdcOpportunity);
+    sfdcClient.insert(sfdcOpportunity);
   }
 }
