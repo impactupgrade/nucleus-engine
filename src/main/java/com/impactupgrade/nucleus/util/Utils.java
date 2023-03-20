@@ -20,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -98,15 +97,11 @@ public class Utils {
     return s;
   }
 
-  public static Calendar getCalendarFromDateString(String date) throws ParseException {
-    return toCalendar(getZonedDateTimeFromDateString(date));
+  public static Calendar getCalendarFromDateString(String date, String timezoneId) {
+    return toCalendar(getZonedDateFromDateString(date, timezoneId));
   }
 
-  public static ZonedDateTime getZonedDateTimeFromDateString(String date) {
-    return getZonedDateTimeFromDateString(date, "UTC");
-  }
-
-  public static ZonedDateTime getZonedDateTimeFromDateString(String date, String timezoneId) {
+  public static ZonedDateTime getZonedDateFromDateString(String date, String timezoneId) {
     if (!Strings.isNullOrEmpty(date)) {
       DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
       LocalDate localDate = LocalDate.parse(date, dtf);
@@ -124,7 +119,7 @@ public class Utils {
       try {
         return ZonedDateTime.parse(dateTime);
       } catch (DateTimeParseException e) {
-        return getZonedDateTimeFromDateString(dateTime, "UTC");
+        return getZonedDateFromDateString(dateTime, "UTC");
       }
     }
     return null;
