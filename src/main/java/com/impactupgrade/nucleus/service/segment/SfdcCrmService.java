@@ -1564,9 +1564,9 @@ public class SfdcCrmService implements CrmService {
   protected Object getCustomBulkValue(String value) {
     Calendar c = null;
     try {
-      // TODO: This is likely where we still need a default TZ defined in EnvironmentConfig. If a client is uploading
-      //  a sheet for bulk upsert, the dates are most likely to be in their own TZ, not UTC.
-      c = Utils.getCalendarFromDateString(value, "UTC");
+      // If a client is uploading a sheet for bulk upsert,
+      // the dates are most likely to be in their own TZ
+      c = Utils.getCalendarFromDateString(value, env.getConfig().timezoneId);
     } catch (Exception e) {}
 
     if (c != null) {

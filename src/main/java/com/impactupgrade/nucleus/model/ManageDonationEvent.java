@@ -40,8 +40,8 @@ public class ManageDonationEvent {
     if (formData.amount != null && formData.amount.isPresent())
       crmRecurringDonation.amount = formData.amount.get();
 
-    // TODO: Safe to use system default TZ here? Since we're consuming the above Calendar variables as form fields
-    //  directly from Nucleus Portal, those are likely coming in as the default TZ too?
+    // Since we're consuming the above Calendar variables as form fields
+    // directly from Nucleus Portal, those are likely coming in as the default TZ
     if (formData.pauseDonationUntilDate != null && formData.pauseDonationUntilDate.isPresent())
       this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get(), ZoneId.systemDefault().getId());
     if (formData.resumeDonationOnDate != null && formData.resumeDonationOnDate.isPresent())
