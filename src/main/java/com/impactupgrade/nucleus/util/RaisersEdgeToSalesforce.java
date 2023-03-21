@@ -9,6 +9,8 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.sforce.soap.partner.sobject.SObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.util.IOUtils;
@@ -76,223 +78,223 @@ public class RaisersEdgeToSalesforce {
     // Mostly basing this on Bulk Upsert, but cheating in places and going straight to SFDC.
     SfdcClient sfdcClient = new SfdcClient(env);
 
-    File file = new File("/home/brmeyer/Downloads/Constituent+Spouse-v3-25relationships.xlsx");
+    File file = new File("/home/brmeyer/Downloads/Constituent+Spouse-v3-25relationships-TEST.xlsx");
     InputStream inputStream = new FileInputStream(file);
     List<Map<String, String>> rows = Utils.getExcelData(inputStream);
 
-//    List<Map<String, String>> primaryRows = new ArrayList<>();
-//    List<Map<String, String>> secondaryRows = new ArrayList<>();
-//
-//    // TODO: There's unfortunately a wide, inconsistent mix of ways that households can be defined in RE data.
-//    //  Relationships between spouses will usually identify one as the head-of-household, so we first use those heads
-//    //  as the primary contacts of accounts. But then students/children do *not* have a parent relationship that's
-//    //  defined as HoH, so we can't globally rely on that to give away household groupings. We instead opt to use
-//    //  mailing addresses, since RE at least makes these consistent (at least for CLHS).
-//    List<String> headOfHouseholdIds = new ArrayList<>();
-//    Map<String, String> spouseIdsToHouseholdIds = new HashMap<>();
-//    Map<String, String> addressesToHouseholdIds = new HashMap<>();
-//
-//    // Make one pass to discover all heads of households. This is unfortunately not at the Constituent level, but is
-//    // instead buried in the lists of relationships :(
-//    for (Map<String, String> row : rows) {
-//      // households only
-//      if (!Strings.isNullOrEmpty(row.get("CnBio_Org_Name"))) {
-//        continue;
-//      }
-//
-//      String id = row.get("CnBio_ID");
-//
-//      for (int i = 1; i <= 25; i++) {
-//        String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
-//        if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Headofhousehold"))) {
-//          // the relationship is the head of household, not this constituent itself
-//          String headOfHouseholdId = row.get(prefix + "ID");
-//          headOfHouseholdIds.add(headOfHouseholdId);
-//          // since we have the direct relationship, might as well save it off and use it later
-//          spouseIdsToHouseholdIds.put(id, headOfHouseholdId);
-//          break;
-//        }
-//      }
-//    }
-//
-//    // Make another pass to discover the heads of households' addresses.
-//    for (Map<String, String> row : rows) {
-//      String id = row.get("CnBio_ID");
-//      if (headOfHouseholdIds.contains(id)) {
-//        Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
-//        for (int i = 1; i <= 4; i++) {
-//          String field = "CnAdrPrf_Addrline" + i;
-//          if (!Strings.isNullOrEmpty(row.get(field))) {
-//            cnAdrPrfAddr.add(row.get(field));
-//          }
-//        }
-//        String street = String.join(", ", cnAdrPrfAddr);
-//        String zip = row.get("CnAdrPrf_ZIP");
-//        String address = street + " " + zip;
-//        address = address.trim();
-//        if (!Strings.isNullOrEmpty(address) && !addressesToHouseholdIds.containsKey(address)) {
-//          addressesToHouseholdIds.put(address, id);
-//        }
-//      }
-//    }
-//
-//    // TODO: If any addresses do NOT have a HoH, should we make another pass and specifically look for parents,
-//    //  guardians, or grandparents first? Prevent kids from becomings heads of households?
-//
-//    // The next pass inserts all constituents that were discovered to be heads of households, ensuring that they're
-//    // the primary contact on households as they're created.
-//    for (Map<String, String> row : rows) {
-//      String id = row.get("CnBio_ID");
-//      if (headOfHouseholdIds.contains(id)) {
-//        // We use the head of household's ID as the account's extref key.
-//        String householdId = id;
-//        migrate(row, householdId, primaryRows, secondaryRows);
-//      }
-//    }
-//
-//    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
-//    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
-//    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
-//    //  complicated logic to update the account after the fact.
-//    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
-//    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
-//    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(primaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//
-//    primaryRows.clear();
-//    secondaryRows.clear();
-//
-//    // Then do another pass to insert everyone else. Doing this after the above ensure households already exist.
-//    for (Map<String, String> row : rows) {
-//      String id = row.get("CnBio_ID");
-//      if (!headOfHouseholdIds.contains(id)) {
-//        Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
-//        for (int i = 1; i <= 4; i++) {
-//          String field = "CnAdrPrf_Addrline" + i;
-//          if (!Strings.isNullOrEmpty(row.get(field))) {
-//            cnAdrPrfAddr.add(row.get(field));
-//          }
-//        }
-//        String street = String.join(", ", cnAdrPrfAddr);
-//        String zip = row.get("CnAdrPrf_ZIP");
-//        String address = street + " " + zip;
-//        address = address.trim();
-//
-//        String householdId;
-//        if (spouseIdsToHouseholdIds.containsKey(id)) {
-//          householdId = spouseIdsToHouseholdIds.get(id);
-//        } else if (!Strings.isNullOrEmpty(address) && addressesToHouseholdIds.containsKey(address)) {
-//          householdId = addressesToHouseholdIds.get(address);
-//        } else {
-//          // business or single-contact household (IE, no defined HoH) -- use their ID for the household extref
-//          householdId = id;
-//        }
-//
-//        migrate(row, householdId, primaryRows, secondaryRows);
-//      }
-//    }
-//
-//    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
-//    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
-//    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
-//    //  complicated logic to update the account after the fact.
-//    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
-//    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
-//    importEvents = CrmImportEvent.fromGeneric(primaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
-//
-//    primaryRows.clear();
-//    secondaryRows.clear();
-//
-//    Map<String, SObject> contactsByConstituentIds = new HashMap<>();
-//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
-//    for (SObject contact : contacts) {
-//      contactsByConstituentIds.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
-//    }
-//
-//    Map<String, SObject> accountsByConstituentIds = new HashMap<>();
-//    // businesses only
-//    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!='' AND RecordTypeId='" + ORGANIZATION_RECORD_TYPE_ID + "'");
-//    for (SObject account : accounts) {
-//      accountsByConstituentIds.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
-//    }
-//
-//    int counter = 1;
-//    // prevent duplicates
-//    Map<String, String> seenRelationships = new HashMap<>();
-//
-//    // One last pass to insert all relationships.
-//    // TODO: Pull all relationships and hold in a map so we can prevent duplicates in the future.
-//    for (Map<String, String> row : rows) {
-//      counter++;
-//      log.info("processing row {}", counter);
-//
-//      String id = row.get("CnBio_ID");
-//
-//      for (int i = 1; i <= 25; i++) {
-//        String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
-//        String relatedId = row.get(prefix + "ID");
-//        String relationshipType = row.get(prefix + "Relation_Code");
-//        String relationshipNotes = row.get(prefix + "Notes");
-//
-//        if (Strings.isNullOrEmpty(relatedId) || contactsByConstituentIds.get(relatedId) == null) {
-//          continue;
-//        }
-//
-//        if (relatedId.equalsIgnoreCase(seenRelationships.get(id))) {
-//          continue;
-//        }
-//
-//        if (!Strings.isNullOrEmpty(row.get("CnBio_Org_Name"))) {
-//          if (accountsByConstituentIds.get(id) != null) {
-//            String from = contactsByConstituentIds.get(relatedId).getId();
-//            String to = accountsByConstituentIds.get(id).getId();
-//
-//            // seeing some that don't have a type, but do have employee=true
-//            if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Employee"))) {
-//              relationshipType = "Employee";
-//            }
-//
-//            SObject affiliation = new SObject("npe5__Affiliation__c");
-//            affiliation.setField("npe5__Contact__c", from);
-//            affiliation.setField("npe5__Organization__c", to);
-//            affiliation.setField("npe5__Description__c", relationshipNotes);
-//            affiliation.setField("npe5__Status__c", "Current");
-//            affiliation.setField("npe5__Role__c", relationshipType);
-//            sfdcClient.batchInsert(affiliation);
-//
-//            seenRelationships.put(id, relatedId);
-//            seenRelationships.put(relatedId, id);
-//          }
-//        } else {
-//          if (contactsByConstituentIds.get(id) != null) {
-//            String from = contactsByConstituentIds.get(id).getId();
-//            String to = contactsByConstituentIds.get(relatedId).getId();
-//
-//            // seeing some that don't have a type, but do have spouse=true
-//            if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Spouse"))) {
-//              relationshipType = "Spouse/Partner";
-//            }
-//
-//            SObject relationship = new SObject("npe4__Relationship__c");
-//            relationship.setField("npe4__Contact__c", from);
-//            relationship.setField("npe4__RelatedContact__c", to);
-//            relationship.setField("npe4__Description__c", relationshipNotes);
-//            relationship.setField("npe4__Status__c", "Current");
-//            relationship.setField("npe4__Type__c", relationshipType);
-//            sfdcClient.batchInsert(relationship);
-//
-//            seenRelationships.put(id, relatedId);
-//            seenRelationships.put(relatedId, id);
-//          }
-//        }
-//      }
-//    }
-//    sfdcClient.batchFlush();
+    List<Map<String, String>> primaryRows = new ArrayList<>();
+    List<Map<String, String>> secondaryRows = new ArrayList<>();
+
+    // TODO: There's unfortunately a wide, inconsistent mix of ways that households can be defined in RE data.
+    //  Relationships between spouses will usually identify one as the head-of-household, so we first use those heads
+    //  as the primary contacts of accounts. But then students/children do *not* have a parent relationship that's
+    //  defined as HoH, so we can't globally rely on that to give away household groupings. We instead opt to use
+    //  mailing addresses, since RE at least makes these consistent (at least for CLHS).
+    List<String> headOfHouseholdIds = new ArrayList<>();
+    Map<String, String> spouseIdsToHouseholdIds = new HashMap<>();
+    Map<String, String> addressesToHouseholdIds = new HashMap<>();
+
+    // Make one pass to discover all heads of households. This is unfortunately not at the Constituent level, but is
+    // instead buried in the lists of relationships :(
+    for (Map<String, String> row : rows) {
+      // households only
+      if (!Strings.isNullOrEmpty(row.get("CnBio_Org_Name"))) {
+        continue;
+      }
+
+      String id = row.get("CnBio_ID");
+
+      for (int i = 1; i <= 25; i++) {
+        String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
+        if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Headofhousehold"))) {
+          // the relationship is the head of household, not this constituent itself
+          String headOfHouseholdId = row.get(prefix + "ID");
+          headOfHouseholdIds.add(headOfHouseholdId);
+          // since we have the direct relationship, might as well save it off and use it later
+          spouseIdsToHouseholdIds.put(id, headOfHouseholdId);
+          break;
+        }
+      }
+    }
+
+    // Make another pass to discover the heads of households' addresses.
+    for (Map<String, String> row : rows) {
+      String id = row.get("CnBio_ID");
+      if (headOfHouseholdIds.contains(id)) {
+        Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
+        for (int i = 1; i <= 4; i++) {
+          String field = "CnAdrPrf_Addrline" + i;
+          if (!Strings.isNullOrEmpty(row.get(field))) {
+            cnAdrPrfAddr.add(row.get(field));
+          }
+        }
+        String street = String.join(", ", cnAdrPrfAddr);
+        String zip = row.get("CnAdrPrf_ZIP");
+        String address = street + " " + zip;
+        address = address.trim();
+        if (!Strings.isNullOrEmpty(address) && !addressesToHouseholdIds.containsKey(address)) {
+          addressesToHouseholdIds.put(address, id);
+        }
+      }
+    }
+
+    // TODO: If any addresses do NOT have a HoH, should we make another pass and specifically look for parents,
+    //  guardians, or grandparents first? Prevent kids from becomings heads of households?
+
+    // The next pass inserts all constituents that were discovered to be heads of households, ensuring that they're
+    // the primary contact on households as they're created.
+    for (Map<String, String> row : rows) {
+      String id = row.get("CnBio_ID");
+      if (headOfHouseholdIds.contains(id)) {
+        // We use the head of household's ID as the account's extref key.
+        String householdId = id;
+        migrate(row, householdId, primaryRows, secondaryRows);
+      }
+    }
+
+    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
+    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
+    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
+    //  complicated logic to update the account after the fact.
+    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
+    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(primaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+
+    primaryRows.clear();
+    secondaryRows.clear();
+
+    // Then do another pass to insert everyone else. Doing this after the above ensure households already exist.
+    for (Map<String, String> row : rows) {
+      String id = row.get("CnBio_ID");
+      if (!headOfHouseholdIds.contains(id)) {
+        Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
+        for (int i = 1; i <= 4; i++) {
+          String field = "CnAdrPrf_Addrline" + i;
+          if (!Strings.isNullOrEmpty(row.get(field))) {
+            cnAdrPrfAddr.add(row.get(field));
+          }
+        }
+        String street = String.join(", ", cnAdrPrfAddr);
+        String zip = row.get("CnAdrPrf_ZIP");
+        String address = street + " " + zip;
+        address = address.trim();
+
+        String householdId;
+        if (spouseIdsToHouseholdIds.containsKey(id)) {
+          householdId = spouseIdsToHouseholdIds.get(id);
+        } else if (!Strings.isNullOrEmpty(address) && addressesToHouseholdIds.containsKey(address)) {
+          householdId = addressesToHouseholdIds.get(address);
+        } else {
+          // business or single-contact household (IE, no defined HoH) -- use their ID for the household extref
+          householdId = id;
+        }
+
+        migrate(row, householdId, primaryRows, secondaryRows);
+      }
+    }
+
+    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
+    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
+    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
+    //  complicated logic to update the account after the fact.
+    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
+    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
+    importEvents = CrmImportEvent.fromGeneric(primaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
+    env.primaryCrmService().processBulkImport(importEvents);
+
+    primaryRows.clear();
+    secondaryRows.clear();
+
+    Map<String, SObject> contactsByConstituentIds = new HashMap<>();
+    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+    for (SObject contact : contacts) {
+      contactsByConstituentIds.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
+    }
+
+    Map<String, SObject> accountsByConstituentIds = new HashMap<>();
+    // businesses only
+    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!='' AND RecordTypeId='" + ORGANIZATION_RECORD_TYPE_ID + "'");
+    for (SObject account : accounts) {
+      accountsByConstituentIds.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
+    }
+
+    int counter = 1;
+    // prevent duplicates
+    Map<String, String> seenRelationships = new HashMap<>();
+
+    // One last pass to insert all relationships.
+    // TODO: Pull all relationships and hold in a map so we can prevent duplicates in the future.
+    for (Map<String, String> row : rows) {
+      counter++;
+      log.info("processing row {}", counter);
+
+      String id = row.get("CnBio_ID");
+
+      for (int i = 1; i <= 25; i++) {
+        String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
+        String relatedId = row.get(prefix + "ID");
+        String relationshipType = row.get(prefix + "Relation_Code");
+        String relationshipNotes = row.get(prefix + "Notes");
+
+        if (Strings.isNullOrEmpty(relatedId) || contactsByConstituentIds.get(relatedId) == null) {
+          continue;
+        }
+
+        if (relatedId.equalsIgnoreCase(seenRelationships.get(id))) {
+          continue;
+        }
+
+        if (!Strings.isNullOrEmpty(row.get("CnBio_Org_Name"))) {
+          if (accountsByConstituentIds.get(id) != null) {
+            String from = contactsByConstituentIds.get(relatedId).getId();
+            String to = accountsByConstituentIds.get(id).getId();
+
+            // seeing some that don't have a type, but do have employee=true
+            if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Employee"))) {
+              relationshipType = "Employee";
+            }
+
+            SObject affiliation = new SObject("npe5__Affiliation__c");
+            affiliation.setField("npe5__Contact__c", from);
+            affiliation.setField("npe5__Organization__c", to);
+            affiliation.setField("npe5__Description__c", relationshipNotes);
+            affiliation.setField("npe5__Status__c", "Current");
+            affiliation.setField("npe5__Role__c", relationshipType);
+            sfdcClient.batchInsert(affiliation);
+
+            seenRelationships.put(id, relatedId);
+            seenRelationships.put(relatedId, id);
+          }
+        } else {
+          if (contactsByConstituentIds.get(id) != null) {
+            String from = contactsByConstituentIds.get(id).getId();
+            String to = contactsByConstituentIds.get(relatedId).getId();
+
+            // seeing some that don't have a type, but do have spouse=true
+            if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Spouse"))) {
+              relationshipType = "Spouse/Partner";
+            }
+
+            SObject relationship = new SObject("npe4__Relationship__c");
+            relationship.setField("npe4__Contact__c", from);
+            relationship.setField("npe4__RelatedContact__c", to);
+            relationship.setField("npe4__Description__c", relationshipNotes);
+            relationship.setField("npe4__Status__c", "Current");
+            relationship.setField("npe4__Type__c", relationshipType);
+            sfdcClient.batchInsert(relationship);
+
+            seenRelationships.put(id, relatedId);
+            seenRelationships.put(relatedId, id);
+          }
+        }
+      }
+    }
+    sfdcClient.batchFlush();
 
 //    File giftsFile = new File("/home/brmeyer/Downloads/Gifts-with-Installments-v4-more-info.xlsx");
 //    InputStream giftInputStream = new FileInputStream(giftsFile);
@@ -628,7 +630,7 @@ public class RaisersEdgeToSalesforce {
       contactData.put("Contact Custom Maiden_Name__c", row.get("CnBio_Maiden_name"));
       contactData.put("Contact Custom Middle_Name__c", row.get("CnBio_Middle_Name"));
       contactData.put("Contact Custom Preferred_Name__c", row.get("CnBio_Nickname"));
-      contactData.put("Contact Custom Prefix__c", row.get("CnBio_Title_1"));
+      contactData.put("Contact Custom Salutation", row.get("CnBio_Title_1"));
       contactData.put("Contact Custom Suffix__c", row.get("CnBio_Suffix_1"));
 
       // These must have been hand-entered, could be: 1950, 1/30, 1/1950, 1/1/1950
@@ -730,7 +732,7 @@ public class RaisersEdgeToSalesforce {
       }
     }
     String cnTypeCodesStr = String.join(";", cnTypeCodes);
-    contactData.put("Contact Custom BB_Type__c", cnTypeCodesStr);
+    contactData.put("Contact Custom Type__c", cnTypeCodesStr);
 
     // Solicit codes
     // Possible values: 'Do not  mail', 'Removed by request', 'Do not phone', 'Do not send Mass Appeal', 'Do Not Send Stelter Mailings', 'Do Not Contact/Solicit', 'Send All Information', 'Do Not Mail - Out of the Country', 'Do Not Send "Cadets"', 'Send Publications only'
