@@ -817,8 +817,9 @@ public class SfdcCrmService implements CrmService {
     if (accountExternalRefKey.isPresent()) {
       List<String> accountExRefIds = importEvents.stream().map(e -> e.raw.get(accountExternalRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
       if (accountExRefIds.size() > 0) {
+        // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
         sfdcClient.getAccountsByUniqueField(accountExternalRefFieldName.get(), accountExRefIds, accountCustomFields)
-            .forEach(c -> existingAccountsByExRef.put((String) c.getField(accountExternalRefFieldName.get()), c));
+            .forEach(c -> existingAccountsByExRef.put(c.getField(accountExternalRefFieldName.get()).toString(), c));
       }
     }
 
@@ -841,8 +842,9 @@ public class SfdcCrmService implements CrmService {
     if (contactExternalRefKey.isPresent()) {
       List<String> contactExRefIds = importEvents.stream().map(e -> e.raw.get(contactExternalRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
       if (contactExRefIds.size() > 0) {
+        // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
         sfdcClient.getContactsByUniqueField(contactExternalRefFieldName.get(), contactExRefIds, contactCustomFields)
-            .forEach(c -> existingContactsByExRef.put((String) c.getField(contactExternalRefFieldName.get()), c));
+            .forEach(c -> existingContactsByExRef.put(c.getField(contactExternalRefFieldName.get()).toString(), c));
       }
     }
 
@@ -935,9 +937,9 @@ public class SfdcCrmService implements CrmService {
           // account already exists (which wasn't true, above) OR that it should be created. REGARDLESS of the contact's
           // current account, if any. We're opting to create the new account, update the contact's account ID, and
           // possibly abandon its old account (if it exists).
-          // TODO: This was mainly due to CLHS, where an original FACTS migration created isolated households or, worse,
+          // TODO: This was mainly due to CLHS' original FACTS migration that created isolated households or, worse,
           //  combined grandparents into the student's household. Raiser's Edge has the correct relationships and
-          //  and households, so we're using this to override the past.
+          //  households, so we're using this to override the past.
 //          account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent);
         }
       }
@@ -1042,6 +1044,7 @@ public class SfdcCrmService implements CrmService {
           existingAccount = existingAccountsByExRef.get(importEvent.raw.get(accountExternalRefKey.get()));
         } else {
           // Otherwise, by name.
+          // TODO: Fetch all and hold in memory?
           existingAccount = sfdcClient.getAccountsByName(fullname, accountCustomFields).stream().findFirst().orElse(null);
         }
 
@@ -1054,6 +1057,7 @@ public class SfdcCrmService implements CrmService {
       // If we have a first and last name, try searching for an existing contact by name.
       // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
       else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)) {
+        // TODO: Fetch all and hold in memory?
         List<SObject> existingContacts = sfdcClient.getContactsByName(importEvent.contactFirstName, importEvent.contactLastName, importEvent.raw, contactCustomFields);
         log.info("number of contacts for name {} {}: {}", importEvent.contactFirstName, importEvent.contactLastName, existingContacts.size());
 
@@ -1303,7 +1307,7 @@ public class SfdcCrmService implements CrmService {
     String accountId = sfdcClient.insert(account).getId();
     account.setId(accountId);
 
-    // Since we hold existingContactsByEmail in memory and don't requery it, add entries as we go to prevent
+    // Since we hold existingAccountsByExRef in memory and don't requery it, add entries as we go to prevent
     // duplicate inserts.
     if (accountExternalRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) account.getField(accountExternalRefFieldName.get()))) {
       existingAccountsByExRef.put((String) account.getField(accountExternalRefFieldName.get()), account);
@@ -1746,9 +1750,14 @@ public class SfdcCrmService implements CrmService {
       homePhone = (String) sObject.getField("HomePhone");
     }
 
+    CrmAccount account = new CrmAccount();
+    account.id = (String) sObject.getField("AccountId");
+    if (sObject.getChild("Account") != null && sObject.getChild("Account").hasChildren())
+      account = toCrmAccount((SObject) sObject.getChild("Account"));
+
     return new CrmContact(
         sObject.getId(),
-        new CrmAccount((String) sObject.getField("AccountId")),
+        account,
         crmAddress,
         (String) sObject.getField("Email"),
         emailGroups,
