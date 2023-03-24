@@ -78,7 +78,7 @@ public class RaisersEdgeToSalesforce {
     // Mostly basing this on Bulk Upsert, but cheating in places and going straight to SFDC.
     SfdcClient sfdcClient = new SfdcClient(env);
 
-    File file = new File("/home/brmeyer/Downloads/Constituent+Spouse-v3-25relationships-TEST.xlsx");
+    File file = new File("/home/brmeyer/Downloads/Constituent+Spouse-v3-25relationships.xlsx");
     InputStream inputStream = new FileInputStream(file);
     List<Map<String, String>> rows = Utils.getExcelData(inputStream);
 
@@ -93,6 +93,10 @@ public class RaisersEdgeToSalesforce {
     List<String> headOfHouseholdIds = new ArrayList<>();
     Map<String, String> spouseIdsToHouseholdIds = new HashMap<>();
     Map<String, String> addressesToHouseholdIds = new HashMap<>();
+
+    // There are many spouse combos sharing a single email address. We'll include the email for only the first one we
+    // see (likely the head of household), otherwise the search-by-email step of Bulk Upsert overwrites records.
+    List<String> seenEmails = new ArrayList<>();
 
     // Make one pass to discover all heads of households. This is unfortunately not at the Constituent level, but is
     // instead buried in the lists of relationships :(
@@ -148,7 +152,7 @@ public class RaisersEdgeToSalesforce {
       if (headOfHouseholdIds.contains(id)) {
         // We use the head of household's ID as the account's extref key.
         String householdId = id;
-        migrate(row, householdId, primaryRows, secondaryRows);
+        migrate(row, householdId, primaryRows, secondaryRows, seenEmails);
       }
     }
 
@@ -192,7 +196,7 @@ public class RaisersEdgeToSalesforce {
           householdId = id;
         }
 
-        migrate(row, householdId, primaryRows, secondaryRows);
+        migrate(row, householdId, primaryRows, secondaryRows, seenEmails);
       }
     }
 
@@ -504,7 +508,7 @@ public class RaisersEdgeToSalesforce {
 //    sfdcClient.batchFlush();
   }
 
-  private static void migrate(Map<String, String> row, String householdId, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows) {
+  private static void migrate(Map<String, String> row, String householdId, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows, List<String> seenEmails) {
 
     // these eventually get combined, but separating them so that (as an ex) spouses can repurpose the account
     // data we've already parsed
@@ -584,7 +588,10 @@ public class RaisersEdgeToSalesforce {
         if (isBusiness) {
           accountData.put("Account Custom Email__c", row.get(cnPhPhone));
         } else {
-          contactData.put("Contact Email", row.get(cnPhPhone));
+          if (!seenEmails.contains(row.get(cnPhPhone))) {
+            contactData.put("Contact Email", row.get(cnPhPhone));
+            seenEmails.add(row.get(cnPhPhone));
+          }
         }
       } else if ("Home".equalsIgnoreCase(row.get(cnPhType))) {
         contactData.put("Contact Home Phone", row.get(cnPhPhone));

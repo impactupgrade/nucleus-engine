@@ -97,7 +97,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         username,
         password,
         isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION,
-        20 // objects are massive, so toning down the batch sizes
+        200 // TODO: progressively cranking this higher, but super has this maxed at 200 -- can likely go a lot higher
     );
     this.env = env;
 
@@ -234,6 +234,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String escapedLastName = lastName.replaceAll("'", "\\\\'");
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
     return queryList(query);
+  }
+
+  public List<SObject> getContactsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(names, "Name", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
   public List<SObject> getDupContactsByName(String firstName, String lastName, String... extraFields) throws ConnectionException, InterruptedException {
