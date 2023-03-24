@@ -1102,13 +1102,21 @@ public class SfdcCrmService implements CrmService {
           && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.accountBillingStreet) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
         List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName + " " + importEvent.contactLastName).stream()
             .filter(c -> {
-              if (!Strings.isNullOrEmpty(importEvent.contactMailingStreet)
-                  && importEvent.contactMailingStreet.equalsIgnoreCase((String) c.getField("MailingStreet"))) {
-                return true;
+              // make the address checks a little more resilient by removing all non-alphanumerics
+              // ex: 123 Main St. != 123 Main St --> 123MainSt == 123MainSt
+              if (!Strings.isNullOrEmpty(importEvent.contactMailingStreet)) {
+                String importStreet = importEvent.contactMailingStreet.replaceAll("[^A-Za-z0-9]", "");
+                String sfdcStreet = c.getField("MailingStreet") == null ? "" : c.getField("MailingStreet").toString().replaceAll("[^A-Za-z0-9]", "");
+                if (importStreet.equals(sfdcStreet)) {
+                  return true;
+                }
               }
-              if (!Strings.isNullOrEmpty(importEvent.accountBillingStreet)
-                  && importEvent.accountBillingStreet.equalsIgnoreCase((String) c.getChild("Account").getField("BillingStreet"))) {
-                return true;
+              if (!Strings.isNullOrEmpty(importEvent.accountBillingStreet)) {
+                String importStreet = importEvent.accountBillingStreet.replaceAll("[^A-Za-z0-9]", "");
+                String sfdcStreet = c.getChild("Account").getField("BillingStreet") == null ? "" : c.getChild("Account").getField("BillingStreet").toString().replaceAll("[^A-Za-z0-9]", "");
+                if (importStreet.equals(sfdcStreet)) {
+                  return true;
+                }
               }
               if (!Strings.isNullOrEmpty(importEvent.contactMobilePhone)) {
                 String importMobile = importEvent.contactMobilePhone.replaceAll("\\D", "");
