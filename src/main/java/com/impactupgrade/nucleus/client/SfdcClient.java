@@ -97,7 +97,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         username,
         password,
         isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION,
-        200 // TODO: progressively cranking this higher, but super has this maxed at 200 -- can likely go a lot higher
+        200
     );
     this.env = env;
 

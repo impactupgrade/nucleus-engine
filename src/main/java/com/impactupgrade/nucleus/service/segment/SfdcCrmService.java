@@ -1254,6 +1254,9 @@ public class SfdcCrmService implements CrmService {
         SObject opportunity = new SObject("Opportunity");
 
         opportunity.setField("AccountId", nonBatchAccountIds.get(i));
+        if (!Strings.isNullOrEmpty(nonBatchContactIds.get(i))) {
+          opportunity.setField("ContactId", nonBatchContactIds.get(i));
+        }
 
         if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignId)) {
           opportunity.setField("CampaignId", importEvent.opportunityCampaignId);
@@ -1294,23 +1297,7 @@ public class SfdcCrmService implements CrmService {
 
           setBulkImportOpportunityFields(opportunity, null, importEvent);
 
-          // TODO: Can't currently batch this, since it's an opp insert and we need the opp id to add the OpportunityContactRole.
-          //  Rethink this!
-//          bulkInsertOpportunities.add(opportunity);
-          SaveResult saveResult = sfdcClient.insert(opportunity);
-
-          if (!Strings.isNullOrEmpty(nonBatchContactIds.get(i))) {
-            SObject contactRole = new SObject("OpportunityContactRole");
-            contactRole.setField("OpportunityId", saveResult.getId());
-            contactRole.setField("ContactId", nonBatchContactIds.get(i));
-            contactRole.setField("IsPrimary", true);
-            // TODO: Not present by default at all orgs.
-//            contactRole.setField("Role", "Donor");
-            if (!batchInsertOpportunityContactRoles.contains(saveResult.getId())) {
-              batchInsertOpportunityContactRoles.add(saveResult.getId());
-              sfdcClient.batchInsert(contactRole);
-            }
-          }
+          sfdcClient.batchInsert(opportunity);
         }
       }
 
