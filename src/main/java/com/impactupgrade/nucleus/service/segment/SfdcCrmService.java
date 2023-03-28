@@ -772,7 +772,7 @@ public class SfdcCrmService implements CrmService {
     listRecords.addAll(sfdcClient.getCampaigns());
     listRecords.addAll(sfdcClient.getReports());
 
-    String filter = ".*(?i:npsp|sample).*";
+    String filter = ".*(?i:npsp|sample|nonprofit|health|dashboard).*";
     Pattern pattern = Pattern.compile(filter);
 
     for(SObject list: listRecords){

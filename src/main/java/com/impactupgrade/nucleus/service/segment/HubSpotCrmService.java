@@ -978,7 +978,7 @@ public class HubSpotCrmService implements CrmService {
   public Map<String, String> getContactLists() throws Exception {
     Map<String, String> listNameToId = new HashMap<>();
     List<ContactList> listResults = HubSpotClientFactory.v1Client(env).contactList().getAll().getLists();
-    String filter = "(?s).*";
+    String filter = ".*(?i:nonprofit|sample|health|dashboard).*";
     Pattern pattern = Pattern.compile(filter);
 
     for(ContactList list: listResults){
