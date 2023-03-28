@@ -384,7 +384,6 @@ public class SfdcMetadataClient {
 
   /**
    * @param component The Record type eg. "Account", "Contact", "Campaign"
-   * @param regexFilter Will filter the list of fields that are returned
    * @return A map of field labels to their api name, will use the API name for the label if the label is missing
    * @throws ConnectionException
    */
@@ -397,11 +396,11 @@ public class SfdcMetadataClient {
     Metadata[] mdInfo = readResult.getRecords();
 
 
-    for (Metadata md : mdInfo) { //Loop through each field
+    for (Metadata md : mdInfo) {
       CustomObject customObject = (CustomObject) md;
 
       for (CustomField field : customObject.getFields()) {
-          if (field.getLabel().equals(null)) { //Add field to the map if not filtered
+          if (field.getLabel() == null) {
             fieldLabelToAPIName.put(field.getFullName(), field.getFullName());
           } else {
             fieldLabelToAPIName.put(field.getLabel(), field.getFullName());

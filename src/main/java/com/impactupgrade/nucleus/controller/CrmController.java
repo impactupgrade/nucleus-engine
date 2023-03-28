@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.cxf.wsdl11.SOAPBindingUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
@@ -311,18 +312,8 @@ public class CrmController {
     SecurityUtil.verifyApiKey(env);
     CrmService crmService = env.primaryCrmService();
     Map<String, String> lists = crmService.getContactLists();
-    Map<String, String> filteredLists = new HashMap<>();
-    String filter = "sample|npsp|"; //TODO: refine filters
-    Pattern pattern = Pattern.compile(filter);
 
-    for (Map.Entry<String, String> entry : lists.entrySet()) {
-      String value = entry.getValue();
-      if (!pattern.matcher(value).matches()) { //*note* in this case we are filtering out matches and not filtering for matches
-        filteredLists.put(entry.getKey(), value);
-      }
-    }
-
-    return Response.status(200).entity(filteredLists).build();
+    return Response.status(200).entity(lists).build();
   }
 
   @Path("/contact-fields")
@@ -339,9 +330,14 @@ public class CrmController {
 
     switch (type){
       case "sms":
-        filter = "sms|ops|subscribe|text|sign"; //TODO: refine filters
+        filter = ".*(?i:sms|opt|subscri|text|sign).*";
+        break;
+      case "contactLanguage":
+        filter = ".*(?i:prefer|lang).*";
+        break;
       default:
         filter = "(?s).*";
+        break;
     }
 
     Map<String, String> fullList = crmService.getFieldOptions("contact" );

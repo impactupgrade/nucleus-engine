@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -771,8 +772,13 @@ public class SfdcCrmService implements CrmService {
     listRecords.addAll(sfdcClient.getCampaigns());
     listRecords.addAll(sfdcClient.getReports());
 
+    String filter = ".*(?i:npsp|sample).*";
+    Pattern pattern = Pattern.compile(filter);
+
     for(SObject list: listRecords){
-      lists.put((String) list.getField("name"), (String) list.getField("id"));
+      if (!pattern.matcher(list.getField("Name").toString()).find()) {
+        lists.put(list.getField("Name").toString(), list.getField("Id").toString());
+      }
     }
     return lists;
   }
