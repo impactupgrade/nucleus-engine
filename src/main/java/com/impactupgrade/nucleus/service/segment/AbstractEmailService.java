@@ -64,11 +64,20 @@ public abstract class AbstractEmailService implements EmailService {
     if (crmContact.lastDonationDate != null) {
       customFields.add(new CustomField("date_of_last_donation", CustomFieldType.DATE, crmContact.lastDonationDate));
     }
+    if (crmContact.largestDonationAmount != null) {
+      customFields.add(new CustomField("largest_donation", CustomFieldType.NUMBER, crmContact.largestDonationAmount));
+    }
     if (crmContact.totalDonationAmount != null) {
       customFields.add(new CustomField("total_of_donations", CustomFieldType.NUMBER, crmContact.totalDonationAmount));
     }
     if (crmContact.numDonations != null) {
       customFields.add(new CustomField("number_of_donations", CustomFieldType.NUMBER, crmContact.numDonations));
+    }
+    if (crmContact.totalDonationAmountYtd != null) {
+      customFields.add(new CustomField("total_of_donations_ytd", CustomFieldType.NUMBER, crmContact.totalDonationAmountYtd));
+    }
+    if (crmContact.numDonationsYtd != null) {
+      customFields.add(new CustomField("number_of_donations_ytd", CustomFieldType.NUMBER, crmContact.numDonationsYtd));
     }
 
     return customFields;
@@ -157,6 +166,10 @@ public abstract class AbstractEmailService implements EmailService {
       for (String c : contactCampaignNames) {
         tags.add("campaign_" + Utils.toSlug(c));
       }
+    }
+
+    if (!Strings.isNullOrEmpty(crmContact.account.typeName)) {
+      tags.add("account_type_" + Utils.toSlug(crmContact.account.typeName));
     }
 
     return tags;

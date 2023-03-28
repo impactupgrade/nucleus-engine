@@ -7,5 +7,6 @@
     "recordType": ["sf_opp_record_type", "sf_opp_record_type_id"]
   },
 
-  "currency": "usd"
+  "currency": "usd",
+  "timezoneId": "UTC"
 }

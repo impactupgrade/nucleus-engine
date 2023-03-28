@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.logic;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
@@ -35,6 +36,11 @@ public class AccountingService {
             return;
         }
 
+        if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().id)) {
+            log.warn("payment gateway event {} failed to process the donation; skipping accounting processing", paymentGatewayEvent.getCrmDonation().transactionId);
+            return;
+        }
+
         Optional<AccountingTransaction> accountingTransactionO = _accountingPlatformService.get().getTransaction(paymentGatewayEvent.getCrmDonation());
         if (accountingTransactionO.isPresent()) {
             log.info("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getCrmDonation().transactionId);
@@ -49,32 +55,24 @@ public class AccountingService {
     }
 
     protected void processTransaction(CrmDonation crmDonation) throws Exception {
-        Optional<CrmDonation> existingDonation = env.donationsCrmService().getDonationByTransactionIds(
-            crmDonation.getTransactionIds(),
-            crmDonation.account.id,
-            crmDonation.contact.id
-        );
-        if (existingDonation.isEmpty()) {
-            // Should be unreachable
-            log.warn("Failed to find donation for payment gateway event! Returning...");
-            return;
-        }
-        CrmContact crmContact = getDonationContact(existingDonation.get());
+        CrmContact crmContact = getDonationContact(crmDonation);
         if (crmContact == null) {
             // Should be unreachable
-            log.warn("Failed to find crm contact for crm donation {}!", existingDonation.get().id);
+            log.warn("Failed to find crm contact for crm donation {}!", crmDonation.id);
             return;
         }
 
         String contactId = _accountingPlatformService.get().updateOrCreateContact(crmContact);
         log.info("Upserted contact: {}", contactId);
 
-        AccountingTransaction accountingTransaction = toAccountingTransaction(existingDonation.get(), contactId, crmContact.id);
+        AccountingTransaction accountingTransaction = toAccountingTransaction(crmDonation, contactId, crmContact.id);
         String transactionId = _accountingPlatformService.get().createTransaction(accountingTransaction);
         log.info("Created transaction: {}", transactionId);
     }
 
     private CrmContact getDonationContact(CrmDonation crmDonation) throws Exception {
+        // We retrieve the full objects from the CRM here, in case they have additional info over what was in
+        // the payment event.
         CrmContact crmContact = null;
         if (!StringUtils.isEmpty(crmDonation.account.id)) {
             CrmAccount crmAccount = env.donationsCrmService().getAccountById(crmDonation.account.id).orElse(null);

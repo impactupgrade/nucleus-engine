@@ -69,6 +69,12 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("2021-05-03", opp.getField("CloseDate"));
     assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));
+
+    List<SObject> contactRoles = sfdcClient.queryList("SELECT Id, ContactId, IsPrimary FROM OpportunityContactRole WHERE OpportunityId='" + opp.getId() + "'");
+    assertEquals(1, contactRoles.size());
+    SObject contactRole = contactRoles.get(0);
+    assertEquals(contact.getId(), contactRole.getField("ContactId"));
+    assertEquals("true", contactRole.getField("IsPrimary"));
   }
 
   @Test
@@ -239,7 +245,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("cus_JPgkris8GTsXIH", opp.getField("Payment_Gateway_Customer_Id__c"));
     assertEquals("Closed Won", opp.getField("StageName"));
     assertEquals("2021-05-03", opp.getField("CloseDate"));
-    assertEquals("Integration Tester2 Donation", opp.getField("Name"));
+    // Allow the donation to accurately reflect the transaction's details, even if it doesn't exactly match
+    // the Contact/Account the CRM itself (data wasn't overwritten).
+    assertEquals("Integration Tester Donation", opp.getField("Name"));
     assertEquals("100.0", opp.getField("Amount"));
   }
 }

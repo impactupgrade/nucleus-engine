@@ -97,6 +97,8 @@ public class CrmImportEvent {
   // TODO: Add this to the Portal task. But for now, defaulting it to false out of caution.
   public Boolean opportunitySkipDuplicateCheck = false;
 
+  public boolean secondPass = false;
+
   public String contactFullName() {
     if (!Strings.isNullOrEmpty(contactFullName)) {
       return contactFullName;

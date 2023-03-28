@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -89,9 +90,9 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripeCharge.getCreated() != null) {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeCharge.getCreated()), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.toZonedDateTime(stripeCharge.getCreated(), "UTC");
     } else {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.now("UTC");
     }
 
     crmDonation.description = stripeCharge.getDescription();
@@ -157,9 +158,9 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripePaymentIntent.getCreated() != null) {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripePaymentIntent.getCreated()), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.toZonedDateTime(stripePaymentIntent.getCreated(), "UTC");
     } else {
-      crmDonation.closeDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.closeDate = Utils.now("UTC");
     }
 
     crmDonation.description = stripePaymentIntent.getDescription();
@@ -211,9 +212,9 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     if (stripeRefund.getCreated() != null) {
-      crmDonation.refundDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeRefund.getCreated()), ZoneId.of("UTC"));
+      crmDonation.refundDate = Utils.toZonedDateTime(stripeRefund.getCreated(), "UTC");
     } else {
-      crmDonation.refundDate = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
+      crmDonation.refundDate = Utils.now("UTC");
     }
   }
 
@@ -423,9 +424,9 @@ public class PaymentGatewayEvent implements Serializable {
     crmRecurringDonation.gatewayName = "Stripe";
 
     if (stripeSubscription.getTrialEnd() != null) {
-      crmRecurringDonation.subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getTrialEnd()), ZoneId.of("UTC"));
+      crmRecurringDonation.subscriptionStartDate = Utils.toZonedDateTime(stripeSubscription.getTrialEnd(), "UTC");
     } else {
-      crmRecurringDonation.subscriptionStartDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(stripeSubscription.getStartDate()), ZoneId.of("UTC"));
+      crmRecurringDonation.subscriptionStartDate = Utils.toZonedDateTime(stripeSubscription.getStartDate(), "UTC");
     }
     crmRecurringDonation.subscriptionNextDate = crmRecurringDonation.subscriptionStartDate;
 
@@ -459,6 +460,10 @@ public class PaymentGatewayEvent implements Serializable {
         ));
   }
 
+  public String getMetadataValue(String key) {
+    return getMetadataValue(List.of(key));
+  }
+
   public String getMetadataValue(Collection<String> keys) {
     Collection<String> filteredKeys = keys.stream().filter(k -> !Strings.isNullOrEmpty(k)).toList();
 
@@ -488,13 +493,6 @@ public class PaymentGatewayEvent implements Serializable {
     crmRecurringDonation.account.id = crmAccountId;
   }
 
-  public void setCrmAccount(CrmAccount crmAccount) {
-    this.crmAccount = crmAccount;
-    crmContact.account = crmAccount;
-    crmDonation.account = crmAccount;
-    crmRecurringDonation.account = crmAccount;
-  }
-
   public CrmContact getCrmContact() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmContact.id)) {
@@ -509,22 +507,12 @@ public class PaymentGatewayEvent implements Serializable {
     crmRecurringDonation.contact.id = crmContactId;
   }
 
-  public void setCrmContact(CrmContact crmContact) {
-    this.crmContact = crmContact;
-    crmDonation.contact = crmContact;
-    crmRecurringDonation.contact = crmContact;
-  }
-
   public CrmDonation getCrmDonation() {
     return crmDonation;
   }
 
   public void setCrmDonationId(String crmDonationId) {
     crmDonation.id = crmDonationId;
-  }
-
-  public void setCrmDonation(CrmDonation crmDonation) {
-    this.crmDonation = crmDonation;
   }
 
   public CrmRecurringDonation getCrmRecurringDonation() {
@@ -534,11 +522,6 @@ public class PaymentGatewayEvent implements Serializable {
   public void setCrmRecurringDonationId(String crmRecurringDonationId) {
     crmRecurringDonation.id = crmRecurringDonationId;
     crmDonation.recurringDonation.id = crmRecurringDonationId;
-  }
-
-  public void setCrmRecurringDonation(CrmRecurringDonation crmRecurringDonation) {
-    this.crmRecurringDonation = crmRecurringDonation;
-    crmDonation.recurringDonation = crmRecurringDonation;
   }
 
   // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.

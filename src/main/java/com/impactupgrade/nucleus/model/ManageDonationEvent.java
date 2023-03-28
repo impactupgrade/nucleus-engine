@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.Utils;
 
 import java.text.ParseException;
+import java.time.ZoneId;
 import java.util.Calendar;
 
 public class ManageDonationEvent {
@@ -39,12 +40,14 @@ public class ManageDonationEvent {
     if (formData.amount != null && formData.amount.isPresent())
       crmRecurringDonation.amount = formData.amount.get();
 
+    // Since we're consuming the above Calendar variables as form fields
+    // directly from Nucleus Portal, those are likely coming in as the default TZ
     if (formData.pauseDonationUntilDate != null && formData.pauseDonationUntilDate.isPresent())
-      this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get());
+      this.pauseDonationUntilDate = Utils.getCalendarFromDateString(formData.pauseDonationUntilDate.get(), ZoneId.systemDefault().getId());
     if (formData.resumeDonationOnDate != null && formData.resumeDonationOnDate.isPresent())
-      this.resumeDonationOnDate = Utils.getCalendarFromDateString(formData.resumeDonationOnDate.get());
+      this.resumeDonationOnDate = Utils.getCalendarFromDateString(formData.resumeDonationOnDate.get(), ZoneId.systemDefault().getId());
     if (formData.nextPaymentDate != null && formData.nextPaymentDate.isPresent())
-      this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get());
+      this.nextPaymentDate = Utils.getCalendarFromDateString(formData.nextPaymentDate.get(), ZoneId.systemDefault().getId());
 
     this.pauseDonation = formData.pauseDonation.isPresent() && formData.pauseDonation.get();
     this.resumeDonation = formData.resumeDonation.isPresent() && formData.resumeDonation.get();

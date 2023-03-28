@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,7 +98,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         username,
         password,
         isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION,
-        20 // objects are massive, so toning down the batch sizes
+        200
     );
     this.env = env;
 
@@ -106,15 +107,15 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, RecordTypeId, RecordType.Id, RecordType.Name";
     CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
     // TODO: Finding a few clients with no homephone, so taking that out for now.
-    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, Account.Id, Account.Name, Account.BillingStreet, Account.BillingCity, Account.BillingPostalCode, Account.BillingState, Account.BillingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, Phone";
+    CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, Account.Id, Account.Name, Account.BillingStreet, Account.BillingCity, Account.BillingPostalCode, Account.BillingState, Account.BillingCountry, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, Phone";
     LEAD_FIELDS = "Id, FirstName, LastName, Email";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";
     REPORT_FIELDS = "Id, Name";
 
     if (npsp) {
-      ACCOUNT_FIELDS += ", npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c";
-      CONTACT_FIELDS += ", account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, npe01__Home_Address__c, npe01__workphone__c, npe01__preferredphone__c";
+      ACCOUNT_FIELDS += ", npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c";
+      CONTACT_FIELDS += ", account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, account.npo02__LargestAmount__c, account.npo02__OppsClosedThisYear__c, account.npo02__OppAmountThisYear__c, npe01__Home_Address__c, npe01__workphone__c, npe01__preferredphone__c";
       DONATION_FIELDS += ", npe03__Recurring_Donation__c";
       RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npe03__Contact__r.Phone, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name";
     }
@@ -235,6 +236,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String escapedLastName = lastName.replaceAll("'", "\\\\'");
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
     return queryList(query);
+  }
+
+  public List<SObject> getContactsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(names, "Name", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
   public List<SObject> getDupContactsByName(String firstName, String lastName, String... extraFields) throws ConnectionException, InterruptedException {
@@ -457,16 +462,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public Collection<SObject> getEmailContacts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     String updatedSinceClause = "";
+
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
+    List<SObject> contacts = getEmailContacts(updatedSinceClause, filter, extraFields);
 
-    if (!Strings.isNullOrEmpty(filter)) {
-      filter = " and " + filter;
+    if (updatedSince != null) {
+      updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
     }
-
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter;
-    List<SObject> contacts = queryListAutoPaged(query);
+    contacts.addAll(getEmailContacts(updatedSinceClause, filter, extraFields));
 
     // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
     Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
@@ -478,6 +483,14 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
+  private List<SObject> getEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter;
+    return queryListAutoPaged(query);
+  }
 
   public PagedResults<SObject> searchContacts(ContactSearch contactSearch, String... extraFields)
       throws ConnectionException, InterruptedException {
@@ -765,7 +778,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType,
-      String fields, Set<String> customFields, String[] extraFields) throws ConnectionException, InterruptedException {
+      String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
     if (conditions.isEmpty()) {
       return List.of();
     }
@@ -781,6 +794,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       more = Collections.emptyList();
     }
 
+    // the provided Set might be immutable
+    Set<String> customFields = new HashSet<>(_customFields);
     // sometimes searching using external ref IDs or another unique fields -- make sure results include it
     if (!"id".equalsIgnoreCase(conditionFieldName) && !"email".equalsIgnoreCase(conditionFieldName)) {
       customFields.add(conditionFieldName);

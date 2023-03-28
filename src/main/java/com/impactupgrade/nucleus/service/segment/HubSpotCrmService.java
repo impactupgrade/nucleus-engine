@@ -1047,6 +1047,7 @@ public class HubSpotCrmService implements CrmService {
         company.getProperties().getName(),
         // TODO: Differentiate between Household and Organization?
         EnvironmentConfig.AccountType.HOUSEHOLD,
+        null, // typeName
         company,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/company/" + company.getId()
     );
@@ -1075,17 +1076,20 @@ public class HubSpotCrmService implements CrmService {
         null, // Calendar firstDonationDate,
         contact.getProperties().getFirstname(),
         null, // String homePhone,
+        null, // Double largestDonationAmount
         null, // Calendar lastDonationDate,
         contact.getProperties().getLastname(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
         contact.getProperties().getMobilephone(),
         null, // Integer numDonations,
+        null, // Integer numDonationsYtd
         contact.getProperties().getOwnerId(),
         null, // String ownerName,
         preferredPhone,
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
         null, // Double totalDonationAmount,
+        null, // Double totalDonationAmountYtd
         null, // String workPhone,
         contact,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/contact/" + contact.getId(),
@@ -1118,17 +1122,20 @@ public class HubSpotCrmService implements CrmService {
         null, // Calendar firstDonationDate,
         getValue(contact.getProperties().getFirstname()),
         getValue(contact.getProperties().getPhone()),
+        null, // Double largestDonationAmount
         null, // Calendar lastDonationDate,
         getValue(contact.getProperties().getLastname()),
         getValue(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
         getValue(contact.getProperties().getMobilePhone()),
         null, // Integer numDonations,
+        null, // Integer numDonationsYtd
         null, // String ownerId,
         null, // String ownerName,
         null, //  CrmContact.PreferredPhone preferredPhone,
         null, // Boolean smsOptIn,
         null, //    Boolean smsOptOut,
         null, //   Double totalDonationAmount,
+        null, // Double totalDonationAmountYtd
         null, //   String workPhone,
         null, //  Object crmRawObject,
         null, //   String crmUrl,
