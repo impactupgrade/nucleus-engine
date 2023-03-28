@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
@@ -25,6 +26,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
@@ -115,6 +117,7 @@ public class CrmController {
   public Response bulkImport(
       @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @FormDataParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
@@ -137,10 +140,15 @@ public class CrmController {
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
     Runnable thread = () -> {
-      try {
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Bulk Import: File";
+        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
+        env.endLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -154,6 +162,7 @@ public class CrmController {
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImport(
       @FormParam("google-sheet-url") String gsheetUrl,
+      @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
@@ -165,10 +174,15 @@ public class CrmController {
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
     Runnable thread = () -> {
-      try {
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Bulk Import: Google Sheet";
+        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
+        env.endLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -183,6 +197,7 @@ public class CrmController {
   public Response bulkImportFBFundraisers(
       @FormDataParam("file") InputStream inputStream,
       @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @FormDataParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
@@ -205,10 +220,15 @@ public class CrmController {
     List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
 
     Runnable thread = () -> {
-      try {
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Bulk Import: Facebook";
+        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
+        env.endLog("job completed");
       } catch (Exception e) {
         log.error("bulkImport failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();

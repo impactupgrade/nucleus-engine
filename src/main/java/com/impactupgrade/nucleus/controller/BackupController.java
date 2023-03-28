@@ -14,11 +14,13 @@ import com.backblaze.b2.client.structures.B2UploadFileRequest;
 import com.backblaze.b2.client.structures.B2UploadListener;
 import com.backblaze.b2.util.B2ExecutorUtils;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 
@@ -61,7 +63,11 @@ public class BackupController {
     Runnable thread = () -> {
       // SALESFORCE
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.url)) {
-        try {
+        Session session = env.getSession();
+        try (session) {
+          String jobName = "Weekly Backup";
+          env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+
           // start with a clean slate and delete the dir used by the script
           FileUtils.deleteDirectory(new File("backup-salesforce"));
 
@@ -110,10 +116,12 @@ public class BackupController {
               log.info("upload complete: {}", upload);
             }
 
-            client.close();;
+            client.close();
+            env.endLog(jobName);
           }
         } catch(Exception e){
           log.error("SFDC backup failed", e);
+          env.errorLog(e.getMessage());
         }
       }
 

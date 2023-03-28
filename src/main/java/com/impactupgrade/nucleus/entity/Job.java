@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vladmihalcea.hibernate.type.json.JsonType;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.GenericGenerator;
@@ -10,7 +11,9 @@ import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
 
 import javax.persistence.CascadeType;
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
@@ -22,6 +25,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import java.time.Instant;
+import java.util.LinkedList;
 import java.util.List;
 
 @Entity
@@ -42,9 +46,21 @@ public class Job {
   )
   public Long id;
 
+  @Column(name = "trace_id", nullable = false)
+  public String traceId;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "job_type")
   public JobType jobType;
+
+  @Column(name = "started_by", nullable = false)
+  public String startedBy;
+
+  @Column(name = "job_name", nullable = false)
+  public String jobName;
+
+  @Column(name = "originating_platform", nullable = false)
+  public String originatingPlatform;
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(name = "organization_id")
@@ -79,4 +95,18 @@ public class Job {
   @Column(name = "sequence_order", nullable = true)
   @Enumerated(EnumType.STRING)
   public JobSequenceOrder sequenceOrder;
+
+  @Column(name = "started_at", nullable = false)
+  public Instant startedAt;
+
+  @Column(name = "ended_at")
+  public Instant endedAt;
+
+  @ElementCollection
+  @CollectionTable(name = "job_logs", joinColumns = @JoinColumn(name = "job_id", referencedColumnName = "id"))
+  @Column(name = "log")
+  @Fetch(FetchMode.SELECT)
+  @BatchSize(size = 10)
+  public List<String> logs = new LinkedList<>();
+
 }

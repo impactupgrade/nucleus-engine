@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -29,6 +30,7 @@ import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.POST;
@@ -90,10 +92,15 @@ public class StripeController {
     } else {
       // takes a while, so spin it off as a new thread
       Runnable thread = () -> {
-        try {
+        Session session = env.getSession();
+        try (session) {
+          String jobName = "Stripe Event";
+          env.startLog(JobType.PORTAL_TASK, "webhook", jobName, "Stripe");
           processEvent(event.getType(), stripeObject, env);
+          env.endLog("job completed");
         } catch (Exception e) {
           log.error("failed to process the Stripe event", e);
+          env.errorLog(e.getMessage());
           // TODO: email notification?
         }
       };

@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
@@ -17,6 +18,7 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
@@ -139,7 +141,7 @@ public class PaymentGatewayController {
   @Path("/verify/charges")
   @GET
   public Response verifyCharges(@Context HttpServletRequest request) throws Exception {
-    return verifyCharges(null, null, request);
+    return verifyCharges(null, null, null, request);
   }
 
   @Path("/verify/charges")
@@ -147,6 +149,7 @@ public class PaymentGatewayController {
   public Response verifyCharges(
       @FormParam("start") String start,
       @FormParam("end") String end,
+      @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
@@ -165,9 +168,20 @@ public class PaymentGatewayController {
     }
 
     Runnable thread = () -> {
-      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
-        // TODO: The results from this could be returned as a CSV...
-        paymentGatewayService.verifyCharges(startDate, endDate);
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Payment Gateway: Verify Charges";
+        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+
+        for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+          // TODO: The results from this could be returned as a CSV...
+          paymentGatewayService.verifyCharges(startDate, endDate);
+          env.logProgress(paymentGatewayService.name() + ": charges verified");
+        }
+        env.endLog("job completed");
+      } catch (Exception e) {
+        log.error("verifyCharges failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -178,7 +192,7 @@ public class PaymentGatewayController {
   @Path("/replay/charges")
   @GET
   public Response verifyAndReplayCharges(@Context HttpServletRequest request) throws Exception {
-    return verifyAndReplayCharges(null, null, request);
+    return verifyAndReplayCharges(null, null, null, request);
   }
 
   @Path("/replay/charges")
@@ -186,6 +200,7 @@ public class PaymentGatewayController {
   public Response verifyAndReplayCharges(
       @FormParam("start") String start,
       @FormParam("end") String end,
+      @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
@@ -204,8 +219,19 @@ public class PaymentGatewayController {
     }
 
     Runnable thread = () -> {
-      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
-        paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Payment Gateway: Verify/Replay Charges";
+        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+
+        for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+          paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
+          env.logProgress(paymentGatewayService.name() + ": charges verified and replayed");
+        }
+        env.endLog("job completed");
+      } catch (Exception e) {
+        log.error("verifyAndReplayCharges failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -216,7 +242,7 @@ public class PaymentGatewayController {
   @Path("/replay/deposits")
   @GET
   public Response verifyAndReplayDeposits(@Context HttpServletRequest request) throws Exception {
-    return verifyAndReplayDeposits(null, null, request);
+    return verifyAndReplayDeposits(null, null, null, request);
   }
 
   @Path("/replay/deposits")
@@ -224,6 +250,7 @@ public class PaymentGatewayController {
   public Response verifyAndReplayDeposits(
       @FormParam("start") String start,
       @FormParam("end") String end,
+      @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
@@ -242,8 +269,20 @@ public class PaymentGatewayController {
     }
 
     Runnable thread = () -> {
-      for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
-        paymentGatewayService.verifyAndReplayDeposits(startDate, endDate);
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Payment Gateway: Verify/Replay Deposits";
+        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+
+        for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
+          paymentGatewayService.verifyAndReplayDeposits(startDate, endDate);
+          env.logProgress(paymentGatewayService.name() + ": deposits verified and replayed");
+        }
+
+        env.endLog("job completed");
+      } catch (Exception e) {
+        log.error("verifyAndReplayDeposits failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();

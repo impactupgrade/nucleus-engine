@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -23,6 +24,7 @@ import com.twilio.twiml.voice.Redirect;
 import com.twilio.twiml.voice.Say;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -108,11 +110,30 @@ public class TwilioController {
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
-      contacts.stream()
-          .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
-          .forEach(c -> messagingService.sendMessage(message, c, sender));
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "SMS Blast";
+        log.info("STARTED: {}", jobName);
+        env.startLog(JobType.EVENT, null, jobName, "Twilio");
 
-      log.info("FINISHED: outbound/crm-list");
+        List<CrmContact> filteredContacts = contacts.stream()
+            .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
+            .collect(Collectors.toList());
+        int messagesSent = 0;
+
+        for (CrmContact c: filteredContacts) {
+          messagingService.sendMessage(message, c, sender);
+          env.logProgress(++messagesSent + " message(s) sent");
+        }
+
+        env.endLog(jobName);
+        log.info("FINISHED: {}", jobName);
+
+      } catch (Exception e) {
+        log.error("job failed", e);
+        env.errorLog("Please contact support@impactupgrade.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in!");
+      }
+
     };
     new Thread(thread).start();
 
@@ -143,6 +164,7 @@ public class TwilioController {
       @FormParam("OpportunityRecordTypeId") String opportunityRecordTypeId,
       @FormParam("OpportunityOwnerId") String opportunityOwnerId,
       @FormParam("OpportunityNotes") String opportunityNotes,
+      @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
@@ -174,7 +196,10 @@ public class TwilioController {
     }
 
     Runnable thread = () -> {
-      try {
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "SMS Flow";
+        env.startLog(JobType.EVENT, null, jobName, "Twilio");
         CrmContact crmContact = env.messagingService().processSignup(
             from,
             firstName,
@@ -198,9 +223,11 @@ public class TwilioController {
           crmOpportunity.campaignId = campaignId;
           crmOpportunity.description = opportunityNotes;
           env.messagingCrmService().insertOpportunity(crmOpportunity);
+          env.endLog(jobName);
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);
+        env.errorLog("Please contact support@impactupgrade.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in!");
       }
     };
     new Thread(thread).start();
@@ -233,13 +260,19 @@ public class TwilioController {
       String body = smsData.get("Body").get(0).trim();
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
-        String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
-        env.notificationService().sendNotification(
-            "Text Message Received",
-            "Text message received from " + from + ": " + body,
-            targetId,
-            "sms:inbound-default"
-        );
+        Session session = env.getSession();
+        try (session) {
+          String jobName = "SMS Inbound";
+          env.startLog(JobType.EVENT, null, jobName, "Twilio");
+          String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
+          env.notificationService().sendNotification(
+              "Text Message Received",
+              "Text message received from " + from + ": " + body,
+              targetId,
+              "sms:inbound-default"
+          );
+          env.endLog(jobName);
+        }
       }
     }
 

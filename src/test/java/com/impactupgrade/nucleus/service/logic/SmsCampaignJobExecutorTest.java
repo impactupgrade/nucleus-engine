@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -69,6 +70,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
           ]
         }
     """);
+    job.traceId = UUID.randomUUID().toString();
+    job.startedBy = "IT test";
+    job.jobName = "Test job";
+    job.originatingPlatform = "IT test";
+    job.startedAt = Instant.now();
     jobDao.create(job);
 
     CrmContact contact1 = crmContact("contact1", "EN");
@@ -156,6 +162,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
           ]
         }
     """);
+    job.traceId = UUID.randomUUID().toString();
+    job.startedBy = "IT test";
+    job.jobName = "Test job";
+    job.originatingPlatform = "IT test";
+    job.startedAt = Instant.now();
     jobDao.create(job);
 
     List<CrmContact> contacts = new ArrayList<>();
@@ -459,6 +470,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
           ]
         }
     """);
+    job.traceId = UUID.randomUUID().toString();
+    job.startedBy = "IT test";
+    job.jobName = "Test job";
+    job.originatingPlatform = "IT test";
+    job.startedAt = Instant.now();
     jobDao.create(job);
 
     List<CrmContact> contacts = new ArrayList<>();

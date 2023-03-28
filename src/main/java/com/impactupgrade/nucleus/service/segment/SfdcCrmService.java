@@ -1228,6 +1228,8 @@ public class SfdcCrmService implements CrmService {
           }
         }
       }
+
+      env.logProgress("Imported " + (i + 1) + " contact(s)");
     }
 
     sfdcClient.batchFlush();
@@ -1273,6 +1275,8 @@ public class SfdcCrmService implements CrmService {
           setBulkImportRecurringDonationFields(recurringDonation, null, importEvent);
           sfdcClient.batchInsert(recurringDonation);
         }
+
+        env.logProgress("Imported " + (i + 1) + " recurring donation(s)");
       }
 
       sfdcClient.batchFlush();
@@ -1332,6 +1336,7 @@ public class SfdcCrmService implements CrmService {
 
           sfdcClient.batchInsert(opportunity);
         }
+        env.logProgress("Imported " + (i + 1) + " opportunity(s)");
       }
 
       sfdcClient.batchFlush();
@@ -1591,7 +1596,7 @@ public class SfdcCrmService implements CrmService {
       sObject.setField(key, getCustomBulkValue(entry.getValue()));
     });
   }
-  
+
   protected String getMultiselectPicklistValue(String key, String value, SObject existingSObject) {
     if (existingSObject != null) {
       String existingValue = (String) existingSObject.getField(key);

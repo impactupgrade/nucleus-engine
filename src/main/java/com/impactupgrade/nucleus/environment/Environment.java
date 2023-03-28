@@ -11,6 +11,10 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
+import com.impactupgrade.nucleus.dao.HibernateUtil;
+import com.impactupgrade.nucleus.entity.Job;
+import com.impactupgrade.nucleus.entity.JobStatus;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
@@ -19,14 +23,17 @@ import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
+import com.impactupgrade.nucleus.service.segment.EnrichmentService;
+import com.impactupgrade.nucleus.service.segment.JobProgressLoggingService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
@@ -39,6 +46,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.TimeZone;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -69,6 +78,15 @@ public class Environment {
   private final EnvironmentConfig _config = EnvironmentConfig.init();
   public EnvironmentConfig getConfig() {
     return _config;
+  }
+
+  private final String jobTraceId;
+  public String getJobTraceId() {
+    return jobTraceId;
+  }
+
+  public Environment() {
+    this.jobTraceId = UUID.randomUUID().toString();
   }
 
   public void setRequest(HttpServletRequest request) {
@@ -233,4 +251,57 @@ public class Environment {
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
+
+  private Session session;
+  private JobProgressLoggingService jobProgressLoggingService;
+
+  public Session getSession() {
+    if (session == null) {
+      SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+      if (sessionFactory != null) {
+
+        String timezoneId = this.getConfig().timezoneId;
+        if (Strings.isNullOrEmpty(timezoneId)) {
+          // default to EST if not configured
+          timezoneId = "EST";
+        }
+
+        session = sessionFactory.withOptions()
+            .jdbcTimeZone(TimeZone.getTimeZone(timezoneId))
+            .openSession();
+      }
+    }
+    return session;
+  }
+
+  private JobProgressLoggingService getJobProgressLoggingService() {
+    if (jobProgressLoggingService == null) {
+      jobProgressLoggingService = new JobProgressLoggingService(this);
+    }
+    return jobProgressLoggingService;
+  }
+
+  public List<Job> getJobs() {
+    return getJobProgressLoggingService().getJobs();
+  }
+
+  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
+    logProgress(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
+  }
+
+  public void endLog(String message) {
+    logProgress(null, null, null, null, JobStatus.DONE, "FINISHED: " + message);
+  }
+
+  public void errorLog(String message) {
+    logProgress(null, null, null, null, JobStatus.FAILED, message);
+  }
+
+  public void logProgress(String message) {
+    logProgress(null, null, null, null, null, message);
+  }
+
+  private void logProgress(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+    getJobProgressLoggingService().logProgress(jobType, username, jobName, originatingPlatform, jobStatus, message);
+  }
 }
