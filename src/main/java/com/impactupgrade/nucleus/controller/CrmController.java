@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.cxf.wsdl11.SOAPBindingUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
@@ -41,9 +42,11 @@ import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
@@ -299,4 +302,56 @@ public class CrmController {
     return Response.ok(insertedFields).build();
   }
 
+  @Path("/contact-lists")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getContactLists(
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+    CrmService crmService = env.primaryCrmService();
+    Map<String, String> lists = crmService.getContactLists();
+
+    return Response.status(200).entity(lists).build();
+  }
+
+  @Path("/contact-fields")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getContactFields(
+          @QueryParam("type") String type,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+    CrmService crmService = env.primaryCrmService();
+    String filter = "";
+
+    switch (type){
+      case "sms":
+        filter = ".*(?i:sms|opt|subscri|text|sign).*";
+        break;
+      case "contactLanguage":
+        filter = ".*(?i:prefer|lang).*";
+        break;
+      default:
+        filter = "(?s).*";
+        break;
+    }
+
+    Map<String, String> fullList = crmService.getFieldOptions("contact" );
+
+    Map<String, String> filteredList = new HashMap<>();
+    Pattern pattern = Pattern.compile(filter);
+
+    for (Map.Entry<String, String> entry : fullList.entrySet()) {
+      String value = entry.getValue();
+      if (pattern.matcher(value).matches()) {
+        filteredList.put(entry.getKey(), value);
+      }
+    }
+
+    return Response.status(200).entity(filteredList).build();
+  }
 }

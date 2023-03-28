@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -362,6 +363,20 @@ public class SharePointCrmService implements CrmService {
         return null;
     }
 
+    @Override
+    public List<CrmUser> getUsers() throws Exception {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public Map<String, String> getContactLists() throws Exception {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public Map<String, String> getFieldOptions(String object) throws Exception {
+        return Collections.emptyMap();
+    }
     @Override
     public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
         return null;

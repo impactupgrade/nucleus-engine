@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,6 +21,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class DonorWranglerCrmService implements BasicCrmService {
@@ -108,6 +110,21 @@ public class DonorWranglerCrmService implements BasicCrmService {
   @Override
   public void refundDonation(CrmDonation crmDonation) throws Exception {
     // no refund support
+  }
+
+  @Override
+  public List<CrmUser> getUsers() throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public Map<String, String> getContactLists() throws Exception {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, String> getFieldOptions(String object) throws Exception {
+    return Collections.emptyMap();
   }
 
   @Override

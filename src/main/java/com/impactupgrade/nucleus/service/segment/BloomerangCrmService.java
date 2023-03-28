@@ -307,6 +307,21 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmUser> getUsers() throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public Map<String, String> getContactLists() throws Exception {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, String> getFieldOptions(String object) throws Exception {
+    return Collections.emptyMap();
+  }
+
+  @Override
   public EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions() {
     return this.env.getConfig().bloomerang.fieldDefinitions;
   }

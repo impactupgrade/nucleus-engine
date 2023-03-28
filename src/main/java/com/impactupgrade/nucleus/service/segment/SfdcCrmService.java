@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -781,6 +782,34 @@ public class SfdcCrmService implements CrmService {
       contacts.addAll(sfdcClient.getEmailLeads(updatedSince, emailList.crmLeadFilter).stream().map(this::toCrmContact).toList());
     }
     return contacts;
+  }
+
+  @Override
+  public List<CrmUser> getUsers() throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public Map<String, String> getContactLists() throws Exception {
+    Map<String, String> lists = new HashMap<>();
+    List<SObject> listRecords = new ArrayList<>();
+    listRecords.addAll(sfdcClient.getCampaigns());
+    listRecords.addAll(sfdcClient.getReports());
+
+    String filter = ".*(?i:npsp|sample|nonprofit|health|dashboard).*";
+    Pattern pattern = Pattern.compile(filter);
+
+    for(SObject list: listRecords){
+      if (!pattern.matcher(list.getField("Name").toString()).find()) {
+        lists.put(list.getField("Name").toString(), list.getField("Id").toString());
+      }
+    }
+    return lists;
+  }
+
+  @Override
+  public Map<String, String> getFieldOptions(String object) throws Exception {
+    return sfdcMetadataClient.getObjectFields(object);
   }
 
   @Override
