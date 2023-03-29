@@ -97,7 +97,13 @@ public class PaymentGatewayEvent implements Serializable {
 
     crmDonation.description = stripeCharge.getDescription();
     crmDonation.transactionId = stripeCharge.getId();
-    crmDonation.status = "failed".equalsIgnoreCase(stripeCharge.getStatus()) ? CrmDonation.Status.FAILED : CrmDonation.Status.SUCCESSFUL;
+
+    if ("failed".equalsIgnoreCase(stripeCharge.getStatus())) {
+      crmDonation.status = CrmDonation.Status.FAILED;
+      crmDonation.failureReason = stripeCharge.getFailureMessage();
+    } else {
+      crmDonation.status = CrmDonation.Status.SUCCESSFUL;
+    }
     crmDonation.url = "https://dashboard.stripe.com/charges/" + stripeCharge.getId();
 
     crmDonation.originalAmountInDollars = stripeCharge.getAmount() / 100.0;
@@ -168,7 +174,14 @@ public class PaymentGatewayEvent implements Serializable {
     crmDonation.secondaryId = stripePaymentIntent.getCharges().getData().stream().findFirst().map(Charge::getId).orElse(null);
     // note this is different than a charge, which uses !"failed" -- intents have multiple phases of "didn't work",
     // so explicitly search for succeeded
-    crmDonation.status = "succeeded".equalsIgnoreCase(stripePaymentIntent.getStatus()) ? CrmDonation.Status.SUCCESSFUL : CrmDonation.Status.FAILED;
+    if ("succeeded".equalsIgnoreCase(stripePaymentIntent.getStatus())) {
+      crmDonation.status = CrmDonation.Status.SUCCESSFUL;
+    } else {
+      crmDonation.status = CrmDonation.Status.FAILED;
+      if (stripePaymentIntent.getLastPaymentError() != null) {
+        crmDonation.failureReason = stripePaymentIntent.getLastPaymentError().getMessage();
+      }
+    }
     crmDonation.url = "https://dashboard.stripe.com/payments/" + stripePaymentIntent.getId();
 
     crmDonation.originalAmountInDollars = stripePaymentIntent.getAmount() / 100.0;

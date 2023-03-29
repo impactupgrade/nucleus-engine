@@ -489,6 +489,10 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField("StageName", "Closed Won");
     } else {
       opportunity.setField("StageName", "Failed Attempt");
+      // add failure reason
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayFailureReason)) {
+        opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayFailureReason, crmDonation.failureReason);
+      }
     }
 
     opportunity.setField("Amount", crmDonation.amount);
@@ -1874,10 +1878,12 @@ public class SfdcCrmService implements CrmService {
     Object statusNameO = sObject.getField("StageName");
     String statusName = statusNameO == null ? "" : statusNameO.toString();
     CrmDonation.Status status;
+    String paymentGatewayFailureReason = null;
     if ("Posted".equalsIgnoreCase(statusName) || "Closed Won".equalsIgnoreCase(statusName)) {
       status = CrmDonation.Status.SUCCESSFUL;
     } else if (statusName.contains("fail") || statusName.contains("Fail")) {
       status = CrmDonation.Status.FAILED;
+      paymentGatewayFailureReason = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayFailureReason);
     } else if (statusName.contains("refund") || statusName.contains("Refund")) {
       status = CrmDonation.Status.REFUNDED;
     } else {
@@ -1909,6 +1915,7 @@ public class SfdcCrmService implements CrmService {
         null, // String refundId,
         null, // ZonedDateTime refundDate,
         status,
+        paymentGatewayFailureReason,
         false, // boolean transactionCurrencyConverted,
         null, // Double transactionExchangeRate,
         null, // Double transactionFeeInDollars,

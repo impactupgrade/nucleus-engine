@@ -28,6 +28,8 @@
       "paymentGatewayDepositNetAmount": "Deposit_Net__c",
       "paymentGatewayDepositFee": "Deposit_Fee__c",
 
+      "paymentGatewayFailureReason": "Failure_Reason__c",
+
       "fund": "",
 
       "emailOptIn": "",
@@ -83,6 +85,8 @@
       "paymentGatewayDepositDate": "",
       "paymentGatewayDepositNetAmount": "",
       "paymentGatewayDepositFee": "",
+
+      "paymentGatewayFailureReason": "",
 
       "fund": "",
 

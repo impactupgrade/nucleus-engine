@@ -674,6 +674,7 @@ public class BloomerangCrmService implements CrmService {
         null, // String refundId,
         null, // ZonedDateTime refundDate,
         CrmDonation.Status.SUCCESSFUL, // Bloomerang has no notion of non-successful transactions.
+        null,
         false, // boolean transactionCurrencyConverted,
         null, // Double transactionExchangeRate,
         null, // Double transactionFeeInDollars,

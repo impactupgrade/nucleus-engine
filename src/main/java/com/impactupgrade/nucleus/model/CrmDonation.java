@@ -37,6 +37,7 @@ public class CrmDonation extends CrmOpportunity {
   public String refundId;
   public ZonedDateTime refundDate;
   public Status status = Status.SUCCESSFUL;
+  public String failureReason;
   public boolean currencyConverted;
   public Double exchangeRate;
   public Double feeInDollars;
@@ -77,6 +78,7 @@ public class CrmDonation extends CrmOpportunity {
       String refundId,
       ZonedDateTime refundDate,
       Status status,
+      String failureReason,
       boolean currencyConverted,
       Double exchangeRate,
       Double feeInDollars,
@@ -108,6 +110,7 @@ public class CrmDonation extends CrmOpportunity {
     this.refundId = refundId;
     this.refundDate = refundDate;
     if (status != null) this.status = status;
+    this.failureReason = failureReason;
     this.currencyConverted = currencyConverted;
     this.exchangeRate = exchangeRate;
     this.feeInDollars = feeInDollars;

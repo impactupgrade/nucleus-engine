@@ -118,6 +118,8 @@ public class EnvironmentConfig implements Serializable {
     public String paymentGatewayDepositNetAmount = "";
     public String paymentGatewayDepositFee = "";
 
+    public String paymentGatewayFailureReason = "";
+
     // donation designation
     public String fund = "";
 
