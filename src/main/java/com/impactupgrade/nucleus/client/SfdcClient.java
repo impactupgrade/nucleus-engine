@@ -483,12 +483,22 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
-  private List<SObject> getEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  protected List<SObject> getEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " and " + filter;
     }
 
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter;
+    String optInOutFilters = "";
+    // If env.json defines an emailOptIn, automatically factor that into the query.
+    // IMPORTANT: If env.json defines emailOptOut, also include those contacts in this query! This might seem backwards,
+    // but we need them in the results so that we can archive them in Mailchimp.
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn) && !Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptOut)) {
+      optInOutFilters = " AND (" + env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE OR " + env.getConfig().salesforce.fieldDefinitions.emailOptOut + "=TRUE)";
+    } else if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)) {
+      optInOutFilters = " AND " + env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE";
+    }
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter + optInOutFilters;
     return queryListAutoPaged(query);
   }
 

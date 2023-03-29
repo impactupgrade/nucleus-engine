@@ -586,6 +586,13 @@ public class RaisersEdgeToSalesforce {
 //
 //      // TODO: Gift-in-Kind, MG Pay-Cash, MG Pledge, Pay-Cash, Pledge, Stock/Property, Pay-Gift-in-Kind, Pay-Stock/Property
 //      // TODO: Pledges and Pay-Cash installments appear to share the same BB ID, so we should be able to use true
+    // Stock/Property: treated largely as cash, coming from SGO primarily (or other 3rd parties)
+    // Pay-Stock/Property may not be needed, no pledges
+    // Gift in Kind doesn't normally have amounts, up to donor to value it
+    // Purchases of ^^^ become Cash
+    // Pay-Gift-in-Kind not needed, no pledges
+    // MG pledge and cash largely modeled like normal pledge/cash, aimed at business account with soft credit to individual
+
 //      //  pledges and payments. That's (thankfully) not true of RDs.
 //      if (List.of("Cash", "Recurring Gift Pay-Cash").contains(giftRow.get("Gf_Type"))) {
 //        String id = giftRow.get("Gf_System_ID");
