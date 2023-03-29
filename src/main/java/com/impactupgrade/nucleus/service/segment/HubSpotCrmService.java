@@ -473,6 +473,7 @@ public class HubSpotCrmService implements CrmService {
       deal.setDealstage(env.getConfig().hubspot.donationPipeline.successStageId);
     } else {
       deal.setDealstage(env.getConfig().hubspot.donationPipeline.failedStageId);
+      setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayFailureReason, crmDonation.failureReason, deal.getOtherProperties());
     }
 
     deal.setClosedate(GregorianCalendar.from(crmDonation.closeDate));
@@ -1172,10 +1173,12 @@ public class HubSpotCrmService implements CrmService {
   protected CrmDonation toCrmDonation(Deal deal) {
     String paymentGatewayName = (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties());
     CrmDonation.Status status;
+    String paymentGatewayFailureReason = null;
     if (env.getConfig().hubspot.donationPipeline.successStageId.equalsIgnoreCase(deal.getProperties().getDealstage())) {
       status = CrmDonation.Status.SUCCESSFUL;
     } else if (env.getConfig().hubspot.donationPipeline.failedStageId.equalsIgnoreCase(deal.getProperties().getDealstage())) {
       status = CrmDonation.Status.FAILED;
+      paymentGatewayFailureReason = (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayFailureReason, deal.getProperties().getOtherProperties());
     } else {
       status = CrmDonation.Status.PENDING;
     }
@@ -1200,6 +1203,7 @@ public class HubSpotCrmService implements CrmService {
         null, // String refundId,
         null, // ZonedDateTime refundDate,
         status,
+        paymentGatewayFailureReason,
         false, // boolean transactionCurrencyConverted,
         null, // Double transactionExchangeRate,
         null, // Double transactionFeeInDollars,
