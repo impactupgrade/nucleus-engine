@@ -131,7 +131,7 @@ public class TwilioController {
 
       } catch (Exception e) {
         log.error("job failed", e);
-        env.errorLog("Please contact support@impactupgrade.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in!");
+        env.errorLog(e.getMessage());
       }
 
     };
@@ -227,7 +227,7 @@ public class TwilioController {
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);
-        env.errorLog("Please contact support@impactupgrade.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in!");
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();

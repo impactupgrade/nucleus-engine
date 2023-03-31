@@ -294,6 +294,7 @@ public class Environment {
   }
 
   public void errorLog(String message) {
+    message = "Please contact support@impactnucleus.com and mention Job ID [" + jobTraceId + "]. We'll dive in! Error: " + message;
     logProgress(null, null, null, null, JobStatus.FAILED, message);
   }
 
