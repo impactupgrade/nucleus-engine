@@ -114,7 +114,7 @@ public class TwilioController {
       try (session) {
         String jobName = "SMS Blast";
         log.info("STARTED: {}", jobName);
-        env.startLog(JobType.EVENT, null, jobName, "Twilio");
+        env.startLog(JobType.PORTAL_TASK, null, jobName, "Twilio");
 
         List<CrmContact> filteredContacts = contacts.stream()
             .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))

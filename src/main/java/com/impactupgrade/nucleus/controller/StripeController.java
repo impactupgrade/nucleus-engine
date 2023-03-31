@@ -95,7 +95,7 @@ public class StripeController {
         Session session = env.getSession();
         try (session) {
           String jobName = "Stripe Event";
-          env.startLog(JobType.PORTAL_TASK, "webhook", jobName, "Stripe");
+          env.startLog(JobType.EVENT, "webhook", jobName, "Stripe");
           processEvent(event.getType(), stripeObject, env);
           env.endLog("job completed");
         } catch (Exception e) {

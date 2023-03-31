@@ -171,7 +171,7 @@ public class PaymentGatewayController {
       Session session = env.getSession();
       try (session) {
         String jobName = "Payment Gateway: Verify Charges";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+        env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           // TODO: The results from this could be returned as a CSV...
@@ -222,7 +222,7 @@ public class PaymentGatewayController {
       Session session = env.getSession();
       try (session) {
         String jobName = "Payment Gateway: Verify/Replay Charges";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+        env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
@@ -272,7 +272,7 @@ public class PaymentGatewayController {
       Session session = env.getSession();
       try (session) {
         String jobName = "Payment Gateway: Verify/Replay Deposits";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+        env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           paymentGatewayService.verifyAndReplayDeposits(startDate, endDate);
