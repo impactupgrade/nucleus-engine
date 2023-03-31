@@ -18,12 +18,10 @@ import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -462,15 +460,13 @@ public class PaymentGatewayEvent implements Serializable {
   }
 
   public Map<String, String> getAllMetadata() {
-    // In order!
-    return Stream.of(crmDonation.metadata, crmRecurringDonation.metadata, crmContact.metadata, crmAccount.metadata)
-        .flatMap(map -> map.entrySet().stream())
-        .collect(Collectors.toMap(
-            Map.Entry::getKey,
-            Map.Entry::getValue,
-            // If there's a duplicate key, always keep the first! We define the order of precedence, above.
-            (v1, v2) -> v1
-        ));
+    Map<String, String> metadata = new CaseInsensitiveMap<>();
+    // order matters -- let the donations overwrite the customer defaults
+    metadata.putAll(crmAccount.metadata);
+    metadata.putAll(crmContact.metadata);
+    metadata.putAll(crmRecurringDonation.metadata);
+    metadata.putAll(crmDonation.metadata);
+    return metadata;
   }
 
   public String getMetadataValue(String key) {
@@ -478,12 +474,13 @@ public class PaymentGatewayEvent implements Serializable {
   }
 
   public String getMetadataValue(Collection<String> keys) {
-    Collection<String> filteredKeys = keys.stream().filter(k -> !Strings.isNullOrEmpty(k)).toList();
+    Collection<String> filteredKeys = keys.stream().filter(k -> !Strings.isNullOrEmpty(k))
+        .map(k -> k.toLowerCase(Locale.ROOT)).toList();
 
     // In order!
     return Stream.of(crmDonation.metadata, crmRecurringDonation.metadata, crmContact.metadata, crmAccount.metadata)
         .flatMap(map -> map.entrySet().stream())
-        .filter(e -> filteredKeys.contains(e.getKey()))
+        .filter(e -> filteredKeys.contains(e.getKey().toLowerCase(Locale.ROOT)))
         .map(Map.Entry::getValue)
         .findFirst()
         .orElse(null);
