@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -240,5 +241,14 @@ public class Utils {
   private static String formatDouble(double d) {
     String formatPattern = d % 1 == 0 ? "#" : "#.##";
     return new DecimalFormat(formatPattern).format(d);
+  }
+
+  public static String formatDuration(Duration duration) {
+    long seconds = duration.getSeconds();
+    long absSeconds = Math.abs(seconds);
+    String positive = String.format(
+        "%02d min",
+        (absSeconds % 3600) / 60);
+    return seconds < 0 ? "-" + positive : positive;
   }
 }

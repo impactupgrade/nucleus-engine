@@ -1,10 +1,12 @@
 package com.impactupgrade.nucleus.controller;
 
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -38,17 +40,25 @@ public class EmailController {
     lastSync.add(Calendar.DATE, -syncDays);
 
     Runnable thread = () -> {
-      try {
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Email: Daily Sync";
+        env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(lastSync);
+            env.logProgress(emailPlatformService.name() + ": sync contacts done");
             emailPlatformService.syncUnsubscribes(lastSync);
+            env.logProgress(emailPlatformService.name() + ": sync unsubscribes done");
+            env.endLog("job completed");
           } catch (Exception e) {
             log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
+            env.errorLog(e.getMessage());
           }
         }
       } catch (Exception e) {
         log.error("email syncDaily failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -62,17 +72,24 @@ public class EmailController {
     Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
-      try {
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Email: Full Sync";
+        env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(null);
+            env.logProgress(emailPlatformService.name() + ": sync contacts done");
             emailPlatformService.syncUnsubscribes(null);
+            env.logProgress(emailPlatformService.name() + ": sync unsubscribes done");
           } catch (Exception e) {
             log.error("email syncAll failed for {}", emailPlatformService.name(), e);
+            env.errorLog(e.getMessage());
           }
         }
       } catch (Exception e) {
         log.error("email syncAll failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -86,12 +103,22 @@ public class EmailController {
   public Response upsertContact(@FormParam("contact-id") String contactId, @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     Runnable thread = () -> {
-      for (EmailService emailPlatformService : env.allEmailServices()) {
-        try {
-          emailPlatformService.upsertContact(contactId);
-        } catch (Exception e) {
-          log.error("contact upsert failed for contact: {} platform: {}", contactId, emailPlatformService.name(), e);
+      Session session = env.getSession();
+      try (session) {
+        String jobName = "Email: Single Contact";
+        env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        for (EmailService emailPlatformService : env.allEmailServices()) {
+          try {
+            emailPlatformService.upsertContact(contactId);
+            env.logProgress(emailPlatformService.name() + ": upsert contact done");
+          } catch (Exception e) {
+            log.error("contact upsert failed for contact: {} platform: {}", contactId, emailPlatformService.name(), e);
+            env.errorLog(e.getMessage());
+          }
         }
+      } catch (Exception e) {
+        log.error("email upsert contact failed", e);
+        env.errorLog(e.getMessage());
       }
     };
     new Thread(thread).start();
