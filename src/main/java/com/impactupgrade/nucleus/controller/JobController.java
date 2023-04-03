@@ -13,12 +13,11 @@ import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
-import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -43,11 +42,11 @@ public class JobController {
     this.envFactory = envFactory;
   }
 
-  @POST
+  @GET
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response getJobs(
-      @FormParam("jobType") JobType jobType,
+      @QueryParam("jobType") JobType jobType,
       @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
