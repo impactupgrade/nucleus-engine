@@ -1,7 +1,6 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -13,7 +12,6 @@ import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -26,7 +24,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,8 +45,6 @@ public class JobController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response getJobs(
-      @FormParam("page") Integer page,
-      @FormParam("pageSize") Integer pageSize,
       @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -59,7 +54,8 @@ public class JobController {
       return Response.status(404).entity("Failed to find any jobs!").build();
     }
 
-    return Response.ok(toResponseDto(jobs, page, pageSize, env.getConfig().timezoneId)).build();
+    List<JobDto> jobDtos = toJobDtos(jobs, env.getConfig().timezoneId);
+    return Response.ok(jobDtos).build();
   }
 
   @GET
@@ -79,26 +75,6 @@ public class JobController {
     return Response.ok(job.logs).build();
   }
 
-  private ResponseDto toResponseDto(List<Job> jobs, Integer page, Integer pageSize, String timezoneId) {
-    int partitionSize = Math.max(pageSize, 1);
-    List<Job> sortedByStartedAt = jobs.stream()
-        .sorted(Comparator.comparingLong(job -> job.startedAt.toEpochMilli()))
-        .collect(Collectors.toList());
-    List<List<Job>> jobsPaged = Lists.partition(sortedByStartedAt, partitionSize);
-
-    int partitionIndex = Math.max(page, 1);
-    int index = Math.min(partitionIndex, jobsPaged.size()) - 1; // 0 based
-    List<JobDto> jobDtos = toJobDtos(jobsPaged.get(index), timezoneId);
-
-    ResponseDto responseDto = new ResponseDto();
-    responseDto.page = index + 1; // 1 based
-    responseDto.pageSize = partitionSize;
-    responseDto.totalSize = jobs.size();
-    responseDto.jobs = jobDtos;
-
-    return responseDto;
-  }
-
   private List<JobDto> toJobDtos(List<Job> jobs, String timezoneId) {
     String zoneId = !Strings.isNullOrEmpty(timezoneId) ? timezoneId : "EST";
     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
@@ -106,13 +82,6 @@ public class JobController {
     return jobs.stream()
         .map(job -> toJobDto(job, zoneId, dateFormatter, timeFormatter))
         .collect(Collectors.toList());
-  }
-
-  private static final class ResponseDto {
-    public Integer page;
-    public Integer pageSize;
-    public Integer totalSize;
-    public List<JobDto> jobs;
   }
 
   private static final class JobDto {
