@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.entity.Job;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityUtil;
@@ -12,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -45,11 +47,12 @@ public class JobController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response getJobs(
+      @FormParam("jobType") JobType jobType,
       @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    List<Job> jobs = env.getJobs();
+    List<Job> jobs = env.getJobs(jobType);
     if (CollectionUtils.isEmpty(jobs)) {
       return Response.status(404).entity("Failed to find any jobs!").build();
     }

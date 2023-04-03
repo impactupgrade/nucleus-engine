@@ -281,8 +281,8 @@ public class Environment {
     return jobProgressLoggingService;
   }
 
-  public List<Job> getJobs() {
-    return getJobProgressLoggingService().getJobs();
+  public List<Job> getJobs(JobType jobType) {
+    return getJobProgressLoggingService().getJobs(jobType);
   }
 
   public Job getJob(String traceId) {

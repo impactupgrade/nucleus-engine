@@ -70,7 +70,7 @@ public class JobProgressLoggingService {
     saveJob(session, job);
   }
 
-  public List<Job> getJobs() {
+  public List<Job> getJobs(JobType jobType) {
     Session session = env.getSession();
     if (session == null) {
       log.info("Session not provided. Can not get jobs!");
@@ -82,7 +82,7 @@ public class JobProgressLoggingService {
       log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return null;
     }
-    return getJobs(session, org);
+    return getJobs(session, org, jobType);
   }
 
   public Job getJob(String traceId) {
@@ -177,12 +177,14 @@ public class JobProgressLoggingService {
     return job;
   }
 
-  private List<Job> getJobs(Session session, Organization org) {
+  private List<Job> getJobs(Session session, Organization org, JobType jobType) {
     try {
       String queryString = "select j from Job j " +
-          "where j.org.id = :orgId";
+          "where j.org.id = :orgId " +
+          "and j.jobType = :jobType";
       Query<Job> query = session.createQuery(queryString);
       query.setParameter("orgId", org.getId());
+      query.setParameter("jobType", jobType);
       return query.getResultList();
     } catch (NoResultException e) {
       return null;
