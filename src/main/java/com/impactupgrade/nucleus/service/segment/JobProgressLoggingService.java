@@ -85,6 +85,21 @@ public class JobProgressLoggingService {
     return getJobs(session, org);
   }
 
+  public Job getJob(String traceId) {
+    Session session = env.getSession();
+    if (session == null) {
+      log.info("Session not provided. Can not get jobs!");
+      return null;
+    }
+    String nucleusApikey = env.getHeaders().get("Nucleus-Api-Key");
+    Organization org = getOrg(session, nucleusApikey);
+    if (org == null) {
+      log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      return null;
+    }
+    return getJob(session, traceId);
+  }
+
   private Job getOrCreateJob(Session session, String jobTraceId, JobType jobType, String username, String jobName, String originatingPlatform) {
     Job job = getJob(session, jobTraceId);
     if (job == null) {

@@ -13,8 +13,10 @@ import org.apache.logging.log4j.Logger;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -24,7 +26,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -56,6 +57,23 @@ public class JobController {
     }
 
     return Response.ok(toResponseDto(jobs, page, pageSize, env.getConfig().timezoneId)).build();
+  }
+
+  @GET
+  @Path("/{trace-id}/logs")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getJobLogs(
+      @PathParam("trace-id") String traceId,
+      @Context HttpServletRequest request) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    Job job = env.getJob(traceId);
+    if (job == null) {
+      return Response.status(404).entity("Failed to find job!").build();
+    }
+
+    return Response.ok(job.logs).build();
   }
 
   private ResponseDto toResponseDto(List<Job> jobs, Integer page, Integer pageSize, String timezoneId) {
@@ -103,7 +121,6 @@ public class JobController {
     public LocalDateTime started;
     public LocalDateTime ended;
     public Duration runtime;
-    public List<String> logs;
   }
 
   private JobDto toJobDto(Job job, String timezoneId) {
@@ -122,7 +139,6 @@ public class JobController {
       jobDto.ended = LocalDateTime.ofInstant(job.endedAt, zoneId);
       jobDto.runtime = Duration.between(jobDto.started, jobDto.ended);
     }
-    jobDto.logs = job.logs;
     return jobDto;
   }
 }

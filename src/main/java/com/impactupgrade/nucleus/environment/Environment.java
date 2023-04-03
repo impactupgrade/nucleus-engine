@@ -285,6 +285,10 @@ public class Environment {
     return getJobProgressLoggingService().getJobs();
   }
 
+  public Job getJob(String traceId) {
+    return getJobProgressLoggingService().getJob(traceId);
+  }
+
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
     logProgress(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
   }

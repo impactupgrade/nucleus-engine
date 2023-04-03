@@ -105,8 +105,6 @@ public class Job {
   @ElementCollection
   @CollectionTable(name = "job_logs", joinColumns = @JoinColumn(name = "job_id", referencedColumnName = "id"))
   @Column(name = "log")
-  @Fetch(FetchMode.SELECT)
-  @BatchSize(size = 10)
   public List<String> logs = new LinkedList<>();
 
 }
