@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,11 +53,8 @@ public class JobController {
     SecurityUtil.verifyApiKey(env);
 
     List<Job> jobs = env.getJobs(jobType);
-    if (CollectionUtils.isEmpty(jobs)) {
-      return Response.status(404).entity("Failed to find any jobs!").build();
-    }
-
     List<JobDto> jobDtos = toJobDtos(jobs, env.getConfig().timezoneId);
+
     return Response.ok(jobDtos).build();
   }
 
@@ -78,25 +76,15 @@ public class JobController {
   }
 
   private List<JobDto> toJobDtos(List<Job> jobs, String timezoneId) {
+    if (CollectionUtils.isEmpty(jobs)) {
+      return Collections.emptyList();
+    }
     String zoneId = !Strings.isNullOrEmpty(timezoneId) ? timezoneId : "EST";
     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern(TIME_FORMAT);
     return jobs.stream()
         .map(job -> toJobDto(job, zoneId, dateFormatter, timeFormatter))
         .collect(Collectors.toList());
-  }
-
-  private static final class JobDto {
-    public String traceId;
-    public String date;
-    public String time;
-    public String platform;
-    public String task;
-    public String status;
-    public String user;
-    public String started;
-    public String ended;
-    public String runtime;
   }
 
   private JobDto toJobDto(Job job, String timezoneId, DateTimeFormatter dateFormatter, DateTimeFormatter timeFormatter) {
@@ -118,5 +106,18 @@ public class JobController {
       jobDto.runtime = Utils.formatDuration(runtime);
     }
     return jobDto;
+  }
+
+  private static final class JobDto {
+    public String traceId;
+    public String date;
+    public String time;
+    public String platform;
+    public String task;
+    public String status;
+    public String user;
+    public String started;
+    public String ended;
+    public String runtime;
   }
 }
