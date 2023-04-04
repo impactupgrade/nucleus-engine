@@ -100,18 +100,10 @@ public class JobProgressLoggingService {
     return getJob(session, traceId);
   }
 
-  private String getApiKey() {
-    String apiKey = env.getHeaders().get("Nucleus-Api-Key");
-    if (Strings.isNullOrEmpty(apiKey)) {
-      apiKey = env.getConfig().apiKey;
-    }
-    return apiKey;
-  }
-
   private Job getOrCreateJob(Session session, String jobTraceId, JobType jobType, String username, String jobName, String originatingPlatform) {
     Job job = getJob(session, jobTraceId);
     if (job == null) {
-      String nucleusApikey = env.getHeaders().get("Nucleus-Api-Key");
+      String nucleusApikey = getApiKey();;
       Organization org = getOrg(session, nucleusApikey);
       if (org == null) {
         log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
@@ -120,6 +112,14 @@ public class JobProgressLoggingService {
       job = createJob(session, jobTraceId, jobType, username, jobName, originatingPlatform, org);
     }
     return job;
+  }
+
+  private String getApiKey() {
+    String apiKey = env.getHeaders().get("Nucleus-Api-Key");
+    if (Strings.isNullOrEmpty(apiKey)) {
+      apiKey = env.getConfig().apiKey;
+    }
+    return apiKey;
   }
 
   private Job getJob(Session session, String jobTraceId) {
