@@ -95,7 +95,7 @@ public class SfdcController {
     Runnable thread = () -> {
       try {
         String jobName = "SFDC: Bulk Delete";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
+        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
 
         SfdcClient sfdcClient = env.sfdcClient();
 
@@ -118,7 +118,7 @@ public class SfdcController {
           if (row.containsKey("Account ID")) {
             accountIds.add(row.get("Account ID"));
           }
-          env.logProgress((i + 1) + "row of " + data.size() + " processed");
+          env.logJobProgress((i + 1) + "row of " + data.size() + " processed");
         }
 
         for (String opportunityId : opportunityIds) {
@@ -126,27 +126,27 @@ public class SfdcController {
           opportunity.setId(opportunityId);
           sfdcClient.batchDelete(opportunity);
         }
-        env.logProgress("batch delete opportunities done");
+        env.logJobProgress("batch delete opportunities done");
 
         for (String contactId : contactIds) {
           SObject contact = new SObject("Contact");
           contact.setId(contactId);
           sfdcClient.batchDelete(contact);
         }
-        env.logProgress("batch delete contacts done");
+        env.logJobProgress("batch delete contacts done");
 
         for (String accountId : accountIds) {
           SObject account = new SObject("Account");
           account.setId(accountId);
           sfdcClient.batchDelete(account);
         }
-        env.logProgress("batch delete accounts done");
+        env.logJobProgress("batch delete accounts done");
 
         sfdcClient.batchFlush();
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("bulkDelete failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -177,13 +177,13 @@ public class SfdcController {
     Runnable thread = () -> {
       try {
         String jobName = "SFDC: Add Picklist Value";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
+        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
         env.sfdcMetadataClient().addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
         log.info("FINISHED: {}", globalPicklistApiName);
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("{} failed", globalPicklistApiName, e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -211,7 +211,7 @@ public class SfdcController {
     Runnable thread = () -> {
       try {
         String jobName = "SFDC: iWave Import";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
+        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
 
         // Unfortunately, the iWave CSV exports do not include SF identifiers, only email. So we must first retrieve
         // all contacts by email and insert their SF IDs into the CSV.
@@ -290,16 +290,16 @@ public class SfdcController {
                 log.warn("Could not find contact: {}", email);
               }
             }
-            env.logProgress((counter - 1) + " row(s) processed");
+            env.logJobProgress((counter - 1) + " row(s) processed");
           }
         }
 
         env.sfdcBulkClient().uploadIWaveFile(combinedFile.toFile());
         log.info("FINISHED: iwave");
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("iwave update failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -327,13 +327,13 @@ public class SfdcController {
     Runnable thread = () -> {
       try {
         String jobName = "SFDC: Windfall Import";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
+        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
         env.sfdcBulkClient().uploadWindfallFile(inputStream);
         log.info("FINISHED: windfall");
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("Windfall update failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();

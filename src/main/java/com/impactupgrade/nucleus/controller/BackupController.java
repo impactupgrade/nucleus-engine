@@ -20,7 +20,6 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Session;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 
@@ -65,7 +64,7 @@ public class BackupController {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.url)) {
         try {
           String jobName = "Weekly Backup";
-          env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+          env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
 
           // start with a clean slate and delete the dir used by the script
           FileUtils.deleteDirectory(new File("backup-salesforce"));
@@ -116,11 +115,11 @@ public class BackupController {
             }
 
             client.close();
-            env.endLog(jobName);
+            env.endJobLog(jobName);
           }
         } catch(Exception e){
           log.error("SFDC backup failed", e);
-          env.errorLog(e.getMessage());
+          env.logJobError(e.getMessage());
         }
       }
 

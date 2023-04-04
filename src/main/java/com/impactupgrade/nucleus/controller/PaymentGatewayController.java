@@ -169,17 +169,17 @@ public class PaymentGatewayController {
     Runnable thread = () -> {
       try {
         String jobName = "Payment Gateway: Verify Charges";
-        env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           // TODO: The results from this could be returned as a CSV...
           paymentGatewayService.verifyCharges(startDate, endDate);
-          env.logProgress(paymentGatewayService.name() + ": charges verified");
+          env.logJobProgress(paymentGatewayService.name() + ": charges verified");
         }
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("verifyCharges failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -219,16 +219,16 @@ public class PaymentGatewayController {
     Runnable thread = () -> {
       try {
         String jobName = "Payment Gateway: Verify/Replay Charges";
-        env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
-          env.logProgress(paymentGatewayService.name() + ": charges verified and replayed");
+          env.logJobProgress(paymentGatewayService.name() + ": charges verified and replayed");
         }
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("verifyAndReplayCharges failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -268,17 +268,17 @@ public class PaymentGatewayController {
     Runnable thread = () -> {
       try {
         String jobName = "Payment Gateway: Verify/Replay Deposits";
-        env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           paymentGatewayService.verifyAndReplayDeposits(startDate, endDate);
-          env.logProgress(paymentGatewayService.name() + ": deposits verified and replayed");
+          env.logJobProgress(paymentGatewayService.name() + ": deposits verified and replayed");
         }
 
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("verifyAndReplayDeposits failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();

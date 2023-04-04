@@ -23,7 +23,7 @@ public class HibernateUtil {
       configuration.addAnnotatedClass(Organization.class);
       return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
     } catch (Throwable e) {
-      log.info("Failed to create session factory (DB may not be configured): {}", e.getMessage());
+      log.error("Failed to create session factory: {}", e.getMessage());
       return null;
     }
   }

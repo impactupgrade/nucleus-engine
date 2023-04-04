@@ -2,7 +2,6 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.impactupgrade.nucleus.AbstractMockTest;
 import com.impactupgrade.nucleus.dao.HibernateDao;
-import com.impactupgrade.nucleus.dao.HibernateUtil;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobFrequency;
 import com.impactupgrade.nucleus.entity.JobProgress;
@@ -12,7 +11,6 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
-import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -107,7 +105,6 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Instant originalNow = Instant.now();
 
     Environment env = new DefaultEnvironment();
-    SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
     HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
     HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
@@ -415,7 +412,6 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Instant originalNow = Instant.now();
 
     Environment env = new DefaultEnvironment();
-    SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
     HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
     HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
