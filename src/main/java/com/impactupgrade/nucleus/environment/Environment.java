@@ -12,7 +12,6 @@ import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.dao.HibernateUtil;
-import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
@@ -26,6 +25,7 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.JobProgressLoggingService;
+import com.impactupgrade.nucleus.service.segment.LoggingService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
@@ -253,7 +253,6 @@ public class Environment {
   public TwilioClient twilioClient() { return new TwilioClient(this); }
 
   private Session session;
-  private JobProgressLoggingService jobProgressLoggingService;
 
   public Session getSession() {
     if (session == null) {
@@ -274,39 +273,30 @@ public class Environment {
     return session;
   }
 
-  private JobProgressLoggingService getJobProgressLoggingService() {
-    if (jobProgressLoggingService == null) {
-      jobProgressLoggingService = new JobProgressLoggingService(this);
-    }
-    return jobProgressLoggingService;
+  // helper services
+
+  public JobProgressLoggingService jobProgressLoggingService() {
+    return new JobProgressLoggingService(this);
   }
 
-  public List<Job> getJobs(JobType jobType) {
-    return getJobProgressLoggingService().getJobs(jobType);
-  }
-
-  public Job getJob(String traceId) {
-    return getJobProgressLoggingService().getJob(traceId);
+  private LoggingService loggingService() {
+    return jobProgressLoggingService();
   }
 
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    logProgress(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
+    loggingService().info(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
   }
 
   public void endLog(String message) {
-    logProgress(null, null, null, null, JobStatus.DONE, "FINISHED: " + message);
+    loggingService().info(null, null, null, null, JobStatus.DONE, "FINISHED: " + message);
   }
 
   public void errorLog(String message) {
     message = "Please contact support@impactnucleus.com and mention Job ID [" + jobTraceId + "]. We'll dive in! Error: " + message;
-    logProgress(null, null, null, null, JobStatus.FAILED, message);
+    loggingService().error(message);
   }
 
   public void logProgress(String message) {
-    logProgress(null, null, null, null, null, message);
-  }
-
-  private void logProgress(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
-    getJobProgressLoggingService().logProgress(jobType, username, jobName, originatingPlatform, jobStatus, message);
+    loggingService().info(null, null, null, null, null, message);
   }
 }

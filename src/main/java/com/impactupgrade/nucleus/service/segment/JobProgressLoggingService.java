@@ -26,7 +26,7 @@ import java.util.List;
 import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
 import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
 
-public class JobProgressLoggingService {
+public class JobProgressLoggingService extends ConsoleLoggingService {
 
   private static final Logger log = LogManager.getLogger(JobProgressLoggingService.class);
 
@@ -35,10 +35,23 @@ public class JobProgressLoggingService {
   protected Environment env;
 
   public JobProgressLoggingService(Environment env) {
+    super(env);
     this.env = env;
   }
 
-  public void logProgress(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+  @Override
+  public void info(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+    super.info(message);
+    logProgress(jobType, username, jobName, originatingPlatform, jobStatus, message);
+  }
+
+  @Override
+  public void error(String message) {
+    super.error(message);
+    logProgress(null, null, null, null, JobStatus.FAILED, message);
+  }
+
+  private void logProgress(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
     Session session = env.getSession();
     if (session == null) {
       log.warn("Session not provided. Skipping job progress log...");
@@ -100,18 +113,10 @@ public class JobProgressLoggingService {
     return getJob(session, traceId);
   }
 
-  private String getApiKey() {
-    String apiKey = env.getHeaders().get("Nucleus-Api-Key");
-    if (Strings.isNullOrEmpty(apiKey)) {
-      apiKey = env.getConfig().apiKey;
-    }
-    return apiKey;
-  }
-
   private Job getOrCreateJob(Session session, String jobTraceId, JobType jobType, String username, String jobName, String originatingPlatform) {
     Job job = getJob(session, jobTraceId);
     if (job == null) {
-      String nucleusApikey = env.getHeaders().get("Nucleus-Api-Key");
+      String nucleusApikey = getApiKey();
       Organization org = getOrg(session, nucleusApikey);
       if (org == null) {
         log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
@@ -131,6 +136,14 @@ public class JobProgressLoggingService {
     } catch (NoResultException e) {
       return null;
     }
+  }
+
+  private String getApiKey() {
+    String apiKey = env.getHeaders().get("Nucleus-Api-Key");
+    if (Strings.isNullOrEmpty(apiKey)) {
+      apiKey = env.getConfig().apiKey;
+    }
+    return apiKey;
   }
 
   private Organization getOrg(Session session, String nucleusApiKey) {
