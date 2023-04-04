@@ -105,7 +105,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     boolean npsp = env.getConfig().salesforce.npsp;
 
     ACCOUNT_FIELDS = "id, OwnerId, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, RecordTypeId, RecordType.Id, RecordType.Name";
-    CAMPAIGN_FIELDS = "id, name, parentid, ownerid, RecordTypeId";
+    CAMPAIGN_FIELDS = "id, name, parentid, ownerid";
     // TODO: Finding a few clients with no homephone, so taking that out for now.
     CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, FirstName, LastName, Account.Id, Account.Name, Account.BillingStreet, Account.BillingCity, Account.BillingPostalCode, Account.BillingState, Account.BillingCountry, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, MobilePhone, Phone";
     LEAD_FIELDS = "Id, FirstName, LastName, Email";
