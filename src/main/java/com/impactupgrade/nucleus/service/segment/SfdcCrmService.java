@@ -1215,6 +1215,7 @@ public class SfdcCrmService implements CrmService {
           importEvent.contactEmail = null;
           importEvent.contactMobilePhone = null;
           importEvent.contactHomePhone = null;
+          importEvent.contactWorkPhone = null;
 
           List<SObject> existingContacts = accountContacts.stream()
               .filter(c -> secondaryFirstName.equalsIgnoreCase((String) c.getField("FirstName"))).toList();
@@ -1478,6 +1479,8 @@ public class SfdcCrmService implements CrmService {
     contact.setField("MailingCountry", importEvent.contactMailingCountry);
     contact.setField("HomePhone", importEvent.contactHomePhone);
     contact.setField("MobilePhone", importEvent.contactMobilePhone);
+    contact.setField("npe01__WorkPhone__c", importEvent.contactWorkPhone);
+    contact.setField("npe01__PreferredPhone__c", importEvent.contactPreferredPhone);
 
     if (!Strings.isNullOrEmpty(importEvent.contactEmail) && !"na".equalsIgnoreCase(importEvent.contactEmail) && !"n/a".equalsIgnoreCase(importEvent.contactEmail)) {
       // Some sources provide comma separated lists. Simply use the first one.

@@ -68,8 +68,10 @@ public class CrmImportEvent {
   public Boolean contactOptInSms;
   public Boolean contactOptOutSms;
   public String contactOwnerId;
+  public String contactPreferredPhone;
   public String contactRecordTypeId;
   public String contactRecordTypeName;
+  public String contactWorkPhone;
 
   public BigDecimal opportunityAmount;
   public String opportunityCampaignId;
@@ -156,6 +158,8 @@ public class CrmImportEvent {
     importEvent.contactCampaignName = data.get("Contact Campaign Name");
     importEvent.contactHomePhone = data.get("Contact Home Phone");
     importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
+    importEvent.contactWorkPhone = data.get("Contact Work Phone");
+    importEvent.contactPreferredPhone = data.get("Contact Preferred Phone");
     importEvent.contactMailingStreet = data.get("Contact Mailing Address");
     if (!Strings.isNullOrEmpty(data.get("Contact Mailing Address 2"))) {
       importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Address 2");
