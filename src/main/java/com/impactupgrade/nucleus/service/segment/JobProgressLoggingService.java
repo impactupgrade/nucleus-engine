@@ -46,18 +46,13 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
     super.info(message);
 
-    String jobTraceId = env.getJobTraceId();
-    if (Strings.isNullOrEmpty(jobTraceId)) {
-      log.warn("Job trace id not provided. Skipping job progress log...");
-      return;
-    }
     String nucleusApikey = getApiKey();
     Organization org = getOrg(nucleusApikey);
     if (org == null) {
-      log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      log.debug("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return;
     }
-    Job job = createJob(jobTraceId, jobType, username, jobName, originatingPlatform, org);
+    Job job = createJob(env.getJobTraceId(), jobType, username, jobName, originatingPlatform, org);
 
     DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
     LocalDateTime now = LocalDateTime.now(ZoneId.of(env.getConfig().timezoneId));
@@ -78,12 +73,6 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
   public void endLog(String message) {
     super.info(message);
 
-    String jobTraceId = env.getJobTraceId();
-    if (Strings.isNullOrEmpty(jobTraceId)) {
-      log.warn("Job trace id not provided. Skipping job progress log...");
-      return;
-    }
-
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
       job.status = DONE;
@@ -95,12 +84,6 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
   public void info(String message) {
     super.info(message);
 
-    String jobTraceId = env.getJobTraceId();
-    if (Strings.isNullOrEmpty(jobTraceId)) {
-      log.warn("Job trace id not provided. Skipping job progress log...");
-      return;
-    }
-
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
       log(job.id, message);
@@ -110,12 +93,6 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
   @Override
   public void error(String message) {
     super.error(message);
-
-    String jobTraceId = env.getJobTraceId();
-    if (Strings.isNullOrEmpty(jobTraceId)) {
-      log.warn("Job trace id not provided. Skipping job progress log...");
-      return;
-    }
 
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
@@ -209,7 +186,7 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
     String nucleusApikey = getApiKey();
     Organization org = getOrg(nucleusApikey);
     if (org == null) {
-      log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      log.debug("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return null;
     }
     return getJobs(org, jobType);
@@ -232,7 +209,6 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
   private Session openSession() {
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     if (sessionFactory != null) {
-
       String timezoneId = env.getConfig().timezoneId;
       if (Strings.isNullOrEmpty(timezoneId)) {
         // default to EST if not configured

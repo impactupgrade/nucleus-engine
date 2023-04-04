@@ -24,7 +24,6 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.JobProgressLoggingService;
-import com.impactupgrade.nucleus.service.segment.LoggingService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
@@ -73,18 +72,14 @@ public class Environment {
   // Whenever possible, we focus on being configuration-driven using one, large JSON file.
   private final EnvironmentConfig _config = EnvironmentConfig.init();
 
+  private final String jobTraceId = UUID.randomUUID().toString();
+
   public EnvironmentConfig getConfig() {
     return _config;
   }
 
-  private final String jobTraceId;
-
   public String getJobTraceId() {
     return jobTraceId;
-  }
-
-  public Environment() {
-    this.jobTraceId = UUID.randomUUID().toString();
   }
 
   public void setRequest(HttpServletRequest request) {
@@ -250,30 +245,34 @@ public class Environment {
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
 
-  // helper services
+  // job logging services
 
-  public JobProgressLoggingService jobProgressLoggingService() {
-    return new JobProgressLoggingService(this);
-  }
+  // TODO: Eventually, this could become a more generic LoggingService setup that would allow callers to select the
+  //  type of logging they want (or maybe that's limited to to a human vs. debug log impl).
+  // TODO: Also at the moment, JobProgressLoggingService needs a bit of refactoring since it houses the getJobs calls
+  //  needed by JobController. Those methods need moved out of there and loggingService could simply use a
+  //  LoggingService type.
 
-  private LoggingService loggingService() {
-    return jobProgressLoggingService();
+  private JobProgressLoggingService loggingService = new JobProgressLoggingService(this);
+
+  public JobProgressLoggingService loggingService() {
+    return loggingService;
   }
 
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    loggingService().startLog(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
+    loggingService.startLog(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
   }
 
   public void endLog(String message) {
-    loggingService().endLog("FINISHED: " + message);
+    loggingService.endLog("FINISHED: " + message);
   }
 
   public void errorLog(String message) {
     message = "Please contact support@impactnucleus.com and mention Job ID [" + jobTraceId + "]. We'll dive in! Error: " + message;
-    loggingService().error(message);
+    loggingService.error(message);
   }
 
   public void logProgress(String message) {
-    loggingService().info(message);
+    loggingService.info(message);
   }
 }
