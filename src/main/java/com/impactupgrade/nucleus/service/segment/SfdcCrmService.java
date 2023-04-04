@@ -1230,7 +1230,7 @@ public class SfdcCrmService implements CrmService {
         }
       }
 
-      env.logProgress("Imported " + (i + 1) + " contact(s)");
+      env.logJobProgress("Imported " + (i + 1) + " contact(s)");
     }
 
     sfdcClient.batchFlush();
@@ -1277,7 +1277,7 @@ public class SfdcCrmService implements CrmService {
           sfdcClient.batchInsert(recurringDonation);
         }
 
-        env.logProgress("Imported " + (i + 1) + " recurring donation(s)");
+        env.logJobProgress("Imported " + (i + 1) + " recurring donation(s)");
       }
 
       sfdcClient.batchFlush();
@@ -1337,7 +1337,7 @@ public class SfdcCrmService implements CrmService {
 
           sfdcClient.batchInsert(opportunity);
         }
-        env.logProgress("Imported " + (i + 1) + " opportunity(s)");
+        env.logJobProgress("Imported " + (i + 1) + " opportunity(s)");
       }
 
       sfdcClient.batchFlush();

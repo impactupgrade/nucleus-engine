@@ -140,12 +140,12 @@ public class CrmController {
     Runnable thread = () -> {
       try {
         String jobName = "Bulk Import: File";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
-        env.endLog(jobName);
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -173,12 +173,12 @@ public class CrmController {
     Runnable thread = () -> {
       try {
         String jobName = "Bulk Import: Google Sheet";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
-        env.endLog(jobName);
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -218,12 +218,12 @@ public class CrmController {
     Runnable thread = () -> {
       try {
         String jobName = "Bulk Import: Facebook";
-        env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
-        env.endLog("job completed");
+        env.endJobLog("job completed");
       } catch (Exception e) {
         log.error("bulkImport failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();

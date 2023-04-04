@@ -7,11 +7,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.util.StackLocatorUtil;
 
-public class ConsoleLoggingService implements LoggingService {
+public class ConsoleJobLoggingService implements JobLoggingService {
 
   protected Environment env;
 
-  public ConsoleLoggingService(Environment env) {
+  public ConsoleJobLoggingService(Environment env) {
     this.env = env;
   }
 

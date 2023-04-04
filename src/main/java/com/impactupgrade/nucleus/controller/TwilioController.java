@@ -112,7 +112,7 @@ public class TwilioController {
       try {
         String jobName = "SMS Blast";
         log.info("STARTED: {}", jobName);
-        env.startLog(JobType.PORTAL_TASK, null, jobName, "Twilio");
+        env.startJobLog(JobType.PORTAL_TASK, null, jobName, "Twilio");
 
         List<CrmContact> filteredContacts = contacts.stream()
             .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
@@ -121,15 +121,15 @@ public class TwilioController {
 
         for (CrmContact c: filteredContacts) {
           messagingService.sendMessage(message, c, sender);
-          env.logProgress(++messagesSent + " message(s) sent");
+          env.logJobProgress(++messagesSent + " message(s) sent");
         }
 
-        env.endLog(jobName);
+        env.endJobLog(jobName);
         log.info("FINISHED: {}", jobName);
 
       } catch (Exception e) {
         log.error("job failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
 
     };
@@ -196,7 +196,7 @@ public class TwilioController {
     Runnable thread = () -> {
       try {
         String jobName = "SMS Flow";
-        env.startLog(JobType.EVENT, null, jobName, "Twilio");
+        env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
         CrmContact crmContact = env.messagingService().processSignup(
             from,
             firstName,
@@ -220,11 +220,11 @@ public class TwilioController {
           crmOpportunity.campaignId = campaignId;
           crmOpportunity.description = opportunityNotes;
           env.messagingCrmService().insertOpportunity(crmOpportunity);
-          env.endLog(jobName);
+          env.endJobLog(jobName);
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -258,7 +258,7 @@ public class TwilioController {
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
         String jobName = "SMS Inbound";
-        env.startLog(JobType.EVENT, null, jobName, "Twilio");
+        env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
         String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
         env.notificationService().sendNotification(
             "Text Message Received",
@@ -266,7 +266,7 @@ public class TwilioController {
             targetId,
             "sms:inbound-default"
         );
-        env.endLog(jobName);
+        env.endJobLog(jobName);
       }
     }
 

@@ -20,10 +20,12 @@ import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
+import com.impactupgrade.nucleus.service.segment.ConsoleJobLoggingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.DBJobLoggingService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
-import com.impactupgrade.nucleus.service.segment.JobProgressLoggingService;
+import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
@@ -247,32 +249,35 @@ public class Environment {
 
   // job logging services
 
-  // TODO: Eventually, this could become a more generic LoggingService setup that would allow callers to select the
-  //  type of logging they want (or maybe that's limited to to a human vs. debug log impl).
-  // TODO: Also at the moment, JobProgressLoggingService needs a bit of refactoring since it houses the getJobs calls
-  //  needed by JobController. Those methods need moved out of there and loggingService could simply use a
-  //  LoggingService type.
+  private JobLoggingService _jobLoggingService = null;
 
-  private JobProgressLoggingService loggingService = new JobProgressLoggingService(this);
-
-  public JobProgressLoggingService loggingService() {
-    return loggingService;
+  public JobLoggingService jobLoggingService() {
+    if (_jobLoggingService == null) {
+      if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
+        // DB connection is configured, so use the DB+Console logger.
+        _jobLoggingService = new DBJobLoggingService(this);
+      } else {
+        // No DB connection, so fall back to console logs.
+        _jobLoggingService = new ConsoleJobLoggingService(this);
+      }
+    }
+    return _jobLoggingService;
   }
 
-  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    loggingService.startLog(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
+  public void startJobLog(JobType jobType, String username, String jobName, String originatingPlatform) {
+    jobLoggingService().startLog(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
   }
 
-  public void endLog(String message) {
-    loggingService.endLog("FINISHED: " + message);
+  public void endJobLog(String message) {
+    jobLoggingService().endLog("FINISHED: " + message);
   }
 
-  public void errorLog(String message) {
+  public void logJobError(String message) {
     message = "Please contact support@impactnucleus.com and mention Job ID [" + jobTraceId + "]. We'll dive in! Error: " + message;
-    loggingService.error(message);
+    jobLoggingService().error(message);
   }
 
-  public void logProgress(String message) {
-    loggingService.info(message);
+  public void logJobProgress(String message) {
+    jobLoggingService().info(message);
   }
 }

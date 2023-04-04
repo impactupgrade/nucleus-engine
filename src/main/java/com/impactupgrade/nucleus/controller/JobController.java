@@ -52,7 +52,7 @@ public class JobController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    List<Job> jobs = env.loggingService().getJobs(jobType);
+    List<Job> jobs = env.jobLoggingService().getJobs(jobType);
     List<JobDto> jobDtos = toJobDtos(jobs, env.getConfig().timezoneId);
 
     return Response.ok(jobDtos).build();
@@ -67,7 +67,7 @@ public class JobController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    Job job = env.loggingService().getJob(traceId);
+    Job job = env.jobLoggingService().getJob(traceId);
     if (job == null) {
       return Response.status(404).entity("Failed to find job!").build();
     }

@@ -29,17 +29,20 @@ import java.util.TimeZone;
 import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
 import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
 
-public class JobProgressLoggingService extends ConsoleLoggingService {
+public class DBJobLoggingService extends ConsoleJobLoggingService {
 
-  private static final Logger log = LogManager.getLogger(JobProgressLoggingService.class);
+  private static final Logger log = LogManager.getLogger(DBJobLoggingService.class);
 
   private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
+  private final SessionFactory sessionFactory;
+
   protected Environment env;
 
-  public JobProgressLoggingService(Environment env) {
+  public DBJobLoggingService(Environment env) {
     super(env);
     this.env = env;
+    this.sessionFactory = HibernateUtil.getSessionFactory();
   }
 
   @Override
@@ -154,6 +157,7 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
     return job;
   }
 
+  @Override
   public Job getJob(String jobTraceId) {
     return getJob(jobTraceId, true);
   }
@@ -182,6 +186,7 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
     }
   }
 
+  @Override
   public List<Job> getJobs(JobType jobType) {
     String nucleusApikey = getApiKey();
     Organization org = getOrg(nucleusApikey);
@@ -207,18 +212,14 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
   }
 
   private Session openSession() {
-    SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
-    if (sessionFactory != null) {
-      String timezoneId = env.getConfig().timezoneId;
-      if (Strings.isNullOrEmpty(timezoneId)) {
-        // default to EST if not configured
-        timezoneId = "EST";
-      }
-
-      return sessionFactory.withOptions()
-          .jdbcTimeZone(TimeZone.getTimeZone(timezoneId))
-          .openSession();
+    String timezoneId = env.getConfig().timezoneId;
+    if (Strings.isNullOrEmpty(timezoneId)) {
+      // default to EST if not configured
+      timezoneId = "EST";
     }
-    return null;
+
+    return sessionFactory.withOptions()
+        .jdbcTimeZone(TimeZone.getTimeZone(timezoneId))
+        .openSession();
   }
 }

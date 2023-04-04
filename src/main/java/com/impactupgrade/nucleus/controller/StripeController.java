@@ -30,7 +30,6 @@ import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.POST;
@@ -94,12 +93,12 @@ public class StripeController {
       Runnable thread = () -> {
         try {
           String jobName = "Stripe Event";
-          env.startLog(JobType.EVENT, "webhook", jobName, "Stripe");
+          env.startJobLog(JobType.EVENT, "webhook", jobName, "Stripe");
           processEvent(event.getType(), stripeObject, env);
-          env.endLog("job completed");
+          env.endJobLog("job completed");
         } catch (Exception e) {
           log.error("failed to process the Stripe event", e);
-          env.errorLog(e.getMessage());
+          env.logJobError(e.getMessage());
           // TODO: email notification?
         }
       };

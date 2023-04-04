@@ -41,22 +41,22 @@ public class EmailController {
     Runnable thread = () -> {
       try {
         String jobName = "Email: Daily Sync";
-        env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(lastSync);
-            env.logProgress(emailPlatformService.name() + ": sync contacts done");
+            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
             emailPlatformService.syncUnsubscribes(lastSync);
-            env.logProgress(emailPlatformService.name() + ": sync unsubscribes done");
-            env.endLog("job completed");
+            env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
+            env.endJobLog("job completed");
           } catch (Exception e) {
             log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
-            env.errorLog(e.getMessage());
+            env.logJobError(e.getMessage());
           }
         }
       } catch (Exception e) {
         log.error("email syncDaily failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -72,21 +72,21 @@ public class EmailController {
     Runnable thread = () -> {
       try {
         String jobName = "Email: Full Sync";
-        env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.syncContacts(null);
-            env.logProgress(emailPlatformService.name() + ": sync contacts done");
+            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
             emailPlatformService.syncUnsubscribes(null);
-            env.logProgress(emailPlatformService.name() + ": sync unsubscribes done");
+            env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
           } catch (Exception e) {
             log.error("email syncAll failed for {}", emailPlatformService.name(), e);
-            env.errorLog(e.getMessage());
+            env.logJobError(e.getMessage());
           }
         }
       } catch (Exception e) {
         log.error("email syncAll failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
@@ -102,19 +102,19 @@ public class EmailController {
     Runnable thread = () -> {
       try {
         String jobName = "Email: Single Contact";
-        env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
             emailPlatformService.upsertContact(contactId);
-            env.logProgress(emailPlatformService.name() + ": upsert contact done");
+            env.logJobProgress(emailPlatformService.name() + ": upsert contact done");
           } catch (Exception e) {
             log.error("contact upsert failed for contact: {} platform: {}", contactId, emailPlatformService.name(), e);
-            env.errorLog(e.getMessage());
+            env.logJobError(e.getMessage());
           }
         }
       } catch (Exception e) {
         log.error("email upsert contact failed", e);
-        env.errorLog(e.getMessage());
+        env.logJobError(e.getMessage());
       }
     };
     new Thread(thread).start();
