@@ -5,11 +5,11 @@ import com.impactupgrade.nucleus.entity.JobType;
 
 public interface LoggingService {
 
-  void info(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message);
+  void startLog(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message);
 
-  default void info(String message) {
-    info(null, null, null, null, null, message);
-  }
+  void endLog(String message);
+
+  void info(String message);
 
   void warn(String message);
 

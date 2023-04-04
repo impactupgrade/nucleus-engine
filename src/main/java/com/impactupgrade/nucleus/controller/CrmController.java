@@ -21,12 +21,10 @@ import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.cxf.wsdl11.SOAPBindingUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
@@ -140,8 +138,7 @@ public class CrmController {
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Bulk Import: File";
         env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
@@ -174,8 +171,7 @@ public class CrmController {
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Bulk Import: Google Sheet";
         env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
@@ -220,8 +216,7 @@ public class CrmController {
     List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Bulk Import: Facebook";
         env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);

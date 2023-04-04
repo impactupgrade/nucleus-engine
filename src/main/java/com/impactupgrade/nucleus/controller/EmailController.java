@@ -6,7 +6,6 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -40,8 +39,7 @@ public class EmailController {
     lastSync.add(Calendar.DATE, -syncDays);
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Email: Daily Sync";
         env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
@@ -72,8 +70,7 @@ public class EmailController {
     Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Email: Full Sync";
         env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
@@ -103,8 +100,7 @@ public class EmailController {
   public Response upsertContact(@FormParam("contact-id") String contactId, @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Email: Single Contact";
         env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {

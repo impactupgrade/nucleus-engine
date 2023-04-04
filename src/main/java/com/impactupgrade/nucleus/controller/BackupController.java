@@ -63,8 +63,7 @@ public class BackupController {
     Runnable thread = () -> {
       // SALESFORCE
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.url)) {
-        Session session = env.getSession();
-        try (session) {
+        try {
           String jobName = "Weekly Backup";
           env.startLog(JobType.EVENT, null, jobName, "Nucleus Portal");
 

@@ -92,8 +92,7 @@ public class StripeController {
     } else {
       // takes a while, so spin it off as a new thread
       Runnable thread = () -> {
-        Session session = env.getSession();
-        try (session) {
+        try {
           String jobName = "Stripe Event";
           env.startLog(JobType.EVENT, "webhook", jobName, "Stripe");
           processEvent(event.getType(), stripeObject, env);

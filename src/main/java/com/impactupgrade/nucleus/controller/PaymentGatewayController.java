@@ -18,7 +18,6 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Session;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
@@ -168,8 +167,7 @@ public class PaymentGatewayController {
     }
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Payment Gateway: Verify Charges";
         env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
@@ -219,8 +217,7 @@ public class PaymentGatewayController {
     }
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Payment Gateway: Verify/Replay Charges";
         env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 
@@ -269,8 +266,7 @@ public class PaymentGatewayController {
     }
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "Payment Gateway: Verify/Replay Deposits";
         env.startLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
 

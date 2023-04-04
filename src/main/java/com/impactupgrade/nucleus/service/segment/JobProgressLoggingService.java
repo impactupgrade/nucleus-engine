@@ -3,6 +3,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.dao.HibernateUtil;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobFrequency;
 import com.impactupgrade.nucleus.entity.JobStatus;
@@ -12,6 +13,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
@@ -22,6 +24,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.TimeZone;
 
 import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
 import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
@@ -40,36 +43,24 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
   }
 
   @Override
-  public void info(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
     super.info(message);
-    logProgress(jobType, username, jobName, originatingPlatform, jobStatus, message);
-  }
 
-  @Override
-  public void error(String message) {
-    super.error(message);
-    logProgress(null, null, null, null, JobStatus.FAILED, message);
-  }
-
-  private void logProgress(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
-    Session session = env.getSession();
-    if (session == null) {
-      log.warn("Session not provided. Skipping job progress log...");
-      return;
-    }
     String jobTraceId = env.getJobTraceId();
     if (Strings.isNullOrEmpty(jobTraceId)) {
       log.warn("Job trace id not provided. Skipping job progress log...");
       return;
     }
-    Job job = getOrCreateJob(session, jobTraceId, jobType, username, jobName, originatingPlatform);
-    if (job == null) {
-      log.warn("Job not provided. Skipping job progress log... ");
+    String nucleusApikey = getApiKey();
+    Organization org = getOrg(nucleusApikey);
+    if (org == null) {
+      log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return;
     }
+    Job job = createJob(jobTraceId, jobType, username, jobName, originatingPlatform, org);
 
     DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
-    LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
+    LocalDateTime now = LocalDateTime.now(ZoneId.of(env.getConfig().timezoneId));
     String timestamp = now.format(dateTimeFormatter);
 
     job.logs.add(timestamp + " : " + message);
@@ -80,61 +71,56 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
       }
     }
 
-    saveJob(session, job);
+    saveJob(job);
   }
 
-  public List<Job> getJobs(JobType jobType) {
-    Session session = env.getSession();
-    if (session == null) {
-      log.info("Session not provided. Can not get jobs!");
-      return null;
+  @Override
+  public void endLog(String message) {
+    super.info(message);
+
+    String jobTraceId = env.getJobTraceId();
+    if (Strings.isNullOrEmpty(jobTraceId)) {
+      log.warn("Job trace id not provided. Skipping job progress log...");
+      return;
     }
-    String nucleusApikey = getApiKey();
-    Organization org = getOrg(session, nucleusApikey);
-    if (org == null) {
-      log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
-      return null;
+
+    Job job = getJob(env.getJobTraceId(), false);
+    if (job != null) {
+      job.status = DONE;
+      log(job.id, message);
     }
-    return getJobs(session, org, jobType);
   }
 
-  public Job getJob(String traceId) {
-    Session session = env.getSession();
-    if (session == null) {
-      log.info("Session not provided. Can not get jobs!");
-      return null;
+  @Override
+  public void info(String message) {
+    super.info(message);
+
+    String jobTraceId = env.getJobTraceId();
+    if (Strings.isNullOrEmpty(jobTraceId)) {
+      log.warn("Job trace id not provided. Skipping job progress log...");
+      return;
     }
-    String nucleusApikey = getApiKey();
-    Organization org = getOrg(session, nucleusApikey);
-    if (org == null) {
-      log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
-      return null;
+
+    Job job = getJob(env.getJobTraceId(), false);
+    if (job != null) {
+      log(job.id, message);
     }
-    return getJob(session, traceId);
   }
 
-  private Job getOrCreateJob(Session session, String jobTraceId, JobType jobType, String username, String jobName, String originatingPlatform) {
-    Job job = getJob(session, jobTraceId);
-    if (job == null) {
-      String nucleusApikey = getApiKey();
-      Organization org = getOrg(session, nucleusApikey);
-      if (org == null) {
-        log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
-        return null;
-      }
-      job = createJob(session, jobTraceId, jobType, username, jobName, originatingPlatform, org);
-    }
-    return job;
-  }
+  @Override
+  public void error(String message) {
+    super.error(message);
 
-  private Job getJob(Session session, String jobTraceId) {
-    try {
-      String queryString = "select j from Job j " +
-          "where j.traceId like '%" + jobTraceId + "%'";
-      Query<Job> query = session.createQuery(queryString);
-      return query.getSingleResult();
-    } catch (NoResultException e) {
-      return null;
+    String jobTraceId = env.getJobTraceId();
+    if (Strings.isNullOrEmpty(jobTraceId)) {
+      log.warn("Job trace id not provided. Skipping job progress log...");
+      return;
+    }
+
+    Job job = getJob(env.getJobTraceId(), false);
+    if (job != null) {
+      job.status = FAILED;
+      log(job.id, message);
     }
   }
 
@@ -146,8 +132,8 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
     return apiKey;
   }
 
-  private Organization getOrg(Session session, String nucleusApiKey) {
-    try {
+  private Organization getOrg(String nucleusApiKey) {
+    try (Session session = openSession()) {
       String queryString = "select o from Organization o " +
           "where o.nucleusApiKey = :nucleusApiKey";
       Query<Organization> query = session.createQuery(queryString);
@@ -158,7 +144,7 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
     }
   }
 
-  private Job createJob(Session session, String jobTraceId, JobType jobType, String username, String jobName, String originatingPlatform, Organization org) {
+  private Job createJob(String jobTraceId, JobType jobType, String username, String jobName, String originatingPlatform, Organization org) {
     Job job = new Job();
     job.traceId = jobTraceId;
     job.jobType = jobType;
@@ -177,21 +163,60 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
     job.scheduleEnd = now;
     job.org = org;
     job.startedAt = now;
-
-    saveJob(session, job);
+    job.scheduleTz = "UTC";
 
     return job;
   }
 
-  private Job saveJob(Session session, Job job) {
-    Transaction transaction = session.beginTransaction();
-    session.save(job);
-    transaction.commit();
+  private Job saveJob(Job job) {
+    try (Session session = openSession()) {
+      Transaction transaction = session.beginTransaction();
+      session.save(job);
+      transaction.commit();
+    }
     return job;
   }
 
-  private List<Job> getJobs(Session session, Organization org, JobType jobType) {
-    try {
+  public Job getJob(String jobTraceId) {
+    return getJob(jobTraceId, true);
+  }
+
+  private Job getJob(String jobTraceId, boolean fetchLogs) {
+    try (Session session = openSession()) {
+      String queryString = "select j from Job j " +
+          (fetchLogs ? "left join fetch j.logs l " : "") +
+          "where j.traceId like '%" + jobTraceId + "%'";
+      Query<Job> query = session.createQuery(queryString);
+      return query.getSingleResult();
+    } catch (NoResultException e) {
+      return null;
+    }
+  }
+
+  private void log(Long jobId, String logMessage) {
+    try (Session session = openSession()) {
+      String queryString = "INSERT INTO job_logs(job_id, log) VALUES (:jobId, :logMessage)";
+      Query query = session.createNativeQuery(queryString);
+      query.setParameter("jobId", jobId);
+      query.setParameter("logMessage", logMessage);
+      Transaction transaction = session.beginTransaction();
+      query.executeUpdate();
+      transaction.commit();
+    }
+  }
+
+  public List<Job> getJobs(JobType jobType) {
+    String nucleusApikey = getApiKey();
+    Organization org = getOrg(nucleusApikey);
+    if (org == null) {
+      log.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      return null;
+    }
+    return getJobs(org, jobType);
+  }
+
+  private List<Job> getJobs(Organization org, JobType jobType) {
+    try (Session session = openSession()) {
       String queryString = "select j from Job j " +
           "where j.org.id = :orgId " +
           "and j.jobType = :jobType";
@@ -202,5 +227,22 @@ public class JobProgressLoggingService extends ConsoleLoggingService {
     } catch (NoResultException e) {
       return null;
     }
+  }
+
+  private Session openSession() {
+    SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+    if (sessionFactory != null) {
+
+      String timezoneId = env.getConfig().timezoneId;
+      if (Strings.isNullOrEmpty(timezoneId)) {
+        // default to EST if not configured
+        timezoneId = "EST";
+      }
+
+      return sessionFactory.withOptions()
+          .jdbcTimeZone(TimeZone.getTimeZone(timezoneId))
+          .openSession();
+    }
+    return null;
   }
 }

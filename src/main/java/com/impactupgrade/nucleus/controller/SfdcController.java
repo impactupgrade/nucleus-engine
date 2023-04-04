@@ -21,7 +21,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -94,8 +93,7 @@ public class SfdcController {
     }
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "SFDC: Bulk Delete";
         env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
 
@@ -177,8 +175,7 @@ public class SfdcController {
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "SFDC: Add Picklist Value";
         env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
         env.sfdcMetadataClient().addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
@@ -212,8 +209,7 @@ public class SfdcController {
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "SFDC: iWave Import";
         env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
 
@@ -329,8 +325,7 @@ public class SfdcController {
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "SFDC: Windfall Import";
         env.startLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
         env.sfdcBulkClient().uploadWindfallFile(inputStream);

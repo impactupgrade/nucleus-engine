@@ -24,7 +24,6 @@ import com.twilio.twiml.voice.Redirect;
 import com.twilio.twiml.voice.Say;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -110,8 +109,7 @@ public class TwilioController {
 
     // takes a while, so spin it off as a new thread
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "SMS Blast";
         log.info("STARTED: {}", jobName);
         env.startLog(JobType.PORTAL_TASK, null, jobName, "Twilio");
@@ -196,8 +194,7 @@ public class TwilioController {
     }
 
     Runnable thread = () -> {
-      Session session = env.getSession();
-      try (session) {
+      try {
         String jobName = "SMS Flow";
         env.startLog(JobType.EVENT, null, jobName, "Twilio");
         CrmContact crmContact = env.messagingService().processSignup(
@@ -260,19 +257,16 @@ public class TwilioController {
       String body = smsData.get("Body").get(0).trim();
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
-        Session session = env.getSession();
-        try (session) {
-          String jobName = "SMS Inbound";
-          env.startLog(JobType.EVENT, null, jobName, "Twilio");
-          String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
-          env.notificationService().sendNotification(
-              "Text Message Received",
-              "Text message received from " + from + ": " + body,
-              targetId,
-              "sms:inbound-default"
-          );
-          env.endLog(jobName);
-        }
+        String jobName = "SMS Inbound";
+        env.startLog(JobType.EVENT, null, jobName, "Twilio");
+        String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
+        env.notificationService().sendNotification(
+            "Text Message Received",
+            "Text message received from " + from + ": " + body,
+            targetId,
+            "sms:inbound-default"
+        );
+        env.endLog(jobName);
       }
     }
 

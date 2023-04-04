@@ -101,6 +101,9 @@ public class Job {
   @Column(name = "ended_at")
   public Instant endedAt;
 
+  @Column(name = "schedule_tz")
+  public String scheduleTz;
+
   @ElementCollection
   @CollectionTable(name = "job_logs", joinColumns = @JoinColumn(name = "job_id", referencedColumnName = "id"))
   @Column(name = "log")

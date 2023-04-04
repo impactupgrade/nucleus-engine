@@ -11,7 +11,6 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
-import com.impactupgrade.nucleus.dao.HibernateUtil;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
@@ -32,8 +31,6 @@ import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
@@ -46,7 +43,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import java.util.TimeZone;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -54,7 +50,7 @@ import java.util.stream.Collectors;
  * Every action within Nucleus is kicked off by either an HTTP Request or a manual script. This class
  * is responsible for carrying the context of the flow throughout all processing steps, defining how
  * the organization's set of platforms, configurations, and customizations.
- *
+ * <p>
  * We can't statically define this, one per organization. Instead, the whole concept is dynamic,
  * per-flow. This allows multitenancy (ex: DR having a single instance with multiple "Funding Nations",
  * each with their own unique characteristics and platform keys) and dynamic
@@ -76,11 +72,13 @@ public class Environment {
 
   // Whenever possible, we focus on being configuration-driven using one, large JSON file.
   private final EnvironmentConfig _config = EnvironmentConfig.init();
+
   public EnvironmentConfig getConfig() {
     return _config;
   }
 
   private final String jobTraceId;
+
   public String getJobTraceId() {
     return jobTraceId;
   }
@@ -252,27 +250,6 @@ public class Environment {
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
 
-  private Session session;
-
-  public Session getSession() {
-    if (session == null) {
-      SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
-      if (sessionFactory != null) {
-
-        String timezoneId = this.getConfig().timezoneId;
-        if (Strings.isNullOrEmpty(timezoneId)) {
-          // default to EST if not configured
-          timezoneId = "EST";
-        }
-
-        session = sessionFactory.withOptions()
-            .jdbcTimeZone(TimeZone.getTimeZone(timezoneId))
-            .openSession();
-      }
-    }
-    return session;
-  }
-
   // helper services
 
   public JobProgressLoggingService jobProgressLoggingService() {
@@ -284,11 +261,11 @@ public class Environment {
   }
 
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    loggingService().info(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
+    loggingService().startLog(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
   }
 
   public void endLog(String message) {
-    loggingService().info(null, null, null, null, JobStatus.DONE, "FINISHED: " + message);
+    loggingService().endLog("FINISHED: " + message);
   }
 
   public void errorLog(String message) {
@@ -297,6 +274,6 @@ public class Environment {
   }
 
   public void logProgress(String message) {
-    loggingService().info(null, null, null, null, null, message);
+    loggingService().info(message);
   }
 }

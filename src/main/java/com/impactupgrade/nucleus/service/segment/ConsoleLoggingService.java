@@ -16,7 +16,12 @@ public class ConsoleLoggingService implements LoggingService {
   }
 
   @Override
-  public void info(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+    info(message);
+  }
+
+  @Override
+  public void endLog(String message) {
     info(message);
   }
 
