@@ -79,6 +79,8 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
       job.status = DONE;
+      saveJob(job);
+
       log(job.id, message);
     }
   }
@@ -100,6 +102,8 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
       job.status = FAILED;
+      saveJob(job);
+
       log(job.id, message);
     }
   }
