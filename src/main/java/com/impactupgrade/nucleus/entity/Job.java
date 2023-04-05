@@ -45,20 +45,20 @@ public class Job {
   )
   public Long id;
 
-  @Column(name = "trace_id", nullable = false)
+  @Column(name = "trace_id")
   public String traceId;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "job_type")
   public JobType jobType;
 
-  @Column(name = "started_by", nullable = false)
+  @Column(name = "started_by")
   public String startedBy;
 
-  @Column(name = "job_name", nullable = false)
+  @Column(name = "job_name")
   public String jobName;
 
-  @Column(name = "originating_platform", nullable = false)
+  @Column(name = "originating_platform")
   public String originatingPlatform;
 
   @ManyToOne(fetch = FetchType.EAGER)
@@ -67,35 +67,35 @@ public class Job {
 
   @Type(type = "json")
   // TODO: jsonb, but won't work in H2
-  @Column(name = "payload", columnDefinition = "json", nullable = false)
+  @Column(name = "payload", columnDefinition = "json")
   public JsonNode payload;
 
   @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
   @Fetch(FetchMode.SUBSELECT)
   public List<JobProgress> jobProgresses;
 
-  @Column(name = "status", nullable = false)
+  @Column(name = "status")
   @Enumerated(EnumType.STRING)
   public JobStatus status;
 
-  @Column(name = "schedule_frequency", nullable = false)
+  @Column(name = "schedule_frequency")
   @Enumerated(EnumType.STRING)
   public JobFrequency scheduleFrequency;
 
-  @Column(name = "schedule_interval", nullable = true)
+  @Column(name = "schedule_interval")
   public Integer scheduleInterval;
 
-  @Column(name = "schedule_start", nullable = false)
+  @Column(name = "schedule_start")
   public Instant scheduleStart;
 
-  @Column(name = "schedule_end", nullable = true)
+  @Column(name = "schedule_end")
   public Instant scheduleEnd;
 
-  @Column(name = "sequence_order", nullable = true)
+  @Column(name = "sequence_order")
   @Enumerated(EnumType.STRING)
   public JobSequenceOrder sequenceOrder;
 
-  @Column(name = "started_at", nullable = false)
+  @Column(name = "started_at")
   public Instant startedAt;
 
   @Column(name = "ended_at")
