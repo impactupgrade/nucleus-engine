@@ -228,7 +228,8 @@ public class Utils {
               }
             }
             case BOOLEAN -> rowData.put(headerData.get(i), cell.getBooleanCellValue() + "");
-            default -> rowData.put(headerData.get(i), cell.getStringCellValue());
+            // also use trim here -- running into lots of sheets with extra whitespace
+            default -> rowData.put(headerData.get(i), cell.getStringCellValue().trim());
           }
         }
       }
