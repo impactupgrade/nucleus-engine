@@ -10,7 +10,6 @@ import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
@@ -22,7 +21,6 @@ import javax.persistence.NoResultException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.TimeZone;
@@ -66,7 +64,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     job.logs.add(timestamp + " : " + message);
     job.status = ACTIVE;
 
-    saveJob(job);
+    saveOrUpdateJob(job);
   }
 
   @Override
@@ -74,14 +72,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     super.info(message);
 
     Job job = getJob(env.getJobTraceId(), false);
-    if (job != null) {
-      job.status = DONE;
-      job.endedAt = Utils.now(env.getConfig().timezoneId).toInstant();
-
-      log(job.id, message);
-
-      saveJob(job);
-    }
+    endLog(job, DONE, message);
   }
 
   @Override
@@ -99,16 +90,18 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     super.error(message);
 
     Job job = getJob(env.getJobTraceId(), false);
-    if (job != null) {
-      job.status = FAILED;
-      job.endedAt = Utils.now(env.getConfig().timezoneId).toInstant();
+    endLog(job, FAILED, message);
+  }
 
-      log(job.id, message);
-
-      saveJob(job);
+  private void endLog(Job job , JobStatus jobStatus, String message) {
+    if (job == null) {
+      return;
     }
+    log(job.id, message);
 
-
+    job.status = jobStatus;
+    job.endedAt = Instant.now();
+    saveOrUpdateJob(job);
   }
 
   private String getApiKey() {
@@ -155,10 +148,10 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     return job;
   }
 
-  private Job saveJob(Job job) {
+  private Job saveOrUpdateJob(Job job) {
     try (Session session = openSession()) {
       Transaction transaction = session.beginTransaction();
-      session.save(job);
+      session.saveOrUpdate(job);
       transaction.commit();
     }
     return job;
