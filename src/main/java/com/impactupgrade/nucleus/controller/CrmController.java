@@ -18,6 +18,7 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -244,18 +245,9 @@ public class CrmController {
     SecurityUtil.verifyApiKey(env);
 
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
-    CSVParser csvParser = CSVParser.parse(
-        inputStream,
-        Charset.defaultCharset(),
-        CSVFormat.DEFAULT
-            .withFirstRecordAsHeader()
-            .withIgnoreHeaderCase()
-            .withTrim()
-    );
-    List<Map<String, String>> data = new ArrayList<>();
-    for (CSVRecord csvRecord : csvParser) {
-      data.add(csvRecord.toMap());
-    }
+    // Excel is expected. Greater Giving has an Excel report export purpose built for SFDC.
+    // TODO: But, what if a different CRM is targeted?
+    List<Map<String, String>> data = Utils.getExcelData(inputStream);
 
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGreaterGiving(data);
 

@@ -20,6 +20,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.Utils.checkboxToBool;
@@ -232,7 +233,7 @@ public class CrmImportEvent {
   }
 
   public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromFBFundraiser).collect(Collectors.toList());
+    return data.stream().map(CrmImportEvent::fromFBFundraiser).filter(Objects::nonNull).collect(Collectors.toList());
   }
 
   public static CrmImportEvent fromFBFundraiser(Map<String, String> _data) {
@@ -297,90 +298,90 @@ public class CrmImportEvent {
   }
 
   public static List<CrmImportEvent> fromGreaterGiving(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromGreaterGiving).collect(Collectors.toList());
+    return data.stream().map(CrmImportEvent::fromGreaterGiving).filter(Objects::nonNull).collect(Collectors.toList());
   }
 
   public static CrmImportEvent fromGreaterGiving(Map<String, String> _data) {
+    // TODO: Not mapped:
+    // Household Phone
+    // Account1 Phone
+    // Account1 Street
+    // Account1 City
+    // Account1 State/Province
+    // Account1 Zip/Postal Code
+    // Account1 Country
+    // Account1 Website
+    // Payment Check/Reference Number
+    // Payment Method
+    // Contact1 Salutation
+    // Contact1 Title
+    // Contact1 Birthdate
+    // Contact1 Work Email
+    // Contact1 Alternate Email
+    // Contact1 Preferred Email
+    // Contact1 Other Phone
+    // Contact2 Salutation
+    // Contact2 First Name
+    // Contact2 Last Name
+    // Contact2 Birthdate
+    // Contact2 Title
+    // Contact2 Personal Email
+    // Contact2 Work Email
+    // Contact2 Alternate Email
+    // Contact2 Preferred Email
+    // Contact2 Home Phone
+    // Contact2 Work Phone
+    // Contact2 Mobile Phone
+    // Contact2 Other Phone
+    // Contact2 Preferred Phone
+    // Donation Donor (IE, Contact1 or Contact2)
+    // Donation Member Level
+    // Donation Membership Start Date
+    // Donation Membership End Date
+    // Donation Membership Origin
+    // Donation Record Type Name
+    // Campaign Member Status
+
     // Be case-insensitive, for sources that aren't always consistent.
     CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
 
-    // TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
-    if (data.get("Pay Type").equalsIgnoreCase("S")) {
+    // TODO: Other types? Skipping gift-in-kind
+    if (data.get("Donation Type").equalsIgnoreCase("Donation") || data.get("Donation Type").equalsIgnoreCase("Auction")) {
       CrmImportEvent importEvent = new CrmImportEvent();
       importEvent.raw = data;
 
-      // TODO: support for initial amount, any fees, and net amount
-      //importEvent. = data.get("Gift Amount");
-      //importEvent. = data.get("???");
-      //importEvent. = getAmount(data, "Paid Amount");
-      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
+      importEvent.accountName = data.get("Account1 Name");
+      importEvent.accountBillingStreet = data.get("Home Street");
+      importEvent.accountBillingCity = data.get("Home City");
+      importEvent.accountBillingState = data.get("Home State/Province");
+      importEvent.accountBillingZip = data.get("Home Zip/Postal Code");
+      importEvent.accountBillingCountry = data.get("Home Country");
 
-      // TODO: support for different currencies will likely be needed in the future
-      //importEvent. = data.get("???");
-      if (!Strings.isNullOrEmpty(data.get("Gift Name"))) {
-        importEvent.opportunityName = "Greater Giving: " + data.get("Gift Name") + " (" + data.get("Gift Type") + ")";
+      importEvent.contactFirstName = data.get("Contact1 First Name");
+      importEvent.contactLastName = data.get("Contact1 Last Name");
+      importEvent.contactEmail = data.get("Contact1 Personal Email");
+      importEvent.contactMobilePhone = data.get("Contact1 Mobile Phone");
+      importEvent.contactHomePhone = data.get("Contact1 Home Phone");
+      importEvent.contactWorkPhone = data.get("Contact1 Work Phone");
+      importEvent.contactPreferredPhone = data.get("Contact1 Preferred Phone");
+      importEvent.contactCampaignName = data.get("Campaign Name");
+
+      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
+      if (!Strings.isNullOrEmpty(data.get("Donation Name"))) {
+        importEvent.opportunityName = data.get("Donation Name");
       } else {
-        importEvent.opportunityName = "Greater Giving: " + data.get("Gift Type");
+        importEvent.opportunityName = "Greater Giving: " + data.get("Donation Type");
       }
       try {
         importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get("Gift Date")));
+        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Donation Date")));
       } catch (ParseException e) {
         log.warn("failed to parse date", e);
       }
-
-      importEvent.contactFirstName = Utils.nameToTitleCase(data.get("Account Name"));
-      importEvent.contactLastName = Utils.nameToTitleCase(data.get("Last Name")); // ?
-      importEvent.contactFullName = importEvent.contactFirstName + " " + importEvent.contactLastName;
-      importEvent.contactEmail = data.get("Email");
-      if (!Strings.isNullOrEmpty(data.get("Gift Name"))) {
-        importEvent.opportunitySource = data.get("Gift Name");
-      } else {
-        importEvent.opportunitySource = data.get("Gift Type");
-      }
-      //importEvent.opportunityTerminal = data.get("Payment Processor"); // ? Greater Giving?
-      if (data.containsKey("Fully Paid")) {
-        if ("y".equalsIgnoreCase(data.get("Fully Paid"))) {
-          importEvent.opportunityStageName = "Fully Paid";
-        } else if ("n".equalsIgnoreCase(data.get("Fully Paid"))) {
-          importEvent.opportunityStageName = "Not Fully Paid"; // Partially Paid?
-        }
-      }
-
-      // ?
-      //if (data.containsKey("Fund")) {
-      //  importEvent.opportunityCampaignId = data.get("Fund");
-      //}
-
-      List<String> description = new ArrayList<>();
-      description.add("Gift Name: " + data.get("Gift Name"));
-      description.add("Gift Type: " + data.get("Gift Type"));
-      // Depending on the context, Campaign ID might be the CRM, but it might be vendor-specific (ie, Facebook)
-      //description.add("Campaign ID: " + data.get("Fund")); // ?
-      description.add("CRM Campaign ID: " + data.get("CRM Campaign ID"));
-      description.add("Payment ID: " + data.get("Card Reference/Check Number"));  // One field of means either "Card Reference" or "Check Number" ?
-      //description.add("Source Name: " + data.get("???"));
-      importEvent.opportunityDescription = Joiner.on("\n").join(description);
-
-      // ?
-      //importEvent. = data.get("Account Number"); // ?
-      //importEvent. = data.get("Account Name"); // ?
-      //importEvent. = data.get("Account Type"); // ?
-      importEvent.accountId = data.get("Account SupporterId"); // ?
-      importEvent.contactId = data.get("Contact SupporterId"); // ?
-      //importEvent. = data.get("Sort Name"); // ?
-      //importEvent. = data.get("WorkPhone"); // ?
-      importEvent.contactHomePhone = data.get("HomePhone"); // ?
-      importEvent.contactMobilePhone = data.get("Mobile"); // ?
-      //importEvent. = data.get("Fax"); // ?
-      importEvent.accountBillingStreet = data.get("Address1"); // ?
-      if (!Strings.isNullOrEmpty(data.get("Address2"))) {
-        importEvent.accountBillingStreet += " " + data.get("Address2");
-      }
-      importEvent.accountBillingCity = data.get("City"); // ?
-      importEvent.accountBillingState = data.get("State"); // ?
-      importEvent.accountBillingZip = data.get("ZIP"); // ?
-      //importEvent. = data.get("Short Salutation"); // ?
+      importEvent.opportunitySource = data.get("Donation Type");
+      importEvent.opportunityStageName = data.get("Donation Stage");
+      importEvent.opportunityDescription = data.get("Donation Description");
+      importEvent.opportunityCampaignName = data.get("Campaign Name");
 
       return importEvent;
     } else {
