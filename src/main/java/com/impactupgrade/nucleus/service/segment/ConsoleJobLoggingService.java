@@ -41,6 +41,6 @@ public class ConsoleJobLoggingService implements JobLoggingService {
   }
 
   private Logger getLogger() {
-    return LogManager.getLogger(StackLocatorUtil.getCallerClass(4));
+    return LogManager.getLogger(StackLocatorUtil.getCallerClass(5));
   }
 }
