@@ -1573,7 +1573,8 @@ public class SfdcCrmService implements CrmService {
     }
     if (!Strings.isNullOrEmpty(importEvent.opportunityName)) {
       // 120 is typically the max length
-      opportunity.setField("Name", importEvent.opportunityName.substring(0, 120));
+      int length = Math.min(importEvent.opportunityName.length(), 120);
+      opportunity.setField("Name", importEvent.opportunityName.substring(0, length));
     } else if (existingOpportunity == null || Strings.isNullOrEmpty((String) existingOpportunity.getField("Name"))) {
       opportunity.setField("Name", importEvent.contactFullName() + " Donation");
     }
