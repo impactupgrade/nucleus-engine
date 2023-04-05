@@ -55,7 +55,6 @@ public class ScheduledJobService {
       try {
         switch (job.jobType) {
           case SMS_CAMPAIGN -> new SmsCampaignJobExecutor(env).execute(job, now);
-          default -> log.error("Job type {} is not yet supported!", job.jobType);
         }
       } catch (Exception e) {
         log.error("scheduled job {} failed", job.id, e);
