@@ -491,7 +491,7 @@ public class PaymentGatewayEvent implements Serializable {
   public CrmAccount getCrmAccount() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmAccount.id)) {
-      crmAccount.id = getMetadataValue(envConfig.metadataKeys.account);
+      setCrmAccountId(getMetadataValue(envConfig.metadataKeys.account));
     }
     return crmAccount;
   }
@@ -506,7 +506,7 @@ public class PaymentGatewayEvent implements Serializable {
   public CrmContact getCrmContact() {
     // If we don't yet have an ID, but event metadata has one defined, use that as a default
     if (Strings.isNullOrEmpty(crmContact.id)) {
-      crmContact.id = getMetadataValue(envConfig.metadataKeys.contact);
+      setCrmContactId(getMetadataValue(envConfig.metadataKeys.contact));
     }
     return crmContact;
   }
