@@ -16,7 +16,7 @@ public class ConsoleJobLoggingService implements JobLoggingService {
   }
 
   @Override
-  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, String message) {
     info(message);
   }
 
