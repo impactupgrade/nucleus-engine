@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface JobLoggingService {
 
-  void startLog(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message);
+  void startLog(JobType jobType, String username, String jobName, String originatingPlatform, String message);
   void endLog(String message);
 
   void info(String message);

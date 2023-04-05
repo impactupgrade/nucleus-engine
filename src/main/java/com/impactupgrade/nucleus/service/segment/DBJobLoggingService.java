@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
@@ -26,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.TimeZone;
 
+import static com.impactupgrade.nucleus.entity.JobStatus.ACTIVE;
 import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
 import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
 
@@ -46,7 +48,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
   }
 
   @Override
-  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, JobStatus jobStatus, String message) {
+  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, String message) {
     super.info(message);
 
     String nucleusApikey = getApiKey();
@@ -62,12 +64,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     String timestamp = now.format(dateTimeFormatter);
 
     job.logs.add(timestamp + " : " + message);
-    if (jobStatus != null) {
-      job.status = jobStatus;
-      if (jobStatus == DONE || jobStatus == FAILED) {
-        job.endedAt = now.toInstant(ZoneOffset.UTC);
-      }
-    }
+    job.status = ACTIVE;
 
     saveJob(job);
   }
@@ -79,7 +76,11 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
       job.status = DONE;
+      job.endedAt = Utils.now(env.getConfig().timezoneId).toInstant();
+
       log(job.id, message);
+
+      saveJob(job);
     }
   }
 
@@ -100,8 +101,14 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
       job.status = FAILED;
+      job.endedAt = Utils.now(env.getConfig().timezoneId).toInstant();
+
       log(job.id, message);
+
+      saveJob(job);
     }
+
+
   }
 
   private String getApiKey() {

@@ -265,7 +265,7 @@ public class Environment {
   }
 
   public void startJobLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    jobLoggingService().startLog(jobType, username, jobName, originatingPlatform, JobStatus.ACTIVE, "STARTED: " + jobName);
+    jobLoggingService().startLog(jobType, username, jobName, originatingPlatform, "STARTED: " + jobName);
   }
 
   public void endJobLog(String message) {
