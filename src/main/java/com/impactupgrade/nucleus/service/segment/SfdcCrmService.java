@@ -869,14 +869,18 @@ public class SfdcCrmService implements CrmService {
         .filter(email -> !Strings.isNullOrEmpty(email)).distinct().toList();
     Multimap<String, SObject> existingContactsByEmail = ArrayListMultimap.create();
     if (contactEmails.size() > 0) {
-      sfdcClient.getContactsByEmails(contactEmails, contactCustomFields).forEach(c -> existingContactsByEmail.put((String) c.getField("Email"), c));
+      // Normalize the case!
+      sfdcClient.getContactsByEmails(contactEmails, contactCustomFields)
+          .forEach(c -> existingContactsByEmail.put(c.getField("Email").toString().toLowerCase(Locale.ROOT), c));
     }
 
     List<String> contactNames = importEvents.stream().map(e -> e.contactFirstName + " " + e.contactLastName)
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().toList();
     Multimap<String, SObject> existingContactsByName = ArrayListMultimap.create();
     if (contactNames.size() > 0) {
-      sfdcClient.getContactsByNames(contactNames, contactCustomFields).forEach(c -> existingContactsByName.put((String) c.getField("Name"), c));
+      // Normalize the case!
+      sfdcClient.getContactsByNames(contactNames, contactCustomFields)
+          .forEach(c -> existingContactsByName.put(c.getField("Name").toString().toLowerCase(Locale.ROOT), c));
     }
 
     Optional<String> contactExternalRefKey = importEvents.get(0).raw.keySet().stream()
@@ -897,7 +901,9 @@ public class SfdcCrmService implements CrmService {
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().collect(Collectors.toList());
     Map<String, String> campaignNameToId = Collections.emptyMap();
     if (campaignNames.size() > 0) {
-      campaignNameToId = sfdcClient.getCampaignsByNames(campaignNames).stream().collect(Collectors.toMap(c -> (String) c.getField("Name"), SObject::getId));
+      // Normalize the case!
+      campaignNameToId = sfdcClient.getCampaignsByNames(campaignNames).stream()
+          .collect(Collectors.toMap(c -> c.getField("Name").toString().toLowerCase(Locale.ROOT), SObject::getId));
     }
 
     List<String> recurringDonationIds = importEvents.stream().map(e -> e.recurringDonationId)
@@ -944,6 +950,8 @@ public class SfdcCrmService implements CrmService {
 
     List<String> nonBatchAccountIds = new ArrayList<>();
     List<String> nonBatchContactIds = new ArrayList<>();
+    while(nonBatchAccountIds.size() < importEvents.size()) nonBatchAccountIds.add("");
+    while(nonBatchContactIds.size() < importEvents.size()) nonBatchContactIds.add("");
 
     // IMPORTANT IMPORTANT IMPORTANT
     // Process importEvents in two passes, first processing the ones that will result in an update to a contact, then
@@ -1082,9 +1090,9 @@ public class SfdcCrmService implements CrmService {
         contact = updateBulkImportContact(existingContact, accountId, importEvent, batchUpdateContacts);
       }
       // Else if a contact already exists with the given email address, update.
-      else if (!Strings.isNullOrEmpty(importEvent.contactEmail) && existingContactsByEmail.containsKey(importEvent.contactEmail)) {
+      else if (!Strings.isNullOrEmpty(importEvent.contactEmail) && existingContactsByEmail.containsKey(importEvent.contactEmail.toLowerCase(Locale.ROOT))) {
         // If the email address has duplicates, use the oldest.
-        SObject existingContact = existingContactsByEmail.get(importEvent.contactEmail).stream()
+        SObject existingContact = existingContactsByEmail.get(importEvent.contactEmail.toLowerCase(Locale.ROOT)).stream()
             .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate")))).get();
 
         String accountId = (String) existingContact.getField("AccountId");
@@ -1140,9 +1148,9 @@ public class SfdcCrmService implements CrmService {
       // Only do this if we can match against street address or mobile number as well. Simply by-name is too risky.
       // Better to allow duplicates than to overwrite records.
       else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
-          && existingContactsByName.containsKey(importEvent.contactFirstName + " " + importEvent.contactLastName)
+          && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))
           && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.accountBillingStreet) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
-        List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName + " " + importEvent.contactLastName).stream()
+        List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
             .filter(c -> {
               // make the address checks a little more resilient by removing all non-alphanumerics
               // ex: 123 Main St. != 123 Main St --> 123MainSt == 123MainSt
@@ -1201,14 +1209,14 @@ public class SfdcCrmService implements CrmService {
       if (contact != null) {
         if (!Strings.isNullOrEmpty(importEvent.contactCampaignId)) {
           addContactToCampaign(contact.getId(), importEvent.contactCampaignId);
-        } else if (!Strings.isNullOrEmpty(importEvent.contactCampaignName) && campaignNameToId.containsKey(importEvent.contactCampaignName)) {
-          addContactToCampaign(contact.getId(), campaignNameToId.get(importEvent.contactCampaignName));
+        } else if (!Strings.isNullOrEmpty(importEvent.contactCampaignName) && campaignNameToId.containsKey(importEvent.contactCampaignName.toLowerCase(Locale.ROOT))) {
+          addContactToCampaign(contact.getId(), campaignNameToId.get(importEvent.contactCampaignName.toLowerCase(Locale.ROOT)));
         }
       }
 
       if (nonBatchMode) {
-        nonBatchAccountIds.add(account != null ? account.getId() : null);
-        nonBatchContactIds.add(contact != null ? contact.getId() : null);
+        nonBatchAccountIds.set(i, account != null ? account.getId() : null);
+        nonBatchContactIds.set(i, contact != null ? contact.getId() : null);
       }
 
       // Save off the secondary contacts, always batching them (no need to hold onto IDs for later use).
@@ -1265,8 +1273,8 @@ public class SfdcCrmService implements CrmService {
 
         if (!Strings.isNullOrEmpty(importEvent.recurringDonationCampaignId)) {
           recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", importEvent.recurringDonationCampaignId);
-        } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName)) {
-          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", campaignNameToId.get(importEvent.opportunityCampaignName));
+        } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT))) {
+          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", campaignNameToId.get(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT)));
         }
 
         if (!Strings.isNullOrEmpty(importEvent.recurringDonationId)) {
@@ -1307,8 +1315,8 @@ public class SfdcCrmService implements CrmService {
 
         if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignId)) {
           opportunity.setField("CampaignId", importEvent.opportunityCampaignId);
-        } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName)) {
-          opportunity.setField("CampaignId", campaignNameToId.get(importEvent.opportunityCampaignName));
+        } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT))) {
+          opportunity.setField("CampaignId", campaignNameToId.get(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT)));
         }
 
         if (!Strings.isNullOrEmpty(importEvent.opportunityId)) {
@@ -1463,7 +1471,7 @@ public class SfdcCrmService implements CrmService {
     // Since we hold existingContactsByEmail in memory and don't requery it, add entries as we go to prevent
     // duplicate inserts.
     if (!Strings.isNullOrEmpty((String) contact.getField("Email"))) {
-      existingContactsByEmail.put((String) contact.getField("Email"), contact);
+      existingContactsByEmail.put(contact.getField("Email").toString().toLowerCase(Locale.ROOT), contact);
     }
     // Ditto for extrefs.
     if (contactExternalRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) contact.getField(contactExternalRefFieldName.get()))) {
