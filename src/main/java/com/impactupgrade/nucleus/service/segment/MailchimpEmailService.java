@@ -97,8 +97,8 @@ public class MailchimpEmailService extends AbstractEmailService {
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
       MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
-        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "unsubscribed"));
-        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "cleaned"));
+        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "unsubscribed", lastSync));
+        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "cleaned", lastSync));
       }
     }
   }

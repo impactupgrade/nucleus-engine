@@ -19,7 +19,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -78,12 +80,20 @@ public class MailchimpClient {
     }
   }
 
-  public List<MemberInfo> getListMembers(String listId, String status) throws IOException, MailchimpException {
+//  public List<MemberInfo> getListMembers(String listId, String status) throws IOException, MailchimpException {
+//    return getListMembers(listId, status, null);
+//  }
 
+  public List<MemberInfo> getListMembers(String listId, String status, Calendar sinceLastChanged) throws IOException, MailchimpException {
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
     getMembersMethod.status = status;
     getMembersMethod.count = 500; // subjective, but this is timing out periodically -- may need to dial it back further
     log.info("retrieving list {} contacts", listId);
+    if (sinceLastChanged != null) {
+      getMembersMethod.since_last_changed = sinceLastChanged.getTime();
+      String formattedDate = new SimpleDateFormat("yyyy-MM-dd").format(sinceLastChanged.getTime());
+      log.info("retrieving contacts whose information changed after {}", formattedDate);
+    }
     GetMembersMethod.Response getMemberResponse = client.execute(getMembersMethod);
     List<MemberInfo> members = new ArrayList<>(getMemberResponse.members);
     while(getMemberResponse.total_items > members.size()) {
