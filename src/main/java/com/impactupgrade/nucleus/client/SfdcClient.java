@@ -157,7 +157,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public List<SObject> getCampaigns(String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) + " from campaign";
-    return queryList(query);
+    return queryListAutoPaged(query);
   }
 
   public Optional<SObject> getCampaignById(String campaignId, String... extraFields) throws ConnectionException, InterruptedException {
@@ -190,7 +190,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     String contactIdsJoin = page.stream().map(contactId -> "'" + contactId + "'").collect(Collectors.joining(","));
     String query = "select ContactId, Campaign.Name from CampaignMember where ContactId in (" + contactIdsJoin + ") and Campaign.IsActive=true";
-    List<SObject> results = queryList(query);
+    List<SObject> results = queryListAutoPaged(query);
 
     if (!more.isEmpty()) {
       results.addAll(getActiveCampaignsByContactIds(more));
@@ -696,7 +696,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   public List<SObject> getReports() throws InterruptedException, ConnectionException {
     String query = "select " + REPORT_FIELDS + " FROM Report";
-    return queryList(query);
+    return queryListAutoPaged(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -813,7 +813,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     String conditionsJoin = page.stream().map(condition -> "'" + condition.replaceAll("'", "\\\\'") + "'").collect(Collectors.joining(","));
     String query = "select " + getFieldsList(fields, customFields, extraFields) + " from " + objectType + " where " + conditionFieldName + " in (" + conditionsJoin + ")";
-    List<SObject> results = queryList(query);
+    List<SObject> results = queryListAutoPaged(query);
 
     if (!more.isEmpty()) {
       results.addAll(getBulkResults(more, conditionFieldName, objectType, fields, customFields, extraFields));
