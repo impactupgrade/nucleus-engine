@@ -387,7 +387,7 @@ public class CrmController {
         break;
     }
 
-    Map<String, String> fullList = crmService.getFieldOptions("contact" );
+    Map<String, String> fullList = crmService.getFieldOptions("contact");
 
     Map<String, String> filteredList = new HashMap<>();
     Pattern pattern = Pattern.compile(filter);
