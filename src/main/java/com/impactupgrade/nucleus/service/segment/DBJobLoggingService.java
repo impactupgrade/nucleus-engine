@@ -89,6 +89,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
   public void error(String message) {
     super.error(message);
 
+    message = "Please contact support@impactnucleus.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in! Error: " + message;
     Job job = getJob(env.getJobTraceId(), false);
     endLog(job, FAILED, message);
   }

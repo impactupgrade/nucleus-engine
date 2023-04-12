@@ -11,7 +11,6 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
-import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
@@ -273,7 +272,6 @@ public class Environment {
   }
 
   public void logJobError(String message) {
-    message = "Please contact support@impactnucleus.com and mention Job ID [" + jobTraceId + "]. We'll dive in! Error: " + message;
     jobLoggingService().error(message);
   }
 
