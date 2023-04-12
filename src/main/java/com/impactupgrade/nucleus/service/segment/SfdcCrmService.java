@@ -5,8 +5,7 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
+import com.google.common.cache.Cache;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -29,6 +28,7 @@ import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.CacheUtil;
 import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.SaveResult;
@@ -49,8 +49,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Pattern;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -62,7 +62,15 @@ public class SfdcCrmService implements CrmService {
   protected SfdcClient sfdcClient;
   protected SfdcMetadataClient sfdcMetadataClient;
 
+  // Globally scoped, since these are expensive calls that we want to minimize overall.
+  protected static Cache<String, Map<String, String>> objectFieldsCache = CacheUtil.buildManualCache();
+
+  // Simply scoped to the service/environment/request, since it's more of a per-flow optimization (primarily for Bulk Upsert).
   protected LoadingCache<String, String> recordTypeNameToIdCache;
+
+  public SfdcCrmService() {
+    log.info("NEW INSTANCE");
+  }
 
   @Override
   public String name() { return "salesforce"; }
@@ -78,14 +86,14 @@ public class SfdcCrmService implements CrmService {
     this.sfdcClient = env.sfdcClient();
     this.sfdcMetadataClient = env.sfdcMetadataClient();
 
-    recordTypeNameToIdCache = CacheBuilder.newBuilder().build(
-        new CacheLoader<>() {
-          @Override
-          public String load(String recordTypeName) throws ConnectionException, InterruptedException {
-            return sfdcClient.getRecordTypeByName(recordTypeName).map(SObject::getId).orElse(null);
-          }
-        }
-    );
+    recordTypeNameToIdCache = CacheUtil.buildLoadingCache(recordTypeName -> {
+      try {
+        return sfdcClient.getRecordTypeByName(recordTypeName).map(SObject::getId).orElse(null);
+      } catch (Exception e) {
+        log.error("unable to fetch record type {}", recordTypeName, e);
+        return null;
+      }
+    });
   }
 
   @Override
@@ -813,7 +821,16 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public Map<String, String> getFieldOptions(String object) throws Exception {
-    return sfdcMetadataClient.getObjectFields(object);
+    // include the apiKey for multitenant arenas, like nucleus-core
+    String cacheKey = env.getConfig().apiKey + "_" + object;
+    return objectFieldsCache.get(cacheKey, () -> {
+      try {
+        return sfdcMetadataClient.getObjectFields(object);
+      } catch (Exception e) {
+        log.error("unable to fetch fields from {}", object, e);
+        return null;
+      }
+    });
   }
 
   @Override
