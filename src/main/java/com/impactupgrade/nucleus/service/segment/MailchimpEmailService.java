@@ -89,6 +89,8 @@ public class MailchimpEmailService extends AbstractEmailService {
       }
     } catch (MailchimpException e) {
       log.warn("Mailchimp syncContact failed: {}", mailchimpClient.exceptionToString(e));
+    } catch (Exception e) {
+      log.warn("Mailchimp syncContact failed", e);
     }
   }
 
