@@ -165,7 +165,9 @@ public class PaymentGatewayEvent implements Serializable {
       }
     }
 
-    if (stripePaymentIntent.getCreated() != null) {
+    if (stripeBalanceTransaction.isPresent() && stripeBalanceTransaction.get().getCreated() != null) {
+      crmDonation.closeDate = Utils.toZonedDateTime(stripeBalanceTransaction.get().getCreated(), "UTC");
+    } else if (stripePaymentIntent.getCreated() != null) {
       crmDonation.closeDate = Utils.toZonedDateTime(stripePaymentIntent.getCreated(), "UTC");
     } else {
       crmDonation.closeDate = Utils.now("UTC");
