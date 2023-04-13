@@ -68,10 +68,6 @@ public class SfdcCrmService implements CrmService {
   // Simply scoped to the service/environment/request, since it's more of a per-flow optimization (primarily for Bulk Upsert).
   protected LoadingCache<String, String> recordTypeNameToIdCache;
 
-  public SfdcCrmService() {
-    log.info("NEW INSTANCE");
-  }
-
   @Override
   public String name() { return "salesforce"; }
 
