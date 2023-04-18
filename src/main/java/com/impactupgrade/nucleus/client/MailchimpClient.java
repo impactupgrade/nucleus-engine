@@ -6,6 +6,9 @@ package com.impactupgrade.nucleus.client;
 
 import com.ecwid.maleorang.MailchimpException;
 import com.ecwid.maleorang.MailchimpObject;
+import com.ecwid.maleorang.method.v3_0.batches.BatchStatus;
+import com.ecwid.maleorang.method.v3_0.batches.GetBatchStatusMethod;
+import com.ecwid.maleorang.method.v3_0.batches.StartBatchMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.DeleteMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
@@ -23,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -80,6 +84,29 @@ public class MailchimpClient {
     }
   }
 
+  public String upsertContactsBatch(String listId, List<MemberInfo> contacts) throws IOException, MailchimpException {
+    List<EditMemberMethod.CreateOrUpdate> upsertMemberMethods = contacts.stream()
+        .map(contact -> {
+          EditMemberMethod.CreateOrUpdate upsertMemberMethod = new EditMemberMethod.CreateOrUpdate(listId, contact.email_address);
+          upsertMemberMethod.status_if_new = contact.status;
+          upsertMemberMethod.mapping.putAll(contact.mapping);
+          upsertMemberMethod.merge_fields.mapping.putAll(contact.merge_fields.mapping);
+          upsertMemberMethod.interests.mapping.putAll(contact.interests.mapping);
+          upsertMemberMethod.tags = contact.tags;
+          return upsertMemberMethod;
+        })
+        .collect(Collectors.toList());
+
+    StartBatchMethod startBatchMethod = new StartBatchMethod(upsertMemberMethods);
+    BatchStatus batchStatus = client.execute(startBatchMethod);
+    return batchStatus.id;
+  }
+
+  public BatchStatus getBatchStatus(String batchStatusId) throws IOException, MailchimpException {
+    GetBatchStatusMethod getBatchStatusMethod = new GetBatchStatusMethod(batchStatusId);
+    return client.execute(getBatchStatusMethod);
+  }
+
 //  public List<MemberInfo> getListMembers(String listId, String status) throws IOException, MailchimpException {
 //    return getListMembers(listId, status, null);
 //  }
@@ -96,7 +123,7 @@ public class MailchimpClient {
     }
     GetMembersMethod.Response getMemberResponse = client.execute(getMembersMethod);
     List<MemberInfo> members = new ArrayList<>(getMemberResponse.members);
-    while(getMemberResponse.total_items > members.size()) {
+    while (getMemberResponse.total_items > members.size()) {
       getMembersMethod.offset = members.size();
       log.info("retrieving list {} contacts (offset {} of total {})", listId, getMembersMethod.offset, getMemberResponse.total_items);
       getMemberResponse = client.execute(getMembersMethod);
@@ -119,6 +146,16 @@ public class MailchimpClient {
     }
   }
 
+  public String archiveContacts(String listId, List<String> emails) throws IOException, MailchimpException {
+    List<DeleteMemberMethod> deleteMemberMethods = emails.stream()
+        .map(email -> new DeleteMemberMethod(listId, email))
+        .collect(Collectors.toList());
+
+    StartBatchMethod startBatchMethod = new StartBatchMethod(deleteMemberMethods);
+    BatchStatus batchStatus = client.execute(startBatchMethod);
+    return batchStatus.id;
+  }
+
   // TODO: TEST THIS
   public Set<String> getContactGroupIds(String listId, String contactEmail) throws IOException, MailchimpException {
     MemberInfo contact = getContactInfo(listId, contactEmail);
@@ -129,6 +166,21 @@ public class MailchimpClient {
     MemberInfo member = getContactInfo(listId, contactEmail);
     List<MailchimpObject> tags = (List<MailchimpObject>) member.mapping.get(TAGS);
     return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toList());
+  }
+
+  public Map<String, List<String>> getContactsTags(String listId) throws IOException, MailchimpException {
+    GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
+    GetMembersMethod.Response getMembersResponse = client.execute(getMembersMethod);
+    List<MemberInfo> memberInfos = getMembersResponse.members;
+
+    Map<String, List<String>> tagsMap = memberInfos.stream()
+        .collect(Collectors.toMap(
+            memberInfo -> memberInfo.email_address, memberInfo -> {
+              List<MailchimpObject> tags = (List<MailchimpObject>) memberInfo.mapping.get(TAGS);
+              return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toList());
+            }
+        ));
+    return tagsMap;
   }
 
   public void updateContactTags(String listId, String contactEmail, List<String> activeTags, List<String> inactiveTags) throws IOException, MailchimpException {
@@ -149,6 +201,37 @@ public class MailchimpClient {
     EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
     editMemberMethod.tags = tags;
     client.execute(editMemberMethod);
+  }
+
+  public String updateContactsTags(String listId, List<String> contactEmails, Map<String, List<String>> activeTags, Map<String, List<String>> inactiveTags) throws IOException, MailchimpException {
+    List<EditMemberMethod.AddorRemoveTag> editMemberMethods =
+        contactEmails.stream()
+            .map(contactEmail -> {
+              List<String> active = activeTags.get(contactEmail);
+              List<String> inactive = inactiveTags.get(contactEmail);
+              ArrayList<MailchimpObject> tags = new ArrayList<>();
+              for (String activeTag : active) {
+                MailchimpObject tag = new MailchimpObject();
+                tag.mapping.put(TAG_STATUS, TAG_ACTIVE);
+                tag.mapping.put(TAG_NAME, activeTag);
+                tags.add(tag);
+              }
+              for (String inactiveTag : inactive) {
+                MailchimpObject tag = new MailchimpObject();
+                tag.mapping.put(TAG_STATUS, TAG_INACTIVE);
+                tag.mapping.put(TAG_NAME, inactiveTag);
+                tags.add(tag);
+              }
+
+              EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
+              editMemberMethod.tags = tags;
+
+              return editMemberMethod;
+            }).collect(Collectors.toList());
+
+    StartBatchMethod startBatchMethod = new StartBatchMethod(editMemberMethods);
+    BatchStatus batchStatus = client.execute(startBatchMethod);
+    return batchStatus.id;
   }
 
   public List<MergeFieldInfo> getMergeFields(String listId) throws IOException, MailchimpException {
