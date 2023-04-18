@@ -2,19 +2,37 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.ecwid.maleorang.MailchimpException;
 import com.ecwid.maleorang.MailchimpObject;
+import com.ecwid.maleorang.method.v3_0.batches.BatchStatus;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.util.HttpClient;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +50,10 @@ import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
 public class MailchimpEmailService extends AbstractEmailService {
 
   private static final Logger log = LogManager.getLogger(MailchimpEmailService.class);
+
+  private static final Integer BATCH_REQUEST_OPERATIONS_SIZE = 500;
+  private static final Integer BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS = 10;
+  private static final Integer BATCH_STATUS_MAX_RETRIES = 5;
 
   private final Map<String, String> mergeFieldsNameToTag = new HashMap<>();
 
@@ -64,35 +86,158 @@ public class MailchimpEmailService extends AbstractEmailService {
 
         List<CrmContact> crmContacts = getCrmContacts(emailList, lastSync);
         Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
+        Map<String, List<String>> tags = new MailchimpClient(mailchimpConfig).getContactsTags(emailList.id);
 
-        int count = 0;
-        for (CrmContact crmContact : crmContacts) {
-          log.info("updating contact {} {} on list {} ({} of {})", crmContact.id, crmContact.email, emailList.id, count++, crmContacts.size());
-          syncContact(crmContact, crmContactCampaignNames, mailchimpConfig, emailList);
+        List<List<CrmContact>> partitions = Lists.partition(crmContacts, BATCH_REQUEST_OPERATIONS_SIZE);
+        int i = 1;
+        for (List<CrmContact> contactsBatch : partitions) {
+          log.info("Processing contacts batch {} of total {}...", i, partitions.size());
+          syncContacts(contactsBatch, crmContactCampaignNames, tags, mailchimpConfig, emailList);
+          i++;
         }
       }
     }
   }
 
-  protected void syncContact(CrmContact crmContact, Map<String, List<String>> crmContactCampaignNames,
-      EnvironmentConfig.EmailPlatform mailchimpConfig, EnvironmentConfig.EmailList emailList) throws Exception {
+  protected void syncContacts(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames,
+    Map<String, List<String>> tags, EnvironmentConfig.EmailPlatform mailchimpConfig, EnvironmentConfig.EmailList emailList) throws Exception {
     MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
 
-    try {
-      // transactional is always subscribed
-      if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL || crmContact.canReceiveEmail()) {
-        Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
-        mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
-        // if they can't, they're archived, and will be failed to be retrieved for update
-        updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
-      } else if (!crmContact.canReceiveEmail()) {
-        mailchimpClient.archiveContact(emailList.id, crmContact.email);
-      }
-    } catch (MailchimpException e) {
-      log.warn("Mailchimp syncContact failed: {}", mailchimpClient.exceptionToString(e));
-    } catch (Exception e) {
-      log.warn("Mailchimp syncContact failed", e);
+    List<CrmContact> contactsToUpsert = new ArrayList<>();
+    List<CrmContact> contactsToArchive = new ArrayList<>();
+
+    // transactional is always subscribed
+    if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL) {
+      contactsToUpsert.addAll(crmContacts);
+    } else {
+      crmContacts.forEach(crmContact -> (crmContact.canReceiveEmail() ? contactsToUpsert : contactsToArchive).add(crmContact));
     }
+
+    try {
+      Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
+      for (CrmContact crmContact : contactsToUpsert) {
+        Map<String, Object> customFieldMap = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
+        contactsCustomFields.put(crmContact.email, customFieldMap);
+      }
+
+      List<MemberInfo> memberInfos = toMemberInfos(emailList, contactsToUpsert, contactsCustomFields);
+
+      String upsertBatchId = mailchimpClient.upsertContactsBatch(emailList.id, memberInfos);
+      // Getting batch processing results synchronously to make sure
+      // all contacts were processed before updating tags
+      List<MailchimpClient.BatchOperation> batchOperations = getBatchOperations(mailchimpClient, mailchimpConfig, upsertBatchId, 0);
+
+      // Logging error operations
+      batchOperations.stream()
+          .filter(batchOperation -> batchOperation.status >= 300)
+          .forEach(batchOperation ->
+              log.warn("Failed Batch Operation (status: detail): {}: {}", batchOperation.response.status, batchOperation.response.detail));
+
+      Map<String, List<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
+      List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
+          .map(crmContact -> new MailchimpClient.EmailContact(crmContact.email, activeTags.get(crmContact.email), tags.get(crmContact.email)))
+          .collect(Collectors.toList());
+
+      updateTagsBatch(emailList.id, emailContacts, mailchimpClient);
+
+      // if they can't, they're archived, and will be failed to be retrieved for update
+      List<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email).collect(Collectors.toList());
+      mailchimpClient.archiveContactsBatch(emailList.id, emailsToArchive);
+
+    } catch (MailchimpException e) {
+      log.warn("Mailchimp syncContacts failed: {}", mailchimpClient.exceptionToString(e));
+    } catch (Exception e) {
+      log.warn("Mailchimp syncContacts failed", e);
+    }
+  }
+
+  protected List<MailchimpClient.BatchOperation> getBatchOperations(MailchimpClient mailchimpClient, EnvironmentConfig.EmailPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
+    List<MailchimpClient.BatchOperation> batchOperations = null;
+    if (attemptCount == BATCH_STATUS_MAX_RETRIES) {
+      log.error("exhausted retries; returning...");
+    } else {
+      BatchStatus batchStatus = mailchimpClient.getBatchStatus(batchStatusId);
+      if (!"finished".equalsIgnoreCase(batchStatus.status)) {
+        log.info("Batch '{}' is not finished. Retrying in {} seconds...", batchStatusId, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
+        Thread.sleep(BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS * 1000);
+        Integer newAttemptCount = attemptCount + 1;
+        batchOperations = getBatchOperations(mailchimpClient, mailchimpConfig, batchStatusId, newAttemptCount);
+      } else {
+        log.info("Batch '{}' finished! (finished/total) {}/{}", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations);
+        if (batchStatus.errored_operations > 0) {
+          log.warn("Errored operations count: {}", batchStatus.errored_operations);
+        } else {
+          log.info("All operations processed OK!");
+        }
+        String batchResponse = getBatchResponseAsString(batchStatus, mailchimpConfig);
+        batchOperations = deserializeBatchOperations(batchResponse);
+      }
+    }
+    return batchOperations;
+  }
+
+  protected String getBatchResponseAsString(BatchStatus batchStatus, EnvironmentConfig.EmailPlatform mailchimpConfig) throws Exception {
+    if (Strings.isNullOrEmpty(batchStatus.response_body_url)) {
+      return null;
+    }
+
+    String responseString = null;
+    InputStream inputStream = HttpClient.get(batchStatus.response_body_url, HttpClient.HeaderBuilder.builder()
+        .authBearerToken(mailchimpConfig.secretKey)
+        .header("Accept-Encoding", "application/gzip"), InputStream.class);
+
+    try (TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(
+        new GzipCompressorInputStream(new BufferedInputStream(inputStream)))) {
+      TarArchiveEntry tarArchiveEntry;
+      while ((tarArchiveEntry = (TarArchiveEntry) tarArchiveInputStream.getNextEntry()) != null) {
+        if (!tarArchiveEntry.isDirectory()) {
+          responseString = IOUtils.toString(tarArchiveInputStream, StandardCharsets.UTF_8);
+        }
+      }
+    } catch (Exception e) {
+      log.error("Failed to get batch response body! {}", e);
+    }
+    return responseString;
+  }
+
+  protected List<MailchimpClient.BatchOperation> deserializeBatchOperations(String batchOperationsString) {
+    if (Strings.isNullOrEmpty(batchOperationsString)) {
+      return Collections.emptyList();
+    }
+    List<MailchimpClient.BatchOperation> batchOperations = new ArrayList<>();
+    try {
+      JSONArray jsonArray = new JSONArray(batchOperationsString);
+      ObjectMapper objectMapper = new ObjectMapper();
+
+      for (int i = 0; i< jsonArray.length(); i ++) {
+        JSONObject batchOperation = jsonArray.getJSONObject(i);
+        // Response is an escaped string - converting it to json object and back to string to unescape
+        String response = batchOperation.getString("response");
+        JSONObject responseObject = new JSONObject(response);
+        batchOperation.put("response", responseObject);
+
+        batchOperations.add(objectMapper.readValue(batchOperation.toString(), new TypeReference<>() {}));
+      }
+    } catch (JsonProcessingException e) {
+      log.warn("Failed to deserialize batch operations! {}", e.getMessage());
+    }
+    return batchOperations;
+  }
+
+  protected Map<String, List<String>> getActiveTags(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.EmailPlatform mailchimpConfig) throws Exception {
+    Map<String, List<String>> activeTags = new HashMap<>();
+    for (CrmContact crmContact : crmContacts) {
+      List<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig);
+      activeTags.put(crmContact.email, tagsCleaned);
+    }
+    return activeTags;
+  }
+
+  protected List<MemberInfo> toMemberInfos(EnvironmentConfig.EmailList emailList, List<CrmContact> crmContacts,
+      Map<String, Map<String, Object>> customFieldsMap) {
+    return crmContacts.stream()
+        .map(crmContact -> toMcMemberInfo(crmContact, customFieldsMap.get(crmContact.email), emailList.groups))
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -165,6 +310,27 @@ public class MailchimpEmailService extends AbstractEmailService {
     }
   }
 
+  protected void syncContact(CrmContact crmContact, Map<String, List<String>> crmContactCampaignNames,
+                             EnvironmentConfig.EmailPlatform mailchimpConfig, EnvironmentConfig.EmailList emailList) throws Exception {
+    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+
+    try {
+      // transactional is always subscribed
+      if (emailList.type == EnvironmentConfig.EmailListType.TRANSACTIONAL || crmContact.canReceiveEmail()) {
+        Map<String, Object> customFields = getCustomFields(emailList.id, crmContact, mailchimpClient, mailchimpConfig);
+        mailchimpClient.upsertContact(emailList.id, toMcMemberInfo(crmContact, customFields, emailList.groups));
+        // if they can't, they're archived, and will be failed to be retrieved for update
+        updateTags(emailList.id, crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpClient, mailchimpConfig);
+      } else if (!crmContact.canReceiveEmail()) {
+        mailchimpClient.archiveContact(emailList.id, crmContact.email);
+      }
+    } catch (MailchimpException e) {
+      log.warn("Mailchimp syncContact failed: {}", mailchimpClient.exceptionToString(e));
+    } catch (Exception e) {
+      log.warn("Mailchimp syncContact failed", e);
+    }
+  }
+
   //  @Override
 //  public Optional<CrmContact> getContactByEmail(String listName, String email) throws Exception {
 //    String listId = getListIdFromName(listName);
@@ -213,7 +379,7 @@ public class MailchimpEmailService extends AbstractEmailService {
 
       if (!mergeFieldsNameToTag.containsKey(customField.name)) {
         // TEXT, NUMBER, ADDRESS, PHONE, DATE, URL, IMAGEURL, RADIO, DROPDOWN, BIRTHDAY, ZIP
-        MergeFieldInfo.Type type = switch(customField.type) {
+        MergeFieldInfo.Type type = switch (customField.type) {
           case DATE -> MergeFieldInfo.Type.DATE;
           // MC doesn't support a boolean type, so we use NUMBER and map to 0/1
           case BOOLEAN -> MergeFieldInfo.Type.NUMBER;
@@ -253,6 +419,20 @@ public class MailchimpEmailService extends AbstractEmailService {
       mailchimpClient.updateContactTags(listId, crmContact.email, activeTags, inactiveTags);
     } catch (Exception e) {
       log.error("updating tags failed for contact: {} {}", crmContact.id, crmContact.email, e);
+    }
+  }
+
+  protected String updateTagsBatch(String listId,
+      List<MailchimpClient.EmailContact> emailContacts,
+      MailchimpClient mailchimpClient) {
+    emailContacts.stream()
+            .filter(emailContact -> CollectionUtils.isNotEmpty(emailContact.inactiveTags()))
+            .forEach(emailContact -> emailContact.inactiveTags().removeAll(emailContact.activeTags()));
+    try {
+      return mailchimpClient.updateContactTagsBatch(listId, emailContacts);
+    } catch (Exception e) {
+      log.error("updating tags failed for contacts! {}", e.getMessage());
+      return null;
     }
   }
 
