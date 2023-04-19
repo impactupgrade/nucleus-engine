@@ -38,6 +38,7 @@ public class CrmImportEvent {
   public String contactId;
   public String opportunityId;
   public String recurringDonationId;
+  public String campaignId;
 
   // Can also be used for update retrieval, as well as inserts.
   public String contactEmail;
@@ -97,6 +98,9 @@ public class CrmImportEvent {
   public Calendar recurringDonationStartDate;
   public String recurringDonationStatus;
 
+  public String campaignName;
+  // TODO: In the future, could add OOTB support for dates, etc. but need to see this play out.
+
   // TODO: Add this to the Portal task. But for now, defaulting it to false out of caution.
   public Boolean opportunitySkipDuplicateCheck = false;
 
@@ -125,6 +129,7 @@ public class CrmImportEvent {
     importEvent.contactId = data.get("Contact ID");
     importEvent.opportunityId = data.get("Opportunity ID");
     importEvent.recurringDonationId = data.get("Recurring Donation ID");
+    importEvent.campaignId = data.get("Campaign ID");
 
     importEvent.contactEmail = data.get("Contact Email");
     if (importEvent.contactEmail != null) {
@@ -197,6 +202,8 @@ public class CrmImportEvent {
     importEvent.recurringDonationOwnerId = data.get("Recurring Donation Owner Name");
     importEvent.recurringDonationStartDate = getDate(data, "Recurring Donation Start Date");
     importEvent.recurringDonationStatus = data.get("Recurring Donation Status");
+
+    importEvent.campaignName = data.get("Campaign Name");
 
     return importEvent;
   }
