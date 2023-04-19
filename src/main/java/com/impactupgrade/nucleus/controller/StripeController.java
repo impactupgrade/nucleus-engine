@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -17,6 +18,7 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.TestUtil;
+import com.stripe.exception.StripeException;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -28,16 +30,20 @@ import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
+import com.stripe.param.CustomerUpdateParams;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -313,6 +319,35 @@ public class StripeController {
         .filter(es -> es.eventIsFromPlatform(paymentGatewayEvent.getCrmDonation())).toList();
     for (EnrichmentService enrichmentService : enrichmentServices) {
       enrichmentService.enrich(paymentGatewayEvent.getCrmDonation());
+    }
+  }
+
+  // Used for clients that have a simple Stripe widget to update a payment method.
+  @Path("/update-source")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  public Response updateSource(
+      @FormParam(value = "stripeToken") String stripeToken,
+      @FormParam(value = "customerEmail") String customerEmail,
+      @FormParam(value = "successUrl") String successUrl,
+      @FormParam(value = "failUrl") String failUrl,
+      @Context HttpServletRequest request
+  ) {
+    Environment env = envFactory.init(request);
+    StripeClient stripeClient = env.stripeClient();
+
+    try {
+      // TODO: Should we update the payment methods on ALL customers found by the email?
+      Optional<Customer> customer = stripeClient.getCustomerByEmail(customerEmail);
+
+      if (customer.isEmpty()) {
+        return Response.temporaryRedirect(URI.create(failUrl + "?error=Unable to find the donor record")).build();
+      }
+
+      customer.get().update(CustomerUpdateParams.builder().setDefaultSource(stripeToken).build());
+      return Response.temporaryRedirect(URI.create(successUrl)).build();
+    } catch (StripeException e) {
+      return Response.temporaryRedirect(URI.create(failUrl + "?error=" + e.getMessage())).build();
     }
   }
 }
