@@ -164,6 +164,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) + " from campaign where id = '" + campaignId + "'";
     return querySingle(query);
   }
+  public List<SObject> getCampaignsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(ids, "Id", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields);
+  }
 
   public Optional<SObject> getCampaignByName(String campaignName, String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) +  " from campaign where name = '" + campaignName.replaceAll("'", "\\\\'") + "'";

@@ -835,14 +835,30 @@ public class SfdcCrmService implements CrmService {
     return 0.0;
   }
 
-  // TODO: Much of this bulk import code needs genericized and pulled upstream!
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
+    // MODES:
+    // - Core Records: Accounts + Contacts + Recurring Donations + Opportunities
+    // - Campaigns
+    // - TODO: Other types of records?
+
     if (importEvents.isEmpty()) {
       log.warn("no importEvents to import; exiting...");
       return;
     }
 
+    boolean campaignMode = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
+        .anyMatch(entry -> entry.getKey().startsWith("Account") && !Strings.isNullOrEmpty(entry.getValue()));
+    if (campaignMode) {
+      processBulkImportCampaignRecords(importEvents);
+      return;
+    }
+
+    processBulkImportCoreRecords(importEvents);
+  }
+
+  // TODO: Much of this bulk import code needs genericized and pulled upstream!
+  protected void processBulkImportCoreRecords(List<CrmImportEvent> importEvents) throws Exception {
     // This entire method uses bulk queries and bulk inserts wherever possible!
     // We make multiple passes, focusing on one object at a time in order to use the bulk API.
 
@@ -952,8 +968,11 @@ public class SfdcCrmService implements CrmService {
     List<String> batchInsertContacts = new ArrayList<>();
     List<String> batchUpdateContacts = new ArrayList<>();
     List<String> batchUpdateOpportunities = new ArrayList<>();
-    List<String> batchInsertOpportunityContactRoles = new ArrayList<>();
     List<String> batchUpdateRecurringDonations = new ArrayList<>();
+
+    // Don't update Accounts unless we have to.
+    boolean accountUpdates = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
+        .anyMatch(entry -> entry.getKey().startsWith("Account") && !Strings.isNullOrEmpty(entry.getValue()));
 
     // If we're doing Opportunity/RD inserts or Campaign updates, we unfortunately can't use batch inserts/updates of accounts/contacts.
     // TODO: We probably *can*, but the code will be rather complex to manage the variety of batch actions paired with CSV rows.
@@ -994,6 +1013,7 @@ public class SfdcCrmService implements CrmService {
       log.info("import processing contacts/account on row {} of {}", i + 2, importEvents.size() + 1);
 
       // If the accountId or account extref is explicitly given, run the account update. Otherwise, let the contact queries determine it.
+      // TODO: If these conditions are met, it looks like the contact queries will update them too?
       SObject account = null;
       if (!Strings.isNullOrEmpty(importEvent.accountId)) {
         SObject existingAccount = existingAccountsById.get(importEvent.accountId);
@@ -1078,7 +1098,7 @@ public class SfdcCrmService implements CrmService {
         if (account == null) {
           if (!Strings.isNullOrEmpty(accountId)) {
             SObject existingAccount = (SObject) existingContact.getChild("Account");
-            account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
+            account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts, accountUpdates);
           }
         }
 
@@ -1094,7 +1114,7 @@ public class SfdcCrmService implements CrmService {
         if (account == null) {
           if (!Strings.isNullOrEmpty(accountId)) {
             SObject existingAccount = (SObject) existingContact.getChild("Account");
-            account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
+            account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts, accountUpdates);
           }
         }
 
@@ -1112,7 +1132,7 @@ public class SfdcCrmService implements CrmService {
         if (account == null) {
           if (!Strings.isNullOrEmpty(accountId)) {
             SObject existingAccount = (SObject) existingContact.getChild("Account");
-            account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
+            account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts, accountUpdates);
           }
         }
 
@@ -1153,13 +1173,13 @@ public class SfdcCrmService implements CrmService {
         if (existingAccount == null) {
           account = insertBulkImportAccount(fullname, importEvent, accountExternalRefFieldName, existingAccountsByExRef);
         } else {
-          account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
+          account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts, true);
         }
       }
       // If we have a first and last name, try searching for an existing contact by name.
-      // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
       // Only do this if we can match against street address or mobile number as well. Simply by-name is too risky.
       // Better to allow duplicates than to overwrite records.
+      // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
       else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
           && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))
           && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.accountBillingStreet) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
@@ -1203,7 +1223,7 @@ public class SfdcCrmService implements CrmService {
           if (account == null) {
             if (!Strings.isNullOrEmpty(accountId)) {
               SObject existingAccount = (SObject) existingContact.getChild("Account");
-              account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts);
+              account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts, accountUpdates);
             }
           }
 
@@ -1260,12 +1280,13 @@ public class SfdcCrmService implements CrmService {
         }
       }
 
-      env.logJobProgress("Imported " + (i + 1) + " contact(s)");
+      env.logJobProgress("Imported " + (i + 1) + " contacts");
     }
 
     sfdcClient.batchFlush();
 
     if (rdMode) {
+      // TODO: Won't this loop process the same RD over and over each time it appears in an Opp row? Keep track of "visited"?
       for (int i = 0; i < importEvents.size(); i++) {
         CrmImportEvent importEvent = importEvents.get(i);
 
@@ -1284,6 +1305,7 @@ public class SfdcCrmService implements CrmService {
           recurringDonation.setField("Npe03__Organization__c", nonBatchAccountIds.get(i));
         }
 
+        // TODO: Add a RD Campaign Name column as well?
         if (!Strings.isNullOrEmpty(importEvent.recurringDonationCampaignId)) {
           recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", importEvent.recurringDonationCampaignId);
         } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT))) {
@@ -1307,7 +1329,7 @@ public class SfdcCrmService implements CrmService {
           sfdcClient.batchInsert(recurringDonation);
         }
 
-        env.logJobProgress("Imported " + (i + 1) + " recurring donation(s)");
+        env.logJobProgress("Imported " + (i + 1) + " recurring donations");
       }
 
       sfdcClient.batchFlush();
@@ -1367,7 +1389,7 @@ public class SfdcCrmService implements CrmService {
 
           sfdcClient.batchInsert(opportunity);
         }
-        env.logJobProgress("Imported " + (i + 1) + " opportunity(s)");
+        env.logJobProgress("Imported " + (i + 1) + " opportunities");
       }
 
       sfdcClient.batchFlush();
@@ -1377,7 +1399,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected SObject updateBulkImportAccount(SObject existingAccount, CrmImportEvent importEvent,
-      List<String> bulkUpdateAccounts) throws InterruptedException, ExecutionException {
+      List<String> bulkUpdateAccounts, boolean accountUpdates) throws InterruptedException, ExecutionException {
     // TODO: Odd situation. When insertBulkImportContact creates a contact, it's also creating an Account, sets the
     //  AccountId on the Contact and then adds the Contact to existingContactsByEmail so we can reuse it. But when
     //  we encounter the contact again, the code upstream attempts to update the Account. 1) We don't need to, since it
@@ -1385,6 +1407,10 @@ public class SfdcCrmService implements CrmService {
     //  and that insert might happen later during batch processing.
     if (existingAccount == null) {
       return null;
+    }
+
+    if (!accountUpdates) {
+      return existingAccount;
     }
 
     SObject account = new SObject("Account");
@@ -1668,6 +1694,39 @@ public class SfdcCrmService implements CrmService {
     return importEvents.stream().flatMap(e -> e.raw.keySet().stream())
         .distinct().filter(k -> k.startsWith("Opportunity Custom "))
         .map(k -> k.replace("Opportunity Custom ", "").replace("Append ", "")).toArray(String[]::new);
+  }
+
+  protected void processBulkImportCampaignRecords(List<CrmImportEvent> importEvents) throws Exception {
+    String[] campaignCustomFields = importEvents.stream().flatMap(e -> e.raw.keySet().stream())
+        .distinct().filter(k -> k.startsWith("Campaign Custom "))
+        .map(k -> k.replace("Campaign Custom ", "").replace("Append ", "")).toArray(String[]::new);;
+
+    List<String> campaignIds = importEvents.stream().map(e -> e.campaignId)
+        .filter(campaignId -> !Strings.isNullOrEmpty(campaignId)).distinct().toList();
+    Map<String, SObject> existingCampaignById = new HashMap<>();
+    if (campaignIds.size() > 0) {
+      sfdcClient.getCampaignsByIds(campaignIds, campaignCustomFields).forEach(c -> existingCampaignById.put(c.getId(), c));
+    }
+
+    for (int i = 0; i < importEvents.size(); i++) {
+      CrmImportEvent importEvent = importEvents.get(i);
+
+      log.info("import processing campaigns on row {} of {}", i + 2, importEvents.size() + 1);
+
+      SObject campaign = new SObject("Campaign");
+      campaign.setField("Name", importEvent.campaignName);
+
+      if (!Strings.isNullOrEmpty(importEvent.campaignId)) {
+        campaign.setId(importEvent.campaignId);
+        setBulkImportCustomFields(campaign, existingCampaignById.get(importEvent.campaignId), "Campaign", importEvent);
+        sfdcClient.batchUpdate(campaign);
+      } else {
+        setBulkImportCustomFields(campaign, null, "Campaign", importEvent);
+        sfdcClient.batchInsert(campaign);
+      }
+
+      env.logJobProgress("Imported " + (i + 1) + " campaigns");
+    }
   }
 
   // TODO: This is going to be a pain in the butt, but we'll try to dynamically support different data types for custom
