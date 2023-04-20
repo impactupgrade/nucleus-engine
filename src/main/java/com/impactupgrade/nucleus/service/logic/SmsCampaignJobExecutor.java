@@ -42,7 +42,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   public SmsCampaignJobExecutor(Environment env) {
     this.jobDao = new HibernateDao<>(Job.class);
     this.jobProgressDao = new HibernateDao<>(JobProgress.class);
-    this.crmService = env.primaryCrmService();
+    this.crmService = env.messagingCrmService();
     this.messagingService = env.messagingService();
   }
 

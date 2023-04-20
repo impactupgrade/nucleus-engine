@@ -76,7 +76,7 @@ public class TwilioFrontlineController {
   ) throws Exception {
     log.info("location={} workerIdentity={} pageSize={} nextPageToken={} customerId={} searchQuery={}", location, workerIdentity, pageSize, nextPageToken, customerId, searchQuery);
     Environment env = envFactory.init(request);
-    CrmService crmService = env.primaryCrmService();
+    CrmService crmService = env.messagingCrmService();
     String crmName = capitalize(crmService.name());
 
     FrontlineCrmResponse frontlineResponse = new FrontlineCrmResponse();
@@ -275,7 +275,7 @@ public class TwilioFrontlineController {
     Thread.sleep(2000);
 
     Environment env = envFactory.init(request);
-    CrmService crmService = env.primaryCrmService();
+    CrmService crmService = env.messagingCrmService();
 
     switch (eventType) {
       case "onConversationAdd":
@@ -376,7 +376,7 @@ public class TwilioFrontlineController {
     Thread.sleep(5000);
 
     Environment env = envFactory.init(request);
-    CrmService crmService = env.primaryCrmService();
+    CrmService crmService = env.messagingCrmService();
 
     // For P2P, customerAddress is the external sender.
     // Confusingly, for Group MMS, customerAddress is all other participants (including the Twilio number), while authorAddress is the external sender.
