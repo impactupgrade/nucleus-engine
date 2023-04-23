@@ -142,6 +142,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where name like '%" + escapedName + "%' or npo02__Formal_Greeting__c='%" + escapedName + "%'";
     return queryList(query);
   }
+  public List<SObject> getAccountsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(names, "Name", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
+  }
 
   public Optional<SObject> getAccountByCustomerId(String customerId, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {

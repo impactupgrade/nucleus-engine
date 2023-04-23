@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -362,6 +363,11 @@ public class SharePointCrmService implements CrmService {
 
     @Override
     public String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
+        return null;
+    }
+
+    @Override
+    public String insertCampaign(CrmCampaign crmCampaign) throws Exception {
         return null;
     }
 

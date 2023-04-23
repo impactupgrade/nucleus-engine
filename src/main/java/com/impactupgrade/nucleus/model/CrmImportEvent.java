@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.util.CaseInsensitiveMap;
 import org.apache.logging.log4j.LogManager;
@@ -22,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.impactupgrade.nucleus.util.Utils.checkboxToBool;
 import static com.impactupgrade.nucleus.util.Utils.fullNameToFirstLast;
@@ -34,7 +36,6 @@ public class CrmImportEvent {
   public CaseInsensitiveMap<String> raw = new CaseInsensitiveMap<>();
 
   // For updates only, used for retrieval.
-  public String accountId;
   public String contactId;
   public String opportunityId;
   public String recurringDonationId;
@@ -42,19 +43,18 @@ public class CrmImportEvent {
 
   // Can also be used for update retrieval, as well as inserts.
   public String contactEmail;
-  
-  public String accountBillingStreet;
-  public String accountBillingCity;
-  public String accountBillingState;
-  public String accountBillingZip;
-  public String accountBillingCountry;
-  public String accountName;
-  public String accountOwnerId;
-  public String accountRecordTypeId;
-  public String accountRecordTypeName;
 
-  public String contactCampaignId;
-  public String contactCampaignName;
+  // could be a contact's household, could be an organization itself
+  public CrmAccount account = new CrmAccount();
+  // organization affiliations
+  public List<CrmAccount> contactOrganizations = new ArrayList<>();
+  public List<String> contactOrganizationRoles = new ArrayList<>();
+
+  // TODO: replace the rest with CrmContact, CrmOpportunity/CrmDonation, and CrmRecurringDonation
+
+  public List<String> contactCampaignIds = new ArrayList<>();
+  public List<String> contactCampaignNames = new ArrayList<>();
+  public String contactDescription;
   public String contactFirstName;
   public String contactFullName;
   public String contactHomePhone;
@@ -125,7 +125,7 @@ public class CrmImportEvent {
     CrmImportEvent importEvent = new CrmImportEvent();
     importEvent.raw = data;
 
-    importEvent.accountId = data.get("Account ID");
+    importEvent.account.id = data.get("Account ID");
     importEvent.contactId = data.get("Contact ID");
     importEvent.opportunityId = data.get("Opportunity ID");
     importEvent.recurringDonationId = data.get("Recurring Donation ID");
@@ -138,18 +138,43 @@ public class CrmImportEvent {
       importEvent.contactEmail = importEvent.contactEmail.toLowerCase(Locale.ROOT);
     }
 
-    importEvent.accountBillingStreet = data.get("Account Billing Address");
-    if (!Strings.isNullOrEmpty(data.get("Account Billing Address 2"))) {
-      importEvent.accountBillingStreet += ", " + data.get("Account Billing Address 2");
+    importEvent.account.billingAddress.street = data.get("Account Billing Street");
+    if (!Strings.isNullOrEmpty(data.get("Account Billing Street 2"))) {
+      importEvent.account.billingAddress.street += ", " + data.get("Account Billing Street 2");
     }
-    importEvent.accountBillingCity = data.get("Account Billing City");
-    importEvent.accountBillingState = data.get("Account Billing State");
-    importEvent.accountBillingZip = data.get("Account Billing PostCode");
-    importEvent.accountBillingCountry = data.get("Account Billing Country");
-    importEvent.accountName = data.get("Account Name");
-    importEvent.accountOwnerId = data.get("Account Owner ID");
-    importEvent.accountRecordTypeId = data.get("Account Record Type ID");
-    importEvent.accountRecordTypeName = data.get("Account Record Type Name");
+    importEvent.account.billingAddress.city = data.get("Account Billing City");
+    importEvent.account.billingAddress.state = data.get("Account Billing State");
+    importEvent.account.billingAddress.postalCode = data.get("Account Billing PostCode");
+    importEvent.account.billingAddress.country = data.get("Account Billing Country");
+    importEvent.account.description = data.get("Account Description");
+    importEvent.account.name = data.get("Account Name");
+    importEvent.account.ownerId = data.get("Account Owner ID");
+    importEvent.account.typeId = data.get("Account Record Type ID");
+    importEvent.account.typeName = data.get("Account Record Type Name");
+
+    for (int i = 1; i <= 5; i++) {
+      String columnPrefix = "Organization " + i;
+      if (data.keySet().stream().anyMatch(k -> k.startsWith(columnPrefix)) && !Strings.isNullOrEmpty(data.get(columnPrefix + " Name"))) {
+        CrmAccount organization = new CrmAccount();
+        organization.billingAddress.street = data.get(columnPrefix + " Billing Street");
+        if (!Strings.isNullOrEmpty(data.get(columnPrefix + " Billing Street 2"))) {
+          organization.billingAddress.street += ", " + data.get(columnPrefix + " Billing Street 2");
+        }
+        organization.billingAddress.city = data.get(columnPrefix + " Billing City");
+        organization.billingAddress.state = data.get(columnPrefix + " Billing State");
+        organization.billingAddress.postalCode = data.get(columnPrefix + " Billing PostCode");
+        organization.billingAddress.country = data.get(columnPrefix + " Billing Country");
+        organization.description = data.get(columnPrefix + " Description");
+        organization.name = data.get(columnPrefix + " Name");
+        organization.ownerId = data.get(columnPrefix + " Owner ID");
+        organization.type = EnvironmentConfig.AccountType.ORGANIZATION;
+        organization.typeId = data.get(columnPrefix + " Record Type ID");
+        organization.typeName = data.get(columnPrefix + " Record Type Name");
+        importEvent.contactOrganizations.add(organization);
+
+        importEvent.contactOrganizationRoles.add(data.get(columnPrefix + " Role"));
+      }
+    }
 
     importEvent.contactFirstName = data.get("Contact First Name");
     importEvent.contactLastName = data.get("Contact Last Name");
@@ -160,15 +185,37 @@ public class CrmImportEvent {
       importEvent.contactLastName = split[1];
     }
 
-    importEvent.contactCampaignId = data.get("Contact Campaign ID");
-    importEvent.contactCampaignName = data.get("Contact Campaign Name");
+    // 3 ways campaigns can be provided, using column headers:
+    // 1: Contact Campaign n ID
+    // 2: Contact Campaign n Name
+    // 3: Contact Campaign [Some Name] -> boolean (true, yes, 1) values
+    // #3 is helpful in many cases where we're migrating tags/fields with boolean values to campaign membership
+    for (int i = 1; i <= 5; i++) {
+      String columnPrefix = "Contact Campaign " + i;
+      if (data.keySet().stream().anyMatch(k -> k.startsWith(columnPrefix))) {
+        importEvent.contactCampaignIds.add(data.get(columnPrefix + " ID"));
+        importEvent.contactCampaignNames.add(data.get(columnPrefix + " Name"));
+      }
+    }
+    for (String columnName : importEvent.getContactCampaignColumnNames()) {
+      if (columnName.startsWith("Contact Campaign Name ")) { // note the extra space at the end, different than the above
+        String s = data.get(columnName);
+        boolean value = Utils.checkboxToBool(s);
+        if (value) {
+          String campaignName = columnName.replace("Contact Campaign Name ", "");
+          importEvent.contactCampaignNames.add(campaignName);
+        }
+      }
+    }
+
+    importEvent.contactDescription = data.get("Contact Description");
     importEvent.contactHomePhone = data.get("Contact Home Phone");
     importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
     importEvent.contactWorkPhone = data.get("Contact Work Phone");
     importEvent.contactPreferredPhone = data.get("Contact Preferred Phone");
-    importEvent.contactMailingStreet = data.get("Contact Mailing Address");
-    if (!Strings.isNullOrEmpty(data.get("Contact Mailing Address 2"))) {
-      importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Address 2");
+    importEvent.contactMailingStreet = data.get("Contact Mailing Street");
+    if (!Strings.isNullOrEmpty(data.get("Contact Mailing Street 2"))) {
+      importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Street 2");
     }
     importEvent.contactMailingCity = data.get("Contact Mailing City");
     importEvent.contactMailingState = data.get("Contact Mailing State");
@@ -237,6 +284,44 @@ public class CrmImportEvent {
     }
     
     return c;
+  }
+
+  public List<String> getAccountColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Account ")).toList();
+  }
+  public List<String> getAccountCustomFieldNames() {
+    return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom "))
+        .map(k -> k.replace("Account Custom ", "").replace("Append ", "")).toList();
+  }
+  public List<String> getContactColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Contact ")).toList();
+  }
+  public List<String> getContactCustomFieldNames() {
+    List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom "))
+        .map(k -> k.replace("Contact Custom ", "").replace("Append ", "")).toList();
+    // We also need the account values!
+    List<String> accountFields = getAccountCustomFieldNames().stream().map(f -> "Account." + f).toList();
+    return Stream.concat(contactFields.stream(), accountFields.stream()).toList();
+  }
+  public List<String> getRecurringDonationColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Recurring Donation ")).toList();
+  }
+  public List<String> getRecurringDonationCustomFieldNames() {
+    return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom "))
+        .map(k -> k.replace("Recurring Donation Custom ", "").replace("Append ", "")).toList();
+  }
+  public List<String> getOpportunityColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Opportunity ")).toList();
+  }
+  public List<String> getOpportunityCustomFieldNames() {
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom "))
+        .map(k -> k.replace("Opportunity Custom ", "").replace("Append ", "")).toList();
+  }
+  public List<String> getContactCampaignColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign ")).toList();
+  }
+  public List<String> getCampaignColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Campaign ")).toList();
   }
 
   public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
@@ -357,12 +442,12 @@ public class CrmImportEvent {
       CrmImportEvent importEvent = new CrmImportEvent();
       importEvent.raw = data;
 
-      importEvent.accountName = data.get("Account1 Name");
-      importEvent.accountBillingStreet = data.get("Home Street");
-      importEvent.accountBillingCity = data.get("Home City");
-      importEvent.accountBillingState = data.get("Home State/Province");
-      importEvent.accountBillingZip = data.get("Home Zip/Postal Code");
-      importEvent.accountBillingCountry = data.get("Home Country");
+      importEvent.account.name = data.get("Account1 Name");
+      importEvent.account.billingAddress.street = data.get("Home Street");
+      importEvent.account.billingAddress.city = data.get("Home City");
+      importEvent.account.billingAddress.state = data.get("Home State/Province");
+      importEvent.account.billingAddress.postalCode = data.get("Home Zip/Postal Code");
+      importEvent.account.billingAddress.country = data.get("Home Country");
 
       importEvent.contactFirstName = data.get("Contact1 First Name");
       importEvent.contactLastName = data.get("Contact1 Last Name");
@@ -371,7 +456,9 @@ public class CrmImportEvent {
       importEvent.contactHomePhone = data.get("Contact1 Home Phone");
       importEvent.contactWorkPhone = data.get("Contact1 Work Phone");
       importEvent.contactPreferredPhone = data.get("Contact1 Preferred Phone");
-      importEvent.contactCampaignName = data.get("Campaign Name");
+      if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
+        importEvent.contactCampaignNames.add(data.get("Campaign Name"));
+      }
 
       importEvent.opportunityAmount = getAmount(data, "Donation Amount");
       if (!Strings.isNullOrEmpty(data.get("Donation Name"))) {

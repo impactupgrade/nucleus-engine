@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
+import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -497,6 +498,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public String insertCampaign(CrmCampaign crmCampaign) throws Exception {
+    return null;
+  }
+
+  @Override
   public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Collections.emptyMap();
@@ -619,7 +625,7 @@ public class BloomerangCrmService implements CrmService {
     return new CrmContact(
         constituent.id + "",
         new CrmAccount(householdId),
-        crmAddress,
+        null, // description
         primaryEmail,
         Collections.emptyList(), // List<String> emailGroups,
         null, // Boolean emailOptIn,
@@ -631,6 +637,7 @@ public class BloomerangCrmService implements CrmService {
         null, // Calendar lastDonationDate,
         constituent.lastName,
         null, // String language,
+        crmAddress,
         null, // String mobilePhone,
         null, // Integer numDonations,
         null, // Integer numDonationsYtd

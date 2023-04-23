@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -155,6 +156,8 @@ public interface CrmService extends SegmentService {
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
   // Provide the full CRM model in case additional context is needed (close reasons, etc.)
   void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
+
+  String insertCampaign(CrmCampaign crmCampaign) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BATCH OPERATIONS

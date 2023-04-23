@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -93,6 +94,10 @@ public interface BasicCrmService extends CrmService {
   }
 
   default String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
+    return null;
+  }
+
+  default String insertCampaign(CrmCampaign crmCampaign) throws Exception {
     return null;
   }
 

@@ -47,8 +47,7 @@ public class CrmContact extends CrmRecord {
 
   public CrmAccount account = new CrmAccount();
 
-  public CrmAddress mailingAddress = new CrmAddress();
-  public String language;
+  public String description;
   public String email;
   public List<String> emailGroups = new ArrayList<>();
   public Boolean emailOptIn;
@@ -56,9 +55,11 @@ public class CrmContact extends CrmRecord {
   public Calendar firstDonationDate;
   public String firstName;
   public String homePhone;
+  public String language;
   public Double largestDonationAmount;
   public Calendar lastDonationDate;
   public String lastName;
+  public CrmAddress mailingAddress = new CrmAddress();
   public String mobilePhone;
   public String notes;
   public Integer numDonations;
@@ -90,7 +91,7 @@ public class CrmContact extends CrmRecord {
   public CrmContact(
       String id,
       CrmAccount account,
-      CrmAddress mailingAddress,
+      String description,
       String email,
       List<String> emailGroups,
       Boolean emailOptIn,
@@ -102,6 +103,7 @@ public class CrmContact extends CrmRecord {
       Calendar lastDonationDate,
       String lastName,
       String language,
+      CrmAddress mailingAddress,
       String mobilePhone,
       Integer numDonations,
       Integer numDonationsYtd,
@@ -121,7 +123,7 @@ public class CrmContact extends CrmRecord {
 
     if (account != null) this.account = account;
 
-    this.mailingAddress = mailingAddress;
+    this.description = description;
     this.email = email;
     if (emailGroups != null) this.emailGroups = emailGroups;
     this.emailOptIn = emailOptIn;
@@ -133,6 +135,7 @@ public class CrmContact extends CrmRecord {
     this.largestDonationAmount = largestDonationAmount;
     this.lastDonationDate = lastDonationDate;
     this.lastName = lastName;
+    this.mailingAddress = mailingAddress;
     this.mobilePhone = mobilePhone;
     this.numDonations = numDonations;
     this.numDonationsYtd = numDonationsYtd;

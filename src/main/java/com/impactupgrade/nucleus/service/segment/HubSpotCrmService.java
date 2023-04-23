@@ -44,6 +44,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
+import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -700,6 +701,11 @@ public class HubSpotCrmService implements CrmService {
     throw new RuntimeException("not implemented");
   }
 
+  @Override
+  public String insertCampaign(CrmCampaign crmCampaign) throws Exception {
+    return null;
+  }
+
   // TODO: imports are being reworked in a different PR, so purely commenting these out for now
 
   @Override
@@ -1036,10 +1042,12 @@ public class HubSpotCrmService implements CrmService {
     return new CrmAccount(
         company.getId(),
         crmAddress,
-        null,
+        company.getProperties().getDescription(),
+        null, // mailingAddress
         company.getProperties().getName(),
-        // TODO: Differentiate between Household and Organization?
-        EnvironmentConfig.AccountType.HOUSEHOLD,
+        null, // ownerId
+        EnvironmentConfig.AccountType.HOUSEHOLD, // TODO: Differentiate between Household and Organization?
+        null, // typeId
         null, // typeName
         company,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/company/" + company.getId()
@@ -1061,7 +1069,7 @@ public class HubSpotCrmService implements CrmService {
     return new CrmContact(
         contact.getId(),
         new CrmAccount(contact.getProperties().getAssociatedcompanyid()),
-        crmAddress,
+        null, // description
         contact.getProperties().getEmail(),
         Collections.emptyList(), // List<String> emailGroups,
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.emailOptIn, contact.getProperties().getOtherProperties()),
@@ -1073,6 +1081,7 @@ public class HubSpotCrmService implements CrmService {
         null, // Calendar lastDonationDate,
         contact.getProperties().getLastname(),
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
+        crmAddress,
         contact.getProperties().getMobilephone(),
         null, // Integer numDonations,
         null, // Integer numDonationsYtd
@@ -1107,7 +1116,7 @@ public class HubSpotCrmService implements CrmService {
     return new CrmContact(
         contact.getVid() + "",
         null, // CrmAccount account,
-        null, // CrmAddress address,
+        null, // description
         getValue(contact.getProperties().getEmail()),
         Collections.emptyList(), // List<String> emailGroups,
         null, // Boolean emailOptIn,
@@ -1119,6 +1128,7 @@ public class HubSpotCrmService implements CrmService {
         null, // Calendar lastDonationDate,
         getValue(contact.getProperties().getLastname()),
         getValue(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
+        null, // CrmAddress address,
         getValue(contact.getProperties().getMobilePhone()),
         null, // Integer numDonations,
         null, // Integer numDonationsYtd
