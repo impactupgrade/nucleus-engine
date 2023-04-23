@@ -314,7 +314,7 @@ public class StripeClient {
     return Customer.create(customerBuilder.build(), requestOptions);
   }
 
-  public PaymentSource updateCustomerSource(Customer customer, String sourceToken) throws StripeException {
+  public PaymentSource addCustomerSource(Customer customer, String sourceToken) throws StripeException {
     PaymentSourceCollectionCreateParams params = PaymentSourceCollectionCreateParams.builder()
         .setSource(sourceToken)
         .build();
@@ -346,6 +346,10 @@ public class StripeClient {
     }
 
     return newSource;
+  }
+
+  public void setCustomerDefaultSource(Customer customer, PaymentSource source) throws StripeException {
+    customer.update(CustomerUpdateParams.builder().setDefaultSource(source.getId()).build(), requestOptions);
   }
 
   public void updateSubscriptionAmount(String subscriptionId, double dollarAmount) throws StripeException {
@@ -434,15 +438,19 @@ public class StripeClient {
 
     // add source to customer
     Customer customer = getCustomer(customerId);
-    PaymentSource newSource = updateCustomerSource(customer, paymentMethodToken);
+    PaymentSource newSource = addCustomerSource(customer, paymentMethodToken);
 
     // set source as defaultSource for subscription
+    updateSubscriptionPaymentMethod(subscription, newSource);
+
+    log.info("updated customer {} payment method on subscription {}", customerId, subscriptionId);
+  }
+
+  public void updateSubscriptionPaymentMethod(Subscription subscription, PaymentSource newSource) throws StripeException {
     SubscriptionUpdateParams subscriptionParams = SubscriptionUpdateParams.builder()
         .setDefaultSource(newSource.getId())
         .build();
     subscription.update(subscriptionParams, requestOptions);
-
-    log.info("updated customer {} payment method on subscription {}", customerId, subscriptionId);
   }
 
   public Customer updateCustomer(Customer customer, Map<String, String> customerMetadata) throws StripeException {

@@ -30,7 +30,6 @@ import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
-import com.stripe.param.CustomerUpdateParams;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -43,7 +42,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -332,22 +334,46 @@ public class StripeController {
       @FormParam(value = "successUrl") String successUrl,
       @FormParam(value = "failUrl") String failUrl,
       @Context HttpServletRequest request
-  ) {
+  ) throws UnsupportedEncodingException {
     Environment env = envFactory.init(request);
     StripeClient stripeClient = env.stripeClient();
 
     try {
-      // TODO: Should we update the payment methods on ALL customers found by the email?
-      Optional<Customer> customer = stripeClient.getCustomerByEmail(customerEmail);
+      List<Customer> customers = stripeClient.getCustomersByEmail(customerEmail);
 
-      if (customer.isEmpty()) {
-        return Response.temporaryRedirect(URI.create(failUrl + "?error=Unable to find the donor record")).build();
+      if (customers.isEmpty()) {
+        log.info("unable to find donor using {}", customerEmail);
+        String error = URLEncoder.encode("Unable to find the donor record", StandardCharsets.UTF_8);
+        return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
       }
 
-      customer.get().update(CustomerUpdateParams.builder().setDefaultSource(stripeToken).build());
+      for (Customer customer : customers) {
+        PaymentSource newSource = stripeClient.addCustomerSource(customer, stripeToken);
+        stripeClient.setCustomerDefaultSource(customer, newSource);
+        log.info("created new source {} for customer {}", customer.getId(), newSource.getId());
+
+        List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(customer.getId());
+        for (Subscription subscription: activeSubscriptions) {
+          String subscriptionPaymentMethodId = subscription.getDefaultPaymentMethod();
+          if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
+            subscriptionPaymentMethodId = subscription.getDefaultSource();
+          }
+          // If neither are set, invoices will use the customer’s invoice_settings.default_payment_method
+          // or default_source.
+          if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
+            subscriptionPaymentMethodId = customer.getDefaultSource();
+          }
+
+          if (!newSource.getId().equalsIgnoreCase(subscriptionPaymentMethodId)) {
+            stripeClient.updateSubscriptionPaymentMethod(subscription, newSource);
+            log.info("updated payment method for subscription {}", subscription.getId());
+          }
+        }
+      }
       return Response.temporaryRedirect(URI.create(successUrl)).build();
     } catch (StripeException e) {
-      return Response.temporaryRedirect(URI.create(failUrl + "?error=" + e.getMessage())).build();
+      String error = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+      return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
     }
   }
 }

@@ -337,7 +337,7 @@ public class DonationFormController {
       customer = stripeClient.getCustomerByEmail(formData.getCustomerEmail()).orElse(null);
       if (customer != null) {
         log.info("found Stripe Customer {}", customer.getId());
-        source = stripeClient.updateCustomerSource(customer, formData.getStripeToken());
+        source = stripeClient.addCustomerSource(customer, formData.getStripeToken());
         log.info("updated payment source on Stripe Customer {}", customer.getId());
       }
     }
