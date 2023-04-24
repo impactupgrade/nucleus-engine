@@ -1651,7 +1651,7 @@ public class SfdcCrmService implements CrmService {
         // appending to a multiselect picklist
         key = key.replace("Append ", "");
         String value = getMultiselectPicklistValue(key, entry.getValue(), existingSObject);
-        sObject.setField(key, getCustomBulkValue(value));
+        sObject.setField(key, value);
       }
 
       sObject.setField(key, getCustomBulkValue(entry.getValue()));
