@@ -239,9 +239,15 @@ public class RaisersEdgeToSalesforce {
     }
 
 //    // prevent duplicates
-//    List<String> seenRelationships = new ArrayList<>();
+//    Set<String> seenRelationships = new HashSet<>();
+//    List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe4__Contact__c, npe4__RelatedContact__c, FROM npe4__Relationship__c WHERE npe4__Contact__c!='' AND npe4__RelatedContact__c!=''");
+//    for (SObject relationship : relationships) {
+//      String from = (String) relationship.getField("npe4__Contact__c");
+//      String to = (String) relationship.getField("npe4__RelatedContact__c");
+//      seenRelationships.add(from + "::" + to);
+//      seenRelationships.add(to + "::" + from);
+//    }
 //
-//    // TODO: Pull all relationships and hold in a map so we can prevent duplicates in the future.
 //    for (int i = 0; i < relRows.size(); i++) {
 //      log.info("processing relationship row {}", i + 2);
 //
