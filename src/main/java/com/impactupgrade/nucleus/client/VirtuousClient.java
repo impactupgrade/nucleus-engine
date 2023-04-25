@@ -23,6 +23,7 @@ import static com.impactupgrade.nucleus.util.HttpClient.delete;
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
 import static com.impactupgrade.nucleus.util.HttpClient.put;
+import static com.impactupgrade.nucleus.util.HttpClient.TokenResponse;
 import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
@@ -265,7 +266,6 @@ public class VirtuousClient {
 
         // Otherwise, assume oauth.
         
-        // TODO: check access token from config, if available; howto?
         if (!containsValidAccessToken(tokenResponse)) {
             log.info("Getting new access token...");
             if (!Strings.isNullOrEmpty(refreshToken)) {
@@ -302,24 +302,6 @@ public class VirtuousClient {
 
     private TokenResponse getTokenResponse() {
         return post(tokenServerUrl, Map.of("grant_type", "password", "username", username, "password", password), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
-    }
-
-    public static class TokenResponse {
-        @JsonProperty("access_token")
-        public String accessToken;
-        @JsonProperty("token_type")
-        public String tokenType;
-        @JsonProperty("expires_in")
-        public Integer expiresIn;
-        @JsonProperty("refresh_token")
-        public String refreshToken;
-        @JsonProperty("userName")
-        public String username;
-        public Boolean twoFactorEnabled;
-        @JsonProperty(".issued")
-        public Date issuedAt;
-        @JsonProperty(".expires")
-        public Date expiresAt;
     }
 
     public static class ContactSearchResponse {
