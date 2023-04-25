@@ -335,6 +335,8 @@ public class EnvironmentConfig implements Serializable {
 
   public Xero xero = new Xero();
 
+  public Platform spoke = new Platform();
+
   public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys implements Serializable {
