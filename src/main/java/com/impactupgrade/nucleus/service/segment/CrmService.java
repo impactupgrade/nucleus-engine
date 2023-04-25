@@ -218,7 +218,7 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   String insertTask(CrmTask crmTask) throws Exception;
 
-  List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields);
+  List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
 
   EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();
 

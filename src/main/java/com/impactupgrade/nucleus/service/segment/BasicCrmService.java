@@ -112,7 +112,7 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
+  default List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields) {
     return null;
   }
 

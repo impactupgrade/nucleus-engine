@@ -4,8 +4,10 @@
 
 package com.impactupgrade.nucleus.client;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.metadata.Connector;
 import com.sforce.soap.metadata.CustomField;
 import com.sforce.soap.metadata.CustomObject;
@@ -27,7 +29,6 @@ import com.sforce.soap.metadata.ProfileFieldLevelSecurity;
 import com.sforce.soap.metadata.ReadResult;
 import com.sforce.soap.metadata.RecordType;
 import com.sforce.soap.metadata.RecordTypePicklistValue;
-import com.sforce.soap.metadata.SaveResult;
 import com.sforce.soap.metadata.UiBehavior;
 import com.sforce.soap.metadata.ValueSet;
 import com.sforce.soap.metadata.ValueSetValuesDefinition;
@@ -37,7 +38,6 @@ import com.sforce.ws.ConnectorConfig;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.util.Strings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,8 +47,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -285,9 +283,7 @@ public class SfdcMetadataClient {
 			Integer fieldLength, Integer fieldPrecision, Integer fieldScale, List<String> values, String globalPicklistName) throws ConnectionException {
     MetadataConnection metadataConn = metadataConn();
 
-    if (!fieldName.endsWith("__c")) {
-      fieldName += "__c";
-    }
+    fieldName = generateApiName(fieldName);
 
     String fullName = objectName + "." + fieldName;
 
@@ -298,6 +294,7 @@ public class SfdcMetadataClient {
     if (fieldLength != null) customField.setLength(fieldLength);
     if (fieldPrecision != null) customField.setPrecision(fieldPrecision);
     if (fieldScale != null) customField.setScale(fieldScale);
+    if (fieldType == FieldType.TextArea) customField.setVisibleLines(4);
     if (fieldType == FieldType.LongTextArea) customField.setVisibleLines(4);
     if (fieldType == FieldType.MultiselectPicklist) customField.setVisibleLines(4);
     if (fieldType == FieldType.Checkbox)  customField.setDefaultValue("false");
@@ -326,7 +323,6 @@ public class SfdcMetadataClient {
 
     Arrays.stream(metadataConn.createMetadata(new Metadata[]{customField})).forEach(log::info);
 
-    // TODO: Allow multiple fields to be created at once, then do a single set of profile updates.
     if (profilesMetadata == null) {
       ListMetadataQuery listMetadataQuery = new ListMetadataQuery();
       listMetadataQuery.setType("Profile");
@@ -351,8 +347,6 @@ public class SfdcMetadataClient {
     for (List<Profile> profileBatch : profileBatches) {
       Arrays.stream(metadataConn.updateMetadata(profileBatch.toArray(new Metadata[0]))).forEach(log::info);
     }
-
-    // TODO: Add to page layouts?
   }
 
   public void deleteCustomFields(String objectName, String... fieldNames) throws ConnectionException {
@@ -362,58 +356,36 @@ public class SfdcMetadataClient {
     }
   }
 
-  public SaveResult[] addFields(String layoutName, String sectionLabel, List<String> fieldNames) throws ConnectionException {
-    ReadResult readResult = metadataConn().readMetadata("Layout", new String[] {layoutName});
-    Metadata[] metadata = readResult.getRecords();
-    if (metadata.length == 0) {
-      // Layout not found
-      return null;
+  public void addFields(String layoutName, String sectionLabel, List<String> fieldNames) throws ConnectionException {
+    if (Strings.isNullOrEmpty(layoutName)) {
+      return;
     }
+
+    MetadataConnection metadataConn = metadataConn();
+
+    ReadResult readResult = metadataConn.readMetadata("Layout", new String[] {layoutName});
+    Metadata[] metadata = readResult.getRecords();
+    if (metadata.length == 0 || metadata[0] == null) {
+      // Layout not found
+      return;
+    }
+
     Layout layout = (Layout) metadata[0];
     LayoutSection layoutSection = getOrCreateSection(layout, sectionLabel);
     LayoutColumn layoutColumn = getOrCreateColumn(layoutSection);
-
     List<LayoutItem> layoutItems = new ArrayList<>(Arrays.asList(layoutColumn.getLayoutItems()));
-    List<LayoutItem> newLayoutItems = fieldNames.stream()
-                    .map(this::layoutItem)
-                    .collect(Collectors.toList());
+
+    List<LayoutItem> newLayoutItems = fieldNames.stream().map(this::generateApiName).map(this::layoutItem).toList();
     layoutItems.addAll(newLayoutItems);
     layoutColumn.setLayoutItems(layoutItems.toArray(new LayoutItem[0]));
-    return metadataConn().updateMetadata(metadata);
-  }
 
-  /**
-   * @param component The Record type eg. "Account", "Contact", "Campaign"
-   * @return A map of field labels to their api name, will use the API name for the label if the label is missing
-   * @throws ConnectionException
-   */
-  public Map<String, String> getObjectFields(String component) throws ConnectionException {
-    Map<String, String> fieldLabelToAPIName = new HashMap<>();
-
-    SfdcMetadataClient sfdcMetadataClient = new SfdcMetadataClient(env);
-    MetadataConnection metadataConnection = sfdcMetadataClient.metadataConn();
-    ReadResult readResult = metadataConnection.readMetadata("CustomObject", new String[] {component });
-    Metadata[] mdInfo = readResult.getRecords();
-
-
-    for (Metadata md : mdInfo) {
-      CustomObject customObject = (CustomObject) md;
-
-      for (CustomField field : customObject.getFields()) {
-          if (field.getLabel() == null) {
-            fieldLabelToAPIName.put(field.getFullName(), field.getFullName());
-          } else {
-            fieldLabelToAPIName.put(field.getLabel(), field.getFullName());
-          }
-      }
-    }
-    return fieldLabelToAPIName;
+    Arrays.stream(metadataConn.updateMetadata(new Layout[]{layout})).forEach(log::info);
   }
 
   private LayoutSection getOrCreateSection(Layout layout, String sectionLabel) {
     List<LayoutSection> layoutSections = new ArrayList<>(Arrays.asList(layout.getLayoutSections()));
     Optional<LayoutSection> existingSection = layoutSections.stream()
-            .filter(layoutSection -> sectionLabel.equals(layoutSection.getLabel()))
+            .filter(layoutSection -> Strings.isNullOrEmpty(sectionLabel) || sectionLabel.equals(layoutSection.getLabel()))
             .findFirst();
     if (existingSection.isPresent()) {
       return existingSection.get();
@@ -440,7 +412,7 @@ public class SfdcMetadataClient {
   private LayoutSection layoutSection(String sectionLabel) {
     LayoutSection layoutSection = new LayoutSection();
     layoutSection.setLabel(sectionLabel);
-    // TODO: define defaults
+    // stick with one, simple column -- we'll manually drag things around in the layout to make it look nice
     layoutSection.setStyle(LayoutSectionStyle.OneColumn);
     layoutSection.setDetailHeading(true);
     return layoutSection;
@@ -449,9 +421,48 @@ public class SfdcMetadataClient {
   private LayoutItem layoutItem(String fieldName) {
     LayoutItem layoutItem = new LayoutItem();
     layoutItem.setField(fieldName);
-    //TODO: define defaults
+    //TODO: not sure what this one is doing
     layoutItem.setBehavior(UiBehavior.Edit);
     return layoutItem;
+  }
+
+  private String generateApiName(String fieldName) {
+    fieldName = Utils.toSlug(fieldName, false);
+    // max is 40, but using 37 to allow for __c
+    if (fieldName.length() > 37) {
+      fieldName = fieldName.substring(0, 37);
+    }
+    if (!fieldName.endsWith("__c")) {
+      fieldName += "__c";
+    }
+    return fieldName;
+  }
+
+  /**
+   * @param component The Record type eg. "Account", "Contact", "Campaign"
+   * @return A map of field labels to their api name, will use the API name for the label if the label is missing
+   * @throws ConnectionException
+   */
+  public Map<String, String> getObjectFields(String component) throws ConnectionException {
+    Map<String, String> fieldLabelToAPIName = new HashMap<>();
+
+    SfdcMetadataClient sfdcMetadataClient = new SfdcMetadataClient(env);
+    MetadataConnection metadataConnection = sfdcMetadataClient.metadataConn();
+    ReadResult readResult = metadataConnection.readMetadata("CustomObject", new String[] {component});
+    Metadata[] mdInfo = readResult.getRecords();
+
+    for (Metadata md : mdInfo) {
+      CustomObject customObject = (CustomObject) md;
+
+      for (CustomField field : customObject.getFields()) {
+        if (field.getLabel() == null) {
+          fieldLabelToAPIName.put(field.getFullName(), field.getFullName());
+        } else {
+          fieldLabelToAPIName.put(field.getLabel(), field.getFullName());
+        }
+      }
+    }
+    return fieldLabelToAPIName;
   }
 
 }

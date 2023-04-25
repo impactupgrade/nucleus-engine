@@ -55,7 +55,6 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -236,7 +235,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
+  public List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields) {
     Map<String, List<CrmCustomField>> propertiesByObjectTypes = crmCustomFields.stream()
                     .collect(Collectors.groupingBy(crmCustomField -> crmCustomField.objectName));
     List<Property> insertedProperties = new ArrayList<>();
@@ -257,27 +256,12 @@ public class HubSpotCrmService implements CrmService {
     Property property = new Property();
     property.setName(crmCustomField.name);
     property.setLabel(crmCustomField.label);
-    Pair<String, String> typePair = toPropertyType(crmCustomField.type);
-    property.setType(typePair.getLeft());
-    property.setFieldType(typePair.getRight());
+    property.setType(crmCustomField.type);
+    property.setFieldType(crmCustomField.subtype);
     property.setGroupName(crmCustomField.groupName);
-    property.setShowCurrencySymbol(crmCustomField.type == CrmCustomField.Type.CURRENCY);
+    // TODO
+//    property.setShowCurrencySymbol(crmCustomField.type == CrmCustomField.Type.CURRENCY);
     return property;
-  }
-
-  protected Pair<String,String> toPropertyType(CrmCustomField.Type type) {
-    // HS types (The data types of the property):
-    // string, number, date, datetime, enumeration
-    // HS field types (Controls how the property appears in HubSpot):
-    // textarea, text, date, file, number, select, radio, checkbox, booleancheckbox
-
-    // Pair.of(type, fieldType):
-    return switch(type) {
-      //case TEXT -> FieldType.Text;
-      case DATE -> Pair.of("datetime", "date");
-      case CURRENCY -> Pair.of("number", "number");
-      default -> Pair.of("text", "text"); // TODO: defaults?
-    };
   }
 
   @Override

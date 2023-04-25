@@ -152,10 +152,15 @@ public class Utils {
   }
 
   public static String toSlug(String s) {
+    return toSlug(s, true);
+  }
+
+  public static String toSlug(String s, boolean lowercase) {
     if (s == null) return null;
-    s = s.toLowerCase(Locale.ROOT).trim().replaceAll("[^A-Za-z0-9]+", "_");
+    s = s.trim().replaceAll("[^A-Za-z0-9_]+", "_");
     if (s.startsWith("_")) s = s.substring(1);
     if (s.endsWith("_")) s = s.substring(0, s.length() - 1);
+    if (lowercase) s = s.toLowerCase(Locale.ROOT);
     return s;
   }
 
