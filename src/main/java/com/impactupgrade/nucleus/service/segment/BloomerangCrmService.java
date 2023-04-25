@@ -513,7 +513,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
+  public List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields) {
     return null;
   }
 

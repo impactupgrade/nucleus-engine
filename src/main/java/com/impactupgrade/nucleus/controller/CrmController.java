@@ -316,37 +316,72 @@ public class CrmController {
     return Response.status(200).entity(donationsTotal).build();
   }
 
-  // TODO: This will need updated depending on the Portal onboarding strategy. More likely, we'll have checkboxes and
-  //  drop-downs to provision fields based on contexts (add all payment gateway fields, add text messaging fields, etc.)
-  //  Or in the very least, set this up to receive multiple field definitions at once (JSON)? And it likely needs combined
-  //  with the code we have in CrmSetupUtils, creating the fields as well (would need the type, length, etc)
-  @Path("/provision-fields")
+  @Path("/provision-fields/file")
   @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
   public Response provisionFields(
-          @FormParam("layout-name") String layoutName, //TODO: custom request model?
-          List<CrmCustomField> crmCustomFields,
-          @Context HttpServletRequest request
+      @FormDataParam("file") InputStream inputStream,
+      @FormDataParam("file") FormDataContentDisposition fileDisposition,
+      @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    // TODO: use input fields
-    List<CrmCustomField> defaultCustomFields = List.of(
-            new CrmCustomField("Opportunity", "Payment_Gateway_Name__c", "Payment Gateway Name", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Transaction_ID__c", "Payment Gateway Transaction ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Customer_ID__c", "Payment Gateway Customer ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("npe03__Recurring_Donation__c", "Payment_Gateway_Subscription_ID__c", "Payment Gateway Subscription ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_ID__c", "Payment Gateway Deposit ID", CrmCustomField.Type.TEXT, 100),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Date__c", "Payment Gateway Deposit Date", CrmCustomField.Type.DATE, 16, 2),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Net_Amount__c", "Payment Gateway Deposit Net Amount", CrmCustomField.Type.CURRENCY, 18, 2),
-            new CrmCustomField("Opportunity", "Payment_Gateway_Deposit_Fee__c", "Payment Gateway Deposit Fee", CrmCustomField.Type.CURRENCY, 18, 2)
-    );
-    List<CrmCustomField> insertedFields = env.primaryCrmService().insertCustomFields(layoutName, defaultCustomFields);
+    List<CrmCustomField> customFields = new ArrayList<>();
 
-    return Response.ok(insertedFields).build();
+    // Important to do this outside of the new thread -- ensures the InputStream is still open.
+    CSVParser csvParser = CSVParser.parse(
+        inputStream,
+        Charset.defaultCharset(),
+        CSVFormat.DEFAULT
+            .withFirstRecordAsHeader()
+            .withIgnoreHeaderCase()
+            .withTrim()
+    );
+    for (CSVRecord csvRecord : csvParser) {
+      Map<String, String> data = csvRecord.toMap();
+      customFields.add(CrmCustomField.fromGeneric(data));
+    }
+
+    Runnable thread = () -> {
+      try {
+        env.primaryCrmService().insertCustomFields(customFields);
+      } catch (Exception e) {
+        log.error("provisionFields failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.ok().build();
+  }
+
+  @Path("/provision-fields/gsheet")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response provisionFields(
+      @FormParam("google-sheet-url") String gsheetUrl,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    gsheetUrl = noWhitespace(gsheetUrl);
+
+    List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
+    List<CrmCustomField> customFields = CrmCustomField.fromGeneric(data);
+
+    Runnable thread = () -> {
+      try {
+        env.primaryCrmService().insertCustomFields(customFields);
+      } catch (Exception e) {
+        log.error("provisionFields failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
   }
 
   @Path("/contact-lists")

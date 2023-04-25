@@ -231,42 +231,49 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmCustomField> insertCustomFields(String layoutName, List<CrmCustomField> crmCustomFields) {
+  public List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields) {
     try {
-      List<String> fieldNames = new ArrayList<>();
+      // Layout -> Section -> Fields
+      Map<String, Map<String, List<String>>> layoutFields = new HashMap<>();
+
       // Create custom fields
       for (CrmCustomField crmCustomField: crmCustomFields) {
         sfdcMetadataClient.createCustomField(
             crmCustomField.objectName,
             crmCustomField.name,
             crmCustomField.label,
-            toCustomFieldType(crmCustomField.type),
+            FieldType.valueOf(crmCustomField.type),
             crmCustomField.length,
             crmCustomField.precision,
             crmCustomField.scale,
-            // TODO: picklist support in CrmCustomField
-            null,
+            crmCustomField.values,
             null
         );
-        fieldNames.add(crmCustomField.name);
+
+        if (!layoutFields.containsKey(crmCustomField.layoutName)) {
+          layoutFields.put(crmCustomField.layoutName, new HashMap<>());
+        }
+        if (!layoutFields.get(crmCustomField.layoutName).containsKey(crmCustomField.groupName)) {
+          layoutFields.get(crmCustomField.layoutName).put(crmCustomField.groupName, new ArrayList<>());
+        }
+        layoutFields.get(crmCustomField.layoutName).get(crmCustomField.groupName).add(crmCustomField.name);
       }
 
-      // Add custom fields to layout
-      sfdcMetadataClient.addFields(layoutName, "Custom Fields", fieldNames);
+      // add custom fields to layout
+      for (Map.Entry<String, Map<String, List<String>>> layout : layoutFields.entrySet()) {
+        String layoutName = layout.getKey();
+        for (Map.Entry<String, List<String>> section : layout.getValue().entrySet()) {
+          String sectionLabel = section.getKey();
+          List<String> fieldNames = section.getValue();
+
+          sfdcMetadataClient.addFields(layoutName, sectionLabel, fieldNames);
+        }
+      }
 
     } catch (Exception e) {
       log.error("failed to create custom fields", e);
     }
     return crmCustomFields;
-  }
-
-  protected FieldType toCustomFieldType(CrmCustomField.Type type) {
-    return switch(type) {
-      //case TEXT -> FieldType.Text;
-      case DATE -> FieldType.Date;
-      case CURRENCY -> FieldType.Currency;
-      default -> FieldType.Text; // TODO: default?
-    };
   }
 
   @Override
