@@ -107,6 +107,8 @@ public class DonationService {
 
     // make sure that a donation was found and that only 1 donation was found
     if (donation.isPresent()) {
+      paymentGatewayEvent.getCrmDonation().id = donation.get().id;
+
       log.info("refunding CRM donation {} with refunded charge {}", donation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
       // Refund the transaction in the CRM
       crmService.refundDonation(paymentGatewayEvent.getCrmDonation());

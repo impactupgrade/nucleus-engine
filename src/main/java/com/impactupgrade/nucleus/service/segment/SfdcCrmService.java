@@ -568,7 +568,8 @@ public class SfdcCrmService implements CrmService {
     // downstream. Instead, ensure we're setting the fields for both situations, but on a single object.
     Map<String, SObject> opportunityUpdates = new HashMap<>();
 
-    Collections.sort(singleUpdates, Comparator.comparing(crmDonation -> crmDonation.closeDate));
+    // closeDate isn't present for refunds, etc.
+    Collections.sort(singleUpdates, Comparator.comparing(crmDonation -> crmDonation.closeDate == null ? 0 : crmDonation.closeDate.toEpochSecond()));
     for (CrmDonation crmDonation : singleUpdates) {
       SObject opportunityUpdate;
       if (opportunityUpdates.containsKey(crmDonation.id)) {
