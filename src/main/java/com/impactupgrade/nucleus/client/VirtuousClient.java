@@ -239,13 +239,21 @@ public class VirtuousClient {
         return gift;
     }
 
-    public ReversingTransaction reversingTransaction(Gift gift) {
+    private ReversingTransaction reversingTransaction(Gift gift) {
         ReversingTransaction reversingTransaction = new ReversingTransaction();
         reversingTransaction.reversedGiftId = gift.id;
         reversingTransaction.giftDate = gift.giftDate;
         reversingTransaction.notes = "Reverting transaction: " +
                 gift.transactionSource + "/" + gift.transactionId;
         return reversingTransaction;
+    }
+
+    public Task createTask(Task task) throws Exception {
+      task = post(VIRTUOUS_API_URL + "/Task", task, APPLICATION_JSON, headers(), Task.class);
+      if (task != null) {
+        log.info("Created task: {}", task);
+      }
+      return task;
     }
 
     private HttpClient.HeaderBuilder headers() {
@@ -855,6 +863,41 @@ public class VirtuousClient {
           ", reversedGiftId=" + reversedGiftId +
           ", notes='" + notes + '\'' +
           '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Task {
+    public Integer id;
+    public Type taskType;
+    public String task; // TODO: rename?
+    public String description;
+    public String dueDateTime;
+    public Integer contactId;
+    public String contact;
+    public String contactUrl;
+
+    @Override
+    public String toString() {
+      return "Task{" +
+          "id=" + id +
+          ", taskType='" + taskType + '\'' +
+          ", task='" + task + '\'' +
+          ", description='" + description + '\'' +
+          ", dueDateTime=" + dueDateTime +
+          ", contactId=" + contactId +
+          ", contact='" + contact + '\'' +
+          ", contactUrl='" + contactUrl + '\'' +
+          '}';
+    }
+
+    public enum Type {
+      @JsonProperty("General")
+      GENERAL,
+      @JsonProperty("Call")
+      CALL,
+      @JsonProperty("Meeting")
+      MEETING;
     }
   }
 }
