@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
@@ -17,6 +18,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -497,6 +499,34 @@ public class VirtuousCrmService implements BasicCrmService {
     @Override
     public Map<String, String> getFieldOptions(String object) throws Exception {
         return Collections.emptyMap();
+    }
+
+    @Override
+    public String insertTask(CrmTask crmTask) throws Exception {
+        VirtuousClient.Task task = asTask(crmTask);
+        VirtuousClient.Task createdTask = virtuousClient.createTask(task);
+        return createdTask == null ? null : createdTask.id + "";
+    }
+
+    private VirtuousClient.Task asTask(CrmTask crmTask) {
+        if (crmTask == null) {
+            return null;
+        }
+        VirtuousClient.Task task = new VirtuousClient.Task();
+        task.taskType = VirtuousClient.Task.Type.GENERAL;
+        task.task = crmTask.subject;
+        task.description = crmTask.description;
+        if (crmTask.dueDate != null) {
+            task.dueDateTime = new SimpleDateFormat(DATE_TIME_FORMAT).format(crmTask.dueDate.getTime());
+        }
+        try {
+            task.contactId = Integer.parseInt(crmTask.targetId);
+        } catch (NumberFormatException e) {
+            log.warn("Failed to parse Integer from String '{}'!", task.contactId);
+        }
+
+        task.contact = crmTask.targetId;
+        return task;
     }
 
     @Override
