@@ -149,9 +149,13 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         }
         String message = getMessage(messagesNode, nextMessage, languageCode);
 
-        String sender = getJsonText(job.payload, "campaign_phone");
-
-        messagingService.sendMessage(message, crmContact, sender);
+        // If the message is empty, it's likely due to the campaign not being configured for the given language. Skip
+        // attempting to send the message, but still log "progress" so that this step isn't reattempted over and over
+        // for a single contact.
+        if (!Strings.isNullOrEmpty(message)) {
+          String sender = getJsonText(job.payload, "campaign_phone");
+          messagingService.sendMessage(message, crmContact, sender);
+        }
 
         updateJobProgress(jobProgress.payload, nextMessage);
         jobProgressDao.update(jobProgress);
