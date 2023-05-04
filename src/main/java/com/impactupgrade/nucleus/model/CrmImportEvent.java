@@ -149,8 +149,8 @@ public class CrmImportEvent {
     importEvent.account.description = data.get("Account Description");
     importEvent.account.name = data.get("Account Name");
     importEvent.account.ownerId = data.get("Account Owner ID");
-    importEvent.account.typeId = data.get("Account Record Type ID");
-    importEvent.account.typeName = data.get("Account Record Type Name");
+    importEvent.account.recordTypeId = data.get("Account Record Type ID");
+    importEvent.account.recordTypeName = data.get("Account Record Type Name");
 
     for (int i = 1; i <= 5; i++) {
       String columnPrefix = "Organization " + i;
@@ -167,9 +167,9 @@ public class CrmImportEvent {
         organization.description = data.get(columnPrefix + " Description");
         organization.name = data.get(columnPrefix + " Name");
         organization.ownerId = data.get(columnPrefix + " Owner ID");
-        organization.type = EnvironmentConfig.AccountType.ORGANIZATION;
-        organization.typeId = data.get(columnPrefix + " Record Type ID");
-        organization.typeName = data.get(columnPrefix + " Record Type Name");
+        organization.recordType = EnvironmentConfig.AccountType.ORGANIZATION;
+        organization.recordTypeId = data.get(columnPrefix + " Record Type ID");
+        organization.recordTypeName = data.get(columnPrefix + " Record Type Name");
         importEvent.contactOrganizations.add(organization);
 
         importEvent.contactOrganizationRoles.add(data.get(columnPrefix + " Role"));

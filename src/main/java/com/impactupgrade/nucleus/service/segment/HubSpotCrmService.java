@@ -1046,9 +1046,12 @@ public class HubSpotCrmService implements CrmService {
         null, // mailingAddress
         company.getProperties().getName(),
         null, // ownerId
+        null, // phone
         EnvironmentConfig.AccountType.HOUSEHOLD, // TODO: Differentiate between Household and Organization?
-        null, // typeId
-        null, // typeName
+        null, // recordTypeId
+        null, // recordTypeName
+        null, // type
+        null, // website
         company,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/company/" + company.getId()
     );

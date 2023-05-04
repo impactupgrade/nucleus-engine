@@ -77,7 +77,7 @@ public class AccountingService {
         if (!StringUtils.isEmpty(crmDonation.account.id)) {
             CrmAccount crmAccount = env.donationsCrmService().getAccountById(crmDonation.account.id).orElse(null);
             // Get contact for org type account
-            if (crmAccount != null && crmAccount.type == EnvironmentConfig.AccountType.ORGANIZATION) {
+            if (crmAccount != null && crmAccount.recordType == EnvironmentConfig.AccountType.ORGANIZATION) {
                 crmContact = new CrmContact();
                 crmContact.id = crmAccount.id;
                 String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);

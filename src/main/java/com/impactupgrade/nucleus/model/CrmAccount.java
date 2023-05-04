@@ -13,10 +13,13 @@ public class CrmAccount extends CrmRecord {
   public CrmAddress mailingAddress = new CrmAddress();
   public String name;
   public String ownerId;
-  public EnvironmentConfig.AccountType type = EnvironmentConfig.AccountType.HOUSEHOLD;
+  public String phone;
+  public EnvironmentConfig.AccountType recordType = EnvironmentConfig.AccountType.HOUSEHOLD;
   // sometimes there is a deeper breakdown
-  public String typeId;
-  public String typeName;
+  public String recordTypeId;
+  public String recordTypeName;
+  public String type;
+  public String website;
 
   public CrmAccount() {}
 
@@ -33,9 +36,12 @@ public class CrmAccount extends CrmRecord {
       CrmAddress mailingAddress,
       String name,
       String ownerId,
-      EnvironmentConfig.AccountType type,
-      String typeId,
-      String typeName,
+      String phone,
+      EnvironmentConfig.AccountType recordType,
+      String recordTypeId,
+      String recordTypeName,
+      String type,
+      String website,
       Object crmRawObject,
       String crmUrl
   ) {
@@ -46,8 +52,11 @@ public class CrmAccount extends CrmRecord {
     this.mailingAddress = mailingAddress;
     this.name = name;
     this.ownerId = ownerId;
-    if (type != null) this.type = type;
-    this.typeId = typeId;
-    this.typeName = typeName;
+    this.phone = phone;
+    if (recordType != null) this.recordType = recordType;
+    this.recordTypeId = recordTypeId;
+    this.recordTypeName = recordTypeName;
+    this.type = type;
+    this.website = website;
   }
 }

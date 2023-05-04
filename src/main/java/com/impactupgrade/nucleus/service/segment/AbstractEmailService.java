@@ -168,8 +168,8 @@ public abstract class AbstractEmailService implements EmailService {
       }
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.account.typeName)) {
-      tags.add("account_type_" + Utils.toSlug(crmContact.account.typeName));
+    if (!Strings.isNullOrEmpty(crmContact.account.recordTypeName)) {
+      tags.add("account_type_" + Utils.toSlug(crmContact.account.recordTypeName));
     }
 
     return tags;

@@ -344,8 +344,8 @@ public class SfdcCrmService implements CrmService {
     account.setField("ShippingCountry", crmAccount.mailingAddress.country);
 
     Map<EnvironmentConfig.AccountType, String> accountTypeToRecordTypeIds = env.getConfig().salesforce.accountTypeToRecordTypeIds;
-    if (crmAccount.type != null && accountTypeToRecordTypeIds.containsKey(crmAccount.type)) {
-      account.setField("RecordTypeId", accountTypeToRecordTypeIds.get(crmAccount.type));
+    if (crmAccount.recordType != null && accountTypeToRecordTypeIds.containsKey(crmAccount.recordType)) {
+      account.setField("RecordTypeId", accountTypeToRecordTypeIds.get(crmAccount.recordType));
     }
   }
 
@@ -1618,10 +1618,10 @@ public class SfdcCrmService implements CrmService {
   protected void setBulkImportAccountFields(SObject account, SObject existingAccount, CrmImportEvent importEvent)
       throws ExecutionException {
     // TODO: CACHE THIS!
-    if (!Strings.isNullOrEmpty(importEvent.account.typeId)) {
-      account.setField("RecordTypeId", importEvent.account.typeId);
-    } else if (!Strings.isNullOrEmpty(importEvent.account.typeName)) {
-      account.setField("RecordTypeId", recordTypeNameToIdCache.get(importEvent.account.typeName));
+    if (!Strings.isNullOrEmpty(importEvent.account.recordTypeId)) {
+      account.setField("RecordTypeId", importEvent.account.recordTypeId);
+    } else if (!Strings.isNullOrEmpty(importEvent.account.recordTypeName)) {
+      account.setField("RecordTypeId", recordTypeNameToIdCache.get(importEvent.account.recordTypeName));
     }
 
     setField(account, "BillingStreet", importEvent.account.billingAddress.street);
@@ -1632,6 +1632,9 @@ public class SfdcCrmService implements CrmService {
 
     account.setField("Description", importEvent.account.description);
     account.setField("OwnerId", importEvent.account.ownerId);
+    account.setField("Phone", importEvent.account.phone);
+    account.setField("Type", importEvent.account.type);
+    account.setField("Website", importEvent.account.website);
 
     setBulkImportCustomFields(account, existingAccount, "Account", importEvent);
   }
@@ -1851,14 +1854,14 @@ public class SfdcCrmService implements CrmService {
 
     String recordTypeId = null;
     String recordTypeName = null;
-    EnvironmentConfig.AccountType type = EnvironmentConfig.AccountType.HOUSEHOLD;
+    EnvironmentConfig.AccountType recordType = EnvironmentConfig.AccountType.HOUSEHOLD;
     if (sObject.getChild("RecordType") != null) {
       recordTypeId = (String) sObject.getChild("RecordType").getField("Id");
       recordTypeName = (String) sObject.getChild("RecordType").getField("Name");
       recordTypeName = recordTypeName == null ? "" : recordTypeName.toLowerCase(Locale.ROOT);
       // TODO: Customize record type names through env.json?
       if (recordTypeName.contains("business") || recordTypeName.contains("church") || recordTypeName.contains("org") || recordTypeName.contains("group"))  {
-        type = EnvironmentConfig.AccountType.ORGANIZATION;
+        recordType = EnvironmentConfig.AccountType.ORGANIZATION;
       }
     }
 
@@ -1869,9 +1872,12 @@ public class SfdcCrmService implements CrmService {
         shippingAddress,
         (String) sObject.getField("Name"),
         (String) sObject.getField("OwnerId"),
-        type,
+        (String) sObject.getField("Phone"),
+        recordType,
         recordTypeId,
         recordTypeName,
+        (String) sObject.getField("Type"),
+        (String) sObject.getField("Website"),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Account/" + sObject.getId() + "/view"
     );
