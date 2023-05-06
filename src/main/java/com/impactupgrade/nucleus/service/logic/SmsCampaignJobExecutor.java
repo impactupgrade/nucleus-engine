@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -110,8 +111,8 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         //  support non-CRM sources. Keeping this for now as a fallback for existing campaigns, as of May 2023.
         //  Remove in the future!
         if (jobProgress == null) {
-          targetId = crmContact.id;
-          jobProgress = progressesByContacts.get(targetId);
+          log.warn("Failed to get job progress using target id {}. Trying to find job progress using contact id {}...", targetId, crmContact.id);
+          jobProgress = progressesByContacts.get(crmContact.id);
         }
 
         if (jobProgress == null) {
@@ -166,6 +167,12 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         }
 
         updateJobProgress(jobProgress.payload, nextMessage);
+        // Switch to new target id (phone number) instead of contact id
+        if (!StringUtils.equalsIgnoreCase(jobProgress.targetId, targetId)) {
+          log.warn("Updating job progress target id from {} to {}...", crmContact.id, targetId);
+          jobProgress.targetId = targetId;
+        }
+
         jobProgressDao.update(jobProgress);
       } catch (Exception e) {
         log.error("scheduled job failed for contact {}", targetId, e);
