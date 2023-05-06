@@ -95,22 +95,30 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         ));
 
     for (CrmContact crmContact : crmContacts) {
-      String contactId = crmContact.id;
-
-      if (Strings.isNullOrEmpty(contactId)) {
-        log.warn("Skipping contact with no ID...");
+      String targetId = crmContact.phoneNumberForSMS();
+      if (Strings.isNullOrEmpty(targetId)) {
         continue;
       }
+      targetId = targetId.replaceAll("[\\D]", "");
 
       try {
         int nextMessage;
-        JobProgress jobProgress = progressesByContacts.get(contactId);
+
+        JobProgress jobProgress = progressesByContacts.get(targetId);
+
+        // TODO: We originally used the contact id to track progress, but switched to using the phone number so we could
+        //  support non-CRM sources. Keeping this for now as a fallback for existing campaigns, as of May 2023.
+        //  Remove in the future!
+        if (jobProgress == null) {
+          targetId = crmContact.id;
+          jobProgress = progressesByContacts.get(targetId);
+        }
 
         if (jobProgress == null) {
-          log.info("Contact id {} does not have any progress so far...", contactId);
+          log.info("Contact {} does not have any progress so far...", targetId);
 
           jobProgress = new JobProgress();
-          jobProgress.targetId = contactId;
+          jobProgress.targetId = targetId;
           jobProgress.payload = objectMapper.createObjectNode();
           jobProgress.job = job;
           jobProgressDao.create(jobProgress);
@@ -127,13 +135,13 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           }
         } else {
           Integer lastMessage = getJsonInt(jobProgress.payload, "lastMessage");
-          log.info("Last sent message id for contact id {} is {}", contactId, lastMessage);
+          log.info("Last sent message id for contact {} is {}", targetId, lastMessage);
           nextMessage = lastMessage + 1;
           log.info("Next message id to send: {}", nextMessage);
         }
 
         if (nextMessage > messagesNode.size()) {
-          log.info("All messages sent for contact id {}!", contactId);
+          log.info("All messages sent for contact {}!", targetId);
           continue;
         }
 
@@ -142,7 +150,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         //  here using the JSON mappings.
         String languageCode = crmContact.language;
         if (Strings.isNullOrEmpty(languageCode)) {
-          log.info("Failed to get contact language for contact id {}; assuming EN", contactId);
+          log.info("Failed to get contact language for contact {}; assuming EN", targetId);
           languageCode = "EN";
         } else {
           languageCode = languageCode.toUpperCase(Locale.ROOT);
@@ -160,7 +168,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         updateJobProgress(jobProgress.payload, nextMessage);
         jobProgressDao.update(jobProgress);
       } catch (Exception e) {
-        log.error("scheduled job failed for contact {}", contactId, e);
+        log.error("scheduled job failed for contact {}", targetId, e);
       }
     }
 
