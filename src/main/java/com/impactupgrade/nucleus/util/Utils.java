@@ -104,8 +104,14 @@ public class Utils {
 
   public static ZonedDateTime getZonedDateFromDateString(String date, String timezoneId) {
     if (!Strings.isNullOrEmpty(date)) {
-      DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-      LocalDate localDate = LocalDate.parse(date, dtf);
+      LocalDate localDate;
+      try {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-M-d");
+        localDate = LocalDate.parse(date, dtf);
+      } catch (DateTimeParseException e) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("M/d/yyyy");
+        localDate = LocalDate.parse(date, dtf);
+      }
       return localDate.atStartOfDay(ZoneId.of(timezoneId));
     }
     return null;

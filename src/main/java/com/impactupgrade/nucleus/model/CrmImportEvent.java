@@ -73,6 +73,7 @@ public class CrmImportEvent {
   public String contactPreferredPhone;
   public String contactRecordTypeId;
   public String contactRecordTypeName;
+  public String contactSalutation;
   public String contactWorkPhone;
 
   public BigDecimal opportunityAmount;
@@ -144,7 +145,7 @@ public class CrmImportEvent {
     }
     importEvent.account.billingAddress.city = data.get("Account Billing City");
     importEvent.account.billingAddress.state = data.get("Account Billing State");
-    importEvent.account.billingAddress.postalCode = data.get("Account Billing PostCode");
+    importEvent.account.billingAddress.postalCode = data.get("Account Billing Postal Code");
     importEvent.account.billingAddress.country = data.get("Account Billing Country");
     importEvent.account.description = data.get("Account Description");
     importEvent.account.name = data.get("Account Name");
@@ -162,7 +163,7 @@ public class CrmImportEvent {
         }
         organization.billingAddress.city = data.get(columnPrefix + " Billing City");
         organization.billingAddress.state = data.get(columnPrefix + " Billing State");
-        organization.billingAddress.postalCode = data.get(columnPrefix + " Billing PostCode");
+        organization.billingAddress.postalCode = data.get(columnPrefix + " Billing Postal Code");
         organization.billingAddress.country = data.get(columnPrefix + " Billing Country");
         organization.description = data.get(columnPrefix + " Description");
         organization.name = data.get(columnPrefix + " Name");
@@ -176,6 +177,7 @@ public class CrmImportEvent {
       }
     }
 
+    importEvent.contactSalutation = data.get("Contact Salutation");
     importEvent.contactFirstName = data.get("Contact First Name");
     importEvent.contactLastName = data.get("Contact Last Name");
     importEvent.contactFullName = data.get("Contact Full Name");
@@ -219,7 +221,7 @@ public class CrmImportEvent {
     }
     importEvent.contactMailingCity = data.get("Contact Mailing City");
     importEvent.contactMailingState = data.get("Contact Mailing State");
-    importEvent.contactMailingZip = data.get("Contact Mailing PostCode");
+    importEvent.contactMailingZip = data.get("Contact Mailing Postal Code");
     importEvent.contactMailingCountry = data.get("Contact Mailing Country");
     importEvent.contactOptInEmail = checkboxToBool(data.get("Contact Email Opt In"));
     importEvent.contactOptOutEmail = "no".equalsIgnoreCase(data.get("Contact Email Opt In")) || "false".equalsIgnoreCase(data.get("Contact Email Opt In")) || "0".equalsIgnoreCase(data.get("Contact Email Opt In"));

@@ -1576,6 +1576,7 @@ public class SfdcCrmService implements CrmService {
       contact.setField("RecordTypeId", recordTypeNameToIdCache.get(importEvent.contactRecordTypeName));
     }
 
+    contact.setField("Salutation", importEvent.contactSalutation);
     contact.setField("Description", importEvent.contactDescription);
     contact.setField("MailingStreet", importEvent.contactMailingStreet);
     contact.setField("MailingCity", importEvent.contactMailingCity);
