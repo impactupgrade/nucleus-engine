@@ -42,7 +42,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -334,7 +333,7 @@ public class StripeController {
       @FormParam(value = "successUrl") String successUrl,
       @FormParam(value = "failUrl") String failUrl,
       @Context HttpServletRequest request
-  ) throws UnsupportedEncodingException {
+  ) {
     Environment env = envFactory.init(request);
     StripeClient stripeClient = env.stripeClient();
 
@@ -372,6 +371,7 @@ public class StripeController {
       }
       return Response.temporaryRedirect(URI.create(successUrl)).build();
     } catch (StripeException e) {
+      log.info("failed to update the source for {}", customerEmail, e);
       String error = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
       return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
     }
