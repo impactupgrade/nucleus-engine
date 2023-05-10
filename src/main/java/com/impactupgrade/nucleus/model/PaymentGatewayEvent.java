@@ -59,6 +59,8 @@ public class PaymentGatewayEvent implements Serializable {
   public void initStripe(Charge stripeCharge, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     crmDonation.metadata.putAll(stripeCharge.getMetadata());
+    // for fundraising platforms that do not use Subscriptions (like FRU), the recurring donation metadata is on the charge
+    crmRecurringDonation.metadata.putAll(stripeCharge.getMetadata());
     // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
     crmAccount.metadata.putAll(stripeCharge.getMetadata());
     crmContact.metadata.putAll(stripeCharge.getMetadata());
@@ -133,6 +135,8 @@ public class PaymentGatewayEvent implements Serializable {
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
     crmDonation.metadata.putAll(stripePaymentIntent.getMetadata());
+    // for fundraising platforms that do not use Subscriptions (like FRU), the recurring donation metadata is on the charge
+    crmRecurringDonation.metadata.putAll(stripePaymentIntent.getMetadata());
     // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
     crmAccount.metadata.putAll(stripePaymentIntent.getMetadata());
     crmContact.metadata.putAll(stripePaymentIntent.getMetadata());
