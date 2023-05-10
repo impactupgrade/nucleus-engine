@@ -1095,18 +1095,6 @@ public class SfdcCrmService implements CrmService {
 //        importEvent.contactLastName = importEvent.contactLastName.replace(importEvent.contactFirstName, "").trim();
       }
 
-      // Some sources combine multiple contacts into a single comma-separated list of first names. The above
-      // would deal with that if there were an ID or Email match. But here, before we insert, we'll split it up
-      // into multiple contacts. Allow the first listed contact to be the primary.
-      List<String> secondaryFirstNames = new ArrayList<>();
-      if (!Strings.isNullOrEmpty(importEvent.contactFirstName)) {
-        String[] split = importEvent.contactFirstName.trim()
-            .replaceAll(",*\\s+and\\s+", ",").replaceAll(",*\\s+&\\s+", ",")
-            .split(",+");
-        importEvent.contactFirstName = split[0];
-        secondaryFirstNames = Arrays.stream(split).skip(1).toList();
-      }
-
       // Deep breath. It gets weird.
 
       // If we're in the second pass, we already know we need to insert the contact.
@@ -1289,34 +1277,6 @@ public class SfdcCrmService implements CrmService {
       if (nonBatchMode) {
         nonBatchAccountIds.set(i, account != null ? account.getId() : null);
         nonBatchContactIds.set(i, contact != null ? contact.getId() : null);
-      }
-
-      // Save off the secondary contacts, always batching them (no need to hold onto IDs for later use).
-      // But, skip this whole process if for some reason we don't already have an Account to add them into.
-      if (!secondaryFirstNames.isEmpty() && account != null && !Strings.isNullOrEmpty(account.getId())) {
-        // Retrieve all the contacts on this account. If it previously existed, ensure we're not creating duplicate
-        // contacts from the secondary list.
-        List<SObject> accountContacts = sfdcClient.getContactsByAccountId(account.getId(), contactCustomFields);
-
-        for (String secondaryFirstName : secondaryFirstNames) {
-          importEvent.contactFirstName = secondaryFirstName;
-          // null out the email/phone, since they're typically relevant only to the primary
-          importEvent.contactEmail = null;
-          importEvent.contactMobilePhone = null;
-          importEvent.contactHomePhone = null;
-          importEvent.contactWorkPhone = null;
-
-          List<SObject> existingContacts = accountContacts.stream()
-              .filter(c -> secondaryFirstName.equalsIgnoreCase((String) c.getField("FirstName"))).toList();
-          if (existingContacts.size() == 1) {
-            SObject existingContact = existingContacts.get(0);
-
-            updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
-          } else if (existingContacts.size() == 0) {
-            insertBulkImportContact(importEvent, account, batchInsertContacts,
-                existingContactsByEmail, existingContactsByName, contactExternalRefFieldName, existingContactsByExRef, nonBatchMode);
-          }
-        }
       }
 
       for (CrmAccount crmOrg : importEvent.contactOrganizations) {
