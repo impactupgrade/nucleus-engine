@@ -54,6 +54,7 @@ public interface CrmService extends SegmentService {
 
   Optional<CrmContact> getContactById(String id) throws Exception;
   Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception;
+  Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception;
   default List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String id : ids) {

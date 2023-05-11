@@ -128,17 +128,29 @@ public class MailchimpEmailService extends AbstractEmailService {
     crmService.batchFlush();
   }
 
+  // TODO: TER and STS still using contactId, update to use email only.
   @Override
-  public void upsertContact(String contactId) throws Exception {
+  public void upsertContact(String email, @Deprecated String contactId) throws Exception {
     CrmService crmService = env.primaryCrmService();
 
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
-        Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, emailList.crmFilter);
+        Optional<CrmContact> crmContact = Optional.empty();
+        if (!Strings.isNullOrEmpty(email)) {
+          crmContact = crmService.getFilteredContactByEmail(email, emailList.crmFilter);
+        } else if (!Strings.isNullOrEmpty(contactId)) {
+          crmContact = crmService.getFilteredContactById(contactId, emailList.crmFilter);
+        }
+
         if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().email)) {
           log.info("updating contact {} {} on list {}", crmContact.get().id, crmContact.get().email, emailList.id);
           Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(List.of(crmContact.get()));
           syncContact(crmContact.get(), crmContactCampaignNames, mailchimpConfig, emailList);
+        } else if (!Strings.isNullOrEmpty(email)) {
+          // If the contact didn't exist, but we have the email, try archiving it. Could be a contact that was
+          // just deleted in the CRM.
+          log.info("attempting to archive contact {} on list {}", email, emailList.id);
+          new MailchimpClient(mailchimpConfig).archiveContact(emailList.id, email);
         }
       }
     }

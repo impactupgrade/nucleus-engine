@@ -18,7 +18,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -70,9 +69,16 @@ public class VirtuousCrmService implements BasicCrmService {
         VirtuousClient.Contact contact = virtuousClient.getContactById(contactId);
         return Optional.ofNullable(asCrmContact(contact));
     }
+
     @Override
     public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
         //Currently not implemented
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
+        //TODO Not currently implemented
         return Optional.empty();
     }
 

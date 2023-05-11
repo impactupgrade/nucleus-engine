@@ -42,7 +42,7 @@ public class HubSpotEmailService extends SmtpEmailService {
   }
 
   @Override
-  public void upsertContact(String listId) throws Exception {
+  public void upsertContact(String email, @Deprecated String contactId) throws Exception {
     //TODO
   }
 

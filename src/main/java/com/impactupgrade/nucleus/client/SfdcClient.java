@@ -214,6 +214,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id = '" + contactId + "' and " + filter + " ORDER BY name";
     return querySingle(query);
   }
+  // TODO: If we need another one of these, think through a better pattern to apply filters.
+  public Optional<SObject> getFilteredContactByEmail(String email, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where email = '" + email + "' and " + filter + " ORDER BY name";
+    return querySingle(query);
+  }
   public List<SObject> getContactsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(ids, "Id", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }

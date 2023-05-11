@@ -53,6 +53,11 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
+    public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
+        return Optional.empty();
+    }
+
+    @Override
     public List<CrmContact> getContactsFromList(String listId) throws Exception {
         // listId is assumed to be the full URL of a GSheet
         return GoogleSheetsUtil.getSheetData(listId).stream()

@@ -79,11 +79,19 @@ public class BloomerangCrmService implements CrmService {
     Constituent constituent = get(BLOOMERANG_URL + "constituent/" + id, headers(), Constituent.class);
     return Optional.of(toCrmContact(constituent));
   }
+
   @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     //Not currently implemented
     return Optional.empty();
   }
+
+  @Override
+  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
+    //TODO Not currently implemented
+    return Optional.empty();
+  }
+
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     List<String> keywords = new ArrayList<>();

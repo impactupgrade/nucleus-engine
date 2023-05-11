@@ -25,5 +25,6 @@ public interface EmailService extends SegmentService {
 
   void syncContacts(Calendar lastSync) throws Exception;
   void syncUnsubscribes(Calendar lastSync) throws Exception;
-  void upsertContact(String contactId) throws Exception;
+  // TODO: TER and STS still using contactId, update to use email only.
+  void upsertContact(String email, @Deprecated String contactId) throws Exception;
 }

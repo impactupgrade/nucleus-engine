@@ -97,7 +97,11 @@ public class EmailController {
   @POST
   @Path("/upsert")
   @Consumes("application/x-www-form-urlencoded")
-  public Response upsertContact(@FormParam("contact-id") String contactId, @Context HttpServletRequest request) throws Exception {
+  public Response upsertContact(
+      @FormParam("email") String email,
+      @FormParam("contact-id") String contactId,
+      @Context HttpServletRequest request
+  ) throws Exception {
     Environment env = envFactory.init(request);
     Runnable thread = () -> {
       try {
@@ -105,7 +109,8 @@ public class EmailController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
-            emailPlatformService.upsertContact(contactId);
+            // TODO: TER and STS still using contactId, update to use email only.
+            emailPlatformService.upsertContact(email, contactId);
             env.logJobProgress(emailPlatformService.name() + ": upsert contact done");
           } catch (Exception e) {
             log.error("contact upsert failed for contact: {} platform: {}", contactId, emailPlatformService.name(), e);

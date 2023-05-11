@@ -164,11 +164,19 @@ public class HubSpotCrmService implements CrmService {
     CrmContact crmContact = toCrmContact(contact);
     return Optional.of(crmContact);
   }
+
   @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     //TODO Not currently implemented
     return Optional.empty();
   }
+
+  @Override
+  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
+    //TODO Not currently implemented
+    return Optional.empty();
+  }
+
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for

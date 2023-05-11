@@ -56,11 +56,19 @@ public class DonorWranglerCrmService implements BasicCrmService {
         dwClient.contactSearch("id", id)
     );
   }
+
   @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     //Not currently implemented
     return Optional.empty();
   }
+
+  @Override
+  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
+    //Not currently implemented
+    return Optional.empty();
+  }
+
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for

@@ -135,7 +135,7 @@ public class SendGridEmailService extends SmtpEmailService {
   }
 
   @Override
-  public void upsertContact(String contactId) throws Exception {
+  public void upsertContact(String email, @Deprecated String contactId) throws Exception {
     //TODO
   }
 
