@@ -170,21 +170,16 @@ public class VirtuousCrmService implements BasicCrmService {
     @Override
     public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
         List<VirtuousClient.QueryCondition> conditions = new ArrayList<>();
-//        if (!Strings.isNullOrEmpty(firstName)) {
-//            conditions.add(queryCondition("First Name", "Is", firstName));
-//        }
-//        if (!Strings.isNullOrEmpty(lastName)) {
-//            conditions.add(queryCondition("Last Name", "Is", lastName));
-//        }
         if (!Strings.isNullOrEmpty(contactSearch.email)) {
             conditions.add(queryCondition("Email Address", "Is", contactSearch.email));
         }
         if (!Strings.isNullOrEmpty(contactSearch.phone)) {
             conditions.add(queryCondition("Phone Number", "Is", contactSearch.phone));
         }
-//        if (!Strings.isNullOrEmpty(address)) {
-//            conditions.add(queryCondition("Address Line 1", "Is", address));
-//        }
+        if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
+            conditions.add(queryCondition("Contact Name", "Is", contactSearch.keywords));
+        }
+
         VirtuousClient.ContactQuery contactQuery = contactQuery(conditions);
         List<CrmContact> contacts = virtuousClient.queryContacts(contactQuery).stream().map(this::asCrmContact).collect(Collectors.toList());
         return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
