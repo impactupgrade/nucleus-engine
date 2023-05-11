@@ -538,57 +538,54 @@ public class PaymentGatewayEvent implements Serializable {
     crmDonation.recurringDonation.id = crmRecurringDonationId;
   }
 
-  // TODO: Auto generated, but then modified. Note that this is used for failure notifications sent to staff, etc.
-  // We might be better off breaking this out into a separate, dedicated method.
-  // TODO: redo
-//  @Override
-//  public String toString() {
-//    return "PaymentGatewayEvent{" +
-//
-//        "fullName='" + crmAccount.name + '\'' +
-//        ", firstName='" + crmContact.firstName + '\'' +
-//        ", lastName='" + crmContact.lastName + '\'' +
-//        ", email='" + crmContact.email + '\'' +
-//        ", mobilePhone='" + crmContact.mobilePhone + '\'' +
-//
-//        ", street='" + crmContact.address.street + '\'' +
-//        ", city='" + crmContact.address.city + '\'' +
-//        ", state='" + crmContact.address.state + '\'' +
-//        ", zip='" + crmContact.address.postalCode + '\'' +
-//        ", country='" + crmContact.address.country + '\'' +
-//
-//        ", gatewayName='" + gatewayName + '\'' +
-//        ", paymentMethod='" + paymentMethod + '\'' +
-//
-//        ", customerId='" + customerId + '\'' +
-//        ", transactionId='" + transactionId + '\'' +
-//        ", transactionSecondaryId='" + transactionSecondaryId + '\'' +
-//        ", subscriptionId='" + subscriptionId + '\'' +
-//
-//        ", products='" + String.join(",", products) + '\'' +
-//
-//        ", transactionDate=" + transactionDate +
-//        ", transactionSuccess=" + transactionSuccess +
-//        ", transactionDescription='" + transactionDescription + '\'' +
-//        ", transactionAmountInDollars=" + transactionAmountInDollars +
-//        ", transactionNetAmountInDollars=" + transactionNetAmountInDollars +
-//        ", transactionExchangeRate=" + transactionExchangeRate +
-//        ", transactionFeeInDollars=" + transactionFeeInDollars +
-//        ", transactionOriginalAmountInDollars=" + transactionOriginalAmountInDollars +
-//        ", transactionOriginalCurrency='" + transactionOriginalCurrency + '\'' +
-//        ", transactionCurrencyConverted='" + transactionCurrencyConverted + '\'' +
-//        ", transactionUrl=" + transactionUrl +
-//
-//        ", subscriptionAmountInDollars=" + subscriptionAmountInDollars +
-//        ", subscriptionCurrency='" + subscriptionCurrency + '\'' +
-//        ", subscriptionDescription='" + subscriptionDescription + '\'' +
-//        ", subscriptionInterval='" + subscriptionInterval + '\'' +
-//        ", subscriptionStartDate=" + subscriptionStartDate +
-//        ", subscriptionNextDate=" + subscriptionNextDate +
-//
-//        ", primaryCrmAccountId='" + crmAccount.id + '\'' +
-//        ", primaryCrmContactId='" + crmContact.id + '\'' +
-//        ", primaryCrmRecurringDonationId='" + crmRecurringDonationId +
-//        '}';
-//  }
+  @Override
+  public String toString() {
+    return "PaymentGatewayEvent{" +
+
+        "fullName='" + crmAccount.name + '\'' +
+        ", firstName='" + crmContact.firstName + '\'' +
+        ", lastName='" + crmContact.lastName + '\'' +
+        ", email='" + crmContact.email + '\'' +
+        ", mobilePhone='" + crmContact.mobilePhone + '\'' +
+
+        ", street='" + crmAccount.billingAddress.street + '\'' +
+        ", city='" + crmAccount.billingAddress.city + '\'' +
+        ", state='" + crmAccount.billingAddress.state + '\'' +
+        ", zip='" + crmAccount.billingAddress.postalCode + '\'' +
+        ", country='" + crmAccount.billingAddress.country + '\'' +
+
+        ", gatewayName='" + crmDonation.gatewayName + '\'' +
+        ", paymentMethod='" + crmDonation.paymentMethod + '\'' +
+
+        ", customerId='" + crmDonation.customerId + '\'' +
+        ", transactionId='" + crmDonation.transactionId + '\'' +
+        ", transactionSecondaryId='" + crmDonation.secondaryId + '\'' +
+        ", subscriptionId='" + crmRecurringDonation.subscriptionId + '\'' +
+
+        ", products='" + String.join(",", crmDonation.products) + '\'' +
+
+        ", transactionDate=" + crmDonation.closeDate +
+        ", transactionSuccess=" + crmDonation.status +
+        ", transactionDescription='" + crmDonation.description + '\'' +
+        ", transactionAmountInDollars=" + crmDonation.amount +
+        ", transactionNetAmountInDollars=" + crmDonation.netAmountInDollars +
+        ", transactionExchangeRate=" + crmDonation.exchangeRate +
+        ", transactionFeeInDollars=" + crmDonation.feeInDollars +
+        ", transactionOriginalAmountInDollars=" + crmDonation.originalAmountInDollars +
+        ", transactionOriginalCurrency='" + crmDonation.originalCurrency + '\'' +
+        ", transactionCurrencyConverted='" + crmDonation.currencyConverted + '\'' +
+        ", transactionUrl=" + crmDonation.url +
+
+        ", subscriptionAmountInDollars=" + crmRecurringDonation.amount +
+        ", subscriptionCurrency='" + crmRecurringDonation.subscriptionCurrency + '\'' +
+        ", subscriptionDescription='" + crmRecurringDonation.description + '\'' +
+        ", subscriptionInterval='" + crmRecurringDonation.frequency + '\'' +
+        ", subscriptionStartDate=" + crmRecurringDonation.subscriptionStartDate +
+        ", subscriptionNextDate=" + crmRecurringDonation.subscriptionNextDate +
+
+        ", crmAccountId='" + crmAccount.id + '\'' +
+        ", crmContactId='" + crmContact.id + '\'' +
+        ", crmRecurringDonationId='" + crmRecurringDonation.id +
+        '}';
+  }
 }
