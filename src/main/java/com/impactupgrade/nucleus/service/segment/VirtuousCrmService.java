@@ -18,6 +18,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -279,8 +281,9 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     private ZonedDateTime getDateTime(String dateTimeString) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT);
-        return ZonedDateTime.parse(dateTimeString, dtf);
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT);
+        LocalDateTime localDateTime = LocalDateTime.parse(dateTimeString, dateTimeFormatter);
+        return localDateTime.atZone(ZoneId.of(env.getConfig().timezoneId));
     }
 
     private Calendar getDate(String dateString) {
