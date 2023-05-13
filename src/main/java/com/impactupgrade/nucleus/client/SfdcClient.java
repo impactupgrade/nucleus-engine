@@ -147,7 +147,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getAllOrganizations(String... extraFields) throws ConnectionException, InterruptedException {
-    return getBulkResults(List.of("Organization"), "RecordType.Name", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where RecordType.Name!='Household Account'";
+    return queryListAutoPaged(query);
   }
 
   public Optional<SObject> getAccountByCustomerId(String customerId, String... extraFields) throws ConnectionException, InterruptedException {

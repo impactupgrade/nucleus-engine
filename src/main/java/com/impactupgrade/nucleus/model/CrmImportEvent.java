@@ -44,7 +44,7 @@ public class CrmImportEvent {
   // Can also be used for update retrieval, as well as inserts.
   public String contactEmail;
 
-  // could be a contact's household, could be an organization itself
+  // could be a contact's household, could be an organization itself -- both are assumed to be the primary account
   public CrmAccount account = new CrmAccount();
   // organization affiliations
   public List<CrmAccount> contactOrganizations = new ArrayList<>();
