@@ -896,26 +896,20 @@ public class SfdcCrmService implements CrmService {
     Optional<String> accountExternalRefKey = importEvents.get(0).raw.keySet().stream()
         .filter(k -> k.startsWith("Account ExtRef ")).distinct().findFirst();
     Optional<String> accountExternalRefFieldName = accountExternalRefKey.map(k -> k.replace("Account ExtRef ", ""));
-    Map<String, SObject> existingAccountsByExRef = new HashMap<>();
+    Map<String, SObject> existingAccountsByExtRef = new HashMap<>();
     if (accountExternalRefKey.isPresent()) {
-      List<String> accountExRefIds = importEvents.stream().map(e -> e.raw.get(accountExternalRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
-      if (accountExRefIds.size() > 0) {
+      List<String> accountExtRefIds = importEvents.stream().map(e -> e.raw.get(accountExternalRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
+      if (accountExtRefIds.size() > 0) {
         // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
-        sfdcClient.getAccountsByUniqueField(accountExternalRefFieldName.get(), accountExRefIds, accountCustomFields)
-            .forEach(c -> existingAccountsByExRef.put(c.getField(accountExternalRefFieldName.get()).toString(), c));
+        sfdcClient.getAccountsByUniqueField(accountExternalRefFieldName.get(), accountExtRefIds, accountCustomFields)
+            .forEach(c -> existingAccountsByExtRef.put(c.getField(accountExternalRefFieldName.get()).toString(), c));
       }
     }
 
-    // TODO: Only organizations, not households! And the bulk-insert account code cannot add to this during
-    //  processing if it's a household!
-    List<String> accountNames = importEvents.stream().flatMap(e -> e.contactOrganizations.stream()).map(e -> e.name)
-        .filter(name -> !Strings.isNullOrEmpty(name)).distinct().toList();
-    Multimap<String, SObject> existingAccountsByName = ArrayListMultimap.create();
-    if (accountNames.size() > 0) {
+    Multimap<String, SObject> existingOrganizationsByName = ArrayListMultimap.create();
       // Normalize the case!
-      sfdcClient.getAccountsByNames(accountNames, accountCustomFields)
-          .forEach(c -> existingAccountsByName.put(c.getField("Name").toString().toLowerCase(Locale.ROOT), c));
-    }
+      sfdcClient.getAllOrganizations()
+          .forEach(o -> existingOrganizationsByName.put(o.getField("Name").toString().toLowerCase(Locale.ROOT), o));
 
     List<String> contactIds = importEvents.stream().map(e -> e.contactId)
         .filter(contactId -> !Strings.isNullOrEmpty(contactId)).distinct().toList();
@@ -945,14 +939,14 @@ public class SfdcCrmService implements CrmService {
     Optional<String> contactExternalRefKey = importEvents.get(0).raw.keySet().stream()
         .filter(k -> k.startsWith("Contact ExtRef ")).findFirst();
     Optional<String> contactExternalRefFieldName = contactExternalRefKey.map(k -> k.replace("Contact ExtRef ", ""));
-    Map<String, SObject> existingContactsByExRef = new HashMap<>();
+    Map<String, SObject> existingContactsByExtRef = new HashMap<>();
     if (contactExternalRefKey.isPresent()) {
-      List<String> contactExRefIds = importEvents.stream().map(e -> e.raw.get(contactExternalRefKey.get()))
+      List<String> contactExtRefIds = importEvents.stream().map(e -> e.raw.get(contactExternalRefKey.get()))
           .filter(s -> !Strings.isNullOrEmpty(s)).distinct().toList();
-      if (contactExRefIds.size() > 0) {
+      if (contactExtRefIds.size() > 0) {
         // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
-        sfdcClient.getContactsByUniqueField(contactExternalRefFieldName.get(), contactExRefIds, contactCustomFields)
-            .forEach(c -> existingContactsByExRef.put(c.getField(contactExternalRefFieldName.get()).toString(), c));
+        sfdcClient.getContactsByUniqueField(contactExternalRefFieldName.get(), contactExtRefIds, contactCustomFields)
+            .forEach(c -> existingContactsByExtRef.put(c.getField(contactExternalRefFieldName.get()).toString(), c));
       }
     }
 
@@ -982,14 +976,14 @@ public class SfdcCrmService implements CrmService {
 
     Optional<String> opportunityExternalRefKey = importEvents.get(0).raw.keySet().stream()
         .filter(k -> k.startsWith("Opportunity ExtRef ")).findFirst();
-    Map<String, SObject> existingOpportunitiesByExRefId = new HashMap<>();
+    Map<String, SObject> existingOpportunitiesByExtRefId = new HashMap<>();
     if (opportunityExternalRefKey.isPresent()) {
-      List<String> opportunityExRefIds = importEvents.stream().map(e -> e.raw.get(opportunityExternalRefKey.get()))
+      List<String> opportunityExtRefIds = importEvents.stream().map(e -> e.raw.get(opportunityExternalRefKey.get()))
           .filter(s -> !Strings.isNullOrEmpty(s)).distinct().toList();
-      if (opportunityExRefIds.size() > 0) {
+      if (opportunityExtRefIds.size() > 0) {
         String fieldName = opportunityExternalRefKey.get().replace("Opportunity ExtRef ", "");
-        sfdcClient.getDonationsByUniqueField(fieldName, opportunityExRefIds, opportunityCustomFields)
-            .forEach(c -> existingOpportunitiesByExRefId.put((String) c.getField(fieldName), c));
+        sfdcClient.getDonationsByUniqueField(fieldName, opportunityExtRefIds, opportunityCustomFields)
+            .forEach(c -> existingOpportunitiesByExtRefId.put((String) c.getField(fieldName), c));
       }
     }
 
@@ -1005,11 +999,14 @@ public class SfdcCrmService implements CrmService {
     boolean accountImports = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
         .anyMatch(entry -> entry.getKey().startsWith("Account") && !Strings.isNullOrEmpty(entry.getValue()));
 
-    // If we're doing Opportunity/RD inserts or Campaign updates, we unfortunately can't use batch inserts/updates of accounts/contacts.
+    // For the following contexts, we unfortunately can't use batch inserts/updates of accounts/contacts.
+    // Opportunity/RD inserts, 1..n Organization affiliations, Campaign updates
     // TODO: We probably *can*, but the code will be rather complex to manage the variety of batch actions paired with CSV rows.
-    boolean oppMode = importEvents.get(0).opportunityDate != null || importEvents.get(0).opportunityId != null;
-    boolean rdMode = importEvents.get(0).recurringDonationAmount != null || importEvents.get(0).recurringDonationId != null;
-    boolean nonBatchMode = oppMode || rdMode || !importEvents.get(0).contactCampaignIds.isEmpty() || !importEvents.get(0).contactCampaignNames.isEmpty();
+    boolean oppMode = importEvents.stream().anyMatch(e -> e.opportunityDate != null || e.opportunityId != null);
+    boolean rdMode = importEvents.stream().anyMatch(e -> e.recurringDonationAmount != null || e.recurringDonationId != null);
+    boolean orgMode = importEvents.stream().anyMatch(e -> e.contactOrganizations.size() > 0);
+    boolean campaignMode = importEvents.stream().anyMatch(e -> !e.contactCampaignIds.isEmpty() || !e.contactCampaignNames.isEmpty());
+    boolean nonBatchMode = oppMode || rdMode || orgMode || campaignMode;
 
     List<String> nonBatchAccountIds = new ArrayList<>();
     List<String> nonBatchContactIds = new ArrayList<>();
@@ -1059,7 +1056,7 @@ public class SfdcCrmService implements CrmService {
           }
         }
       } else if (accountExternalRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(accountExternalRefKey.get()))) {
-        SObject existingAccount = existingAccountsByExRef.get(importEvent.raw.get(accountExternalRefKey.get()));
+        SObject existingAccount = existingAccountsByExtRef.get(importEvent.raw.get(accountExternalRefKey.get()));
 
         if (existingAccount != null) {
           account = new SObject("Account");
@@ -1079,7 +1076,7 @@ public class SfdcCrmService implements CrmService {
           //  combined grandparents into the student's household. Raiser's Edge has the correct relationships and
           //  households, so we're using this to override the past.
           account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent,
-              existingAccountsByName, accountExternalRefFieldName, existingAccountsByExRef, accountImports);
+              accountExternalRefFieldName, existingAccountsByExtRef, accountImports);
         }
       }
 
@@ -1101,11 +1098,11 @@ public class SfdcCrmService implements CrmService {
       if (secondPass) {
         if (account == null) {
           account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent,
-              existingAccountsByName, accountExternalRefFieldName, existingAccountsByExRef, accountImports);
+              accountExternalRefFieldName, existingAccountsByExtRef, accountImports);
         }
 
         contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
-            existingContactsByEmail, existingContactsByName, contactExternalRefFieldName, existingContactsByExRef, nonBatchMode);
+            existingContactsByEmail, existingContactsByName, contactExternalRefFieldName, existingContactsByExtRef, nonBatchMode);
       }
       // If the explicit Contact ID was given and the contact actually exists, update.
       else if (!Strings.isNullOrEmpty(importEvent.contactId) && existingContactsById.containsKey(importEvent.contactId)) {
@@ -1124,8 +1121,8 @@ public class SfdcCrmService implements CrmService {
         contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
       // Similarly, if we have an external ref ID, check that next.
-      else if (contactExternalRefKey.isPresent() && existingContactsByExRef.containsKey(importEvent.raw.get(contactExternalRefKey.get()))) {
-        SObject existingContact = existingContactsByExRef.get(importEvent.raw.get(contactExternalRefKey.get()));
+      else if (contactExternalRefKey.isPresent() && existingContactsByExtRef.containsKey(importEvent.raw.get(contactExternalRefKey.get()))) {
+        SObject existingContact = existingContactsByExtRef.get(importEvent.raw.get(contactExternalRefKey.get()));
 
         if (account == null) {
           String accountId = (String) existingContact.getField("AccountId");
@@ -1136,7 +1133,7 @@ public class SfdcCrmService implements CrmService {
         }
 
         // use accountId, not account.id -- if the contact was recently imported by this current process,
-        // the contact.account child relationship will not yet exist in the existingContactsByExRefId map
+        // the contact.account child relationship will not yet exist in the existingContactsByExtRefId map
         contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
       // Else if a contact already exists with the given email address, update.
@@ -1182,11 +1179,12 @@ public class SfdcCrmService implements CrmService {
           existingAccount = account;
         } else {
           // Otherwise, by name.
-          existingAccount = existingAccountsByName.get(fullname.toLowerCase(Locale.ROOT)).stream().findFirst().orElse(null);
+          existingAccount = existingOrganizationsByName.get(fullname.toLowerCase(Locale.ROOT)).stream().findFirst().orElse(null);
         }
 
         if (existingAccount == null) {
-          account = insertBulkImportAccount(fullname, importEvent, existingAccountsByName, accountExternalRefFieldName, existingAccountsByExRef, accountImports);
+          account = insertBulkImportAccount(fullname, importEvent, accountExternalRefFieldName, existingAccountsByExtRef, accountImports);
+          existingOrganizationsByName.put(fullname.toLowerCase(Locale.ROOT), account);
         } else {
           account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts, true);
         }
@@ -1274,15 +1272,17 @@ public class SfdcCrmService implements CrmService {
         }
       }
 
+      if (orgMode) {
+        for (CrmAccount crmOrg : importEvent.contactOrganizations) {
+          // TODO: support for by-id, by-extref, and by-name
+          // TODO: upsert
+          // TODO: create contact-to-account relationship
+        }
+      }
+
       if (nonBatchMode) {
         nonBatchAccountIds.set(i, account != null ? account.getId() : null);
         nonBatchContactIds.set(i, contact != null ? contact.getId() : null);
-      }
-
-      for (CrmAccount crmOrg : importEvent.contactOrganizations) {
-        // TODO: support for by-id, by-extref, and by-name
-        // TODO: upsert
-        // TODO: create contact-to-account relationship
       }
 
       env.logJobProgress("Imported " + (i + 1) + " contacts");
@@ -1366,8 +1366,8 @@ public class SfdcCrmService implements CrmService {
             batchUpdateOpportunities.add(opportunity.getId());
             sfdcClient.batchUpdate(opportunity);
           }
-        } else if (opportunityExternalRefKey.isPresent() && existingOpportunitiesByExRefId.containsKey(importEvent.raw.get(opportunityExternalRefKey.get()))) {
-          SObject existingOpportunity = existingOpportunitiesByExRefId.get(importEvent.raw.get(opportunityExternalRefKey.get()));
+        } else if (opportunityExternalRefKey.isPresent() && existingOpportunitiesByExtRefId.containsKey(importEvent.raw.get(opportunityExternalRefKey.get()))) {
+          SObject existingOpportunity = existingOpportunitiesByExtRefId.get(importEvent.raw.get(opportunityExternalRefKey.get()));
 
           opportunity.setId(existingOpportunity.getId());
           setBulkImportOpportunityFields(opportunity, existingOpportunity, importEvent);
@@ -1434,9 +1434,8 @@ public class SfdcCrmService implements CrmService {
   protected SObject insertBulkImportAccount(
       String accountName,
       CrmImportEvent importEvent,
-      Multimap<String, SObject> existingAccountsByName,
       Optional<String> accountExternalRefFieldName,
-      Map<String, SObject> existingAccountsByExRef,
+      Map<String, SObject> existingAccountsByExtRef,
       boolean accountImports
   ) throws InterruptedException, ExecutionException {
     // TODO: This speeds up, but we have some clients (most recent one: TER) where household auto generation
@@ -1454,10 +1453,8 @@ public class SfdcCrmService implements CrmService {
     String accountId = sfdcClient.insert(account).getId();
     account.setId(accountId);
 
-    // Since we hold maps in memory and don't requery them. Add entries as we go to prevent duplicate inserts.
-    existingAccountsByName.put(accountName.toLowerCase(Locale.ROOT), account);
     if (accountExternalRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) account.getField(accountExternalRefFieldName.get()))) {
-      existingAccountsByExRef.put((String) account.getField(accountExternalRefFieldName.get()), account);
+      existingAccountsByExtRef.put((String) account.getField(accountExternalRefFieldName.get()), account);
     }
 
     return account;
@@ -1490,7 +1487,7 @@ public class SfdcCrmService implements CrmService {
       Multimap<String, SObject> existingContactsByEmail,
       Multimap<String, SObject> existingContactsByName,
       Optional<String> contactExternalRefFieldName,
-      Map<String, SObject> existingContactsByExRef,
+      Map<String, SObject> existingContactsByExtRef,
       boolean nonBatchMode
   ) throws InterruptedException, ExecutionException {
     SObject contact = new SObject("Contact");
@@ -1546,7 +1543,7 @@ public class SfdcCrmService implements CrmService {
       existingContactsByName.put(fullName.toLowerCase(Locale.ROOT), contact);
     }
     if (contactExternalRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) contact.getField(contactExternalRefFieldName.get()))) {
-      existingContactsByExRef.put((String) contact.getField(contactExternalRefFieldName.get()), contact);
+      existingContactsByExtRef.put((String) contact.getField(contactExternalRefFieldName.get()), contact);
     }
 
     return contact;

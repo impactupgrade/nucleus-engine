@@ -9,14 +9,10 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.sforce.soap.partner.sobject.SObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.util.IOUtils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,7 +41,7 @@ public class RaisersEdgeToSalesforce {
         envConfig.salesforce.sandbox = false;
         envConfig.salesforce.url = "concordialutheranhs.my.salesforce.com";
         envConfig.salesforce.username = "team+clhs@impactupgrade.com";
-        envConfig.salesforce.password = "pqp.gnj1xcd8DFC2mgfpwl7cq1UOBQZYOZKEppFDTQ4";
+        envConfig.salesforce.password = "pzFDjPYP6xfjHQ!xid464Ei3gSYA5jngdKV1fvlr";
         envConfig.salesforce.enhancedRecurringDonations = true;
         return envConfig;
       }
@@ -224,20 +220,20 @@ public class RaisersEdgeToSalesforce {
 //    File relsFile = new File("/home/brmeyer/Downloads/Individual-relationships-v3-banks-contacts-solicitors.xlsx");
 //    InputStream relsInputStream = new FileInputStream(relsFile);
 //    List<Map<String, String>> relRows = Utils.getExcelData(relsInputStream);
-
-    Map<String, SObject> constituentIdToContact = new HashMap<>();
-    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
-    for (SObject contact : contacts) {
-      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
-    }
-
-    Map<String, SObject> constituentIdToAccount = new HashMap<>();
-    // businesses only
-    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!='' AND RecordTypeId='" + ORGANIZATION_RECORD_TYPE_ID + "'");
-    for (SObject account : accounts) {
-      constituentIdToAccount.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
-    }
-
+//
+//    Map<String, SObject> constituentIdToContact = new HashMap<>();
+//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+//    for (SObject contact : contacts) {
+//      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
+//    }
+//
+//    Map<String, SObject> constituentIdToAccount = new HashMap<>();
+//    // businesses only
+//    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!='' AND RecordTypeId='" + ORGANIZATION_RECORD_TYPE_ID + "'");
+//    for (SObject account : accounts) {
+//      constituentIdToAccount.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
+//    }
+//
 //    // prevent duplicates
 //    Set<String> seenRelationships = new HashSet<>();
 //    List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe4__Contact__c, npe4__RelatedContact__c, FROM npe4__Relationship__c WHERE npe4__Contact__c!='' AND npe4__RelatedContact__c!=''");
@@ -438,10 +434,10 @@ public class RaisersEdgeToSalesforce {
     // NOTES
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    File notesFile = new File("/home/brmeyer/Downloads/Notes.xlsx");
-    InputStream notesInputStream = new FileInputStream(notesFile);
-    List<Map<String, String>> noteRows = Utils.getExcelData(notesInputStream);
-
+//    File notesFile = new File("/home/brmeyer/Downloads/Notes.xlsx");
+//    InputStream notesInputStream = new FileInputStream(notesFile);
+//    List<Map<String, String>> noteRows = Utils.getExcelData(notesInputStream);
+//
 //    for (int i = 0; i < noteRows.size(); i++) {
 //      log.info("processing note row {}", i + 2);
 //
@@ -987,15 +983,29 @@ public class RaisersEdgeToSalesforce {
 
     // Solicit codes
     // Possible values: 'Do not  mail', 'Removed by request', 'Do not phone', 'Do not send Mass Appeal', 'Do Not Send Stelter Mailings', 'Do Not Contact/Solicit', 'Send All Information', 'Do Not Mail - Out of the Country', 'Do Not Send "Cadets"', 'Send Publications only'
-    Set<String> cnSolicitCodes = new LinkedHashSet<>();
     for (int i = 1; i <= 5; i++) {
       String field = "CnSolCd_1_0" + i + "_Solicit_Code";
       if (!Strings.isNullOrEmpty(row.get(field))) {
-        cnSolicitCodes.add(row.get(field));
+        String code = row.get(field);
+        if ("Do Not Contact/Solicit".equals(code) || "Removed by request".equals(code)) {
+          contactData.put("Contact Custom npsp__Do_Not_Contact__c", "true");
+          contactData.put("Contact Custom HasOptedOutOfEmail", "true");
+          contactData.put("Contact Custom Do_Not_Mail__c", "true");
+        } else if ("Do not  mail".equals(code) || "Do Not Mail - Out of the Country".equals(code)) {
+          contactData.put("Contact Custom Do_Not_Mail__c", "true");
+        } else if ("Do not phone".equals(code)) {
+          contactData.put("DoNotCall", "true");
+        } else if ("Send Publications only".equals(code)) {
+          contactData.put("Contact Custom Send_Publications_Only__c", "true");
+        } else if ("Do not send Mass Appeal".equals(code)) {
+          contactData.put("Contact Custom Do_Not_Send_Mass_Appeal__c", "true");
+        } else if ("Do Not Send Stelter Mailings".equals(code)) {
+          contactData.put("Contact Custom Do_Not_Send_Stelter_Mailings__c", "true");
+        } else if ("Do Not Send \"Cadets\"".equals(code)) {
+          contactData.put("Contact Custom Do_Not_Send_Cadets__c", "true");
+        }
       }
     }
-    String cnSolicitCodesStr = String.join(";", cnSolicitCodes);
-    contactData.put("Contact Custom BB_Solicit_Codes__c", cnSolicitCodesStr);
 
     // If relationships define individuals *without* their own constituent IDs, we need to save them off as
     // secondary contacts here since it's the only time we'll see them. We'll create fake constituent IDs for them,
@@ -1006,8 +1016,9 @@ public class RaisersEdgeToSalesforce {
         Map<String, String> data = new HashMap<>();
 
         // append the index to the end of the constituent ID
-        data.put("Contact ExtRef Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
-        data.put("Contact Custom Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
+        // TODO
+//        data.put("Contact ExtRef Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
+//        data.put("Contact Custom Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
         data.put("Contact Custom Append Source__c", "Blackbaud");
 
         data.put("Contact First Name", row.get(prefix + "First_Name"));

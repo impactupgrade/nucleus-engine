@@ -146,6 +146,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(names, "Name", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
   }
 
+  public List<SObject> getAllOrganizations(String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(List.of("Organization"), "RecordType.Name", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
+  }
+
   public Optional<SObject> getAccountByCustomerId(String customerId, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
       return Optional.empty();

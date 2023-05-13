@@ -132,11 +132,12 @@ public class CrmImportEvent {
     importEvent.recurringDonationId = data.get("Recurring Donation ID");
     importEvent.campaignId = data.get("Campaign ID");
 
-    importEvent.contactEmail = data.get("Contact Email");
-    if (importEvent.contactEmail != null && importEvent.contactEmail.contains("@")) {
+    if (data.get("Contact Email") != null && data.get("Contact Email").contains("@")) {
+      importEvent.contactEmail = data.get("Contact Email");
       // TODO: SFDC "where in ()" queries appear to be case sensitive, and SFDC lower cases all emails internally.
       //  For now, ensure we follow suit.
       importEvent.contactEmail = importEvent.contactEmail.toLowerCase(Locale.ROOT);
+      importEvent.contactEmail = Utils.noWhitespace(importEvent.contactEmail);
     }
 
     importEvent.account.billingAddress.street = data.get("Account Billing Street");
