@@ -16,8 +16,8 @@ import com.twilio.rest.api.v2010.account.Message;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -104,16 +104,16 @@ public class MessagingService {
   }
 
   public CrmContact processSignup(
-      String phone,
-      String firstName,
-      String lastName,
-      String email,
-      String __emailOptIn,
-      String __smsOptIn,
-      String language,
-      String campaignId,
-      String listId,
-      Map<String, String> customResponses
+          String phone,
+          String firstName,
+          String lastName,
+          String email,
+          String __emailOptIn,
+          String __smsOptIn,
+          String language,
+          String campaignId,
+          String listId,
+          MultivaluedMap<String, String> customResponses
   ) throws Exception {
     // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
     if (email != null && !email.contains("@")) {
@@ -157,7 +157,7 @@ public class MessagingService {
       crmContact.smsOptIn = smsOptIn;
       crmContact.language = language;
       for (String field : customResponses.keySet() ){
-        crmContact.addMetadata(field, customResponses.get(field));
+        crmContact.addMetadata(field, customResponses.get(field).get(0));
       }
       crmContact.id = crmService.insertContact(crmContact);
     } else {
@@ -194,7 +194,7 @@ public class MessagingService {
         log.info("Updating custom response fields for contact {}", crmContact.id);
         for (String field : customResponses.keySet() ){
           //TODO check that this will update existing meta data fields & won't break
-          crmContact.addMetadata(field, customResponses.get(field));
+          crmContact.addMetadata(field, customResponses.get(field).get(0));
         }
         update = true;
       }

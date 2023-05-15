@@ -38,6 +38,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -164,12 +165,15 @@ public class TwilioController {
       @FormParam("OpportunityNotes") String opportunityNotes,
       @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request,
-      Map<String, String> customResponses
+      MultivaluedMap<String, String> customResponses
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
         from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, _listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
     Environment env = envFactory.init(request);
-
+    List<String> params = Arrays.asList("From", "FirstName", "LastName", "FullName", "Email", "EmailOptIn", "SmsOptIn", "Language", "ListId", "HubSpotListId", "CampaignId", "OpportunityName", "OpportunityRecordTypeId", "OpportunityOwnerId", "OpportunityNotes", "nucleus-username");
+    for(String key : params){
+      customResponses.remove(key);
+    }
     _firstName = trim(_firstName);
     _lastName = trim(_lastName);
     fullName = trim(fullName);
