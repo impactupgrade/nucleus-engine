@@ -28,6 +28,7 @@ import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
+import com.impactupgrade.nucleus.service.segment.TextingService;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -162,6 +163,10 @@ public class Environment {
 
   public CrmService messagingCrmService() {
     return crmService(getConfig().crmMessaging);
+  }
+
+  public TextingService textingService(){
+    return segmentService(getConfig().textingService, TextingService.class);
   }
 
   public PaymentGatewayService paymentGatewayService(String name) {

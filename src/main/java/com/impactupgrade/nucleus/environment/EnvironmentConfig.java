@@ -47,6 +47,8 @@ public class EnvironmentConfig implements Serializable {
 
   public String emailTransactional = "";
 
+  public String textingService = "";
+
   public static class Platform implements Serializable {
     // if keys
     public String publicKey = "";

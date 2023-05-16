@@ -1,10 +1,12 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 
 public class MessageBirdTextingService implements TextingService {
+
   @Override
-  public void sendMessage(String message, CrmContact crmContact, String sender) {
+  public void sendMessage(String message, CrmContact crmContact, String to, String from) {
 
   }
 
@@ -25,6 +27,21 @@ public class MessageBirdTextingService implements TextingService {
 
   @Override
   public void optOut(CrmContact crmContact) throws Exception {
+
+  }
+
+  @Override
+  public String name() {
+    return null;
+  }
+
+  @Override
+  public boolean isConfigured(Environment env) {
+    return false;
+  }
+
+  @Override
+  public void init(Environment env) {
 
   }
 }
