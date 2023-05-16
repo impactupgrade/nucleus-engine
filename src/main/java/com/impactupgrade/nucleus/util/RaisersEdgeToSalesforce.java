@@ -9,12 +9,16 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.sforce.soap.partner.sobject.SObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.util.IOUtils;
 
 import java.text.DecimalFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,6 +35,8 @@ public class RaisersEdgeToSalesforce {
   private static String HOUSEHOLD_RECORD_TYPE_ID = "0128V000001h1ZtQAI";
   private static String ORGANIZATION_RECORD_TYPE_ID = "0128V000001h1ZuQAI";
   private static String DONATION_RECORD_TYPE_ID = "0128V000001h1ZvQAI";
+  private static String GIFTINKIND_RECORD_TYPE_ID = "0128V000001h1a1QAA";
+  private static String MATCHINGGIFT_RECORD_TYPE_ID = "0128V000001h1a2QAA";
 
   public static void main(String[] args) throws Exception {
     Environment env = new Environment() {
@@ -151,7 +157,7 @@ public class RaisersEdgeToSalesforce {
 //      if (headOfHouseholdIds.contains(id)) {
 //        // We use the head of household's ID as the account's extref key.
 //        String householdId = id;
-//        migrate(row, householdId, primaryRows, secondaryRows, seenEmails);
+//        migrateConstituent(row, householdId, primaryRows, secondaryRows, seenEmails);
 //      }
 //    }
 //
@@ -195,7 +201,7 @@ public class RaisersEdgeToSalesforce {
 //          householdId = id;
 //        }
 //
-//        migrate(row, householdId, primaryRows, secondaryRows, seenEmails);
+//        migrateConstituent(row, householdId, primaryRows, secondaryRows, seenEmails);
 //      }
 //    }
 //
@@ -217,7 +223,7 @@ public class RaisersEdgeToSalesforce {
     // RELATIONSHIPS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//    File relsFile = new File("/home/brmeyer/Downloads/Individual-relationships-v3-banks-contacts-solicitors.xlsx");
+//    File relsFile = new File("/home/brmeyer/Downloads/Individual-relationships-v4-more-notes-fields.xlsx");
 //    InputStream relsInputStream = new FileInputStream(relsFile);
 //    List<Map<String, String>> relRows = Utils.getExcelData(relsInputStream);
 //
@@ -228,15 +234,14 @@ public class RaisersEdgeToSalesforce {
 //    }
 //
 //    Map<String, SObject> constituentIdToAccount = new HashMap<>();
-//    // businesses only
-//    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!='' AND RecordTypeId='" + ORGANIZATION_RECORD_TYPE_ID + "'");
+//    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!=''");
 //    for (SObject account : accounts) {
 //      constituentIdToAccount.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
 //    }
 //
 //    // prevent duplicates
 //    Set<String> seenRelationships = new HashSet<>();
-//    List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe4__Contact__c, npe4__RelatedContact__c, FROM npe4__Relationship__c WHERE npe4__Contact__c!='' AND npe4__RelatedContact__c!=''");
+//    List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe4__Contact__c, npe4__RelatedContact__c FROM npe4__Relationship__c WHERE npe4__Contact__c!='' AND npe4__RelatedContact__c!=''");
 //    for (SObject relationship : relationships) {
 //      String from = (String) relationship.getField("npe4__Contact__c");
 //      String to = (String) relationship.getField("npe4__RelatedContact__c");
@@ -254,7 +259,7 @@ public class RaisersEdgeToSalesforce {
 //        String prefix = "IndCnRelInd_1_" + new DecimalFormat("00").format(j) + "_";
 //        String relatedId = relRow.get(prefix + "ID");
 //        String relationshipType = relRow.get(prefix + "Relation_Code");
-////        String relationshipNotes = relRow.get(prefix + "Notes");
+//        String relationshipNotes = relRow.get(prefix + "Notes");
 //
 //        if (constituentIdToContact.get(id) == null || Strings.isNullOrEmpty(relatedId) || constituentIdToContact.get(relatedId) == null) {
 //          continue;
@@ -270,8 +275,7 @@ public class RaisersEdgeToSalesforce {
 //        SObject relationship = new SObject("npe4__Relationship__c");
 //        relationship.setField("npe4__Contact__c", from);
 //        relationship.setField("npe4__RelatedContact__c", to);
-//        // TODO: missing in export
-////        relationship.setField("npe4__Description__c", relationshipNotes);
+//        relationship.setField("npe4__Description__c", relationshipNotes);
 //        relationship.setField("npe4__Status__c", "Current");
 //        relationship.setField("npe4__Type__c", relationshipType);
 //        sfdcClient.batchInsert(relationship);
@@ -283,7 +287,7 @@ public class RaisersEdgeToSalesforce {
 //        String prefix = "IndCnRelOrg_1_" + new DecimalFormat("00").format(j) + "_";
 //        String relatedId = relRow.get(prefix + "ID");
 //        String relationshipType = relRow.get(prefix + "Relation_Code");
-////        String relationshipNotes = relRow.get(prefix + "Notes");
+//        String relationshipNotes = relRow.get(prefix + "Notes");
 //
 //        if (constituentIdToContact.get(id) == null || Strings.isNullOrEmpty(relatedId) || constituentIdToAccount.get(relatedId) == null) {
 //          continue;
@@ -299,8 +303,7 @@ public class RaisersEdgeToSalesforce {
 //        SObject affiliation = new SObject("npe5__Affiliation__c");
 //        affiliation.setField("npe5__Contact__c", from);
 //        affiliation.setField("npe5__Organization__c", to);
-//        // TODO: missing in export
-////        affiliation.setField("npe5__Description__c", relationshipNotes);
+//        affiliation.setField("npe5__Description__c", relationshipNotes);
 //        affiliation.setField("npe5__Status__c", "Current");
 //        affiliation.setField("npe5__Role__c", relationshipType);
 //        sfdcClient.batchInsert(affiliation);
@@ -310,17 +313,79 @@ public class RaisersEdgeToSalesforce {
 //      }
 //    }
 //    sfdcClient.batchFlush();
-
-//    File giftsFile = new File("/home/brmeyer/Downloads/Gifts-with-Installments-v5-soft-credits.xlsx");
+//
+//    File giftsFile = new File("/home/brmeyer/Downloads/Gifts-with-Installments-v6-notes.xlsx");
 //    InputStream giftInputStream = new FileInputStream(giftsFile);
 //    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // ATTRIBUTES
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//    // TODO: Unique to attributes, needed for multiselect appends.
+//    Map<String, SObject> constituentIdToContact = new HashMap<>();
+//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c, Participation__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+//    for (SObject contact : contacts) {
+//      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
+//    }
+//
+//    File attributesFile = new File("/home/brmeyer/Downloads/Attributes-School-Involvement.CSV");
+//    InputStream attributesInputStream = new FileInputStream(attributesFile);
+//    List<Map<String, String>> attributeRows = Utils.getCsvData(attributesInputStream);
+//
+//    Map<String, List<Map<String, String>>> attributeRowsByConstituentId = new HashMap<>();
+//    for (int i = 0; i < attributeRows.size(); i++) {
+//      Map<String, String> attributeRow = attributeRows.get(i);
+//      if (!attributeRowsByConstituentId.containsKey(attributeRow.get("Constituent ID"))) {
+//        attributeRowsByConstituentId.put(attributeRow.get("Constituent ID"), new ArrayList<>());
+//      }
+//      attributeRowsByConstituentId.get(attributeRow.get("Constituent ID")).add(attributeRow);
+//    }
+//
+//    int count = 0;
+//    int total = attributeRowsByConstituentId.size();
+//    for (Map.Entry<String, List<Map<String, String>>> entry : attributeRowsByConstituentId.entrySet()) {
+//      count++;
+//      log.info("processing attributes for constituent {} of {}", count, total);
+//
+//      if (constituentIdToContact.containsKey(entry.getKey())) {
+//        SObject existingContact = constituentIdToContact.get(entry.getKey());
+//
+//        SObject updateContact = new SObject("Contact");
+//        updateContact.setId(existingContact.getId());
+//
+//        String participation = (String) existingContact.getField("Participation__c");
+//        List<String> participationDescriptions = new ArrayList<>();
+//
+//        for (Map<String, String> attributeRow : entry.getValue()) {
+//          String name = attributeRow.get("Constituent Specific Attributes School Involvement Description");
+//          String comments = attributeRow.get("Constituent Specific Attributes School Involvement Comments");
+//
+//          if (!Strings.isNullOrEmpty(comments)) {
+//            participationDescriptions.add(name + ": " + comments);
+//          }
+//
+//          if (Strings.isNullOrEmpty(participation)) {
+//            participation = name;
+//          } else if (!participation.contains(attributeRow.get("Constituent Specific Attributes School Involvement Description"))) {
+//            participation += ";" + name;
+//          }
+//          updateContact.setField("Participation__c", participation);
+//        }
+//
+//        updateContact.setField("Participation_Notes__c", String.join(" ;; ", participationDescriptions));
+//
+//        sfdcClient.batchUpdate(updateContact);
+//      }
+//    }
+//    sfdcClient.batchFlush();
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // CAMPAIGNS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // TODO: The following completely skips Bulk Upsert!
-
+//    // TODO: The following completely skips Bulk Upsert!
+//
 //    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
 //        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
 //
@@ -477,6 +542,33 @@ public class RaisersEdgeToSalesforce {
 //    }
 //    sfdcClient.batchFlush();
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // ACTIVITIES
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//    File activitiesFile = new File("/home/brmeyer/Downloads/Actions-v3-notepad-description.xlsx");
+//    InputStream activitiesInputStream = new FileInputStream(activitiesFile);
+//    List<Map<String, String>> activityRows = Utils.getExcelData(activitiesInputStream);
+//
+//    for (int i = 0; i < activityRows.size(); i++) {
+//      log.info("processing activity row {}", i + 2);
+//
+//      Map<String, String> activityRow = activityRows.get(i);
+//
+//      // TODO: EmailMessage for emails
+//      SObject task = new SObject("Task");
+//      task.setField("Type", ); // Act_Category
+//      task.setField("TaskSubtype", );
+//      task.setField("Subject", activityRow.get("Act_Description"));
+//      task.setField("Description", "Act_Notepad_Description");
+//      task.setField("WhoId", ); // Act_Cn_ID
+//      task.setField("Status", ); // Act_Completed and Act_Status
+//      task.setField("ActivityDate", ); // Act_Action_Date
+//      task.setField("CompletedDateTime", ); // Act_Completed_Date
+//
+//      sfdcClient.batchInsert(task);
+//    }
+
 //    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    // RECURRING DONATION
 //    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -565,9 +657,6 @@ public class RaisersEdgeToSalesforce {
 //    }
 //
 //    sfdcClient.batchFlush();
-//
-//    Map<String, String> giftIdToOpp = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Gift_ID__c FROM Opportunity WHERE Blackbaud_Gift_ID__c!=''").stream()
-//        .collect(Collectors.toMap(c -> (String) c.getField("Blackbaud_Gift_ID__c"), c -> c.getId()));
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // DONATIONS
@@ -575,97 +664,77 @@ public class RaisersEdgeToSalesforce {
 
 //    // TODO: The following completely skips Bulk Upsert!
 //
-//    counter = 1;
+//    int counter = 1;
+//
+//    Map<String, String> giftIdToOpp = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Gift_ID__c FROM Opportunity WHERE Blackbaud_Gift_ID__c!=''").stream()
+//        .collect(Collectors.toMap(c -> (String) c.getField("Blackbaud_Gift_ID__c"), c -> c.getId()));
 //
 //    // We order the batch inserts by donor ID, bunching them together per contact/account, which helps
 //    // prevent lock errors.
 //    Map<String, List<SObject>> oppInsertsByDonorId = new HashMap<>();
+//
+//    // TYPES: Gift-in-Kind, MG Pay-Cash, MG Pledge, Pay-Cash, Pledge, Pay-Stock/Property
+//
+//    // The first loop inserts pledges and all donations that are NOT payments towards pledges.
 //
 //    for (Map<String, String> giftRow : giftRows) {
 //      counter++;
 //
 //      log.info("processing donation row {}", counter);
 //
-//      // TODO: Gift-in-Kind, MG Pay-Cash, MG Pledge, Pay-Cash, Pledge, Stock/Property, Pay-Gift-in-Kind, Pay-Stock/Property
-//      // TODO: Pledges and Pay-Cash installments appear to share the same BB ID, so we should be able to use true
-    // Stock/Property: treated largely as cash, coming from SGO primarily (or other 3rd parties)
-    // Pay-Stock/Property may not be needed, no pledges
-    // Gift in Kind doesn't normally have amounts, up to donor to value it
-    // Purchases of ^^^ become Cash
-    // Pay-Gift-in-Kind not needed, no pledges
-    // MG pledge and cash largely modeled like normal pledge/cash, aimed at business account with soft credit to individual
-
-//      //  pledges and payments. That's (thankfully) not true of RDs.
-//      if (List.of("Cash", "Recurring Gift Pay-Cash").contains(giftRow.get("Gf_Type"))) {
-//        String id = giftRow.get("Gf_System_ID");
+//      if (List.of("Pay-Cash", "Pay-Stock/Property", "MG Pay-Cash").contains(giftRow.get("Gf_Type"))) {
+//        continue;
+//      }
 //
-//        if (giftIdToOpp.containsKey(id)) {
-//          continue;
-//        }
+//      if (giftIdToOpp.containsKey(giftRow.get("Gf_System_ID"))) {
+//        continue;
+//      }
 //
-//        SObject sfdcOpportunity = new SObject("Opportunity");
+//      SObject sfdcOpportunity = buildDonation(giftRow, campaignNameToId);
 //
-//        sfdcOpportunity.setField("RecordTypeId", DONATION_RECORD_TYPE_ID);
-//        sfdcOpportunity.setField("Blackbaud_Gift_ID__c", id);
-//        Double amount = null;
-//        if (!Strings.isNullOrEmpty(giftRow.get("Gf_Amount"))) {
-//          amount = Double.parseDouble(giftRow.get("Gf_Amount").replace("$", "").replace(",", ""));
-//        }
-//        sfdcOpportunity.setField("Amount", amount);
-//        sfdcOpportunity.setField("Name", giftRow.get("Gf_Description"));
-//        sfdcOpportunity.setField("Fund__c", giftRow.get("Gf_Fund"));
-//        sfdcOpportunity.setField("Payment_Method__c", giftRow.get("Gf_Pay_method"));
-//        sfdcOpportunity.setField("Reference__c", giftRow.get("Gf_Reference"));
-//        sfdcOpportunity.setField("StageName", "Closed Won");
-//        if (!Strings.isNullOrEmpty(giftRow.get("Gf_Date"))) {
-//          Date d = new SimpleDateFormat("MM/dd/yyyy").parse(giftRow.get("Gf_Date"));
-//          sfdcOpportunity.setField("CloseDate", d);
-//        }
-//
-//        String campaignId = null;
-//        String campaign = giftRow.get("Gf_Campaign");
-//        String appeal = giftRow.get("Gf_Appeal");
-//        if (!Strings.isNullOrEmpty(campaign) && !Strings.isNullOrEmpty(appeal)) {
-//          campaignId = campaignNameToId.get(campaign + ": " + appeal);
-//        } else if (!Strings.isNullOrEmpty(campaign)) {
-//          campaignId = campaignNameToId.get(campaign);
-//        } else if (!Strings.isNullOrEmpty(appeal)) {
-//          campaignId = campaignNameToId.get(appeal);
-//        }
-//        sfdcOpportunity.setField("CampaignId", campaignId);
-//
-////        sfdcOpportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
-//
-//        String constituentId = giftRow.get("Gf_CnBio_ID");
-//        SObject contact = constituentIdToContact.get(constituentId);
-//        SObject account = constituentIdToAccount.get(constituentId);
-//        String donorId;
-//        if (contact != null) {
-//          sfdcOpportunity.setField("AccountId", contact.getField("AccountId"));
-//          sfdcOpportunity.setField("ContactId", contact.getId());
-//          donorId = contact.getId();
-//        } else {
-//          if (account != null) {
-//            sfdcOpportunity.setField("AccountId", account.getId());
-//            donorId = account.getId();
+//      String constituentId = giftRow.get("Gf_CnBio_ID");
+//      SObject contact = constituentIdToContact.get(constituentId);
+//      SObject account = constituentIdToAccount.get(constituentId);
+//      String donorId;
+//      if (contact != null) {
+//        sfdcOpportunity.setField("AccountId", contact.getField("AccountId"));
+//        sfdcOpportunity.setField("ContactId", contact.getId());
+//        donorId = contact.getId();
+//      } else {
+//        if (account != null) {
+//          sfdcOpportunity.setField("AccountId", account.getId());
+//          donorId = account.getId();
+//        } else if (!Strings.isNullOrEmpty(giftRow.get("Gf_CnBio_Org_Name"))) {
+//          List<SObject> accountsByName = sfdcClient.getAccountsByName(giftRow.get("Gf_CnBio_Org_Name")).stream().filter(a -> giftRow.get("Gf_CnBio_Org_Name").equalsIgnoreCase((String) a.getField("Name"))).toList();
+//          if (accountsByName.size() == 1) {
+//            sfdcOpportunity.setField("AccountId", accountsByName.get(0).getId());
+//            donorId = accountsByName.get(0).getId();
+//          } else if (accountsByName.size() > 1) {
+//            log.warn("DUPLICATE CONSTITUENTS: {}", giftRow.get("Gf_CnBio_Org_Name"));
+//            continue;
 //          } else {
 //            log.warn("MISSING CONSTITUENT: {}", constituentId);
 //            continue;
 //          }
+//        } else {
+//          log.warn("MISSING CONSTITUENT: {}", constituentId);
+//          continue;
 //        }
-//
-//        if (!oppInsertsByDonorId.containsKey(donorId)) {
-//          oppInsertsByDonorId.put(donorId, new ArrayList<>());
-//        }
-//        oppInsertsByDonorId.get(donorId).add(sfdcOpportunity);
 //      }
+//
+//      if (!oppInsertsByDonorId.containsKey(donorId)) {
+//        oppInsertsByDonorId.put(donorId, new ArrayList<>());
+//      }
+//      oppInsertsByDonorId.get(donorId).add(sfdcOpportunity);
 //    }
 //
 //    counter = 1;
+//    int total = oppInsertsByDonorId.size();
 //    for (Map.Entry<String, List<SObject>> entry : oppInsertsByDonorId.entrySet()) {
+//      counter++;
+//      log.info("processing donor {} of {}", counter, total);
+//
 //      for (SObject opp : entry.getValue()) {
-//        counter++;
-//        log.info("processing donation row {}", counter);
 //
 //        // TODO: This really slows things down, but we're running into lock contention if a single contact/account's
 //        //  opportunities are spread across multiple inserts. We could optimize it by looking at current batch sizes
@@ -673,6 +742,64 @@ public class RaisersEdgeToSalesforce {
 //        sfdcClient.batchInsert(opp);
 //      }
 //      sfdcClient.batchFlush();
+//    }
+//    sfdcClient.batchFlush();
+//
+//    // then, loop through all payments towards pledges
+//
+//    counter = 1;
+//
+//    giftIdToOpp = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Gift_ID__c FROM Opportunity WHERE Blackbaud_Gift_ID__c!=''").stream()
+//        .collect(Collectors.toMap(c -> (String) c.getField("Blackbaud_Gift_ID__c"), c -> c.getId()));
+//
+//    Map<String, String> giftIdToPayment = sfdcClient.queryListAutoPaged("SELECT Id, npsp__Gateway_Payment_ID__c FROM npe01__OppPayment__c WHERE npe01__Paid__c=TRUE AND npsp__Gateway_Payment_ID__c!=''").stream()
+//        .collect(Collectors.toMap(c -> (String) c.getField("npsp__Gateway_Payment_ID__c"), c -> c.getId()));
+//
+//    for (Map<String, String> giftRow : giftRows) {
+//      counter++;
+//
+//      log.info("processing donation row {}", counter);
+//
+//      if (!List.of("Pledge", "MG Pledge").contains(giftRow.get("Gf_Type"))) {
+//        continue;
+//      }
+//
+//      if (!giftIdToOpp.containsKey(giftRow.get("Gf_System_ID"))) {
+//        System.out.println("MISSING PLEDGE: " + giftRow.get("Gf_System_ID"));
+//        continue;
+//      }
+//
+//      for (int i = 1; i <= 50; i++) {
+//        String prefix1 = "Gf_Ins_1_" + new DecimalFormat("00").format(i) + "_";
+//        String prefix2 = "Gf_Ins_1_" + new DecimalFormat("00").format(i) + "_Py_1_01_";
+//
+//        if (Strings.isNullOrEmpty(giftRow.get(prefix1 + "Date"))) {
+//          break;
+//        }
+//
+//        if (giftIdToPayment.containsKey(giftRow.get(prefix1 + "System_ID"))) {
+//          continue;
+//        }
+//
+//        SObject sfdcPayment = new SObject("npe01__OppPayment__c");
+//        sfdcPayment.setField("npe01__Opportunity__c", giftIdToOpp.get(giftRow.get("Gf_System_ID")));
+//        sfdcPayment.setField("npe01__Paid__c", true);
+//        sfdcPayment.setField("npe01__Payment_Method__c", giftRow.get(prefix2 + "Gf_Pay_method"));
+//        sfdcPayment.setField("npsp__Gateway_Payment_ID__c", giftRow.get(prefix1 + "System_ID"));
+//
+//        Double amount = null;
+//        if (!Strings.isNullOrEmpty(giftRow.get("Gf_Amount"))) {
+//          amount = Double.parseDouble(giftRow.get(prefix1 + "Amount").replace("$", "").replace(",", ""));
+//        }
+//        sfdcPayment.setField("npe01__Payment_Amount__c", amount);
+//
+//        if (!Strings.isNullOrEmpty(giftRow.get(prefix1 + "Date"))) {
+//          Date d = new SimpleDateFormat("MM/dd/yyyy").parse(giftRow.get(prefix1 + "Date"));
+//          sfdcPayment.setField("npe01__Payment_Date__c", d);
+//        }
+//
+//        sfdcClient.batchInsert(sfdcPayment);
+//      }
 //    }
 //    sfdcClient.batchFlush();
 
@@ -692,63 +819,62 @@ public class RaisersEdgeToSalesforce {
 //
 //      log.info("processing soft credit row {}", counter);
 //
-//      // TODO: Gift-in-Kind, MG Pay-Cash, MG Pledge, Pay-Cash, Pledge, Stock/Property, Pay-Gift-in-Kind, Pay-Stock/Property
-//      if (List.of("Cash", "Recurring Gift Pay-Cash").contains(giftRow.get("Gf_Type"))) {
-//        String id = giftRow.get("Gf_System_ID");
+//      String id = giftRow.get("Gf_System_ID");
 //
-//        if (softCreditGiftIds.contains(id)) {
-//          continue;
-//        }
+//      if (softCreditGiftIds.contains(id)) {
+//        continue;
+//      }
 //
-//        if (!giftIdToOpp.containsKey(id)) {
-//          log.info("missing gift {}", id);
-//          continue;
-//        }
+//      if (!giftIdToOpp.containsKey(id)) {
+//        log.info("missing gift {}", id);
+//        continue;
+//      }
 //
-//        // if Gf_SfCrdt_1_02_Amount, partial soft credits (do 1-5)
-//        // else, standard opp contact role with Soft Credit type
-//        if (!Strings.isNullOrEmpty(giftRow.get("Gf_SfCrdt_1_02_Amount"))) {
-//          // more than one soft credit, so we'll need the partial setup
-//          for (int i = 1; i <= 5; i++) {
-//            String prefix = "Gf_SfCrdt_1_" + new DecimalFormat("00").format(i) + "_";
-//            String constituentId = giftRow.get(prefix + "Constit_ID");
-//            String amount = giftRow.get(prefix + "Amount");
-//            if (!Strings.isNullOrEmpty(amount)) {
-//              if (!constituentIdToContact.containsKey(constituentId)) {
-//                log.info("missing constituent {}", constituentId);
-//                continue;
-//              }
-//
-//              amount = amount.replace("$", "").replaceAll(",", "");
-//
-//              SObject partialSoftCredit = new SObject("npsp__Partial_Soft_Credit__c");
-//              partialSoftCredit.setField("npsp__Opportunity__c", giftIdToOpp.get(id));
-//              // TODO: Are any of the soft credits going to Accounts? Would need to use npsp__Account_Soft_Credit__c obj.
-//              partialSoftCredit.setField("npsp__Contact__c", constituentIdToContact.get(constituentId).getId());
-//              partialSoftCredit.setField("npsp__Amount__c", amount);
-//              sfdcClient.batchInsert(partialSoftCredit);
+//      // if Gf_SfCrdt_1_02_Amount, partial soft credits (do 1-5)
+//      // else, standard opp contact role with Soft Credit type
+//      if (!Strings.isNullOrEmpty(giftRow.get("Gf_SfCrdt_1_02_Amount"))) {
+//        // more than one soft credit, so we'll need the partial setup
+//        for (int i = 1; i <= 5; i++) {
+//          String prefix = "Gf_SfCrdt_1_" + new DecimalFormat("00").format(i) + "_";
+//          String constituentId = giftRow.get(prefix + "Constit_ID");
+//          String amount = giftRow.get(prefix + "Amount");
+//          if (!Strings.isNullOrEmpty(amount)) {
+//            if (!constituentIdToContact.containsKey(constituentId)) {
+//              log.info("missing constituent {}", constituentId);
+//              continue;
 //            }
-//          }
-//        } else if (!Strings.isNullOrEmpty(giftRow.get("Gf_SfCrdt_1_01_Amount"))) {
-//          if (!constituentIdToContact.containsKey(giftRow.get("Gf_SfCrdt_1_01_Constit_ID"))) {
-//            log.info("missing constituent {}", giftRow.get("Gf_SfCrdt_1_01_Constit_ID"));
-//            continue;
-//          }
 //
-//          SObject contactRole = new SObject("OpportunityContactRole");
-//          contactRole.setField("OpportunityId", giftIdToOpp.get(id));
-//          // TODO: Are any of the soft credits going to Accounts? Would need to use npsp__Account_Soft_Credit__c obj.
-//          contactRole.setField("ContactId", constituentIdToContact.get(giftRow.get("Gf_SfCrdt_1_01_Constit_ID")).getId());
-//          contactRole.setField("IsPrimary", false);
-//          contactRole.setField("Role", "Soft Credit");
-//          sfdcClient.batchInsert(contactRole);
+//            amount = amount.replace("$", "").replaceAll(",", "");
+//
+//            SObject partialSoftCredit = new SObject("npsp__Partial_Soft_Credit__c");
+//            partialSoftCredit.setField("npsp__Opportunity__c", giftIdToOpp.get(id));
+//            // TODO: Are any of the soft credits going to Accounts? Would need to use npsp__Account_Soft_Credit__c obj.
+//            partialSoftCredit.setField("npsp__Contact__c", constituentIdToContact.get(constituentId).getId());
+//            partialSoftCredit.setField("npsp__Amount__c", amount);
+//            sfdcClient.batchInsert(partialSoftCredit);
+//          }
 //        }
+//      } else if (!Strings.isNullOrEmpty(giftRow.get("Gf_SfCrdt_1_01_Amount"))) {
+//        if (!constituentIdToContact.containsKey(giftRow.get("Gf_SfCrdt_1_01_Constit_ID"))) {
+//          log.info("missing constituent {}", giftRow.get("Gf_SfCrdt_1_01_Constit_ID"));
+//          continue;
+//        }
+//
+//        SObject contactRole = new SObject("OpportunityContactRole");
+//        contactRole.setField("OpportunityId", giftIdToOpp.get(id));
+//        // TODO: Are any of the soft credits going to Accounts? Would need to use npsp__Account_Soft_Credit__c obj.
+//        contactRole.setField("ContactId", constituentIdToContact.get(giftRow.get("Gf_SfCrdt_1_01_Constit_ID")).getId());
+//        contactRole.setField("IsPrimary", false);
+//        contactRole.setField("Role", "Soft Credit");
+//        sfdcClient.batchInsert(contactRole);
 //      }
 //    }
 //    sfdcClient.batchFlush();
+
+
   }
 
-  private static void migrate(Map<String, String> row, String householdId, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows, List<String> seenEmails) {
+  private static void migrateConstituent(Map<String, String> row, String householdId, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows, List<String> seenEmails) {
 
     // these eventually get combined, but separating them so that (as an ex) spouses can repurpose the account
     // data we've already parsed
@@ -895,20 +1021,6 @@ public class RaisersEdgeToSalesforce {
       contactData.put("Contact Custom Student_Status__c", row.get("CnPrAl_Status"));
     }
 
-    // Opt out / inactive fields
-    if ("Yes".equalsIgnoreCase(row.get("CnBio_Requests_no_e-mail"))) {
-      contactData.put("Contact Custom HasOptedOutOfEmail", "true");
-    }
-    if ("Yes".equalsIgnoreCase(row.get("CnBio_Inactive"))) {
-      contactData.put("Contact Custom BB_CnBio_Inactive__c", "true");
-    }
-    if ("Yes".equalsIgnoreCase(row.get("CnBio_Solicitor_Inactive"))) {
-      contactData.put("Contact Custom BB_CnBio_Solicitor_Inactive__c", "true");
-    }
-    if ("Yes".equalsIgnoreCase(row.get("CnBio_Anonymous"))) {
-      contactData.put("Contact Custom BB_CnBio_Anonymous__c", "true");
-    }
-
     // Address 1 -> Contact
     // Possible types: {'Winter', 'Summer', 'Main', 'Home', 'Previous address', 'Home 2', 'Business', 'Business/College'}
     // Types are not exclusive, so both could be one type, a mix, or neither
@@ -979,30 +1091,49 @@ public class RaisersEdgeToSalesforce {
       }
     }
     String cnTypeCodesStr = String.join(";", cnTypeCodes);
+    boolean isCurrentStudent = cnTypeCodesStr.contains("Current Student");
     contactData.put("Contact Custom Type__c", cnTypeCodesStr);
+
+    // Opt out / inactive fields
+    if (!isCurrentStudent) { // current students must receive comms, especially Daily Bulletin
+      if ("Yes".equalsIgnoreCase(row.get("CnBio_Requests_no_e-mail"))) {
+        contactData.put("Contact Custom HasOptedOutOfEmail", "true");
+      }
+      if ("Yes".equalsIgnoreCase(row.get("CnBio_Inactive"))) {
+        contactData.put("Contact Custom BB_CnBio_Inactive__c", "true");
+      }
+      if ("Yes".equalsIgnoreCase(row.get("CnBio_Solicitor_Inactive"))) {
+        contactData.put("Contact Custom BB_CnBio_Solicitor_Inactive__c", "true");
+      }
+      if ("Yes".equalsIgnoreCase(row.get("CnBio_Anonymous"))) {
+        contactData.put("Contact Custom BB_CnBio_Anonymous__c", "true");
+      }
+    }
 
     // Solicit codes
     // Possible values: 'Do not  mail', 'Removed by request', 'Do not phone', 'Do not send Mass Appeal', 'Do Not Send Stelter Mailings', 'Do Not Contact/Solicit', 'Send All Information', 'Do Not Mail - Out of the Country', 'Do Not Send "Cadets"', 'Send Publications only'
-    for (int i = 1; i <= 5; i++) {
-      String field = "CnSolCd_1_0" + i + "_Solicit_Code";
-      if (!Strings.isNullOrEmpty(row.get(field))) {
-        String code = row.get(field);
-        if ("Do Not Contact/Solicit".equals(code) || "Removed by request".equals(code)) {
-          contactData.put("Contact Custom npsp__Do_Not_Contact__c", "true");
-          contactData.put("Contact Custom HasOptedOutOfEmail", "true");
-          contactData.put("Contact Custom Do_Not_Mail__c", "true");
-        } else if ("Do not  mail".equals(code) || "Do Not Mail - Out of the Country".equals(code)) {
-          contactData.put("Contact Custom Do_Not_Mail__c", "true");
-        } else if ("Do not phone".equals(code)) {
-          contactData.put("DoNotCall", "true");
-        } else if ("Send Publications only".equals(code)) {
-          contactData.put("Contact Custom Send_Publications_Only__c", "true");
-        } else if ("Do not send Mass Appeal".equals(code)) {
-          contactData.put("Contact Custom Do_Not_Send_Mass_Appeal__c", "true");
-        } else if ("Do Not Send Stelter Mailings".equals(code)) {
-          contactData.put("Contact Custom Do_Not_Send_Stelter_Mailings__c", "true");
-        } else if ("Do Not Send \"Cadets\"".equals(code)) {
-          contactData.put("Contact Custom Do_Not_Send_Cadets__c", "true");
+    if (!isCurrentStudent) { // current students must receive comms, especially Daily Bulletin
+      for (int i = 1; i <= 5; i++) {
+        String field = "CnSolCd_1_0" + i + "_Solicit_Code";
+        if (!Strings.isNullOrEmpty(row.get(field))) {
+          String code = row.get(field);
+          if ("Do Not Contact/Solicit".equals(code) || "Removed by request".equals(code)) {
+            contactData.put("Contact Custom npsp__Do_Not_Contact__c", "true");
+            contactData.put("Contact Custom HasOptedOutOfEmail", "true");
+            contactData.put("Contact Custom Do_Not_Mail__c", "true");
+          } else if ("Do not  mail".equals(code) || "Do Not Mail - Out of the Country".equals(code)) {
+            contactData.put("Contact Custom Do_Not_Mail__c", "true");
+          } else if ("Do not phone".equals(code)) {
+            contactData.put("DoNotCall", "true");
+          } else if ("Send Publications only".equals(code)) {
+            contactData.put("Contact Custom Send_Publications_Only__c", "true");
+          } else if ("Do not send Mass Appeal".equals(code)) {
+            contactData.put("Contact Custom Do_Not_Send_Mass_Appeal__c", "true");
+          } else if ("Do Not Send Stelter Mailings".equals(code)) {
+            contactData.put("Contact Custom Do_Not_Send_Stelter_Mailings__c", "true");
+          } else if ("Do Not Send \"Cadets\"".equals(code)) {
+            contactData.put("Contact Custom Do_Not_Send_Cadets__c", "true");
+          }
         }
       }
     }
@@ -1049,5 +1180,58 @@ public class RaisersEdgeToSalesforce {
         secondaryRows.add(data);
       }
     }
+  }
+
+  private static SObject buildDonation(Map<String, String> giftRow, Map<String, String> campaignNameToId) throws ParseException {
+    SObject sfdcOpportunity = new SObject("Opportunity");
+    if ("Gift-in-Kind".equalsIgnoreCase(giftRow.get("Gf_Type"))) {
+      sfdcOpportunity.setField("RecordTypeId", GIFTINKIND_RECORD_TYPE_ID);
+    } else if (giftRow.get("Gf_Type").startsWith("MG ")) {
+      sfdcOpportunity.setField("RecordTypeId", MATCHINGGIFT_RECORD_TYPE_ID);
+    } else {
+      sfdcOpportunity.setField("RecordTypeId", DONATION_RECORD_TYPE_ID);
+    }
+
+    if ("Pledge".equalsIgnoreCase(giftRow.get("Gf_Type")) || "MG Pledge".equalsIgnoreCase(giftRow.get("Gf_Type"))) {
+      sfdcOpportunity.setField("StageName", "Pledged");
+    } else {
+      sfdcOpportunity.setField("StageName", "Closed Won");
+    }
+
+    sfdcOpportunity.setField("Blackbaud_Gift_ID__c", giftRow.get("Gf_System_ID"));
+    Double amount = null;
+    if (!Strings.isNullOrEmpty(giftRow.get("Gf_Amount"))) {
+      amount = Double.parseDouble(giftRow.get("Gf_Amount").replace("$", "").replace(",", ""));
+    }
+    sfdcOpportunity.setField("Amount", amount);
+    sfdcOpportunity.setField("Name", giftRow.get("Gf_Description"));
+    sfdcOpportunity.setField("Fund__c", giftRow.get("Gf_Fund"));
+    sfdcOpportunity.setField("Payment_Method__c", giftRow.get("Gf_Pay_method"));
+    sfdcOpportunity.setField("Reference__c", giftRow.get("Gf_Reference"));
+    sfdcOpportunity.setField("Type", giftRow.get("Gf_Type"));
+    if (!Strings.isNullOrEmpty(giftRow.get("Gf_Date"))) {
+      Date d = new SimpleDateFormat("MM/dd/yyyy").parse(giftRow.get("Gf_Date"));
+      sfdcOpportunity.setField("CloseDate", d);
+    }
+
+    if (!Strings.isNullOrEmpty(giftRow.get("Gf_Note_1_01_Actual_Notes"))) {
+      sfdcOpportunity.setField("Description", giftRow.get("Gf_Note_1_01_Actual_Notes"));
+    }
+
+    String campaignId = null;
+    String campaign = giftRow.get("Gf_Campaign");
+    String appeal = giftRow.get("Gf_Appeal");
+    if (!Strings.isNullOrEmpty(campaign) && !Strings.isNullOrEmpty(appeal)) {
+      campaignId = campaignNameToId.get(campaign + ": " + appeal);
+    } else if (!Strings.isNullOrEmpty(campaign)) {
+      campaignId = campaignNameToId.get(campaign);
+    } else if (!Strings.isNullOrEmpty(appeal)) {
+      campaignId = campaignNameToId.get(appeal);
+    }
+    sfdcOpportunity.setField("CampaignId", campaignId);
+
+//        sfdcOpportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
+
+    return sfdcOpportunity;
   }
 }
