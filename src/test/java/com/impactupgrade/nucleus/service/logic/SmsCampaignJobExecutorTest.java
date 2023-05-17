@@ -1,5 +1,8 @@
 package com.impactupgrade.nucleus.service.logic;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.impactupgrade.nucleus.AbstractMockTest;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Job;
@@ -17,6 +20,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,8 +79,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.startedAt = Instant.now();
     jobDao.create(job);
 
-    CrmContact contact1 = crmContact("contact1", "EN");
-    CrmContact contact2 = crmContact("contact2", "EN");
+    CrmContact contact1 = crmContact("contact1", "+12345678901", "EN");
+    CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");
     when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2));
 
     service.processJobSchedules(Instant.now());
@@ -86,8 +90,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     List<JobProgress> jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
   }
 
   @Test
@@ -167,8 +171,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     jobDao.create(job);
 
     List<CrmContact> contacts = new ArrayList<>();
-    contacts.add(crmContact("contact1", "EN"));
-    contacts.add(crmContact("contact2", "ES"));
+    contacts.add(crmContact("contact1", "+12345678901", "EN"));
+    contacts.add(crmContact("contact2", "+12345678902", "ES"));
     lenient().when(crmServiceMock.getContactsFromList("list1234")).thenReturn(contacts);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -240,11 +244,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
     String contact1ProgressPayload = jobProgresses.get(0).payload.toString();
     assertTrue(contact1ProgressPayload.contains("\"lastMessage\":1,"));
     assertTrue(contact1ProgressPayload.contains("\"sentMessages\":[1]"));
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
     String contact2ProgressPayload = jobProgresses.get(1).payload.toString();
     assertTrue(contact2ProgressPayload.contains("\"lastMessage\":1,"));
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1]"));
@@ -266,9 +270,9 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -288,9 +292,9 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,11 +315,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
     contact1ProgressPayload = jobProgresses.get(0).payload.toString();
     assertTrue(contact1ProgressPayload.contains("\"lastMessage\":2,"));
     assertTrue(contact1ProgressPayload.contains("\"sentMessages\":[1,2]"));
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
     contact2ProgressPayload = jobProgresses.get(1).payload.toString();
     assertTrue(contact2ProgressPayload.contains("\"lastMessage\":2,"));
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1,2]"));
@@ -327,7 +331,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     // RESULT: contacts 1-2 don't receive anything, contact 3 doesn't either (instead starts on the next window)
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    contacts.add(crmContact("contact3", "EN"));
+    contacts.add(crmContact("contact3", "+12345678903", "EN"));
 
     now = originalNow.plus(5, ChronoUnit.DAYS);
 
@@ -340,9 +344,9 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -363,15 +367,15 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(3, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
     contact1ProgressPayload = jobProgresses.get(0).payload.toString();
     assertTrue(contact1ProgressPayload.contains("\"lastMessage\":3,"));
     assertTrue(contact1ProgressPayload.contains("\"sentMessages\":[1,2,3]"));
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
     contact2ProgressPayload = jobProgresses.get(1).payload.toString();
     assertTrue(contact2ProgressPayload.contains("\"lastMessage\":3,"));
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1,2,3]"));
-    assertEquals("contact3", jobProgresses.get(2).targetId);
+    assertEquals("12345678903", jobProgresses.get(2).targetId);
     String contact3ProgressPayload = jobProgresses.get(2).payload.toString();
     if (sequenceOrder == JobSequenceOrder.BEGINNING) {
       assertTrue(contact3ProgressPayload.contains("\"lastMessage\":1,"));
@@ -398,11 +402,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(3, jobProgresses.size());
-    assertEquals("contact1", jobProgresses.get(0).targetId);
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("contact2", jobProgresses.get(1).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
-    assertEquals("contact3", jobProgresses.get(2).targetId);
+    assertEquals("12345678903", jobProgresses.get(2).targetId);
     assertEquals(contact3ProgressPayload, jobProgresses.get(2).payload.toString());
   }
 
@@ -474,8 +478,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     jobDao.create(job);
 
     List<CrmContact> contacts = new ArrayList<>();
-    contacts.add(crmContact("contact1", "EN"));
-    contacts.add(crmContact("contact2", "ES"));
+    contacts.add(crmContact("contact1", "+12345678901", "EN"));
+    contacts.add(crmContact("contact2", "+12345678902", "ES"));
     lenient().when(crmServiceMock.getContactsFromList("list1234")).thenReturn(contacts);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -597,7 +601,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     // RESULT: nothing new should fire
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    contacts.add(crmContact("contact3", "EN"));
+    contacts.add(crmContact("contact3", "+12345678903", "EN"));
 
     now = originalNow.plus(2, ChronoUnit.DAYS).minus(5, ChronoUnit.MINUTES);
     service.processJobSchedules(now);
@@ -641,9 +645,97 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     assertEquals(0, jobProgresses.size());
   }
 
-  private CrmContact crmContact(String id, String lang) {
+  @Test
+  public void testTargetIdChange() throws Exception {
+    Environment env = new DefaultEnvironment();
+    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
+    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
+    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
+
+    ScheduledJobService service = new ScheduledJobService(env);
+
+    Organization org = new Organization();
+    org.setId(1);
+    org.setNucleusApiKey(env.getConfig().apiKey);
+    organizationDao.create(org);
+
+    Job job = new Job();
+    job.org = org;
+    job.jobType = JobType.SMS_CAMPAIGN;
+    job.status = JobStatus.ACTIVE;
+    job.scheduleFrequency = JobFrequency.DAILY;
+    job.scheduleInterval = 1;
+    job.scheduleStart = Instant.now();;
+    job.sequenceOrder = JobSequenceOrder.BEGINNING;
+    job.jobProgresses = List.of();
+    job.payload = MAPPER.readTree("""
+        {
+          "crm_list": "list1234",
+          "messages": [
+            {
+              "id": 1,
+              "seq": 1,
+              "languages": {
+                "EN": {"message": "This is message number 1."},
+                "ES": {"message": "Este es el mensaje número 1."}
+              }
+            },
+            {
+              "id": 2,
+              "seq": 2,
+              "languages": {
+                "EN": {"message": "This is message number 2."},
+                "ES": {"message": "Este es el mensaje número 2."}
+              }
+            },
+            {
+              "id": 3,
+              "seq": 3,
+              "languages": {
+                "EN": {"message": "This is message number 3."},
+                "ES": {"message": "Este es el mensaje número 3."}
+              }
+            }
+          ]
+        }
+    """);
+    job.traceId = UUID.randomUUID().toString();
+    job.startedBy = "IT test";
+    job.jobName = "Test job";
+    job.originatingPlatform = "IT test";
+    job.startedAt = Instant.now();
+    jobDao.create(job);
+
+    JobProgress jobProgress = new JobProgress();
+    jobProgress.job = job;
+    // purposefully use the CRM contact ID as the target
+    jobProgress.targetId = "contact1";
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    jobProgress.payload = objectMapper.createObjectNode();
+    ((ObjectNode) jobProgress.payload).put("lastMessage", 1);
+    if (Objects.isNull(jobProgress.payload.findValue("sentMessages"))) {
+      ((ObjectNode) jobProgress.payload).putArray("sentMessages");
+    }
+    ((ArrayNode) jobProgress.payload.findValue("sentMessages")).add(1);
+    jobProgressDao.create(jobProgress);
+
+    List<CrmContact> contacts = new ArrayList<>();
+    contacts.add(crmContact("contact1", "+12345678901", "EN"));
+    contacts.add(crmContact("contact2", "+12345678902", "ES"));
+    lenient().when(crmServiceMock.getContactsFromList("list1234")).thenReturn(contacts);
+
+    service.processJobSchedules(Instant.now());
+
+    List<JobProgress> jobProgresses = jobProgressDao.getAll();
+    assertEquals(2, jobProgresses.size());
+    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("12345678902", jobProgresses.get(1).targetId);
+  }
+
+  private CrmContact crmContact(String id, String mobilePhone, String lang) {
     CrmContact crmContact = new CrmContact(id);
-    crmContact.mobilePhone = "+12345678900";
+    crmContact.mobilePhone = mobilePhone;
     crmContact.language = lang;
     return crmContact;
   }
