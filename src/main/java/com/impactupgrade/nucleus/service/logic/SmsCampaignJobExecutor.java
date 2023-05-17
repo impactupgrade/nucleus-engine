@@ -111,7 +111,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         //  support non-CRM sources. Keeping this for now as a fallback for existing campaigns, as of May 2023.
         //  Remove in the future!
         if (jobProgress == null) {
-          log.warn("Failed to get job progress using target id {}. Trying to find job progress using contact id {}...", targetId, crmContact.id);
+          log.info("Failed to get job progress using target id {}. Trying to find job progress using contact id {}...", targetId, crmContact.id);
           jobProgress = progressesByContacts.get(crmContact.id);
         }
 
@@ -167,9 +167,10 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         }
 
         updateJobProgress(jobProgress.payload, nextMessage);
+
         // Switch to new target id (phone number) instead of contact id
         if (!StringUtils.equalsIgnoreCase(jobProgress.targetId, targetId)) {
-          log.warn("Updating job progress target id from {} to {}...", crmContact.id, targetId);
+          log.info("Updating job progress target id from {} to {}...", crmContact.id, targetId);
           jobProgress.targetId = targetId;
         }
 
