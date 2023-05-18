@@ -42,18 +42,4 @@ public class TwilioTextingService implements TextingService {
     return null;
   }
 
-  @Override
-  public void optIn(String phone) throws Exception {
-
-  }
-
-  @Override
-  public void optOut(String phone) throws Exception {
-
-  }
-
-  @Override
-  public void optOut(CrmContact crmContact) throws Exception {
-
-  }
 }

@@ -16,21 +16,6 @@ public class MessageBirdTextingService implements TextingService {
   }
 
   @Override
-  public void optIn(String phone) throws Exception {
-
-  }
-
-  @Override
-  public void optOut(String phone) throws Exception {
-
-  }
-
-  @Override
-  public void optOut(CrmContact crmContact) throws Exception {
-
-  }
-
-  @Override
   public String name() {
     return null;
   }

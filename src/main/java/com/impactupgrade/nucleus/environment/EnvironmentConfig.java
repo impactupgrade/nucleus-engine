@@ -237,6 +237,11 @@ public class EnvironmentConfig implements Serializable {
     public String subdomain = "";
   }
 
+  public MessageBird messageBird = new MessageBird();
+  public static class MessageBird extends Platform {
+    public String accesKey = "";
+  }
+
   public Twilio twilio = new Twilio();
 
   public static class Twilio extends Platform {

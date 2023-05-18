@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
+import com.impactupgrade.nucleus.client.MessageBirdClient;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
@@ -250,6 +251,8 @@ public class Environment {
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
+
+  public MessageBirdClient messageBirdClient() { return  new MessageBirdClient(this); }
 
   // job logging services
 
