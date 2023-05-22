@@ -34,7 +34,7 @@ public abstract class AbstractEmailService implements EmailService {
     if (crmContactIds.isEmpty()) {
       return Collections.emptyMap();
     }
-    return env.primaryCrmService().getActiveCampaignsByContactIds(crmContactIds);
+    return env.primaryCrmService().getEmailCampaignsByContactIds(crmContactIds);
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,

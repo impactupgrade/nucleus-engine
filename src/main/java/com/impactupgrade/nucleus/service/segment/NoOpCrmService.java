@@ -188,7 +188,7 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
+  public Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
     return Collections.emptyMap();
   }
 

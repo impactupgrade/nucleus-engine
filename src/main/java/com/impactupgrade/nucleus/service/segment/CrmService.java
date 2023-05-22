@@ -187,7 +187,7 @@ public interface CrmService extends SegmentService {
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
   // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
   // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
-  Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception;
+  Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Users

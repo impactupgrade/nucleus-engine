@@ -503,7 +503,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getActiveCampaignsByContactIds(List<String> contactIds) throws Exception {
+  public Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Collections.emptyMap();
   }

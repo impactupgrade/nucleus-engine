@@ -195,8 +195,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(names, "Name", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields);
   }
 
-  // See note on CrmService.getActiveCampaignsByContactIds. Retrieve in batches to preserve API limits!
-  public List<SObject> getActiveCampaignsByContactIds(List<String> contactIds) throws ConnectionException, InterruptedException {
+  // See note on CrmService.getEmailCampaignsByContactIds. Retrieve in batches to preserve API limits!
+  public List<SObject> getEmailCampaignsByContactIds(List<String> contactIds) throws ConnectionException, InterruptedException {
     // TODO: Note the use of CampaignMember -- currently need the name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
 
     List<String> page;
@@ -211,10 +211,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     String contactIdsJoin = page.stream().map(contactId -> "'" + contactId + "'").collect(Collectors.joining(","));
     String query = "select ContactId, Campaign.Name from CampaignMember where ContactId in (" + contactIdsJoin + ") and Campaign.IsActive=true";
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailCampaignInclusion)) {
+      query += " AND Campaign." + env.getConfig().salesforce.fieldDefinitions.emailCampaignInclusion + "=TRUE";
+    }
     List<SObject> results = queryListAutoPaged(query);
 
     if (!more.isEmpty()) {
-      results.addAll(getActiveCampaignsByContactIds(more));
+      results.addAll(getEmailCampaignsByContactIds(more));
     }
 
     return results;
