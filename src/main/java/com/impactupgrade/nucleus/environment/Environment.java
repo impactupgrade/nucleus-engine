@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
+import com.impactupgrade.nucleus.client.MessageBirdClient;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
@@ -28,6 +29,7 @@ import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
+import com.impactupgrade.nucleus.service.segment.TextingService;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -164,6 +166,10 @@ public class Environment {
     return crmService(getConfig().crmMessaging);
   }
 
+  public TextingService textingService(){
+    return segmentService(getConfig().textingService, TextingService.class);
+  }
+
   public PaymentGatewayService paymentGatewayService(String name) {
     return segmentService(name, PaymentGatewayService.class);
   }
@@ -245,6 +251,8 @@ public class Environment {
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
+
+  public MessageBirdClient messageBirdClient() { return  new MessageBirdClient(this); }
 
   // job logging services
 

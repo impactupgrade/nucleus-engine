@@ -47,6 +47,8 @@ public class EnvironmentConfig implements Serializable {
 
   public String emailTransactional = "";
 
+  public String textingService = "";
+
   public static class Platform implements Serializable {
     // if keys
     public String publicKey = "";
@@ -233,6 +235,11 @@ public class EnvironmentConfig implements Serializable {
 
   public static class Donorwrangler extends Platform {
     public String subdomain = "";
+  }
+
+  public MessageBird messageBird = new MessageBird();
+  public static class MessageBird extends Platform {
+    public String accesKey = "";
   }
 
   public Twilio twilio = new Twilio();

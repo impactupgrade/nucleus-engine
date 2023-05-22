@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.TextingService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;
@@ -25,12 +26,11 @@ public class MessagingService {
   private static final Logger log = LogManager.getLogger(MessagingService.class);
 
   private final Environment env;
-  private final TwilioClient twilioClient;
   private final CrmService crmService;
-
+  private final TextingService textingService;
   public MessagingService(Environment env) {
     this.env = env;
-    twilioClient = env.twilioClient();
+    textingService = env.textingService();
     crmService = env.messagingCrmService();
   }
 
@@ -41,11 +41,7 @@ public class MessagingService {
 
       if (!Strings.isNullOrEmpty(pn)) {
         String personalizedMessage = personalizeMessage(message, crmContact);
-
-        Message twilioMessage = twilioClient.sendMessage(pn, sender, personalizedMessage, null);
-
-        log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
-            twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+        textingService.sendMessage(personalizedMessage, crmContact, pn, sender);
       }
     } catch (ApiException e1) {
       if (e1.getCode() == 21610) {
