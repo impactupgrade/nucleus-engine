@@ -381,14 +381,18 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
-    addContactToCampaign(crmContact.id, campaignId);
+    addContactToCampaign(crmContact.id, campaignId, false);
   }
 
-  protected void addContactToCampaign(String contactId, String campaignId) throws Exception {
+  protected void addContactToCampaign(String contactId, String campaignId, boolean batch) throws Exception {
     SObject campaignMember = new SObject("CampaignMember");
     campaignMember.setField("ContactId", contactId);
     campaignMember.setField("CampaignId", campaignId);
-    sfdcClient.insert(campaignMember);
+    if (batch) {
+      sfdcClient.batchInsert(campaignMember);
+    } else {
+      sfdcClient.insert(campaignMember);
+    }
   }
 
   protected void setContactFields(SObject contact, CrmContact crmContact) {
@@ -990,12 +994,22 @@ public class SfdcCrmService implements CrmService {
     }
 
     Set<String> seenRelationships = new HashSet<>();
-    List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe5__Contact__c, npe5__Organization__c FROM npe5__Affiliation__c WHERE npe5__Contact__c!='' AND npe5__Organization__c!=''");
-    for (SObject relationship : relationships) {
-      String from = (String) relationship.getField("npe5__Contact__c");
-      String to = (String) relationship.getField("npe5__Organization__c");
-      seenRelationships.add(from + "::" + to);
-      seenRelationships.add(to + "::" + from);
+    if (env.getConfig().salesforce.npsp) {
+      List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe5__Contact__c, npe5__Organization__c FROM npe5__Affiliation__c WHERE npe5__Contact__c!='' AND npe5__Organization__c!=''");
+      for (SObject relationship : relationships) {
+        String from = (String) relationship.getField("npe5__Contact__c");
+        String to = (String) relationship.getField("npe5__Organization__c");
+        seenRelationships.add(from + "::" + to);
+        seenRelationships.add(to + "::" + from);
+      }
+    } else {
+      List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT ContactId, AccountId FROM AccountContactRelation WHERE ContactId!='' AND AccountId!=''");
+      for (SObject relationship : relationships) {
+        String from = (String) relationship.getField("ContactId");
+        String to = (String) relationship.getField("AccountId");
+        seenRelationships.add(from + "::" + to);
+        seenRelationships.add(to + "::" + from);
+      }
     }
 
     // we use by-id maps for batch inserts/updates, since the sheet can contain duplicate contacts/accounts
@@ -1266,18 +1280,18 @@ public class SfdcCrmService implements CrmService {
       if (contact != null) {
         for (String campaignId : importEvent.contactCampaignIds) {
           if (!Strings.isNullOrEmpty(campaignId)) {
-            addContactToCampaign(contact.getId(), campaignId);
+            addContactToCampaign(contact.getId(), campaignId, true);
           }
         }
 
         for (String campaignName : importEvent.contactCampaignNames) {
           if (!Strings.isNullOrEmpty(campaignName)) {
             if (campaignNameToId.containsKey(campaignName.toLowerCase(Locale.ROOT))) {
-              addContactToCampaign(contact.getId(), campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)));
+              addContactToCampaign(contact.getId(), campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)), true);
             } else {
               String campaignId = insertCampaign(new CrmCampaign(null, campaignName));
               campaignNameToId.put(campaignId, campaignName);
-              addContactToCampaign(contact.getId(), campaignId);
+              addContactToCampaign(contact.getId(), campaignId, true);
             }
           }
         }
@@ -1573,8 +1587,10 @@ public class SfdcCrmService implements CrmService {
     contact.setField("MailingCountry", importEvent.contactMailingCountry);
     contact.setField("HomePhone", importEvent.contactHomePhone);
     contact.setField("MobilePhone", importEvent.contactMobilePhone);
-    contact.setField("npe01__WorkPhone__c", importEvent.contactWorkPhone);
-    contact.setField("npe01__PreferredPhone__c", importEvent.contactPreferredPhone);
+    if (env.getConfig().salesforce.npsp) {
+      contact.setField("npe01__WorkPhone__c", importEvent.contactWorkPhone);
+      contact.setField("npe01__PreferredPhone__c", importEvent.contactPreferredPhone);
+    }
 
     if (!Strings.isNullOrEmpty(importEvent.contactEmail) && !"na".equalsIgnoreCase(importEvent.contactEmail) && !"n/a".equalsIgnoreCase(importEvent.contactEmail)) {
       // Some sources provide comma separated lists. Simply use the first one.
@@ -1637,7 +1653,7 @@ public class SfdcCrmService implements CrmService {
       List<String> batchUpdateAccounts,
       Set<String> seenRelationships,
       CrmImportEvent importEvent
-  ) throws ExecutionException, InterruptedException {
+  ) throws ExecutionException, InterruptedException, ConnectionException {
     for (int j = 0; j < importEvent.contactOrganizations.size(); j++) {
       CrmAccount crmOrg = importEvent.contactOrganizations.get(j);
       String role = importEvent.contactOrganizationRoles.get(j);
@@ -1694,16 +1710,74 @@ public class SfdcCrmService implements CrmService {
         }
       }
 
-      if (seenRelationships.contains(contact.getId() + "::" + org.getId()) || seenRelationships.contains(org.getId() + "::" + contact.getId())) {
-        continue;
-      }
+      if (env.getConfig().salesforce.npsp) {
+        if (seenRelationships.contains(contact.getId() + "::" + org.getId()) || seenRelationships.contains(org.getId() + "::" + contact.getId())) {
+          continue;
+        }
 
-      SObject affiliation = new SObject("npe5__Affiliation__c");
-      affiliation.setField("npe5__Contact__c", contact.getId());
-      affiliation.setField("npe5__Organization__c", org.getId());
-      affiliation.setField("npe5__Status__c", "Current");
-      affiliation.setField("npe5__Role__c", role);
-      sfdcClient.batchInsert(affiliation);
+        SObject affiliation = new SObject("npe5__Affiliation__c");
+        affiliation.setField("npe5__Contact__c", contact.getId());
+        affiliation.setField("npe5__Organization__c", org.getId());
+        affiliation.setField("npe5__Status__c", "Current");
+        affiliation.setField("npe5__Role__c", role);
+        sfdcClient.batchInsert(affiliation);
+      } else {
+        // In commercial SFDC, a contact is considered "private" if it does not have a primary account (AccountId).
+        // So in our setup, we need to ensure Org #1 is set as AccountId, if and only if the Contact does not already
+        // have AccountId set. But note that AccountId will automatically create an AccountContactRelation, but without
+        // a defined role. So we still need to update it to set that role.
+        // That's confusing. Examples, assuming we're importing Contact (C) and Organization 1 (O1)
+        // - C has no AccountId. Set it to O1, allow the AccountContactRelation to be created, then update it to set the role.
+        // - C has an AccountId and it's already set to O1. Update the AccountContactRelation to set the role, if it's not already set.
+        // - C has an AccountId and it's a different Org. Leave AccountId alone and create the new AccountContactRelation.
+
+        if (Strings.isNullOrEmpty((String) contact.getField("AccountId"))) {
+          // Private contact. Set AccountId and update the relation's role.
+
+          SObject contactUpdate = new SObject("Contact");
+          contactUpdate.setId(contact.getId());
+          contactUpdate.setField("AccountId", org.getId());
+          // cannot batch -- need to wait for the update to finish so the relation (below) is available
+          sfdcClient.update(contactUpdate);
+
+          if (!Strings.isNullOrEmpty(role)) {
+            Optional<SObject> relation = sfdcClient.querySingle("SELECT Id FROM AccountContactRelation WHERE ContactId='" + contact.getId() + "' AND AccountId='" + org.getId() + "'");
+            if (relation.isPresent()) {
+              SObject relationUpdate = new SObject("AccountContactRelation");
+              relationUpdate.setId(relation.get().getId());
+              // TODO: The default Roles field is a multiselect picklist. We nearly ALWAYS create this custom, free-text
+              //  field instead. But we're obviously making an assumption here...
+              relationUpdate.setField("Role__c", role);
+              sfdcClient.batchUpdate(relationUpdate);
+            } else {
+              log.error("AccountContactRelation could not be found for {} and {}", contact.getId(), org.getId());
+            }
+          }
+        } else {
+          if (!Strings.isNullOrEmpty(role)) {
+            Optional<SObject> relation = sfdcClient.querySingle("SELECT Id, Role__c FROM AccountContactRelation WHERE ContactId='" + contact.getId() + "' AND AccountId='" + org.getId() + "'");
+            if (relation.isPresent()) {
+              if (Strings.isNullOrEmpty((String) relation.get().getField("Role__c"))) {
+                SObject relationUpdate = new SObject("AccountContactRelation");
+                relationUpdate.setId(relation.get().getId());
+                // TODO: The default Roles field is a multiselect picklist. We nearly ALWAYS create this custom, free-text
+                //  field instead. But we're obviously making an assumption here...
+                relationUpdate.setField("Role__c", role);
+                sfdcClient.batchUpdate(relationUpdate);
+              }
+            } else {
+              SObject affiliation = new SObject("AccountContactRelation");
+              affiliation.setField("ContactId", contact.getId());
+              affiliation.setField("AccountId", org.getId());
+              affiliation.setField("IsActive", true);
+              // TODO: The default Roles field is a multiselect picklist. We nearly ALWAYS create this custom, free-text
+              //  field instead. But we're obviously making an assumption here...
+              affiliation.setField("Role__c", role);
+              sfdcClient.batchInsert(affiliation);
+            }
+          }
+        }
+      }
 
       seenRelationships.add(contact.getId() + "::" + org.getId());
       seenRelationships.add(org.getId() + "::" + contact.getId());
