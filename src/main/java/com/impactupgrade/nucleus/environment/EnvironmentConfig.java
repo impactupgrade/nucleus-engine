@@ -337,6 +337,12 @@ public class EnvironmentConfig implements Serializable {
 
   public Platform spoke = new Platform();
 
+  public static class MBT extends Platform {
+    public String campusId = "";
+  }
+
+  public MBT mbt = new MBT();
+
   public MetadataKeys metadataKeys = new MetadataKeys();
 
   public static class MetadataKeys implements Serializable {
