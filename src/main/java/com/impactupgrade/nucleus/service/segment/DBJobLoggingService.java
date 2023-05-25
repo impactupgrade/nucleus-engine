@@ -68,14 +68,6 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
   }
 
   @Override
-  public void endLog(String message) {
-    super.info(message);
-
-    Job job = getJob(env.getJobTraceId(), false);
-    endLog(job, DONE, message);
-  }
-
-  @Override
   public void info(String message) {
     super.info(message);
 
@@ -86,22 +78,75 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
   }
 
   @Override
-  public void error(String message) {
-    super.error(message);
+  public void warn(String message) {
+    super.warn(message);
+
+    Job job = getJob(env.getJobTraceId(), false);
+    if (job != null) {
+      insertLog(job.id, message);
+    }
+  }
+
+  @Override
+  public void warn(String message, Throwable t) {
+    super.warn(message, t);
+
+    Job job = getJob(env.getJobTraceId(), false);
+    if (job != null) {
+      insertLog(job.id, message);
+    }
+  }
+
+  @Override
+  public void error(String message, boolean end) {
+    super.error(message, end);
 
     message = "Please contact support@impactnucleus.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in! Error: " + message;
     Job job = getJob(env.getJobTraceId(), false);
-    endLog(job, FAILED, message);
+    if (job != null) {
+      insertLog(job.id, message);
+      if (end) {
+        endLog(job, FAILED);
+      } else {
+        updateLogStatus(job, FAILED);
+      }
+    }
   }
 
-  private void endLog(Job job , JobStatus jobStatus, String message) {
-    if (job == null) {
-      return;
-    }
-    insertLog(job.id, message);
+  @Override
+  public void error(String message, Throwable t, boolean end) {
+    super.error(message, t, end);
 
+    message = "Please contact support@impactnucleus.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in! Error: " + message + " (" + t.getMessage() + ")";
+    Job job = getJob(env.getJobTraceId(), false);
+    if (job != null) {
+      insertLog(job.id, message);
+      if (end) {
+        endLog(job, FAILED);
+      } else {
+        updateLogStatus(job, FAILED);
+      }
+    }
+  }
+
+  @Override
+  public void endLog(String message) {
+    super.info(message);
+
+    Job job = getJob(env.getJobTraceId(), false);
+    if (job != null) {
+      endLog(job, DONE);
+    }
+  }
+
+  private void endLog(Job job, JobStatus jobStatus) {
     job.status = jobStatus;
     job.endedAt = Instant.now();
+    saveOrUpdateJob(job);
+  }
+
+  private void updateLogStatus(Job job, JobStatus jobStatus) {
+    job.status = jobStatus;
     saveOrUpdateJob(job);
   }
 

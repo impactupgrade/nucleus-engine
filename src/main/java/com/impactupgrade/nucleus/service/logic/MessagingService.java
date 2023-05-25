@@ -44,29 +44,28 @@ public class MessagingService {
 
         Message twilioMessage = twilioClient.sendMessage(pn, sender, personalizedMessage, null);
 
-        log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
-            twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+        env.logJobProgress("sent messageSid " + twilioMessage.getSid() + " to " + pn + "; status=" + twilioMessage.getStatus() + " errorCode=" + twilioMessage.getErrorCode() + " errorMessage=" + twilioMessage.getErrorMessage());
       }
     } catch (ApiException e1) {
       if (e1.getCode() == 21610) {
-        log.info("message to {} failed due to blacklist; updating contact in CRM", crmContact.phoneNumberForSMS());
+        env.logJobProgress("message to " + crmContact.phoneNumberForSMS() + " failed due to blacklist; updating contact in CRM");
         try {
           env.messagingService().optOut(crmContact);
         } catch (Exception e2) {
-          log.error("CRM contact update failed", e2);
+          env.logJobError("CRM contact update failed", e2, false);
         }
       } else if (e1.getCode() == 21408 || e1.getCode() == 21211) {
-        log.info("invalid phone number: {}; updating contact in CRM", crmContact.phoneNumberForSMS());
+        env.logJobProgress("invalid phone number: " + crmContact.phoneNumberForSMS() + "; updating contact in CRM");
         try {
           env.messagingService().optOut(crmContact);
         } catch (Exception e2) {
-          log.error("CRM contact update failed", e2);
+          env.logJobError("CRM contact update failed", e2, false);
         }
       } else {
-        log.warn("message to {} failed: {} {}", crmContact.phoneNumberForSMS(), e1.getCode(), e1.getMessage(), e1);
+        env.logJobWarn("message to " + crmContact.phoneNumberForSMS() + " failed: " + e1.getCode(), e1);
       }
     } catch (Exception e) {
-      log.warn("message to {} failed", crmContact.phoneNumberForSMS(), e);
+      env.logJobWarn("message to " + crmContact.phoneNumberForSMS() + " failed", e);
     }
   }
 

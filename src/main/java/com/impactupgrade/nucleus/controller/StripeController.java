@@ -105,7 +105,7 @@ public class StripeController {
           env.endJobLog(jobName);
         } catch (Exception e) {
           log.error("failed to process the Stripe event", e);
-          env.logJobError(e.getMessage());
+          env.logJobError(e.getMessage(), true);
           // TODO: email notification?
         }
       };

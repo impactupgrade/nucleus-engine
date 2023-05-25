@@ -119,7 +119,7 @@ public class BackupController {
           }
         } catch(Exception e){
           log.error("SFDC backup failed", e);
-          env.logJobError(e.getMessage());
+          env.logJobError(e.getMessage(), true);
         }
       }
 

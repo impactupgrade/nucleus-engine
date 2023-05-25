@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.entity.JobFrequency;
 import com.impactupgrade.nucleus.entity.JobProgress;
 import com.impactupgrade.nucleus.entity.JobSequenceOrder;
 import com.impactupgrade.nucleus.entity.JobStatus;
+import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -34,13 +35,18 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
   private static final Logger log = LogManager.getLogger(SmsCampaignJobExecutor.class);
 
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  private final Environment env;
+
   private final HibernateDao<Long, Job> jobDao;
   private final HibernateDao<Long, JobProgress> jobProgressDao;
   private final CrmService crmService;
   private final MessagingService messagingService;
 
   public SmsCampaignJobExecutor(Environment env) {
+    this.env = env;
+
     this.jobDao = new HibernateDao<>(Job.class);
     this.jobProgressDao = new HibernateDao<>(JobProgress.class);
     this.crmService = env.messagingCrmService();
@@ -66,6 +72,9 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       }
     }
 
+    String jobName = "SMS Campaign";
+    env.startJobLog(JobType.PORTAL_TASK, null, jobName, "Nucleus Portal");
+
     log.info("job {} is ready for the next message", job.id);
 
     String contactListId = getJsonText(job.payload, "crm_list");
@@ -74,11 +83,11 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       return;
     }
 
-    log.info("Retrieving contacts for job id {} using contactListId {}", job.id, contactListId);
+    env.logJobProgress("Retrieving contacts using contactListId " + contactListId);
 
     List<CrmContact> crmContacts = crmService.getContactsFromList(contactListId);
     if (CollectionUtils.isEmpty(crmContacts)) {
-      log.info("No contacts returned for job id {}! Skipping...", job.id);
+      env.logJobProgress("No contacts returned for job id {}! Skipping...");
       return;
     }
 
@@ -176,11 +185,11 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
         jobProgressDao.update(jobProgress);
       } catch (Exception e) {
-        log.error("scheduled job failed for contact {}", targetId, e);
+        env.logJobError("scheduled job failed for contact " + targetId, e, false);
       }
     }
 
-    log.info("Job processed!");
+    env.endJobLog(jobName);
 
     if (job.scheduleFrequency == JobFrequency.ONETIME) {
       job.status = JobStatus.DONE;

@@ -1,6 +1,5 @@
 package com.impactupgrade.nucleus.service.segment;
 
-import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import org.apache.logging.log4j.LogManager;
@@ -36,8 +35,18 @@ public class ConsoleJobLoggingService implements JobLoggingService {
   }
 
   @Override
-  public void error(String message) {
+  public void warn(String message, Throwable t) {
+    getLogger().warn(message, t);
+  }
+
+  @Override
+  public void error(String message, boolean end) {
     getLogger().error(message);
+  }
+
+  @Override
+  public void error(String message, Throwable t, boolean end) {
+    getLogger().error(message, t);
   }
 
   private Logger getLogger() {

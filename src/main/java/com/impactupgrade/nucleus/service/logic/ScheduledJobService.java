@@ -47,6 +47,9 @@ public class ScheduledJobService {
         }
     );
 
+    // NOTE: No JobLog here! Don't pollute the dashboard with "jobs" every 10 min when cron fires off. Isolate
+    //  it to the executors to control when something is actually happening.
+
     if (CollectionUtils.isEmpty(jobs)) {
       log.info("Could not find any active job schedules. Skipping...");
     }

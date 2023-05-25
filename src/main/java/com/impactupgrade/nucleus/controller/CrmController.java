@@ -146,7 +146,7 @@ public class CrmController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -179,7 +179,7 @@ public class CrmController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -224,7 +224,7 @@ public class CrmController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();

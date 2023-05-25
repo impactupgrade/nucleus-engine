@@ -141,7 +141,7 @@ public class TwilioController {
         }
       } catch (Exception e) {
         log.warn("inbound SMS signup failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();

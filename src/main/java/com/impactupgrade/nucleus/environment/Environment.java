@@ -267,15 +267,27 @@ public class Environment {
     jobLoggingService().startLog(jobType, username, jobName, originatingPlatform, "STARTED: " + jobName);
   }
 
-  public void endJobLog(String message) {
-    jobLoggingService().endLog("FINISHED: " + message);
-  }
-
-  public void logJobError(String message) {
-    jobLoggingService().error(message);
-  }
-
   public void logJobProgress(String message) {
     jobLoggingService().info(message);
+  }
+
+  public void logJobWarn(String message) {
+    jobLoggingService().warn(message);
+  }
+
+  public void logJobWarn(String message, Throwable t) {
+    jobLoggingService().warn(message, t);
+  }
+
+  public void logJobError(String message, boolean end) {
+    jobLoggingService().error(message, end);
+  }
+
+  public void logJobError(String message, Throwable t, boolean end) {
+    jobLoggingService().error(message, t, end);
+  }
+
+  public void endJobLog(String message) {
+    jobLoggingService().endLog("FINISHED: " + message);
   }
 }

@@ -179,7 +179,7 @@ public class PaymentGatewayController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("verifyCharges failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -228,7 +228,7 @@ public class PaymentGatewayController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("verifyAndReplayCharges failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -278,7 +278,7 @@ public class PaymentGatewayController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("verifyAndReplayDeposits failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();

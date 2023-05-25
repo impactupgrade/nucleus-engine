@@ -146,7 +146,7 @@ public class SfdcController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("bulkDelete failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -183,7 +183,7 @@ public class SfdcController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("{} failed", globalPicklistApiName, e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -299,7 +299,7 @@ public class SfdcController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("iwave update failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -332,7 +332,7 @@ public class SfdcController {
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("Windfall update failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();

@@ -51,12 +51,12 @@ public class EmailController {
             env.endJobLog(jobName);
           } catch (Exception e) {
             log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
-            env.logJobError(e.getMessage());
+            env.logJobError(e.getMessage(), false);
           }
         }
       } catch (Exception e) {
         log.error("email syncDaily failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -81,13 +81,13 @@ public class EmailController {
             env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
           } catch (Exception e) {
             log.error("email syncAll failed for {}", emailPlatformService.name(), e);
-            env.logJobError(e.getMessage());
+            env.logJobError(e.getMessage(), true);
           }
         }
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("email syncAll failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
@@ -115,13 +115,13 @@ public class EmailController {
             env.logJobProgress(emailPlatformService.name() + ": upsert contact done");
           } catch (Exception e) {
             log.error("contact upsert failed for contact: {} platform: {}", contactId, emailPlatformService.name(), e);
-            env.logJobError(e.getMessage());
+            env.logJobError(e.getMessage(), false);
           }
         }
         env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("email upsert contact failed", e);
-        env.logJobError(e.getMessage());
+        env.logJobError(e.getMessage(), true);
       }
     };
     new Thread(thread).start();
