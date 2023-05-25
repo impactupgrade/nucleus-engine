@@ -4,17 +4,13 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
-import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
@@ -37,10 +33,8 @@ import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
@@ -59,83 +53,6 @@ public class TwilioController {
 
   public TwilioController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
-  }
-
-  @Path("/outbound/crm-list")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response outboundToCrmList(
-      @FormParam("list-id") List<String> listIds,
-      @FormParam("sender") String _sender,
-      @FormParam("message") String message,
-      @FormParam("nucleus-username") String nucleusUsername,
-      @FormParam("nucleus-email") String nucleusEmail,
-      @Context HttpServletRequest request) throws Exception {
-    Environment env = envFactory.init(request);
-    SecurityUtil.verifyApiKey(env);
-
-    MessagingService messagingService = env.messagingService();
-
-    log.info("listIds={} sender={} message={}", Joiner.on(",").join(listIds), _sender, message);
-
-    String sender;
-    if (!Strings.isNullOrEmpty(_sender)) {
-      sender = _sender;
-    } else {
-      Map<String, EnvironmentConfig.TwilioUser> users = env.getConfig().twilio.users;
-      if (users != null && (users.containsKey(nucleusUsername) || users.containsKey(nucleusEmail))) {
-        if (users.containsKey(nucleusUsername)) {
-          sender = users.get(nucleusUsername).senderPn;
-        } else {
-          sender = users.get(nucleusEmail).senderPn;
-        }
-      } else {
-        sender = env.getConfig().twilio.senderPn;
-      }
-    }
-
-    // first grab all the contacts, since we want to fail early if there's an issue and give a clear error in the portal
-    List<CrmContact> contacts = new ArrayList<>();
-    for (String listId : listIds) {
-      try {
-        log.info("retrieving contacts from list {}", listId);
-        contacts.addAll(env.messagingCrmService().getContactsFromList(listId));
-        log.info("found {} contacts in list {}", contacts.size(), listId);
-      } catch (Exception e) {
-        log.warn("failed to retrieve list {}", listId, e);
-        return Response.serverError().build();
-      }
-    }
-
-    // takes a while, so spin it off as a new thread
-    Runnable thread = () -> {
-      try {
-        String jobName = "SMS Blast";
-        log.info("STARTED: {}", jobName);
-        env.startJobLog(JobType.PORTAL_TASK, null, jobName, "Twilio");
-
-        List<CrmContact> filteredContacts = contacts.stream()
-            .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
-            .collect(Collectors.toList());
-        int messagesSent = 0;
-
-        for (CrmContact c: filteredContacts) {
-          messagingService.sendMessage(message, c, sender);
-          env.logJobProgress(++messagesSent + " message(s) sent");
-        }
-
-        env.endJobLog(jobName);
-        log.info("FINISHED: {}", jobName);
-
-      } catch (Exception e) {
-        log.error("job failed", e);
-        env.logJobError(e.getMessage());
-      }
-
-    };
-    new Thread(thread).start();
-
-    return Response.ok().build();
   }
 
   /**
