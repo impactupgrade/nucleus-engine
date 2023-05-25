@@ -50,7 +50,8 @@ public class MinistryByTextClient {
     return put(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups", group, APPLICATION_JSON, headers(), Group.class);
   }
 
-public Subscriber upsertSubscriber(CrmContact crmContact, String groupId) {
+  // TODO: confirm this upserts by phone num -- if it creates dups, we'll need to fetch first
+  public Subscriber upsertSubscriber(CrmContact crmContact, String groupId) {
     Subscriber subscriber = toMBTSubscriber(crmContact);
     return put(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups/" + groupId + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
   }
