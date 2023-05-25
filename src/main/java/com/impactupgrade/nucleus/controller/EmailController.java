@@ -48,7 +48,7 @@ public class EmailController {
             env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
             emailPlatformService.syncUnsubscribes(lastSync);
             env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
-            env.endJobLog("job completed");
+            env.endJobLog(jobName);
           } catch (Exception e) {
             log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
             env.logJobError(e.getMessage());
@@ -84,6 +84,7 @@ public class EmailController {
             env.logJobError(e.getMessage());
           }
         }
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("email syncAll failed", e);
         env.logJobError(e.getMessage());
@@ -117,6 +118,7 @@ public class EmailController {
             env.logJobError(e.getMessage());
           }
         }
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("email upsert contact failed", e);
         env.logJobError(e.getMessage());

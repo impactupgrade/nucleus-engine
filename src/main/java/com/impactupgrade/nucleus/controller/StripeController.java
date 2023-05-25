@@ -102,7 +102,7 @@ public class StripeController {
           String jobName = "Stripe Event";
           env.startJobLog(JobType.EVENT, "webhook", jobName, "Stripe");
           processEvent(event.getType(), stripeObject, env);
-          env.endJobLog("job completed");
+          env.endJobLog(jobName);
         } catch (Exception e) {
           log.error("failed to process the Stripe event", e);
           env.logJobError(e.getMessage());

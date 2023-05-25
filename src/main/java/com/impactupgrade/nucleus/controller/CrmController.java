@@ -221,7 +221,7 @@ public class CrmController {
         String jobName = "Bulk Import: Facebook";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
-        env.endJobLog("job completed");
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("bulkImport failed", e);
         env.logJobError(e.getMessage());

@@ -176,7 +176,7 @@ public class PaymentGatewayController {
           paymentGatewayService.verifyCharges(startDate, endDate);
           env.logJobProgress(paymentGatewayService.name() + ": charges verified");
         }
-        env.endJobLog("job completed");
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("verifyCharges failed", e);
         env.logJobError(e.getMessage());
@@ -225,7 +225,7 @@ public class PaymentGatewayController {
           paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
           env.logJobProgress(paymentGatewayService.name() + ": charges verified and replayed");
         }
-        env.endJobLog("job completed");
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("verifyAndReplayCharges failed", e);
         env.logJobError(e.getMessage());
@@ -275,7 +275,7 @@ public class PaymentGatewayController {
           env.logJobProgress(paymentGatewayService.name() + ": deposits verified and replayed");
         }
 
-        env.endJobLog("job completed");
+        env.endJobLog(jobName);
       } catch (Exception e) {
         log.error("verifyAndReplayDeposits failed", e);
         env.logJobError(e.getMessage());

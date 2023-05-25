@@ -81,7 +81,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
 
     Job job = getJob(env.getJobTraceId(), false);
     if (job != null) {
-      log(job.id, message);
+      insertLog(job.id, message);
     }
   }
 
@@ -98,7 +98,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     if (job == null) {
       return;
     }
-    log(job.id, message);
+    insertLog(job.id, message);
 
     job.status = jobStatus;
     job.endedAt = Instant.now();
@@ -175,7 +175,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     }
   }
 
-  private void log(Long jobId, String logMessage) {
+  private void insertLog(Long jobId, String logMessage) {
     try (Session session = openSession()) {
       String queryString = "INSERT INTO job_logs(job_id, log) VALUES (:jobId, :logMessage)";
       Query query = session.createNativeQuery(queryString);
