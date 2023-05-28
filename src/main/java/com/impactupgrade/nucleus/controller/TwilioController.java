@@ -72,8 +72,7 @@ public class TwilioController {
       @FormParam("EmailOptIn") String emailOptIn,
       @FormParam("SmsOptIn") String smsOptIn,
       @FormParam("Language") String _language,
-      @FormParam("ListId") String _listId,
-      @FormParam("HubSpotListId") @Deprecated Long hsListId,
+      @FormParam("ListId") String listId,
       @FormParam("CampaignId") String campaignId,
       @FormParam("OpportunityName") String opportunityName,
       @FormParam("OpportunityRecordTypeId") String opportunityRecordTypeId,
@@ -82,8 +81,8 @@ public class TwilioController {
       @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
-        from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, _listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
+    log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
+        from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, listId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
     Environment env = envFactory.init(request);
 
     _firstName = trim(_firstName);
@@ -101,13 +100,6 @@ public class TwilioController {
     } else {
       firstName = _firstName;
       lastName = _lastName;
-    }
-
-    String listId;
-    if (hsListId != null && hsListId > 0) {
-      listId = hsListId + "";
-    } else {
-      listId = _listId;
     }
 
     Runnable thread = () -> {
