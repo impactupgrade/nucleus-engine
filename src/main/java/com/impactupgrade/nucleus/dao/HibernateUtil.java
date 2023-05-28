@@ -3,6 +3,10 @@ package com.impactupgrade.nucleus.dao;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobProgress;
 import com.impactupgrade.nucleus.entity.Organization;
+import com.impactupgrade.nucleus.entity.event.Activity;
+import com.impactupgrade.nucleus.entity.event.Event;
+import com.impactupgrade.nucleus.entity.event.Participant;
+import com.impactupgrade.nucleus.entity.event.Response;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -18,9 +22,18 @@ public class HibernateUtil {
   private static SessionFactory createSessionFactory() {
     try {
       final Configuration configuration = new Configuration();
+
+      // core
       configuration.addAnnotatedClass(Job.class);
       configuration.addAnnotatedClass(JobProgress.class);
       configuration.addAnnotatedClass(Organization.class);
+
+      // events
+      configuration.addAnnotatedClass(Activity.class);
+      configuration.addAnnotatedClass(Event.class);
+      configuration.addAnnotatedClass(Participant.class);
+      configuration.addAnnotatedClass(Response.class);
+
       return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
     } catch (Throwable e) {
       log.error("Failed to create session factory: {}", e.getMessage());

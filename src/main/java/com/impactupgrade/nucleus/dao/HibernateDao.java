@@ -52,16 +52,16 @@ public class HibernateDao<I extends Serializable, E> {
     return entities;
   }
 
-  public Optional<E> getQueryResult(String queryString) {
-    return getQueryResult(queryString, false);
+  public Optional<E> getQueryResult(String queryString, Consumer<Query> queryConsumer) {
+    return getQueryResult(queryString, false, queryConsumer);
   }
 
-  public Optional<E> getQueryResult(String queryString, boolean isNative) {
+  public Optional<E> getQueryResult(String queryString, boolean isNative, Consumer<Query> queryConsumer) {
     try (Session session = openSession()) {
       Query<E> query = isNative ?
           session.createNativeQuery(queryString, clazz)
           : session.createQuery(queryString, clazz);
-
+      queryConsumer.accept(query);
       return Optional.ofNullable(query.getSingleResult());
     } catch (NoResultException e) {
       return Optional.empty();
