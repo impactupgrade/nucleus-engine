@@ -99,7 +99,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     protected Organization getOrganization() {
-        return organizationDao.getQueryResult("from Organization o where o.nucleusApiKey = '" + env.getConfig().apiKey + "'").get();
+        return organizationDao.getQueryResult(
+            "from Organization o where o.nucleusApiKey=:apiKey",
+            query -> {
+                query.setParameter("apiKey", env.getConfig().apiKey);
+            }
+        ).get();
     }
 
     @Override
