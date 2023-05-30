@@ -18,7 +18,6 @@ import java.util.List;
 import static com.impactupgrade.nucleus.util.HttpClient.TokenResponse;
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
-import static com.impactupgrade.nucleus.util.HttpClient.put;
 import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
@@ -27,7 +26,7 @@ public class MinistryByTextClient {
 
   private static final Logger log = LogManager.getLogger(MinistryByTextClient.class);
 
-  protected static String AUTH_ENDPOINT = "https://login.ministrybytext.com/connect/token";
+  protected static String AUTH_ENDPOINT = "https://login-qa.ministrybytext.com/connect/token";
   protected static String API_ENDPOINT_BASE = "https://api-qa.ministrybytext.com/";
 
   protected final Environment env;
@@ -47,13 +46,13 @@ public class MinistryByTextClient {
     Group group = new Group();
     group.name = name;
     group.description = description;
-    return put(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups", group, APPLICATION_JSON, headers(), Group.class);
+    return post(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups", group, APPLICATION_JSON, headers(), Group.class);
   }
 
   // TODO: confirm this upserts by phone num -- if it creates dups, we'll need to fetch first
   public Subscriber upsertSubscriber(CrmContact crmContact, String groupId) {
     Subscriber subscriber = toMBTSubscriber(crmContact);
-    return put(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups/" + groupId + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
+    return post(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups/" + groupId + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
   }
 
   protected Subscriber toMBTSubscriber(CrmContact crmContact) {

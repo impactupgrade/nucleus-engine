@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.util;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -138,6 +139,7 @@ public class HttpClient {
     }
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public static class TokenResponse {
     @JsonProperty("access_token")
     public String accessToken;
