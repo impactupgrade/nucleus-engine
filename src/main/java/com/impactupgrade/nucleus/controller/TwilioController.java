@@ -4,19 +4,9 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmOpportunity;
-import com.impactupgrade.nucleus.security.SecurityUtil;
-import com.impactupgrade.nucleus.service.logic.MessagingService;
-import com.impactupgrade.nucleus.util.Utils;
-import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
 import com.twilio.twiml.voice.Dial;
 import com.twilio.twiml.voice.Gather;
@@ -56,87 +46,12 @@ public class TwilioController {
   private static final Logger log = LogManager.getLogger(TwilioController.class);
 
   protected final EnvironmentFactory envFactory;
-
+  private MessagingController messagingController;
   public TwilioController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
+    this.messagingController = new MessagingController(envFactory);
   }
 
-  @Path("/outbound/crm-list")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response outboundToCrmList(
-      @FormParam("list-id") List<String> listIds,
-      @FormParam("sender") String _sender,
-      @FormParam("message") String message,
-      @FormParam("nucleus-username") String nucleusUsername,
-      @FormParam("nucleus-email") String nucleusEmail,
-      @Context HttpServletRequest request) throws Exception {
-    Environment env = envFactory.init(request);
-    SecurityUtil.verifyApiKey(env);
-
-    MessagingService messagingService = env.messagingService();
-
-    log.info("listIds={} sender={} message={}", Joiner.on(",").join(listIds), _sender, message);
-
-    String sender;
-    if (!Strings.isNullOrEmpty(_sender)) {
-      sender = _sender;
-    } else {
-      Map<String, EnvironmentConfig.TwilioUser> users = env.getConfig().twilio.users;
-      if (users != null && (users.containsKey(nucleusUsername) || users.containsKey(nucleusEmail))) {
-        if (users.containsKey(nucleusUsername)) {
-          sender = users.get(nucleusUsername).senderPn;
-        } else {
-          sender = users.get(nucleusEmail).senderPn;
-        }
-      } else {
-        sender = env.getConfig().twilio.senderPn;
-      }
-    }
-
-    // first grab all the contacts, since we want to fail early if there's an issue and give a clear error in the portal
-    List<CrmContact> contacts = new ArrayList<>();
-    for (String listId : listIds) {
-      try {
-        log.info("retrieving contacts from list {}", listId);
-        contacts.addAll(env.messagingCrmService().getContactsFromList(listId));
-        log.info("found {} contacts in list {}", contacts.size(), listId);
-      } catch (Exception e) {
-        log.warn("failed to retrieve list {}", listId, e);
-        return Response.serverError().build();
-      }
-    }
-
-    // takes a while, so spin it off as a new thread
-    Runnable thread = () -> {
-      try {
-        String jobName = "SMS Blast";
-        log.info("STARTED: {}", jobName);
-        env.startJobLog(JobType.PORTAL_TASK, null, jobName, "Twilio");
-
-        List<CrmContact> filteredContacts = contacts.stream()
-            .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
-            .collect(Collectors.toList());
-        int messagesSent = 0;
-
-        for (CrmContact c: filteredContacts) {
-          messagingService.sendMessage(message, c, sender);
-          env.logJobProgress(++messagesSent + " message(s) sent");
-        }
-
-        env.endJobLog(jobName);
-        log.info("FINISHED: {}", jobName);
-
-      } catch (Exception e) {
-        log.error("job failed", e);
-        env.logJobError(e.getMessage());
-      }
-
-    };
-    new Thread(thread).start();
-
-    return Response.ok().build();
-  }
 
   /**
    * This webhook is to be used by Twilio Studio flows, Twilio Functions, etc. for more complex
@@ -165,73 +80,8 @@ public class TwilioController {
       @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
-        from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, _listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
-    Environment env = envFactory.init(request);
-
-    _firstName = trim(_firstName);
-    _lastName = trim(_lastName);
-    fullName = trim(fullName);
-    final String email = noWhitespace(_email);
-    final String language = noWhitespace(_language);
-
-    String firstName;
-    String lastName;
-    if (!Strings.isNullOrEmpty(fullName)) {
-      String[] split = Utils.fullNameToFirstLast(fullName);
-      firstName = split[0];
-      lastName = split[1];
-    } else {
-      firstName = _firstName;
-      lastName = _lastName;
-    }
-
-    String listId;
-    if (hsListId != null && hsListId > 0) {
-      listId = hsListId + "";
-    } else {
-      listId = _listId;
-    }
-
-    Runnable thread = () -> {
-      try {
-        String jobName = "SMS Flow";
-        env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
-        CrmContact crmContact = env.messagingService().processSignup(
-            from,
-            firstName,
-            lastName,
-            email,
-            emailOptIn,
-            smsOptIn,
-            language,
-            campaignId,
-            listId
-        );
-
-        // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
-        CrmOpportunity crmOpportunity = new CrmOpportunity();
-        crmOpportunity.contact.id = crmContact.id;
-
-        if (!Strings.isNullOrEmpty(opportunityName)) {
-          crmOpportunity.name = opportunityName;
-          crmOpportunity.recordTypeId = opportunityRecordTypeId;
-          crmOpportunity.ownerId = opportunityOwnerId;
-          crmOpportunity.campaignId = campaignId;
-          crmOpportunity.description = opportunityNotes;
-          env.messagingCrmService().insertOpportunity(crmOpportunity);
-          env.endJobLog(jobName);
-        }
-      } catch (Exception e) {
-        log.warn("inbound SMS signup failed", e);
-        env.logJobError(e.getMessage());
-      }
-    };
-    new Thread(thread).start();
-
-    // TODO: This builds TwiML, which we could later use to send back dynamic responses.
-    MessagingResponse response = new MessagingResponse.Builder().build();
-    return Response.ok().entity(response.toXml()).build();
+    log.warn("Out of Date, switch to MessagingController");
+    return messagingController.inboundSignup(from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, _listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes, nucleusUsername, request);
   }
 
   private static final List<String> STOP_WORDS = List.of("STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT");
@@ -247,32 +97,8 @@ public class TwilioController {
       Form rawFormData,
       @Context HttpServletRequest request
   ) throws Exception {
-    Environment env = envFactory.init(request);
-
-    MultivaluedMap<String, String> smsData = rawFormData.asMap();
-    log.info(smsData.entrySet().stream().map(e -> e.getKey() + "=" + String.join(",", e.getValue())).collect(Collectors.joining(" ")));
-
-    String from = smsData.get("From").get(0);
-    if (smsData.containsKey("Body")) {
-      String body = smsData.get("Body").get(0).trim();
-      // prevent opt-out messages, like "STOP", from polluting the notifications
-      if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
-        String jobName = "SMS Inbound";
-        env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
-        String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
-        env.notificationService().sendNotification(
-            "Text Message Received",
-            "Text message received from " + from + ": " + body,
-            targetId,
-            "sms:inbound-default"
-        );
-        env.endJobLog(jobName);
-      }
-    }
-
-    // TODO: This builds TwiML, which we could later use to send back dynamic responses.
-    MessagingResponse response = new MessagingResponse.Builder().build();
-    return Response.ok().entity(response.toXml()).build();
+    log.warn("Out of Date, switch to MessagingController");
+    return messagingController.inboundWebhook(rawFormData, request);
   }
 
   /**

@@ -239,7 +239,7 @@ public class EnvironmentConfig implements Serializable {
 
   public MessageBird messageBird = new MessageBird();
   public static class MessageBird extends Platform {
-    public String accesKey = "";
+    public String accessKey = "";
     public String SMSChannelId = "";
     public String SMSWorkspaceId = "";
   }

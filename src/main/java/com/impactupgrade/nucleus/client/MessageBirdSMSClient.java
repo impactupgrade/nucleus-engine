@@ -28,7 +28,7 @@ public class MessageBirdSMSClient {
 
   public MessageBirdSMSClient(Environment env) {
     this.env = env;
-    this.accessKey = env.getConfig().messageBird.accesKey;
+    this.accessKey = env.getConfig().messageBird.accessKey;
     this.smsWorkspaceId = env.getConfig().messageBird.SMSWorkspaceId;
     this.smsChannelId =  env.getConfig().messageBird.SMSChannelId;
     this.messageBirdService = new MessageBirdServiceImpl(accessKey);
