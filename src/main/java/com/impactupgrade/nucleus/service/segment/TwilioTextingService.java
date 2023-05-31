@@ -13,7 +13,11 @@ public class TwilioTextingService implements TextingService {
   protected TwilioClient twilioClient;
   protected Environment env;
   private static final Logger log = LogManager.getLogger(TwilioTextingService.class);
-
+  @Override
+  public void init(Environment env) {
+    this.env = env;
+    this.twilioClient = env.twilioClient();
+  }
   @Override
   public String name() {
     return "twilio";
@@ -25,21 +29,11 @@ public class TwilioTextingService implements TextingService {
   }
 
   @Override
-  public void init(Environment env) {
-    this.env = env;
-    this.twilioClient = env.twilioClient();
-  }
-  @Override
   public void sendMessage(String message, CrmContact crmContact, String to, String from) {
     Message twilioMessage = twilioClient.sendMessage(to, from, message, null);
     log.info("sent messageSid {} to {}; status={} errorCode={} errorMessage={}",
             twilioMessage.getSid(), to, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
 
-  }
-
-  @Override
-  public CrmContact processSignup(String phone, String firstName, String lastName, String email, String __emailOptIn, String __smsOptIn, String language, String campaignId, String listId) throws Exception {
-    return null;
   }
 
 }

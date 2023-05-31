@@ -240,6 +240,8 @@ public class EnvironmentConfig implements Serializable {
   public MessageBird messageBird = new MessageBird();
   public static class MessageBird extends Platform {
     public String accesKey = "";
+    public String SMSChannelId = "";
+    public String SMSWorkspaceId = "";
   }
 
   public Twilio twilio = new Twilio();

@@ -1,32 +1,30 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.client.MessageBirdSMSClient;
+import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 
 public class MessageBirdTextingService implements TextingService {
-
+  protected MessageBirdSMSClient messageBirdSMSClient;
+  protected Environment env;
   @Override
-  public void sendMessage(String message, CrmContact crmContact, String to, String from) {
-
+  public void init(Environment env) {
+    this.env = env;
+    this.messageBirdSMSClient = env.messageBirdSMSClient();
   }
-
-  @Override
-  public CrmContact processSignup(String phone, String firstName, String lastName, String email, String __emailOptIn, String __smsOptIn, String language, String campaignId, String listId) throws Exception {
-    return null;
-  }
-
   @Override
   public String name() {
-    return null;
+    return "messagebird";
   }
 
   @Override
   public boolean isConfigured(Environment env) {
     return false;
   }
-
   @Override
-  public void init(Environment env) {
+  public void sendMessage(String message, CrmContact crmContact, String to, String from) {
 
   }
+
 }

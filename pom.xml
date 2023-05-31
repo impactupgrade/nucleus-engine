@@ -38,6 +38,12 @@
   </developers>
 
   <dependencies>
+    <!-- https://mvnrepository.com/artifact/com.messagebird/messagebird-api -->
+    <dependency>
+      <groupId>com.messagebird</groupId>
+      <artifactId>messagebird-api</artifactId>
+      <version>6.0.0</version>
+    </dependency>
     <dependency>
       <groupId>com.vladmihalcea</groupId>
       <artifactId>hibernate-types-55</artifactId>
