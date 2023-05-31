@@ -190,7 +190,7 @@ public class MessagingService {
         update = true;
       }
 
-      if(!customResponses.equals(Collections.emptyMap())){
+      if (!customResponses.equals(Collections.emptyMap())){
         log.info("Updating custom response fields for contact {}", crmContact.id);
         for (String field : customResponses.keySet() ){
           //TODO check that this will update existing meta data fields & won't break
