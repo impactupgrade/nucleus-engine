@@ -44,10 +44,11 @@ public class EmailController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
-            emailPlatformService.syncContacts(lastSync);
-            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
+            // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             emailPlatformService.syncUnsubscribes(lastSync);
             env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
+            emailPlatformService.syncContacts(lastSync);
+            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
             env.endJobLog(jobName);
           } catch (Exception e) {
             log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
@@ -75,10 +76,11 @@ public class EmailController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         for (EmailService emailPlatformService : env.allEmailServices()) {
           try {
-            emailPlatformService.syncContacts(null);
-            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
+            // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             emailPlatformService.syncUnsubscribes(null);
             env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
+            emailPlatformService.syncContacts(null);
+            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
           } catch (Exception e) {
             log.error("email syncAll failed for {}", emailPlatformService.name(), e);
             env.logJobError(e.getMessage(), true);
