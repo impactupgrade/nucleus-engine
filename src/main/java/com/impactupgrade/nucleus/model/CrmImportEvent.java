@@ -148,6 +148,14 @@ public class CrmImportEvent {
     importEvent.account.billingAddress.state = data.get("Account Billing State");
     importEvent.account.billingAddress.postalCode = data.get("Account Billing Postal Code");
     importEvent.account.billingAddress.country = data.get("Account Billing Country");
+    importEvent.account.mailingAddress.street = data.get("Account Shipping Street");
+    if (!Strings.isNullOrEmpty(data.get("Account Shipping Street 2"))) {
+      importEvent.account.mailingAddress.street += ", " + data.get("Account Shipping Street 2");
+    }
+    importEvent.account.mailingAddress.city = data.get("Account Shipping City");
+    importEvent.account.mailingAddress.state = data.get("Account Shipping State");
+    importEvent.account.mailingAddress.postalCode = data.get("Account Shipping Postal Code");
+    importEvent.account.mailingAddress.country = data.get("Account Shipping Country");
     importEvent.account.description = data.get("Account Description");
     importEvent.account.name = data.get("Account Name");
     importEvent.account.ownerId = data.get("Account Owner ID");

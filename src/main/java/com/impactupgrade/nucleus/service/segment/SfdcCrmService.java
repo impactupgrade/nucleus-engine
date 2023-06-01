@@ -1220,7 +1220,7 @@ public class SfdcCrmService implements CrmService {
       // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
       else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
           && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))
-          && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.account.billingAddress.street) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
+          && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.account.billingAddress.street) || !Strings.isNullOrEmpty(importEvent.account.mailingAddress.street) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
         List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
             .filter(c -> {
               // if the SFDC record has no address or phone at all, allow the by-name match
@@ -1228,7 +1228,7 @@ public class SfdcCrmService implements CrmService {
               //  where basic records were manually created without contact info, then the SIS syncs need to match
               //  against what was created...
               if (c.getField("MailingStreet") == null && c.getChild("Account").getField("BillingStreet") == null
-                  && c.getField("MobilePhone") == null) {
+                  && c.getChild("Account").getField("ShippingStreet") == null && c.getField("MobilePhone") == null) {
                 return true;
               }
 
@@ -1244,6 +1244,13 @@ public class SfdcCrmService implements CrmService {
               if (!Strings.isNullOrEmpty(importEvent.account.billingAddress.street)) {
                 String importStreet = importEvent.account.billingAddress.street.replaceAll("[^A-Za-z0-9]", "");
                 String sfdcStreet = c.getChild("Account").getField("BillingStreet") == null ? "" : c.getChild("Account").getField("BillingStreet").toString().replaceAll("[^A-Za-z0-9]", "");
+                if (importStreet.equals(sfdcStreet)) {
+                  return true;
+                }
+              }
+              if (!Strings.isNullOrEmpty(importEvent.account.mailingAddress.street)) {
+                String importStreet = importEvent.account.mailingAddress.street.replaceAll("[^A-Za-z0-9]", "");
+                String sfdcStreet = c.getChild("Account").getField("ShippingStreet") == null ? "" : c.getChild("Account").getField("ShippingStreet").toString().replaceAll("[^A-Za-z0-9]", "");
                 if (importStreet.equals(sfdcStreet)) {
                   return true;
                 }
@@ -1643,6 +1650,11 @@ public class SfdcCrmService implements CrmService {
     setField(account, "BillingState", importEvent.account.billingAddress.state);
     setField(account, "BillingPostalCode", importEvent.account.billingAddress.postalCode);
     setField(account, "BillingCountry", importEvent.account.billingAddress.country);
+    setField(account, "ShippingStreet", importEvent.account.mailingAddress.street);
+    setField(account, "ShippingCity", importEvent.account.mailingAddress.city);
+    setField(account, "ShippingState", importEvent.account.mailingAddress.state);
+    setField(account, "ShippingPostalCode", importEvent.account.mailingAddress.postalCode);
+    setField(account, "ShippingCountry", importEvent.account.mailingAddress.country);
 
     account.setField("Description", importEvent.account.description);
     account.setField("OwnerId", importEvent.account.ownerId);
