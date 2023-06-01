@@ -1100,8 +1100,8 @@ public class SfdcCrmService implements CrmService {
           // TODO: This was mainly due to CLHS' original FACTS migration that created isolated households or, worse,
           //  combined grandparents into the student's household. Raiser's Edge has the correct relationships and
           //  households, so we're using this to override the past.
-          account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent,
-              accountExtRefFieldName, existingAccountsByExtRef, accountImports);
+//          account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent,
+//              accountExtRefFieldName, existingAccountsByExtRef, accountImports);
         }
       }
 
@@ -1223,6 +1223,15 @@ public class SfdcCrmService implements CrmService {
           && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.account.billingAddress.street) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
         List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
             .filter(c -> {
+              // if the SFDC record has no address or phone at all, allow the by-name match
+              // TODO: Concerned this somewhat defeats the purpose, but we're running into situations with the schools
+              //  where basic records were manually created without contact info, then the SIS syncs need to match
+              //  against what was created...
+              if (c.getField("MailingStreet") == null && c.getChild("Account").getField("BillingStreet") == null
+                  && c.getField("MobilePhone") == null) {
+                return true;
+              }
+
               // make the address checks a little more resilient by removing all non-alphanumerics
               // ex: 123 Main St. != 123 Main St --> 123MainSt == 123MainSt
               if (!Strings.isNullOrEmpty(importEvent.contactMailingStreet)) {
