@@ -160,6 +160,9 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         //  here using the JSON mappings.
         String languageCode = crmContact.language;
         if (Strings.isNullOrEmpty(languageCode)) {
+          languageCode = getDefaultLanguage(getJsonNode(job.payload, "languages"));
+        }
+        if (Strings.isNullOrEmpty(languageCode)) {
           log.info("Failed to get contact language for contact {}; assuming EN", targetId);
           languageCode = "EN";
         } else {
@@ -200,6 +203,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   }
 
   // TODO: Let's introduce jsonpath? Or a limited set of Jackson bindings?
+
   private String getMessage(JsonNode messagesNode, Integer id, String languageCode) {
     if (messagesNode.isArray()) {
       for (JsonNode messageNode : messagesNode) {
@@ -211,6 +215,19 @@ public class SmsCampaignJobExecutor implements JobExecutor {
               return getJsonText(languageNode, "message");
             }
           }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private String getDefaultLanguage(JsonNode languagesNode) {
+    if (languagesNode.isArray()) {
+      for (JsonNode languageNode : languagesNode) {
+        Boolean isDefault = getJsonBoolean(languageNode, "default");
+        if (isDefault != null && isDefault) {
+          return getJsonText(languageNode, "code");
         }
       }
     }

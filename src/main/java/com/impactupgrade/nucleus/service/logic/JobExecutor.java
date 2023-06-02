@@ -25,6 +25,14 @@ public interface JobExecutor {
     return value.asInt();
   }
 
+  default Boolean getJsonBoolean(JsonNode jsonNode, String fieldName) {
+    JsonNode value = getJsonNode(jsonNode, fieldName);
+    if (value == null) {
+      return null;
+    }
+    return value.asBoolean();
+  }
+
   default Long getJsonLong(JsonNode jsonNode, String fieldName) {
     JsonNode value = getJsonNode(jsonNode, fieldName);
     if (value == null) {
