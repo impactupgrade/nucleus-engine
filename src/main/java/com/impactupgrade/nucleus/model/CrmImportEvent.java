@@ -98,6 +98,10 @@ public class CrmImportEvent {
   public Calendar recurringDonationStartDate;
   public String recurringDonationStatus;
 
+  // If the sheet is updating addresses, but all we have is names and no ids/extrefs/emails, we still need
+  // the original addresses for existing matches. But all we really use for that is the street.
+  public String originalStreet;
+
   public String campaignName;
   // TODO: In the future, could add OOTB support for dates, etc. but need to see this play out.
 
@@ -255,6 +259,8 @@ public class CrmImportEvent {
     importEvent.recurringDonationOwnerId = data.get("Recurring Donation Owner Name");
     importEvent.recurringDonationStartDate = getDate(data, "Recurring Donation Start Date");
     importEvent.recurringDonationStatus = data.get("Recurring Donation Status");
+
+    importEvent.originalStreet = data.get("Original Street");
 
     importEvent.campaignName = data.get("Campaign Name");
 

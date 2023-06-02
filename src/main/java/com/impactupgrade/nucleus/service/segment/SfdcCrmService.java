@@ -1185,7 +1185,7 @@ public class SfdcCrmService implements CrmService {
       // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
       else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
           && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))
-          && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.account.billingAddress.street) || !Strings.isNullOrEmpty(importEvent.account.mailingAddress.street) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
+          && (!Strings.isNullOrEmpty(importEvent.contactMailingStreet) || !Strings.isNullOrEmpty(importEvent.originalStreet) || !Strings.isNullOrEmpty(importEvent.account.billingAddress.street) || !Strings.isNullOrEmpty(importEvent.account.mailingAddress.street) || !Strings.isNullOrEmpty(importEvent.contactMobilePhone))) {
         List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
             .filter(c -> {
               // if the SFDC record has no address or phone at all, allow the by-name match
@@ -1199,24 +1199,32 @@ public class SfdcCrmService implements CrmService {
 
               // make the address checks a little more resilient by removing all non-alphanumerics
               // ex: 123 Main St. != 123 Main St --> 123MainSt == 123MainSt
+
+              String mailingStreet = c.getField("MailingStreet") == null ? "" : c.getField("MailingStreet").toString().replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+              String billingStreet = c.getChild("Account").getField("BillingStreet") == null ? "" : c.getChild("Account").getField("BillingStreet").toString().replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+              String shippingStreet = c.getChild("Account").getField("ShippingStreet") == null ? "" : c.getChild("Account").getField("ShippingStreet").toString().replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+
               if (!Strings.isNullOrEmpty(importEvent.contactMailingStreet)) {
-                String importStreet = importEvent.contactMailingStreet.replaceAll("[^A-Za-z0-9]", "");
-                String sfdcStreet = c.getField("MailingStreet") == null ? "" : c.getField("MailingStreet").toString().replaceAll("[^A-Za-z0-9]", "");
-                if (importStreet.equals(sfdcStreet)) {
+                String importStreet = importEvent.contactMailingStreet.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+                if (importStreet.equals(mailingStreet)) {
                   return true;
                 }
               }
               if (!Strings.isNullOrEmpty(importEvent.account.billingAddress.street)) {
-                String importStreet = importEvent.account.billingAddress.street.replaceAll("[^A-Za-z0-9]", "");
-                String sfdcStreet = c.getChild("Account").getField("BillingStreet") == null ? "" : c.getChild("Account").getField("BillingStreet").toString().replaceAll("[^A-Za-z0-9]", "");
-                if (importStreet.equals(sfdcStreet)) {
+                String importStreet = importEvent.account.billingAddress.street.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+                if (importStreet.equals(billingStreet)) {
                   return true;
                 }
               }
               if (!Strings.isNullOrEmpty(importEvent.account.mailingAddress.street)) {
-                String importStreet = importEvent.account.mailingAddress.street.replaceAll("[^A-Za-z0-9]", "");
-                String sfdcStreet = c.getChild("Account").getField("ShippingStreet") == null ? "" : c.getChild("Account").getField("ShippingStreet").toString().replaceAll("[^A-Za-z0-9]", "");
-                if (importStreet.equals(sfdcStreet)) {
+                String importStreet = importEvent.account.mailingAddress.street.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+                if (importStreet.equals(shippingStreet)) {
+                  return true;
+                }
+              }
+              if (!Strings.isNullOrEmpty(importEvent.originalStreet)) {
+                String importStreet = importEvent.originalStreet.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+                if (importStreet.equals(mailingStreet) || importStreet.equals(billingStreet) || importStreet.equals(shippingStreet)) {
                   return true;
                 }
               }
