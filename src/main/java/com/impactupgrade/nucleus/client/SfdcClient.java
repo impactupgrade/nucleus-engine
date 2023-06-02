@@ -151,16 +151,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(names, "Name", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
   }
 
-  public List<SObject> getAllOrganizations(String... extraFields) throws ConnectionException, InterruptedException {
-    String query;
-    if (env.getConfig().salesforce.npsp) {
-      query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where RecordType.Name!='Household Account'";
-    } else {
-      query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account";
-    }
-    return queryListAutoPaged(query);
-  }
-
   public Optional<SObject> getAccountByCustomerId(String customerId, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId)) {
       return Optional.empty();
