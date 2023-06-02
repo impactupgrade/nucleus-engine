@@ -56,7 +56,6 @@ public class CrmImportEvent {
   public List<String> contactCampaignNames = new ArrayList<>();
   public String contactDescription;
   public String contactFirstName;
-  public String contactFullName;
   public String contactHomePhone;
   public String contactLastName;
   public String contactMobilePhone;
@@ -108,9 +107,6 @@ public class CrmImportEvent {
   public boolean secondPass = false;
 
   public String contactFullName() {
-    if (!Strings.isNullOrEmpty(contactFullName)) {
-      return contactFullName;
-    }
     // trim in case one side or the other is blank
     return (contactFirstName + " " + contactLastName).trim();
   }
@@ -189,9 +185,8 @@ public class CrmImportEvent {
     importEvent.contactSalutation = data.get("Contact Salutation");
     importEvent.contactFirstName = data.get("Contact First Name");
     importEvent.contactLastName = data.get("Contact Last Name");
-    importEvent.contactFullName = data.get("Contact Full Name");
-    if (Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactFullName)) {
-      String[] split = fullNameToFirstLast(importEvent.contactFullName);
+    if (Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(data.get("Contact Full Name"))) {
+      String[] split = fullNameToFirstLast(data.get("Contact Full Name"));
       importEvent.contactFirstName = split[0];
       importEvent.contactLastName = split[1];
     }

@@ -1179,41 +1179,6 @@ public class SfdcCrmService implements CrmService {
         // the contact.account child relationship will not yet exist in the existingContactsByEmail map
         contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
-      // A little weird looking, but if importing with constituent full names, often it could be either a household
-      // name (and email would likely exist) or a business name (almost never email). In either case, hard for us to know
-      // which to choose, so by default simply upsert the Account and ignore the contact altogether.
-      // Similarly, if we only have a last name or only an account name, treat it the same.
-      else if (
-          Strings.isNullOrEmpty(importEvent.contactEmail) && (
-              !Strings.isNullOrEmpty(importEvent.contactFullName)
-              || (!Strings.isNullOrEmpty(importEvent.account.name) && Strings.isNullOrEmpty(importEvent.contactLastName))
-              || (Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName))
-          )
-      ) {
-        String fullname;
-        if (!Strings.isNullOrEmpty(importEvent.contactFullName)) {
-          fullname = importEvent.contactFullName;
-        } else if (!Strings.isNullOrEmpty(importEvent.account.name)) {
-          fullname = importEvent.account.name;
-        } else {
-          fullname = importEvent.contactLastName;
-        }
-
-        SObject existingAccount;
-        if (account != null) {
-          existingAccount = account;
-        } else {
-          // Otherwise, by name.
-          existingAccount = existingOrgsByName.get(fullname.toLowerCase(Locale.ROOT)).stream().findFirst().orElse(null);
-        }
-
-        if (existingAccount == null) {
-          account = insertBulkImportAccount(fullname, importEvent, accountExtRefFieldName, existingAccountsByExtRef, accountImports);
-          existingOrgsByName.put(fullname.toLowerCase(Locale.ROOT), account);
-        } else {
-          account = updateBulkImportAccount(existingAccount, importEvent, batchUpdateAccounts, true);
-        }
-      }
       // If we have a first and last name, try searching for an existing contact by name.
       // Only do this if we can match against street address or mobile number as well. Simply by-name is too risky.
       // Better to allow duplicates than to overwrite records.
