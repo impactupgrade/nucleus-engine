@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -25,7 +26,10 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class SmsCampaignJobExecutorTest extends AbstractMockTest {
@@ -731,6 +735,79 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     assertEquals(2, jobProgresses.size());
     assertEquals("12345678901", jobProgresses.get(0).targetId);
     assertEquals("12345678902", jobProgresses.get(1).targetId);
+  }
+
+  @Test
+  public void testDefaultLanguage() throws Exception {
+    Environment env = new DefaultEnvironment();
+    HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
+    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
+    HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
+
+    ScheduledJobService service = new ScheduledJobService(env);
+
+    Organization org = new Organization();
+    org.setId(1);
+    org.setNucleusApiKey(env.getConfig().apiKey);
+    organizationDao.create(org);
+
+    Job job = new Job();
+    job.org = org;
+    job.jobType = JobType.SMS_CAMPAIGN;
+    job.status = JobStatus.ACTIVE;
+    job.scheduleFrequency = JobFrequency.ONETIME;
+    job.scheduleStart = Instant.now();
+    job.jobProgresses = List.of();
+    job.payload = MAPPER.readTree("""
+        {
+          "crm_list": "list1234",
+          "languages": [
+            {
+              "language":"English",
+              "code":"EN",
+              "default":false
+            },
+            {
+              "language":"Burmese",
+              "code":"MY",
+              "default":true
+            },
+            {
+              "language":"S'gaw Karen",
+              "code":"KSW"
+            }
+          ],
+          "messages": [
+            {
+              "id": 1,
+              "seq": 1,
+              "languages": {
+                "EN": {"message": "this is in english"},
+                "MY": {"message": "this is in burmese"},
+                "KSW": {"message": "this is in karen"}
+              }
+            }
+          ]
+        }
+    """);
+    job.traceId = UUID.randomUUID().toString();
+    job.startedBy = "IT test";
+    job.jobName = "Test job";
+    job.originatingPlatform = "IT test";
+    job.startedAt = Instant.now();
+    jobDao.create(job);
+
+    CrmContact contact1 = crmContact("contact1", "+12345678901", null);
+    CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");
+    when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2));
+
+    service.processJobSchedules(Instant.now());
+
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(twilioClientMock, times(2)).sendMessage(any(), any(), argumentCaptor.capture(), any());
+    List<String> allMessages = argumentCaptor.getAllValues();
+    assertEquals("this is in burmese", allMessages.get(0)); // first contact had no lang and used the default
+    assertEquals("this is in english", allMessages.get(1)); // second contact used their set lang
   }
 
   private CrmContact crmContact(String id, String mobilePhone, String lang) {
