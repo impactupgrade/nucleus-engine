@@ -161,10 +161,14 @@ public class CrmContact extends CrmRecord {
    * check emailOptOut. If neither are defined, default to True.
    */
   public boolean canReceiveEmail() {
+    if (emailOptOut != null && emailOptOut) {
+      return false;
+    }
+    if (emailBounced != null && emailBounced) {
+      return false;
+    }
     if (emailOptIn != null) {
       return emailOptIn;
-    } else if (emailOptOut != null) {
-      return !emailOptOut;
     }
     return true;
   }

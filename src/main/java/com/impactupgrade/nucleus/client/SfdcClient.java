@@ -492,15 +492,20 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       filter = " and " + filter;
     }
 
-    String optInOutFilters = "";
     // If env.json defines an emailOptIn, automatically factor that into the query.
-    // IMPORTANT: If env.json defines emailOptOut, also include those contacts in this query! This might seem backwards,
+    // IMPORTANT: If env.json defines emailOptOut/emailBounced, also include those contacts in this query! This might seem backwards,
     // but we need them in the results so that we can archive them in Mailchimp.
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn) && !Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptOut)) {
-      optInOutFilters = " AND (" + env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE OR " + env.getConfig().salesforce.fieldDefinitions.emailOptOut + "=TRUE)";
-    } else if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)) {
-      optInOutFilters = " AND " + env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE";
+    List<String> clauses = new ArrayList<>();
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)) {
+      clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE");
     }
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptOut)) {
+      clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptOut + "=TRUE");
+    }
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailBounced)) {
+      clauses.add(env.getConfig().salesforce.fieldDefinitions.emailBounced + "=TRUE");
+    }
+    String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
 
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter + optInOutFilters;
     return queryListAutoPaged(query);
