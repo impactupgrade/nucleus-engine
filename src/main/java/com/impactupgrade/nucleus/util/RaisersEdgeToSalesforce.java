@@ -14,6 +14,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.util.IOUtils;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -24,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 // TODO: Temporary utility to eventually be worked into a reusable strategy. Square up migrations, bulk imports,
 //  and the generic CRM model.
@@ -83,7 +87,7 @@ public class RaisersEdgeToSalesforce {
     // CONSTITUENTS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//    File file = new File("/home/brmeyer/Downloads/Constituent+Spouse-v6-head-of-household.xlsx");
+//    File file = new File("/home/brmeyer/Downloads/RE Export June 2023/Constituent+Spouse-v6-head-of-household.xlsx");
 //    InputStream inputStream = new FileInputStream(file);
 //    List<Map<String, String>> rows = Utils.getExcelData(inputStream);
 //
@@ -223,22 +227,22 @@ public class RaisersEdgeToSalesforce {
     // RELATIONSHIPS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//    File relsFile = new File("/home/brmeyer/Downloads/Individual-relationships-v4-more-notes-fields.xlsx");
+//    File relsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Individual-relationships-v4-more-notes-fields.xlsx");
 //    InputStream relsInputStream = new FileInputStream(relsFile);
 //    List<Map<String, String>> relRows = Utils.getExcelData(relsInputStream);
-//
-//    Map<String, SObject> constituentIdToContact = new HashMap<>();
-//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
-//    for (SObject contact : contacts) {
-//      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
-//    }
-//
-//    Map<String, SObject> constituentIdToAccount = new HashMap<>();
-//    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!=''");
-//    for (SObject account : accounts) {
-//      constituentIdToAccount.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
-//    }
-//
+
+    Map<String, SObject> constituentIdToContact = new HashMap<>();
+    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+    for (SObject contact : contacts) {
+      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
+    }
+
+    Map<String, SObject> constituentIdToAccount = new HashMap<>();
+    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!=''");
+    for (SObject account : accounts) {
+      constituentIdToAccount.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
+    }
+
 //    // prevent duplicates
 //    Set<String> seenRelationships = new HashSet<>();
 //    List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe4__Contact__c, npe4__RelatedContact__c FROM npe4__Relationship__c WHERE npe4__Contact__c!='' AND npe4__RelatedContact__c!=''");
@@ -313,23 +317,19 @@ public class RaisersEdgeToSalesforce {
 //      }
 //    }
 //    sfdcClient.batchFlush();
-//
-//    File giftsFile = new File("/home/brmeyer/Downloads/Gifts-with-Installments-v6-notes.xlsx");
-//    InputStream giftInputStream = new FileInputStream(giftsFile);
-//    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTRIBUTES
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //    // TODO: Unique to attributes, needed for multiselect appends.
-//    Map<String, SObject> constituentIdToContact = new HashMap<>();
-//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c, Participation__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+//    constituentIdToContact = new HashMap<>();
+//    contacts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c, Participation__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
 //    for (SObject contact : contacts) {
 //      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
 //    }
 //
-//    File attributesFile = new File("/home/brmeyer/Downloads/Attributes-School-Involvement.CSV");
+//    File attributesFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Attributes-School-Involvement.CSV");
 //    InputStream attributesInputStream = new FileInputStream(attributesFile);
 //    List<Map<String, String>> attributeRows = Utils.getCsvData(attributesInputStream);
 //
@@ -380,15 +380,19 @@ public class RaisersEdgeToSalesforce {
 //    }
 //    sfdcClient.batchFlush();
 
+    File giftsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Gifts-with-Installments-v7-check-ref-number.xlsx");
+    InputStream giftInputStream = new FileInputStream(giftsFile);
+    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // CAMPAIGNS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//    // TODO: The following completely skips Bulk Upsert!
-//
-//    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
-//        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
-//
+    // TODO: The following completely skips Bulk Upsert!
+
+    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
+        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
+
 //    for (int i = 0; i < giftRows.size(); i++) {
 //      log.info("processing campaign row {}", i + 2);
 //
@@ -421,14 +425,18 @@ public class RaisersEdgeToSalesforce {
 //    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
 //        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
 //
-//    File eventsFile = new File("/home/brmeyer/Downloads/Events.xlsx");
+//    File eventsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Events.CSV");
 //    InputStream eventsInputStream = new FileInputStream(eventsFile);
-//    List<Map<String, String>> eventRows = Utils.getExcelData(eventsInputStream);
+//    List<Map<String, String>> eventRows = Utils.getCsvData(eventsInputStream);
 //
 //    for (int i = 0; i < eventRows.size(); i++) {
 //      log.info("processing event row {}", i + 2);
 //
 //      Map<String, String> eventRow = eventRows.get(i);
+//
+//      if (campaignNameToId.containsKey(eventRow.get("Ev_Name"))) {
+//        continue;
+//      }
 //
 //      SObject sObject = new SObject("Campaign");
 //      sObject.setField("Name", eventRow.get("Ev_Name"));
@@ -466,7 +474,11 @@ public class RaisersEdgeToSalesforce {
 //    Map<String, String> eventIdToCampaignId = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Campaign_ID__c FROM Campaign WHERE Blackbaud_Campaign_ID__c!=''").stream()
 //        .collect(Collectors.toMap(c -> (String) c.getField("Blackbaud_Campaign_ID__c"), c -> c.getId()));
 //
-//    File participantsFile = new File("/home/brmeyer/Downloads/Participants-more-fields-v2.xlsx");
+//    Multimap<String, String> campaignMembers = ArrayListMultimap.create();
+//    sfdcClient.queryListAutoPaged("SELECT CampaignId, ContactId FROM CampaignMember")
+//        .forEach(cm -> campaignMembers.put(cm.getField("CampaignId").toString(), cm.getField("ContactId").toString()));
+//
+//    File participantsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Participants-more-fields-v2.xlsx");
 //    InputStream participantsInputStream = new FileInputStream(participantsFile);
 //    List<Map<String, String>> participantRows = Utils.getExcelData(participantsInputStream);
 //
@@ -480,16 +492,30 @@ public class RaisersEdgeToSalesforce {
 //      }
 //
 //      if (constituentIdToContact.containsKey(participantRow.get("Prt_ID"))) {
+//        String campaignId = eventIdToCampaignId.get(participantRow.get("PrtEv_Event_ID"));
+//        String contactId = constituentIdToContact.get(participantRow.get("Prt_ID")).getId();
+//
+//        if (campaignMembers.containsKey(campaignId) && campaignMembers.get(campaignId).contains(contactId)) {
+//          continue;
+//        }
+//
 //        SObject sObject = new SObject("CampaignMember");
-//        sObject.setField("ContactId", constituentIdToContact.get(participantRow.get("Prt_ID")).getId());
-//        sObject.setField("CampaignId", eventIdToCampaignId.get(participantRow.get("PrtEv_Event_ID")));
+//        sObject.setField("CampaignId", campaignId);
+//        sObject.setField("ContactId", contactId);
 //        sfdcClient.batchInsert(sObject);
 //      }
 //
 //      if (!Strings.isNullOrEmpty(participantRow.get("PrtGst_1_01_ID")) && constituentIdToContact.containsKey(participantRow.get("PrtGst_1_01_ID"))) {
+//        String contactId = constituentIdToContact.get(participantRow.get("PrtGst_1_01_ID")).getId(); // PrtCnBio_ID
+//        String campaignId = eventIdToCampaignId.get(participantRow.get("PrtEv_Event_ID"));
+//
+//        if (campaignMembers.containsKey(campaignId) && campaignMembers.get(campaignId).contains(contactId)) {
+//          continue;
+//        }
+//
 //        SObject sObject = new SObject("CampaignMember");
-//        sObject.setField("ContactId", constituentIdToContact.get(participantRow.get("PrtGst_1_01_ID")).getId()); // PrtCnBio_ID
-//        sObject.setField("CampaignId", eventIdToCampaignId.get(participantRow.get("PrtEv_Event_ID")));
+//        sObject.setField("CampaignId", campaignId);
+//        sObject.setField("ContactId", contactId);
 //        sfdcClient.batchInsert(sObject);
 //      }
 //    }
@@ -499,9 +525,13 @@ public class RaisersEdgeToSalesforce {
     // NOTES
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//    File notesFile = new File("/home/brmeyer/Downloads/Notes.xlsx");
+//    File notesFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Notes.xlsx");
 //    InputStream notesInputStream = new FileInputStream(notesFile);
 //    List<Map<String, String>> noteRows = Utils.getExcelData(notesInputStream);
+//
+//    // No way to prevent duplicates! SOQL requires IDs to be provided as filters to query notes and links.
+//    // But, we haven't run this often, so it's not a huge deal. If you do need to delete and start clean, use the
+//    // old school Data Loader and delete all ContentNotes (it'll auto delete the links too).
 //
 //    for (int i = 0; i < noteRows.size(); i++) {
 //      log.info("processing note row {}", i + 2);
@@ -530,6 +560,11 @@ public class RaisersEdgeToSalesforce {
 //      }
 //
 //      Map<String, String> noteRow = noteRows.get(i);
+//
+//      if (!constituentIdToContact.containsKey(noteRow.get("Constituent ID")) && !constituentIdToAccount.containsKey(noteRow.get("Constituent ID"))) {
+//        log.info("cannot find constituent; skipping ContentDocumentLink insert");
+//        continue;
+//      }
 //
 //      SObject cdl = new SObject("ContentDocumentLink");
 //      cdl.setField("ContentDocumentId", result.getId());
@@ -569,10 +604,10 @@ public class RaisersEdgeToSalesforce {
 //      sfdcClient.batchInsert(task);
 //    }
 
-//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//    // RECURRING DONATION
-//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // RECURRING DONATION
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //    // TODO: The following completely skips Bulk Upsert!
 //
 //    counter = 1;
@@ -870,8 +905,6 @@ public class RaisersEdgeToSalesforce {
 //      }
 //    }
 //    sfdcClient.batchFlush();
-
-
   }
 
   private static void migrateConstituent(Map<String, String> row, String householdId, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows, List<String> seenEmails) {
@@ -1204,10 +1237,12 @@ public class RaisersEdgeToSalesforce {
       amount = Double.parseDouble(giftRow.get("Gf_Amount").replace("$", "").replace(",", ""));
     }
     sfdcOpportunity.setField("Amount", amount);
+    sfdcOpportunity.setField("Check_Number__c", giftRow.get("Gf_Check_number"));
     sfdcOpportunity.setField("Name", giftRow.get("Gf_Description"));
     sfdcOpportunity.setField("Fund__c", giftRow.get("Gf_Fund"));
     sfdcOpportunity.setField("Payment_Method__c", giftRow.get("Gf_Pay_method"));
     sfdcOpportunity.setField("Reference__c", giftRow.get("Gf_Reference"));
+    sfdcOpportunity.setField("Reference_Number__c", giftRow.get("Gf_Reference_number"));
     sfdcOpportunity.setField("Type", giftRow.get("Gf_Type"));
     if (!Strings.isNullOrEmpty(giftRow.get("Gf_Date"))) {
       Date d = new SimpleDateFormat("MM/dd/yyyy").parse(giftRow.get("Gf_Date"));
