@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.client.MailchimpClient.ADDRESS;
@@ -99,15 +100,15 @@ public class MailchimpEmailService extends AbstractEmailService {
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
       MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
-        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "unsubscribed", lastSync));
-        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "cleaned", lastSync));
+        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "unsubscribed", lastSync), c -> c.emailOptOut = true);
+        syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "cleaned", lastSync), c -> c.emailBounced = true);
       }
     }
   }
 
   // TODO: Purely allowing this to unsubscribe in the CRM, as opposed to archiving immediately in MC. Let organizations
   //  decide if their unsubscribe-from-CRM code does an archive...
-  private void syncUnsubscribes(List<MemberInfo> unsubscribes) throws Exception {
+  private void syncUnsubscribes(List<MemberInfo> unsubscribes, Consumer<CrmContact> consumer) throws Exception {
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
 
@@ -122,7 +123,7 @@ public class MailchimpEmailService extends AbstractEmailService {
       log.info("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, unsubscribeContacts.size());
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;
-      updateContact.emailOptOut = true;
+      consumer.accept(updateContact);
       crmService.batchUpdateContact(updateContact);
     }
     crmService.batchFlush();
