@@ -406,6 +406,9 @@ public class HubSpotCrmService implements CrmService {
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, false, contact.getOtherProperties());
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, true, contact.getOtherProperties());
     }
+    if (crmContact.emailBounced != null && crmContact.emailBounced) {
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailBounced, true, contact.getOtherProperties());
+    }
 
     if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, true, contact.getOtherProperties());
@@ -1075,6 +1078,7 @@ public class HubSpotCrmService implements CrmService {
         null, // description
         contact.getProperties().getEmail(),
         Collections.emptyList(), // List<String> emailGroups,
+        getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.emailBounced, contact.getProperties().getOtherProperties()),
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.emailOptIn, contact.getProperties().getOtherProperties()),
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.emailOptOut, contact.getProperties().getOtherProperties()),
         null, // Calendar firstDonationDate,
@@ -1122,6 +1126,7 @@ public class HubSpotCrmService implements CrmService {
         null, // description
         getValue(contact.getProperties().getEmail()),
         Collections.emptyList(), // List<String> emailGroups,
+        null, // Boolean emailBounced,
         null, // Boolean emailOptIn,
         null, // Boolean emailOptOut,
         null, // Calendar firstDonationDate,

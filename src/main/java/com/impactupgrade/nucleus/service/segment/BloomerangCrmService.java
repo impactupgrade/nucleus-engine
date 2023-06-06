@@ -628,6 +628,7 @@ public class BloomerangCrmService implements CrmService {
         null, // description
         primaryEmail,
         Collections.emptyList(), // List<String> emailGroups,
+        null, // Boolean emailBounced,
         null, // Boolean emailOptIn,
         null, // Boolean emailOptOut,
         null, // Calendar firstDonationDate,

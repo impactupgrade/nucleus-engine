@@ -414,6 +414,9 @@ public class SfdcCrmService implements CrmService {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
     }
+    if (crmContact.emailBounced != null && crmContact.emailBounced) {
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailBounced, true);
+    }
 
     if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
@@ -2124,6 +2127,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Description"),
         (String) sObject.getField("Email"),
         emailGroups,
+        getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.emailBounced),
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptIn),
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.emailOptOut),
         firstCloseDate,

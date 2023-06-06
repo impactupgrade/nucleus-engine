@@ -125,6 +125,7 @@ public class EnvironmentConfig implements Serializable {
 
     public String emailOptIn = "";
     public String emailOptOut = "";
+    public String emailBounced = "";
     public String emailGroups = "";
     public String emailCampaignInclusion = "";
 

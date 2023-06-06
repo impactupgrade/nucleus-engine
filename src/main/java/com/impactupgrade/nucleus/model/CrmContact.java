@@ -52,6 +52,7 @@ public class CrmContact extends CrmRecord {
   public List<String> emailGroups = new ArrayList<>();
   public Boolean emailOptIn;
   public Boolean emailOptOut;
+  public Boolean emailBounced;
   public Calendar firstDonationDate;
   public String firstName;
   public String homePhone;
@@ -94,6 +95,7 @@ public class CrmContact extends CrmRecord {
       String description,
       String email,
       List<String> emailGroups,
+      Boolean emailBounced,
       Boolean emailOptIn,
       Boolean emailOptOut,
       Calendar firstDonationDate,
@@ -126,6 +128,7 @@ public class CrmContact extends CrmRecord {
     this.description = description;
     this.email = email;
     if (emailGroups != null) this.emailGroups = emailGroups;
+    this.emailBounced = emailBounced;
     this.emailOptIn = emailOptIn;
     this.emailOptOut = emailOptOut;
     this.firstDonationDate = firstDonationDate;
