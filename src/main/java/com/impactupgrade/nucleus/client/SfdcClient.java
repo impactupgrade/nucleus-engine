@@ -242,21 +242,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
-  // the context map allows overrides to be given additional hints (such as DR's FNs)
-  public List<SObject> getContactsByName(String name, Map<String, String> context, String... extraFields) throws ConnectionException, InterruptedException {
-    String escapedName = name.replaceAll("'", "\\\\'");
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where name like '%" + escapedName + "%' ORDER BY name";
-    return queryList(query);
-  }
-
-  // the context map allows overrides to be given additional hints (such as DR's FNs)
-  public List<SObject> getContactsByName(String firstName, String lastName, Map<String, String> context, String... extraFields) throws ConnectionException, InterruptedException {
-    String escapedFirstName = firstName.replaceAll("'", "\\\\'");
-    String escapedLastName = lastName.replaceAll("'", "\\\\'");
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
-    return queryList(query);
-  }
-
   public List<SObject> getContactsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(names, "Name", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
