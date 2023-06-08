@@ -52,6 +52,14 @@ public class HibernateDao<I extends Serializable, E> {
     return entities;
   }
 
+  public Optional<E> getQueryResult(String queryString) {
+    return getQueryResult(queryString, false, query -> {});
+  }
+
+  public Optional<E> getQueryResult(String queryString, boolean isNative) {
+    return getQueryResult(queryString, isNative, query -> {});
+  }
+
   public Optional<E> getQueryResult(String queryString, Consumer<Query> queryConsumer) {
     return getQueryResult(queryString, false, queryConsumer);
   }
