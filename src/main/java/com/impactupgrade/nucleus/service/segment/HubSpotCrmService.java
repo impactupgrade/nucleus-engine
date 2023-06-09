@@ -1122,7 +1122,7 @@ public class HubSpotCrmService implements CrmService {
     //  for simple use cases like outbound messages.
     return new CrmContact(
         contact.getVid() + "",
-        null, // CrmAccount account,
+        new CrmAccount(),
         null, // description
         getValue(contact.getProperties().getEmail()),
         Collections.emptyList(), // List<String> emailGroups,
@@ -1136,7 +1136,7 @@ public class HubSpotCrmService implements CrmService {
         null, // Calendar lastDonationDate,
         getValue(contact.getProperties().getLastname()),
         getValue(env.getConfig().hubspot.fieldDefinitions.contactLanguage, contact.getProperties().getOtherProperties()),
-        null, // CrmAddress address,
+        new CrmAddress(),
         getValue(contact.getProperties().getMobilePhone()),
         null, // Integer numDonations,
         null, // Integer numDonationsYtd
