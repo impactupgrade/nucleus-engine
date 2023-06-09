@@ -55,6 +55,7 @@ public class VirtuousCrmService implements BasicCrmService {
 
     @Override
     public void init(Environment env) {
+        this.env = env;
         this.virtuousClient = new VirtuousClient(env);
     }
 
