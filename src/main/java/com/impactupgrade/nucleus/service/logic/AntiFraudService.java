@@ -80,6 +80,10 @@ public class AntiFraudService {
 
       if (!success) {
         log.warn("recaptcha failed: {}", jsonObject);
+        // TODO: For now, if something outright failed, allow it through. We're hitting the following often, especially from Axis.
+        //  {"error-codes":["browser-error"],"success":false}
+        //  {"error-codes":["timeout-or-duplicate"],"success":false}
+        return true;
       } else {
         log.info("recaptcha: score={} hostname={}", score, hostname);
       }
