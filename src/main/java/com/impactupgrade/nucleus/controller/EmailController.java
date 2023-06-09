@@ -116,7 +116,7 @@ public class EmailController {
             emailPlatformService.upsertContact(email, contactId);
             env.logJobProgress(emailPlatformService.name() + ": upsert contact done");
           } catch (Exception e) {
-            log.error("contact upsert failed for contact: {} platform: {}", contactId, emailPlatformService.name(), e);
+            log.error("contact upsert failed for contact: {} {} platform: {}", email, contactId, emailPlatformService.name(), e);
             env.logJobError(e.getMessage(), false);
           }
         }

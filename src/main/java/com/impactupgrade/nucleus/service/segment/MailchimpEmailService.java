@@ -151,7 +151,15 @@ public class MailchimpEmailService extends AbstractEmailService {
           // If the contact didn't exist, but we have the email, try archiving it. Could be a contact that was
           // just deleted in the CRM.
           log.info("attempting to archive contact {} on list {}", email, emailList.id);
-          new MailchimpClient(mailchimpConfig).archiveContact(emailList.id, email);
+          try {
+            new MailchimpClient(mailchimpConfig).archiveContact(emailList.id, email);
+          } catch (MailchimpException e) {
+            if (e.code == 405) {
+              // swallow -- attempting to archive a contact that is already archived
+            } else {
+              throw e;
+            }
+          }
         }
       }
     }
