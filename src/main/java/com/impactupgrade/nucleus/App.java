@@ -89,7 +89,6 @@ public class App {
     apiConfig.register(crmController());
     apiConfig.register(donationFormController());
     apiConfig.register(emailController());
-    apiConfig.register(eventsController());
     apiConfig.register(mailchimpController());
     apiConfig.register(paymentGatewayController());
     apiConfig.register(sfdcController());
@@ -99,6 +98,11 @@ public class App {
     apiConfig.register(twilioFrontlineController());
     apiConfig.register(accountingController());
     apiConfig.register(jobController());
+
+    // Controllers that require DB connectivity -- prevent JDBC/Hikari connection errors.
+    if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
+      apiConfig.register(eventsController());
+    }
 
     registerAPIControllers(apiConfig);
 
