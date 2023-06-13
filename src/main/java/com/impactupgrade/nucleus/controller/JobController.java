@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -82,10 +83,14 @@ public class JobController {
     String zoneId = !Strings.isNullOrEmpty(timezoneId) ? timezoneId : "EST";
     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern(TIME_FORMAT);
+    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT + " " + TIME_FORMAT);
     return jobs.stream()
-        .map(job -> toJobDto(job, zoneId, dateFormatter, timeFormatter))
-        .collect(Collectors.toList());
+            .map(job -> toJobDto(job, zoneId, dateFormatter, timeFormatter))
+            .sorted(Comparator.comparing((JobDto jobDto) -> LocalDateTime.parse(jobDto.date + " " + jobDto.time, dateTimeFormatter))
+                    .reversed())
+            .collect(Collectors.toList());
   }
+
 
   private JobDto toJobDto(Job job, String timezoneId, DateTimeFormatter dateFormatter, DateTimeFormatter timeFormatter) {
     JobDto jobDto = new JobDto();
