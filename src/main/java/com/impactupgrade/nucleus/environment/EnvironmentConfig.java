@@ -146,6 +146,13 @@ public class EnvironmentConfig implements Serializable {
     public String subdomain = "";
   }
 
+  public static class DynamicsPlatform extends Platform {
+    public String tenantId = "";
+    public String resourceUrl = "";
+    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
+  }
+  public DynamicsPlatform dynamicsPlatform = new DynamicsPlatform();
+
   public Hubspot hubspot = new Hubspot();
   public static class Hubspot extends Platform {
     public String portalId = "";
