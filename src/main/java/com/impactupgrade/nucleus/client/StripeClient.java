@@ -33,6 +33,7 @@ import com.stripe.param.ChargeCreateParams;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerListParams;
 import com.stripe.param.CustomerRetrieveParams;
+import com.stripe.param.CustomerSearchParams;
 import com.stripe.param.CustomerUpdateParams;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PaymentIntentUpdateParams;
@@ -128,6 +129,14 @@ public class StripeClient {
   public Optional<Customer> getCustomerByEmail(String email) throws StripeException {
     // If there are multiple, use the oldest.
     return getCustomersByEmail(email).stream().min(Comparator.comparing(Customer::getCreated));
+  }
+
+  public List<Customer> getCustomersByName(String name) throws StripeException {
+    CustomerSearchParams customerParams = CustomerSearchParams.builder()
+        .setQuery("name~\"" + name + "\"")
+        .addExpand("data.sources")
+        .build();
+    return Customer.search(customerParams, requestOptions).getData();
   }
 
   public PaymentIntent getPaymentIntent(String id) throws StripeException {
