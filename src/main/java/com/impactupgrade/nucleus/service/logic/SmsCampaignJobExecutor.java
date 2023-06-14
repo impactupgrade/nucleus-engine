@@ -15,6 +15,8 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.jayway.jsonpath.JsonPath;
+import net.minidev.json.JSONArray;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -91,8 +93,6 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       return;
     }
 
-    JsonNode messagesNode = getJsonNode(job.payload, "messages");
-
     Map<String, JobProgress> progressesByContacts = job.jobProgresses.stream()
         .filter(jp -> !Strings.isNullOrEmpty(jp.targetId))
         .collect(Collectors.toMap(
@@ -150,6 +150,8 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           log.info("Next message id to send: {}", nextMessage);
         }
 
+        JsonNode messagesNode = getJsonNode(job.payload, "messages");
+
         if (nextMessage > messagesNode.size()) {
           log.info("All messages sent for contact {}!", targetId);
           continue;
@@ -158,17 +160,19 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         // TODO: getMessage assumes the code ("EN") use, not the language name ("English"). The SMS campaign JSON
         //  technically includes a "languages" array with both. So if the CRM uses the full name, may need to convert
         //  here using the JSON mappings.
+        String defaultLanguageCode = getDefaultLanguage(getJsonNode(job.payload, "languages"));
+        if (Strings.isNullOrEmpty(defaultLanguageCode)) {
+          defaultLanguageCode = "EN";
+        }
+        
         String languageCode = crmContact.language;
         if (Strings.isNullOrEmpty(languageCode)) {
-          languageCode = getDefaultLanguage(getJsonNode(job.payload, "languages"));
+          log.info("Failed to get contact language for contact {}; assuming {}", targetId, defaultLanguageCode);
+          languageCode = defaultLanguageCode;
         }
-        if (Strings.isNullOrEmpty(languageCode)) {
-          log.info("Failed to get contact language for contact {}; assuming EN", targetId);
-          languageCode = "EN";
-        } else {
-          languageCode = languageCode.toUpperCase(Locale.ROOT);
-        }
-        String message = getMessage(messagesNode, nextMessage, languageCode);
+        languageCode = languageCode.toUpperCase(Locale.ROOT);
+       
+        String message = getMessage(messagesNode, nextMessage, languageCode, defaultLanguageCode);
 
         // If the message is empty, it's likely due to the campaign not being configured for the given language. Skip
         // attempting to send the message, but still log "progress" so that this step isn't reattempted over and over
@@ -202,37 +206,56 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     jobDao.update(job);
   }
 
-  // TODO: Let's introduce jsonpath? Or a limited set of Jackson bindings?
-
-  private String getMessage(JsonNode messagesNode, Integer id, String languageCode) {
-    if (messagesNode.isArray()) {
-      for (JsonNode messageNode : messagesNode) {
-        if (id.equals(getJsonInt(messageNode, "id"))) {
-          JsonNode languagesNode = messageNode.findValue("languages");
-          if (languagesNode != null) {
-            JsonNode languageNode = getJsonNode(languagesNode, languageCode);
-            if (languageNode != null) {
-              return getJsonText(languageNode, "message");
-            }
-          }
-        }
-      }
-    }
-
-    return null;
+  private String getDefaultLanguage(JsonNode languagesNode) {
+    JsonNode jsonNode = readJsonPath(languagesNode, "$.[?(@.default==true)].code");
+    return jsonNode != null ? jsonNode.asText() : null;
   }
 
-  private String getDefaultLanguage(JsonNode languagesNode) {
-    if (languagesNode.isArray()) {
-      for (JsonNode languageNode : languagesNode) {
-        Boolean isDefault = getJsonBoolean(languageNode, "default");
-        if (isDefault != null && isDefault) {
-          return getJsonText(languageNode, "code");
+  private String getMessage(JsonNode messagesNode, Integer id, String languageCode, String defaultLanguageCode) {
+    String message = null;
+    String attachmentUrl = null;
+
+    JsonNode messageNode = readJsonPath(
+        messagesNode, 
+        "$.[?(@.id=='" + id + "')].languages." + languageCode
+    );
+    
+    if (messageNode != null) {
+      message = getJsonText(messageNode, "message");
+      String useAttachment = getJsonText(messageNode, "useAttachment"); 
+      
+      if ("own_attachment".equals(useAttachment)) {
+        attachmentUrl = messageNode.get("attachmentUrl").asText();
+      } else if ("primary_attachment".equals(useAttachment)) {
+        JsonNode defaultLanguageMessageNode = readJsonPath(
+            messagesNode,
+            "$.[?(@.id=='" + id + "')].languages." + defaultLanguageCode
+        );
+        if (defaultLanguageMessageNode != null) {
+          attachmentUrl = getJsonText(defaultLanguageMessageNode, "attachmentUrl");
         }
       }
+      
+      if (!Strings.isNullOrEmpty(attachmentUrl)) {
+        message += "\n" + attachmentUrl;
+      }
     }
-
-    return null;
+    
+    return message;
+  }
+  
+  private JsonNode readJsonPath(JsonNode jsonNode, String jsonPath) {
+    JsonNode foundNode = null;
+    try {
+      JSONArray jsonArray = JsonPath.read(jsonNode.toString(), jsonPath);
+      String jsonArrayString = jsonArray.toJSONString();
+      foundNode = new ObjectMapper().readTree(jsonArrayString);
+    } catch (Exception e) {
+      log.warn("Failed to read json path from json node! {}", e.getMessage());
+    }
+    // Please note, that the return value of jsonPath is an array, 
+    // So getting first item in the array to get to 'real' result
+    return foundNode != null ? foundNode.get(0) : null;
   }
 
   private void updateJob(Job job, Instant now) {
