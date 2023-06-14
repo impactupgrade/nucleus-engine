@@ -42,11 +42,18 @@ public class TwilioClient {
   }
 
   public Message sendMessage(String to, String from, String body, String callbackUrl) {
+    return sendMessage(to, from, body, null, callbackUrl);
+  }
+
+  public Message sendMessage(String to, String from, String body, String mediaUrl, String callbackUrl) {
     MessageCreator messageCreator = Message.creator(
-            new PhoneNumber(to),
-            new PhoneNumber(from),
-            body
+        new PhoneNumber(to),
+        new PhoneNumber(from),
+        body
     );
+    if (!Strings.isNullOrEmpty(mediaUrl)) {
+      messageCreator.setMediaUrl(mediaUrl);
+    }
     if (!Strings.isNullOrEmpty(callbackUrl)) {
       messageCreator.setStatusCallback(callbackUrl);
     }
