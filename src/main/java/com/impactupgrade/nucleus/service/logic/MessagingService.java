@@ -30,7 +30,7 @@ public class MessagingService {
     crmService = env.messagingCrmService();
   }
 
-  public void sendMessage(String message, CrmContact crmContact, String sender) {
+  public void sendMessage(String message, String attachmentUrl, CrmContact crmContact, String sender) {
     try {
       String pn = crmContact.phoneNumberForSMS();
       pn = pn.replaceAll("[^0-9\\+]", "");
@@ -38,7 +38,7 @@ public class MessagingService {
       if (!Strings.isNullOrEmpty(pn)) {
         String personalizedMessage = personalizeMessage(message, crmContact);
 
-        Message twilioMessage = twilioClient.sendMessage(pn, sender, personalizedMessage, null);
+        Message twilioMessage = twilioClient.sendMessage(pn, sender, personalizedMessage, attachmentUrl, null);
 
         env.logJobInfo("sent messageSid {} to {}; status={} errorCode={} errorMessage={}", twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
       }
