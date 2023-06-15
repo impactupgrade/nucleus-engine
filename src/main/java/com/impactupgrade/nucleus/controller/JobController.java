@@ -83,8 +83,8 @@ public class JobController {
     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern(TIME_FORMAT);
     return jobs.stream()
-          .map(job -> toJobDto(job, zoneId, dateFormatter, timeFormatter))
-          .collect(Collectors.toList());
+        .map(job -> toJobDto(job, zoneId, dateFormatter, timeFormatter))
+        .collect(Collectors.toList());
   }
 
   private JobDto toJobDto(Job job, String timezoneId, DateTimeFormatter dateFormatter, DateTimeFormatter timeFormatter) {
