@@ -430,6 +430,8 @@ public class SfdcCrmService implements CrmService {
     if (crmContact.notes != null && crmContact.notes != "") {
       contact.setField("Description", crmContact.notes);
     }
+
+    // TODO: Avoiding setting the mailing address of a Contact, instead allowing the Account to handle it. But should we?
   }
 
   @Override

@@ -397,6 +397,12 @@ public class HubSpotCrmService implements CrmService {
     }
     setProperty(env.getConfig().hubspot.fieldDefinitions.contactLanguage, crmContact.language, contact.getOtherProperties());
 
+    contact.setAddress(crmContact.mailingAddress.street);
+    contact.setCity(crmContact.mailingAddress.city);
+    contact.setState(crmContact.mailingAddress.state);
+    contact.setZip(crmContact.mailingAddress.postalCode);
+    contact.setCountry(crmContact.mailingAddress.country);
+
     // TODO: add/remove in default lists?
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, true, contact.getOtherProperties());
