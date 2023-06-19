@@ -248,7 +248,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
       String queryString = "select j from Job j " +
           "where j.org.id = :orgId " +
           "and j.jobType = :jobType " +
-          "order by j.id dsc";
+          "order by j.id desc";
       Query<Job> query = session.createQuery(queryString);
       query.setParameter("orgId", org.getId());
       query.setParameter("jobType", jobType);
