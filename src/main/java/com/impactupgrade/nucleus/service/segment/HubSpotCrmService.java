@@ -965,7 +965,7 @@ public class HubSpotCrmService implements CrmService {
       // ex: type eq Foo Bar <-- note that Foo Bar needs to be reassembled back into one value
       String[] filterSplit = emailList.crmFilter.split(" ");
       String filterValue = emailList.crmFilter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
-      filters.add(new Filter(filterSplit[0], filterSplit[1], filterValue));
+      filters.add(new Filter(filterSplit[0], filterSplit[1].toUpperCase(Locale.ROOT), filterValue));
     }
 
 //    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
@@ -1028,7 +1028,7 @@ public class HubSpotCrmService implements CrmService {
     // ex: type eq Foo Bar <-- note that Foo Bar needs to be reassembled back into one value
     String[] filterSplit = filter.split(" ");
     String filterValue = filter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
-    filters.add(new Filter(filterSplit[0], filterSplit[1], filterValue));
+    filters.add(new Filter(filterSplit[0], filterSplit[1].toUpperCase(Locale.ROOT), filterValue));
 
     // only successful transaction deals
     filters.add(new Filter("pipeline", "EQ", env.getConfig().hubspot.donationPipeline.id));
