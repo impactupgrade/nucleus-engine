@@ -343,6 +343,18 @@ public class EnvironmentConfig implements Serializable {
   }
 
   public MBT mbt = new MBT();
+  
+  public static class GoogleSheets extends Platform {
+    public String clientEmail;
+    public String privateKeyId;
+    public String projectId;
+    public String authUri;
+    public String authProviderCertUrl;
+    public String clientCertUrl;
+    public String applicationName;
+  }
+  
+  public GoogleSheets googleSheets = new GoogleSheets();
 
   public MetadataKeys metadataKeys = new MetadataKeys();
 
