@@ -14,9 +14,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.util.IOUtils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -26,7 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 // TODO: Temporary utility to eventually be worked into a reusable strategy. Square up migrations, bulk imports,
 //  and the generic CRM model.
@@ -386,20 +382,20 @@ public class RaisersEdgeToSalesforce {
 //      }
 //    }
 //    sfdcClient.batchFlush();
+//
+//    File giftsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Gifts-with-Installments-v7-check-ref-number.xlsx");
+//    InputStream giftInputStream = new FileInputStream(giftsFile);
+//    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
 
-    File giftsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Gifts-with-Installments-v7-check-ref-number.xlsx");
-    InputStream giftInputStream = new FileInputStream(giftsFile);
-    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // CAMPAIGNS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // TODO: The following completely skips Bulk Upsert!
-
-    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
-        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
-
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // CAMPAIGNS
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    // TODO: The following completely skips Bulk Upsert!
+//
+//    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
+//        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
+//
 //    for (int i = 0; i < giftRows.size(); i++) {
 //      log.info("processing campaign row {}", i + 2);
 //
@@ -528,10 +524,10 @@ public class RaisersEdgeToSalesforce {
 //    }
 //    sfdcClient.batchFlush();
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // NOTES
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // NOTES
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //    File notesFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Notes.xlsx");
 //    InputStream notesInputStream = new FileInputStream(notesFile);
 //    List<Map<String, String>> noteRows = Utils.getExcelData(notesInputStream);
@@ -700,10 +696,10 @@ public class RaisersEdgeToSalesforce {
 //
 //    sfdcClient.batchFlush();
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // DONATIONS
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // DONATIONS
+//    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //    // TODO: The following completely skips Bulk Upsert!
 //
 //    int counter = 1;
@@ -845,10 +841,10 @@ public class RaisersEdgeToSalesforce {
 //    }
 //    sfdcClient.batchFlush();
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // SOFT CREDITS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // SOFT CREDITS
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //    // doesn't matter if there were multiple soft credits, we only care that it had any, period
 //    List<String> softCreditGiftIds = sfdcClient.queryListAutoPaged("SELECT Opportunity.Blackbaud_Gift_ID__c FROM OpportunityContactRole WHERE Opportunity.Blackbaud_Gift_ID__c!='' AND IsPrimary=FALSE AND Role='Soft Credit'").stream()
 //        .map(r -> (String) r.getChild("Opportunity").getField("Blackbaud_Gift_ID__c")).collect(Collectors.toList());
@@ -935,10 +931,8 @@ public class RaisersEdgeToSalesforce {
 
     if (isBusiness) {
       accountData.put("Account Record Type ID", ORGANIZATION_RECORD_TYPE_ID);
-      accountData.put("Account Name", row.get("CnBio_Org_Name"));
     } else {
       accountData.put("Account Record Type ID", HOUSEHOLD_RECORD_TYPE_ID);
-      // don't set the explicit household name -- NPSP will automatically manage it based on the associated contacts
     }
 
     // Preferred address -> Account Billing Address
@@ -951,7 +945,7 @@ public class RaisersEdgeToSalesforce {
       }
     }
     String cnAdrPrfAddrStr = String.join(", ", cnAdrPrfAddr);
-    accountData.put("Account Billing Address", cnAdrPrfAddrStr);
+    accountData.put("Account Billing Street", cnAdrPrfAddrStr);
     accountData.put("Account Billing City", row.get("CnAdrPrf_City"));
     accountData.put("Account Billing State", row.get("CnAdrPrf_State"));
     accountData.put("Account Billing PostCode", row.get("CnAdrPrf_ZIP"));
@@ -1033,8 +1027,6 @@ public class RaisersEdgeToSalesforce {
     accountData.put("Account Custom BB_Notes__c", cnAllPhoneCommentsCombined);
     contactData.put("Contact Custom BB_Notes__c", cnAllPhoneCommentsCombined);
 
-    // Zero Orgs have Contact Names
-    // Set Org name as Last name
     if (isBusiness) {
       accountData.put("Account Name", row.get("CnBio_Org_Name"));
     } else {
