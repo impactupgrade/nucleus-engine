@@ -242,6 +242,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
+  public List<SObject> getContactsByAccountIds(List<String> accountIds, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(accountIds, "AccountId", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+  }
+
   public List<SObject> getContactsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(names, "Name", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }

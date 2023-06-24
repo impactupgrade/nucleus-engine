@@ -17,7 +17,6 @@ import org.apache.poi.util.IOUtils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -83,10 +82,10 @@ public class RaisersEdgeToSalesforce {
     // Mostly basing this on Bulk Upsert, but cheating in places and going straight to SFDC.
     SfdcClient sfdcClient = new SfdcClient(env);
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // CONSTITUENTS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // CONSTITUENTS
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //    File file = new File("/home/brmeyer/Downloads/RE Export June 2023/Constituent+Spouse-v6-head-of-household.xlsx");
 //    InputStream inputStream = new FileInputStream(file);
 //    List<Map<String, String>> rows = Utils.getExcelData(inputStream);
@@ -159,6 +158,10 @@ public class RaisersEdgeToSalesforce {
 //    for (Map<String, String> row : rows) {
 //      String id = row.get("CnBio_ID");
 //      if (headOfHouseholdIds.contains(id)) {
+////        if (!row.get("CnBio_Last_Name").equals("Cox")) {
+////          continue;
+////        }
+//
 //        // We use the head of household's ID as the account's extref key.
 //        String householdId = id;
 //        migrateConstituent(row, householdId, primaryRows, secondaryRows, seenEmails);
@@ -183,6 +186,10 @@ public class RaisersEdgeToSalesforce {
 //    for (Map<String, String> row : rows) {
 //      String id = row.get("CnBio_ID");
 //      if (!headOfHouseholdIds.contains(id)) {
+////        if (!row.get("CnBio_Last_Name").equals("Cox")) {
+////          continue;
+////        }
+//
 //        Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
 //        for (int i = 1; i <= 4; i++) {
 //          String field = "CnAdrPrf_Addrline" + i;
@@ -223,26 +230,26 @@ public class RaisersEdgeToSalesforce {
 //    primaryRows.clear();
 //    secondaryRows.clear();
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // RELATIONSHIPS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // RELATIONSHIPS
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //    File relsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Individual-relationships-v4-more-notes-fields.xlsx");
 //    InputStream relsInputStream = new FileInputStream(relsFile);
 //    List<Map<String, String>> relRows = Utils.getExcelData(relsInputStream);
-
-    Map<String, SObject> constituentIdToContact = new HashMap<>();
-    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
-    for (SObject contact : contacts) {
-      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
-    }
-
-    Map<String, SObject> constituentIdToAccount = new HashMap<>();
-    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!=''");
-    for (SObject account : accounts) {
-      constituentIdToAccount.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
-    }
-
+//
+//    Map<String, SObject> constituentIdToContact = new HashMap<>();
+//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+//    for (SObject contact : contacts) {
+//      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
+//    }
+//
+//    Map<String, SObject> constituentIdToAccount = new HashMap<>();
+//    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Account WHERE Blackbaud_Constituent_ID__c!=''");
+//    for (SObject account : accounts) {
+//      constituentIdToAccount.put((String) account.getField("Blackbaud_Constituent_ID__c"), account);
+//    }
+//
 //    // prevent duplicates
 //    Set<String> seenRelationships = new HashSet<>();
 //    List<SObject> relationships = sfdcClient.queryListAutoPaged("SELECT npe4__Contact__c, npe4__RelatedContact__c FROM npe4__Relationship__c WHERE npe4__Contact__c!='' AND npe4__RelatedContact__c!=''");
@@ -1171,38 +1178,39 @@ public class RaisersEdgeToSalesforce {
       }
     }
 
-    // If relationships define individuals *without* their own constituent IDs, we need to save them off as
-    // secondary contacts here since it's the only time we'll see them. We'll create fake constituent IDs for them,
-    // using the original + an index.
-    for (int i = 1; i <= 25; i++) {
-      String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
-      if (Strings.isNullOrEmpty(row.get(prefix + "ID")) && !Strings.isNullOrEmpty(row.get(prefix + "Last_Name"))) {
-        Map<String, String> data = new HashMap<>();
-
-        // append the index to the end of the constituent ID
-        // TODO
-//        data.put("Contact ExtRef Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
-//        data.put("Contact Custom Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
-        data.put("Contact Custom Append Source__c", "Blackbaud");
-
-        data.put("Contact First Name", row.get(prefix + "First_Name"));
-        data.put("Contact Last Name", row.get(prefix + "Last_Name"));
-        data.put("Contact Custom Preferred_Name__c", row.get(prefix + "Nickname"));
-        data.put("Contact Custom Suffix__c", row.get(prefix + "Suffix_1"));
-        data.put("Contact Custom BB_Birthdate__c", row.get(prefix + "Birth_date"));
-        if ("Yes".equalsIgnoreCase(row.get(prefix + "Deceased"))) {
-          data.put("Contact Custom npsp__Deceased__c", "true");
-          data.put("Contact Custom BB_CnBio_Deceased_Date__c", row.get(prefix + "Deceased_Date"));
-        }
-        data.put("Contact Custom Gender__c", row.get(prefix + "Gender"));
-        if ("Yes".equalsIgnoreCase(row.get(prefix + "Inactive"))) {
-          data.put("Contact Custom BB_CnBio_Inactive__c", "true");
-        }
-        data.put("Contact Mobile Phone", row.get(prefix + "Primary_phone"));
-
-        secondaryContactData.add(data);
-      }
-    }
+//    // If relationships define individuals *without* their own constituent IDs, we need to save them off as
+//    // secondary contacts here since it's the only time we'll see them. We'll create fake constituent IDs for them,
+//    // using the original + an index.
+//    for (int i = 1; i <= 25; i++) {
+//      String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
+//      if (Strings.isNullOrEmpty(row.get(prefix + "ID")) && !Strings.isNullOrEmpty(row.get(prefix + "Last_Name"))) {
+//        Map<String, String> data = new HashMap<>();
+//
+//        // append the index to the end of the constituent ID
+//        // TODO: DO NOT RUN WITHOUT RETHINKING THIS! We can't use the index since the secondary contact may exist in
+//        //  other rows with a different index. But it's important to have SOMETHING to prevent duplicates.
+////        data.put("Contact ExtRef Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
+////        data.put("Contact Custom Blackbaud_Constituent_ID__c", row.get("CnBio_ID") + "-" + i);
+//        data.put("Contact Custom Append Source__c", "Blackbaud");
+//
+//        data.put("Contact First Name", row.get(prefix + "First_Name"));
+//        data.put("Contact Last Name", row.get(prefix + "Last_Name"));
+//        data.put("Contact Custom Preferred_Name__c", row.get(prefix + "Nickname"));
+//        data.put("Contact Custom Suffix__c", row.get(prefix + "Suffix_1"));
+//        data.put("Contact Custom BB_Birthdate__c", row.get(prefix + "Birth_date"));
+//        if ("Yes".equalsIgnoreCase(row.get(prefix + "Deceased"))) {
+//          data.put("Contact Custom npsp__Deceased__c", "true");
+//          data.put("Contact Custom BB_CnBio_Deceased_Date__c", row.get(prefix + "Deceased_Date"));
+//        }
+//        data.put("Contact Custom Gender__c", row.get(prefix + "Gender"));
+//        if ("Yes".equalsIgnoreCase(row.get(prefix + "Inactive"))) {
+//          data.put("Contact Custom BB_CnBio_Inactive__c", "true");
+//        }
+//        data.put("Contact Mobile Phone", row.get(prefix + "Primary_phone"));
+//
+//        secondaryContactData.add(data);
+//      }
+//    }
 
     // combine and save off the rows
     contactData.putAll(accountData);
