@@ -269,15 +269,16 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     private CrmAddress getCrmAddress(VirtuousClient.Address address) {
-        if (address == null) {
-            return null;
-        }
         CrmAddress crmAddress = new CrmAddress();
-        crmAddress.country = address.country;
-        crmAddress.state = address.state;
-        crmAddress.city = address.city;
-        crmAddress.postalCode = address.postal;
-        crmAddress.street = address.address1;
+
+        if (address != null) {
+            crmAddress.country = address.country;
+            crmAddress.state = address.state;
+            crmAddress.city = address.city;
+            crmAddress.postalCode = address.postal;
+            crmAddress.street = address.address1;
+        }
+
         return crmAddress;
     }
 
