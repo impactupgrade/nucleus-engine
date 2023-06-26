@@ -71,7 +71,7 @@ public class StripeToHubspotIT extends AbstractIT {
     List<CrmDonation> donations = hsCrmService.getDonationsByAccountId(accountId);
     assertEquals(1, donations.size());
     CrmDonation donation = donations.get(0);
-    Deal deal = (Deal) donation.crmRawObject;
+    Deal deal = (Deal) donation.rawObject;
     // TODO: assert no association to an RD
     assertEquals("Stripe", donation.gatewayName);
     assertEquals("pi_1ImrOLHAwJOu5brrpQ71F1G9", deal.getProperties().getOtherProperties().get("payment_gateway_transaction_id"));
@@ -118,7 +118,7 @@ public class StripeToHubspotIT extends AbstractIT {
     Optional<CrmRecurringDonation> _rd = hsCrmService.getRecurringDonationBySubscriptionId("sub_1JufwxHAwJOu5brrARMtj1Gb", null, null);
     assertTrue(_rd.isPresent());
     CrmRecurringDonation rd = _rd.get();
-    Deal rdDeal = (Deal) rd.crmRawObject;
+    Deal rdDeal = (Deal) rd.rawObject;
     assertEquals(100.0, rd.amount);
     assertTrue(rd.active);
     assertEquals(CrmRecurringDonation.Frequency.MONTHLY, rd.frequency);
@@ -131,7 +131,7 @@ public class StripeToHubspotIT extends AbstractIT {
     List<CrmDonation> donations = hsCrmService.getDonationsByAccountId(accountId);
     assertEquals(1, donations.size());
     CrmDonation donation = donations.get(0);
-    Deal donationDeal = (Deal) donation.crmRawObject;
+    Deal donationDeal = (Deal) donation.rawObject;
     // TODO: assert an association to an RD
     assertEquals("Stripe", donation.gatewayName);
     assertEquals("pi_3JufwxHAwJOu5brr0WP4aAVs", donationDeal.getProperties().getOtherProperties().get("payment_gateway_transaction_id"));

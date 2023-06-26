@@ -70,6 +70,8 @@ public class CrmContact extends CrmRecord {
   public Boolean smsOptOut;
   public Double totalDonationAmount;
   public Double totalDonationAmountYtd;
+  public String typeId;
+  public String typeName;
   public String workPhone;
 
   protected String fullNameOverride;
@@ -112,6 +114,8 @@ public class CrmContact extends CrmRecord {
       Boolean smsOptOut,
       Double totalDonationAmount,
       Double totalDonationAmountYtd,
+      String typeId,
+      String typeName,
       String workPhone,
       Object crmRawObject,
       String crmUrl,
@@ -143,6 +147,8 @@ public class CrmContact extends CrmRecord {
     this.smsOptOut = smsOptOut;
     this.totalDonationAmount = totalDonationAmount;
     this.totalDonationAmountYtd = totalDonationAmountYtd;
+    this.typeId = typeId;
+    this.typeName = typeName;
     this.workPhone = workPhone;
 
     this.fieldFetcher = fieldFetcher;

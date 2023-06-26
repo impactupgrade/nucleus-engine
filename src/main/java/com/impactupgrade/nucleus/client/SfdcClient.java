@@ -221,30 +221,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(values, fieldName, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
-  public List<SObject> getContactsByAccountId(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where accountId = '" + accountId + "' ORDER BY name";
-    return queryList(query);
-  }
-
-  // the context map allows overrides to be given additional hints (such as DR's FNs)
-  public List<SObject> getContactsByName(String name, Map<String, String> context, String... extraFields) throws ConnectionException, InterruptedException {
-    String escapedName = name.replaceAll("'", "\\\\'");
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where name like '%" + escapedName + "%' ORDER BY name";
-    return queryList(query);
-  }
-
-  // the context map allows overrides to be given additional hints (such as DR's FNs)
-  public List<SObject> getContactsByName(String firstName, String lastName, Map<String, String> context, String... extraFields) throws ConnectionException, InterruptedException {
-    String escapedFirstName = firstName.replaceAll("'", "\\\\'");
-    String escapedLastName = lastName.replaceAll("'", "\\\\'");
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where firstName = '" + escapedFirstName + "' and lastName = '" + escapedLastName + "' ORDER BY name";
-    return queryList(query);
-  }
-
-  public List<SObject> getContactsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
-    return getBulkResults(names, "Name", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
-  }
-
   public List<SObject> getDupContactsByName(String firstName, String lastName, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(firstName) && Strings.isNullOrEmpty(lastName)){
       return Collections.emptyList();
@@ -551,9 +527,23 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       clauses.add("OwnerId = '" + contactSearch.ownerId + "'");
     }
 
+    if (!Strings.isNullOrEmpty(contactSearch.name)) {
+      String escapedName = contactSearch.name.replaceAll("'", "\\\\'");
+      clauses.add("Name LIKE '%" + escapedName + "%'");
+    }
+    if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
+      String escapedName = contactSearch.firstName.replaceAll("'", "\\\\'");
+      clauses.add("FirstName LIKE '%" + escapedName + "%'");
+    }
+    if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
+      String escapedName = contactSearch.lastName.replaceAll("'", "\\\\'");
+      clauses.add("LastName LIKE '%" + escapedName + "%'");
+    }
+
     if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
       String[] keywordSplit = contactSearch.keywords.trim().split("\\s+");
       for (String keyword : keywordSplit) {
+        keyword = keyword.replaceAll("'", "\\\\'");
         // TODO: Finding a few clients with no homephone, so taking that out for now.
         clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR npe01__Home_Address__c LIKE '%" + keyword + "%')");
       }

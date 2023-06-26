@@ -141,7 +141,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
         else if (!Strings.isNullOrEmpty(map.get("Phone")))
             crmContact.mobilePhone = map.get("Phone");
 
-        crmContact.crmRawObject = map;
+        crmContact.rawObject = map;
         crmContact.fieldFetcher = map::get;
         return crmContact;
     }

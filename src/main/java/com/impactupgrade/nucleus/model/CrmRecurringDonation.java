@@ -54,6 +54,7 @@ public class CrmRecurringDonation extends CrmRecord {
 
   public Boolean active;
   public Double amount;
+  public String campaignId;
   public String customerId;
   public String description;
   public String donationName;
@@ -78,6 +79,7 @@ public class CrmRecurringDonation extends CrmRecord {
       CrmContact contact,
       Boolean active,
       Double amount,
+      String campaignId,
       String customerId,
       String description,
       String donationName,
@@ -97,6 +99,7 @@ public class CrmRecurringDonation extends CrmRecord {
 
     this.active = active;
     this.amount = amount;
+    this.campaignId = campaignId;
     this.customerId = customerId;
     this.description = description;
     this.donationName = donationName;

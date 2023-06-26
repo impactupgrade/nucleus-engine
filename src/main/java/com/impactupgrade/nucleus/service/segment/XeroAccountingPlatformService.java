@@ -160,7 +160,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             for (Element element : e.getElements()) {
                 if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    if (crmContact.crmRawObject instanceof SObject sObject) {
+                    if (crmContact.rawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContact(supporterId).map(c -> c.getContactID().toString()).orElse(null);
                     }
@@ -403,7 +403,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
         // TODO: make this part not-sfdc specific?
         // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
-        if (crmContact.crmRawObject instanceof SObject sObject) {
+        if (crmContact.rawObject instanceof SObject sObject) {
             String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
             contact.setAccountNumber(supporterId);
         }

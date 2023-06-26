@@ -162,13 +162,13 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("donationInfo[referenceNum]", crmDonation.transactionId));
 
     // if DS provided a configurable key/value, use them -- otherwise, default to General
-    String subselectionValue = crmDonation.getMetadataValue("Subselection Value");
+    String subselectionValue = crmDonation.getRawData("Subselection Value");
     if (!Strings.isNullOrEmpty(subselectionValue) && !"general".equalsIgnoreCase(subselectionValue)) {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", paymentGatewayEvent.getMetadataValue("Subselection Key")));
-      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", Strings.nullToEmpty(crmDonation.getMetadataValue("Subselection Value"))));
-    } else if (crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund) != null) {
+      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", Strings.nullToEmpty(crmDonation.getRawData("Subselection Value"))));
+    } else if (crmDonation.getRawData(env.getConfig().metadataKeys.fund) != null) {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", "Fund"));
-      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund)));
+      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", crmDonation.getRawData(env.getConfig().metadataKeys.fund)));
     } else {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", "General"));
     }

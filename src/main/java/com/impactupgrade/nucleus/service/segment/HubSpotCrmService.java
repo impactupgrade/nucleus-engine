@@ -471,7 +471,7 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, crmDonation.gatewayName, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, crmDonation.transactionId, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, crmDonation.customerId, deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmDonation.getRawData(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
     // Do NOT set subscriptionId! In getRecurringDonation, we search by that and expect only the RD to be returned.
 
     deal.setAmount(crmDonation.amount);
@@ -501,7 +501,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
     for (CrmDonation crmDonation : crmDonations) {
-      Deal deal = (Deal) crmDonation.crmRawObject;
+      Deal deal = (Deal) crmDonation.rawObject;
 
       // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
       if (!Strings.isNullOrEmpty(crmDonation.refundId)) {
@@ -569,7 +569,7 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, crmRecurringDonation.gatewayName, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, crmRecurringDonation.subscriptionId, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, crmRecurringDonation.customerId, deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmRecurringDonation.getRawData(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency, crmRecurringDonation.frequency.name().toLowerCase(Locale.ROOT), deal.getOtherProperties());
 

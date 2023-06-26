@@ -123,7 +123,7 @@ public class MailchimpEmailService extends AbstractEmailService {
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;
       updateContact.emailOptOut = true;
-      crmService.batchUpdateContact(updateContact);
+      crmService.batchUpdate(updateContact);
     }
     crmService.batchFlush();
   }

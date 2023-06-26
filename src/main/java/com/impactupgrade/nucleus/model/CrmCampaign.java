@@ -4,5 +4,5 @@
 
 package com.impactupgrade.nucleus.model;
 
-public record CrmCampaign(String id) {
+public record CrmCampaign(String id, String name) {
 }
