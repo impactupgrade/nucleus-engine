@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.environment;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.google.common.base.Strings;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -428,6 +429,8 @@ public class EnvironmentConfig implements Serializable {
   public void init(String jsonOrg) {
     try {
       mapper.readerForUpdating(this).readValue(jsonOrg);
+    } catch (MismatchedInputException e) {
+      // swallow it -- this is the Exception thrown when the org has an empty body
     } catch (JsonProcessingException e) {
       log.error("Unable to read environment JSON! {}", jsonOrg, e);
     }
