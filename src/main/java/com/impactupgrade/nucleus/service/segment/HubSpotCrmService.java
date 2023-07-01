@@ -79,7 +79,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.HOME;
@@ -986,13 +985,13 @@ public class HubSpotCrmService implements CrmService {
   public Map<String, String> getContactLists() throws Exception {
     Map<String, String> listNameToId = new HashMap<>();
     List<ContactList> listResults = HubSpotClientFactory.v1Client(env).contactList().getAll().getLists();
-    String filter = ".*(?i:nonprofit|sample|health|dashboard).*";
-    Pattern pattern = Pattern.compile(filter);
+//    String filter = ".*(?i:nonprofit|sample|health|dashboard).*";
+//    Pattern pattern = Pattern.compile(filter);
 
     for(ContactList list: listResults){
-      if (pattern.matcher(list.getName()).find()) {
+//      if (!pattern.matcher(list.getName()).find()) {
         listNameToId.put(list.getName(), String.valueOf(list.getListId()));
-      }
+//      }
     }
     return listNameToId;
   }
