@@ -9,9 +9,6 @@ import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmAccount;
-import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -286,14 +283,10 @@ public class StripeController {
 
             if (crmRecurringDonationOptional.isPresent()) {
               String targetId = null;
-              Optional<CrmAccount> crmAccountOptional = crmService.getAccountByCustomerId(card.getCustomer());
-              if (crmAccountOptional.isPresent()) {
-                targetId = crmAccountOptional.get().id;
-              } else {
-                Optional<CrmContact> crmContactOptional = crmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
-                if (crmContactOptional.isPresent()) {
-                  targetId = crmContactOptional.get().account.id;
-                }
+              if (!Strings.isNullOrEmpty(crmRecurringDonationOptional.get().contact.id)) {
+                targetId = crmRecurringDonationOptional.get().contact.id;
+              } else if (!Strings.isNullOrEmpty(crmRecurringDonationOptional.get().account.id)) {
+                targetId = crmRecurringDonationOptional.get().account.id;
               }
 
               if (!Strings.isNullOrEmpty(targetId)) {
