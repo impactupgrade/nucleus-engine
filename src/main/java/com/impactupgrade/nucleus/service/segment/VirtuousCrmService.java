@@ -420,7 +420,7 @@ public class VirtuousCrmService implements BasicCrmService {
         CrmDonation crmDonation = new CrmDonation();
         crmDonation.id = gift.id + "";
         crmDonation.name = gift.transactionSource + "/" + gift.transactionId; //?
-        crmDonation.amount = gift.amount;
+        crmDonation.amount = Double.parseDouble(gift.amount.replace("$", ""));
         crmDonation.gatewayName = gift.transactionSource; // ?
         // TODO: Need this so that DonationService doesn't flag it as a "non-posted state". But it doesn't look like
         //  Virtuous actually has a status to even have a failed state?
@@ -439,7 +439,7 @@ public class VirtuousCrmService implements BasicCrmService {
         gift.contactId = crmDonation.contact.id;
         gift.giftType = "Credit"; // ?
         gift.giftDate = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT).format(crmDonation.closeDate);
-        gift.amount = crmDonation.amount;
+        gift.amount = crmDonation.amount + "";
         gift.transactionSource = crmDonation.gatewayName;
         gift.transactionId = crmDonation.transactionId;
         gift.isPrivate = false; // ?

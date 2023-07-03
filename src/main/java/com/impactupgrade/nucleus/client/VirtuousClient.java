@@ -192,6 +192,11 @@ public class VirtuousClient {
     }
 
     // Gift
+    public Gifts getGiftsByContact(String contactId) {
+      String giftUrl = VIRTUOUS_API_URL + "/Gift/ByContact/" + contactId + "?take=1000";
+      return get(giftUrl, headers(), Gifts.class);
+    }
+
     public Gift getGiftByTransactionSourceAndId(String transactionSource, String transactionId) {
         String giftUrl = VIRTUOUS_API_URL + "/Gift/" + transactionSource + "/" + transactionId;
         return getGift(giftUrl);
@@ -557,7 +562,7 @@ public class VirtuousClient {
     //        public String giftTypeFormatted;
     public String giftDate;
     //        public String giftDateFormatted;
-    public Double amount;
+    public String amount;
     //        public String amountFormatted;
 //        public String batch;
 //        public Integer segmentId;
@@ -595,7 +600,6 @@ public class VirtuousClient {
 //        public String exchangeRate;
 //        public String baseCurrencyCode;
 
-
     @Override
     public String toString() {
       return "Gift{" +
@@ -613,6 +617,11 @@ public class VirtuousClient {
           ", isTaxDeductible=" + isTaxDeductible +
           '}';
     }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Gifts {
+    public List<Gift> list = new ArrayList<>();
   }
 
 //    @JsonIgnoreProperties(ignoreUnknown = true)
