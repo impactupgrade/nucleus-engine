@@ -21,16 +21,22 @@ public class NotificationService {
     this.env = env;
   }
 
+  public boolean notificationConfigured(String notificationKey) {
+    EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get(notificationKey);
+    return notificationsConfig != null;
+  }
+
   public void sendNotification(String subject, String body, String notificationKey) throws Exception {
     sendNotification(subject, body, null, notificationKey);
   }
 
   public void sendNotification(String subject, String body, String targetId, String notificationKey) throws Exception {
-    EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get(notificationKey);
-    if (notificationsConfig == null) {
+    if (!notificationConfigured(notificationKey)) {
       // nothing to do
       return;
     }
+
+    EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get(notificationKey);
 
     if (notificationsConfig.email != null) {
       sendEmailNotification(subject, body, notificationsConfig.email);

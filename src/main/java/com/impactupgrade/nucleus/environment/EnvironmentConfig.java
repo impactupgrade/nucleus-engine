@@ -242,6 +242,7 @@ public class EnvironmentConfig implements Serializable {
 
   public static class Twilio extends Platform {
     public String senderPn = "";
+    public String defaultResponse = "";
     public Map<String, TwilioUser> users = new HashMap<>();
   }
 

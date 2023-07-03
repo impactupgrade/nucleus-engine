@@ -14,6 +14,8 @@ import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
+import com.twilio.twiml.messaging.Body;
+import com.twilio.twiml.messaging.Message;
 import com.twilio.twiml.voice.Dial;
 import com.twilio.twiml.voice.Gather;
 import com.twilio.twiml.voice.Redirect;
@@ -166,16 +168,23 @@ public class TwilioController {
       String body = smsData.get("Body").get(0).trim();
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
-        String jobName = "SMS Inbound";
-        env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
-        String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
-        env.notificationService().sendNotification(
-            "Text Message Received",
-            "Text message received from " + from + ": " + body,
-            targetId,
-            "sms:inbound-default"
-        );
-        env.endJobLog(jobName);
+        if (env.notificationService().notificationConfigured("sms:inbound-default")) {
+          String jobName = "SMS Inbound";
+          env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
+          String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
+          env.notificationService().sendNotification(
+              "Text Message Received",
+              "Text message received from " + from + ": " + body,
+              targetId,
+              "sms:inbound-default"
+          );
+          env.endJobLog(jobName);
+        } else if (!Strings.isNullOrEmpty(env.getConfig().twilio.defaultResponse)) {
+          MessagingResponse response = new MessagingResponse.Builder().message(
+              new Message.Builder().body(
+                  new Body.Builder(env.getConfig().twilio.defaultResponse).build()).build()).build();
+          return Response.ok().entity(response.toXml()).build();
+        }
       }
     }
 
