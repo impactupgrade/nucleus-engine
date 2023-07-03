@@ -275,7 +275,7 @@ public class CrmImportEvent {
       if (data.containsKey(columnName + " dd/mm/yyyy")) {
         c = Calendar.getInstance();
         c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get(columnName + " dd/mm/yyyy")));
-      } else if (data.containsKey("Opportunity Date dd-mm-yyyy")) {
+      } else if (data.containsKey(columnName + " dd-mm-yyyy")) {
         c = Calendar.getInstance();
         c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(data.get(columnName + " dd-mm-yyyy")));
       } else if (data.containsKey(columnName + " mm/dd/yyyy")) {
