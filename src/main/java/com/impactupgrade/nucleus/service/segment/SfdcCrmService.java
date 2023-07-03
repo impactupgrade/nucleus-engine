@@ -1915,7 +1915,7 @@ public class SfdcCrmService implements CrmService {
   protected void processBulkImportCampaignRecords(List<CrmImportEvent> importEvents) throws Exception {
     String[] campaignCustomFields = importEvents.stream().flatMap(e -> e.raw.keySet().stream())
         .distinct().filter(k -> k.startsWith("Campaign Custom "))
-        .map(k -> k.replace("Campaign Custom ", "").replace("Append ", "")).toArray(String[]::new);;
+        .map(k -> k.replace("Campaign Custom ", "").replace("Append ", "")).toArray(String[]::new);
 
     List<String> campaignIds = importEvents.stream().map(e -> e.campaignId)
         .filter(campaignId -> !Strings.isNullOrEmpty(campaignId)).distinct().toList();
@@ -1932,6 +1932,12 @@ public class SfdcCrmService implements CrmService {
       SObject campaign = new SObject("Campaign");
       campaign.setField("Name", importEvent.campaignName);
 
+      if (!Strings.isNullOrEmpty(importEvent.campaignRecordTypeId)) {
+        campaign.setField("RecordTypeId", importEvent.campaignRecordTypeId);
+      } else if (!Strings.isNullOrEmpty(importEvent.campaignRecordTypeName)) {
+        campaign.setField("RecordTypeId", recordTypeNameToIdCache.get(importEvent.campaignRecordTypeName));
+      }
+
       if (!Strings.isNullOrEmpty(importEvent.campaignId)) {
         campaign.setId(importEvent.campaignId);
         setBulkImportCustomFields(campaign, existingCampaignById.get(importEvent.campaignId), "Campaign", importEvent);
@@ -1943,6 +1949,8 @@ public class SfdcCrmService implements CrmService {
 
       env.logJobProgress("Imported " + (i + 1) + " campaigns");
     }
+
+    sfdcClient.batchFlush();
   }
 
   // TODO: This is going to be a pain in the butt, but we'll try to dynamically support different data types for custom

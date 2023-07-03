@@ -103,6 +103,8 @@ public class CrmImportEvent {
   public String originalStreet;
 
   public String campaignName;
+  public String campaignRecordTypeId;
+  public String campaignRecordTypeName;
   // TODO: In the future, could add OOTB support for dates, etc. but need to see this play out.
 
   // TODO: Add this to the Portal task. But for now, defaulting it to false out of caution.
@@ -263,6 +265,8 @@ public class CrmImportEvent {
     importEvent.originalStreet = data.get("Original Street");
 
     importEvent.campaignName = data.get("Campaign Name");
+    importEvent.campaignRecordTypeId = data.get("Campaign Record Type ID");
+    importEvent.campaignRecordTypeName = data.get("Campaign Record Type Name");
 
     return importEvent;
   }
