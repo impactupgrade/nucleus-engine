@@ -1093,6 +1093,10 @@ public class SfdcCrmService implements CrmService {
 
       log.info("import processing contacts/account on row {} of {}", i + 2, importEvents.size() + 1);
 
+      // contactMode tells us if the sheet has Contact columns, period. But we also need to know if this row
+      // actually has Contact values in it.
+      boolean contactModeRow = !Strings.isNullOrEmpty(importEvent.contactEmail) || !Strings.isNullOrEmpty(importEvent.contactLastName);
+
       // If the accountId or account extref is explicitly given, run the account update. Otherwise, let the contact queries determine it.
       SObject account = null;
       if (!Strings.isNullOrEmpty(importEvent.account.id)) {
@@ -1150,7 +1154,12 @@ public class SfdcCrmService implements CrmService {
       // If we're in the second pass, we already know we need to insert the contact.
       if (secondPass) {
         if (account == null) {
-          account = insertBulkImportAccount(importEvent.contactLastName + " Household", importEvent,
+          String accountName = importEvent.account.name;
+          if (Strings.isNullOrEmpty(accountName)) {
+            accountName = importEvent.contactLastName + " Household";
+          }
+
+          account = insertBulkImportAccount(accountName, importEvent,
               accountExtRefFieldName, existingAccountsByExtRef, accountMode);
         }
 
@@ -1158,7 +1167,7 @@ public class SfdcCrmService implements CrmService {
             existingContactsByEmail, existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode);
       }
       // If we're in account-only mode, we have no contact info to match against, so stick to accounts by-name
-      else if (accountMode && !contactMode && !Strings.isNullOrEmpty(importEvent.account.name)) {
+      else if (accountMode && (!contactMode || !contactModeRow) && !Strings.isNullOrEmpty(importEvent.account.name)) {
         SObject existingAccount;
         if (account != null) {
           existingAccount = account;
@@ -1305,7 +1314,7 @@ public class SfdcCrmService implements CrmService {
         }
       }
       // Otherwise, abandon all hope and insert, but only if we at least have a lastname or email.
-      else if (!Strings.isNullOrEmpty(importEvent.contactEmail) || !Strings.isNullOrEmpty(importEvent.contactLastName)) {
+      else if (contactModeRow) {
         importEvent.secondPass = true;
         continue;
       }
