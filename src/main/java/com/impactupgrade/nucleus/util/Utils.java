@@ -99,7 +99,7 @@ public class Utils {
   }
 
   public static Calendar getCalendarFromDateString(String date, String timezoneId) {
-    return toCalendar(getZonedDateFromDateString(date, timezoneId));
+    return toCalendar(getZonedDateFromDateString(date, timezoneId), null);
   }
 
   public static ZonedDateTime getZonedDateFromDateString(String date, String timezoneId) {
@@ -118,7 +118,7 @@ public class Utils {
   }
 
   public static Calendar getCalendarFromDateTimeString(String dateTime) {
-    return toCalendar(getZonedDateTimeFromDateTimeString(dateTime));
+    return toCalendar(getZonedDateTimeFromDateTimeString(dateTime), null);
   }
 
   public static ZonedDateTime getZonedDateTimeFromDateTimeString(String dateTime) {
@@ -140,7 +140,10 @@ public class Utils {
     return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond), ZoneId.of(timezoneId));
   }
 
-  public static Calendar toCalendar(ZonedDateTime zonedDateTime) {
+  public static Calendar toCalendar(ZonedDateTime zonedDateTime, String explicitTimezoneId) {
+    if (!Strings.isNullOrEmpty(explicitTimezoneId)) {
+      zonedDateTime = zonedDateTime.withZoneSameInstant(ZoneId.of(explicitTimezoneId));
+    }
     return zonedDateTime != null ? GregorianCalendar.from(zonedDateTime) : null;
   }
 

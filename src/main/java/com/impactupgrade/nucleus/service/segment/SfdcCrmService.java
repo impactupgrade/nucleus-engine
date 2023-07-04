@@ -523,7 +523,7 @@ public class SfdcCrmService implements CrmService {
 
     opportunity.setField("Amount", crmDonation.amount);
     opportunity.setField("CampaignId", campaign.map(SObject::getId).orElse(null));
-    opportunity.setField("CloseDate", Utils.toCalendar(crmDonation.closeDate));
+    opportunity.setField("CloseDate", Utils.toCalendar(crmDonation.closeDate, env.getConfig().timezoneId));
     opportunity.setField("Description", crmDonation.description);
 
     // purely a default, but we generally expect this to be overridden
@@ -544,7 +544,7 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId, crmDonation.refundId);
     }
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate)) {
-      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate, Utils.toCalendar(crmDonation.refundDate));
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDate, Utils.toCalendar(crmDonation.refundDate, env.getConfig().timezoneId));
     }
     // TODO: LJI/TER/DR specific? They all have it, but I can't remember if we explicitly added it.
     opportunity.setField("StageName", "Refunded");
@@ -605,12 +605,12 @@ public class SfdcCrmService implements CrmService {
     // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
     if (!Strings.isNullOrEmpty(crmDonation.refundId)) {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundId)) {
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, Utils.toCalendar(crmDonation.depositDate));
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositDate, Utils.toCalendar(crmDonation.depositDate, env.getConfig().timezoneId));
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayRefundDepositId, crmDonation.depositId);
       }
     } else {
       if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId)) {
-        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, Utils.toCalendar(crmDonation.depositDate));
+        opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositDate, Utils.toCalendar(crmDonation.depositDate, env.getConfig().timezoneId));
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositId, crmDonation.depositId);
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositNetAmount, crmDonation.netAmountInDollars);
         opportunityUpdate.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayDepositFee, crmDonation.feeInDollars);
@@ -645,8 +645,8 @@ public class SfdcCrmService implements CrmService {
     if (crmRecurringDonation.frequency != null) {
       recurringDonation.setField("Npe03__Installment_Period__c", crmRecurringDonation.frequency.name());
     }
-    recurringDonation.setField("Npe03__Date_Established__c", Utils.toCalendar(crmRecurringDonation.subscriptionStartDate));
-    recurringDonation.setField("Npe03__Next_Payment_Date__c", Utils.toCalendar(crmRecurringDonation.subscriptionNextDate));
+    recurringDonation.setField("Npe03__Date_Established__c", Utils.toCalendar(crmRecurringDonation.subscriptionStartDate, env.getConfig().timezoneId));
+    recurringDonation.setField("Npe03__Next_Payment_Date__c", Utils.toCalendar(crmRecurringDonation.subscriptionNextDate, env.getConfig().timezoneId));
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(crmRecurringDonation).map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
