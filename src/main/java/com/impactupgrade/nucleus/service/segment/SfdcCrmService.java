@@ -922,7 +922,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     List<String> accountNames = importEvents.stream().map(e -> e.account.name)
-        .filter(name -> !Strings.isNullOrEmpty(name)).distinct().toList();
+        .filter(name -> !Strings.isNullOrEmpty(name)).distinct().collect(Collectors.toList());
     importEvents.stream().flatMap(e -> e.contactOrganizations.stream()).map(o -> o.name)
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().forEach(accountNames::add);
     Multimap<String, SObject> existingAccountsByName = ArrayListMultimap.create();
