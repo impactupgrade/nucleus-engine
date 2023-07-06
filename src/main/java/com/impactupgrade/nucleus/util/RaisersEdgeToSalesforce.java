@@ -406,6 +406,15 @@ public class RaisersEdgeToSalesforce {
 //      if (!Strings.isNullOrEmpty(campaign) && !campaignNameToId.containsKey(campaign)) {
 //        SObject sObject = new SObject("Campaign");
 //        sObject.setField("Name", campaign);
+//
+//        if ("Yes".equalsIgnoreCase(giftRow.get("Ev_Inactive"))) {
+//          sObject.setField("Status", "Completed");
+//          sObject.setField("IsActive", false);
+//        } else {
+//          sObject.setField("Status", "In Progress");
+//          sObject.setField("IsActive", true);
+//        }
+//
 //        String id = sfdcClient.insert(sObject).getId();
 //        campaignNameToId.put(campaign, id);
 //      }
@@ -415,16 +424,25 @@ public class RaisersEdgeToSalesforce {
 //        SObject sObject = new SObject("Campaign");
 //        sObject.setField("Name", name);
 //        sObject.setField("ParentId", campaignNameToId.get(campaign));
+//
+//        if ("Yes".equalsIgnoreCase(giftRow.get("Ev_Inactive"))) {
+//          sObject.setField("Status", "Completed");
+//          sObject.setField("IsActive", false);
+//        } else {
+//          sObject.setField("Status", "In Progress");
+//          sObject.setField("IsActive", true);
+//        }
+//
 //        String id = sfdcClient.insert(sObject).getId();
 //        campaignNameToId.put(name, id);
 //      }
 //    }
 //    sfdcClient.batchFlush();
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // EVENTS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // EVENTS
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
 //        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
 //
@@ -446,8 +464,10 @@ public class RaisersEdgeToSalesforce {
 //      sObject.setField("Description", eventRow.get("Ev_Description"));
 //      if ("Yes".equalsIgnoreCase(eventRow.get("Ev_Inactive"))) {
 //        sObject.setField("Status", "Completed");
+//        sObject.setField("IsActive", false);
 //      } else {
 //        sObject.setField("Status", "In Progress");
+//        sObject.setField("IsActive", true);
 //      }
 //      if (!Strings.isNullOrEmpty(eventRow.get("Ev_Start_Date"))) {
 //        Date d = new SimpleDateFormat("MM/dd/yyyy").parse(eventRow.get("Ev_Start_Date"));
