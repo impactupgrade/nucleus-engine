@@ -2,12 +2,15 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.dao.HibernateDao;
+import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
+import com.impactupgrade.nucleus.util.OAuth2;
+import org.json.JSONObject;
 
-import javax.ws.rs.core.Form;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -17,7 +20,6 @@ import java.util.Optional;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.isOk;
-import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class MinistryByTextCommunicationService extends AbstractCommunicationService {
@@ -25,8 +27,8 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   protected static String AUTH_ENDPOINT = "https://login.ministrybytext.com/connect/token";
   protected static String API_ENDPOINT_BASE = "https://api.ministrybytext.com/";
 
-  protected String accessToken;
-  protected Calendar accessTokenExpiration;
+  protected Environment env;
+  protected HibernateDao<Long, Organization> organizationDao;
 
   @Override
   public String name() {
@@ -36,6 +38,32 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   @Override
   public boolean isConfigured(Environment env) {
     return env.getConfig().ministrybytext != null && !env.getConfig().ministrybytext.isEmpty();
+  }
+
+  @Override
+  public void init(Environment env) {
+    this.env = env;
+    this.organizationDao = new HibernateDao<>(Organization.class);
+  }
+
+  protected Organization getOrganization() {
+    return organizationDao.getQueryResult(
+        "from Organization o where o.nucleusApiKey=:apiKey",
+        query -> query.setParameter("apiKey", env.getConfig().apiKey)
+    ).get();
+  }
+
+  protected void updateEnvJson(String clientConfigKey, OAuth2.Context context) {
+    Organization org = getOrganization();
+    JSONObject envJson = org.getEnvironmentJson();
+    JSONObject configJson = envJson.getJSONObject(clientConfigKey);
+
+    configJson.put("accessToken", context.accessToken());
+    configJson.put("expiresAt", context.expiresAt() != null ? context.expiresAt() : null);
+    configJson.put("refreshToken", context.refreshToken());
+
+    org.setEnvironmentJson(envJson);
+    organizationDao.update(org);
   }
 
   @Override
@@ -85,35 +113,18 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   }
 
   protected HttpClient.HeaderBuilder headers(EnvironmentConfig.MBT mbtConfig) {
-    if (isAccessTokenInvalid()) {
-      env.logJobInfo("Getting new access token...");
-      HttpClient.TokenResponse tokenResponse = getAccessToken(mbtConfig);
-      accessToken = tokenResponse.accessToken;
-      Calendar onehour = Calendar.getInstance();
-      onehour.add(Calendar.SECOND, tokenResponse.expiresIn);
-      accessTokenExpiration = onehour;
+    JSONObject mbtJson = getOrganization().getEnvironmentJson().getJSONObject("mbt");
+
+    OAuth2.Context oAuth2Context = new OAuth2.ClientCredentialsContext(
+        mbtConfig.clientId, mbtConfig.clientSecret,
+        mbtJson.getString("accessToken"), mbtJson.getLong("expiresAt"), mbtJson.getString("refreshToken"), AUTH_ENDPOINT);
+
+    String accessToken = oAuth2Context.accessToken();
+    if (oAuth2Context.refresh().accessToken() != accessToken) {
+      // tokens updated - need to update env json config
+      updateEnvJson("mbt", oAuth2Context);
     }
-    System.out.println(accessToken);
-    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
-  }
-
-  protected boolean isAccessTokenInvalid() {
-    Calendar now = Calendar.getInstance();
-    return Strings.isNullOrEmpty(accessToken) || now.after(accessTokenExpiration);
-  }
-
-  protected HttpClient.TokenResponse getAccessToken(EnvironmentConfig.MBT mbtConfig) {
-    // TODO: Map.of should be able to be used instead of Form (see VirtuousClient), but getting errors about no writer
-    return post(
-        AUTH_ENDPOINT,
-        new Form()
-            .param("client_id", mbtConfig.clientId)
-            .param("client_secret", mbtConfig.clientSecret)
-            .param("grant_type", "client_credentials"),
-        APPLICATION_FORM_URLENCODED,
-        HttpClient.HeaderBuilder.builder(),
-        HttpClient.TokenResponse.class
-    );
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   // Having to modify this due to MBT's limited API. There's no upsert concept, and we want to avoid having to retrieve

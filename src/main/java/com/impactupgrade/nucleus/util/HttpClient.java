@@ -4,8 +4,6 @@
 
 package com.impactupgrade.nucleus.util;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,7 +17,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.util.Date;
 import java.util.Map;
 
 public class HttpClient {
@@ -137,24 +134,5 @@ public class HttpClient {
       headers.add("Authorization", "Bearer " + v);
       return this;
     }
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class TokenResponse {
-    @JsonProperty("access_token")
-    public String accessToken;
-    @JsonProperty("token_type")
-    public String tokenType;
-    @JsonProperty("expires_in")
-    public Integer expiresIn;
-    @JsonProperty("refresh_token")
-    public String refreshToken;
-    @JsonProperty("userName")
-    public String username;
-    public Boolean twoFactorEnabled;
-    @JsonProperty(".issued")
-    public Date issuedAt;
-    @JsonProperty(".expires")
-    public Date expiresAt;
   }
 }

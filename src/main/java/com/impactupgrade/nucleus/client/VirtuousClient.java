@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
+import com.impactupgrade.nucleus.util.OAuth2;
+import org.json.JSONObject;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -15,46 +17,31 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
-import static com.impactupgrade.nucleus.util.HttpClient.TokenResponse;
 import static com.impactupgrade.nucleus.util.HttpClient.delete;
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
 import static com.impactupgrade.nucleus.util.HttpClient.put;
-import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-public class VirtuousClient {
+public class VirtuousClient extends OrgConfiguredClient {
 
   private static final String VIRTUOUS_API_URL = "https://api.virtuoussoftware.com/api";
   private static final int DEFAULT_OFFSET = 0;
   private static final int DEFAULT_LIMIT = 100;
 
-  private static TokenResponse tokenResponse;
-
   private String apiKey;
-  private String username;
-  private String password;
-  private String tokenServerUrl;
-
-  private String accessToken;
-  private String refreshToken;
-
-  protected Environment env;
+  private final OAuth2.Context oAuth2Context;
 
   public VirtuousClient(Environment env) {
-    this.env = env;
+    super(env);
+
+    JSONObject virtuousJson = getEnvJson().getJSONObject("virtuous");
 
     this.apiKey = env.getConfig().virtuous.secretKey;
-
-    this.username = env.getConfig().virtuous.username;
-    this.password = env.getConfig().virtuous.password;
-    this.tokenServerUrl = env.getConfig().virtuous.tokenServerUrl;
-
-    this.accessToken = env.getConfig().virtuous.accessToken;
-    this.refreshToken = env.getConfig().virtuous.refreshToken;
+    this.oAuth2Context = new OAuth2.UsernamePasswordContext(
+        env.getConfig().virtuous.username, env.getConfig().virtuous.password, null,
+        virtuousJson.getString("accessToken"), virtuousJson.getLong("expiresAt"), virtuousJson.getString("refreshToken"), env.getConfig().virtuous.tokenServerUrl);
   }
 
   // Contact
@@ -313,49 +300,23 @@ public class VirtuousClient {
 
   private HttpClient.HeaderBuilder headers() {
     // First, use the simple API key, if available.
-
     if (!Strings.isNullOrEmpty(apiKey)) {
       return HttpClient.HeaderBuilder.builder().authBearerToken(apiKey);
     }
 
     // Otherwise, assume oauth.
-
-    if (!containsValidAccessToken(tokenResponse)) {
-      env.logJobInfo("Getting new access token...");
-      if (!Strings.isNullOrEmpty(refreshToken)) {
-        // Refresh access token if possible
-        env.logJobInfo("Refreshing token...");
-        tokenResponse = refreshAccessToken();
-      } else {
-        // Get new token pair otherwise
-        env.logJobInfo("Getting new pair of tokens...");
-        tokenResponse = getTokenResponse();
-        env.logJobInfo("TR: {}", tokenResponse.accessToken);
-      }
-
-      // !
-      // When fetching a token for a user with Two-Factor Authentication, you will receive a 202 (Accepted) response stating that a verification code is required.
-      //The user will then need to enter the verification code that was sent to their phone. You will then request the token again but this time you will pass in an OTP (one-time-password) header with the verification code received
-      //If the verification code and user credentials are correct, you will receive a token as seen in the Token authentication above.
-      //To request a new Token after the user enters the verification code, add an OTP header:
-      //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token
+    // !
+    // When fetching a token for a user with Two-Factor Authentication, you will receive a 202 (Accepted) response stating that a verification code is required.
+    //The user will then need to enter the verification code that was sent to their phone. You will then request the token again but this time you will pass in an OTP (one-time-password) header with the verification code received
+    //If the verification code and user credentials are correct, you will receive a token as seen in the Token authentication above.
+    //To request a new Token after the user enters the verification code, add an OTP header:
+    //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token  
+    String accessToken = oAuth2Context.accessToken();
+    if (oAuth2Context.refresh().accessToken() != accessToken) {
+      // tokens updated - need to update config in db
+      updateEnvJson("virtuous", oAuth2Context);
     }
-    return HttpClient.HeaderBuilder.builder().authBearerToken(tokenResponse.accessToken);
-  }
-
-  private boolean containsValidAccessToken(TokenResponse tokenResponse) {
-    return Objects.nonNull(tokenResponse) && new Date().before(tokenResponse.expiresAt);
-  }
-
-  private TokenResponse refreshAccessToken() {
-    // To refresh access token:
-    // curl -d "grant_type=refresh_token&refresh_token=REFRESH_TOKEN"
-    // -X POST https://api.virtuoussoftware.com/Token
-    return post(tokenServerUrl, Map.of("grant_type", "refresh_token", "refresh_token", refreshToken), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
-  }
-
-  private TokenResponse getTokenResponse() {
-    return post(tokenServerUrl, Map.of("grant_type", "password", "username", username, "password", password), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   public static class HasCustomFields {
