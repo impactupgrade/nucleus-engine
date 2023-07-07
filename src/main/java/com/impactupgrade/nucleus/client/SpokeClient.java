@@ -6,35 +6,33 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.impactupgrade.nucleus.util.OAuth2;
+import org.json.JSONObject;
 
-import javax.ws.rs.core.Form;
 import javax.ws.rs.core.GenericType;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
-import static com.impactupgrade.nucleus.util.HttpClient.TokenResponse;
 import static com.impactupgrade.nucleus.util.HttpClient.get;
-import static com.impactupgrade.nucleus.util.HttpClient.post;
 import static com.impactupgrade.nucleus.util.HttpClient.put;
-import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 // TODO: To eventually become a spoke-phone-java-client open source lib?
-public class SpokeClient {
+public class SpokeClient extends OrgConfiguredClient {
 
   protected static String AUTH_ENDPOINT = "https://auth.spokephone.com/oauth/token";
   protected static String API_ENDPOINT_BASE = "https://integration.spokephone.com/";
 
-  protected final Environment env;
-
-  protected String accessToken;
-  protected Calendar accessTokenExpiration;
+  private final OAuth2.Context oAuth2Context;
 
   public SpokeClient(Environment env) {
-    this.env = env;
+    super(env);
+
+    JSONObject spokeJson = getEnvJson().getJSONObject("spoke");
+
+    this.oAuth2Context = new OAuth2.ClientCredentialsContext(
+      env.getConfig().spoke.clientId, env.getConfig().spoke.clientSecret, 
+      spokeJson.getString("accessToken"), spokeJson.getLong("expiresAt"), spokeJson.getString("refreshToken"), AUTH_ENDPOINT);
   }
 
   public List<Phonebook> getPhonebooks() {
@@ -85,6 +83,15 @@ public class SpokeClient {
     return contact;
   }
 
+  protected HttpClient.HeaderBuilder headers() {
+    String accessToken = oAuth2Context.accessToken();
+    if (oAuth2Context.refresh().accessToken() != accessToken)  {
+      // tokens updated - need to update config in db
+      updateEnvJson("spoke", oAuth2Context);
+    }
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
+  }
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Phonebook {
     public String id;
@@ -114,38 +121,7 @@ public class SpokeClient {
     public String countryIso;
   }
 
-  protected HttpClient.HeaderBuilder headers() {
-    if (isAccessTokenInvalid()) {
-      env.logJobInfo("Getting new access token...");
-      TokenResponse tokenResponse = getAccessToken();
-      accessToken = tokenResponse.accessToken;
-      Calendar onehour = Calendar.getInstance();
-      onehour.add(Calendar.SECOND, tokenResponse.expiresIn);
-      accessTokenExpiration = onehour;
-    }
-    System.out.println(accessToken);
-    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
-  }
-
-  protected boolean isAccessTokenInvalid() {
-    Calendar now = Calendar.getInstance();
-    return Strings.isNullOrEmpty(accessToken) || now.after(accessTokenExpiration);
-  }
-
-  protected TokenResponse getAccessToken() {
-    // TODO: Map.of should be ablet o be used instead of Form (see VirtuousClient), but getting errors about no writer
-    return post(
-        AUTH_ENDPOINT,
-        new Form()
-            .param("client_id", env.getConfig().spoke.clientId)
-            .param("client_secret", env.getConfig().spoke.clientSecret)
-            .param("grant_type", "client_credentials"),
-        APPLICATION_FORM_URLENCODED,
-        HttpClient.HeaderBuilder.builder(),
-        TokenResponse.class
-    );
-  }
-
+  //TODO: remove once done with testing
   public static void main(String[] args) {
     Environment env = new Environment() {
       @Override
@@ -167,5 +143,7 @@ public class SpokeClient {
     List<Phonebook> phonebooks = spokeClient.getPhonebooks();
 //    Contact contact = spokeClient.upsertContact(crmContact, "Salesforce", phonebooks.get(0).id);
     System.out.println(phonebooks);
+    // To check same access token is used
+    spokeClient.getPhonebooks();
   }
 }
