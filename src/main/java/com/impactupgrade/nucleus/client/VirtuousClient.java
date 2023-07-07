@@ -5,8 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.impactupgrade.nucleus.util.OAuth2Util;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -14,17 +13,12 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 import static com.impactupgrade.nucleus.util.HttpClient.delete;
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
 import static com.impactupgrade.nucleus.util.HttpClient.put;
-import static com.impactupgrade.nucleus.util.HttpClient.TokenResponse;
-import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class VirtuousClient {
@@ -33,9 +27,10 @@ public class VirtuousClient {
     private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_LIMIT = 100;
 
-    private static TokenResponse tokenResponse;
+    private static OAuth2Util.Tokens tokens;
 
     private String apiKey;
+
     private String username;
     private String password;
     private String tokenServerUrl;
@@ -261,51 +256,30 @@ public class VirtuousClient {
     }
 
     private HttpClient.HeaderBuilder headers() {
-        // First, use the simple API key, if available.
-        
-        if (!Strings.isNullOrEmpty(apiKey)) {
-            return HttpClient.HeaderBuilder.builder().authBearerToken(apiKey); 
-        }
+    // First, use the simple API key, if available.
+      if (!Strings.isNullOrEmpty(apiKey)) {
+        return HttpClient.HeaderBuilder.builder().authBearerToken(apiKey);
+      }
 
-        // Otherwise, assume oauth.
-        
-        if (!containsValidAccessToken(tokenResponse)) {
-            env.logJobInfo("Getting new access token...");
-            if (!Strings.isNullOrEmpty(refreshToken)) {
-                // Refresh access token if possible
-                env.logJobInfo("Refreshing token...");
-                tokenResponse = refreshAccessToken();
-            } else {
-                // Get new token pair otherwise
-                env.logJobInfo("Getting new pair of tokens...");
-                tokenResponse = getTokenResponse();
-                env.logJobInfo("TR: {}", tokenResponse.accessToken);
-            }
-
-            // !
-            // When fetching a token for a user with Two-Factor Authentication, you will receive a 202 (Accepted) response stating that a verification code is required.
-            //The user will then need to enter the verification code that was sent to their phone. You will then request the token again but this time you will pass in an OTP (one-time-password) header with the verification code received
-            //If the verification code and user credentials are correct, you will receive a token as seen in the Token authentication above.
-            //To request a new Token after the user enters the verification code, add an OTP header:
-            //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token
-        }
-        return HttpClient.HeaderBuilder.builder().authBearerToken(tokenResponse.accessToken);
+    // Otherwise, assume oauth.
+    if (tokens == null) {
+      tokens = new OAuth2Util.Tokens(accessToken, null, refreshToken);
+    }
+    tokens = OAuth2Util.refreshTokens(tokens, tokenServerUrl);
+    if (tokens == null) {
+      tokens = OAuth2Util.getTokensForUsernameAndPassword(username, password, tokenServerUrl);
     }
 
-    private boolean containsValidAccessToken(TokenResponse tokenResponse) {
-        return Objects.nonNull(tokenResponse) && new Date().before(tokenResponse.expiresAt);
-    }
+    // !
+//      // When fetching a token for a user with Two-Factor Authentication, you will receive a 202 (Accepted) response stating that a verification code is required.
+//      //The user will then need to enter the verification code that was sent to their phone. You will then request the token again but this time you will pass in an OTP (one-time-password) header with the verification code received
+//      //If the verification code and user credentials are correct, you will receive a token as seen in the Token authentication above.
+//      //To request a new Token after the user enters the verification code, add an OTP header:
+//      //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token
 
-    private TokenResponse refreshAccessToken() {
-        // To refresh access token:
-        // curl -d "grant_type=refresh_token&refresh_token=REFRESH_TOKEN"
-        // -X POST https://api.virtuoussoftware.com/Token
-        return post(tokenServerUrl, Map.of("grant_type", "refresh_token", "refresh_token", refreshToken), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
-    }
-
-    private TokenResponse getTokenResponse() {
-        return post(tokenServerUrl, Map.of("grant_type", "password", "username", username, "password", password), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
-    }
+    String accessToken = tokens != null ? tokens.accessToken() : null;
+    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
+  }
 
     public static class ContactSearchResponse {
         @JsonProperty("list")
@@ -887,6 +861,25 @@ public class VirtuousClient {
       CALL,
       @JsonProperty("Meeting")
       MEETING;
+    }
+  }
+
+  //TODO: remove once done with testing
+  public static void main(String[] args) {
+    String username = "brett@impactupgrade.com";
+    String password = "69nWJnsceQmUw88rH32z";
+    String tokenServerUrl = "https://api.virtuoussoftware.com/Token";
+
+    String accessToken = "MYEp3SVJliMwm3JceQG0l4nA92A71bVXRgqdpiYMy0Cb9ZeS6SCepkNXDfMupXXHBYKGKY40G_L_UGZZNaWx94eWTOFH0BFw1kqZZyUQMtGO2dSoLfGXA_zgm64iZNeB-8o9JugeVHzDL6FwbpyMAxAD68iYk_PQkf6FCDxJ_VKD_6z-baOQ49LrnxIfxKx_np9mSzHto5J-lhPuwPdlHjYjAaFHmj7EpvcBBXUnCYnf310eV5pqyH6WPE6FqUVPUgKlZ1LfRo-Dc5-edSMU9Jvao4ayjMuNcPYmE1LUOoW_B9arAS3f5rnCVU_R2qanJ2_1isRY6sK3YIfA9gEPsxm7_B3qG42z4VZsrJT4WulQxAOSE8i3o4GEEwFTjXBnFeX0DtrkDnuELcKntkKzUN0JGHQNQb_M4ezkkmHlD5RowS9IVJCaQH3L8I6y9Ima3KyYrfhjE-dkgTbtkfdG9CnPplvZezo0IyQcWW9707O5tF39XTwJs3puUV_yg3z1wzpy54nx1KrROUSrku1N5fAYZ6hzFzCOHS_yYSxTqd5ODZlWgiByFfPYOpwKt53rqLXPHA5gNfRllU0XDQiK-2pDsoI";
+    //String refreshToken = "XGFBTq-Bfog67KYMwSOfV2IgQ3gyu_V1PKprFTc41ULqPsoxc1IBK-pMip2HLc7r3RbTeyuP4M49CdSzIo43uqASkdyb8JRRBu57vFxw7HcWWLx8RXoBSY04V3od8djbYB49PKqO4bjHjf10aLHLlN0p0d6HiI6NhDjLUfdrvAFKryra7Tg2W_aUWuEFmSvoI92XongqUh5Uf3arbxTNfqcz_XWLWFaM547CL718-IpJ9ie5OLGybvYuglZDsXw6DK7pMu2jfW2akN2sn1PXxCi4aeQpQEckbhvUIF3vaHvCdEFEXLVF7JbPPWckrWj1pG4xY_bpp86MG1wqvbn3XSrQiuBkSsWZKYWGyBZWHYrVwfkiTJz1zjOevhOTXnM3D2VR1SK5coCSGcTzcWANoAk0-Du6eHE5u7pUc-FQpjbDW0uphcj6TT-VADE2uvB3tcKn_4tjY64vWYf0s09SPFlZd9CErhZKri1XX5P5jsGoi7wdCG0QbDcI7r8ywBZbVzERKH-hG8LUwJA7tUV_eX_MnHNm9hEkSnX_rq60Dl2yknPByGXRGZgR9L7SPph90nd_9s4K0Wf6Wzp0-OGjmvsiyVk";
+    String refreshToken = "abc";
+
+    if (tokens == null) {
+      tokens = new OAuth2Util.Tokens(accessToken, null, refreshToken);
+    }
+    tokens = OAuth2Util.refreshTokens(tokens, tokenServerUrl);
+    if (tokens == null) {
+      tokens = OAuth2Util.getTokensForUsernameAndPassword(username, password, tokenServerUrl);
     }
   }
 }

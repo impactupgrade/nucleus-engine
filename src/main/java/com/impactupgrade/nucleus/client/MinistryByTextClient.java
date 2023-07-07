@@ -1,22 +1,20 @@
 package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
+import com.impactupgrade.nucleus.util.OAuth2Util;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import javax.ws.rs.core.Form;
 import javax.ws.rs.core.GenericType;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
-import static com.impactupgrade.nucleus.util.HttpClient.TokenResponse;
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
-import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 // TODO: To eventually become a mbt-java-client open source lib?
@@ -27,11 +25,15 @@ public class MinistryByTextClient {
 
   protected final Environment env;
 
-  protected String accessToken;
-  protected Calendar accessTokenExpiration;
+  protected static OAuth2Util.Tokens tokens;
+
+  private String clientId;
+  private String clientSecret;
 
   public MinistryByTextClient(Environment env) {
     this.env = env;
+    this.clientId = env.getConfig().mbt.clientId;
+    this.clientSecret = env.getConfig().mbt.clientSecret;
   }
 
   public List<Group> getGroups(String campusId) {
@@ -98,37 +100,15 @@ public class MinistryByTextClient {
   }
 
   protected HttpClient.HeaderBuilder headers() {
-    if (isAccessTokenInvalid()) {
-      env.logJobInfo("Getting new access token...");
-      TokenResponse tokenResponse = getAccessToken();
-      accessToken = tokenResponse.accessToken;
-      Calendar onehour = Calendar.getInstance();
-      onehour.add(Calendar.SECOND, tokenResponse.expiresIn);
-      accessTokenExpiration = onehour;
+    tokens = OAuth2Util.refreshTokens(tokens, AUTH_ENDPOINT);
+    if (tokens == null) {
+      tokens = OAuth2Util.getTokensForClientCredentials(clientId, clientSecret, AUTH_ENDPOINT);
     }
-    System.out.println(accessToken);
+    String accessToken = tokens != null ? tokens.accessToken() : null;
     return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
   }
 
-  protected boolean isAccessTokenInvalid() {
-    Calendar now = Calendar.getInstance();
-    return Strings.isNullOrEmpty(accessToken) || now.after(accessTokenExpiration);
-  }
-
-  protected TokenResponse getAccessToken() {
-    // TODO: Map.of should be able to be used instead of Form (see VirtuousClient), but getting errors about no writer
-    return post(
-        AUTH_ENDPOINT,
-        new Form()
-            .param("client_id", env.getConfig().mbt.clientId)
-            .param("client_secret", env.getConfig().mbt.clientSecret)
-            .param("grant_type", "client_credentials"),
-        APPLICATION_FORM_URLENCODED,
-        HttpClient.HeaderBuilder.builder(),
-        TokenResponse.class
-    );
-  }
-
+  //TODO: remove once done with testing
   public static void main(String[] args) {
     Environment env = new Environment() {
       @Override
@@ -149,5 +129,8 @@ public class MinistryByTextClient {
     crmContact.mobilePhone = "260-349-5732";
     Subscriber subscriber = mbtClient.upsertSubscriber(crmContact, "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b");
     System.out.println(subscriber);
+
+    // To check same access token is used
+    subscriber = mbtClient.upsertSubscriber(crmContact, "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b");
   }
 }

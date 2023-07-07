@@ -4,25 +4,29 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.impactupgrade.nucleus.util.OAuth2Util;
 
 import java.util.List;
 import java.util.Map;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
-import static com.impactupgrade.nucleus.util.HttpClient.post;
 
-public class RaiselyClient{
-  private static final String RAISELY_API_URL = "https://api.raisely.com/v3/";
-  private static final String APPLICATION_JSON = "application/json";
+public class RaiselyClient {
+
+  private static final String RAISELY_API_URL = "https://api.raisely.com/v3";
+  private static final String AUTH_URL = RAISELY_API_URL + "/login";
 
   protected final Environment env;
 
-  private String _accessToken = null;
+  protected static OAuth2Util.Tokens tokens;
 
-  public RaiselyClient(Environment env){
+  private String username;
+  private String password;
+
+  public RaiselyClient(Environment env) {
     this.env = env;
+    this.username = env.getConfig().raisely.username;
+    this.password = env.getConfig().raisely.password;
   }
 
   //*Note this uses the donation ID from the Stripe metadata. Different from the donation UUID
@@ -33,10 +37,13 @@ public class RaiselyClient{
    * like this: https://api.raisely.com/v3/donations?idGTE=14619704&idLTE=14619704&private=true
    */
 
-  public RaiselyClient.Donation getDonation(String donationId){
+  public RaiselyClient.Donation getDonation(String donationId) {
     DonationResponse response = get(
-        RAISELY_API_URL + "donations?idGTE=" + donationId + "&idLTE=" + donationId + "&private=true",
-        HttpClient.HeaderBuilder.builder().authBearerToken(getAccessToken()),
+        RAISELY_API_URL + "/donations?" +
+            "idGTE=" + donationId +
+            "&idLTE=" + donationId +
+            "&private=true",
+        headers(),
         DonationResponse.class
     );
 
@@ -47,28 +54,16 @@ public class RaiselyClient{
     return null;
   }
 
-  protected String getAccessToken() {
-    if (_accessToken == null) {
-      String username = env.getConfig().raisely.username;
-      String password = env.getConfig().raisely.password;
-
-      env.logJobInfo("Getting token...");
-      HttpClient.HeaderBuilder headers = HttpClient.HeaderBuilder.builder();
-      TokenResponse response = post(RAISELY_API_URL + "login", Map.of("requestAdminToken", "true", "username", username, "password", password), APPLICATION_JSON, headers, TokenResponse.class);
-      env.logJobInfo("Token: {}", response.token);
-      this._accessToken = response.token;
+  protected HttpClient.HeaderBuilder headers() {
+    tokens = OAuth2Util.refreshTokens(tokens, AUTH_URL);
+    if (tokens == null) {
+      tokens = OAuth2Util.getTokensForUsernameAndPassword(username, password, Map.of("requestAdminToken", "true"), AUTH_URL);
     }
-
-    return this._accessToken;
+    String accessToken = tokens != null ? tokens.accessToken() : null;
+    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
   }
 
   //Response Objects
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class TokenResponse {
-    @JsonProperty("token")
-    public String token;
-  }
-
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class DonationResponse {
     public List<Donation> data;
