@@ -6,14 +6,10 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.Calendar;
 
 public class NotificationService {
-
-  private static final Logger log = LogManager.getLogger(NotificationService.class);
 
   private final Environment env;
 
@@ -32,6 +28,8 @@ public class NotificationService {
 
   public void sendNotification(String subject, String body, String targetId, String notificationKey) throws Exception {
     if (!notificationConfigured(notificationKey)) {
+      env.logJobInfo("no notification configured for: {}", notificationKey);
+
       // nothing to do
       return;
     }
@@ -51,22 +49,26 @@ public class NotificationService {
 
   protected void sendEmailNotification(String subject, String body, EnvironmentConfig.Notification notificationConfig) {
     if (Strings.isNullOrEmpty(notificationConfig.from) || CollectionUtils.isEmpty(notificationConfig.to)) {
-      log.warn("Email notification is not valid (missing required parameters). Returning...");
+      env.logJobWarn("Email notification is not valid (missing required parameters). Skipping notification...");
       return;
     }
     String emailFrom = notificationConfig.from;
     String emailTo = String.join(",", notificationConfig.to);
     env.transactionalEmailService().sendEmailText(subject, body, true, emailTo, emailFrom);
+
+    env.logJobInfo("emailed notification to: {}", emailTo);
   }
 
   protected void sendSmsNotification(String body, EnvironmentConfig.Notification notificationConfig) {
     if (CollectionUtils.isEmpty(notificationConfig.to)) {
-      log.warn("Email notification is not valid (missing required parameters). Returning...");
+      env.logJobWarn("Email notification is not valid (missing required parameters). Skipping notification...");
       return;
     }
 
     for (String to : notificationConfig.to) {
       env.twilioClient().sendMessage(to, body);
+
+      env.logJobInfo("texted notification to: {}", to);
     }
   }
 
@@ -75,12 +77,12 @@ public class NotificationService {
     CrmService crmService = env.primaryCrmService();
 
     if (crmService == null) {
-      log.info("CRM is not defined. Returning...");
+      env.logJobInfo("CRM is not defined. Skipping notification...");
       return;
     }
 
     if (Strings.isNullOrEmpty(targetId)) {
-      log.info("CRM Target ID is not defined. Returning...");
+      env.logJobInfo("CRM Target ID is not defined. Skipping notification...");
       return;
     }
 
@@ -88,6 +90,8 @@ public class NotificationService {
     // TODO: For now, push it out a week, but make this configurable?
     dueDate.add(Calendar.HOUR, 7 * 24);
     String assignTo = notificationConfig.assignTo;
+
+    env.logJobInfo("attaching a Task CRM notification to {} and assigning to {}", targetId, assignTo);
 
     crmService.insertTask(new CrmTask(
         targetId, assignTo,

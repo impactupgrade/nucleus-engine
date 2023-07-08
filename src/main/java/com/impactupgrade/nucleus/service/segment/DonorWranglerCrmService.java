@@ -26,8 +26,6 @@ import java.util.Optional;
 
 public class DonorWranglerCrmService implements BasicCrmService {
 
-  private static final Logger log = LogManager.getLogger(DonorWranglerCrmService.class);
-
   private static final ObjectMapper mapper = new ObjectMapper();
   static {
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

@@ -42,8 +42,6 @@ import java.util.UUID;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService {
 
-    protected static final Logger log = LogManager.getLogger(XeroAccountingPlatformService.class);
-
     protected static final String SUPPORTER_ID_FIELD_NAME = "Supporter_ID__c";
     // If false return 200 OK and mix of successfully created objects and any with validation errors
     protected static final Boolean SUMMARIZE_ERRORS = Boolean.TRUE;
@@ -172,10 +170,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 }
             }
 
-            log.error("Failed to upsert contact! {}", getExceptionDetails(e));
+            env.logJobError("Failed to upsert contact! {}", getExceptionDetails(e));
             return null;
         } catch (Exception e) {
-            log.error("Failed to upsert contact! {}", getExceptionDetails(e));
+            env.logJobError("Failed to upsert contact! {}", getExceptionDetails(e));
             return null;
         }
     }
@@ -208,7 +206,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
             return createdInvoices.getInvoices().stream().findFirst().get().getInvoiceID().toString();
         } catch (Exception e) {
-            log.error("Failed to create invoices! {}", getExceptionDetails(e));
+            env.logJobError("Failed to create invoices! {}", getExceptionDetails(e));
             throw e;
         }
     }
@@ -243,7 +241,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 //                    ))
 //                    .collect(Collectors.toList());
 //        } catch (Exception e) {
-//            log.error("Failed to get existing transactions info! {}", getExceptionDetails(e));
+//            env.logJobError("Failed to get existing transactions info! {}", getExceptionDetails(e));
 //            // throw, since returning empty list here would be a bad idea -- likely implies reinserting duplicates
 //            throw e;
 //        }
@@ -307,25 +305,25 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 //                        // account number is set as the crm contact id
 //                        Contact::getAccountNumber, contact -> contact.getContactID().toString()));
 //        } catch (Exception e) {
-//            log.error("Failed to upsert contacts! {}", getExceptionDetails(e));
+//            env.logJobError("Failed to upsert contacts! {}", getExceptionDetails(e));
 //            return Collections.emptyMap();
 //        }
 //    }
 //
 //    @Override
 //    public void createTransactions(List<AccountingTransaction> transactions) throws Exception {
-//        log.info("Input transactions: {}", transactions.size());
+//        env.logJobInfo("Input transactions: {}", transactions.size());
 //
 //        Invoices invoices = new Invoices().invoices(transactions.stream().map(this::toInvoice).collect(Collectors.toList()));
-//        log.info("Invoices to create: {}", invoices.getInvoices().size());
+//        env.logJobInfo("Invoices to create: {}", invoices.getInvoices().size());
 //
 //        try {
 //            Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
 //            List<Invoice> createdItems = createdInvoices.getInvoices();
 //
-//            log.info("Invoices created: {}", createdItems.size());
+//            env.logJobInfo("Invoices created: {}", createdItems.size());
 //        } catch (Exception e) {
-//            log.error("Failed to create invoices! {}", getExceptionDetails(e));
+//            env.logJobError("Failed to create invoices! {}", getExceptionDetails(e));
 //            throw e;
 //        }
 //    }
@@ -335,12 +333,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         try {
             jwt = JWT.decode(accessToken);
         } catch (Exception e) {
-            log.warn("Failed to decode access token! {}", e.getMessage());
+            env.logJobWarn("Failed to decode access token! {}", e.getMessage());
         }
 
         long now = System.currentTimeMillis();
         if (jwt == null || jwt.getExpiresAt().getTime() < now) {
-            log.info("token expired; jwt={} now={}; refreshing...", jwt.getExpiresAt().getTime(), now);
+            env.logJobInfo("token expired; jwt={} now={}; refreshing...", jwt.getExpiresAt().getTime(), now);
 
             try {
                 TokenResponse tokenResponse = new RefreshTokenRequest(new NetHttpTransport(), new JacksonFactory(),
@@ -352,13 +350,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     DecodedJWT verifiedJWT = apiClient.verify(tokenResponse.getAccessToken());
                     accessToken = verifiedJWT.getToken();
                 } catch (Exception e) {
-                    log.warn("unable to validate the new access token; using it anyway...; error={}", e.getMessage());
+                    env.logJobWarn("unable to validate the new access token; using it anyway...; error={}", e.getMessage());
                     accessToken = tokenResponse.getAccessToken();
                 }
                 refreshToken = tokenResponse.getRefreshToken();
 
                 // TODO: not safe to have these in the logs, but allowing it for a moment while we debug
-                log.info("tokens refreshed; accessToken={} refreshToken={}", accessToken, refreshToken);
+                env.logJobInfo("tokens refreshed; accessToken={} refreshToken={}", accessToken, refreshToken);
 
                 Organization org = getOrganization();
                 JSONObject envJson = org.getEnvironmentJson();
@@ -368,11 +366,11 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 org.setEnvironmentJson(envJson);
                 organizationDao.update(org);
             } catch (Exception e) {
-                log.error("Failed to refresh access token!", e);
+                env.logJobError("Failed to refresh access token!", e);
                 if (e instanceof TokenResponseException) {
                     TokenErrorResponse tokenErrorResponse = ((TokenResponseException) e).getDetails();
                     if (tokenErrorResponse != null) {
-                        log.warn("error={} errorDescription={} errorUri={}", tokenErrorResponse.getError(),
+                        env.logJobWarn("error={} errorDescription={} errorUri={}", tokenErrorResponse.getError(),
                             tokenErrorResponse.getErrorDescription(), tokenErrorResponse.getErrorUri());
                     }
                 }
@@ -414,7 +412,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
 
         // TODO: temp
-        log.info("contact {} {} {} {} {} {}", crmContact.id, contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
+        env.logJobInfo("contact {} {} {} {} {} {}", crmContact.id, contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
 
         return contact;
     }

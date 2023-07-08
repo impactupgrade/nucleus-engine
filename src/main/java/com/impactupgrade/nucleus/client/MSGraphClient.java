@@ -2,15 +2,13 @@ package com.impactupgrade.nucleus.client;
 
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.core.ClientException;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.requests.DriveItemCollectionPage;
 import com.microsoft.graph.requests.DriveItemContentStreamRequest;
 import com.microsoft.graph.requests.GraphServiceClient;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.InputStream;
 import java.util.LinkedList;
@@ -19,20 +17,20 @@ import java.util.Objects;
 
 public class MSGraphClient {
 
-    private static final Logger log = LogManager.getLogger(MSGraphClient.class);
-
     private static final String DEFAULT_SCOPE = "https://graph.microsoft.com/.default";
 
+    protected final Environment env;
     protected final ClientSecretCredential clientSecretCredential;
     protected final TokenCredentialAuthProvider tokenCredentialAuthProvider;
     protected final GraphServiceClient graphClient;
 
-    public MSGraphClient(EnvironmentConfig.SharePointPlatform sharePoint) {
+    public MSGraphClient(Environment env) {
+        this.env = env;
         List<String> scopes = List.of(DEFAULT_SCOPE);
         this.clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(sharePoint.clientId)
-                .clientSecret(sharePoint.clientSecret)
-                .tenantId(sharePoint.tenantId)
+                .clientId(env.getConfig().sharePoint.clientId)
+                .clientSecret(env.getConfig().sharePoint.clientSecret)
+                .tenantId(env.getConfig().sharePoint.tenantId)
                 .build();
         this.tokenCredentialAuthProvider = new TokenCredentialAuthProvider(scopes, clientSecretCredential);
 
@@ -109,7 +107,7 @@ public class MSGraphClient {
         try {
             return request.get();
         } catch (ClientException e) {
-            log.error("Failed to execute request!", e.getMessage());
+            env.logJobError("Failed to execute request!", e.getMessage());
         }
         return null;
     }

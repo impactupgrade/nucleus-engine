@@ -41,8 +41,6 @@ import java.util.Optional;
 
 public class StripePaymentGatewayService implements PaymentGatewayService {
 
-  private static final Logger log = LogManager.getLogger(StripePaymentGatewayService.class);
-
   protected Environment env;
   protected StripeClient stripeClient;
   protected StripeObjectFilter stripeObjectFilter;
@@ -106,7 +104,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
     Collections.reverse(payouts);
     for (Payout payout : payouts) {
-      log.info("found payout {}", payout.getId());
+      env.logJobInfo("found payout {}", payout.getId());
       PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
 
       payoutToPaymentGatewayEvents(payout).forEach(e -> {
@@ -157,9 +155,9 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           }
 
           if (donation.isEmpty()) {
-            log.info("verify-charges," + count + ",MISSING," + transactionId + "," + SDF.format(charge.getCreated() * 1000));
+            env.logJobInfo("verify-charges," + count + ",MISSING," + transactionId + "," + SDF.format(charge.getCreated() * 1000));
           } else if (donation.get().status != CrmDonation.Status.SUCCESSFUL) {
-            log.info("verify-charges," + count + ",WRONG-STATE," + transactionId + "," + SDF.format(charge.getCreated() * 1000) + "," + donation.get().status);
+            env.logJobInfo("verify-charges," + count + ",WRONG-STATE," + transactionId + "," + SDF.format(charge.getCreated() * 1000) + "," + donation.get().status);
           } else {
             continue;
           }
@@ -173,11 +171,11 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 //          }
 //          missingDonations.add(paymentGatewayEvent);
         } catch (Exception e) {
-          log.error("charge verify failed", e);
+          env.logJobError("charge verify failed", e);
         }
       }
     } catch (Exception e) {
-      log.error("charge verifies failed", e);
+      env.logJobError("charge verifies failed", e);
     }
 
     return missingDonations;
@@ -196,15 +194,15 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 //        count++;
 //
 //        try {
-//          log.info("(" + count + ") REPLAYING: " + missingDonation.getTransactionId());
+//          env.logJobInfo("(" + count + ") REPLAYING: " + missingDonation.getTransactionId());
 //          env.contactService().processDonor(missingDonation);
 //          env.donationService().createDonation(missingDonation);
 //        } catch (Exception e) {
-//          log.error("charge replay failed", e);
+//          env.logJobError("charge replay failed", e);
 //        }
 //      }
 //    } catch (Exception e) {
-//      log.error("charge replays failed", e);
+//      env.logJobError("charge replays failed", e);
 //    }
 //  }
 
@@ -219,7 +217,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       int total = charges.size();
       for (Charge charge : charges) {
         count++;
-        log.info("{} of {}", count, total);
+        env.logJobInfo("{} of {}", count, total);
 
         if (!charge.getStatus().equalsIgnoreCase("succeeded")
             || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
@@ -238,7 +236,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 //          }
 //
 //          if (donation.isEmpty()) {
-//            log.info("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
+//            env.logJobInfo("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
 
             PaymentGatewayEvent paymentGatewayEvent;
             if (Strings.isNullOrEmpty(paymentIntentId)) {
@@ -251,11 +249,11 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
             env.accountingService().processTransaction(paymentGatewayEvent);
 //          }
         } catch (Exception e) {
-          log.error("charge replay failed", e);
+          env.logJobError("charge replay failed", e);
         }
       }
     } catch (Exception e) {
-      log.error("charge replays failed", e);
+      env.logJobError("charge replays failed", e);
     }
   }
 
@@ -269,16 +267,16 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       for (Payout payout : payouts) {
         try {
           if ("paid".equalsIgnoreCase(payout.getStatus())) {
-            log.info(SDF.format(new Date(payout.getArrivalDate() * 1000)));
+            env.logJobInfo(SDF.format(new Date(payout.getArrivalDate() * 1000)));
             List<PaymentGatewayEvent> paymentGatewayEvents = payoutToPaymentGatewayEvents(payout);
             env.donationService().processDeposit(paymentGatewayEvents);
           }
         } catch (Exception e) {
-          log.error("deposit replay failed", e);
+          env.logJobError("deposit replay failed", e);
         }
       }
     } catch (Exception e) {
-      log.error("deposit replays failed", e);
+      env.logJobError("deposit replays failed", e);
     }
   }
 
@@ -316,7 +314,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     Optional<BalanceTransaction> chargeBalanceTransaction;
     if (fullObjects && !Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
       chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(charge.getBalanceTransaction()));
-      log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
+      env.logJobInfo("found balance transaction {}", chargeBalanceTransaction.get().getId());
     } else {
       chargeBalanceTransaction = Optional.empty();
     }
@@ -330,7 +328,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     Optional<Customer> chargeCustomer;
     if (fullObjects && !Strings.isNullOrEmpty(charge.getCustomer())) {
       chargeCustomer = Optional.of(stripeClient.getCustomer(charge.getCustomer()));
-      log.info("found customer {}", chargeCustomer.get().getId());
+      env.logJobInfo("found customer {}", chargeCustomer.get().getId());
     } else {
       chargeCustomer = Optional.empty();
     }
@@ -338,7 +336,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     Optional<Invoice> chargeInvoice;
     if (fullObjects && !Strings.isNullOrEmpty(charge.getInvoice())) {
       chargeInvoice = Optional.of(stripeClient.getInvoice(charge.getInvoice()));
-      log.info("found invoice {}", chargeInvoice.get().getId());
+      env.logJobInfo("found invoice {}", chargeInvoice.get().getId());
     } else {
       chargeInvoice = Optional.empty();
     }
@@ -355,7 +353,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         String balanceTransactionId = paymentIntent.getCharges().getData().get(0).getBalanceTransaction();
         if (fullObjects && !Strings.isNullOrEmpty(balanceTransactionId)) {
           chargeBalanceTransaction = Optional.of(stripeClient.getBalanceTransaction(balanceTransactionId));
-          log.info("found balance transaction {}", chargeBalanceTransaction.get().getId());
+          env.logJobInfo("found balance transaction {}", chargeBalanceTransaction.get().getId());
         }
       }
     }
@@ -373,7 +371,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     Optional<Customer> chargeCustomer;
     if (fullObjects && !Strings.isNullOrEmpty(paymentIntent.getCustomer())) {
       chargeCustomer = Optional.of(stripeClient.getCustomer(paymentIntent.getCustomer()));
-      log.info("found customer {}", chargeCustomer.get().getId());
+      env.logJobInfo("found customer {}", chargeCustomer.get().getId());
     } else {
       chargeCustomer = Optional.empty();
     }
@@ -381,7 +379,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     Optional<Invoice> chargeInvoice;
     if (fullObjects && !Strings.isNullOrEmpty(paymentIntent.getInvoice())) {
       chargeInvoice = Optional.of(stripeClient.getInvoice(paymentIntent.getInvoice()));
-      log.info("found invoice {}", chargeInvoice.get().getId());
+      env.logJobInfo("found invoice {}", chargeInvoice.get().getId());
     } else {
       chargeInvoice = Optional.empty();
     }
@@ -402,13 +400,13 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       }
 
       if (balanceTransaction.getSourceObject() instanceof Charge charge) {
-        log.info("found charge {}", charge.getId());
+        env.logJobInfo("found charge {}", charge.getId());
 
         PaymentGatewayEvent paymentGatewayEvent;
         if (Strings.isNullOrEmpty(charge.getPaymentIntent())) {
           paymentGatewayEvent = chargeToPaymentGatewayEvent(charge, Optional.of(balanceTransaction), false);
         } else {
-          log.info("found intent {}", charge.getPaymentIntent());
+          env.logJobInfo("found intent {}", charge.getPaymentIntent());
           paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), Optional.of(balanceTransaction), false);
         }
 
@@ -417,7 +415,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
         paymentGatewayEvents.add(paymentGatewayEvent);
       } else if (balanceTransaction.getSourceObject() instanceof Refund refund) {
-        log.info("found refund {}", refund.getId());
+        env.logJobInfo("found refund {}", refund.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
         paymentGatewayEvent.initStripe(refund);

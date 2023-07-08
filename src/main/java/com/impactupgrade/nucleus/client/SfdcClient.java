@@ -46,8 +46,6 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class SfdcClient extends SFDCPartnerAPIClient {
 
-  private static final Logger log = LogManager.getLogger(SfdcClient.class.getName());
-
   public static final String AUTH_URL_PRODUCTION = "https://login.salesforce.com/services/Soap/u/55.0/";
   public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/55.0/";
 
@@ -291,7 +289,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //
 //    String reportDescription = getReportDescription(reportId);
 //    if (Strings.isNullOrEmpty(reportDescription)) {
-//      log.error("Failed to get report description! {}", reportId);
+//      env.logJobError("Failed to get report description! {}", reportId);
 //      return Collections.emptyList();
 //    }
 //
@@ -299,8 +297,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //    String reportType = getReportType(reportDescription);
 //    Set<String> supportedTypes = env.getConfig().salesforce.supportedContactsReportTypes;
 //    if (!supportedTypes.contains(reportType)) {
-//      log.warn("Report type {} is not supported! Supported types: {}.", reportType, supportedTypes);
-//      log.warn("Can NOT load contacts from report {}!", reportId);
+//      env.logJobWarn("Report type {} is not supported! Supported types: {}.", reportType, supportedTypes);
+//      env.logJobWarn("Can NOT load contacts from report {}!", reportId);
 //      return Collections.emptyList();
 //    }
 //
@@ -308,7 +306,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //    Map<String, String> reportColumns = getReportColumns(reportDescription);
 //    if (CollectionUtils.isEmpty(reportColumns.keySet())) {
 //      // Should be unreachable
-//      log.error("Report {} does not have any columns defined!", reportId);
+//      env.logJobError("Report {} does not have any columns defined!", reportId);
 //      return Collections.emptyList();
 //    }
 //    Set<String> supportedColumns = env.getConfig().salesforce.supportedContactReportColumns;
@@ -318,8 +316,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //            .collect(Collectors.toSet());
 //
 //    if (CollectionUtils.isEmpty(filteredColumnsLabels)) {
-//      log.warn("Report {} does not contain any of supported columns: {}", reportId, supportedColumns);
-//      log.warn("Can NOT load contacts from report {}!", reportId);
+//      env.logJobWarn("Report {} does not contain any of supported columns: {}", reportId, supportedColumns);
+//      env.logJobWarn("Can NOT load contacts from report {}!", reportId);
 //      return Collections.emptyList();
 //    }
 //
@@ -343,7 +341,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //        });
 //    }
 //
-//    log.info("column values: {}", columnValues);
+//    env.logJobInfo("column values: {}", columnValues);
 //
 //    // Select one of supported columns values (getting one that has the most values defined in csv)
 //    String searchColumnLabel = null;
@@ -393,7 +391,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
           });
     }
 
-    log.info("report contained {} contacts", resultIds.size());
+    env.logJobInfo("report contained {} contacts", resultIds.size());
     if (resultIds.isEmpty()) {
       return Collections.emptyList();
     } else {
@@ -425,7 +423,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //            .getJSONObject("reportMetadata")
 //            .getJSONObject("reportType")
 //            .getString("type");
-//    log.info("report type: {}", reportType);
+//    env.logJobInfo("report type: {}", reportType);
 //    return reportType;
 //  }
 //
@@ -446,7 +444,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //  }
 
   private String downloadReportAsString(String reportId) throws IOException {
-    log.info("downloading report file from SFDC...");
+    env.logJobInfo("downloading report file from SFDC...");
 
     // using jruby to kick off the ruby script -- see https://github.com/carojkov/salesforce-export-downloader
     ScriptingContainer container = new ScriptingContainer(LocalContextScope.THREADSAFE);
@@ -456,7 +454,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     container.getEnvironment().put("SFDC_REPORT_ID", reportId);
     container.runScriptlet(PathType.CLASSPATH, "salesforce-downloader/salesforce-report.rb");
 
-    log.info("report downloaded!");
+    env.logJobInfo("report downloaded!");
 
     File reportFile = new File("report-salesforce/" + reportId + ".csv");
     return Files.readString(reportFile.toPath(), StandardCharsets.UTF_8);
@@ -756,7 +754,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
   public void refreshRecurringDonation(String donationId) throws ConnectionException {
     // TODO: set up 'FORCE_URL' env var and the appropriate apex enpoint for orgs so they this will work
-    log.info("refreshing opportunities on {}...", donationId);
+    env.logJobInfo("refreshing opportunities on {}...", donationId);
 
     String data = "{\"recurringDonationId\": \"" + donationId + "\"}";
     String sessionId = login().getSessionId();

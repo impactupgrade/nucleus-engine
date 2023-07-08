@@ -6,8 +6,6 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.GenericType;
@@ -23,8 +21,6 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 // TODO: To eventually become a mbt-java-client open source lib?
 public class MinistryByTextClient {
-
-  private static final Logger log = LogManager.getLogger(MinistryByTextClient.class);
 
   protected static String AUTH_ENDPOINT = "https://login-qa.ministrybytext.com/connect/token";
   protected static String API_ENDPOINT_BASE = "https://api-qa.ministrybytext.com/";
@@ -103,7 +99,7 @@ public class MinistryByTextClient {
 
   protected HttpClient.HeaderBuilder headers() {
     if (isAccessTokenInvalid()) {
-      log.info("Getting new access token...");
+      env.logJobInfo("Getting new access token...");
       TokenResponse tokenResponse = getAccessToken();
       accessToken = tokenResponse.accessToken;
       Calendar onehour = Calendar.getInstance();

@@ -5,9 +5,8 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.neovisionaries.i18n.CountryCode;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.ws.rs.FormParam;
 import java.text.DecimalFormat;
@@ -15,8 +14,6 @@ import java.util.Calendar;
 import java.util.Map;
 
 public class DonationFormData {
-
-  private static final Logger log = LogManager.getLogger(DonationFormData.class);
 
   // TODO: Business Donations coming soon.
 
@@ -70,25 +67,25 @@ public class DonationFormData {
   }
 
   // TODO: Move to AntiFraudService?
-  public boolean isFraudAttempt() {
+  public boolean isFraudAttempt(Environment env) {
     // We're getting some bots sending the form with no payment details.
     if (!isStripe() && !isIntegrationTest()) {
-      log.info("blocking a bad request: no payment details");
+      env.logJobInfo("blocking a bad request: no payment details");
       return true;
     } else if (Strings.isNullOrEmpty(firstName) || Strings.isNullOrEmpty(lastName)
         // Real creative.
         || firstName.contains("<first>") || firstName.contains("<First>")
         || lastName.contains("<last>") || lastName.contains("<Last>")) {
-      log.info("blocking a bad request: name");
+      env.logJobInfo("blocking a bad request: name");
       return true;
     } else if (Strings.isNullOrEmpty(email) || email.contains("example.com")) {
-      log.info("blocking a bad request: email");
+      env.logJobInfo("blocking a bad request: email");
       return true;
     // Note: Don't require address (optional in many forms), but sanity check it if provided.
     } else if (!Strings.isNullOrEmpty(billingAddress)
         // Real creative.
         && (billingAddress.contains("<street>") || billingAddress.contains("<Street>"))) {
-      log.info("blocking a bad request: address");
+      env.logJobInfo("blocking a bad request: address");
       return true;
     }
 

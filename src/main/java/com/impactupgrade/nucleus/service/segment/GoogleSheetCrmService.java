@@ -21,8 +21,6 @@ import java.util.stream.Collectors;
 
 public class GoogleSheetCrmService implements BasicCrmService {
 
-    private static final Logger log = LogManager.getLogger(GoogleSheetCrmService.class);
-
     protected Environment env;
 
     @Override

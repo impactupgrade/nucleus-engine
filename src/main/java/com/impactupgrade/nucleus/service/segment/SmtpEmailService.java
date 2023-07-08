@@ -15,8 +15,6 @@ import java.util.Properties;
 
 public abstract class SmtpEmailService extends AbstractEmailService {
 
-  private static final Logger log = LogManager.getLogger(SmtpEmailService.class);
-
   protected Properties props = new Properties();
 
   @Override
@@ -31,7 +29,7 @@ public abstract class SmtpEmailService extends AbstractEmailService {
 
   @Override
   public void sendEmailText(String subject, String body, boolean isHtml, String to, String from) {
-    log.info("sendEmailText: to={} from={} subject={} isHtml={}", to, from, subject, isHtml);
+    env.logJobInfo("sendEmailText: to={} from={} subject={} isHtml={}", to, from, subject, isHtml);
     try {
       Session session = Session.getInstance(props, null);
 
@@ -51,7 +49,7 @@ public abstract class SmtpEmailService extends AbstractEmailService {
       t.sendMessage(msg, msg.getAllRecipients());
       t.close();
     } catch (MessagingException e) {
-      log.warn("email failed", e);
+      env.logJobWarn("email failed", e);
     }
   }
 

@@ -14,8 +14,6 @@ import java.util.List;
 
 public class ScheduledJobService {
 
-  private static final Logger log = LogManager.getLogger(ScheduledJobService.class);
-
   private final HibernateDao<Long, Job> jobDao;
   private final Environment env;
 
@@ -29,7 +27,7 @@ public class ScheduledJobService {
   // 2) May be future situations where we need granular control...
   public void processJobSchedules(Instant now) throws Exception {
     if (Strings.isNullOrEmpty(env.getConfig().apiKey)) {
-      log.info("no apiKey in the env config; skipping the scheduled job run");
+      env.logJobInfo("no apiKey in the env config; skipping the scheduled job run");
       return;
     }
 
@@ -51,16 +49,16 @@ public class ScheduledJobService {
     //  it to the executors to control when something is actually happening.
 
     if (CollectionUtils.isEmpty(jobs)) {
-      log.info("Could not find any active job schedules. Skipping...");
+      env.logJobInfo("Could not find any active job schedules. Skipping...");
     }
     for (Job job : jobs) {
-      log.info("Processing job {}...", job.id);
+      env.logJobInfo("Processing job {}...", job.id);
       try {
         switch (job.jobType) {
           case SMS_CAMPAIGN -> new SmsCampaignJobExecutor(env).execute(job, now);
         }
       } catch (Exception e) {
-        log.error("scheduled job {} failed", job.id, e);
+        env.logJobError("scheduled job {} failed", job.id, e);
       }
     }
   }

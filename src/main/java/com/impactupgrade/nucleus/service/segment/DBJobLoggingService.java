@@ -1,6 +1,5 @@
 package com.impactupgrade.nucleus.service.segment;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.dao.HibernateUtil;
@@ -10,8 +9,6 @@ import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -19,143 +16,75 @@ import org.hibernate.query.Query;
 
 import javax.persistence.NoResultException;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.TimeZone;
 
-import static com.impactupgrade.nucleus.entity.JobStatus.ACTIVE;
-import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
-import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
-
 public class DBJobLoggingService extends ConsoleJobLoggingService {
-
-  private static final Logger log = LogManager.getLogger(DBJobLoggingService.class);
 
   private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
   private final SessionFactory sessionFactory;
 
-  protected Environment env;
+  private final String nucleusApikey;
+  private final String jobTraceId;
+  private final String defaultTimezoneId;
 
   public DBJobLoggingService(Environment env) {
-    super(env);
-    this.env = env;
+    super();
     this.sessionFactory = HibernateUtil.getSessionFactory();
+
+    if (!Strings.isNullOrEmpty(env.getHeaders().get("Nucleus-Api-Key"))) {
+      nucleusApikey = env.getHeaders().get("Nucleus-Api-Key");
+    } else {
+      nucleusApikey = env.getConfig().apiKey;
+    }
+
+    jobTraceId = env.getJobTraceId();
+    defaultTimezoneId = env.getConfig().timezoneId;
   }
 
   @Override
-  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, String message) {
-    super.info(message);
-
-    String nucleusApikey = getApiKey();
+  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
     Organization org = getOrg(nucleusApikey);
     if (org == null) {
-      log.debug("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      super.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return;
     }
-    Job job = createJob(env.getJobTraceId(), jobType, username, jobName, originatingPlatform, org);
 
-    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
-    LocalDateTime now = LocalDateTime.now(ZoneId.of(env.getConfig().timezoneId));
-    String timestamp = now.format(dateTimeFormatter);
-
-    job.logs.add(timestamp + " : " + message);
-    job.status = ACTIVE;
-
+    Job job = createJob(jobTraceId, jobType, username, jobName, originatingPlatform, org);
     saveOrUpdateJob(job);
   }
 
   @Override
-  public void info(String message) {
-    super.info(message);
+  public void info(String message, Object... params) {
+    super.info(message, params);
 
-    Job job = getJob(env.getJobTraceId(), false);
-    if (job != null) {
-      insertLog(job.id, message);
-    }
+    insertLog(message, params);
   }
 
   @Override
-  public void warn(String message) {
-    super.warn(message);
+  public void warn(String message, Object... params) {
+    super.warn(message, params);
 
-    Job job = getJob(env.getJobTraceId(), false);
-    if (job != null) {
-      insertLog(job.id, message);
-    }
+    insertLog(message, params);
   }
 
   @Override
-  public void warn(String message, Throwable t) {
-    super.warn(message, t);
+  public void error(String message, Object... params) {
+    super.error(message, params);
 
-    Job job = getJob(env.getJobTraceId(), false);
-    if (job != null) {
-      insertLog(job.id, message);
-    }
+    message = "[Please contact support@impactnucleus.com and mention Job ID " + jobTraceId + ". We'll dive in!] " + message;
+    insertLog(message, params);
   }
 
   @Override
-  public void error(String message, boolean end) {
-    super.error(message, end);
-
-    message = "Please contact support@impactnucleus.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in! Error: " + message;
-    Job job = getJob(env.getJobTraceId(), false);
+  public void endLog(JobStatus jobStatus) {
+    Job job = getJob(jobTraceId, false);
     if (job != null) {
-      insertLog(job.id, message);
-      if (end) {
-        endLog(job, FAILED);
-      } else {
-        updateLogStatus(job, FAILED);
-      }
+      job.status = jobStatus;
+      job.endedAt = Instant.now();
+      saveOrUpdateJob(job);
     }
-  }
-
-  @Override
-  public void error(String message, Throwable t, boolean end) {
-    super.error(message, t, end);
-
-    message = "Please contact support@impactnucleus.com and mention Job ID [" + env.getJobTraceId() + "]. We'll dive in! Error: " + message + " (" + t.getMessage() + ")";
-    Job job = getJob(env.getJobTraceId(), false);
-    if (job != null) {
-      insertLog(job.id, message);
-      if (end) {
-        endLog(job, FAILED);
-      } else {
-        updateLogStatus(job, FAILED);
-      }
-    }
-  }
-
-  @Override
-  public void endLog(String message) {
-    super.info(message);
-
-    Job job = getJob(env.getJobTraceId(), false);
-    if (job != null) {
-      endLog(job, DONE);
-    }
-  }
-
-  private void endLog(Job job, JobStatus jobStatus) {
-    job.status = jobStatus;
-    job.endedAt = Instant.now();
-    saveOrUpdateJob(job);
-  }
-
-  private void updateLogStatus(Job job, JobStatus jobStatus) {
-    job.status = jobStatus;
-    saveOrUpdateJob(job);
-  }
-
-  private String getApiKey() {
-    String apiKey = env.getHeaders().get("Nucleus-Api-Key");
-    if (Strings.isNullOrEmpty(apiKey)) {
-      apiKey = env.getConfig().apiKey;
-    }
-    return apiKey;
   }
 
   private Organization getOrg(String nucleusApiKey) {
@@ -178,8 +107,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     job.jobName = jobName;
     job.originatingPlatform = originatingPlatform;
 
-    JsonNode payload = new ObjectMapper().createObjectNode();
-    job.payload = payload;
+    job.payload = new ObjectMapper().createObjectNode();
 
     job.status = JobStatus.ACTIVE;
     job.scheduleFrequency = JobFrequency.ONETIME;
@@ -220,11 +148,26 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     }
   }
 
-  private void insertLog(Long jobId, String logMessage) {
+  private void insertLog(String logMessage, Object... params) {
+    Job job = getJob(jobTraceId, false);
+    if (job == null) return;
+
+    // Keeping the {} placeholder format so we're compatible with log4j.
+    for (int i = 0; i < params.length; i++) {
+      Object param = params[i];
+      if (param == null) param = "";
+
+      if (i == params.length - 1 && param instanceof Throwable) {
+        logMessage = logMessage + " :: " + ((Throwable) param).getMessage();
+      } else {
+        logMessage = logMessage.replace("{}", param.toString());
+      }
+    }
+
     try (Session session = openSession()) {
       String queryString = "INSERT INTO job_logs(job_id, log) VALUES (:jobId, :logMessage)";
       Query query = session.createNativeQuery(queryString);
-      query.setParameter("jobId", jobId);
+      query.setParameter("jobId", job.id);
       query.setParameter("logMessage", logMessage);
       Transaction transaction = session.beginTransaction();
       query.executeUpdate();
@@ -234,10 +177,9 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
 
   @Override
   public List<Job> getJobs(JobType jobType) {
-    String nucleusApikey = getApiKey();
     Organization org = getOrg(nucleusApikey);
     if (org == null) {
-      log.debug("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      super.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return null;
     }
     return getJobs(org, jobType);
@@ -259,14 +201,8 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
   }
 
   private Session openSession() {
-    String timezoneId = env.getConfig().timezoneId;
-    if (Strings.isNullOrEmpty(timezoneId)) {
-      // default to EST if not configured
-      timezoneId = "EST";
-    }
-
     return sessionFactory.withOptions()
-        .jdbcTimeZone(TimeZone.getTimeZone(timezoneId))
+        .jdbcTimeZone(TimeZone.getTimeZone(defaultTimezoneId))
         .openSession();
   }
 }

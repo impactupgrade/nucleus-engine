@@ -47,8 +47,6 @@ import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionListParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.common.EmptyParam;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -63,15 +61,16 @@ import java.util.Optional;
 
 public class StripeClient {
 
-  private static final Logger log = LogManager.getLogger(StripeClient.class.getName());
-
+  protected final Environment env;
   protected final RequestOptions requestOptions;
 
   public StripeClient(Environment env) {
+    this.env = env;
     requestOptions = RequestOptions.builder().setApiKey(env.getConfig().stripe.secretKey).build();
   }
 
-  public StripeClient(RequestOptions requestOptions) {
+  public StripeClient(RequestOptions requestOptions, Environment env) {
+    this.env = env;
     this.requestOptions = requestOptions;
   }
 
@@ -173,11 +172,11 @@ public class StripeClient {
   }
 
   public void cancelSubscription(String id) throws StripeException {
-    log.info("cancelling subscription {}...", id);
+    env.logJobInfo("cancelling subscription {}...", id);
     // TODO: set prorate/invoice_now params? Is this even needed?
     SubscriptionCancelParams params = SubscriptionCancelParams.builder().build();
     Subscription.retrieve(id, requestOptions).cancel(params, requestOptions);
-    log.info("cancelled subscription {}", id);
+    env.logJobInfo("cancelled subscription {}", id);
   }
 
   public SubscriptionItem getSubscriptionItem(String id) throws StripeException {
@@ -274,7 +273,7 @@ public class StripeClient {
   public List<BalanceTransaction> getBalanceTransactions(Payout payout) throws StripeException {
     List<BalanceTransaction> balanceTransactions = getBalanceTransactions(payout, null);
     if (balanceTransactions.isEmpty()) {
-      log.info("no new payouts to process");
+      env.logJobInfo("no new payouts to process");
     }
 
     return balanceTransactions;
@@ -303,7 +302,7 @@ public class StripeClient {
     transactionExpand.add("data.source.payment_intent");
     transactionParams.put("expand", transactionExpand);
     BalanceTransactionCollection balanceTransactionsPage = BalanceTransaction.list(transactionParams, requestOptions);
-    log.info("found {} transactions in payout page", balanceTransactionsPage.getData().size());
+    env.logJobInfo("found {} transactions in payout page", balanceTransactionsPage.getData().size());
 
     List<BalanceTransaction> balanceTransactions = new ArrayList<>(balanceTransactionsPage.getData());
     // if there were 100 transactions, iterate to add the next page
@@ -349,10 +348,10 @@ public class StripeClient {
         if (sameCard) {
           if (cvcOverride || zipOverride) {
             // keep existing card and just insert the new one
-            log.info("card duplicated an existing source; keeping the old card and simply inserting the new one");
+            env.logJobInfo("card duplicated an existing source; keeping the old card and simply inserting the new one");
           } else {
             // keep existing one
-            log.info("card duplicated an existing source; removing it and reusing the existing one");
+            env.logJobInfo("card duplicated an existing source; removing it and reusing the existing one");
             newCard.delete(requestOptions);
             return existingCard;
           }
@@ -368,7 +367,7 @@ public class StripeClient {
   }
 
   public void updateSubscriptionAmount(String subscriptionId, double dollarAmount) throws StripeException {
-    log.info("updating subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+    env.logJobInfo("updating subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
 
     Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
     Plan existingPlan = subscription.getItems().getData().get(0).getPlan();
@@ -389,11 +388,11 @@ public class StripeClient {
 
     subscription.update(subscriptionUpdateParams, requestOptions);
 
-    log.info("updated subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
+    env.logJobInfo("updated subscription amount to {} for subscription {}", dollarAmount, subscriptionId);
   }
 
   public void updateSubscriptionDate(String subscriptionId, Calendar nextPaymentDate) throws StripeException {
-    log.info("updating subscription {} date...", subscriptionId);
+    env.logJobInfo("updating subscription {} date...", subscriptionId);
     SubscriptionUpdateParams params =
         SubscriptionUpdateParams.builder()
             .setTrialEnd(nextPaymentDate.getTimeInMillis() / 1000)
@@ -401,11 +400,11 @@ public class StripeClient {
             .build();
     Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
     subscription.update(params, requestOptions);
-    log.info("updated subscription {} date to {}...", subscriptionId, nextPaymentDate.getTime());
+    env.logJobInfo("updated subscription {} date to {}...", subscriptionId, nextPaymentDate.getTime());
   }
 
   public void pauseSubscription(String subscriptionId, Calendar pauseUntilDate) throws StripeException {
-    log.info("pausing subscription {}...", subscriptionId);
+    env.logJobInfo("pausing subscription {}...", subscriptionId);
 
     Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
 
@@ -419,9 +418,9 @@ public class StripeClient {
     subscription.update(params, requestOptions);
 
     if (pauseUntilDate != null) {
-      log.info("paused subscription {} until {}", subscription.getId(), pauseUntilDate.getTime());
+      env.logJobInfo("paused subscription {} until {}", subscription.getId(), pauseUntilDate.getTime());
     } else {
-      log.info("paused subscription {} indefinitely", subscription.getId());
+      env.logJobInfo("paused subscription {} indefinitely", subscription.getId());
     }
   }
 
@@ -433,7 +432,7 @@ public class StripeClient {
       //  but should that create a new RD in the CRM (probably...), not update the existing subscription ID
     } else {
       if (resumeOnDate != null) {
-        log.info("resuming subscription {} on {}...", subscription.getId(), resumeOnDate.getTime());
+        env.logJobInfo("resuming subscription {} on {}...", subscription.getId(), resumeOnDate.getTime());
 
         SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
         pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
@@ -443,7 +442,7 @@ public class StripeClient {
         subscription.update(params, requestOptions);
         subscription.update(params, requestOptions);
       } else {
-        log.info("resuming subscription {} immediately...", subscription.getId());
+        env.logJobInfo("resuming subscription {} immediately...", subscription.getId());
 
         SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(EmptyParam.EMPTY).build();
         subscription.update(params, requestOptions);
@@ -454,7 +453,7 @@ public class StripeClient {
   public void updateSubscriptionPaymentMethod(String subscriptionId, String paymentMethodToken) throws StripeException {
     Subscription subscription = getSubscription(subscriptionId);
     String customerId = subscription.getCustomer();
-    log.info("updating customer {} payment method on subscription {}...", customerId, subscriptionId);
+    env.logJobInfo("updating customer {} payment method on subscription {}...", customerId, subscriptionId);
 
     // add source to customer
     Customer customer = getCustomer(customerId);
@@ -463,7 +462,7 @@ public class StripeClient {
     // set source as defaultSource for subscription
     updateSubscriptionPaymentMethod(subscription, newSource);
 
-    log.info("updated customer {} payment method on subscription {}", customerId, subscriptionId);
+    env.logJobInfo("updated customer {} payment method on subscription {}", customerId, subscriptionId);
   }
 
   public void updateSubscriptionPaymentMethod(Subscription subscription, PaymentSource newSource) throws StripeException {
@@ -596,14 +595,14 @@ public class StripeClient {
     try {
       Plan plan = Plan.retrieve(planId, requestOptions);
       if (plan != null) {
-        log.info("plan {} already exists", planId);
+        env.logJobInfo("plan {} already exists", planId);
         return plan;
       }
     } catch (InvalidRequestException e) {
       // fall-through -- SDK currently throws this if the plan does *not* exist
     }
 
-    log.info("plan {} does not exist; creating it...", planId);
+    env.logJobInfo("plan {} does not exist; creating it...", planId);
 
     PlanCreateParams.Interval interval = PlanCreateParams.Interval.MONTH;
     if ("yearly".equalsIgnoreCase(frequency)) {
@@ -626,7 +625,7 @@ public class StripeClient {
         .build();
     Plan plan = Plan.create(planCreateParams, requestOptions);
 
-    log.info("created plan {}", planId);
+    env.logJobInfo("created plan {}", planId);
 
     return plan;
   }
@@ -642,22 +641,22 @@ public class StripeClient {
       try {
         return retrieve();
       } catch (RateLimitException e) {
-        log.info("Stripe API attempt {} failed due to rate limit or lock; retrying in 3s", count, e);
+        env.logJobInfo("Stripe API attempt {} failed due to rate limit or lock; retrying in 3s", count, e);
         try {
           Thread.sleep(3000);
         } catch (InterruptedException e1) {
-          log.error("sleep failed", e1);
+          env.logJobError("sleep failed", e1);
         }
 
         if (count == 4) {
-          log.error("unable to call Stripe API by attempt {}", count);
+          env.logJobError("unable to call Stripe API by attempt {}", count);
           // rethrow exception, since the whole flow simply needs to halt at this point
           throw e;
         }
 
         return result(count + 1);
       } catch (Exception e) {
-        log.error("Stripe API failed", e);
+        env.logJobError("Stripe API failed", e);
         throw e;
       }
     }

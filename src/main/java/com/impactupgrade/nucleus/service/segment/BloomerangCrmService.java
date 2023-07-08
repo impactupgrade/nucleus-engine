@@ -13,27 +13,44 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.*;
+import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmAddress;
+import com.impactupgrade.nucleus.model.CrmCampaign;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmCustomField;
+import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmOpportunity;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmTask;
+import com.impactupgrade.nucleus.model.CrmUser;
+import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.impactupgrade.nucleus.util.HttpClient.*;
+import static com.impactupgrade.nucleus.util.HttpClient.get;
+import static com.impactupgrade.nucleus.util.HttpClient.post;
+import static com.impactupgrade.nucleus.util.HttpClient.put;
 import static com.impactupgrade.nucleus.util.Utils.getZonedDateTimeFromDateTimeString;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class BloomerangCrmService implements CrmService {
-
-  private static final Logger log = LogManager.getLogger(BloomerangCrmService.class);
 
   private static final String BLOOMERANG_URL = "https://api.bloomerang.co/v2/";
   private static final ObjectMapper mapper = new ObjectMapper();
@@ -100,7 +117,7 @@ public class BloomerangCrmService implements CrmService {
     try {
       constituentSearchResults = get(BLOOMERANG_URL + "constituents/search?search=" + query, headers(), ConstituentSearchResults.class);
     } catch (Exception e) {
-//      log.error("search failed", e);
+//      env.logJobError("search failed", e);
     }
     if (constituentSearchResults == null) {
       return PagedResults.getPagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
@@ -172,7 +189,7 @@ public class BloomerangCrmService implements CrmService {
     if (constituent == null) {
       return null;
     }
-    log.info("inserted constituent {}", constituent.id);
+    env.logJobInfo("inserted constituent {}", constituent.id);
     return constituent.id + "";
   }
 
@@ -185,7 +202,7 @@ public class BloomerangCrmService implements CrmService {
   public String insertDonation(CrmDonation crmDonation) throws Exception {
     // Bloomerang has no notion of non-successful transactions.
     if (crmDonation.status != CrmDonation.Status.SUCCESSFUL) {
-      log.info("skipping the non-successful transaction: {}", crmDonation.transactionId);
+      env.logJobInfo("skipping the non-successful transaction: {}", crmDonation.transactionId);
       return null;
     }
 
@@ -229,7 +246,7 @@ public class BloomerangCrmService implements CrmService {
     if (donation == null) {
       return null;
     }
-    log.info("inserted donation {}", donation.id);
+    env.logJobInfo("inserted donation {}", donation.id);
     return donation.id + "";
   }
 
@@ -261,13 +278,13 @@ public class BloomerangCrmService implements CrmService {
 
     donation.designations.add(designation);
 
-    log.info(mapper.writeValueAsString(donation));
+    env.logJobInfo(mapper.writeValueAsString(donation));
     donation = post(BLOOMERANG_URL + "transaction", donation, APPLICATION_JSON, headers(), Donation.class);
 
     if (donation == null) {
       return null;
     }
-    log.info("inserted recurring donation {}", donation.id);
+    env.logJobInfo("inserted recurring donation {}", donation.id);
     return donation.id + "";
   }
 
@@ -347,7 +364,7 @@ public class BloomerangCrmService implements CrmService {
 //
 //    household = mapper.readValue(post(BLOOMERANG_URL + "household", body), Household.class);
 //
-//    log.info("inserted household {}", household.id);
+//    env.logJobInfo("inserted household {}", household.id);
 //
 //    return household.id + "";
   }
@@ -438,7 +455,7 @@ public class BloomerangCrmService implements CrmService {
       recurringDonation.amount = crmRecurringDonation.amount;
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus))
           .forEach(rd -> rd.amount = crmRecurringDonation.amount);
-      log.info("Updating amount to {}...", crmRecurringDonation.amount);
+      env.logJobInfo("Updating amount to {}...", crmRecurringDonation.amount);
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
       // TODO: RecurringDonationNextInstallmentDate

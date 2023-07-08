@@ -23,8 +23,6 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,8 +43,6 @@ import java.util.stream.Stream;
 
 // TODO: Note that this class is super specific to LLS' Excel/Sharepoint service and needs to be more configuration driven!
 public class SharePointCrmService implements CrmService {
-
-    private static final Logger log = LogManager.getLogger(SharePointCrmService.class);
 
     private static final String CACHE_KEY = "csvData";
 
@@ -76,7 +72,7 @@ public class SharePointCrmService implements CrmService {
     @Override
     public void init(Environment env) {
         this.env = env;
-        msGraphClient = new MSGraphClient(env.getConfig().sharePoint);
+        msGraphClient = new MSGraphClient(env);
         if (sharepointCsvCache == null && !DISABLE_SHAREPOINT_CACHE) {
             sharepointCsvCache = CacheBuilder.newBuilder()
                 .refreshAfterWrite(5, TimeUnit.MINUTES)
@@ -100,7 +96,7 @@ public class SharePointCrmService implements CrmService {
         Map<String, List<Map<String, String>>> dataMap = new HashMap<>();
 
         for (String filePath : sharepoint.filePaths) {
-            log.info("downloading data for {}/{}...", siteId, filePath);
+            env.logJobInfo("downloading data for {}/{}...", siteId, filePath);
 
             List<Map<String, String>> csvData = downloadCsvData(siteId, filePath);
             dataMap.put(filePath, csvData);
@@ -120,7 +116,7 @@ public class SharePointCrmService implements CrmService {
                 throw new RuntimeException("unexpected file extension for filePath " + filePath);
             }
         } catch (IOException e) {
-            log.error("unable to download CSV data for {} {}", siteId, filePath, e);
+            env.logJobError("unable to download CSV data for {} {}", siteId, filePath, e);
         }
 
         return csvData;
@@ -248,7 +244,7 @@ public class SharePointCrmService implements CrmService {
             try {
                 pageToken = Long.parseLong(contactSearch.pageToken);
             } catch (NumberFormatException nfe) {
-                log.warn("Failed to parse long from string {}!", contactSearch.pageToken);
+                env.logJobWarn("Failed to parse long from string {}!", contactSearch.pageToken);
                 // Ignore
             }
             contactStream = contactStream.skip(pageToken);

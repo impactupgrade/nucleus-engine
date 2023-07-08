@@ -20,8 +20,6 @@ import com.twilio.twiml.voice.Dial;
 import com.twilio.twiml.voice.Gather;
 import com.twilio.twiml.voice.Redirect;
 import com.twilio.twiml.voice.Say;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -39,6 +37,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
+import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
+import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
 
@@ -48,8 +48,6 @@ import static com.impactupgrade.nucleus.util.Utils.trim;
  */
 @Path("/twilio")
 public class TwilioController {
-
-  private static final Logger log = LogManager.getLogger(TwilioController.class);
 
   protected final EnvironmentFactory envFactory;
 
@@ -83,9 +81,11 @@ public class TwilioController {
       @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
-        from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, listId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
     Environment env = envFactory.init(request);
+
+    env.startJobLog(JobType.EVENT, nucleusUsername, "SMS Flow", "Twilio");
+    env.logJobInfo("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
+        from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, listId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
 
     _firstName = trim(_firstName);
     _lastName = trim(_lastName);
@@ -106,8 +106,6 @@ public class TwilioController {
 
     Runnable thread = () -> {
       try {
-        String jobName = "SMS Flow";
-        env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
         CrmContact crmContact = env.messagingService().processSignup(
             from,
             firstName,
@@ -131,11 +129,12 @@ public class TwilioController {
           crmOpportunity.campaignId = campaignId;
           crmOpportunity.description = opportunityNotes;
           env.messagingCrmService().insertOpportunity(crmOpportunity);
-          env.endJobLog(jobName);
         }
+
+        env.endJobLog(DONE);
       } catch (Exception e) {
-        log.warn("inbound SMS signup failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("inbound SMS flow failed", e);
+        env.endJobLog(FAILED);
       }
     };
     new Thread(thread).start();
@@ -160,8 +159,11 @@ public class TwilioController {
   ) throws Exception {
     Environment env = envFactory.init(request);
 
+    env.startJobLog(JobType.EVENT, null, "SMS Inbound", "Twilio");
     MultivaluedMap<String, String> smsData = rawFormData.asMap();
-    log.info(smsData.entrySet().stream().map(e -> e.getKey() + "=" + String.join(",", e.getValue())).collect(Collectors.joining(" ")));
+    env.logJobInfo(smsData.entrySet().stream().map(e -> e.getKey() + "=" + String.join(",", e.getValue())).collect(Collectors.joining(" ")));
+
+    Body responseBody = null;
 
     String from = smsData.get("From").get(0);
     if (smsData.containsKey("Body")) {
@@ -169,8 +171,6 @@ public class TwilioController {
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
         if (env.notificationService().notificationConfigured("sms:inbound-default")) {
-          String jobName = "SMS Inbound";
-          env.startJobLog(JobType.EVENT, null, jobName, "Twilio");
           String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
           env.notificationService().sendNotification(
               "Text Message Received",
@@ -178,18 +178,17 @@ public class TwilioController {
               targetId,
               "sms:inbound-default"
           );
-          env.endJobLog(jobName);
         } else if (!Strings.isNullOrEmpty(env.getConfig().twilio.defaultResponse)) {
-          MessagingResponse response = new MessagingResponse.Builder().message(
-              new Message.Builder().body(
-                  new Body.Builder(env.getConfig().twilio.defaultResponse).build()).build()).build();
-          return Response.ok().entity(response.toXml()).build();
+          env.logJobInfo("responding with: {}", env.getConfig().twilio.defaultResponse);
+
+          responseBody = new Body.Builder(env.getConfig().twilio.defaultResponse).build();
         }
       }
     }
 
-    // TODO: This builds TwiML, which we could later use to send back dynamic responses.
-    MessagingResponse response = new MessagingResponse.Builder().build();
+    env.endJobLog(DONE);
+
+    MessagingResponse response = new MessagingResponse.Builder().message(new Message.Builder().body(responseBody).build()).build();
     return Response.ok().entity(response.toXml()).build();
   }
 
@@ -213,8 +212,10 @@ public class TwilioController {
       @QueryParam("owner") String owner,
       @Context HttpServletRequest request
   ) {
-    log.info("from={} owner={}", from, owner);
     Environment env = envFactory.init(request);
+
+    env.startJobLog(JobType.EVENT, null, "SMS Voice Proxy", "Twilio");
+    env.logJobInfo("from={} owner={}", from, owner);
 
     String xml;
 
@@ -222,7 +223,7 @@ public class TwilioController {
     if (from.equals(owner)) {
       // beginning of the process, so prompt for the destination number
       if (Strings.isNullOrEmpty(digits)) {
-        log.info("prompting owner for recipient phone number");
+        env.logJobInfo("prompting owner for recipient phone number");
         xml = new VoiceResponse.Builder()
             .gather(new Gather.Builder().say(new Say.Builder("Please enter the destination phone number, followed by #.").build()).build())
             // redirect to this endpoint again, which will include the response in a Digits form param
@@ -231,7 +232,7 @@ public class TwilioController {
       }
       // we already prompted, then redirected back to this endpoint, so use the Digits that were included to dial the recipient
       else {
-        log.info("owner provided recipient phone number; dialing {}", digits);
+        env.logJobInfo("owner provided recipient phone number; dialing {}", digits);
         xml = new VoiceResponse.Builder()
             // note: in this case, 'to' is the Twilio masking number
             .dial(new Dial.Builder(digits).callerId(to).build())
@@ -240,11 +241,13 @@ public class TwilioController {
     }
     // else, it's someone else calling inbound, so send it to the owner
     else {
-      log.info("inbound call from {}; connecting to {}", from, owner);
+      env.logJobInfo("inbound call from {}; connecting to {}", from, owner);
       xml = new VoiceResponse.Builder()
           .dial(new Dial.Builder(owner).build())
           .build().toXml();
     }
+
+    env.endJobLog(DONE);
 
     return Response.ok().entity(xml).build();
   }

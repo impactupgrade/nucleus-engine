@@ -36,7 +36,6 @@ import java.util.stream.Stream;
 
 public class VirtuousCrmService implements BasicCrmService {
 
-    private static final Logger log = LogManager.getLogger(VirtuousCrmService.class);
     private static final String DATE_FORMAT = "MM/dd/yyyy";
     private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
@@ -66,7 +65,7 @@ public class VirtuousCrmService implements BasicCrmService {
         try {
             contactId = Integer.parseInt(id);
         } catch (NumberFormatException nfe) {
-            log.error("Failed to parse numeric id from string {}!", id);
+            env.logJobError("Failed to parse numeric id from string {}!", id);
             return Optional.empty();
         }
         VirtuousClient.Contact contact = virtuousClient.getContactById(contactId);
@@ -102,28 +101,28 @@ public class VirtuousCrmService implements BasicCrmService {
 
         List<VirtuousClient.ContactMethod> contactMethodsToCreate = getContactMethodsToCreate(existingIndividual, updatingIndividual);
         for (VirtuousClient.ContactMethod contactMethod : contactMethodsToCreate) {
-            log.info("Creating contact method...");
+            env.logJobInfo("Creating contact method...");
             VirtuousClient.ContactMethod createdContactMethod = virtuousClient.createContactMethod(contactMethod);
             if (createdContactMethod == null) {
-                log.error("Failed to create contact method {}/{}!", contactMethod.id, contactMethod.type);
+                env.logJobError("Failed to create contact method {}/{}!", contactMethod.id, contactMethod.type);
                 return;
             }
-            log.info("Contact method created.");
+            env.logJobInfo("Contact method created.");
         }
 
         List<VirtuousClient.ContactMethod> contactMethodsToUpdate = getContactMethodsToUpdate(existingIndividual, updatingIndividual);
         for (VirtuousClient.ContactMethod contactMethod : contactMethodsToUpdate) {
-            log.info("Updating contact method...");
+            env.logJobInfo("Updating contact method...");
             if (virtuousClient.updateContactMethod(contactMethod) == null) {
-                log.error("Failed to update contact method {}/{}!", contactMethod.id, contactMethod.type);
+                env.logJobError("Failed to update contact method {}/{}!", contactMethod.id, contactMethod.type);
                 return;
             }
-            log.info("Contact method updated.");
+            env.logJobInfo("Contact method updated.");
         }
 
         List<VirtuousClient.ContactMethod> contactMethodsToDelete = getContactMethodsToDelete(existingIndividual, updatingIndividual);
         for (VirtuousClient.ContactMethod contactMethod : contactMethodsToDelete) {
-            log.info("Deleting contact method...");
+            env.logJobInfo("Deleting contact method...");
             virtuousClient.deleteContactMethod(contactMethod);
         }
 
@@ -303,7 +302,7 @@ public class VirtuousCrmService implements BasicCrmService {
                 calendar.setTime(date);
                 return calendar;
             } catch (ParseException e) {
-                log.error("Failed to parse date from string {}!", dateString);
+                env.logJobError("Failed to parse date from string {}!", dateString);
             }
         }
         return null;
@@ -406,7 +405,7 @@ public class VirtuousCrmService implements BasicCrmService {
         try {
             gift.id = Integer.parseInt(crmDonation.id);
         } catch (NumberFormatException nfe) {
-            log.error("Failed to parse numeric id from string {}!", crmDonation.id);
+            env.logJobError("Failed to parse numeric id from string {}!", crmDonation.id);
             return;
         }
         virtuousClient.updateGift(gift);
@@ -535,7 +534,7 @@ public class VirtuousCrmService implements BasicCrmService {
         try {
             task.contactId = Integer.parseInt(crmTask.targetId);
         } catch (NumberFormatException e) {
-            log.warn("Failed to parse Integer from String '{}'!", task.contactId);
+            env.logJobWarn("Failed to parse Integer from String '{}'!", task.contactId);
         }
 
         task.contact = crmTask.targetId;

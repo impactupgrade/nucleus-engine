@@ -10,8 +10,6 @@ import com.twilio.rest.conversations.v1.Conversation;
 import com.twilio.rest.conversations.v1.conversation.Participant;
 import com.twilio.rest.frontlineapi.v1.User;
 import com.twilio.type.PhoneNumber;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +20,6 @@ import java.util.Optional;
  * Twilio's Java SDK is really easy to work with, but we encapsulate some of it here to remove boilerplate.
  */
 public class TwilioClient {
-
-  private static final Logger log = LogManager.getLogger(TwilioClient.class);
 
   private final Environment env;
   private final TwilioRestClient restClient;
@@ -135,7 +131,7 @@ public class TwilioClient {
     //  supports it. But then we still need to hit the Frontline API to get the worker state.
     com.twilio.rest.conversations.v1.User conversationUser = com.twilio.rest.conversations.v1.User.fetcher(identity).fetch(restClient);
     User frontlineUser = User.fetcher(conversationUser.getSid()).fetch(restClient);
-    log.info(frontlineUser);
+    env.logJobInfo(frontlineUser.toString());
     return frontlineUser;
   }
 }

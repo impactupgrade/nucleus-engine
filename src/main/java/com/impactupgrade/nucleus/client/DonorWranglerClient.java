@@ -49,7 +49,7 @@ public class DonorWranglerClient {
 
     HttpResponse response = executePost(params);
     String responseString = getResponseString(response);
-    log.info("Donor Wrangler getDonorByEmail response: {}", responseString);
+    env.logJobInfo("Donor Wrangler getDonorByEmail response: {}", responseString);
     JSONObject jsonObject = new JSONObject(responseString);
 
     if (!jsonObject.has("result")) {
@@ -70,7 +70,7 @@ public class DonorWranglerClient {
 
     HttpResponse response = executePost(params);
     String responseString = getResponseString(response);
-    log.info("Donor Wrangler contactSearch response: {}", responseString);
+    env.logJobInfo("Donor Wrangler contactSearch response: {}", responseString);
     JSONObject jsonObject = new JSONObject(responseString);
     JSONArray jsonArray = jsonObject.getJSONArray("results");
 
@@ -78,7 +78,7 @@ public class DonorWranglerClient {
       return Optional.empty();
     } else {
       if (jsonArray.length() > 1) {
-        log.warn("multiple contacts found for {}={}; returning the first", searchKey, searchValue);
+        env.logJobWarn("multiple contacts found for {}={}; returning the first", searchKey, searchValue);
       }
       JSONObject jsonDonor = (JSONObject) jsonArray.get(0);
       DwDonor donor = DwDonor.fromJson(jsonDonor);
@@ -104,7 +104,7 @@ public class DonorWranglerClient {
 
     HttpResponse response = executePost(params);
     String responseString = getResponseString(response);
-    log.info("Donor Wrangler addUpdateDonor response: {}", responseString);
+    env.logJobInfo("Donor Wrangler addUpdateDonor response: {}", responseString);
 
     JSONObject jsonObject = new JSONObject(responseString);
 
@@ -124,7 +124,7 @@ public class DonorWranglerClient {
 
     HttpResponse response = executePost(params);
     String responseString = getResponseString(response);
-    log.info("Donor Wrangler getDonationsByDonorId response: {}", responseString);
+    env.logJobInfo("Donor Wrangler getDonationsByDonorId response: {}", responseString);
     JSONObject jsonObject = new JSONObject(responseString);
     JSONArray jsonArray = jsonObject.getJSONArray("results");
 
@@ -175,7 +175,7 @@ public class DonorWranglerClient {
 
     HttpResponse response = executePost(params);
     String responseString = getResponseString(response);
-    log.info("Donor Wrangler addUpdateDonation response: {}", responseString);
+    env.logJobInfo("Donor Wrangler addUpdateDonation response: {}", responseString);
 
     JSONObject jsonObject = new JSONObject(responseString);
 

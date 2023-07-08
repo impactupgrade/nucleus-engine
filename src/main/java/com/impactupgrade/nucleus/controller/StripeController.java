@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.StripeClient;
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -27,8 +28,6 @@ import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -53,8 +52,6 @@ import java.util.Optional;
  */
 @Path("/stripe")
 public class StripeController {
-
-  private static final Logger log = LogManager.getLogger(StripeController.class);
 
   protected final EnvironmentFactory envFactory;
 
@@ -82,13 +79,13 @@ public class StripeController {
     if (dataObjectDeserializer.getObject().isPresent()) {
       stripeObject = dataObjectDeserializer.getObject().get();
     } else {
-      log.warn("Stripe deserialization failed, probably due to an API version mismatch.");
+      env.logJobWarn("Stripe deserialization failed, probably due to an API version mismatch.");
       return Response.status(500).build();
     }
 
     // don't log the whole thing -- can be found in Stripe's dashboard -> Developers -> Webhooks
     // log this within the new thread for traceability's sake
-    log.info("received event {}: {}", event.getType(), event.getId());
+    env.logJobInfo("received event {}: {}", event.getType(), event.getId());
 
     if (TestUtil.SKIP_NEW_THREADS) {
       processEvent(event.getType(), stripeObject, env);
@@ -99,10 +96,11 @@ public class StripeController {
           String jobName = "Stripe Event";
           env.startJobLog(JobType.EVENT, "webhook", jobName, "Stripe");
           processEvent(event.getType(), stripeObject, env);
-          env.endJobLog(jobName);
+          env.endJobLog(JobStatus.DONE);
         } catch (Exception e) {
-          log.error("failed to process the Stripe event", e);
-          env.logJobError(e.getMessage(), true);
+          env.logJobError("failed to process the Stripe event", e);
+          env.logJobError(e.getMessage());
+          env.endJobLog(JobStatus.FAILED);
           // TODO: email notification?
         }
       };
@@ -116,17 +114,17 @@ public class StripeController {
   public void processEvent(String eventType, StripeObject stripeObject, Environment env) throws Exception {
     StripePaymentGatewayService stripePaymentGatewayService = (StripePaymentGatewayService) env.paymentGatewayService("stripe");
     if (stripePaymentGatewayService.filter(stripeObject)) {
-      log.info("Skipping stripe object...");
+      env.logJobInfo("Skipping stripe object...");
       return;
     }
 
     switch (eventType) {
       case "charge.succeeded" -> {
         Charge charge = (Charge) stripeObject;
-        log.info("found charge {}", charge.getId());
+        env.logJobInfo("found charge {}", charge.getId());
 
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
-          log.info("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
+          env.logJobInfo("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
 
@@ -141,7 +139,7 @@ public class StripeController {
       }
       case "payment_intent.succeeded" -> {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
-        log.info("found payment intent {}", paymentIntent.getId());
+        env.logJobInfo("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
 
@@ -155,10 +153,10 @@ public class StripeController {
       }
       case "charge.failed" -> {
         Charge charge = (Charge) stripeObject;
-        log.info("found charge {}", charge.getId());
+        env.logJobInfo("found charge {}", charge.getId());
 
         if (!Strings.isNullOrEmpty(charge.getPaymentIntent())) {
-          log.info("charge {} is part of an intent; skipping...", charge.getId());
+          env.logJobInfo("charge {} is part of an intent; skipping...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
           env.contactService().processDonor(paymentGatewayEvent);
@@ -167,7 +165,7 @@ public class StripeController {
       }
       case "payment_intent.payment_failed" -> {
         PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
-        log.info("found payment intent {}", paymentIntent.getId());
+        env.logJobInfo("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
         env.contactService().processDonor(paymentGatewayEvent);
@@ -182,7 +180,7 @@ public class StripeController {
         } else {
           refund = (Refund) stripeObject;
         }
-        log.info("found refund {}", refund.getId());
+        env.logJobInfo("found refund {}", refund.getId());
 
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
@@ -191,21 +189,21 @@ public class StripeController {
       }
       case "customer.subscription.created" -> {
         Subscription subscription = (Subscription) stripeObject;
-        log.info("found subscription {}", subscription.getId());
+        env.logJobInfo("found subscription {}", subscription.getId());
 
         if ("true".equalsIgnoreCase(subscription.getMetadata().get("auto-migrated"))) {
           // This subscription comes from an auto-migration path, such as PaymentSpring -> Stripe through
           // LJI's Donor Portal. In this case, the migration will have already updated the existing
           // recurring donation. Prevent this from creating another one.
 
-          log.info("skipping the auto-migrated subscription");
+          env.logJobInfo("skipping the auto-migrated subscription");
         } else if ("trialing".equalsIgnoreCase(subscription.getStatus())) {
           // IE, handle the subscription if it's going to happen in the future. Otherwise, if it started already,
           // the incoming payment will handle it. This prevents timing issues for start-now subscriptions, where
           // we'll likely get the subscription and charge near instantaneously (but on different requests/threads).
 
           Customer createdSubscriptionCustomer = env.stripeClient().getCustomer(subscription.getCustomer());
-          log.info("found customer {}", createdSubscriptionCustomer.getId());
+          env.logJobInfo("found customer {}", createdSubscriptionCustomer.getId());
 
           // TODO: Move to StripePaymentGatewayService?
           PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
@@ -213,14 +211,14 @@ public class StripeController {
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().processSubscription(paymentGatewayEvent);
         } else {
-          log.info("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
+          env.logJobInfo("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
         }
       }
       case "customer.subscription.deleted" -> {
         Subscription subscription = (Subscription) stripeObject;
-        log.info("found subscription {}", subscription.getId());
+        env.logJobInfo("found subscription {}", subscription.getId());
         Customer deletedSubscriptionCustomer = env.stripeClient().getCustomer(subscription.getCustomer());
-        log.info("found customer {}", deletedSubscriptionCustomer.getId());
+        env.logJobInfo("found customer {}", deletedSubscriptionCustomer.getId());
 
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
@@ -232,7 +230,7 @@ public class StripeController {
       }
       case "payout.paid" -> {
         Payout payout = (Payout) stripeObject;
-        log.info("found payout {}", payout.getId());
+        env.logJobInfo("found payout {}", payout.getId());
 
         List<PaymentGatewayEvent> paymentGatewayEvents = stripePaymentGatewayService.payoutToPaymentGatewayEvents(payout);
         env.donationService().processDeposit(paymentGatewayEvents);
@@ -241,10 +239,10 @@ public class StripeController {
         // Occurs whenever a card or source will expire at the end of the month.
         if (stripeObject instanceof Card) {
           Card card = (Card) stripeObject;
-          log.info("found expiring card {}", card.getId());
+          env.logJobInfo("found expiring card {}", card.getId());
 
           Customer customer = env.stripeClient().getCustomer(card.getCustomer());
-          log.info("found customer {}", customer.getId());
+          env.logJobInfo("found customer {}", customer.getId());
           List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(card.getCustomer());
           List<Subscription> affectedSubscriptions = new ArrayList<>();
 
@@ -300,10 +298,10 @@ public class StripeController {
             }
           }
         } else {
-          log.info("found expiring payment source {}", ((PaymentSource) stripeObject).getId());
+          env.logJobInfo("found expiring payment source {}", ((PaymentSource) stripeObject).getId());
         }
       }
-      default -> log.info("unhandled Stripe webhook event type: {}", eventType);
+      default -> env.logJobInfo("unhandled Stripe webhook event type: {}", eventType);
     }
   }
 
@@ -334,7 +332,7 @@ public class StripeController {
       List<Customer> customers = stripeClient.getCustomersByEmail(customerEmail);
 
       if (customers.isEmpty()) {
-        log.info("unable to find donor using {}", customerEmail);
+        env.logJobInfo("unable to find donor using {}", customerEmail);
         String error = URLEncoder.encode("Unable to find the donor record", StandardCharsets.UTF_8);
         return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
       }
@@ -342,7 +340,7 @@ public class StripeController {
       for (Customer customer : customers) {
         PaymentSource newSource = stripeClient.addCustomerSource(customer, stripeToken);
         stripeClient.setCustomerDefaultSource(customer, newSource);
-        log.info("created new source {} for customer {}", customer.getId(), newSource.getId());
+        env.logJobInfo("created new source {} for customer {}", customer.getId(), newSource.getId());
 
         List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(customer.getId());
         for (Subscription subscription: activeSubscriptions) {
@@ -358,13 +356,13 @@ public class StripeController {
 
           if (!newSource.getId().equalsIgnoreCase(subscriptionPaymentMethodId)) {
             stripeClient.updateSubscriptionPaymentMethod(subscription, newSource);
-            log.info("updated payment method for subscription {}", subscription.getId());
+            env.logJobInfo("updated payment method for subscription {}", subscription.getId());
           }
         }
       }
       return Response.temporaryRedirect(URI.create(successUrl)).build();
     } catch (StripeException e) {
-      log.info("failed to update the source for {}", customerEmail, e);
+      env.logJobInfo("failed to update the source for {}", customerEmail, e);
       String error = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
       return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
     }

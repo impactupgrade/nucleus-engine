@@ -14,12 +14,11 @@ import com.backblaze.b2.client.structures.B2UploadFileRequest;
 import com.backblaze.b2.client.structures.B2UploadListener;
 import com.backblaze.b2.util.B2ExecutorUtils;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import org.apache.commons.io.FileUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 
@@ -36,8 +35,6 @@ import java.util.concurrent.Executors;
 @Path("/backup")
 public class BackupController {
 
-  private static final Logger log = LogManager.getLogger(BackupController.class);
-
   protected final EnvironmentFactory envFactory;
 
   public BackupController(EnvironmentFactory envFactory) {
@@ -51,8 +48,8 @@ public class BackupController {
   @GET
   @Path("/weekly")
   public Response weekly(@Context HttpServletRequest request) {
-    log.info("backing up all platforms");
     Environment env = envFactory.init(request);
+    env.logJobInfo("backing up all platforms");
 
     // some of the tasks (like Backblaze B2) can multi-thread and process in parallel, so create
     // an executor pool for the whole setup to run off of
@@ -69,7 +66,7 @@ public class BackupController {
           // start with a clean slate and delete the dir used by the script
           FileUtils.deleteDirectory(new File("backup-salesforce"));
 
-          log.info("downloading backup file from SFDC");
+          env.logJobInfo("downloading backup file from SFDC");
 
           // using jruby to kick off the ruby script -- see https://github.com/carojkov/salesforce-export-downloader
           ScriptingContainer container = new ScriptingContainer();
@@ -82,7 +79,7 @@ public class BackupController {
           Collection<File> files = FileUtils.listFiles(new File("backup-salesforce"), null, false);
 
           if (files.isEmpty()) {
-            log.info("no export files existed");
+            env.logJobInfo("no export files existed");
           } else {
             // from here on out, closely following example code from
             // https://github.com/Backblaze/b2-sdk-java/blob/master/samples/src/main/java/com/backblaze/b2/sample/B2Sample.java
@@ -96,13 +93,13 @@ public class BackupController {
                 );
 
             for (File file : files) {
-              log.info("uploading {} to Backblaze B2", file.getName());
+              env.logJobInfo("uploading {} to Backblaze B2", file.getName());
 
               B2ContentSource source = B2FileContentSource.builder(file).build();
 
               final B2UploadListener uploadListener = (progress) -> {
                 final double percent = (100. * (progress.getBytesSoFar() / (double) progress.getLength()));
-                log.info(String.format("upload progress: %3.2f, %s", percent, progress.toString()));
+                env.logJobInfo(String.format("upload progress: %3.2f, %s", percent, progress.toString()));
               };
 
               B2UploadFileRequest uploadRequest = B2UploadFileRequest
@@ -111,15 +108,16 @@ public class BackupController {
                   .build();
               B2FileVersion upload = client.uploadLargeFile(uploadRequest, executorService);
 
-              log.info("upload complete: {}", upload);
+              env.logJobInfo("upload complete: {}", upload);
             }
 
             client.close();
-            env.endJobLog(jobName);
+            env.endJobLog(JobStatus.DONE);
           }
         } catch(Exception e){
-          log.error("SFDC backup failed", e);
-          env.logJobError(e.getMessage(), true);
+          env.logJobError("SFDC backup failed", e);
+          env.logJobError(e.getMessage());
+          env.endJobLog(JobStatus.FAILED);
         }
       }
 

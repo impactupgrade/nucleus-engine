@@ -59,8 +59,6 @@ import static com.impactupgrade.nucleus.util.Utils.getZonedDateFromDateString;
 
 public class SfdcCrmService implements CrmService {
 
-  private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
-
   protected Environment env;
   protected SfdcClient sfdcClient;
   protected SfdcMetadataClient sfdcMetadataClient;
@@ -89,7 +87,7 @@ public class SfdcCrmService implements CrmService {
       try {
         return sfdcClient.getRecordTypeByName(recordTypeName).map(SObject::getId).orElse(null);
       } catch (Exception e) {
-        log.error("unable to fetch record type {}", recordTypeName, e);
+        env.logJobError("unable to fetch record type {}", recordTypeName, e);
         return null;
       }
     });
@@ -279,7 +277,7 @@ public class SfdcCrmService implements CrmService {
       }
 
     } catch (Exception e) {
-      log.error("failed to create custom fields", e);
+      env.logJobError("failed to create custom fields", e);
     }
     return crmCustomFields;
   }
@@ -448,7 +446,7 @@ public class SfdcCrmService implements CrmService {
         SObject pledgedOpportunity = pledgedOpportunityO.get();
         return processPledgedDonation(pledgedOpportunity, campaign, recurringDonationId, crmDonation);
       } else {
-        log.warn("unable to find SFDC pledged donation for recurring donation {} that isn't in the future",
+        env.logJobWarn("unable to find SFDC pledged donation for recurring donation {} that isn't in the future",
             recurringDonationId);
       }
     }
@@ -459,7 +457,7 @@ public class SfdcCrmService implements CrmService {
 
   protected String processPledgedDonation(SObject pledgedOpportunity, Optional<SObject> campaign,
       String recurringDonationId, CrmDonation crmDonation) throws Exception {
-    log.info("found SFDC pledged opportunity {} in recurring donation {}",
+    env.logJobInfo("found SFDC pledged opportunity {} in recurring donation {}",
         pledgedOpportunity.getId(), recurringDonationId);
 
     // check to see if the recurring donation was a failed attempt or successful
@@ -764,11 +762,11 @@ public class SfdcCrmService implements CrmService {
     toUpdate.setId(crmRecurringDonation.id);
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
       toUpdate.setField("Npe03__Amount__c", crmRecurringDonation.amount);
-      log.info("Updating Npe03__Amount__c to {}...", crmRecurringDonation.amount);
+      env.logJobInfo("Updating Npe03__Amount__c to {}...", crmRecurringDonation.amount);
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
       toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
-      log.info("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
+      env.logJobInfo("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
     }
 
     if (manageDonationEvent.getPauseDonation() == true) {
@@ -776,9 +774,9 @@ public class SfdcCrmService implements CrmService {
       toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
 
       if (manageDonationEvent.getPauseDonationUntilDate() == null) {
-        log.info("pausing {} indefinitely...", crmRecurringDonation.id);
+        env.logJobInfo("pausing {} indefinitely...", crmRecurringDonation.id);
       } else {
-        log.info("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
+        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
       }
       setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
     }
@@ -787,10 +785,10 @@ public class SfdcCrmService implements CrmService {
       toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
 
       if (manageDonationEvent.getResumeDonationOnDate() == null) {
-        log.info("resuming {} immediately...", crmRecurringDonation.id);
+        env.logJobInfo("resuming {} immediately...", crmRecurringDonation.id);
         toUpdate.setField("Npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
       } else {
-        log.info("resuming {} on {}...", crmRecurringDonation.id, manageDonationEvent.getResumeDonationOnDate().getTime());
+        env.logJobInfo("resuming {} on {}...", crmRecurringDonation.id, manageDonationEvent.getResumeDonationOnDate().getTime());
         toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
       }
       setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
@@ -855,7 +853,7 @@ public class SfdcCrmService implements CrmService {
       try {
         return sfdcMetadataClient.getObjectFields(object);
       } catch (Exception e) {
-        log.error("unable to fetch fields from {}", object, e);
+        env.logJobError("unable to fetch fields from {}", object, e);
         return null;
       }
     });
@@ -875,7 +873,7 @@ public class SfdcCrmService implements CrmService {
     // - TODO: Other types of records?
 
     if (importEvents.isEmpty()) {
-      log.warn("no importEvents to import; exiting...");
+      env.logJobWarn("no importEvents to import; exiting...");
       return;
     }
 
@@ -1093,7 +1091,7 @@ public class SfdcCrmService implements CrmService {
         continue;
       }
 
-      log.info("import processing contacts/account on row {} of {}", i + 2, importEvents.size() + 1);
+      env.logJobInfo("import processing contacts/account on row {} of {}", i + 2, importEvents.size() + 1);
 
       // contactMode tells us if the sheet has Contact columns, period. But we also need to know if this row
       // actually has Contact values in it.
@@ -1293,11 +1291,11 @@ public class SfdcCrmService implements CrmService {
 
               return false;
             }).toList();
-        log.info("number of contacts for name {} {}: {}", importEvent.contactFirstName, importEvent.contactLastName, existingContacts.size());
+        env.logJobInfo("number of contacts for name {} {}: {}", importEvent.contactFirstName, importEvent.contactLastName, existingContacts.size());
 
         if (existingContacts.size() > 1) {
           // To be safe, let's skip this row for now and deal with it manually...
-          log.warn("skipping contact in row {} due to multiple contacts found by-name", i + 2);
+          env.logJobWarn("skipping contact in row {} due to multiple contacts found by-name", i + 2);
         } else if (existingContacts.size() == 1) {
           SObject existingContact = existingContacts.get(0);
 
@@ -1350,7 +1348,7 @@ public class SfdcCrmService implements CrmService {
         nonBatchContactIds.set(i, contact != null ? contact.getId() : null);
       }
 
-      env.logJobProgress("Imported " + (i + 1) + " contacts");
+      env.logJobInfo("Imported {} contacts", (i + 1));
     }
 
     sfdcClient.batchFlush();
@@ -1360,7 +1358,7 @@ public class SfdcCrmService implements CrmService {
       for (int i = 0; i < importEvents.size(); i++) {
         CrmImportEvent importEvent = importEvents.get(i);
 
-        log.info("import processing recurring donations on row {} of {}", i + 2, importEvents.size() + 1);
+        env.logJobInfo("import processing recurring donations on row {} of {}", i + 2, importEvents.size() + 1);
 
         SObject recurringDonation = new SObject("npe03__Recurring_Donation__c");
 
@@ -1399,7 +1397,7 @@ public class SfdcCrmService implements CrmService {
           sfdcClient.batchInsert(recurringDonation);
         }
 
-        env.logJobProgress("Imported " + (i + 1) + " recurring donations");
+        env.logJobInfo("Imported {} recurring donations", (i + 1));
       }
 
       sfdcClient.batchFlush();
@@ -1409,7 +1407,7 @@ public class SfdcCrmService implements CrmService {
       for (int i = 0; i < importEvents.size(); i++) {
         CrmImportEvent importEvent = importEvents.get(i);
 
-        log.info("import processing opportunities on row {} of {}", i + 2, importEvents.size() + 1);
+        env.logJobInfo("import processing opportunities on row {} of {}", i + 2, importEvents.size() + 1);
 
         SObject opportunity = new SObject("Opportunity");
 
@@ -1443,14 +1441,14 @@ public class SfdcCrmService implements CrmService {
         } else {
           // If the account and contact upserts both failed, avoid creating an orphaned opp.
           if (nonBatchAccountIds.get(i) == null && nonBatchContactIds.get(i) == null) {
-            log.info("skipping opp {} import, due to account/contact failure", i + 2);
+            env.logJobInfo("skipping opp {} import, due to account/contact failure", i + 2);
             continue;
           }
           if (!importEvent.opportunitySkipDuplicateCheck && importEvent.opportunityAmount != null && Strings.isNullOrEmpty(importEvent.opportunityId)) {
             List<SObject> existingOpportunities = sfdcClient.searchDonations(nonBatchAccountIds.get(i), nonBatchContactIds.get(i),
                 importEvent.opportunityDate, importEvent.opportunityAmount.doubleValue(), opportunityCustomFields);
             if (!existingOpportunities.isEmpty()) {
-              log.info("skipping opp {} import, due to possible duplicate: {}", i + 2, existingOpportunities.get(0).getId());
+              env.logJobInfo("skipping opp {} import, due to possible duplicate: {}", i + 2, existingOpportunities.get(0).getId());
               continue;
             }
           }
@@ -1459,13 +1457,13 @@ public class SfdcCrmService implements CrmService {
 
           sfdcClient.batchInsert(opportunity);
         }
-        env.logJobProgress("Imported " + (i + 1) + " opportunities");
+        env.logJobInfo("Imported {} opportunities", (i + 1));
       }
 
       sfdcClient.batchFlush();
     }
 
-    log.info("bulk import complete");
+    env.logJobInfo("bulk import complete");
   }
 
   protected SObject updateBulkImportAccount(SObject existingAccount, CrmImportEvent importEvent,
@@ -1798,7 +1796,7 @@ public class SfdcCrmService implements CrmService {
               relationUpdate.setField("Role__c", role);
               sfdcClient.batchUpdate(relationUpdate);
             } else {
-              log.error("AccountContactRelation could not be found for {} and {}", contact.getId(), org.getId());
+              env.logJobError("AccountContactRelation could not be found for {} and {}", contact.getId(), org.getId());
             }
           }
         } else {
@@ -1929,7 +1927,7 @@ public class SfdcCrmService implements CrmService {
     for (int i = 0; i < importEvents.size(); i++) {
       CrmImportEvent importEvent = importEvents.get(i);
 
-      log.info("import processing campaigns on row {} of {}", i + 2, importEvents.size() + 1);
+      env.logJobInfo("import processing campaigns on row {} of {}", i + 2, importEvents.size() + 1);
 
       SObject campaign = new SObject("Campaign");
       campaign.setField("Name", importEvent.campaignName);
@@ -1949,7 +1947,7 @@ public class SfdcCrmService implements CrmService {
         sfdcClient.batchInsert(campaign);
       }
 
-      env.logJobProgress("Imported " + (i + 1) + " campaigns");
+      env.logJobInfo("Imported {} campaigns", (i + 1));
     }
 
     sfdcClient.batchFlush();
@@ -2014,9 +2012,9 @@ public class SfdcCrmService implements CrmService {
     if (campaign.isEmpty()) {
       String defaultCampaignId = env.getConfig().salesforce.defaultCampaignId;
       if (Strings.isNullOrEmpty(defaultCampaignId)) {
-        log.info("campaign {} not found, but no default provided", campaignIdOrName);
+        env.logJobInfo("campaign {} not found, but no default provided", campaignIdOrName);
       } else {
-        log.info("campaign {} not found; using default: {}", campaignIdOrName, defaultCampaignId);
+        env.logJobInfo("campaign {} not found; using default: {}", campaignIdOrName, defaultCampaignId);
         campaign = sfdcClient.getCampaignById(defaultCampaignId);
       }
     }
@@ -2129,7 +2127,7 @@ public class SfdcCrmService implements CrmService {
         firstCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
         lastCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
       } catch (Exception e) {
-        log.error("unable to parse first/last close date", e);
+        env.logJobError("unable to parse first/last close date", e);
       }
     }
 

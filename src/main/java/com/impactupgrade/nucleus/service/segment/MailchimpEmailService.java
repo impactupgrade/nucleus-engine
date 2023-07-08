@@ -22,8 +22,6 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -49,8 +47,6 @@ import static com.impactupgrade.nucleus.client.MailchimpClient.PHONE_NUMBER;
 import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
 
 public class MailchimpEmailService extends AbstractEmailService {
-
-  private static final Logger log = LogManager.getLogger(MailchimpEmailService.class);
 
   private static final Integer BATCH_REQUEST_OPERATIONS_SIZE = 500;
   private static final Integer BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS = 10;
@@ -87,12 +83,12 @@ public class MailchimpEmailService extends AbstractEmailService {
 
         List<CrmContact> crmContacts = getCrmContacts(emailList, lastSync);
         Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
-        Map<String, List<String>> tags = new MailchimpClient(mailchimpConfig).getContactsTags(emailList.id);
+        Map<String, List<String>> tags = new MailchimpClient(mailchimpConfig, env).getContactsTags(emailList.id);
 
         List<List<CrmContact>> partitions = Lists.partition(crmContacts, BATCH_REQUEST_OPERATIONS_SIZE);
         int i = 1;
         for (List<CrmContact> contactsBatch : partitions) {
-          log.info("Processing contacts batch {} of total {}...", i, partitions.size());
+          env.logJobInfo("Processing contacts batch {} of total {}...", i, partitions.size());
           syncContacts(contactsBatch, crmContactCampaignNames, tags, mailchimpConfig, emailList);
           i++;
         }
@@ -102,7 +98,7 @@ public class MailchimpEmailService extends AbstractEmailService {
 
   protected void syncContacts(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames,
     Map<String, List<String>> tags, EnvironmentConfig.EmailPlatform mailchimpConfig, EnvironmentConfig.EmailList emailList) throws Exception {
-    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
 
     List<CrmContact> contactsToUpsert = new ArrayList<>();
     List<CrmContact> contactsToArchive = new ArrayList<>();
@@ -132,7 +128,7 @@ public class MailchimpEmailService extends AbstractEmailService {
       batchOperations.stream()
           .filter(batchOperation -> batchOperation.status >= 300)
           .forEach(batchOperation ->
-              log.warn("Failed Batch Operation (status: detail): {}: {}", batchOperation.response.status, batchOperation.response.detail));
+              env.logJobWarn("Failed Batch Operation (status: detail): {}: {}", batchOperation.response.status, batchOperation.response.detail));
 
       Map<String, List<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
       List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
@@ -146,29 +142,29 @@ public class MailchimpEmailService extends AbstractEmailService {
       mailchimpClient.archiveContactsBatch(emailList.id, emailsToArchive);
 
     } catch (MailchimpException e) {
-      log.warn("Mailchimp syncContacts failed: {}", mailchimpClient.exceptionToString(e));
+      env.logJobWarn("Mailchimp syncContacts failed: {}", mailchimpClient.exceptionToString(e));
     } catch (Exception e) {
-      log.warn("Mailchimp syncContacts failed", e);
+      env.logJobWarn("Mailchimp syncContacts failed", e);
     }
   }
 
   protected List<MailchimpClient.BatchOperation> getBatchOperations(MailchimpClient mailchimpClient, EnvironmentConfig.EmailPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
     List<MailchimpClient.BatchOperation> batchOperations = null;
     if (attemptCount == BATCH_STATUS_MAX_RETRIES) {
-      log.error("exhausted retries; returning...");
+      env.logJobError("exhausted retries; returning...");
     } else {
       BatchStatus batchStatus = mailchimpClient.getBatchStatus(batchStatusId);
       if (!"finished".equalsIgnoreCase(batchStatus.status)) {
-        log.info("Batch '{}' is not finished. Retrying in {} seconds...", batchStatusId, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
+        env.logJobInfo("Batch '{}' is not finished. Retrying in {} seconds...", batchStatusId, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
         Thread.sleep(BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS * 1000);
         Integer newAttemptCount = attemptCount + 1;
         batchOperations = getBatchOperations(mailchimpClient, mailchimpConfig, batchStatusId, newAttemptCount);
       } else {
-        log.info("Batch '{}' finished! (finished/total) {}/{}", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations);
+        env.logJobInfo("Batch '{}' finished! (finished/total) {}/{}", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations);
         if (batchStatus.errored_operations > 0) {
-          log.warn("Errored operations count: {}", batchStatus.errored_operations);
+          env.logJobWarn("Errored operations count: {}", batchStatus.errored_operations);
         } else {
-          log.info("All operations processed OK!");
+          env.logJobInfo("All operations processed OK!");
         }
         String batchResponse = getBatchResponseAsString(batchStatus, mailchimpConfig);
         batchOperations = deserializeBatchOperations(batchResponse);
@@ -196,7 +192,7 @@ public class MailchimpEmailService extends AbstractEmailService {
         }
       }
     } catch (Exception e) {
-      log.error("Failed to get batch response body! {}", e);
+      env.logJobError("Failed to get batch response body! {}", e);
     }
     return responseString;
   }
@@ -220,7 +216,7 @@ public class MailchimpEmailService extends AbstractEmailService {
         batchOperations.add(objectMapper.readValue(batchOperation.toString(), new TypeReference<>() {}));
       }
     } catch (JsonProcessingException e) {
-      log.warn("Failed to deserialize batch operations! {}", e.getMessage());
+      env.logJobWarn("Failed to deserialize batch operations! {}", e.getMessage());
     }
     return batchOperations;
   }
@@ -244,7 +240,7 @@ public class MailchimpEmailService extends AbstractEmailService {
   @Override
   public void syncUnsubscribes(Calendar lastSync) throws Exception {
     for (EnvironmentConfig.EmailPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
       for (EnvironmentConfig.EmailList emailList : mailchimpConfig.lists) {
         syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "unsubscribed", lastSync), c -> c.emailOptOut = true);
         syncUnsubscribes(mailchimpClient.getListMembers(emailList.id, "cleaned", lastSync), c -> c.emailBounced = true);
@@ -266,7 +262,7 @@ public class MailchimpEmailService extends AbstractEmailService {
 
     int count = 0;
     for (CrmContact crmContact : unsubscribeContacts) {
-      log.info("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, unsubscribeContacts.size());
+      env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, unsubscribeContacts.size());
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;
       consumer.accept(updateContact);
@@ -290,15 +286,15 @@ public class MailchimpEmailService extends AbstractEmailService {
         }
 
         if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().email)) {
-          log.info("updating contact {} {} on list {}", crmContact.get().id, crmContact.get().email, emailList.id);
+          env.logJobInfo("updating contact {} {} on list {}", crmContact.get().id, crmContact.get().email, emailList.id);
           Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(List.of(crmContact.get()));
           syncContact(crmContact.get(), crmContactCampaignNames, mailchimpConfig, emailList);
         } else if (!Strings.isNullOrEmpty(email)) {
           // If the contact didn't exist, but we have the email, try archiving it. Could be a contact that was
           // just deleted in the CRM.
-          log.info("attempting to archive contact {} on list {}", email, emailList.id);
+          env.logJobInfo("attempting to archive contact {} on list {}", email, emailList.id);
           try {
-            new MailchimpClient(mailchimpConfig).archiveContact(emailList.id, email);
+            new MailchimpClient(mailchimpConfig, env).archiveContact(emailList.id, email);
           } catch (MailchimpException e) {
             if (e.code == 405) {
               // swallow -- attempting to archive a contact that is already archived
@@ -313,7 +309,7 @@ public class MailchimpEmailService extends AbstractEmailService {
 
   protected void syncContact(CrmContact crmContact, Map<String, List<String>> crmContactCampaignNames,
                              EnvironmentConfig.EmailPlatform mailchimpConfig, EnvironmentConfig.EmailList emailList) throws Exception {
-    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig);
+    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
 
     try {
       // transactional is always subscribed
@@ -326,9 +322,9 @@ public class MailchimpEmailService extends AbstractEmailService {
         mailchimpClient.archiveContact(emailList.id, crmContact.email);
       }
     } catch (MailchimpException e) {
-      log.warn("Mailchimp syncContact failed: {}", mailchimpClient.exceptionToString(e));
+      env.logJobWarn("Mailchimp syncContact failed: {}", mailchimpClient.exceptionToString(e));
     } catch (Exception e) {
-      log.warn("Mailchimp syncContact failed", e);
+      env.logJobWarn("Mailchimp syncContact failed", e);
     }
   }
 
@@ -425,7 +421,7 @@ public class MailchimpEmailService extends AbstractEmailService {
 
       mailchimpClient.updateContactTags(listId, crmContact.email, activeTags, inactiveTags);
     } catch (Exception e) {
-      log.error("updating tags failed for contact: {} {}", crmContact.id, crmContact.email, e);
+      env.logJobError("updating tags failed for contact: {} {}", crmContact.id, crmContact.email, e);
     }
   }
 
@@ -438,7 +434,7 @@ public class MailchimpEmailService extends AbstractEmailService {
     try {
       return mailchimpClient.updateContactTagsBatch(listId, emailContacts);
     } catch (Exception e) {
-      log.error("updating tags failed for contacts! {}", e.getMessage());
+      env.logJobError("updating tags failed for contacts! {}", e.getMessage());
       return null;
     }
   }

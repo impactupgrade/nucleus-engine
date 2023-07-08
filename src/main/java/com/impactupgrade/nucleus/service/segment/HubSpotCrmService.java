@@ -56,8 +56,6 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -90,8 +88,6 @@ import static com.impactupgrade.nucleus.model.CrmContact.PreferredPhone.WORK;
 //  sanity checks like we have in SfdcCrmService.
 
 public class HubSpotCrmService implements CrmService {
-
-  private static final Logger log = LogManager.getLogger(HubSpotCrmService.class);
 
   protected Environment env;
   protected HubSpotCrmV3Client hsClient;
@@ -421,7 +417,7 @@ public class HubSpotCrmService implements CrmService {
 
       String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
       if (!Strings.isNullOrEmpty(defaultListId)) {
-        log.info("opting into the default HubSpot list: {}", defaultListId);
+        env.logJobInfo("opting into the default HubSpot list: {}", defaultListId);
         addContactToList(crmContact, defaultListId);
       }
     }
@@ -431,7 +427,7 @@ public class HubSpotCrmService implements CrmService {
 
       String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
       if (!Strings.isNullOrEmpty(defaultListId)) {
-        log.info("opting out of the default HubSpot list: {}", defaultListId);
+        env.logJobInfo("opting out of the default HubSpot list: {}", defaultListId);
         removeContactFromList(crmContact, defaultListId);
       }
     }
@@ -529,7 +525,7 @@ public class HubSpotCrmService implements CrmService {
           setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayRefundDepositId, crmDonation.depositId, dealProperties.getOtherProperties());
           hsClient.deal().update(crmDonation.id, dealProperties);
         } else {
-          log.info("skipping refund {}; already marked with refund deposit info", crmDonation.id);
+          env.logJobInfo("skipping refund {}; already marked with refund deposit info", crmDonation.id);
         }
         // Otherwise, assume it was a standard charge.
       } else {
@@ -544,7 +540,7 @@ public class HubSpotCrmService implements CrmService {
 
           hsClient.deal().update(crmDonation.id, dealProperties);
         } else {
-          log.info("skipping {}; already marked with deposit info", crmDonation.id);
+          env.logJobInfo("skipping {}; already marked with deposit info", crmDonation.id);
         }
       }
     }
@@ -642,7 +638,7 @@ public class HubSpotCrmService implements CrmService {
 
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
       dealProperties.setAmount(crmRecurringDonation.amount);
-      log.info("Updating amount to {}...", crmRecurringDonation.amount);
+      env.logJobInfo("Updating amount to {}...", crmRecurringDonation.amount);
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
       // TODO
@@ -653,9 +649,9 @@ public class HubSpotCrmService implements CrmService {
       // TODO: Close reason?
 
       if (manageDonationEvent.getPauseDonationUntilDate() == null) {
-        log.info("pausing {} indefinitely...", crmRecurringDonation.id);
+        env.logJobInfo("pausing {} indefinitely...", crmRecurringDonation.id);
       } else {
-        log.info("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
+        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
       }
       setRecurringDonationFieldsForPause(dealProperties, manageDonationEvent);
     }
@@ -677,7 +673,7 @@ public class HubSpotCrmService implements CrmService {
     // note that HubSpot auto-prevents duplicate entries in lists
     // TODO: shift to V3
     HubSpotClientFactory.v1Client(env).contactList().addContactToList(Long.parseLong(listId), Long.parseLong(crmContact.id));
-    log.info("added HubSpot contact {} to list {}", crmContact.id, listId);
+    env.logJobInfo("added HubSpot contact {} to list {}", crmContact.id, listId);
   }
 
   @Override
@@ -691,16 +687,16 @@ public class HubSpotCrmService implements CrmService {
     if (Strings.isNullOrEmpty(listId)) {
       String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
       if (Strings.isNullOrEmpty(defaultListId)) {
-        log.info("explicit HubSpot list ID not provided; skipping the list removal...");
+        env.logJobInfo("explicit HubSpot list ID not provided; skipping the list removal...");
         return;
       } else {
-        log.info("explicit HubSpot list ID not provided; using the default {}", defaultListId);
+        env.logJobInfo("explicit HubSpot list ID not provided; using the default {}", defaultListId);
         listId = defaultListId;
       }
 
       // TODO: shift to V3
       HubSpotClientFactory.v1Client(env).contactList().removeContactFromList(Long.parseLong(listId), Long.parseLong(crmContact.id));
-      log.info("removed HubSpot contact {} from list {}", crmContact.id, listId);
+      env.logJobInfo("removed HubSpot contact {} from list {}", crmContact.id, listId);
     }
   }
 
@@ -724,7 +720,7 @@ public class HubSpotCrmService implements CrmService {
 //    List<Map<String, String>> listOfMap = toImportList(importEvents, contactKeyPrefix, dealKeyPrefix);
 //    importRecords(listOfMap, "contact-deal-bulk-import", contactKeyPrefix, dealKeyPrefix);
 //
-//    log.info("bulk insert complete");
+//    env.logJobInfo("bulk insert complete");
   }
 
 //  @Override
@@ -739,7 +735,7 @@ public class HubSpotCrmService implements CrmService {
 //    List<Map<String, String>> listOfDealMaps = toUpdateDealsList(updateEvents, dealKeyPrefix);
 //    importRecords(listOfDealMaps, "deal-bulk-update", contactKeyPrefix, dealKeyPrefix);
 //
-//    log.info("bulk update complete");
+//    env.logJobInfo("bulk update complete");
 //  }
 //
 //  private List<Map<String, String>> toImportList(List<CrmImportEvent> importEvents, String contactKeyPrefix, String dealKeyPrefix) {
@@ -855,9 +851,7 @@ public class HubSpotCrmService implements CrmService {
     }
     CsvSchema csvSchema = schemaBuilder.build().withHeader();
 
-    log.debug("Creating temp file...");
     File csvTempFile = File.createTempFile(prefix, ".csv", new File("."));
-    log.debug("Temp file created. File path: {}", csvTempFile.getAbsolutePath());
 
     Writer writer = new FileWriter(csvTempFile);
     CsvMapper csvMapper = new CsvMapper();
@@ -936,14 +930,12 @@ public class HubSpotCrmService implements CrmService {
       csv = toCsvFile(fileNamePrefix, listOfMap);
       ImportRequest importRequest = toImportRequest(csv, listOfMap, contactKeyPrefix, dealKeyPrefix);
       ImportResponse importResponse = importsClient.importFiles(importRequest, csv);
-      log.info("importResponse: {}", importResponse);
+      env.logJobInfo("importResponse: {}", importResponse);
       return importResponse;
 
     } catch (Exception e) {
       if (csv != null) {
-        log.debug("Deleting temp file {}...", csv.getName());
         csv.delete();
-        log.debug("Temp file {} deleted.", csv.getName());
       }
       throw e;
     }
@@ -1017,7 +1009,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public double getDonationsTotal(String filter) throws Exception {
     if (Strings.isNullOrEmpty(filter)) {
-      log.warn("no filter provided; out of caution, skipping the query to protect API limits");
+      env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
       return 0.0;
     }
 
@@ -1305,7 +1297,7 @@ public class HubSpotCrmService implements CrmService {
       try {
         return f.get(env.getConfig().hubspot.fieldDefinitions).toString();
       } catch (IllegalAccessException e) {
-        log.error("failed to retrieve custom field names from schema", e);
+        env.logJobError("failed to retrieve custom field names from schema", e);
         return "";
       }
     }).filter(f -> !Strings.isNullOrEmpty(f)).collect(Collectors.toSet());

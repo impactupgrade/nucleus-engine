@@ -19,8 +19,6 @@ import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
 import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -46,8 +44,6 @@ import java.util.Set;
  * https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_code_walkthrough.htm
  */
 public class SfdcBulkClient {
-
-  private static final Logger log = LogManager.getLogger(SfdcBulkClient.class.getName());
 
   protected final Environment env;
 
@@ -82,7 +78,7 @@ public class SfdcBulkClient {
       query += " AND " + whereClause;
     }
 
-    log.info("retrieving all {} records to transfer; bulk query: {}", object, query);
+    env.logJobInfo("retrieving all {} records to transfer; bulk query: {}", object, query);
 
     try (
         ByteArrayInputStream queryIS = new ByteArrayInputStream(query.getBytes());
@@ -99,7 +95,7 @@ public class SfdcBulkClient {
       QueryResultList queryResultList = bulkConn.getQueryResultList(queryJob.getId(), queryBatchInfo.getId());
       String[] queryResults = queryResultList.getResult();
       for (int i = 0; i < queryResults.length; i++) {
-        log.info("processing query result set {} of {}", i+1, queryResults.length);
+        env.logJobInfo("processing query result set {} of {}", i+1, queryResults.length);
         String queryResultId = queryResults[i];
 
         InputStream queryResultIS = null;
@@ -182,7 +178,7 @@ public class SfdcBulkClient {
   }
 
   private void uploadSpec(JobInfo jobInfo, InputStream specFile, BulkConnection bulkConn) throws AsyncApiException {
-    log.info("uploading the spec file");
+    env.logJobInfo("uploading the spec file");
     bulkConn.createTransformationSpecFromStream(jobInfo, specFile);
   }
 
@@ -209,9 +205,9 @@ public class SfdcBulkClient {
         String id = resultInfo.get("Id");
         String error = resultInfo.get("Error");
         if (success && created) {
-          log.info("Created row with id " + id);
+          env.logJobInfo("Created row with id " + id);
         } else if (!success) {
-          log.error("Failed with error: " + error);
+          env.logJobError("Failed with error: " + error);
         }
       }
     }
@@ -248,14 +244,14 @@ public class SfdcBulkClient {
       try {
         Thread.sleep(sleepTime);
       } catch (InterruptedException e) {}
-      log.info("Awaiting results..." + incomplete.size());
+      env.logJobInfo("Awaiting results..." + incomplete.size());
       sleepTime = 10000L;
       BatchInfo[] statusList = bulkConn.getBatchInfoList(job.getId()).getBatchInfo();
       for (BatchInfo b : statusList) {
         if (b.getState() == BatchStateEnum.Completed
             || b.getState() == BatchStateEnum.Failed) {
           if (incomplete.remove(b.getId())) {
-            log.info("BATCH STATUS:\n" + b);
+            env.logJobInfo("BATCH STATUS:\n" + b);
           }
         }
       }
@@ -277,7 +273,7 @@ public class SfdcBulkClient {
     job.setOperation(operation);
     job.setContentType(ContentType.CSV);
     job = bulkConn.createJob(job);
-    log.info(job);
+    env.logJobInfo(job.toString());
     return job;
   }
 
@@ -358,7 +354,7 @@ public class SfdcBulkClient {
     tmpOut.close();
     try (FileInputStream tmpInputStream = new FileInputStream(tmpFile)) {
       BatchInfo batchInfo = bulkConn.createBatchFromStream(jobInfo, tmpInputStream);
-      log.info(batchInfo);
+      env.logJobInfo(batchInfo.toString());
       batchInfos.add(batchInfo);
     }
   }

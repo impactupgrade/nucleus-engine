@@ -1,11 +1,10 @@
 package com.impactupgrade.nucleus.controller;
 
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.service.segment.EmailService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -19,8 +18,6 @@ import java.util.Calendar;
 
 @Path("/email")
 public class EmailController {
-
-  private static final Logger log = LogManager.getLogger(EmailController.class);
 
   protected final EnvironmentFactory envFactory;
 
@@ -46,18 +43,19 @@ public class EmailController {
           try {
             // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             emailPlatformService.syncUnsubscribes(lastSync);
-            env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
+            env.logJobInfo("{}: sync unsubscribes done", emailPlatformService.name());
             emailPlatformService.syncContacts(lastSync);
-            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
-            env.endJobLog(jobName);
+            env.logJobInfo("{}: sync contacts done", emailPlatformService.name());
+            env.endJobLog(JobStatus.DONE);
           } catch (Exception e) {
-            log.error("email syncDaily failed for {}", emailPlatformService.name(), e);
-            env.logJobError(e.getMessage(), false);
+            env.logJobError("email syncDaily failed for {}", emailPlatformService.name(), e);
+            env.logJobError(e.getMessage());
           }
         }
       } catch (Exception e) {
-        log.error("email syncDaily failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("email syncDaily failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -78,18 +76,20 @@ public class EmailController {
           try {
             // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             emailPlatformService.syncUnsubscribes(null);
-            env.logJobProgress(emailPlatformService.name() + ": sync unsubscribes done");
+            env.logJobInfo("{}: sync unsubscribes done", emailPlatformService.name());
             emailPlatformService.syncContacts(null);
-            env.logJobProgress(emailPlatformService.name() + ": sync contacts done");
+            env.logJobInfo("{}: sync contacts done", emailPlatformService.name());
           } catch (Exception e) {
-            log.error("email syncAll failed for {}", emailPlatformService.name(), e);
-            env.logJobError(e.getMessage(), true);
+            env.logJobError("email syncAll failed for {}", emailPlatformService.name(), e);
+            env.logJobError(e.getMessage());
+            env.endJobLog(JobStatus.FAILED);
           }
         }
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("email syncAll failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("email syncAll failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -114,16 +114,17 @@ public class EmailController {
           try {
             // TODO: TER and STS still using contactId, update to use email only.
             emailPlatformService.upsertContact(email, contactId);
-            env.logJobProgress(emailPlatformService.name() + ": upsert contact done");
+            env.logJobInfo("{}: upsert contact done", emailPlatformService.name());
           } catch (Exception e) {
-            log.error("contact upsert failed for contact: {} {} platform: {}", email, contactId, emailPlatformService.name(), e);
-            env.logJobError(e.getMessage(), false);
+            env.logJobError("contact upsert failed for contact: {} {} platform: {}", email, contactId, emailPlatformService.name(), e);
+            env.logJobError(e.getMessage());
           }
         }
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("email upsert contact failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("email upsert contact failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();

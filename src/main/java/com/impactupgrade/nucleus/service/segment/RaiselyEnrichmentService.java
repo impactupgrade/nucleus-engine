@@ -6,18 +6,14 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RaiselyEnrichmentService implements EnrichmentService {
-  protected static final Logger log = LogManager.getLogger(RaiselyEnrichmentService.class);
 
-  protected String RAISELY_APPLICATION_ID;
-
+  protected Environment env;
   protected RaiselyClient raiselyClient;
 
   @Override
@@ -32,14 +28,14 @@ public class RaiselyEnrichmentService implements EnrichmentService {
 
   @Override
   public void init(Environment env) {
+    this.env = env;
     raiselyClient = new RaiselyClient(env);
-    RAISELY_APPLICATION_ID = env.getConfig().raisely.stripeAppId;
   }
 
 
   @Override
   public boolean eventIsFromPlatform(CrmDonation crmDonation) {
-    return RAISELY_APPLICATION_ID.equalsIgnoreCase(crmDonation.application);
+    return env.getConfig().raisely.stripeAppId.equalsIgnoreCase(crmDonation.application);
   }
 
   @Override
@@ -60,7 +56,7 @@ public class RaiselyEnrichmentService implements EnrichmentService {
         // tickets only
         crmDonation.transactionType = EnvironmentConfig.TransactionType.TICKET;
       } else if (donationItems.size() > 1 || ticketItems.size() > 1) {
-        log.warn("Raisely donation {} had multiple donations and/or tickets; expected one of each, so skipping out of caution", donationId);
+        env.logJobWarn("Raisely donation {} had multiple donations and/or tickets; expected one of each, so skipping out of caution", donationId);
       } else {
         // one of each -- let the ticket be the primary and donation secondary
 

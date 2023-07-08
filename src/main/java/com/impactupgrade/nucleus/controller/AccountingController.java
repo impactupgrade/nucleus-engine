@@ -1,8 +1,6 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -17,7 +15,6 @@ import javax.ws.rs.core.Response;
 @Path("/accounting")
 public class AccountingController {
 
-    private static final Logger log = LogManager.getLogger(AccountingController.class);
     private static final String DATE_FORMAT = "yyyy-MM-dd";
 
     protected final EnvironmentFactory environmentFactory;
@@ -56,7 +53,7 @@ public class AccountingController {
 //            List<PaymentGatewayService> paymentGatewayServices = environment.allPaymentGatewayServices();
 //
 //            if (CollectionUtils.isEmpty(paymentGatewayServices)) {
-//                log.info("Payment Services not defined for environment! Returning...");
+//                env.logJobInfo("Payment Services not defined for environment! Returning...");
 //                return;
 //            }
 //
@@ -65,14 +62,14 @@ public class AccountingController {
 //            try {
 //                for (PaymentGatewayService paymentGatewayService : paymentGatewayServices) {
 //                    String serviceName = paymentGatewayService.name();
-//                    log.info("Payment service '{}' running...", serviceName);
+//                    env.logJobInfo("Payment service '{}' running...", serviceName);
 //                    // TODO: This retrieves all charges/invoices/customers, so it can be a heavy lift. Break the method
 //                    // down and retrieve only what we need?
 //                    deposits.addAll(paymentGatewayService.getDeposits(startDate, endDate));
-//                    log.info("Payment service '{}' done.", serviceName);
+//                    env.logJobInfo("Payment service '{}' done.", serviceName);
 //                }
 //            } catch (Exception e) {
-//                log.error("Failed to get deposits! {}", e.getMessage());
+//                env.logJobError("Failed to get deposits! {}", e.getMessage());
 //                return;
 //            }
 //

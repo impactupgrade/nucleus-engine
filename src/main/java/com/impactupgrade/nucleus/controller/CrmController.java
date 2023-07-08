@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -22,8 +23,6 @@ import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
@@ -54,8 +53,6 @@ import static com.impactupgrade.nucleus.util.Utils.trim;
 
 @Path("/crm")
 public class CrmController {
-
-  private static final Logger log = LogManager.getLogger(CrmController.class.getName());
 
   protected final EnvironmentFactory envFactory;
   private SfdcMetadataClient sfdcMetadataClient;
@@ -88,23 +85,23 @@ public class CrmController {
 
     Optional<CrmContact> contact = Optional.empty();
     if (!Strings.isNullOrEmpty(id)) {
-      log.info("searching id={}", id);
+      env.logJobInfo("searching id={}", id);
       contact = crmService.getContactById(id);
     } else if (!Strings.isNullOrEmpty(email)) {
-      log.info("searching email={}", email);
+      env.logJobInfo("searching email={}", email);
       contact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
     } else if (!Strings.isNullOrEmpty(phone)) {
-      log.info("searching phone={}", phone);
+      env.logJobInfo("searching phone={}", phone);
       contact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
     } else {
-      log.warn("no search params provided");
+      env.logJobWarn("no search params provided");
     }
 
     if (contact.isPresent()) {
-      log.info("returning Contact {}", contact.get().id);
+      env.logJobInfo("returning Contact {}", contact.get().id);
       return Response.status(200).entity(contact.get()).build();
     } else {
-      log.info("Contact not found");
+      env.logJobInfo("Contact not found");
       return Response.status(404).build();
     }
   }
@@ -131,10 +128,11 @@ public class CrmController {
         String jobName = "Bulk Import: File";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("bulkImport failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -164,10 +162,11 @@ public class CrmController {
         String jobName = "Bulk Import: Google Sheet";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("bulkImport failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -197,10 +196,11 @@ public class CrmController {
         String jobName = "Bulk Import: Facebook";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
         env.primaryCrmService().processBulkImport(importEvents);
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("bulkImport failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -231,7 +231,7 @@ public class CrmController {
       try {
         env.primaryCrmService().processBulkImport(importEvents);
       } catch (Exception e) {
-        log.error("bulkImport failed", e);
+        env.logJobError("bulkImport failed", e);
       }
     };
     new Thread(thread).start();
@@ -324,7 +324,7 @@ public class CrmController {
       try {
         env.primaryCrmService().insertCustomFields(customFields);
       } catch (Exception e) {
-        log.error("provisionFields failed", e);
+        env.logJobError("provisionFields failed", e);
       }
     };
     new Thread(thread).start();
@@ -352,7 +352,7 @@ public class CrmController {
       try {
         env.primaryCrmService().insertCustomFields(customFields);
       } catch (Exception e) {
-        log.error("provisionFields failed", e);
+        env.logJobError("provisionFields failed", e);
       }
     };
     new Thread(thread).start();
@@ -417,7 +417,7 @@ public class CrmController {
     return Response.status(200).entity(filteredList).build();
   }
   
-  private static List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
+  private List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
     String fileExtension = Utils.getFileExtension(fileDisposition.getFileName());
     List<Map<String, String>> data = new ArrayList<>();
 
@@ -437,7 +437,7 @@ public class CrmController {
     } else if ("xlsx".equals(fileExtension)) {
       data = Utils.getExcelData(inputStream, 0);
     } else {
-      log.warn("Unsupported file extension '{}'!", fileExtension);
+      throw new RuntimeException("Unsupported file extension: " + fileExtension);
     }
     return data;
   }

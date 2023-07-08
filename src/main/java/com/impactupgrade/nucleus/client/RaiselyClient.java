@@ -14,7 +14,6 @@ import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
 
 public class RaiselyClient{
-  private static final Logger log = LogManager.getLogger(RaiselyClient.class);
   private static final String RAISELY_API_URL = "https://api.raisely.com/v3/";
   private static final String APPLICATION_JSON = "application/json";
 
@@ -53,10 +52,10 @@ public class RaiselyClient{
       String username = env.getConfig().raisely.username;
       String password = env.getConfig().raisely.password;
 
-      log.info("Getting token...");
+      env.logJobInfo("Getting token...");
       HttpClient.HeaderBuilder headers = HttpClient.HeaderBuilder.builder();
       TokenResponse response = post(RAISELY_API_URL + "login", Map.of("requestAdminToken", "true", "username", username, "password", password), APPLICATION_JSON, headers, TokenResponse.class);
-      log.info("Token: {}", response.token);
+      env.logJobInfo("Token: {}", response.token);
       this._accessToken = response.token;
     }
 

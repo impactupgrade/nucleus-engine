@@ -1,52 +1,34 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
-import com.impactupgrade.nucleus.environment.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.util.StackLocatorUtil;
 
 public class ConsoleJobLoggingService implements JobLoggingService {
 
-  protected Environment env;
-
-  public ConsoleJobLoggingService(Environment env) {
-    this.env = env;
+  @Override
+  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
   }
 
   @Override
-  public void startLog(JobType jobType, String username, String jobName, String originatingPlatform, String message) {
-    info(message);
+  public void endLog(JobStatus jobStatus) {
   }
 
   @Override
-  public void endLog(String message) {
-    info(message);
+  public void info(String message, Object... params) {
+    getLogger().info(message, params);
   }
 
   @Override
-  public void info(String message) {
-    getLogger().info(message);
+  public void warn(String message, Object... params) {
+    getLogger().warn(message, params);
   }
 
   @Override
-  public void warn(String message) {
-    getLogger().warn(message);
-  }
-
-  @Override
-  public void warn(String message, Throwable t) {
-    getLogger().warn(message, t);
-  }
-
-  @Override
-  public void error(String message, boolean end) {
-    getLogger().error(message);
-  }
-
-  @Override
-  public void error(String message, Throwable t, boolean end) {
-    getLogger().error(message, t);
+  public void error(String message, Object... params) {
+    getLogger().error(message, params);
   }
 
   private Logger getLogger() {

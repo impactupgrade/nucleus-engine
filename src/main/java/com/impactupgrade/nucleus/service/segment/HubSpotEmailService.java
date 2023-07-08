@@ -10,8 +10,6 @@ import java.util.Map;
 
 public class HubSpotEmailService extends SmtpEmailService {
 
-  private static final Logger log = LogManager.getLogger(HubSpotEmailService.class);
-
   @Override
   public String name() {
     return "hubspot";
@@ -29,14 +27,14 @@ public class HubSpotEmailService extends SmtpEmailService {
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    log.info("not implemented: syncContacts");
+    env.logJobInfo("not implemented: syncContacts");
     // TODO: May not need this (break up the interface?). If HS used for email, orgs will always have that as their
     //  CRM as well. No syncs ever needed?
   }
 
   @Override
   public void syncUnsubscribes(Calendar lastSync) throws Exception {
-    log.info("not implemented: syncUnsubscribes");
+    env.logJobInfo("not implemented: syncUnsubscribes");
     // TODO: May not need this (break up the interface?). If HS used for email, orgs will always have that as their
     //  CRM as well. No syncs ever needed?
   }

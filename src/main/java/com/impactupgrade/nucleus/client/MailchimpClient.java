@@ -19,10 +19,9 @@ import com.ecwid.maleorang.method.v3_0.lists.merge_fields.GetMergeFieldsMethod;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -36,8 +35,6 @@ import java.util.stream.Collectors;
 
 
 public class MailchimpClient {
-
-  private static final Logger log = LogManager.getLogger(MailchimpClient.class);
 
   public static final String SUBSCRIBED = "subscribed";
   public static final String ARCHIVED = "archived";
@@ -53,9 +50,11 @@ public class MailchimpClient {
   public static final String TAG_INACTIVE = "inactive";
 
   protected final com.ecwid.maleorang.MailchimpClient client;
+  protected final Environment env;
 
-  public MailchimpClient(EnvironmentConfig.EmailPlatform mailchimpConfig) {
+  public MailchimpClient(EnvironmentConfig.EmailPlatform mailchimpConfig, Environment env) {
     client = new com.ecwid.maleorang.MailchimpClient(mailchimpConfig.secretKey);
+    this.env = env;
   }
 
   public MemberInfo getContactInfo(String listId, String contactEmail) throws IOException, MailchimpException {
@@ -78,8 +77,8 @@ public class MailchimpClient {
       // We're finding that address validation is SUPER picky, especially when it comes to CRMs that combine
       // street1 and street2 into a single street. If the upsert fails, try it again without ADDRESS...
       if (contact.merge_fields.mapping.containsKey(ADDRESS)) {
-        log.info("Mailchimp upsertContact failed: {}", error);
-        log.info("retrying upsertContact without ADDRESS");
+        env.logJobInfo("Mailchimp upsertContact failed: {}", error);
+        env.logJobInfo("retrying upsertContact without ADDRESS");
         upsertMemberMethod.merge_fields.mapping.remove(ADDRESS);
         client.execute(upsertMemberMethod);
       } else {
@@ -118,17 +117,17 @@ public class MailchimpClient {
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
     getMembersMethod.status = status;
     getMembersMethod.count = 500; // subjective, but this is timing out periodically -- may need to dial it back further
-    log.info("retrieving list {} contacts", listId);
+    env.logJobInfo("retrieving list {} contacts", listId);
     if (sinceLastChanged != null) {
       getMembersMethod.since_last_changed = sinceLastChanged.getTime();
       String formattedDate = new SimpleDateFormat("yyyy-MM-dd").format(sinceLastChanged.getTime());
-      log.info("retrieving contacts whose information changed after {}", formattedDate);
+      env.logJobInfo("retrieving contacts whose information changed after {}", formattedDate);
     }
     GetMembersMethod.Response getMemberResponse = client.execute(getMembersMethod);
     List<MemberInfo> members = new ArrayList<>(getMemberResponse.members);
     while (getMemberResponse.total_items > members.size()) {
       getMembersMethod.offset = members.size();
-      log.info("retrieving list {} contacts (offset {} of total {})", listId, getMembersMethod.offset, getMemberResponse.total_items);
+      env.logJobInfo("retrieving list {} contacts (offset {} of total {})", listId, getMembersMethod.offset, getMemberResponse.total_items);
       getMemberResponse = client.execute(getMembersMethod);
       members.addAll(getMemberResponse.members);
     }

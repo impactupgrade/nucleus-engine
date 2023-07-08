@@ -22,8 +22,6 @@ import com.stripe.param.PlanCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
 import org.apache.commons.validator.routines.EmailValidator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BeanParam;
@@ -48,8 +46,6 @@ import static com.impactupgrade.nucleus.util.Utils.emptyStringToNull;
 @Path("/donate")
 public class DonationFormController {
 
-  private static final Logger log = LogManager.getLogger(DonationFormController.class);
-
   protected final EnvironmentFactory envFactory;
 
   public DonationFormController(EnvironmentFactory envFactory) {
@@ -67,8 +63,8 @@ public class DonationFormController {
       @BeanParam DonationFormData formData,
       @Context HttpServletRequest request
   ) {
-    log.info(formData);
     Environment env = envFactory.init(request);
+    env.logJobInfo(formData.toString());
     AntiFraudService antiFraudService = new AntiFraudService(env);
 
     formData.setFirstName(Utils.cleanUnicode(formData.getFirstName()));
@@ -81,7 +77,7 @@ public class DonationFormController {
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
       if (
-          formData.isFraudAttempt()
+          formData.isFraudAttempt(env)
           || !antiFraudService.isRecaptchaTokenValid(formData.getRecaptchaToken())
       ) {
         // Return something meaningful, just in case it's actually a human, but not detailed to the point where
@@ -114,7 +110,7 @@ public class DonationFormController {
 //
 //        // Retrieve or create the biz Account.
 //        if (existingAccount.isEmpty()) {
-//          log.info("unable to find CRM account using email {}; creating a new account", formData.getEmail());
+//          env.logJobInfo("unable to find CRM account using email {}; creating a new account", formData.getEmail());
 //
 //          if (formData.isStripe()) {
 //            // Attempt/validate *before* creating the new records!
@@ -130,7 +126,7 @@ public class DonationFormController {
 //          bizAccountId = existingAccount.get().id;
 //          formData.setCrmOrganizationAccountId(bizAccountId);
 //
-//          log.info("found CRM account {} using email {}; updating it...", formData.getCrmOrganizationAccountId(), formData.getBusinessEmail());
+//          env.logJobInfo("found CRM account {} using email {}; updating it...", formData.getCrmOrganizationAccountId(), formData.getBusinessEmail());
 //
 //          if (formData.isStripe()) {
 //            stripeCustomer = createStripeCustomer(formData, env);
@@ -145,7 +141,7 @@ public class DonationFormController {
 //        // But only if they don't exist already!
 //        Optional<CrmContact> existingContact = crmService.searchContacts(ContactSearch.byEmail(formData.getEmail())).getSingleResult();
 //        if (existingContact.isEmpty()) {
-//          log.info("unable to find CRM contact using email {}; creating a new account/contact", formData.getEmail());
+//          env.logJobInfo("unable to find CRM contact using email {}; creating a new account/contact", formData.getEmail());
 //
 //          String accountId = createHouseholdAccount(formData, env);
 //          formData.setCrmAccountId(accountId);
@@ -157,11 +153,11 @@ public class DonationFormController {
 //        } else {
 //          formData.setCrmContactId(existingContact.get().id);
 //          formData.setCrmAccountId(existingContact.get().accountId);
-//          log.info("found CRM contact {} and account {} using email {}",
+//          env.logJobInfo("found CRM contact {} and account {} using email {}",
 //              formData.getCrmContactId(), formData.getCrmAccountId(), formData.getEmail());
 //
 //          if (!crmService.hasSecondaryAffiliation(bizAccountId, formData.getCrmContactId())) {
-//            log.info("unable to find CRM affiliation between contact {} and biz {}; creating it...",
+//            env.logJobInfo("unable to find CRM affiliation between contact {} and biz {}; creating it...",
 //                formData.getCrmContactId(), bizAccountId);
 //            crmService.insertSecondaryAffiliation(bizAccountId, formData.getCrmContactId());
 //          }
@@ -171,7 +167,7 @@ public class DonationFormController {
 //      else {
         Optional<CrmContact> existingContact = crmService.searchContacts(ContactSearch.byEmail(formData.getEmail())).getSingleResult();
         if (existingContact.isEmpty()) {
-          log.info("unable to find CRM contact using email {}; creating a new account/contact", formData.getEmail());
+          env.logJobInfo("unable to find CRM contact using email {}; creating a new account/contact", formData.getEmail());
 
           if (formData.isStripe()) {
             // Attempt/validate *before* creating the new records!
@@ -189,7 +185,7 @@ public class DonationFormController {
           // Existing account -- first set the accountId so that we can look for an existing customer.
           formData.setCrmAccountId(existingContact.get().account.id);
 
-          log.info("found CRM contact {} and account {} using email {}; updating them...",
+          env.logJobInfo("found CRM contact {} and account {} using email {}; updating them...",
               formData.getCrmContactId(), formData.getCrmAccountId(), formData.getEmail());
 
           if (formData.isStripe()) {
@@ -214,18 +210,18 @@ public class DonationFormController {
       }
       // INTEGRATION TEST
       else if (formData.isIntegrationTest()) {
-        log.info("integration test; skipping payment gateway");
+        env.logJobInfo("integration test; skipping payment gateway");
       }
       // UNKNOWN
       else {
-        log.error("unknown payment gateway handling");
+        env.logJobError("unknown payment gateway handling");
         return Response.status(500).build();
       }
     } catch (StripeException e) {
-      log.warn("Stripe failed to process the donation: {}", e.getMessage());
+      env.logJobWarn("Stripe failed to process the donation: {}", e.getMessage());
       return Response.status(400).entity(e.getMessage()).build();
     } catch (Exception e) {
-      log.error("failed to process the donation", e);
+      env.logJobError("failed to process the donation", e);
       return Response.status(500).build();
     }
 
@@ -336,9 +332,9 @@ public class DonationFormController {
     if (!Strings.isNullOrEmpty(formData.getCustomerEmail())) {
       customer = stripeClient.getCustomerByEmail(formData.getCustomerEmail()).orElse(null);
       if (customer != null) {
-        log.info("found Stripe Customer {}", customer.getId());
+        env.logJobInfo("found Stripe Customer {}", customer.getId());
         source = stripeClient.addCustomerSource(customer, formData.getStripeToken());
-        log.info("updated payment source on Stripe Customer {}", customer.getId());
+        env.logJobInfo("updated payment source on Stripe Customer {}", customer.getId());
       }
     }
     if (customer == null) {
@@ -349,7 +345,7 @@ public class DonationFormController {
       );
       customer = stripeClient.createCustomer(customerBuilder);
       source = customer.getSources().getData().get(0);
-      log.info("created Stripe Customer {}", customer.getId());
+      env.logJobInfo("created Stripe Customer {}", customer.getId());
     }
 
     return new CustomerAndSource(customer, source);
@@ -357,7 +353,7 @@ public class DonationFormController {
 
   protected void processStripe(Customer stripeCustomer, PaymentSource stripeSource, DonationFormData formData,
       StripeClient stripeClient, Environment env) throws StripeException {
-    log.info("processing payment with Stripe");
+    env.logJobInfo("processing payment with Stripe");
 
     Map<String, String> customerMetadata = new HashMap<>();
 //    if (formData.isBusiness()) {
@@ -393,7 +389,7 @@ public class DonationFormController {
       SubscriptionCreateParams.Builder subscriptionBuilder = stripeClient.defaultSubscriptionBuilder(stripeCustomer, stripeSource)
           .setMetadata(subscriptionMetadata);
       Subscription subscription = stripeClient.createSubscription(productBuilder, planBuilder, subscriptionBuilder);
-      log.info("created Stripe Subscription {}", subscription.getId());
+      env.logJobInfo("created Stripe Subscription {}", subscription.getId());
     } else {
       Map<String, String> chargeMetadata = new HashMap<>();
       chargeMetadata.put("campaign", formData.getCampaignId());
@@ -407,7 +403,7 @@ public class DonationFormController {
           currency
       ).setDescription(formData.getNotes()).setMetadata(chargeMetadata);
       Charge charge = stripeClient.createCharge(chargeBuilder);
-      log.info("created Stripe Charge {}", charge.getId());
+      env.logJobInfo("created Stripe Charge {}", charge.getId());
     }
   }
 }

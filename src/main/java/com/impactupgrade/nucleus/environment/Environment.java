@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
@@ -257,37 +258,29 @@ public class Environment {
         _jobLoggingService = new DBJobLoggingService(this);
       } else {
         // No DB connection, so fall back to console logs.
-        _jobLoggingService = new ConsoleJobLoggingService(this);
+        _jobLoggingService = new ConsoleJobLoggingService();
       }
     }
     return _jobLoggingService;
   }
 
   public void startJobLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    jobLoggingService().startLog(jobType, username, jobName, originatingPlatform, "STARTED: " + jobName);
+    jobLoggingService().startLog(jobType, username, jobName, originatingPlatform);
   }
 
-  public void logJobProgress(String message) {
-    jobLoggingService().info(message);
+  public void logJobInfo(String message, Object... params) {
+    jobLoggingService().info(message, params);
   }
 
-  public void logJobWarn(String message) {
-    jobLoggingService().warn(message);
+  public void logJobWarn(String message, Object... params) {
+    jobLoggingService().warn(message, params);
   }
 
-  public void logJobWarn(String message, Throwable t) {
-    jobLoggingService().warn(message, t);
+  public void logJobError(String message, Object... params) {
+    jobLoggingService().error(message, params);
   }
 
-  public void logJobError(String message, boolean end) {
-    jobLoggingService().error(message, end);
-  }
-
-  public void logJobError(String message, Throwable t, boolean end) {
-    jobLoggingService().error(message, t, end);
-  }
-
-  public void endJobLog(String message) {
-    jobLoggingService().endLog("FINISHED: " + message);
+  public void endJobLog(JobStatus jobStatus) {
+    jobLoggingService().endLog(jobStatus);
   }
 }

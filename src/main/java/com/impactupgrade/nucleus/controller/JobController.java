@@ -8,8 +8,6 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -31,8 +29,6 @@ import java.util.stream.Collectors;
 
 @Path("/job")
 public class JobController {
-
-  private static final Logger log = LogManager.getLogger(JobController.class.getName());
 
   private static final String DATE_FORMAT = "MM-dd-yyyy";
   private static final String TIME_FORMAT = "HH:mm";

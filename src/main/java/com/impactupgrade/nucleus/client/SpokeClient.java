@@ -25,8 +25,6 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 // TODO: To eventually become a spoke-phone-java-client open source lib?
 public class SpokeClient {
 
-  private static final Logger log = LogManager.getLogger(SpokeClient.class);
-
   protected static String AUTH_ENDPOINT = "https://auth.spokephone.com/oauth/token";
   protected static String API_ENDPOINT_BASE = "https://integration.spokephone.com/";
 
@@ -118,7 +116,7 @@ public class SpokeClient {
 
   protected HttpClient.HeaderBuilder headers() {
     if (isAccessTokenInvalid()) {
-      log.info("Getting new access token...");
+      env.logJobInfo("Getting new access token...");
       TokenResponse tokenResponse = getAccessToken();
       accessToken = tokenResponse.accessToken;
       Calendar onehour = Calendar.getInstance();

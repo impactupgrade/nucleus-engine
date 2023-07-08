@@ -11,15 +11,11 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.Optional;
 
 public class AccountingService {
-
-    private static final Logger log = LogManager.getLogger(AccountingService.class);
 
     private final Environment env;
     private final Optional<AccountingPlatformService> _accountingPlatformService;
@@ -37,13 +33,13 @@ public class AccountingService {
         }
 
         if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().id)) {
-            log.warn("payment gateway event {} failed to process the donation; skipping accounting processing", paymentGatewayEvent.getCrmDonation().transactionId);
+            env.logJobWarn("payment gateway event {} failed to process the donation; skipping accounting processing", paymentGatewayEvent.getCrmDonation().transactionId);
             return;
         }
 
         Optional<AccountingTransaction> accountingTransactionO = _accountingPlatformService.get().getTransaction(paymentGatewayEvent.getCrmDonation());
         if (accountingTransactionO.isPresent()) {
-            log.info("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getCrmDonation().transactionId);
+            env.logJobInfo("Accounting transaction already exists for transaction id {}. Returning...", paymentGatewayEvent.getCrmDonation().transactionId);
             return;
         }
 
@@ -58,16 +54,16 @@ public class AccountingService {
         CrmContact crmContact = getDonationContact(crmDonation);
         if (crmContact == null) {
             // Should be unreachable
-            log.warn("Failed to find crm contact for crm donation {}!", crmDonation.id);
+            env.logJobWarn("Failed to find crm contact for crm donation {}!", crmDonation.id);
             return;
         }
 
         String contactId = _accountingPlatformService.get().updateOrCreateContact(crmContact);
-        log.info("Upserted contact: {}", contactId);
+        env.logJobInfo("Upserted contact: {}", contactId);
 
         AccountingTransaction accountingTransaction = toAccountingTransaction(crmDonation, contactId, crmContact.id);
         String transactionId = _accountingPlatformService.get().createTransaction(accountingTransaction);
-        log.info("Created transaction: {}", transactionId);
+        env.logJobInfo("Created transaction: {}", transactionId);
     }
 
     private CrmContact getDonationContact(CrmDonation crmDonation) throws Exception {
@@ -97,43 +93,43 @@ public class AccountingService {
 
 //    public void addDeposits(List<PaymentGatewayDeposit> paymentGatewayDeposits) {
 //        if (CollectionUtils.isEmpty(accountingPlatformServices)) {
-//            log.info("Accounting Platform Services not defined for environment! Returning...");
+//            env.logJobInfo("Accounting Platform Services not defined for environment! Returning...");
 //            return;
 //        }
 //
 //        List<PaymentGatewayEvent> transactions = collectTransactions(paymentGatewayDeposits);
 //        if (CollectionUtils.isEmpty(transactions)) {
 //            // Nothing to process
-//            log.info("Got no transactions to process. Returning...");
+//            env.logJobInfo("Got no transactions to process. Returning...");
 //            return;
 //        }
 //
-//        log.info("Input transactions count: {}", transactions.size());
+//        env.logJobInfo("Input transactions count: {}", transactions.size());
 //
 //        Date startDate = getMinStartDate(transactions);
 //
 //        for (AccountingPlatformService accountingPlatformService : accountingPlatformServices) {
 //            String accountingPlatformName = accountingPlatformService.name();
-//            log.info("Accounting platform service '{}' running...", accountingPlatformName);
+//            env.logJobInfo("Accounting platform service '{}' running...", accountingPlatformName);
 //            try {
 //                List<AccountingTransaction> existingTransactions = accountingPlatformService.getTransactions(startDate);
-//                log.info("Found existing transactions: {}", existingTransactions.size());
+//                env.logJobInfo("Found existing transactions: {}", existingTransactions.size());
 //
 //                // get all the new transactions we need to create
 //                List<AccountingTransaction> transactionsToCreate = processTransactions(
 //                        transactions, existingTransactions, accountingPlatformService);
 //                if (transactionsToCreate.isEmpty()) {
-//                    log.info("No new transactions to create. Returning...");
+//                    env.logJobInfo("No new transactions to create. Returning...");
 //                    continue;
 //                }
 //
 //                accountingPlatformService.createTransactions(transactionsToCreate);
 //
 //            } catch (Exception e) {
-//                log.error("Failed to add transactions!", e);
+//                env.logJobError("Failed to add transactions!", e);
 //            }
 //
-//            log.info("Accounting platform service '{}' done.", accountingPlatformName);
+//            env.logJobInfo("Accounting platform service '{}' done.", accountingPlatformName);
 //        }
 //    }
 //

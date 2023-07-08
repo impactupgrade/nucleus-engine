@@ -9,8 +9,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
 import com.stripe.util.CaseInsensitiveMap;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -29,8 +27,6 @@ import static com.impactupgrade.nucleus.util.Utils.checkboxToBool;
 import static com.impactupgrade.nucleus.util.Utils.fullNameToFirstLast;
 
 public class CrmImportEvent {
-
-  private static final Logger log = LogManager.getLogger(CrmImportEvent.class.getName());
 
   // Be case-insensitive, for sources that aren't always consistent.
   public CaseInsensitiveMap<String> raw = new CaseInsensitiveMap<>();
@@ -342,7 +338,7 @@ public class CrmImportEvent {
         c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get(columnName + " yyyy-mm-dd")));
       }
     } catch (ParseException e) {
-      log.warn("failed to parse date", e);
+      throw new RuntimeException("failed to parse date", e);
     }
     
     return c;
@@ -419,7 +415,7 @@ public class CrmImportEvent {
         importEvent.opportunityDate = Calendar.getInstance();
         importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Charge Date")));
       } catch (ParseException e) {
-        log.warn("failed to parse date", e);
+        throw new RuntimeException("failed to parse date", e);
       }
 
       importEvent.contactFirstName = Utils.nameToTitleCase(data.get("First Name"));
@@ -532,7 +528,7 @@ public class CrmImportEvent {
         importEvent.opportunityDate = Calendar.getInstance();
         importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Donation Date")));
       } catch (ParseException e) {
-        log.warn("failed to parse date", e);
+        throw new RuntimeException("failed to parse date", e);
       }
       importEvent.opportunitySource = data.get("Donation Type");
       importEvent.opportunityStageName = data.get("Donation Stage");

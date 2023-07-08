@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.controller;
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -16,8 +17,6 @@ import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayTransaction;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
@@ -42,8 +41,6 @@ import java.util.stream.Collectors;
 
 @Path("/paymentgateway")
 public class PaymentGatewayController {
-
-  private static final Logger log = LogManager.getLogger(PaymentGatewayController.class);
 
   protected final EnvironmentFactory envFactory;
 
@@ -174,12 +171,13 @@ public class PaymentGatewayController {
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           // TODO: The results from this could be returned as a CSV...
           paymentGatewayService.verifyCharges(startDate, endDate);
-          env.logJobProgress(paymentGatewayService.name() + ": charges verified");
+          env.logJobInfo("{}: charges verified", paymentGatewayService.name());
         }
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("verifyCharges failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("verifyCharges failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -223,12 +221,13 @@ public class PaymentGatewayController {
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           paymentGatewayService.verifyAndReplayCharges(startDate, endDate);
-          env.logJobProgress(paymentGatewayService.name() + ": charges verified and replayed");
+          env.logJobInfo("{}: charges verified and replayed", paymentGatewayService.name());
         }
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("verifyAndReplayCharges failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("verifyAndReplayCharges failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -272,13 +271,14 @@ public class PaymentGatewayController {
 
         for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
           paymentGatewayService.verifyAndReplayDeposits(startDate, endDate);
-          env.logJobProgress(paymentGatewayService.name() + ": deposits verified and replayed");
+          env.logJobInfo("{}: deposits verified and replayed", paymentGatewayService.name());
         }
 
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("verifyAndReplayDeposits failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("verifyAndReplayDeposits failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();

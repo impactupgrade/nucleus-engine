@@ -36,8 +36,6 @@ import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,8 +51,6 @@ import java.util.stream.Collectors;
  * Wraps the SFDC Metadata SOAP API.
  */
 public class SfdcMetadataClient {
-
-  private static final Logger log = LogManager.getLogger(SfdcMetadataClient.class.getName());
 
   protected final Environment env;
   private final String username;
@@ -103,7 +99,7 @@ public class SfdcMetadataClient {
    * @throws ConnectionException
    */
   public void updatePicklist(String globalPicklistApiName, List<String> values) throws ConnectionException {
-    log.info("updating values of {}", globalPicklistApiName);
+    env.logJobInfo("updating values of {}", globalPicklistApiName);
 
     //get the existing picklist
     MetadataConnection metadataConn = metadataConn();
@@ -126,7 +122,7 @@ public class SfdcMetadataClient {
             customValues.stream().sorted(Comparator.comparing(CustomValue::getLabel)).toArray(CustomValue[]::new)
     );
     // update the global picklist
-    Arrays.stream(metadataConn.updateMetadata(new Metadata[]{globalValueSet})).forEach(log::info);
+    Arrays.stream(metadataConn.updateMetadata(new Metadata[]{globalValueSet})).forEach(result -> env.logJobInfo(result.toString()));
 
   }
 
@@ -139,7 +135,7 @@ public class SfdcMetadataClient {
    * @throws ConnectionException
    */
   public void addValueToPicklist(String globalPicklistApiName, String newValue, List<String> recordTypeFieldApiNames) throws ConnectionException {
-    log.info("adding {} {}", globalPicklistApiName, newValue);
+    env.logJobInfo("adding {} {}", globalPicklistApiName, newValue);
 
     MetadataConnection metadataConn = metadataConn();
 
@@ -165,11 +161,11 @@ public class SfdcMetadataClient {
     );
 
     // update the global picklist
-    Arrays.stream(metadataConn.updateMetadata(new Metadata[]{globalValueSet})).forEach(log::info);
+    Arrays.stream(metadataConn.updateMetadata(new Metadata[]{globalValueSet})).forEach(result -> env.logJobInfo(result.toString()));
 
-    log.info("added {} {} to GlobalValueSet {}", globalPicklistApiName, newValue, globalValueSet.getFullName());
+    env.logJobInfo("added {} {} to GlobalValueSet {}", globalPicklistApiName, newValue, globalValueSet.getFullName());
 
-    log.info("adding {} {} to all record types", globalPicklistApiName, newValue);
+    env.logJobInfo("adding {} {} to all record types", globalPicklistApiName, newValue);
 
     // dynamically find all RecordTypes for each type of Object, then add the new value to each RecordType's list
     ListMetadataQuery listMetadataQuery = new ListMetadataQuery();
@@ -183,13 +179,13 @@ public class SfdcMetadataClient {
           || "objects/npe03__Recurring_Donation__c.object".equalsIgnoreCase(fileProperties.getFileName())) {
         for (Metadata metadata : metadataConn.readMetadata(RecordType.class.getSimpleName(), new String[]{fileProperties.getFullName()}).getRecords()) {
           RecordType recordType = (RecordType) metadata;
-          log.info("checking record type record type {}/{} for the {} picklist", fileProperties.getFileName(), recordType.getFullName(), globalPicklistApiName);
+          env.logJobInfo("checking record type record type {}/{} for the {} picklist", fileProperties.getFileName(), recordType.getFullName(), globalPicklistApiName);
           // find the picklist
           for (RecordTypePicklistValue picklist : recordType.getPicklistValues()) {
             // important to use contains and not equals here, as the name isn't 100% consistent across the RecordTypes
             if (recordTypeFieldApiNames.stream().anyMatch(s -> picklist.getPicklist().contains(s))) {
               if (Arrays.stream(picklist.getValues()).anyMatch(value -> value.getFullName().equals(newValue))) {
-                log.info("{} {} already in record type {}/{}; skipping...", globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
+                env.logJobInfo("{} {} already in record type {}/{}; skipping...", globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
               } else {
                 // add the new value
                 List<PicklistValue> picklistValues = new ArrayList<>();
@@ -200,9 +196,9 @@ public class SfdcMetadataClient {
                 picklist.setValues(picklistValues.toArray(new PicklistValue[0]));
 
                 // update the record type, but only if we actually added something
-                Arrays.stream(metadataConn.updateMetadata(new Metadata[]{recordType})).forEach(log::info);
+                Arrays.stream(metadataConn.updateMetadata(new Metadata[]{recordType})).forEach(result -> env.logJobInfo(result.toString()));
 
-                log.info("added {} {} to record type {}/{}", globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
+                env.logJobInfo("added {} {} to record type {}/{}", globalPicklistApiName, newValue, fileProperties.getFileName(), recordType.getFullName());
 
                 break;
               }
@@ -212,7 +208,7 @@ public class SfdcMetadataClient {
       }
     }
 
-    log.info("added {} {} to all contact/campaign/opportunity record types", globalPicklistApiName, newValue);
+    env.logJobInfo("added {} {} to all contact/campaign/opportunity record types", globalPicklistApiName, newValue);
   }
 
   // TODO: createCustomField methods are getting out of control -- shift to a builder pattern?
@@ -321,7 +317,7 @@ public class SfdcMetadataClient {
       customField.setValueSet(valueSet);
     }
 
-    Arrays.stream(metadataConn.createMetadata(new Metadata[]{customField})).forEach(log::info);
+    Arrays.stream(metadataConn.createMetadata(new Metadata[]{customField})).forEach(result -> env.logJobInfo(result.toString()));
 
     if (profilesMetadata == null) {
       ListMetadataQuery listMetadataQuery = new ListMetadataQuery();
@@ -345,14 +341,14 @@ public class SfdcMetadataClient {
     // API limits us to a max of 10 at a time (by default, NPSP has 17).
     final List<List<Profile>> profileBatches = Lists.partition(profiles, 10);
     for (List<Profile> profileBatch : profileBatches) {
-      Arrays.stream(metadataConn.updateMetadata(profileBatch.toArray(new Metadata[0]))).forEach(log::info);
+      Arrays.stream(metadataConn.updateMetadata(profileBatch.toArray(new Metadata[0]))).forEach(result -> env.logJobInfo(result.toString()));
     }
   }
 
   public void deleteCustomFields(String objectName, String... fieldNames) throws ConnectionException {
     MetadataConnection metadataConn = metadataConn();
     for (String fieldName : fieldNames) {
-      Arrays.stream(metadataConn.deleteMetadata("CustomField", new String[]{objectName + "." + fieldName})).forEach(log::info);
+      Arrays.stream(metadataConn.deleteMetadata("CustomField", new String[]{objectName + "." + fieldName})).forEach(result -> env.logJobInfo(result.toString()));
     }
   }
 
@@ -379,7 +375,7 @@ public class SfdcMetadataClient {
     layoutItems.addAll(newLayoutItems);
     layoutColumn.setLayoutItems(layoutItems.toArray(new LayoutItem[0]));
 
-    Arrays.stream(metadataConn.updateMetadata(new Layout[]{layout})).forEach(log::info);
+    Arrays.stream(metadataConn.updateMetadata(new Layout[]{layout})).forEach(result -> env.logJobInfo(result.toString()));
   }
 
   private LayoutSection getOrCreateSection(Layout layout, String sectionLabel) {

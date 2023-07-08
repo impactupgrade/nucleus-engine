@@ -28,8 +28,6 @@ import java.util.stream.Collectors;
 
 public class SendGridEmailService extends SmtpEmailService {
 
-  private static final Logger log = LogManager.getLogger(SendGridEmailService.class);
-
   private static final ObjectMapper mapper = new ObjectMapper()
       .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
       .setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -48,7 +46,7 @@ public class SendGridEmailService extends SmtpEmailService {
   public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from) {
     Optional<EnvironmentConfig.EmailPlatform> _sg = env.getConfig().sendgrid.stream().filter(sg -> sg.transactionalSender).findFirst();
     if (_sg.isEmpty()) {
-      log.error("unable to find SendGrid config with transactionalSender=true");
+      env.logJobError("unable to find SendGrid config with transactionalSender=true");
       return;
     }
 
@@ -81,9 +79,9 @@ public class SendGridEmailService extends SmtpEmailService {
     try {
       request.setBody(mail.build());
       Response response = sg.api(request);
-      log.info("SendGrid response: code={} body={}", response.getStatusCode(), response.getBody());
+      env.logJobInfo("SendGrid response: code={} body={}", response.getStatusCode(), response.getBody());
     } catch (Exception e) {
-      log.error("failed to send email to {} from {}", String.join(",", tos), from, e);
+      env.logJobError("failed to send email to {} from {}", String.join(",", tos), from, e);
     }
   }
 
@@ -106,7 +104,7 @@ public class SendGridEmailService extends SmtpEmailService {
         List<CrmContact> crmContacts = getCrmContacts(emailList, lastSync);
         Map<String, List<String>> contactCampaignNames = getContactCampaignNames(crmContacts);
 
-        log.info("upserting {} contacts to list {}", crmContacts.size(), emailList.id);
+        env.logJobInfo("upserting {} contacts to list {}", crmContacts.size(), emailList.id);
 
         request = new Request();
         request.setMethod(Method.PUT);
@@ -121,9 +119,9 @@ public class SendGridEmailService extends SmtpEmailService {
         request.setBody(mapper.writeValueAsString(upsertContacts));
         response = sendgridClient.api(request);
         if (response.getStatusCode() < 300) {
-          log.info("sync was successful");
+          env.logJobInfo("sync was successful");
         } else {
-          log.error("sync failed: {}", response.getBody());
+          env.logJobError("sync failed: {}", response.getBody());
         }
       }
     }
@@ -171,7 +169,7 @@ public class SendGridEmailService extends SmtpEmailService {
 
       // TODO: groups?
     } catch (Exception e) {
-      log.error("failed to map the sendgrid contact {}", crmContact.email, e);
+      env.logJobError("failed to map the sendgrid contact {}", crmContact.email, e);
     }
 
     return contact;
@@ -189,15 +187,15 @@ public class SendGridEmailService extends SmtpEmailService {
         request.setBody(mapper.writeValueAsString(customField));
         Response response = sendgridClient.api(request);
         if (response.getStatusCode() < 300) {
-          log.info("created custom field: {}", fieldName);
+          env.logJobInfo("created custom field: {}", fieldName);
 
           customField = mapper.readValue(response.getBody(), CustomField.class);
           customFieldsByName.put(fieldName, customField.id);
         } else {
-          log.error("failed to create custom field: {}", fieldName);
+          env.logJobError("failed to create custom field: {}", fieldName);
         }
       } catch (Exception e) {
-        log.error("failed to create custom field: {}", fieldName, e);
+        env.logJobError("failed to create custom field: {}", fieldName, e);
       }
     }
 

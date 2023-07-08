@@ -1,15 +1,13 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.dao.HibernateDao;
-import com.impactupgrade.nucleus.entity.event.Interaction;
 import com.impactupgrade.nucleus.entity.event.Event;
+import com.impactupgrade.nucleus.entity.event.Interaction;
 import com.impactupgrade.nucleus.entity.event.Participant;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.messaging.Message;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
@@ -23,8 +21,6 @@ import java.util.UUID;
 
 @Path("/events")
 public class EventsController {
-
-  private static final Logger log = LogManager.getLogger(EventsController.class);
 
   protected final EnvironmentFactory envFactory;
 

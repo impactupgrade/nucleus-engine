@@ -14,8 +14,6 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.twilio.rest.conversations.v1.conversation.Participant;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
@@ -50,8 +48,6 @@ import static org.apache.commons.lang3.StringUtils.capitalize;
 @Path("/twilio/frontline")
 public class TwilioFrontlineController {
 
-  private static final Logger log = LogManager.getLogger(TwilioFrontlineController.class);
-
   protected final EnvironmentFactory envFactory;
 
   public TwilioFrontlineController(EnvironmentFactory envFactory) {
@@ -74,8 +70,8 @@ public class TwilioFrontlineController {
       @FormParam("Query") String searchQuery,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("location={} workerIdentity={} pageSize={} nextPageToken={} customerId={} searchQuery={}", location, workerIdentity, pageSize, nextPageToken, customerId, searchQuery);
     Environment env = envFactory.init(request);
+    env.logJobInfo("location={} workerIdentity={} pageSize={} nextPageToken={} customerId={} searchQuery={}", location, workerIdentity, pageSize, nextPageToken, customerId, searchQuery);
     CrmService crmService = env.messagingCrmService();
     String crmName = capitalize(crmService.name());
 
@@ -99,7 +95,7 @@ public class TwilioFrontlineController {
         if (!users.containsKey(workerIdentity) || users.get(workerIdentity).recordOwnerFilter) {
           Optional<CrmUser> owner = crmService.getUserByEmail(workerIdentity);
           if (owner.isEmpty()) {
-            log.error("unexpected owner: " + workerIdentity);
+            env.logJobError("unexpected owner: " + workerIdentity);
             return Response.status(422).build();
           }
           contactSearch.ownerId = owner.get().id();
@@ -120,7 +116,7 @@ public class TwilioFrontlineController {
         }
         break;
       default:
-        log.error("unexpected location: " + location);
+        env.logJobError("unexpected location: " + location);
         return Response.status(422).build();
     }
 
@@ -219,8 +215,8 @@ public class TwilioFrontlineController {
       @FormParam("ChannelValue") String customerAddress,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("location={} workerIdentity={} customerId={} customerChannel={} customerAddress={}", location, workerIdentity, customerId, customerChannel, customerAddress);
     Environment env = envFactory.init(request);
+    env.logJobInfo("location={} workerIdentity={} customerId={} customerChannel={} customerAddress={}", location, workerIdentity, customerId, customerChannel, customerAddress);
 
     switch (location) {
       case "GetProxyAddress":
@@ -228,7 +224,7 @@ public class TwilioFrontlineController {
         frontlineResponse.proxy_address = getSenderPn(workerIdentity, env);
         return Response.ok().entity(frontlineResponse).build();
       default:
-        log.error("unexpected location: " + location);
+        env.logJobError("unexpected location: " + location);
         return Response.status(422).build();
     }
   }
@@ -263,7 +259,9 @@ public class TwilioFrontlineController {
       @FormParam("Identity") String identity,
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("eventType={} customerAddress={} projectedAddress={} authorAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, projectedAddress, authorAddress, conversationSid, participantSid, identity);
+    Environment env = envFactory.init(request);
+
+    env.logJobInfo("eventType={} customerAddress={} projectedAddress={} authorAddress={} conversationSid={} participantSid={} identity={}", eventType, customerAddress, projectedAddress, authorAddress, conversationSid, participantSid, identity);
 
     // TODO: The Frontline and Conversations team confirmed there's a timing issue (not sure if it's specific to
     //  Group MMS) where this endpoint is called while the conversation is still in an initializing state. If you
@@ -274,7 +272,6 @@ public class TwilioFrontlineController {
     //  IMPORTANT: Set this lower than the routing callback!
     Thread.sleep(2000);
 
-    Environment env = envFactory.init(request);
     CrmService crmService = env.messagingCrmService();
 
     switch (eventType) {
@@ -332,13 +329,13 @@ public class TwilioFrontlineController {
               .put("display_name", crmContact.get().getFullName());
           env.twilioClient().updateConversationParticipant(conversationSid, participantSid, attributes.toString());
         } else {
-          log.info("could not find CrmContact: " + customerAddress);
+          env.logJobInfo("could not find CrmContact: " + customerAddress);
           // still return 200 -- allow contacts we don't have in the CRM
         }
 
         return Response.ok().build();
       default:
-        log.error("unexpected eventType: " + eventType);
+        env.logJobError("unexpected eventType: " + eventType);
         return Response.status(422).build();
     }
   }
@@ -364,7 +361,9 @@ public class TwilioFrontlineController {
       // TODO: DateCreated & DateUpdated (string, ISO8601 time)
       @Context HttpServletRequest request
   ) throws Exception {
-    log.info("conversationSid={} friendlyName={} uniqueName={} attributesJson={} conversationServiceSid={} proxyAddress={} customerAddress={} projectedAddress={} authorAddress={} state={}", conversationSid, friendlyName, uniqueName, attributesJson, conversationServiceSid, proxyAddress, customerAddress, projectedAddress, authorAddress, state);
+    Environment env = envFactory.init(request);
+
+    env.logJobInfo("conversationSid={} friendlyName={} uniqueName={} attributesJson={} conversationServiceSid={} proxyAddress={} customerAddress={} projectedAddress={} authorAddress={} state={}", conversationSid, friendlyName, uniqueName, attributesJson, conversationServiceSid, proxyAddress, customerAddress, projectedAddress, authorAddress, state);
 
     // TODO: The Frontline and Conversations team confirmed there's a timing issue (not sure if it's specific to
     //  Group MMS) where this endpoint is called while the conversation is still in an initializing state. If you
@@ -375,7 +374,6 @@ public class TwilioFrontlineController {
     //  IMPORTANT: Set this higher than the conversations callback!
     Thread.sleep(5000);
 
-    Environment env = envFactory.init(request);
     CrmService crmService = env.messagingCrmService();
 
     // For P2P, customerAddress is the external sender.
@@ -405,14 +403,14 @@ public class TwilioFrontlineController {
       if (!Strings.isNullOrEmpty(projectedAddress) && twilioAddressToUser.containsKey(projectedAddress)) {
         String identity = getAssignedWorkerIdentity(projectedAddress, twilioAddressToUser, env);
 
-        log.info("routing: adding participant {} to {}", identity, conversationSid);
+        env.logJobInfo("routing: adding participant {} to {}", identity, conversationSid);
         env.twilioClient().createConversationProjectedParticipant(conversationSid, identity, projectedAddress);
 
         return Response.ok().build();
       } else if (!Strings.isNullOrEmpty(proxyAddress) && twilioAddressToUser.containsKey(proxyAddress)) {
         String identity = getAssignedWorkerIdentity(proxyAddress, twilioAddressToUser, env);
 
-        log.info("routing: adding participant {} to {}", identity, conversationSid);
+        env.logJobInfo("routing: adding participant {} to {}", identity, conversationSid);
         env.twilioClient().createConversationProxyParticipant(conversationSid, identity);
 
         return Response.ok().build();
@@ -427,10 +425,10 @@ public class TwilioFrontlineController {
 
       if (crmOwner.isPresent()) {
         if (!Strings.isNullOrEmpty(projectedAddress)) {
-          log.info("adding projected participant {} to {}", crmOwner.get().email(), conversationSid);
+          env.logJobInfo("adding projected participant {} to {}", crmOwner.get().email(), conversationSid);
           env.twilioClient().createConversationProjectedParticipant(conversationSid, crmOwner.get().email(), projectedAddress);
         } else {
-          log.info("adding proxy participant {} to {}", crmOwner.get().email(), conversationSid);
+          env.logJobInfo("adding proxy participant {} to {}", crmOwner.get().email(), conversationSid);
           env.twilioClient().createConversationProxyParticipant(conversationSid, crmOwner.get().email());
         }
 
@@ -439,7 +437,7 @@ public class TwilioFrontlineController {
     }
 
     // TODO: fall back to random routing? or a default worker?
-    log.error("could not find CrmContact: " + sender);
+    env.logJobError("could not find CrmContact: " + sender);
     return Response.status(422).build();
   }
 
@@ -451,7 +449,7 @@ public class TwilioFrontlineController {
       } catch (Exception e) {
         // Hit issues where a new user was set up in routing configs, but had not yet logged into Frontline, so
         // technically the user doesn't exist yet...
-        log.warn("unable to get Frontline user's status", e);
+        env.logJobWarn("unable to get Frontline user's status", e);
         return false;
       }
     }).collect(Collectors.toList());

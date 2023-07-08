@@ -29,8 +29,6 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class VirtuousClient {
 
-    private static final Logger log = LogManager.getLogger(VirtuousClient.class);
-
     private static final String VIRTUOUS_API_URL = "https://api.virtuoussoftware.com/api";
     private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_LIMIT = 100;
@@ -64,7 +62,7 @@ public class VirtuousClient {
     public Contact createContact(Contact contact) {
         contact = post(VIRTUOUS_API_URL + "/Contact", contact, APPLICATION_JSON, headers(), Contact.class);
         if (contact != null) {
-          log.info("Created contact: {}", contact);
+          env.logJobInfo("Created contact: {}", contact);
         }
         return contact;
     }
@@ -143,7 +141,7 @@ public class VirtuousClient {
     public Contact updateContact(Contact contact) {
         contact = put(VIRTUOUS_API_URL + "/Contact/" + contact.id, contact, APPLICATION_JSON, headers(), Contact.class);
         if (contact != null) {
-          log.info("Updated contact: {}", contact);
+          env.logJobInfo("Updated contact: {}", contact);
         }
         return contact;
     }
@@ -151,7 +149,7 @@ public class VirtuousClient {
     public ContactMethod createContactMethod(ContactMethod contactMethod) {
         contactMethod = post(VIRTUOUS_API_URL + "/ContactMethod", contactMethod, APPLICATION_JSON, headers(), ContactMethod.class);
         if (contactMethod != null) {
-          log.info("Created contactMethod: {}", contactMethod);
+          env.logJobInfo("Created contactMethod: {}", contactMethod);
         }
         return contactMethod;
     }
@@ -159,14 +157,14 @@ public class VirtuousClient {
     public ContactMethod updateContactMethod(ContactMethod contactMethod) {
         contactMethod = put(VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id, contactMethod, APPLICATION_JSON, headers(), ContactMethod.class);
         if (contactMethod != null) {
-          log.info("Updated contactMethod: {}", contactMethod);
+          env.logJobInfo("Updated contactMethod: {}", contactMethod);
         }
         return contactMethod;
     }
 
     public void deleteContactMethod(ContactMethod contactMethod) {
         delete(VIRTUOUS_API_URL + "/ContactMethod/" + contactMethod.id, headers());
-        log.info("Deleted contactMethod: {}", contactMethod.id);
+        env.logJobInfo("Deleted contactMethod: {}", contactMethod.id);
     }
 
     public List<Contact> queryContacts(ContactQuery query) {
@@ -215,7 +213,7 @@ public class VirtuousClient {
     public Gift createGift(Gift gift) {
         gift = post(VIRTUOUS_API_URL + "/Gift", gift, APPLICATION_JSON, headers(), Gift.class);
         if (gift != null) {
-          log.info("Created gift: {}", gift);
+          env.logJobInfo("Created gift: {}", gift);
         }
         return gift;
     }
@@ -231,7 +229,7 @@ public class VirtuousClient {
     public Gift updateGift(Gift gift) {
         gift = put(VIRTUOUS_API_URL + "/Gift" + "/" + gift.id, gift, APPLICATION_JSON, headers(), Gift.class);
         if (gift != null) {
-          log.info("Updated gift: {}", gift);
+          env.logJobInfo("Updated gift: {}", gift);
         }
         return gift;
     }
@@ -240,7 +238,7 @@ public class VirtuousClient {
     public Gift createReversingTransaction(Gift gift) throws Exception {
         gift = post(VIRTUOUS_API_URL + "/Gift/ReversingTransaction", reversingTransaction(gift), APPLICATION_JSON, headers(), Gift.class);
         if (gift != null) {
-          log.info("Created reversing transaction: {}", gift);
+          env.logJobInfo("Created reversing transaction: {}", gift);
         }
         return gift;
     }
@@ -257,7 +255,7 @@ public class VirtuousClient {
     public Task createTask(Task task) throws Exception {
       task = post(VIRTUOUS_API_URL + "/Task", task, APPLICATION_JSON, headers(), Task.class);
       if (task != null) {
-        log.info("Created task: {}", task);
+        env.logJobInfo("Created task: {}", task);
       }
       return task;
     }
@@ -272,16 +270,16 @@ public class VirtuousClient {
         // Otherwise, assume oauth.
         
         if (!containsValidAccessToken(tokenResponse)) {
-            log.info("Getting new access token...");
+            env.logJobInfo("Getting new access token...");
             if (!Strings.isNullOrEmpty(refreshToken)) {
                 // Refresh access token if possible
-                log.info("Refreshing token...");
+                env.logJobInfo("Refreshing token...");
                 tokenResponse = refreshAccessToken();
             } else {
                 // Get new token pair otherwise
-                log.info("Getting new pair of tokens...");
+                env.logJobInfo("Getting new pair of tokens...");
                 tokenResponse = getTokenResponse();
-                log.info("TR: {}", tokenResponse.accessToken);
+                env.logJobInfo("TR: {}", tokenResponse.accessToken);
             }
 
             // !

@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -17,8 +18,6 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
@@ -47,8 +46,6 @@ import java.util.Set;
 
 @Path("/sfdc")
 public class SfdcController {
-
-  private static final Logger log = LogManager.getLogger(SfdcController.class.getName());
 
   protected final EnvironmentFactory envFactory;
 
@@ -88,7 +85,7 @@ public class SfdcController {
         data.add(csvRecord.toMap());
       }
     } else {
-      log.warn("no GSheet/CSV provided; skipping");
+      env.logJobWarn("no GSheet/CSV provided; skipping");
       return Response.status(400).build();
     }
 
@@ -106,7 +103,7 @@ public class SfdcController {
         for (int i = 0; i < data.size(); i++) {
           Map<String, String> row = data.get(i);
 
-          log.info("processing row {} of {}: {}", i + 2, data.size() + 1, row);
+          env.logJobInfo("processing row {} of {}: {}", i + 2, data.size() + 1, row);
 
           if (row.containsKey("Opportunity ID")) {
             opportunityIds.add(row.get("Opportunity ID"));
@@ -118,7 +115,7 @@ public class SfdcController {
           if (row.containsKey("Account ID")) {
             accountIds.add(row.get("Account ID"));
           }
-          env.logJobProgress((i + 1) + "row of " + data.size() + " processed");
+          env.logJobInfo("{} row of {} processed", (i + 1), data.size());
         }
 
         for (String opportunityId : opportunityIds) {
@@ -126,27 +123,28 @@ public class SfdcController {
           opportunity.setId(opportunityId);
           sfdcClient.batchDelete(opportunity);
         }
-        env.logJobProgress("batch delete opportunities done");
+        env.logJobInfo("batch delete opportunities done");
 
         for (String contactId : contactIds) {
           SObject contact = new SObject("Contact");
           contact.setId(contactId);
           sfdcClient.batchDelete(contact);
         }
-        env.logJobProgress("batch delete contacts done");
+        env.logJobInfo("batch delete contacts done");
 
         for (String accountId : accountIds) {
           SObject account = new SObject("Account");
           account.setId(accountId);
           sfdcClient.batchDelete(account);
         }
-        env.logJobProgress("batch delete accounts done");
+        env.logJobInfo("batch delete accounts done");
 
         sfdcClient.batchFlush();
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("bulkDelete failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("bulkDelete failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -179,11 +177,12 @@ public class SfdcController {
         String jobName = "SFDC: Add Picklist Value";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
         env.sfdcMetadataClient().addValueToPicklist(globalPicklistApiName, newValue, recordTypeFieldApiNames);
-        log.info("FINISHED: {}", globalPicklistApiName);
-        env.endJobLog(jobName);
+        env.logJobInfo("FINISHED: {}", globalPicklistApiName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("{} failed", globalPicklistApiName, e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("{} failed", globalPicklistApiName, e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -258,7 +257,7 @@ public class SfdcController {
             counter++;
 
             String email = csvRecord.get("Email");
-            env.logJobProgress("processing row " + counter + ": " + email);
+            env.logJobInfo("processing row {}: {}", counter, email);
 
             if (!Strings.isNullOrEmpty(email)) {
               Optional<SObject> contact = env.sfdcClient().searchContacts(ContactSearch.byEmail(email)).getSingleResult();
@@ -289,17 +288,18 @@ public class SfdcController {
                     csvRecord.get("RFM Monetary Rating")
                 );
               } else {
-                log.warn("Could not find contact: {}", email);
+                env.logJobWarn("Could not find contact: {}", email);
               }
             }
           }
         }
 
         env.sfdcBulkClient().uploadIWaveFile(combinedFile.toFile());
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("iwave update failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("iwave update failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();
@@ -329,10 +329,11 @@ public class SfdcController {
         String jobName = "SFDC: Windfall Import";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Sfdc");
         env.sfdcBulkClient().uploadWindfallFile(inputStream);
-        env.endJobLog(jobName);
+        env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        log.error("Windfall update failed", e);
-        env.logJobError(e.getMessage(), true);
+        env.logJobError("Windfall update failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
       }
     };
     new Thread(thread).start();

@@ -8,8 +8,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -20,14 +18,15 @@ import java.nio.charset.StandardCharsets;
 
 public class AntiFraudService {
 
-  private static Logger log = LoggerFactory.getLogger(AntiFraudService.class);
+  protected static final String RECAPTCHA_SITE_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
+  protected static final double MIN_SCORE = 0.3;
 
-  private static final String RECAPTCHA_SITE_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
-  private static final double MIN_SCORE = 0.3;
-
-  private final String siteSecret;
+  protected final Environment env;
+  protected final String siteSecret;
 
   public AntiFraudService(Environment env) {
+    this.env = env;
+
     if (!Strings.isNullOrEmpty(env.getConfig().recaptcha.siteSecret)) {
       siteSecret = env.getConfig().recaptcha.siteSecret;
     } else {
@@ -36,18 +35,19 @@ public class AntiFraudService {
   }
 
   // Use case example: Donation Spring, which has a single, non-client-specific key.
-  public AntiFraudService(String siteSecret) {
+  public AntiFraudService(String siteSecret, Environment env) {
+    this.env = env;
     this.siteSecret = siteSecret;
   }
 
   public boolean isRecaptchaTokenValid(String recaptchaToken) throws IOException {
     if (Strings.isNullOrEmpty(siteSecret)) {
-      log.info("recaptcha: disabled");
+      env.logJobInfo("recaptcha: disabled");
       return true;
     }
 
     if (Strings.isNullOrEmpty(recaptchaToken)) {
-      log.info("recaptcha: null or empty recaptchaToken");
+      env.logJobInfo("recaptcha: null or empty recaptchaToken");
       return false;
     }
 
@@ -79,18 +79,18 @@ public class AntiFraudService {
       String hostname = jsonObject.has("hostname") ? jsonObject.getString("hostname") : "";
 
       if (!success) {
-        log.warn("recaptcha failed: {}", jsonObject);
+        env.logJobWarn("recaptcha failed: {}", jsonObject);
         // TODO: We're hitting the following often, especially from Axis.
         //  {"error-codes":["browser-error"],"success":false}
         //  {"error-codes":["timeout-or-duplicate"],"success":false}
         return false;
       } else {
-        log.info("recaptcha: score={} hostname={}", score, hostname);
+        env.logJobInfo("recaptcha: score={} hostname={}", score, hostname);
       }
 
       return success && score >= MIN_SCORE;
     } catch (Exception e) {
-      log.warn("recaptcha failed; defaulting to invalid", e);
+      env.logJobWarn("recaptcha failed; defaulting to invalid", e);
       return false;
     }
   }

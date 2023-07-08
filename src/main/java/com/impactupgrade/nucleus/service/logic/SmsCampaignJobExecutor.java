@@ -33,8 +33,6 @@ import java.util.stream.Collectors;
 
 public class SmsCampaignJobExecutor implements JobExecutor {
 
-  private static final Logger log = LogManager.getLogger(SmsCampaignJobExecutor.class);
-
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Environment env;
@@ -75,19 +73,19 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     String jobName = "SMS Campaign";
     env.startJobLog(JobType.PORTAL_TASK, null, jobName, "Nucleus Portal");
 
-    log.info("job {} is ready for the next message", job.id);
+    env.logJobInfo("job {} is ready for the next message", job.id);
 
     String contactListId = getJsonText(job.payload, "crm_list");
     if (Strings.isNullOrEmpty(contactListId)) {
-      log.warn("Failed to get contact list id for job id {}! Skipping...", job.id);
+      env.logJobWarn("Failed to get contact list id for job id {}! Skipping...", job.id);
       return;
     }
 
-    env.logJobProgress("Retrieving contacts using contactListId " + contactListId);
+    env.logJobInfo("Retrieving contacts using contactListId {}", contactListId);
 
     List<CrmContact> crmContacts = crmService.getContactsFromList(contactListId);
     if (CollectionUtils.isEmpty(crmContacts)) {
-      env.logJobProgress("No contacts returned for job id {}! Skipping...");
+      env.logJobInfo("No contacts returned for job id {}! Skipping...");
       return;
     }
 
@@ -99,7 +97,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
             jp -> jp.targetId,
             jp -> jp,
             (jp1, jp2) -> {
-              log.info("ignoring duplicate: {}", jp2.targetId);
+              env.logJobInfo("ignoring duplicate: {}", jp2.targetId);
               return jp1;
             }
         ));
@@ -120,12 +118,12 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         //  support non-CRM sources. Keeping this for now as a fallback for existing campaigns, as of May 2023.
         //  Remove in the future!
         if (jobProgress == null && !Strings.isNullOrEmpty(crmContact.id)) {
-          log.info("Failed to get job progress using target id {}. Trying to find job progress using contact id {}...", targetId, crmContact.id);
+          env.logJobInfo("Failed to get job progress using target id {}. Trying to find job progress using contact id {}...", targetId, crmContact.id);
           jobProgress = progressesByContacts.get(crmContact.id);
         }
 
         if (jobProgress == null) {
-          log.info("Contact {} does not have any progress so far...", targetId);
+          env.logJobInfo("Contact {} does not have any progress so far...", targetId);
 
           jobProgress = new JobProgress();
           jobProgress.targetId = targetId;
@@ -145,13 +143,13 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           }
         } else {
           Integer lastMessage = getJsonInt(jobProgress.payload, "lastMessage");
-          log.info("Last sent message id for contact {} is {}", targetId, lastMessage);
+          env.logJobInfo("Last sent message id for contact {} is {}", targetId, lastMessage);
           nextMessage = lastMessage + 1;
-          log.info("Next message id to send: {}", nextMessage);
+          env.logJobInfo("Next message id to send: {}", nextMessage);
         }
 
         if (nextMessage > messagesNode.size()) {
-          log.info("All messages sent for contact {}!", targetId);
+          env.logJobInfo("All messages sent for contact {}!", targetId);
           continue;
         }
 
@@ -163,7 +161,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           languageCode = getDefaultLanguage(getJsonNode(job.payload, "languages"));
         }
         if (Strings.isNullOrEmpty(languageCode)) {
-          log.info("Failed to get contact language for contact {}; assuming EN", targetId);
+          env.logJobInfo("Failed to get contact language for contact {}; assuming EN", targetId);
           languageCode = "EN";
         } else {
           languageCode = languageCode.toUpperCase(Locale.ROOT);
@@ -182,17 +180,15 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
         // Switch to new target id (phone number) instead of contact id
         if (!StringUtils.equalsIgnoreCase(jobProgress.targetId, targetId)) {
-          log.info("Updating job progress target id from {} to {}...", crmContact.id, targetId);
+          env.logJobInfo("Updating job progress target id from {} to {}...", crmContact.id, targetId);
           jobProgress.targetId = targetId;
         }
 
         jobProgressDao.update(jobProgress);
       } catch (Exception e) {
-        env.logJobError("scheduled job failed for contact " + targetId, e, false);
+        env.logJobError("scheduled job failed for contact {}", targetId, e);
       }
     }
-
-    env.endJobLog(jobName);
 
     if (job.scheduleFrequency == JobFrequency.ONETIME) {
       job.status = JobStatus.DONE;
@@ -200,6 +196,8 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       updateJob(job, now);
     }
     jobDao.update(job);
+
+    env.endJobLog(JobStatus.DONE);
   }
 
   // TODO: Let's introduce jsonpath? Or a limited set of Jackson bindings?

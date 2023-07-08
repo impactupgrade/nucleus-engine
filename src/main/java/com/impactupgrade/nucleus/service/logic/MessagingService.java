@@ -13,16 +13,12 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MessagingService {
-
-  private static final Logger log = LogManager.getLogger(MessagingService.class);
 
   private final Environment env;
   private final TwilioClient twilioClient;
@@ -44,28 +40,28 @@ public class MessagingService {
 
         Message twilioMessage = twilioClient.sendMessage(pn, sender, personalizedMessage, null);
 
-        env.logJobProgress("sent messageSid " + twilioMessage.getSid() + " to " + pn + "; status=" + twilioMessage.getStatus() + " errorCode=" + twilioMessage.getErrorCode() + " errorMessage=" + twilioMessage.getErrorMessage());
+        env.logJobInfo("sent messageSid {} to {}; status={} errorCode={} errorMessage={}", twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
       }
     } catch (ApiException e1) {
       if (e1.getCode() == 21610) {
-        env.logJobProgress("message to " + crmContact.phoneNumberForSMS() + " failed due to blacklist; updating contact in CRM");
+        env.logJobInfo("message to {} failed due to blacklist; updating contact in CRM", crmContact.phoneNumberForSMS());
         try {
           env.messagingService().optOut(crmContact);
         } catch (Exception e2) {
-          env.logJobError("CRM contact update failed", e2, false);
+          env.logJobError("CRM contact update failed", e2);
         }
       } else if (e1.getCode() == 21408 || e1.getCode() == 21211) {
-        env.logJobProgress("invalid phone number: " + crmContact.phoneNumberForSMS() + "; updating contact in CRM");
+        env.logJobInfo("invalid phone number: {}; updating contact in CRM", crmContact.phoneNumberForSMS());
         try {
           env.messagingService().optOut(crmContact);
         } catch (Exception e2) {
-          env.logJobError("CRM contact update failed", e2, false);
+          env.logJobError("CRM contact update failed", e2);
         }
       } else {
-        env.logJobWarn("message to " + crmContact.phoneNumberForSMS() + " failed: " + e1.getCode(), e1);
+        env.logJobWarn("message to {} failed: {}", crmContact.phoneNumberForSMS(), e1.getCode(), e1);
       }
     } catch (Exception e) {
-      env.logJobWarn("message to " + crmContact.phoneNumberForSMS() + " failed", e);
+      env.logJobWarn("message to {} failed", crmContact.phoneNumberForSMS(), e);
     }
   }
 
@@ -156,7 +152,7 @@ public class MessagingService {
       crmContact.id = crmService.insertContact(crmContact);
     } else {
       // Existed, so use it
-      log.info("contact already existed in CRM: {}", crmContact.id);
+      env.logJobInfo("contact already existed in CRM: {}", crmContact.id);
 
       boolean update = emailOptIn || smsOptIn;
 
@@ -164,22 +160,22 @@ public class MessagingService {
       crmContact.smsOptIn = smsOptIn;
 
       if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
-        log.info("contact {} missing firstName; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing firstName; updating it...", crmContact.id);
         crmContact.firstName = firstName;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
-        log.info("contact {} missing lastName; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing lastName; updating it...", crmContact.id);
         crmContact.lastName = lastName;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
-        log.info("contact {} missing email; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing email; updating it...", crmContact.id);
         crmContact.email = email;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.mobilePhone) && !Strings.isNullOrEmpty(phone)) {
-        log.info("contact {} missing mobilePhone; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing mobilePhone; updating it...", crmContact.id);
         crmContact.mobilePhone = phone;
         update = true;
       }
@@ -204,13 +200,13 @@ public class MessagingService {
     // First, look for an existing contact with the PN
     CrmContact crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
     if (crmContact != null) {
-      log.info("opting {} ({}) into sms...", crmContact.id, phone);
+      env.logJobInfo("opting {} ({}) into sms...", crmContact.id, phone);
       crmContact.smsOptIn = true;
       crmContact.smsOptOut = false;
       crmService.updateContact(crmContact);
     } else {
       // TODO: There MIGHT be value in processing this as a signup and inserting the Contact...
-      log.info("unable to find a CRM contact with phone number {}", phone);
+      env.logJobInfo("unable to find a CRM contact with phone number {}", phone);
     }
   }
 
@@ -220,12 +216,12 @@ public class MessagingService {
     if (crmContact != null) {
       optOut(crmContact);
     } else {
-      log.info("unable to find a CRM contact with phone number {}", phone);
+      env.logJobInfo("unable to find a CRM contact with phone number {}", phone);
     }
   }
 
   public void optOut(CrmContact crmContact) throws Exception {
-    log.info("opting {} ({}) out of sms...", crmContact.id, crmContact.mobilePhone);
+    env.logJobInfo("opting {} ({}) out of sms...", crmContact.id, crmContact.mobilePhone);
     crmContact.smsOptIn = false;
     crmContact.smsOptOut = true;
     crmService.updateContact(crmContact);
