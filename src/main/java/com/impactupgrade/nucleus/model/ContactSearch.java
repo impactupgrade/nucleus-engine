@@ -22,4 +22,10 @@ public class ContactSearch extends AbstractSearch {
     contactSearch.phone = phone;
     return contactSearch;
   }
+
+  public static ContactSearch byKeywords(String keywords) {
+    ContactSearch contactSearch = new ContactSearch();
+    contactSearch.keywords = keywords;
+    return contactSearch;
+  }
 }

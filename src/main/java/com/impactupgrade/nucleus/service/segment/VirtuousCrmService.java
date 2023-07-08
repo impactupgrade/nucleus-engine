@@ -177,10 +177,17 @@ public class VirtuousCrmService implements BasicCrmService {
             conditions.add(queryCondition("Email Address", "Is", contactSearch.email));
         }
         if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+            // TODO: Contains?
             conditions.add(queryCondition("Phone Number", "Is", contactSearch.phone));
         }
         if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
-            conditions.add(queryCondition("Contact Name", "Is", contactSearch.keywords));
+            String[] keywordSplit = contactSearch.keywords.split("\\s+");
+            for (String keyword : keywordSplit) {
+                if (keyword.equalsIgnoreCase("and") || keyword.equalsIgnoreCase("&")) {
+                    continue;
+                }
+                conditions.add(queryCondition("Contact Name", "Contains", keyword));
+            }
         }
 
         VirtuousClient.ContactQuery contactQuery = contactQuery(conditions);

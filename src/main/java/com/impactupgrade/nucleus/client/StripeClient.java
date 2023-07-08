@@ -30,6 +30,7 @@ import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.ChargeCreateParams;
+import com.stripe.param.ChargeListParams;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerListParams;
 import com.stripe.param.CustomerRetrieveParams;
@@ -186,6 +187,11 @@ public class StripeClient {
         return SubscriptionItem.retrieve(id, requestOptions);
       }
     }.result();
+  }
+
+  public Iterable<Charge> getAllChargesFromCustomer(String customerId) throws StripeException {
+    ChargeCollection chargeCollection = Charge.list(ChargeListParams.builder().setCustomer(customerId).build(), requestOptions);
+    return chargeCollection.autoPagingIterable();
   }
 
   public Iterable<Charge> getAllCharges(Date startDate, Date endDate) throws StripeException {
