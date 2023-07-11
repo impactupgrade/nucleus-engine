@@ -22,7 +22,7 @@ public class Response {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "activity_id", nullable = false)
-  public Activity activity;
+  public Interaction interaction;
 
   @Column(name = "free_response")
   public String freeResponse;

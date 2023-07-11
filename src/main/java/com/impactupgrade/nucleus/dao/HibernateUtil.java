@@ -3,7 +3,7 @@ package com.impactupgrade.nucleus.dao;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobProgress;
 import com.impactupgrade.nucleus.entity.Organization;
-import com.impactupgrade.nucleus.entity.event.Activity;
+import com.impactupgrade.nucleus.entity.event.Interaction;
 import com.impactupgrade.nucleus.entity.event.Event;
 import com.impactupgrade.nucleus.entity.event.Participant;
 import com.impactupgrade.nucleus.entity.event.Response;
@@ -29,7 +29,7 @@ public class HibernateUtil {
       configuration.addAnnotatedClass(Organization.class);
 
       // events
-      configuration.addAnnotatedClass(Activity.class);
+      configuration.addAnnotatedClass(Interaction.class);
       configuration.addAnnotatedClass(Event.class);
       configuration.addAnnotatedClass(Participant.class);
       configuration.addAnnotatedClass(Response.class);
