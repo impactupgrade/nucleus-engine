@@ -503,7 +503,10 @@ public class CrmImportEvent {
     if (!data.containsKey(columnName)) {
       return null;
     }
-    return new BigDecimal(data.get(columnName).replace("$", "").replace(",", "")
-        .trim()).setScale(2, RoundingMode.CEILING);
+    String n = data.get(columnName);
+    if (Strings.isNullOrEmpty(n)) {
+      return null;
+    }
+    return new BigDecimal(n.replace("$", "").replace(",", "").trim()).setScale(2, RoundingMode.CEILING);
   }
 }
