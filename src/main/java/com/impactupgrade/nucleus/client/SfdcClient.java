@@ -502,12 +502,15 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<String> clauses = new ArrayList<>();
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)) {
       clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE");
-    }
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptOut)) {
-      clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptOut + "=TRUE");
-    }
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailBounced)) {
-      clauses.add(env.getConfig().salesforce.fieldDefinitions.emailBounced + "=TRUE");
+
+      // ONLY ADD THESE IF WE'RE INCLUDING THE ABOVE OPT-IN FILTER! Otherwise, some orgs only have opt-out defined,
+      // and we'd effectively be syncing ONLY unsubscribes.
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptOut)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptOut + "=TRUE");
+      }
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailBounced)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.emailBounced + "=TRUE");
+      }
     }
     String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
 
