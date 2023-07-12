@@ -181,7 +181,7 @@ public class VirtuousCrmService implements BasicCrmService {
             conditions.add(queryCondition("Phone Number", "Is", contactSearch.phone));
         }
         if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
-            String[] keywordSplit = contactSearch.keywords.split("\\s+");
+            String[] keywordSplit = contactSearch.keywords.trim().split("\\s+");
             for (String keyword : keywordSplit) {
                 if (keyword.equalsIgnoreCase("and") || keyword.equalsIgnoreCase("&")) {
                     continue;

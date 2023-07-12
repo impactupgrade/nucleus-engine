@@ -180,7 +180,7 @@ public class SfdcCrmService implements CrmService {
     List<String> clauses = new ArrayList<>();
 
     if (name.isPresent()) {
-      String[] nameParts = name.get().split("\\s+");
+      String[] nameParts = name.get().trim().split("\\s+");
 
       for (String part : nameParts) {
         part = part.replaceAll("'", "\\\\'");

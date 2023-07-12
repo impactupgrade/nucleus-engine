@@ -63,7 +63,7 @@ public class Utils {
       return new String[]{null, null};
     }
 
-    String[] split = fullName.split("\\s+");
+    String[] split = fullName.trim().split("\\s+");
     String firstName = null;
     String lastName = split[split.length - 1];
     // Some donors are using a single-word business name in the individual name field, so this won't exist.
