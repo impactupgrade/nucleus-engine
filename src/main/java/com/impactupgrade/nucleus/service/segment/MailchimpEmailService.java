@@ -21,6 +21,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -413,8 +414,14 @@ public class MailchimpEmailService extends AbstractEmailService {
       MailchimpClient mailchimpClient, EnvironmentConfig.EmailPlatform mailchimpConfig) {
     try {
       List<String> activeTags = getContactTagsCleaned(crmContact, crmContactCampaignNames, mailchimpConfig);
-      List<String> inactiveTags = mailchimpClient.getContactTags(listId, crmContact.email);
-      inactiveTags.removeAll(activeTags);
+      List<String> contactTags = mailchimpClient.getContactTags(listId, crmContact.email);
+      
+      String[] tagPrefixesArray = mailchimpConfig.contactTagFilters.tagPrefixes.toArray(new String[]{});
+      List<String> inactiveTags = contactTags.stream()
+          .filter(tag -> !activeTags.contains(tag))
+          .filter(tag -> 
+              mailchimpConfig.contactTagFilters.tags.contains(tag) || StringUtils.startsWithAny(tag, tagPrefixesArray))
+          .collect(Collectors.toList());
 
       mailchimpClient.updateContactTags(listId, crmContact.email, activeTags, inactiveTags);
     } catch (Exception e) {
