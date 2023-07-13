@@ -13,20 +13,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmAccount;
-import com.impactupgrade.nucleus.model.CrmAddress;
-import com.impactupgrade.nucleus.model.CrmCampaign;
-import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmCustomField;
-import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
-import com.impactupgrade.nucleus.model.CrmOpportunity;
-import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmTask;
-import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.*;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.logging.log4j.LogManager;
@@ -37,18 +24,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.impactupgrade.nucleus.util.HttpClient.get;
-import static com.impactupgrade.nucleus.util.HttpClient.post;
-import static com.impactupgrade.nucleus.util.HttpClient.put;
+import static com.impactupgrade.nucleus.util.HttpClient.*;
+import static com.impactupgrade.nucleus.util.Utils.getZonedDateTimeFromDateTimeString;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class BloomerangCrmService implements CrmService {
@@ -472,7 +452,7 @@ public class BloomerangCrmService implements CrmService {
     } else if (manageDonationEvent.getResumeDonation() == true) {
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
         rd.recurringDonationStatus = "Active";
-        rd.recurringDonationEndDate = null;
+        rd.recurringDonationEndDate = "";
       });
     }
 
@@ -739,10 +719,12 @@ public class BloomerangCrmService implements CrmService {
         "Recurring Donation",
         CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
+        designation.recurringDonationStatus,
         null, // String subscriptionCurrency,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId),
-        null, // ZonedDateTime subscriptionNextDate,
-        null, // ZonedDateTime subscriptionStartDate,
+        getZonedDateTimeFromDateTimeString(designation.recurringDonationEndDate),
+        getZonedDateTimeFromDateTimeString(designation.recurringDonationNextDate),
+        getZonedDateTimeFromDateTimeString(designation.recurringDonationStartDate),
         donation,
         "https://crm.bloomerang.co/Constituent/" + donation.accountId + "/Transaction/Edit/" + donation.id
     );
@@ -884,6 +866,8 @@ public class BloomerangCrmService implements CrmService {
     public String recurringDonationStartDate;
     @JsonProperty("RecurringDonationEndDate")
     public String recurringDonationEndDate;
+    @JsonProperty("RecurringDonationNextInstallmentDate")
+    public String recurringDonationNextDate;
     // Weekly, EveryOtherWeekly, TwiceMonthly, Monthly, EveryOtherMonthly, Quarterly, Yearly
     @JsonProperty("RecurringDonationFrequency")
     public String recurringDonationFrequency;

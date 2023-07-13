@@ -428,21 +428,26 @@ public class StripeClient {
   public void resumeSubscription(String subscriptionId, Calendar resumeOnDate) throws StripeException {
     Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
 
-    if (resumeOnDate != null) {
-      log.info("resuming subscription {} on {}...", subscription.getId(), resumeOnDate.getTime());
-
-      SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
-      pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
-      pauseBuilder.setResumesAt(resumeOnDate.getTimeInMillis() / 1000);
-
-      SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(pauseBuilder.build()).build();
-      subscription.update(params, requestOptions);
-      subscription.update(params, requestOptions);
+    if ("canceled".equalsIgnoreCase(subscription.getStatus())) {
+      // TODO: can't reopen a canceled subscription, so need to open a new one
+      //  but should that create a new RD in the CRM (probably...), not update the existing subscription ID
     } else {
-      log.info("resuming subscription {} immediately...", subscription.getId());
+      if (resumeOnDate != null) {
+        log.info("resuming subscription {} on {}...", subscription.getId(), resumeOnDate.getTime());
 
-      SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(EmptyParam.EMPTY).build();
-      subscription.update(params, requestOptions);
+        SubscriptionUpdateParams.PauseCollection.Builder pauseBuilder = SubscriptionUpdateParams.PauseCollection.builder();
+        pauseBuilder.setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.MARK_UNCOLLECTIBLE);
+        pauseBuilder.setResumesAt(resumeOnDate.getTimeInMillis() / 1000);
+
+        SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(pauseBuilder.build()).build();
+        subscription.update(params, requestOptions);
+        subscription.update(params, requestOptions);
+      } else {
+        log.info("resuming subscription {} immediately...", subscription.getId());
+
+        SubscriptionUpdateParams params = SubscriptionUpdateParams.builder().setPauseCollection(EmptyParam.EMPTY).build();
+        subscription.update(params, requestOptions);
+      }
     }
   }
 

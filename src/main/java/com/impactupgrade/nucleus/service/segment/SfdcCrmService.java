@@ -55,6 +55,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.impactupgrade.nucleus.util.Utils.getZonedDateFromDateString;
+
 public class SfdcCrmService implements CrmService {
 
   private static final Logger log = LogManager.getLogger(SfdcCrmService.class);
@@ -2280,14 +2282,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
-    String id = sObject.getId();
     String subscriptionId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
     String customerId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
     String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     Double amount = Double.parseDouble(sObject.getField("npe03__Amount__c").toString());
     boolean active = "Open".equalsIgnoreCase(sObject.getField("npe03__Open_Ended_Status__c").toString());
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(sObject.getField("npe03__Installment_Period__c").toString());
-    String donationName = getStringField(sObject, "Name");
 
     CrmAccount account = null;
     if (sObject.getChild("npe03__Organization__r") != null && sObject.getChild("npe03__Organization__r").hasChildren())
@@ -2297,20 +2297,23 @@ public class SfdcCrmService implements CrmService {
       contact = toCrmContact((SObject) sObject.getChild("npe03__Contact__r"));
 
     return new CrmRecurringDonation(
-        id,
+        sObject.getId(),
         account,
         contact,
         active,
         amount,
         customerId,
         null, // String description,
-        donationName,
+        getStringField(sObject, "Name"),
         frequency,
         paymentGatewayName,
+        getStringField(sObject, "npe03__Open_Ended_Status__c"),
         null, // String subscriptionCurrency,
         subscriptionId,
-        null, // ZonedDateTime subscriptionNextDate,
-        null, // ZonedDateTime subscriptionStartDate,
+        getZonedDateFromDateString(getStringField(sObject, "npsp__EndDate__c"), env.getConfig().timezoneId),
+        getZonedDateFromDateString(getStringField(sObject, "npe03__Next_Payment_Date__c"), env.getConfig().timezoneId),
+        // TODO: Should this be npsp__StartDate__c?
+        getZonedDateFromDateString(getStringField(sObject, "Npe03__Date_Established__c"), env.getConfig().timezoneId),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/npe03__Recurring_Donation__c/" + sObject.getId() + "/view"
     );

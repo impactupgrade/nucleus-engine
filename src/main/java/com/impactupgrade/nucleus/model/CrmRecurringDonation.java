@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.model;
 import com.google.common.base.Strings;
 
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
@@ -59,10 +60,15 @@ public class CrmRecurringDonation extends CrmRecord {
   public String donationName;
   public Frequency frequency = Frequency.MONTHLY;
   public String gatewayName;
+  public String status;
   public String subscriptionCurrency;
   public String subscriptionId;
+  public ZonedDateTime subscriptionEndDate;
   public ZonedDateTime subscriptionNextDate;
   public ZonedDateTime subscriptionStartDate;
+  public String subscriptionEndDateString;
+  public String subscriptionNextDateString;
+  public String subscriptionStartDateString;
 
   public CrmRecurringDonation() {}
 
@@ -83,8 +89,10 @@ public class CrmRecurringDonation extends CrmRecord {
       String donationName,
       Frequency frequency,
       String gatewayName,
+      String status,
       String subscriptionCurrency,
       String subscriptionId,
+      ZonedDateTime subscriptionEndDate,
       ZonedDateTime subscriptionNextDate,
       ZonedDateTime subscriptionStartDate,
       Object crmRawObject,
@@ -102,9 +110,14 @@ public class CrmRecurringDonation extends CrmRecord {
     this.donationName = donationName;
     if (frequency != null) this.frequency = frequency;
     this.gatewayName = gatewayName;
+    this.status = status;
     this.subscriptionCurrency = subscriptionCurrency;
     this.subscriptionId = subscriptionId;
+    this.subscriptionEndDate = subscriptionEndDate;
     this.subscriptionNextDate = subscriptionNextDate;
     this.subscriptionStartDate = subscriptionStartDate;
+    if (subscriptionEndDate != null) subscriptionEndDateString = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(subscriptionStartDate);
+    if (subscriptionNextDate != null) subscriptionNextDateString = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(subscriptionNextDate);
+    if (subscriptionStartDate != null) subscriptionStartDateString = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(subscriptionStartDate);
   }
 }
