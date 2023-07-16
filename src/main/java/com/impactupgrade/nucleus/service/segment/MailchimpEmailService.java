@@ -416,11 +416,11 @@ public class MailchimpEmailService extends AbstractEmailService {
       List<String> activeTags = getContactTagsCleaned(crmContact, crmContactCampaignNames, mailchimpConfig);
       List<String> contactTags = mailchimpClient.getContactTags(listId, crmContact.email);
       
-      String[] tagPrefixesArray = mailchimpConfig.contactTagFilters.tagPrefixes.toArray(new String[]{});
+      String[] contactTagFilters = mailchimpConfig.contactTagFilters.toArray(new String[]{});
       List<String> inactiveTags = contactTags.stream()
           .filter(tag -> !activeTags.contains(tag))
-          .filter(tag -> 
-              mailchimpConfig.contactTagFilters.tags.contains(tag) || StringUtils.startsWithAny(tag, tagPrefixesArray))
+          // filter out any tags that need to remain (IE, ones that were manually created in MC)
+          .filter(tag -> !StringUtils.containsAny(tag, contactTagFilters))
           .collect(Collectors.toList());
 
       mailchimpClient.updateContactTags(listId, crmContact.email, activeTags, inactiveTags);

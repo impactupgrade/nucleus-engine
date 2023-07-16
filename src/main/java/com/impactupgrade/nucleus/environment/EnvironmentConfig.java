@@ -269,15 +269,10 @@ public class EnvironmentConfig implements Serializable {
     public String crmLeadFilter = "";
   }
 
-  public static class ContactTagFilters implements Serializable {
-    public Set<String> tags = new HashSet<>();
-    public Set<String> tagPrefixes = new HashSet<>();
-  }
-
   public static class EmailPlatform extends Platform {
     public List<EmailList> lists = new ArrayList<>();
     public EmailTagFilters tagFilters = new EmailTagFilters();
-    public ContactTagFilters contactTagFilters = new ContactTagFilters();
+    public Set<String> contactTagFilters = new HashSet<>();
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;
