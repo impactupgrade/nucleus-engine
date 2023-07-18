@@ -146,6 +146,13 @@ public class CrmImportEvent {
     if (!Strings.isNullOrEmpty(data.get("Account Billing Street 2"))) {
       importEvent.account.billingAddress.street += ", " + data.get("Account Billing Street 2");
     }
+    // Also check Address (vs Street) -- happens often.
+    if (Strings.isNullOrEmpty(importEvent.account.billingAddress.street)) {
+      importEvent.account.billingAddress.street = data.get("Account Billing Address");
+      if (!Strings.isNullOrEmpty(data.get("Account Billing Address 2"))) {
+        importEvent.account.billingAddress.street += ", " + data.get("Account Billing Address 2");
+      }
+    }
     importEvent.account.billingAddress.city = data.get("Account Billing City");
     importEvent.account.billingAddress.state = data.get("Account Billing State");
     importEvent.account.billingAddress.postalCode = data.get("Account Billing Postal Code");
@@ -153,6 +160,13 @@ public class CrmImportEvent {
     importEvent.account.mailingAddress.street = data.get("Account Shipping Street");
     if (!Strings.isNullOrEmpty(data.get("Account Shipping Street 2"))) {
       importEvent.account.mailingAddress.street += ", " + data.get("Account Shipping Street 2");
+    }
+    // Also check Address (vs Street) -- happens often.
+    if (Strings.isNullOrEmpty(importEvent.account.mailingAddress.street)) {
+      importEvent.account.mailingAddress.street = data.get("Account Shipping Address");
+      if (!Strings.isNullOrEmpty(data.get("Account Shipping Address 2"))) {
+        importEvent.account.mailingAddress.street += ", " + data.get("Account Shipping Address 2");
+      }
     }
     importEvent.account.mailingAddress.city = data.get("Account Shipping City");
     importEvent.account.mailingAddress.state = data.get("Account Shipping State");
@@ -172,10 +186,32 @@ public class CrmImportEvent {
         if (!Strings.isNullOrEmpty(data.get(columnPrefix + " Billing Street 2"))) {
           organization.billingAddress.street += ", " + data.get(columnPrefix + " Billing Street 2");
         }
+        // Also check Address (vs Street) -- happens often.
+        if (Strings.isNullOrEmpty(organization.billingAddress.street)) {
+          organization.billingAddress.street = data.get(columnPrefix + " Billing Address");
+          if (!Strings.isNullOrEmpty(data.get(columnPrefix + " Billing Address 2"))) {
+            organization.billingAddress.street += ", " + data.get(columnPrefix + " Billing Address 2");
+          }
+        }
         organization.billingAddress.city = data.get(columnPrefix + " Billing City");
         organization.billingAddress.state = data.get(columnPrefix + " Billing State");
         organization.billingAddress.postalCode = data.get(columnPrefix + " Billing Postal Code");
         organization.billingAddress.country = data.get(columnPrefix + " Billing Country");
+        organization.mailingAddress.street = data.get(columnPrefix + " Shipping Street");
+        if (!Strings.isNullOrEmpty(data.get(columnPrefix + " Shipping Street 2"))) {
+          organization.mailingAddress.street += ", " + data.get(columnPrefix + " Shipping Street 2");
+        }
+        // Also check Address (vs Street) -- happens often.
+        if (Strings.isNullOrEmpty(organization.mailingAddress.street)) {
+          organization.mailingAddress.street = data.get(columnPrefix + " Shipping Address");
+          if (!Strings.isNullOrEmpty(data.get(columnPrefix + " Shipping Address 2"))) {
+            organization.mailingAddress.street += ", " + data.get(columnPrefix + " Shipping Address 2");
+          }
+        }
+        organization.mailingAddress.city = data.get(columnPrefix + " Shipping City");
+        organization.mailingAddress.state = data.get(columnPrefix + " Shipping State");
+        organization.mailingAddress.postalCode = data.get(columnPrefix + " Shipping Postal Code");
+        organization.mailingAddress.country = data.get(columnPrefix + " Shipping Country");
         organization.description = data.get(columnPrefix + " Description");
         organization.name = data.get(columnPrefix + " Name");
         organization.ownerId = data.get(columnPrefix + " Owner ID");
@@ -229,6 +265,13 @@ public class CrmImportEvent {
     if (!Strings.isNullOrEmpty(data.get("Contact Mailing Street 2"))) {
       importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Street 2");
     }
+    // Also check Address (vs Street) -- happens often.
+    if (Strings.isNullOrEmpty(importEvent.contactMailingStreet)) {
+      importEvent.contactMailingStreet = data.get("Contact Mailing Address");
+      if (!Strings.isNullOrEmpty(data.get("Contact Mailing Address 2"))) {
+        importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Address 2");
+      }
+    }
     importEvent.contactMailingCity = data.get("Contact Mailing City");
     importEvent.contactMailingState = data.get("Contact Mailing State");
     importEvent.contactMailingZip = data.get("Contact Mailing Postal Code");
@@ -251,6 +294,9 @@ public class CrmImportEvent {
     importEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
     importEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
     importEvent.opportunityStageName = data.get("Opportunity Stage Name");
+    if (Strings.isNullOrEmpty(importEvent.opportunityStageName)) {
+      importEvent.opportunityStageName = data.get("Opportunity Stage");
+    }
 
     importEvent.recurringDonationAmount = getAmount(data, "Recurring Donation Amount");
     importEvent.recurringDonationCampaignId = data.get("Recurring Donation Campaign ID");
