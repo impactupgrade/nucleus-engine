@@ -266,4 +266,16 @@ public class Utils {
         (absSeconds % 3600) / 60);
     return seconds < 0 ? "-" + positive : positive;
   }
+
+  public static String getFileExtension(String fileName) {
+    if (Strings.isNullOrEmpty(fileName)) {
+      return null;
+    }
+    String extension = "";
+    int index = fileName.lastIndexOf('.');
+    if (index > 0) {
+      extension = fileName.substring(index + 1);
+    }
+    return extension;
+  }
 }
