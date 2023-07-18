@@ -11,7 +11,7 @@ import javax.persistence.Table;
 import java.util.UUID;
 
 @Entity
-@Table(name = "events_activity")
+@Table(name = "events_interaction")
 public class Interaction {
 
   @Id
