@@ -119,7 +119,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         // TODO: We originally used the contact id to track progress, but switched to using the phone number so we could
         //  support non-CRM sources. Keeping this for now as a fallback for existing campaigns, as of May 2023.
         //  Remove in the future!
-        if (jobProgress == null) {
+        if (jobProgress == null && !Strings.isNullOrEmpty(crmContact.id)) {
           log.info("Failed to get job progress using target id {}. Trying to find job progress using contact id {}...", targetId, crmContact.id);
           jobProgress = progressesByContacts.get(crmContact.id);
         }
