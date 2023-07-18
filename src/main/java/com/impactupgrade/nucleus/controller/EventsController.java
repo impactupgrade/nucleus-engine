@@ -1,7 +1,7 @@
 package com.impactupgrade.nucleus.controller;
 
 import com.impactupgrade.nucleus.dao.HibernateDao;
-import com.impactupgrade.nucleus.entity.event.Activity;
+import com.impactupgrade.nucleus.entity.event.Interaction;
 import com.impactupgrade.nucleus.entity.event.Event;
 import com.impactupgrade.nucleus.entity.event.Participant;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -29,7 +29,7 @@ public class EventsController {
   protected final EnvironmentFactory envFactory;
 
   protected final HibernateDao<Long, Event> eventDao;
-  protected final HibernateDao<Long, Activity> activityDao;
+  protected final HibernateDao<Long, Interaction> activityDao;
 protected final HibernateDao<Long, Participant> participantDao;
   protected final HibernateDao<Long, com.impactupgrade.nucleus.entity.event.Response> responseDao;
 
@@ -37,7 +37,7 @@ protected final HibernateDao<Long, Participant> participantDao;
     this.envFactory = envFactory;
 
     eventDao = new HibernateDao<>(Event.class);
-    activityDao = new HibernateDao<>(Activity.class);
+    activityDao = new HibernateDao<>(Interaction.class);
     participantDao = new HibernateDao<>(Participant.class);
     responseDao = new HibernateDao<>(com.impactupgrade.nucleus.entity.event.Response.class);
   }
@@ -102,7 +102,7 @@ protected final HibernateDao<Long, Participant> participantDao;
         }
     );
     if (participant.isPresent()) {
-      Optional<Activity> activity = activityDao.getQueryResult(
+      Optional<Interaction> activity = activityDao.getQueryResult(
           "FROM Activity WHERE event.id = :eventId AND event.status = 'ACTIVE' AND status = 'ACTIVE'",
           query -> {
             query.setParameter("eventId", participant.get().event.id);
@@ -113,7 +113,7 @@ protected final HibernateDao<Long, Participant> participantDao;
         com.impactupgrade.nucleus.entity.event.Response response = new com.impactupgrade.nucleus.entity.event.Response();
         response.id = UUID.randomUUID();
         response.participant = participant.get();
-        response.activity = activity.get();
+        response.interaction = activity.get();
         response.freeResponse = body;
         responseDao.create(response);
       }

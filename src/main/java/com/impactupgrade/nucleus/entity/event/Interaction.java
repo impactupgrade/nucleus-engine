@@ -12,7 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "events_activity")
-public class Activity {
+public class Interaction {
 
   @Id
   public UUID id;
@@ -22,5 +22,5 @@ public class Activity {
   public Event event;
 
   @Enumerated(EnumType.STRING)
-  public ActivityStatus status;
+  public InteractionStatus status;
 }

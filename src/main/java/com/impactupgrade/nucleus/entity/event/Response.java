@@ -21,8 +21,8 @@ public class Response {
   public Participant participant;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "activity_id", nullable = false)
-  public Activity activity;
+  @JoinColumn(name = "interaction_id", nullable = false)
+  public Interaction interaction;
 
   @Column(name = "free_response")
   public String freeResponse;
