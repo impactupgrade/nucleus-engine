@@ -123,19 +123,7 @@ public class CrmController {
     SecurityUtil.verifyApiKey(env);
 
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
-    CSVParser csvParser = CSVParser.parse(
-        inputStream,
-        Charset.defaultCharset(),
-        CSVFormat.DEFAULT
-            .withFirstRecordAsHeader()
-            .withIgnoreHeaderCase()
-            .withTrim()
-    );
-    List<Map<String, String>> data = new ArrayList<>();
-    for (CSVRecord csvRecord : csvParser) {
-      data.add(csvRecord.toMap());
-    }
-
+    List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
     Runnable thread = () -> {
@@ -201,19 +189,7 @@ public class CrmController {
     SecurityUtil.verifyApiKey(env);
 
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
-    CSVParser csvParser = CSVParser.parse(
-        inputStream,
-        Charset.defaultCharset(),
-        CSVFormat.DEFAULT
-            .withFirstRecordAsHeader()
-            .withIgnoreHeaderCase()
-            .withTrim()
-    );
-    List<Map<String, String>> data = new ArrayList<>();
-    for (CSVRecord csvRecord : csvParser) {
-      data.add(csvRecord.toMap());
-    }
-
+    List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
     List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
 
     Runnable thread = () -> {
@@ -247,7 +223,7 @@ public class CrmController {
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
     // Excel is expected. Greater Giving has an Excel report export purpose built for SFDC.
     // TODO: But, what if a different CRM is targeted?
-    List<Map<String, String>> data = Utils.getExcelData(inputStream);
+    List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
 
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGreaterGiving(data);
 
@@ -435,5 +411,30 @@ public class CrmController {
     }
 
     return Response.status(200).entity(filteredList).build();
+  }
+  
+  private static List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
+    String fileExtension = Utils.getFileExtension(fileDisposition.getFileName());
+    List<Map<String, String>> data = new ArrayList<>();
+
+    if ("csv".equals(fileExtension)) {
+      CSVParser csvParser = CSVParser.parse(
+          inputStream,
+          Charset.defaultCharset(),
+          CSVFormat.DEFAULT
+              .withFirstRecordAsHeader()
+              .withIgnoreHeaderCase()
+              .withTrim()
+      );
+      data = new ArrayList<>();
+      for (CSVRecord csvRecord : csvParser) {
+        data.add(csvRecord.toMap());
+      }
+    } else if ("xlsx".equals(fileExtension)) {
+      data = Utils.getExcelData(inputStream, 0);
+    } else {
+      log.warn("Unsupported file extension '{}'!", fileExtension);
+    }
+    return data;
   }
 }
