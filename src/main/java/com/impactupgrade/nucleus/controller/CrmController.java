@@ -410,16 +410,20 @@ public class CrmController {
     CrmService crmService = env.primaryCrmService();
     String filter = "";
 
-    switch (type){
-      case "sms":
-        filter = ".*(?i:sms|opt|subscri|text|sign).*";
-        break;
-      case "contactLanguage":
-        filter = ".*(?i:prefer|lang).*";
-        break;
-      default:
-        filter = "(?s).*";
-        break;
+    if (Strings.isNullOrEmpty(type)) {
+      filter = "(?s).*";
+    } else {
+      switch (type) {
+        case "sms":
+          filter = ".*(?i:sms|opt|subscri|text|sign).*";
+          break;
+        case "contactLanguage":
+          filter = ".*(?i:prefer|lang).*";
+          break;
+        default:
+          filter = "(?s).*";
+          break;
+      }
     }
 
     Map<String, String> fullList = crmService.getFieldOptions("contact");
