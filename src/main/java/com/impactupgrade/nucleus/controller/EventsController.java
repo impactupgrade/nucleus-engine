@@ -29,7 +29,7 @@ public class EventsController {
   protected final EnvironmentFactory envFactory;
 
   protected final HibernateDao<Long, Event> eventDao;
-  protected final HibernateDao<Long, Interaction> activityDao;
+  protected final HibernateDao<Long, Interaction> interactionDao;
 protected final HibernateDao<Long, Participant> participantDao;
   protected final HibernateDao<Long, com.impactupgrade.nucleus.entity.event.Response> responseDao;
 
@@ -37,7 +37,7 @@ protected final HibernateDao<Long, Participant> participantDao;
     this.envFactory = envFactory;
 
     eventDao = new HibernateDao<>(Event.class);
-    activityDao = new HibernateDao<>(Interaction.class);
+    interactionDao = new HibernateDao<>(Interaction.class);
     participantDao = new HibernateDao<>(Participant.class);
     responseDao = new HibernateDao<>(com.impactupgrade.nucleus.entity.event.Response.class);
   }
@@ -102,18 +102,18 @@ protected final HibernateDao<Long, Participant> participantDao;
         }
     );
     if (participant.isPresent()) {
-      Optional<Interaction> activity = activityDao.getQueryResult(
-          "FROM Activity WHERE event.id = :eventId AND event.status = 'ACTIVE' AND status = 'ACTIVE'",
+      Optional<Interaction> interaction = interactionDao.getQueryResult(
+          "FROM Interaction WHERE event.id = :eventId AND event.status = 'ACTIVE' AND status = 'ACTIVE'",
           query -> {
             query.setParameter("eventId", participant.get().event.id);
           }
       );
 
-      if (activity.isPresent()) {
+      if (interaction.isPresent()) {
         com.impactupgrade.nucleus.entity.event.Response response = new com.impactupgrade.nucleus.entity.event.Response();
         response.id = UUID.randomUUID();
         response.participant = participant.get();
-        response.interaction = activity.get();
+        response.interaction = interaction.get();
         response.freeResponse = body;
         responseDao.create(response);
       }
