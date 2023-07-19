@@ -274,7 +274,7 @@ public class Utils {
     String extension = "";
     int index = fileName.lastIndexOf('.');
     if (index > 0) {
-      extension = fileName.substring(index + 1);
+      extension = fileName.substring(index + 1).toLowerCase(Locale.ROOT);
     }
     return extension;
   }
