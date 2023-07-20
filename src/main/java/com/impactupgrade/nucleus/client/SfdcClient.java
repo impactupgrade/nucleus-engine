@@ -181,7 +181,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
   public List<SObject> getCampaignsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
-    names = names.stream().map(n -> n.replaceAll("'", "\\\\'")).collect(Collectors.toList());
     return getBulkResults(names, "Name", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields);
   }
 
