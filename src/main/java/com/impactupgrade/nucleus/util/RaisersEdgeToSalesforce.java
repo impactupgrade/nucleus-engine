@@ -14,15 +14,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.util.IOUtils;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 // TODO: Temporary utility to eventually be worked into a reusable strategy. Square up migrations, bulk imports,
 //  and the generic CRM model.
@@ -600,31 +598,87 @@ public class RaisersEdgeToSalesforce {
 //    }
 //    sfdcClient.batchFlush();
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // ACTIVITIES
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//    File activitiesFile = new File("/home/brmeyer/Downloads/Actions-v3-notepad-description.xlsx");
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//    // ACTIVITIES
+//    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//    File activitiesFile = new File("/home/brmeyer/Downloads/Actions-v4-notes-nested.xlsx");
 //    InputStream activitiesInputStream = new FileInputStream(activitiesFile);
 //    List<Map<String, String>> activityRows = Utils.getExcelData(activitiesInputStream);
+//
+//    Map<String, SObject> constituentIdToContact = new HashMap<>();
+//    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, Blackbaud_Constituent_ID__c FROM Contact WHERE Blackbaud_Constituent_ID__c!=''");
+//    for (SObject contact : contacts) {
+//      constituentIdToContact.put((String) contact.getField("Blackbaud_Constituent_ID__c"), contact);
+//    }
 //
 //    for (int i = 0; i < activityRows.size(); i++) {
 //      log.info("processing activity row {}", i + 2);
 //
 //      Map<String, String> activityRow = activityRows.get(i);
 //
-//      // TODO: EmailMessage for emails
-//      SObject task = new SObject("Task");
-//      task.setField("Type", ); // Act_Category
-//      task.setField("TaskSubtype", );
-//      task.setField("Subject", activityRow.get("Act_Description"));
-//      task.setField("Description", "Act_Notepad_Description");
-//      task.setField("WhoId", ); // Act_Cn_ID
-//      task.setField("Status", ); // Act_Completed and Act_Status
-//      task.setField("ActivityDate", ); // Act_Action_Date
-//      task.setField("CompletedDateTime", ); // Act_Completed_Date
+//      SObject contact = constituentIdToContact.get(activityRow.get("Act_Cn_ID"));
+//      if (contact == null) {
+//        continue;
+//      }
+//      String contactId = contact.getId();
 //
-//      sfdcClient.batchInsert(task);
+//      String type = activityRow.get("Act_Category");
+//      if (type.contains("Call")) type = "Call";
+//      if (!type.equalsIgnoreCase("Email") && !type.equalsIgnoreCase("Call") && !type.equalsIgnoreCase("Meeting") && !type.equalsIgnoreCase("Mailing")) {
+//        type = "Other";
+//      }
+//
+//      String subject = activityRow.get("Act_Description");
+//      if (!Strings.isNullOrEmpty(activityRow.get("Act_Notepad_Description"))) {
+//        subject += " :: " + activityRow.get("Act_Notepad_Description");
+//      }
+//      if (!Strings.isNullOrEmpty(activityRow.get("Act_Notepad_Description"))) {
+//        subject = activityRow.get("Act_Type") + " :: " + subject;
+//      }
+//
+//      String description = "";
+//      for (int j = 1; j <= 3; j++) {
+//        String prefix = "Act_Note_1_" + new DecimalFormat("00").format(j) + "_";
+//        String noteDate = activityRow.get(prefix + "Date");
+//        if (!Strings.isNullOrEmpty(noteDate)) {
+//          String noteAuthor = activityRow.get(prefix + "Author");
+//          String noteType = activityRow.get(prefix + "Type");
+//          String noteTitle = activityRow.get(prefix + "Title");
+//          String noteDescription = activityRow.get(prefix + "Description");
+//          String noteNotes = activityRow.get(prefix + "Actual_Notes");
+//          description += noteType + " " + noteDate + " " + noteAuthor;
+//          if (!Strings.isNullOrEmpty(noteTitle)) description += "\n" + noteTitle;
+//          if (!Strings.isNullOrEmpty(noteDescription)) description += "\n" + noteDescription;
+//          if (!Strings.isNullOrEmpty(noteNotes)) description += "\n" + noteNotes;
+//          description += "\n\n";
+//        }
+//      }
+//
+////      if (type.equalsIgnoreCase("Email")) {
+////        SObject email = new SObject("EmailMessage");
+////
+////        email.setField("Blackbaud_Email_ID__c", activityRow.get("Act_System_ID"));
+////        email.setField("TaskSubtype__c", activityRow.get("Act_Type"));
+////        email.setField("TextBody", description);
+////        email.setField("ToIds", contactId);
+////        email.setField("MessageDate", new SimpleDateFormat("yyyy-MM-dd").parse(activityRow.get("Act_Action_Date")));
+////
+////        sfdcClient.batchInsert(email);
+////      } else {
+//        SObject task = new SObject("Task");
+//
+//        task.setField("Type", type);
+//        // HACK! Need somewhere to store this, but can't add custom fields.
+//        task.setField("CallObject", activityRow.get("Act_System_ID"));
+//        task.setField("Subject", subject);
+//        task.setField("Description", description);
+//        task.setField("WhoId", contactId);
+//        task.setField("Status", "Completed");
+//        task.setField("ActivityDate", new SimpleDateFormat("yyyy-MM-dd").parse(activityRow.get("Act_Action_Date")));
+//
+//        sfdcClient.batchInsert(task);
+////      }
 //    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
