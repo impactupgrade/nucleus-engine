@@ -50,10 +50,17 @@ public class ConstantContactClient {
     emailPlatform.clientId = "f7a59166-c879-4763-82b2-d5aff202a4a3";
     emailPlatform.clientSecret = "WSpU_LGm036P6EVnPw3bgQ";
 
-    emailPlatform.refreshToken = "sACdjXG1iTL-Pdy2LkMFkMPA7oZEy7wHcvORITdO0Ck";
+    emailPlatform.refreshToken = "SzV7tsCH47I39vfFoVSDv8wXKYlK7pKLwZv0hykORtk";
 
     ConstantContactClient constantContactClient = new ConstantContactClient(emailPlatform);
 
+    constantContactClient.getUserPrivileges();
+    constantContactClient.getUserPrivileges();
+    constantContactClient.getUserPrivileges();
+    constantContactClient.getUserPrivileges();
+    constantContactClient.getUserPrivileges();
+    constantContactClient.getUserPrivileges();
+    constantContactClient.getUserPrivileges();
     constantContactClient.getUserPrivileges();
   }
   

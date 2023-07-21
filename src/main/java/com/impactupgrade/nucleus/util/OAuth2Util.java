@@ -7,12 +7,12 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
+import org.apache.commons.collections.MapUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.ws.rs.core.Form;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,7 +25,7 @@ public class OAuth2Util {
   private static final Logger log = LogManager.getLogger(OAuth2Util.class);
 
   public static Tokens refreshTokens(Tokens tokens, String tokenServerUrl) {
-    return refreshTokens(tokens, Collections.emptyMap(), Collections.emptyMap(), tokenServerUrl);
+    return refreshTokens(tokens, null, null, tokenServerUrl);
   }
 
   public static Tokens refreshTokens(Tokens tokens, Map<String, String> additionalParams, Map<String, String> headers, String tokenServerUrl) {
@@ -47,7 +47,7 @@ public class OAuth2Util {
     Map<String, String> params = new HashMap<>();
     params.put("refresh_token", tokens.refreshToken);
     params.put("grant_type", "refresh_token");
-
+    
     TokenResponse tokenResponse = getTokenResponse(tokenServerUrl, params, additionalParams, headers);
     if (tokenResponse == null) {
       log.warn("failed to refresh tokens!");
@@ -56,52 +56,16 @@ public class OAuth2Util {
     return toTokens(tokenResponse);
   }
 
-  public static Tokens getTokensForUsernameAndPassword(String username, String password, String tokenServerUrl) {
-    return getTokensForUsernameAndPassword(username, password, Collections.emptyMap(), tokenServerUrl);
-  }
-
-  public static Tokens getTokensForUsernameAndPassword(String username, String password, Map<String, String> additionalParams, String tokenServerUrl) {
-    log.info("getting new tokens for username and password...");
-
-    Map<String, String> params = new HashMap<>();
-    params.put("username", username);
-    params.put("password", password);
-    params.put("grant_type", "password");
-
-    TokenResponse tokenResponse = getTokenResponse(tokenServerUrl, params, Collections.emptyMap(), additionalParams);
-    if (tokenResponse == null) {
-      log.warn("failed to get new tokens for username and password!");
-    }
-    return toTokens(tokenResponse);
-  }
-
-  public static Tokens getTokensForClientCredentials(String clientId, String clientSecret, String tokenServerUrl) {
-    return getTokensForClientCredentials(clientId, clientSecret, Collections.emptyMap(), tokenServerUrl);
-  }
-
-  public static Tokens getTokensForClientCredentials(String clientId, String clientSecret, Map<String, String> additionalParams, String tokenServerUrl) {
-    log.info("getting new tokens for client id and client secret...");
-
-    Map<String, String> params = new HashMap<>();
-    params.put("client_id", clientId);
-    params.put("client_secret", clientSecret);
-    params.put("grant_type", "client_credentials");
-
-    TokenResponse tokenResponse = getTokenResponse(tokenServerUrl, params, Collections.emptyMap(), additionalParams);
-    if (tokenResponse == null) {
-      log.warn("failed to get new tokens for username and password!");
-    }
-    return toTokens(tokenResponse);
-  }
-
   // Utils
   private static TokenResponse getTokenResponse(String url, Map<String, String> params, Map<String, String> additionalParams, Map<String, String> headers) {
     Form form = new Form();
     params.forEach((k, v) -> form.param(k, v));
 
-    additionalParams.entrySet().stream()
-        .filter(e -> !params.containsKey(e.getKey()))
-        .forEach(e -> form.param(e.getKey(), e.getValue()));
+    if (MapUtils.isNotEmpty(additionalParams)) {
+      additionalParams.entrySet().stream()
+          .filter(e -> !params.containsKey(e.getKey()))
+          .forEach(e -> form.param(e.getKey(), e.getValue()));
+    }
 
     HttpClient.HeaderBuilder headerBuilder = HttpClient.HeaderBuilder.builder();
     headers.forEach((k,v) -> headerBuilder.header(k,v));
@@ -132,7 +96,7 @@ public class OAuth2Util {
     return new Tokens(tokenResponse.accessToken, expiresAt, tokenResponse.refreshToken);
   }
 
-  public static Date getExpiresAt(String accessToken) {
+  private static Date getExpiresAt(String accessToken) {
     if (Strings.isNullOrEmpty(accessToken)) {
       return null;
     }
