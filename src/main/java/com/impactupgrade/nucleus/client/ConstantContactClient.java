@@ -38,9 +38,6 @@ public class ConstantContactClient {
         Map.of(
             "Authorization", "Basic " + Base64.getEncoder().encodeToString(authHeader.getBytes(StandardCharsets.UTF_8))), 
         AUTH_URL);
-//    if (tokens == null) {
-//      tokens = OAuth2Util.getTokensForUsernameAndPassword(username, password, Map.of("requestAdminToken", "true"), AUTH_URL);
-//    }
     String accessToken = tokens != null ? tokens.accessToken() : null;
     return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
   }
