@@ -281,6 +281,7 @@ public class EnvironmentConfig implements Serializable {
   public List<CommunicationPlatform> mailchimp = new ArrayList<>();
   public List<CommunicationPlatform> sendgrid = new ArrayList<>();
   public List<MBT> ministrybytext = new ArrayList<>();
+  public List<CommunicationPlatform> constantContact = new ArrayList<>();
 
   public static class MBT extends CommunicationPlatform {
     public String campusId = "";
