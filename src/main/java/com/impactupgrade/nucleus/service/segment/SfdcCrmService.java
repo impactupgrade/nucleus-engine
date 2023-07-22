@@ -2310,9 +2310,10 @@ public class SfdcCrmService implements CrmService {
         getStringField(sObject, "npe03__Open_Ended_Status__c"),
         null, // String subscriptionCurrency,
         subscriptionId,
-        getZonedDateFromDateString(getStringField(sObject, "npsp__EndDate__c"), env.getConfig().timezoneId),
+        // TODO: npsp__EndDate__c is technically available in NPSP, but not visible by default. This would require
+        //  a profile update for every client.
+        null, // getZonedDateFromDateString(getStringField(sObject, "npsp__EndDate__c"), env.getConfig().timezoneId),
         getZonedDateFromDateString(getStringField(sObject, "npe03__Next_Payment_Date__c"), env.getConfig().timezoneId),
-        // TODO: Should this be npsp__StartDate__c?
         getZonedDateFromDateString(getStringField(sObject, "Npe03__Date_Established__c"), env.getConfig().timezoneId),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/npe03__Recurring_Donation__c/" + sObject.getId() + "/view"
