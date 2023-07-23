@@ -58,6 +58,12 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.payload = MAPPER.readTree("""
         {
           "crm_list": "list1234",
+          "languages": [
+            {
+              "code": "EN",
+              "default": true
+            }
+          ],
           "messages": [
             {
               "id": 1,
@@ -139,6 +145,16 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.payload = MAPPER.readTree("""
         {
           "crm_list": "list1234",
+          "languages": [
+            {
+              "code": "EN",
+              "default": true
+            },
+            {
+              "code": "ES",
+              "default": false
+            }
+          ],
           "messages": [
             {
               "id": 1,
@@ -446,6 +462,16 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.payload = MAPPER.readTree("""
         {
           "crm_list": "list1234",
+          "languages": [
+            {
+              "code": "EN",
+              "default": true
+            },
+            {
+              "code": "ES",
+              "default": false
+            }
+          ],
           "messages": [
             {
               "id": 1,
@@ -675,6 +701,16 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.payload = MAPPER.readTree("""
         {
           "crm_list": "list1234",
+          "languages": [
+            {
+              "code": "EN",
+              "default": true
+            },
+            {
+              "code": "ES",
+              "default": false
+            }
+          ],
           "messages": [
             {
               "id": 1,
