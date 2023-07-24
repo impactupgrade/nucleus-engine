@@ -383,7 +383,7 @@ public class RaisersEdgeToSalesforce {
 //    }
 //    sfdcClient.batchFlush();
 //
-//    File giftsFile = new File("/home/brmeyer/Downloads/RE Export June 2023/Gifts-with-Installments-v7-check-ref-number.xlsx");
+//    File giftsFile = new File("/home/brmeyer/Downloads/Gifts-with-Installments-v7-check-ref-number.xlsx");
 //    InputStream giftInputStream = new FileInputStream(giftsFile);
 //    List<Map<String, String>> giftRows = Utils.getExcelData(giftInputStream);
 
@@ -394,7 +394,7 @@ public class RaisersEdgeToSalesforce {
 //    // TODO: The following completely skips Bulk Upsert!
 //
 //    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
-//        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId()));
+//        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId(), (c1, c2) -> c1));
 //
 //    for (int i = 0; i < giftRows.size(); i++) {
 //      log.info("processing campaign row {}", i + 2);
@@ -807,6 +807,10 @@ public class RaisersEdgeToSalesforce {
 //      SObject sfdcOpportunity = buildDonation(giftRow, campaignNameToId);
 //
 //      String constituentId = giftRow.get("Gf_CnBio_ID");
+//      // TODO: CLHS-specific workaround -- one Thrivent constituent had no ID, for some reason
+//      if (Strings.isNullOrEmpty(constituentId)) {
+//        constituentId = "thrivent";
+//      }
 //      SObject contact = constituentIdToContact.get(constituentId);
 //      SObject account = constituentIdToAccount.get(constituentId);
 //      String donorId;
@@ -818,18 +822,6 @@ public class RaisersEdgeToSalesforce {
 //        if (account != null) {
 //          sfdcOpportunity.setField("AccountId", account.getId());
 //          donorId = account.getId();
-//        } else if (!Strings.isNullOrEmpty(giftRow.get("Gf_CnBio_Org_Name"))) {
-//          List<SObject> accountsByName = sfdcClient.getAccountsByName(giftRow.get("Gf_CnBio_Org_Name")).stream().filter(a -> giftRow.get("Gf_CnBio_Org_Name").equalsIgnoreCase((String) a.getField("Name"))).toList();
-//          if (accountsByName.size() == 1) {
-//            sfdcOpportunity.setField("AccountId", accountsByName.get(0).getId());
-//            donorId = accountsByName.get(0).getId();
-//          } else if (accountsByName.size() > 1) {
-//            log.warn("DUPLICATE CONSTITUENTS: {}", giftRow.get("Gf_CnBio_Org_Name"));
-//            continue;
-//          } else {
-//            log.warn("MISSING CONSTITUENT: {}", constituentId);
-//            continue;
-//          }
 //        } else {
 //          log.warn("MISSING CONSTITUENT: {}", constituentId);
 //          continue;
@@ -842,18 +834,18 @@ public class RaisersEdgeToSalesforce {
 //      oppInsertsByDonorId.get(donorId).add(sfdcOpportunity);
 //    }
 //
-//    counter = 1;
+//    counter = 0;
 //    int total = oppInsertsByDonorId.size();
 //    for (Map.Entry<String, List<SObject>> entry : oppInsertsByDonorId.entrySet()) {
 //      counter++;
 //      log.info("processing donor {} of {}", counter, total);
 //
 //      for (SObject opp : entry.getValue()) {
-//
 //        // TODO: This really slows things down, but we're running into lock contention if a single contact/account's
 //        //  opportunities are spread across multiple inserts. We could optimize it by looking at current batch sizes
 //        //  and flush only when the next batch will push it over the edge?
-//        sfdcClient.batchInsert(opp);
+////        sfdcClient.batchInsert(opp);
+//        sfdcClient.insert(opp);
 //      }
 //      sfdcClient.batchFlush();
 //    }
