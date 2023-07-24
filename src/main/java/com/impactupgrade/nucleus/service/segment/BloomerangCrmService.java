@@ -123,11 +123,26 @@ public class BloomerangCrmService implements CrmService {
       return PagedResults.getPagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
     }
 
+    for (Constituent constituent : constituentSearchResults.results) {
+      if (constituent.emailIds.size() > 1) {
+        List<String> emailIds = constituent.emailIds.stream().filter(id -> id != constituent.primaryEmail.id).map(Object::toString).toList();
+        constituent.secondaryEmails = get(BLOOMERANG_URL + "emails?id=" + String.join("%7C", emailIds), headers(), EmailResults.class).results;
+      }
+      if (constituent.phoneIds.size() > 1) {
+        List<String> phoneIds = constituent.phoneIds.stream().filter(id -> id != constituent.primaryPhone.id).map(Object::toString).toList();
+        constituent.secondaryPhones = get(BLOOMERANG_URL + "phones?id=" + String.join("%7C", phoneIds), headers(), PhoneResults.class).results;
+      }
+    }
+
     // API appears to be doing SUPER forgiving fuzzy matches. If the search was by email/phone, verify those explicitly.
     // If it was a name search, make sure the name actually matches.
     List<Constituent> constituents = constituentSearchResults.results.stream()
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.email) || (c.primaryEmail != null && !Strings.isNullOrEmpty(c.primaryEmail.value) && c.primaryEmail.value.equalsIgnoreCase(contactSearch.email)))
-        .filter(c -> Strings.isNullOrEmpty(phone) || (c.primaryPhone != null && !Strings.isNullOrEmpty(c.primaryPhone.number) && c.primaryPhone.number.replaceAll("[\\D]", "").contains(phone)))
+        .filter(c -> Strings.isNullOrEmpty(contactSearch.email)
+            || (c.primaryEmail != null && !Strings.isNullOrEmpty(c.primaryEmail.value) && c.primaryEmail.value.equalsIgnoreCase(contactSearch.email))
+            || (c.secondaryEmails.stream().anyMatch(e -> e.value.equalsIgnoreCase(contactSearch.email))))
+        .filter(c -> Strings.isNullOrEmpty(phone)
+            || (c.primaryPhone != null && !Strings.isNullOrEmpty(c.primaryPhone.number) && c.primaryPhone.number.replaceAll("[\\D]", "").contains(phone))
+            || (c.secondaryPhones.stream().anyMatch(p -> p.number.replaceAll("[\\D]", "").contains(phone))))
         .collect(Collectors.toList());
 
     List<CrmContact> crmContacts = toCrmContact(constituents);
@@ -783,11 +798,22 @@ public class BloomerangCrmService implements CrmService {
     public Phone primaryPhone;
     @JsonProperty("PrimaryAddress")
     public Address primaryAddress;
+
+    @JsonProperty("EmailIds")
+    public List<Integer> emailIds = new ArrayList<>();
+    @JsonProperty("PhoneIds")
+    public List<Integer> phoneIds = new ArrayList<>();
+
+    // transient
+    List<Email> secondaryEmails = new ArrayList<>();
+    List<Phone> secondaryPhones = new ArrayList<>();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Email {
+    @JsonProperty("Id")
+    public int id;
     @JsonProperty("Type")
     public String type = "Home";
     @JsonProperty("IsPrimary")
@@ -798,13 +824,33 @@ public class BloomerangCrmService implements CrmService {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonInclude(JsonInclude.Include.NON_NULL)
+  public static class EmailResults {
+    @JsonProperty("Total")
+    public int total;
+    @JsonProperty("Results")
+    public List<Email> results;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Phone {
+    @JsonProperty("Id")
+    public int id;
     @JsonProperty("Type")
     public String type = "Home";
     @JsonProperty("IsPrimary")
     public boolean isPrimary = true;
     @JsonProperty("Number")
     public String number;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public static class PhoneResults {
+    @JsonProperty("Total")
+    public int total;
+    @JsonProperty("Results")
+    public List<Phone> results;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
