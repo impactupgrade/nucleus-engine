@@ -46,7 +46,7 @@ public class RaisersEdgeToSalesforce {
         envConfig.salesforce.sandbox = false;
         envConfig.salesforce.url = "concordialutheranhs.my.salesforce.com";
         envConfig.salesforce.username = "team+clhs@impactupgrade.com";
-        envConfig.salesforce.password = "pzFDjPYP6xfjHQ!xid464Ei3gSYA5jngdKV1fvlr";
+        envConfig.salesforce.password = "fZfy3hBEdYcwgbuCUdjQbz40Ui2KP8KalwXR51OYl9Vu";
         envConfig.salesforce.enhancedRecurringDonations = true;
         return envConfig;
       }
