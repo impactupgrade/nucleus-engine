@@ -10,7 +10,6 @@ import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -40,7 +39,6 @@ public class JobController {
   }
 
   @GET
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response getJobs(
       @QueryParam("jobType") JobType jobType,
