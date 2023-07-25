@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.security;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 
 /**
@@ -12,8 +13,11 @@ import com.impactupgrade.nucleus.environment.Environment;
 public class SecurityUtil {
 
   public static void verifyApiKey(Environment env) throws SecurityException {
-    String apikey = env.getHeaders().get("Nucleus-Api-Key");
-    if (!env.getConfig().apiKey.equalsIgnoreCase(apikey)) {
+    String apiKey = env.getHeaders().get("Nucleus-Api-Key");
+    if (Strings.isNullOrEmpty(apiKey)) {
+      apiKey = env.getQueryParams().get("Nucleus-Api-Key");
+    }
+    if (!env.getConfig().apiKey.equalsIgnoreCase(apiKey)) {
       throw new SecurityException();
     }
   }
