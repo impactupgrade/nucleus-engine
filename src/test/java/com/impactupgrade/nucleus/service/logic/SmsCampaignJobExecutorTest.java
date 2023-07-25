@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -811,6 +812,10 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
             {
               "language":"S'gaw Karen",
               "code":"KSW"
+            },
+            {
+              "language":"French",
+              "code":"FR"
             }
           ],
           "messages": [
@@ -818,9 +823,25 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
               "id": 1,
               "seq": 1,
               "languages": {
-                "EN": {"message": "this is in english"},
-                "MY": {"message": "this is in burmese"},
-                "KSW": {"message": "this is in karen"}
+                "EN": {
+                  "useAttachment": "primary_attachment",
+                  "attachmentUrl": "this is EN attachment",
+                  "message": "this is in english"
+                },
+                "MY": {
+                  "useAttachment": "own_attachment",
+                  "attachmentUrl": "this is MY attachment",
+                  "message": "this is in burmese"
+                },
+                "KSW": {
+                  "useAttachment": "none",
+                  "message": "this is in karen"
+                },
+                "FR": {
+                  "useAttachment": "own_attachment",
+                  "attachmentUrl": "this is FR attachment",
+                  "message": "this is in french"
+                }
               }
             }
           ]
@@ -835,15 +856,25 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     CrmContact contact1 = crmContact("contact1", "+12345678901", null);
     CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");
-    when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2));
+    CrmContact contact3 = crmContact("contact3", "+12345678902", "KSW");
+    CrmContact contact4 = crmContact("contact4", "+12345678902", "FR");
+    when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2, contact3, contact4));
 
     service.processJobSchedules(Instant.now());
 
-    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(twilioClientMock, times(2)).sendMessage(any(), any(), argumentCaptor.capture(), any());
-    List<String> allMessages = argumentCaptor.getAllValues();
+    ArgumentCaptor<String> messageBodyCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> mediaUrlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(twilioClientMock, times(4)).sendMessage(any(), any(), messageBodyCaptor.capture(), mediaUrlCaptor.capture(), any());
+    List<String> allMessages = messageBodyCaptor.getAllValues();
     assertEquals("this is in burmese", allMessages.get(0)); // first contact had no lang and used the default
     assertEquals("this is in english", allMessages.get(1)); // second contact used their set lang
+    assertEquals("this is in karen", allMessages.get(2)); // third contact used their set lang
+    assertEquals("this is in french", allMessages.get(3)); // fourth contact used their set lang
+    List<String> allMedia = mediaUrlCaptor.getAllValues();
+    assertEquals("this is MY attachment", allMedia.get(0)); // first contact used primary attachment (for default language 'BY')
+    assertEquals("this is MY attachment", allMedia.get(1)); // second contact used their own attachment (BY)
+    assertNull(allMedia.get(2)); // third contact did not use any attachment
+    assertEquals("this is FR attachment", allMedia.get(3)); // fourth contact used their own attachment (FR)
   }
 
   private CrmContact crmContact(String id, String mobilePhone, String lang) {

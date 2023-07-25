@@ -220,11 +220,15 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   }
 
   private String getDefaultLanguage(List<Language> languages) {
-    String defaultLanguage = languages.stream()
-        .filter(l -> l.isDefault)
-        .findFirst()
-        .map(l -> l.code)
-        .orElse(null);
+    String defaultLanguage = null;
+
+    if (CollectionUtils.isNotEmpty(languages)) {
+      defaultLanguage = languages.stream()
+          .filter(l -> l.isDefault)
+          .findFirst()
+          .map(l -> l.code)
+          .orElse(null);;
+    }
 
     if (Strings.isNullOrEmpty(defaultLanguage)) {
       env.logJobWarn("Using default language '{}'...", defaultLanguage);
@@ -236,33 +240,24 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   
   private Message getMessage(List<SequenceMessage> sequenceMessages, Integer id, String languageCode, String defaultLanguageCode) {
     Message message = null;
-    Optional<SequenceMessage> sequenceMessageOptional = sequenceMessages.stream()
+    SequenceMessage sequenceMessage = sequenceMessages.stream()
         .filter(sm -> id == sm.id)
-        .findFirst();
+        .findFirst().orElse(null);
     
-    if (sequenceMessageOptional.isPresent()) {
-      SequenceMessage sequenceMessage = sequenceMessageOptional.get();
+    if (sequenceMessage != null && sequenceMessage.messagesByLanguages != null) {
       Message languageCodeMessage = sequenceMessage.messagesByLanguages.get(languageCode);
       
       if (languageCodeMessage != null) {
+        message = languageCodeMessage;
 
-        if ("primary_attachment".equals(languageCodeMessage.useAttachment)) {
+        if ("primary_attachment".equalsIgnoreCase(languageCodeMessage.useAttachment)) {
           Message defaultLanguageCodeMessage = sequenceMessage.messagesByLanguages.get(defaultLanguageCode);
 
           if (defaultLanguageCodeMessage != null) {
             message.attachmentUrl = defaultLanguageCodeMessage.attachmentUrl;
           }
-        }
-        
-
-        if ("own_attachment".equals(languageCodeMessage.useAttachment)) {
-          message.attachmentUrl = languageCodeMessage.attachmentUrl;
-        } else if ("primary_attachment".equals(languageCodeMessage.useAttachment)) {
-          Message defaultLanguageCodeMessage = sequenceMessage.messagesByLanguages.get(defaultLanguageCode);
-          
-          if (defaultLanguageCodeMessage != null) {
-            message.attachmentUrl = defaultLanguageCodeMessage.attachmentUrl;
-          }
+        } else if ("none".equalsIgnoreCase(languageCodeMessage.useAttachment)) {
+          message.attachmentUrl = null;
         }
       }
     }
@@ -333,6 +328,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
   
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static final class Language {
+    public String language;
     public String code;
     @JsonProperty("default")
     public boolean isDefault;
