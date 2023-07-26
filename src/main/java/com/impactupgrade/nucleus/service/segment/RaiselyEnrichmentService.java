@@ -43,8 +43,9 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     String donationId = parseDonationId(crmDonation.description);
     RaiselyClient.Donation raiselyDonation = raiselyClient.getDonation(donationId);
 
-    if (raiselyDonation == null || raiselyDonation.items == null || raiselyDonation.items.size() <= 1) {
+    if (raiselyDonation == null || raiselyDonation.items == null) {
       // not a split transaction -- return the original
+      env.logJobInfo("Raisely donation was null and/or Raisely donation items were null, skipping");
     } else {
       // TODO: Are there other types of items? Could there be a ticket + products + donation?
       List<RaiselyClient.DonationItem> donationItems = raiselyDonation.items.stream().filter(i -> !"ticket".equalsIgnoreCase(i.type)).toList();
@@ -52,18 +53,18 @@ public class RaiselyEnrichmentService implements EnrichmentService {
       if (ticketItems.isEmpty()) {
         // donations only, but this should never happen?
         crmDonation.transactionType = EnvironmentConfig.TransactionType.DONATION;
+        crmDonation.amount = calculateTotalAmount(donationItems);
       } else if (donationItems.isEmpty()) {
         // tickets only
         crmDonation.transactionType = EnvironmentConfig.TransactionType.TICKET;
-      } else if (donationItems.size() > 1 || ticketItems.size() > 1) {
-        env.logJobWarn("Raisely donation {} had multiple donations and/or tickets; expected one of each, so skipping out of caution", donationId);
+        crmDonation.amount = calculateTotalAmount(ticketItems);
       } else {
-        // one of each -- let the ticket be the primary and donation secondary
-
+        // multiple of each -- let the ticket be the primary and donation secondary
         crmDonation.transactionType = EnvironmentConfig.TransactionType.TICKET;
-        // if fees are covered, stick them on the TICKET, not the DONATION
+        double ticketAmount = calculateTotalAmount(ticketItems);
+        double donationAmount = calculateTotalAmount(donationItems);
         double coveredFee = raiselyDonation.feeCovered ? (raiselyDonation.fee / 100.0) : 0.0;
-        crmDonation.amount = (ticketItems.get(0).amount / 100.0) + coveredFee;
+        crmDonation.amount = ticketAmount + coveredFee;
 
         // TODO: This will have the same Stripe IDs! For most clients, this won't work, since we skip processing
         //  gifts if their Stripe ID already exists in the CRM. Talking to DR AU about how to handle. Nuke the IDs
@@ -83,7 +84,7 @@ public class RaiselyEnrichmentService implements EnrichmentService {
         clonedCrmDonation.contact.crmRawObject = crmContactRawObject;
 
         clonedCrmDonation.transactionType = EnvironmentConfig.TransactionType.DONATION;
-        clonedCrmDonation.amount = donationItems.get(0).amount / 100.0;
+        clonedCrmDonation.amount = donationAmount;
         // Downstream, we need a notion of parent/child to handle secondary events within the CrmServices.
         clonedCrmDonation.parent = crmDonation;
         crmDonation.children.add(clonedCrmDonation);
@@ -92,6 +93,13 @@ public class RaiselyEnrichmentService implements EnrichmentService {
   }
 
   //HELPERS
+  private double calculateTotalAmount(List<RaiselyClient.DonationItem> items) {
+    double totalAmount = 0.0;
+    for (RaiselyClient.DonationItem item : items) {
+      totalAmount += item.amount / 100.0;
+    }
+    return totalAmount;
+  }
 
   protected String parseDonationId(String description){
     Pattern r = Pattern.compile("Donation \\((\\d+)\\).*");
