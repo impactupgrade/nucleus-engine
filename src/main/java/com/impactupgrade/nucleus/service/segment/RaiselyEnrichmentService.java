@@ -93,7 +93,7 @@ public class RaiselyEnrichmentService implements EnrichmentService {
   }
 
   //HELPERS
-  private double calculateTotalAmount(List<RaiselyClient.DonationItem> items) {
+  protected double calculateTotalAmount(List<RaiselyClient.DonationItem> items) {
     double totalAmount = 0.0;
     for (RaiselyClient.DonationItem item : items) {
       totalAmount += item.amount / 100.0;
