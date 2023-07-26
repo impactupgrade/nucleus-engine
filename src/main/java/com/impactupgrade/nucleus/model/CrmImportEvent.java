@@ -114,7 +114,11 @@ public class CrmImportEvent {
   }
 
   public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromGeneric).collect(Collectors.toList());
+    return data.stream()
+        // Some spreadsheets oddly give us empty rows at the end before the file terminates. Skip them!
+        .filter(d -> d.values().stream().anyMatch(v -> !Strings.isNullOrEmpty(v)))
+        .map(CrmImportEvent::fromGeneric)
+        .collect(Collectors.toList());
   }
 
   public static CrmImportEvent fromGeneric(Map<String, String> _data) {

@@ -119,25 +119,31 @@ public class CrmController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    // Important to do this outside of the new thread -- ensures the InputStream is still open.
-    List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
-    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
+    String jobName = "Bulk Import: File";
+    env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
 
-    Runnable thread = () -> {
-      try {
-        String jobName = "Bulk Import: File";
-        env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
-        env.primaryCrmService().processBulkImport(importEvents);
-        env.endJobLog(JobStatus.DONE);
-      } catch (Exception e) {
-        env.logJobError("bulkImport failed", e);
-        env.logJobError(e.getMessage());
-        env.endJobLog(JobStatus.FAILED);
-      }
-    };
-    new Thread(thread).start();
+    try {
+      // Important to do this outside of the new thread -- ensures the InputStream is still open.
+      List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
+      List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
 
-    return Response.status(200).build();
+      Runnable thread = () -> {
+        try {
+          env.primaryCrmService().processBulkImport(importEvents);
+          env.endJobLog(JobStatus.DONE);
+        } catch (Exception e) {
+          env.logJobError("bulkImport failed", e);
+          env.endJobLog(JobStatus.FAILED);
+        }
+      };
+      new Thread(thread).start();
+
+      return Response.status(200).build();
+    } catch (Exception e) {
+      env.logJobError("bulkImport failed", e);
+      env.endJobLog(JobStatus.FAILED);
+      throw e;
+    }
   }
 
   @Path("/bulk-import/gsheet")
