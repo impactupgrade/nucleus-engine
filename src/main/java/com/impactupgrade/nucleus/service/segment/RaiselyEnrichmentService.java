@@ -43,9 +43,8 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     String donationId = parseDonationId(crmDonation.description);
     RaiselyClient.Donation raiselyDonation = raiselyClient.getDonation(donationId);
 
-    if (raiselyDonation == null || raiselyDonation.items == null) {
+    if (raiselyDonation == null || raiselyDonation.items == null || raiselyDonation.items.isEmpty()) {
       // not a split transaction -- return the original
-      env.logJobInfo("Raisely donation was null and/or Raisely donation items were null, skipping");
     } else {
       // TODO: Are there other types of items? Could there be a ticket + products + donation?
       List<RaiselyClient.DonationItem> donationItems = raiselyDonation.items.stream().filter(i -> !"ticket".equalsIgnoreCase(i.type)).toList();
