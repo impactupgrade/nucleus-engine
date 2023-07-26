@@ -103,9 +103,6 @@ public class CrmImportEvent {
   public String campaignRecordTypeName;
   // TODO: In the future, could add OOTB support for dates, etc. but need to see this play out.
 
-  // TODO: Add this to the Portal task. But for now, defaulting it to false out of caution.
-  public Boolean opportunitySkipDuplicateCheck = false;
-
   public boolean secondPass = false;
 
   public String contactFullName() {

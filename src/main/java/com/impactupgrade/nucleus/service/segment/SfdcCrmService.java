@@ -1438,14 +1438,6 @@ public class SfdcCrmService implements CrmService {
             env.logJobInfo("skipping opp {} import, due to account/contact failure", i + 2);
             continue;
           }
-          if (!importEvent.opportunitySkipDuplicateCheck && importEvent.opportunityAmount != null && Strings.isNullOrEmpty(importEvent.opportunityId)) {
-            List<SObject> existingOpportunities = sfdcClient.searchDonations(nonBatchAccountIds.get(i), nonBatchContactIds.get(i),
-                importEvent.opportunityDate, importEvent.opportunityAmount.doubleValue(), opportunityCustomFields);
-            if (!existingOpportunities.isEmpty()) {
-              env.logJobInfo("skipping opp {} import, due to possible duplicate: {}", i + 2, existingOpportunities.get(0).getId());
-              continue;
-            }
-          }
 
           setBulkImportOpportunityFields(opportunity, null, importEvent);
 
