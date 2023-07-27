@@ -5,9 +5,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
-import com.impactupgrade.nucleus.util.OAuth2Util;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.impactupgrade.nucleus.util.OAuth2;
 
 import javax.ws.rs.core.GenericType;
 import java.util.ArrayList;
@@ -25,15 +23,12 @@ public class MinistryByTextClient {
 
   protected final Environment env;
 
-  protected static OAuth2Util.Tokens tokens;
-
-  private String clientId;
-  private String clientSecret;
+  private final OAuth2.Context oAuth2Context;
 
   public MinistryByTextClient(Environment env) {
     this.env = env;
-    this.clientId = env.getConfig().mbt.clientId;
-    this.clientSecret = env.getConfig().mbt.clientSecret;
+    this.oAuth2Context = new OAuth2.ClientCredentialsContext(
+        env.getConfig().mbt.clientId, env.getConfig().mbt.clientSecret, null, null, AUTH_ENDPOINT);
   }
 
   public List<Group> getGroups(String campusId) {
@@ -100,12 +95,7 @@ public class MinistryByTextClient {
   }
 
   protected HttpClient.HeaderBuilder headers() {
-    tokens = OAuth2Util.refreshTokens(tokens, AUTH_ENDPOINT);
-    if (tokens == null) {
-      tokens = OAuth2Util.getTokensForClientCredentials(clientId, clientSecret, AUTH_ENDPOINT);
-    }
-    String accessToken = tokens != null ? tokens.accessToken() : null;
-    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.refresh().accessToken());
   }
 
   //TODO: remove once done with testing
@@ -127,10 +117,9 @@ public class MinistryByTextClient {
     crmContact.firstName = "Brett";
     crmContact.lastName = "Meyer";
     crmContact.mobilePhone = "260-349-5732";
-    Subscriber subscriber = mbtClient.upsertSubscriber(crmContact, "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b");
-    System.out.println(subscriber);
+    mbtClient.upsertSubscriber(crmContact, "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b");
 
     // To check same access token is used
-    subscriber = mbtClient.upsertSubscriber(crmContact, "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b");
+    mbtClient.upsertSubscriber(crmContact, "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b");
   }
 }

@@ -3,8 +3,9 @@ package com.impactupgrade.nucleus.client;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.HttpClient;
-import com.impactupgrade.nucleus.util.OAuth2Util;
+import com.impactupgrade.nucleus.util.OAuth2;
 
 import java.util.List;
 import java.util.Map;
@@ -18,15 +19,12 @@ public class RaiselyClient {
 
   protected final Environment env;
 
-  protected static OAuth2Util.Tokens tokens;
-
-  private String username;
-  private String password;
+  private final OAuth2.Context oAuth2Context;
 
   public RaiselyClient(Environment env) {
     this.env = env;
-    this.username = env.getConfig().raisely.username;
-    this.password = env.getConfig().raisely.password;
+    this.oAuth2Context = new OAuth2.UsernamePasswordContext(
+        env.getConfig().raisely.username, env.getConfig().raisely.password, Map.of("requestAdminToken", "true"), null, null, AUTH_URL);
   }
 
   //*Note this uses the donation ID from the Stripe metadata. Different from the donation UUID
@@ -55,12 +53,7 @@ public class RaiselyClient {
   }
 
   protected HttpClient.HeaderBuilder headers() {
-    tokens = OAuth2Util.refreshTokens(tokens, AUTH_URL);
-    if (tokens == null) {
-      tokens = OAuth2Util.getTokensForUsernameAndPassword(username, password, Map.of("requestAdminToken", "true"), AUTH_URL);
-    }
-    String accessToken = tokens != null ? tokens.accessToken() : null;
-    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.refresh().accessToken());
   }
 
   //Response Objects
@@ -115,5 +108,22 @@ public class RaiselyClient {
     }
   }
 
+  //TODO: remove once done with testing
+  public static void main(String[] args) {
+    Environment env = new Environment() {
+      @Override
+      public EnvironmentConfig getConfig() {
+        EnvironmentConfig envConfig = new EnvironmentConfig();
+        envConfig.raisely.username = "brett@impactupgrade.com";
+        envConfig.raisely.password = "6.tw*gghr.fyDDjkjaZj";
+        return envConfig;
+      }
+    };
+    
+    RaiselyClient raiselyClient = new RaiselyClient(env);
+    
+    raiselyClient.getDonation("123");
+    raiselyClient.getDonation("123");
+  }
 }
 

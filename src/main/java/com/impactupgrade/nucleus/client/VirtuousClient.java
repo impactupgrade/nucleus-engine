@@ -4,8 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.HttpClient;
-import com.impactupgrade.nucleus.util.OAuth2Util;
+import com.impactupgrade.nucleus.util.OAuth2;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -27,30 +28,17 @@ public class VirtuousClient {
     private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_LIMIT = 100;
 
-    private static OAuth2Util.Tokens tokens;
+    protected final Environment env;
 
     private String apiKey;
-
-    private String username;
-    private String password;
-    private String tokenServerUrl;
-
-    private String accessToken;
-    private String refreshToken;
-
-    protected Environment env;
+    private final OAuth2.Context oAuth2Context;
 
     public VirtuousClient(Environment env) {
         this.env = env;
-
         this.apiKey = env.getConfig().virtuous.secretKey;
-
-        this.username = env.getConfig().virtuous.username;
-        this.password = env.getConfig().virtuous.password;
-        this.tokenServerUrl = env.getConfig().virtuous.tokenServerUrl;
-
-        this.accessToken = env.getConfig().virtuous.accessToken;
-        this.refreshToken = env.getConfig().virtuous.refreshToken;
+        this.oAuth2Context = new OAuth2.UsernamePasswordContext(
+            env.getConfig().virtuous.username, env.getConfig().virtuous.password, null,
+            env.getConfig().virtuous.accessToken, env.getConfig().virtuous.refreshToken, env.getConfig().virtuous.tokenServerUrl);
     }
 
     // Contact
@@ -262,23 +250,14 @@ public class VirtuousClient {
       }
 
     // Otherwise, assume oauth.
-    if (tokens == null) {
-      tokens = new OAuth2Util.Tokens(accessToken, null, refreshToken);
-    }
-    tokens = OAuth2Util.refreshTokens(tokens, tokenServerUrl);
-    if (tokens == null) {
-      tokens = OAuth2Util.getTokensForUsernameAndPassword(username, password, tokenServerUrl);
-    }
-
     // !
-//      // When fetching a token for a user with Two-Factor Authentication, you will receive a 202 (Accepted) response stating that a verification code is required.
-//      //The user will then need to enter the verification code that was sent to their phone. You will then request the token again but this time you will pass in an OTP (one-time-password) header with the verification code received
-//      //If the verification code and user credentials are correct, you will receive a token as seen in the Token authentication above.
-//      //To request a new Token after the user enters the verification code, add an OTP header:
-//      //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token
-
-    String accessToken = tokens != null ? tokens.accessToken() : null;
-    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
+    // When fetching a token for a user with Two-Factor Authentication, you will receive a 202 (Accepted) response stating that a verification code is required.
+    //The user will then need to enter the verification code that was sent to their phone. You will then request the token again but this time you will pass in an OTP (one-time-password) header with the verification code received
+    //If the verification code and user credentials are correct, you will receive a token as seen in the Token authentication above.
+    //To request a new Token after the user enters the verification code, add an OTP header:
+    //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token  
+    
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.refresh().accessToken());
   }
 
     public static class ContactSearchResponse {
@@ -866,20 +845,23 @@ public class VirtuousClient {
 
   //TODO: remove once done with testing
   public static void main(String[] args) {
-    String username = "brett@impactupgrade.com";
-    String password = "69nWJnsceQmUw88rH32z";
-    String tokenServerUrl = "https://api.virtuoussoftware.com/Token";
+    Environment env = new Environment() {
+      @Override
+      public EnvironmentConfig getConfig() {
+        EnvironmentConfig envConfig = new EnvironmentConfig();
+        envConfig.virtuous.username = "brett@impactupgrade.com";
+        envConfig.virtuous.password = "69nWJnsceQmUw88rH32z";
+        envConfig.virtuous.tokenServerUrl = "https://api.virtuoussoftware.com/Token";
+        envConfig.virtuous.accessToken = "abc";
+        envConfig.virtuous.refreshToken = "b-j4QKdZCxVTXdrH-rxjvCp7Xc1tVoZmkuS3R1N9ph_fKHF194yqErWGSkWYGzLlfjYZAj1HFl-GjAO6ZmDaNkCZQHvJdca2ZVVD3eInMt7XOOjGmfXApkUIb4FjRGdHHykGj6QszsMLneogpDIlwrd764pA7JWEy7CrH6zAUURMJpI6vWfDMtX16-om6oTXc-m5G0Bw-jleG6S0eOXrWd_dAr2slItGsvErGgPmO6L4LcMj1qhdroLgRV6vKvsVeYvekjVmI1M7RUl6bV07D2Ha8XVGdXZpY6xgSC4DBveNINO2P6eqdVbVC8nhYbxPzA53bh7RbMf7zESWdB6ZYzCkzMWSwCp9BzKt0FgHATKm5yNrcU8OtsyIpsD8w9u-QSk7CcrJRinh2EXoWd60mvZoi1A0V4D_oNfmg0CERvk1IyDuyaSIWUK8p5CCVn6hCQ96rHkl_Qd712Kx-PgMA_rnh4UW93J6qDMtU93OA0JeuTZRZO0W9nA1_WrFmlM4cYMdeUJhfcsQz75qmvr4-_zffitJLisML0u8VMchjKS-VQVZm76wwYxM4Y--xHW5btRx2BCFFizquf2NzxJffioaFOI";
+        return envConfig;
+      }
+    };
+    
+    VirtuousClient virtuousClient = new VirtuousClient(env);
+    
+    virtuousClient.getContactById(1);
+    virtuousClient.getContactById(1);
 
-    String accessToken = "MYEp3SVJliMwm3JceQG0l4nA92A71bVXRgqdpiYMy0Cb9ZeS6SCepkNXDfMupXXHBYKGKY40G_L_UGZZNaWx94eWTOFH0BFw1kqZZyUQMtGO2dSoLfGXA_zgm64iZNeB-8o9JugeVHzDL6FwbpyMAxAD68iYk_PQkf6FCDxJ_VKD_6z-baOQ49LrnxIfxKx_np9mSzHto5J-lhPuwPdlHjYjAaFHmj7EpvcBBXUnCYnf310eV5pqyH6WPE6FqUVPUgKlZ1LfRo-Dc5-edSMU9Jvao4ayjMuNcPYmE1LUOoW_B9arAS3f5rnCVU_R2qanJ2_1isRY6sK3YIfA9gEPsxm7_B3qG42z4VZsrJT4WulQxAOSE8i3o4GEEwFTjXBnFeX0DtrkDnuELcKntkKzUN0JGHQNQb_M4ezkkmHlD5RowS9IVJCaQH3L8I6y9Ima3KyYrfhjE-dkgTbtkfdG9CnPplvZezo0IyQcWW9707O5tF39XTwJs3puUV_yg3z1wzpy54nx1KrROUSrku1N5fAYZ6hzFzCOHS_yYSxTqd5ODZlWgiByFfPYOpwKt53rqLXPHA5gNfRllU0XDQiK-2pDsoI";
-    //String refreshToken = "XGFBTq-Bfog67KYMwSOfV2IgQ3gyu_V1PKprFTc41ULqPsoxc1IBK-pMip2HLc7r3RbTeyuP4M49CdSzIo43uqASkdyb8JRRBu57vFxw7HcWWLx8RXoBSY04V3od8djbYB49PKqO4bjHjf10aLHLlN0p0d6HiI6NhDjLUfdrvAFKryra7Tg2W_aUWuEFmSvoI92XongqUh5Uf3arbxTNfqcz_XWLWFaM547CL718-IpJ9ie5OLGybvYuglZDsXw6DK7pMu2jfW2akN2sn1PXxCi4aeQpQEckbhvUIF3vaHvCdEFEXLVF7JbPPWckrWj1pG4xY_bpp86MG1wqvbn3XSrQiuBkSsWZKYWGyBZWHYrVwfkiTJz1zjOevhOTXnM3D2VR1SK5coCSGcTzcWANoAk0-Du6eHE5u7pUc-FQpjbDW0uphcj6TT-VADE2uvB3tcKn_4tjY64vWYf0s09SPFlZd9CErhZKri1XX5P5jsGoi7wdCG0QbDcI7r8ywBZbVzERKH-hG8LUwJA7tUV_eX_MnHNm9hEkSnX_rq60Dl2yknPByGXRGZgR9L7SPph90nd_9s4K0Wf6Wzp0-OGjmvsiyVk";
-    String refreshToken = "abc";
-
-    if (tokens == null) {
-      tokens = new OAuth2Util.Tokens(accessToken, null, refreshToken);
-    }
-    tokens = OAuth2Util.refreshTokens(tokens, tokenServerUrl);
-    if (tokens == null) {
-      tokens = OAuth2Util.getTokensForUsernameAndPassword(username, password, tokenServerUrl);
-    }
   }
 }

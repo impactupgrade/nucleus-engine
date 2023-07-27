@@ -6,7 +6,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
-import com.impactupgrade.nucleus.util.OAuth2Util;
+import com.impactupgrade.nucleus.util.OAuth2;
 
 import javax.ws.rs.core.GenericType;
 import java.util.ArrayList;
@@ -24,15 +24,12 @@ public class SpokeClient {
 
   protected final Environment env;
 
-  protected static OAuth2Util.Tokens tokens;
+  private final OAuth2.Context oAuth2Context;
 
-  private String clientId;
-  private String clientSecret;
-  
   public SpokeClient(Environment env) {
     this.env = env;
-    this.clientId = env.getConfig().spoke.clientId;
-    this.clientSecret = env.getConfig().spoke.clientSecret;
+    this.oAuth2Context = new OAuth2.ClientCredentialsContext(
+        env.getConfig().spoke.clientId, env.getConfig().spoke.clientSecret, null, null, AUTH_ENDPOINT);
   }
 
   public List<Phonebook> getPhonebooks() {
@@ -113,12 +110,7 @@ public class SpokeClient {
   }
 
   protected HttpClient.HeaderBuilder headers() {
-    tokens = OAuth2Util.refreshTokens(tokens, AUTH_ENDPOINT);
-    if (tokens == null) {
-      tokens = OAuth2Util.getTokensForClientCredentials(clientId, clientSecret, AUTH_ENDPOINT);
-    }
-    String accessToken = tokens != null ? tokens.accessToken() : null;
-    return HttpClient.HeaderBuilder.builder().authBearerToken(accessToken);
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.refresh().accessToken());
   }
 
   //TODO: remove once done with testing
@@ -141,9 +133,11 @@ public class SpokeClient {
     crmContact.mobilePhone = "260-349-5732";
 //    Phonebook phonebook = spokeClient.createPhonebook("Salesforce US", "Salesforce contacts in the US", "US");
     List<Phonebook> phonebooks = spokeClient.getPhonebooks();
+    System.out.println(phonebooks);
 //    Contact contact = spokeClient.upsertContact(crmContact, "Salesforce", phonebooks.get(0).id);
 
     // To check same access token is used
     phonebooks = spokeClient.getPhonebooks();
+    System.out.println(phonebooks);
   }
 }

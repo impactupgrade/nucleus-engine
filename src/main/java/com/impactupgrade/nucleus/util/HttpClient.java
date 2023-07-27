@@ -138,23 +138,4 @@ public class HttpClient {
       return this;
     }
   }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class TokenResponse {
-    @JsonProperty("access_token")
-    public String accessToken;
-    @JsonProperty("token_type")
-    public String tokenType;
-    @JsonProperty("expires_in")
-    public Integer expiresIn;
-    @JsonProperty("refresh_token")
-    public String refreshToken;
-    @JsonProperty("userName")
-    public String username;
-    public Boolean twoFactorEnabled;
-    @JsonProperty(".issued")
-    public Date issuedAt;
-    @JsonProperty(".expires")
-    public Date expiresAt;
-  }
 }
