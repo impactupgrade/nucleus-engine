@@ -44,13 +44,13 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     RaiselyClient.Donation raiselyDonation = raiselyClient.getDonation(donationId);
 
     if (raiselyDonation == null || raiselyDonation.items == null || raiselyDonation.items.isEmpty()) {
-      // not a split transaction -- return the original
+      // return the original
     } else {
       // TODO: Are there other types of items? Could there be a ticket + products + donation?
       List<RaiselyClient.DonationItem> donationItems = raiselyDonation.items.stream().filter(i -> !"ticket".equalsIgnoreCase(i.type)).toList();
       List<RaiselyClient.DonationItem> ticketItems = raiselyDonation.items.stream().filter(i -> "ticket".equalsIgnoreCase(i.type)).toList();
       if (ticketItems.isEmpty()) {
-        // donations only, but this should never happen?
+        // donations only
         crmDonation.transactionType = EnvironmentConfig.TransactionType.DONATION;
         crmDonation.amount = calculateTotalAmount(donationItems);
       } else if (donationItems.isEmpty()) {
