@@ -13,7 +13,6 @@ import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.commons.collections.CollectionUtils;
@@ -40,7 +39,6 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static com.impactupgrade.nucleus.client.MailchimpClient.ADDRESS;
 import static com.impactupgrade.nucleus.client.MailchimpClient.FIRST_NAME;
 import static com.impactupgrade.nucleus.client.MailchimpClient.LAST_NAME;
 import static com.impactupgrade.nucleus.client.MailchimpClient.PHONE_NUMBER;
@@ -480,11 +478,6 @@ public class MailchimpEmailService extends AbstractEmailService {
     mcContact.merge_fields.mapping.put(FIRST_NAME, crmContact.firstName);
     mcContact.merge_fields.mapping.put(LAST_NAME, crmContact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
-    // MC only allows "complete" addresses, so only fill this out if that's the case. As a backup, we're creating
-    // separate, custom fields for city/state/zip/country.
-    if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
-      mcContact.merge_fields.mapping.put(ADDRESS, toMcAddress(crmContact.mailingAddress));
-    }
     mcContact.merge_fields.mapping.putAll(customFields);
     mcContact.status = SUBSCRIBED;
 
@@ -495,18 +488,5 @@ public class MailchimpEmailService extends AbstractEmailService {
     mcContact.interests = groupMap;
 
     return mcContact;
-  }
-
-  protected MailchimpObject toMcAddress(CrmAddress address) {
-    MailchimpObject mcAddress = new MailchimpObject();
-
-    mcAddress.mapping.put("country", address.country);
-    mcAddress.mapping.put("state", address.state);
-    mcAddress.mapping.put("city", address.city);
-    // TODO: CRM street does not handle multiple address lines eg. addr1 & addr2
-    mcAddress.mapping.put("addr1", address.street);
-    mcAddress.mapping.put("zip", address.postalCode);
-
-    return mcAddress;
   }
 }

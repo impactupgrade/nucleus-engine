@@ -41,7 +41,6 @@ public class MailchimpClient {
   public static final String FIRST_NAME = "FNAME";
   public static final String LAST_NAME = "LNAME";
   public static final String PHONE_NUMBER = "PHONE";
-  public static final String ADDRESS = "ADDRESS";
   public static final String TAGS = "tags";
   public static final String TAG_COUNT = "tags_count";
   public static final String TAG_NAME = "name";
@@ -69,22 +68,7 @@ public class MailchimpClient {
     upsertMemberMethod.merge_fields.mapping.putAll(contact.merge_fields.mapping);
     upsertMemberMethod.interests.mapping.putAll(contact.interests.mapping);
 
-    try {
-      client.execute(upsertMemberMethod);
-    } catch (MailchimpException e) {
-      String error = exceptionToString(e);
-
-      // We're finding that address validation is SUPER picky, especially when it comes to CRMs that combine
-      // street1 and street2 into a single street. If the upsert fails, try it again without ADDRESS...
-      if (contact.merge_fields.mapping.containsKey(ADDRESS)) {
-        env.logJobInfo("Mailchimp upsertContact failed: {}", error);
-        env.logJobInfo("retrying upsertContact without ADDRESS");
-        upsertMemberMethod.merge_fields.mapping.remove(ADDRESS);
-        client.execute(upsertMemberMethod);
-      } else {
-        throw e;
-      }
-    }
+    client.execute(upsertMemberMethod);
   }
 
   public String upsertContactsBatch(String listId, List<MemberInfo> contacts) throws IOException, MailchimpException {
@@ -301,5 +285,12 @@ public class MailchimpClient {
     public String type;
     public String title;
     public String status;
+    public List<Error> errors;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class Error {
+    public String field;
+    public String message;
   }
 }
