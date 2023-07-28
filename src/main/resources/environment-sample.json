@@ -12,23 +12,14 @@
     "password": "4mJA6UrqffKZEP35KrR4uR9DgzwapiaVqVsVGDrT6",
 
     "fieldDefinitions": {
-      "paymentGatewayName": "Recurring_Payment_Source__c",
-
-      "paymentGatewayTransactionId": "",
-      "paymentGatewayCustomerId": "Stripe_Customer_ID__c",
-      "paymentGatewaySubscriptionId": "Stripe_Subscription_Id__c",
-
-      "paymentGatewayRefundId": "",
-      "paymentGatewayRefundDate": "Refund_Date__c",
-      "paymentGatewayRefundDepositId": "Refund_Deposit_ID__c",
-      "paymentGatewayRefundDepositDate": "Refund_Deposit_Date__c",
-
-      "paymentGatewayDepositId": "Deposit_ID__c",
-      "paymentGatewayDepositDate": "Deposit_Date__c",
-      "paymentGatewayDepositNetAmount": "Deposit_Net__c",
-      "paymentGatewayDepositFee": "Deposit_Fee__c",
-
-      "paymentGatewayFailureReason": "Failure_Reason__c",
+      "paymentGatewayName": "Payment_Gateway_Name__c",
+      "paymentGatewayTransactionId": "Payment_Gateway_Transaction_ID__c",
+      "paymentGatewayCustomerId": "Payment_Gateway_Customer_ID__c",
+      "paymentGatewaySubscriptionId": "Payment_Gateway_Subscription_ID__c",
+      "paymentGatewayDepositId": "Payment_Gateway_Deposit_ID__c",
+      "paymentGatewayDepositDate": "Payment_Gateway_Deposit_Date__c",
+      "paymentGatewayDepositNetAmount": "Payment_Gateway_Deposit_Net_Amount__c",
+      "paymentGatewayDepositFee": "Payment_Gateway_Deposit_Fee__c",
 
       "fund": "",
 
