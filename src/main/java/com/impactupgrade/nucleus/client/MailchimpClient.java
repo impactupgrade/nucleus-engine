@@ -100,7 +100,7 @@ public class MailchimpClient {
   public List<MemberInfo> getListMembers(String listId, String status, Calendar sinceLastChanged) throws IOException, MailchimpException {
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
     getMembersMethod.status = status;
-    getMembersMethod.count = 500; // subjective, but this is timing out periodically -- may need to dial it back further
+    getMembersMethod.count = 250; // subjective, but this is timing out periodically -- may need to dial it back further
     env.logJobInfo("retrieving list {} contacts", listId);
     if (sinceLastChanged != null) {
       getMembersMethod.since_last_changed = sinceLastChanged.getTime();
