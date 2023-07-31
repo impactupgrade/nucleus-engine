@@ -2,11 +2,14 @@ package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.dao.HibernateDao;
+import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.OAuth2;
+import org.json.JSONObject;
 
 import javax.ws.rs.core.GenericType;
 import java.util.ArrayList;
@@ -23,13 +26,30 @@ public class SpokeClient {
   protected static String API_ENDPOINT_BASE = "https://integration.spokephone.com/";
 
   protected final Environment env;
+  protected HibernateDao<Long, Organization> organizationDao;
 
   private final OAuth2.Context oAuth2Context;
 
   public SpokeClient(Environment env) {
     this.env = env;
+    this.organizationDao = new HibernateDao<>(Organization.class);
+
+    Organization org = getOrganization();
+    JSONObject envJson = org.getEnvironmentJson();
+    JSONObject spokeJson = envJson.getJSONObject("spoke");
+
     this.oAuth2Context = new OAuth2.ClientCredentialsContext(
-        env.getConfig().spoke.clientId, env.getConfig().spoke.clientSecret, null, null, AUTH_ENDPOINT);
+      env.getConfig().spoke.clientId, env.getConfig().spoke.clientSecret, 
+      spokeJson.getString("accessToken"), spokeJson.getLong("expiresAt"), spokeJson.getString("refreshToken"), AUTH_ENDPOINT);
+  }
+
+  protected Organization getOrganization() {
+    return organizationDao.getQueryResult(
+        "from Organization o where o.nucleusApiKey=:apiKey",
+        query -> {
+          query.setParameter("apiKey", env.getConfig().apiKey);
+        }
+    ).get();
   }
 
   public List<Phonebook> getPhonebooks() {
@@ -110,7 +130,20 @@ public class SpokeClient {
   }
 
   protected HttpClient.HeaderBuilder headers() {
-    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.refresh().accessToken());
+    String currentAccessToken = oAuth2Context.accessToken();
+    if (currentAccessToken != oAuth2Context.refresh().accessToken()) {
+      Organization org = getOrganization();
+      JSONObject envJson = org.getEnvironmentJson();
+      JSONObject spokeJson = envJson.getJSONObject("spoke");
+
+      spokeJson.put("accessToken", oAuth2Context.accessToken());
+      spokeJson.put("expiresAt", oAuth2Context.expiresAt() != null ? oAuth2Context.expiresAt() : null);
+      spokeJson.put("refreshToken", oAuth2Context.refreshToken());
+      org.setEnvironmentJson(envJson);
+      organizationDao.update(org);
+    }
+    
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   //TODO: remove once done with testing

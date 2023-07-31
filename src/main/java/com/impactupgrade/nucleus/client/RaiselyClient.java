@@ -2,10 +2,13 @@ package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.impactupgrade.nucleus.dao.HibernateDao;
+import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.OAuth2;
+import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
@@ -18,13 +21,30 @@ public class RaiselyClient {
   private static final String AUTH_URL = RAISELY_API_URL + "/login";
 
   protected final Environment env;
+  protected HibernateDao<Long, Organization> organizationDao;
 
   private final OAuth2.Context oAuth2Context;
 
   public RaiselyClient(Environment env) {
     this.env = env;
+    this.organizationDao = new HibernateDao<>(Organization.class);
+
+    Organization org = getOrganization();
+    JSONObject envJson = org.getEnvironmentJson();
+    JSONObject raiselyJson = envJson.getJSONObject("raisely");
+
     this.oAuth2Context = new OAuth2.UsernamePasswordContext(
-        env.getConfig().raisely.username, env.getConfig().raisely.password, Map.of("requestAdminToken", "true"), null, null, AUTH_URL);
+      env.getConfig().raisely.username, env.getConfig().raisely.password, Map.of("requestAdminToken", "true"),
+      raiselyJson.getString("accessToken"), raiselyJson.getLong("expiresAt"), raiselyJson.getString("refreshToken"),  AUTH_URL);
+  }
+
+  protected Organization getOrganization() {
+    return organizationDao.getQueryResult(
+        "from Organization o where o.nucleusApiKey=:apiKey",
+        query -> {
+          query.setParameter("apiKey", env.getConfig().apiKey);
+        }
+    ).get();
   }
 
   //*Note this uses the donation ID from the Stripe metadata. Different from the donation UUID
@@ -53,7 +73,20 @@ public class RaiselyClient {
   }
 
   protected HttpClient.HeaderBuilder headers() {
-    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.refresh().accessToken());
+    String currentAccessToken = oAuth2Context.accessToken();
+    if (currentAccessToken != oAuth2Context.refresh().accessToken()) {
+      Organization org = getOrganization();
+      JSONObject envJson = org.getEnvironmentJson();
+      JSONObject raisely = envJson.getJSONObject("raisely");
+
+      raisely.put("accessToken", oAuth2Context.accessToken());
+      raisely.put("expiresAt", oAuth2Context.expiresAt() != null ? oAuth2Context.expiresAt() : null);
+      raisely.put("refreshToken", oAuth2Context.refreshToken());
+      org.setEnvironmentJson(envJson);
+      organizationDao.update(org);
+    }
+
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   //Response Objects

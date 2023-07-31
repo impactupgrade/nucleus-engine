@@ -29,8 +29,9 @@ public class OAuth2 {
     protected Tokens tokens;
     protected String tokenUrl;
 
-    public Context(String accessToken, String refreshToken, String tokenUrl) {
-      this.tokens = new Tokens(accessToken, null, refreshToken);
+    public Context(String accessToken, Long expiresAt, String refreshToken, String tokenUrl) {
+      Date expiresAtDate = expiresAt != null ? Date.from(Instant.ofEpochSecond(expiresAt)) : null; 
+      this.tokens = new Tokens(accessToken, expiresAtDate, refreshToken);
       this.tokenUrl = tokenUrl;
     }
 
@@ -46,6 +47,14 @@ public class OAuth2 {
 
     public String accessToken() {
       return tokens != null ? tokens.accessToken() : null;
+    }
+
+    public Date expiresAt() {
+      return tokens != null ? tokens.expiresAt : null;
+    }
+
+    public String refreshToken() {
+      return tokens != null ? tokens.refreshToken() : null;
     }
 
     protected Tokens refreshTokens() {
@@ -83,8 +92,8 @@ public class OAuth2 {
     private final String clientId;
     private final String clientSecret;
 
-    public ClientCredentialsContext(String clientId, String clientSecret, String accessToken, String refreshToken, String tokenUrl) {
-      super(accessToken, refreshToken, tokenUrl);
+    public ClientCredentialsContext(String clientId, String clientSecret, String accessToken, Long expiresAt, String refreshToken, String tokenUrl) {
+      super(accessToken, expiresAt, refreshToken, tokenUrl);
       this.clientId = clientId;
       this.clientSecret = clientSecret;
     }
@@ -116,8 +125,8 @@ public class OAuth2 {
     public UsernamePasswordContext(
         String username, String password,
         Map<String, String> requestTokenParams,
-        String accessToken, String refreshToken, String tokenUrl) {
-      super(accessToken, refreshToken, tokenUrl);
+        String accessToken, Long expiresAt, String refreshToken, String tokenUrl) {
+      super(accessToken, expiresAt, refreshToken, tokenUrl);
       this.username = username;
       this.password = password;
       this.requestTokenParams = requestTokenParams;
