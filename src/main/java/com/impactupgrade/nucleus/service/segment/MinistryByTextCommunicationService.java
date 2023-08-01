@@ -22,8 +22,8 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class MinistryByTextCommunicationService extends AbstractCommunicationService {
 
-  protected static String AUTH_ENDPOINT = "https://login-qa.ministrybytext.com/connect/token";
-  protected static String API_ENDPOINT_BASE = "https://api-qa.ministrybytext.com/";
+  protected static String AUTH_ENDPOINT = "https://login.ministrybytext.com/connect/token";
+  protected static String API_ENDPOINT_BASE = "https://api.ministrybytext.com/";
 
   protected String accessToken;
   protected Calendar accessTokenExpiration;
@@ -40,14 +40,14 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform mbtConfig : env.getConfig().ministrybytext) {
+    for (EnvironmentConfig.MBT mbtConfig : env.getConfig().ministrybytext) {
       for (EnvironmentConfig.CommunicationList communicationList : mbtConfig.lists) {
         List<CrmContact> crmContacts = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
 
         for (CrmContact crmContact : crmContacts) {
           if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
             env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phoneNumberForSMS(), communicationList.id);
-//            upsertSubscriber(crmContact, communicationList.id);
+            upsertSubscriber(crmContact, mbtConfig, communicationList);
           }
         }
       }
@@ -63,31 +63,31 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   public void upsertContact(String contactId) throws Exception {
     CrmService crmService = env.primaryCrmService();
 
-    for (EnvironmentConfig.CommunicationPlatform mbtConfig : env.getConfig().ministrybytext) {
+    for (EnvironmentConfig.MBT mbtConfig : env.getConfig().ministrybytext) {
       for (EnvironmentConfig.CommunicationList communicationList : mbtConfig.lists) {
         Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
 
         if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().phoneNumberForSMS())) {
           env.logJobInfo("upserting contact {} {} on list {}", crmContact.get().id, crmContact.get().phoneNumberForSMS(), communicationList.id);
-//          upsertSubscriber(crmContact.get(), communicationList.id);
+          upsertSubscriber(crmContact.get(), mbtConfig, communicationList);
         }
       }
     }
   }
 
-  protected List<Group> getGroups(String campusId) {
-    return get(API_ENDPOINT_BASE + "campuses/" + campusId + "/groups", headers(), new GenericType<>() {});
+  protected List<Group> getGroups(EnvironmentConfig.MBT mbtConfig) {
+    return get(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups", headers(mbtConfig), new GenericType<>() {});
   }
 
-  protected Subscriber upsertSubscriber(CrmContact crmContact, String groupId) {
+  protected Subscriber upsertSubscriber(CrmContact crmContact, EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) {
     Subscriber subscriber = toMBTSubscriber(crmContact);
-    return post(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups/" + groupId + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
+    return post(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/subscribers", subscriber, APPLICATION_JSON, headers(mbtConfig), Subscriber.class);
   }
 
-  protected HttpClient.HeaderBuilder headers() {
+  protected HttpClient.HeaderBuilder headers(EnvironmentConfig.MBT mbtConfig) {
     if (isAccessTokenInvalid()) {
       env.logJobInfo("Getting new access token...");
-      HttpClient.TokenResponse tokenResponse = getAccessToken();
+      HttpClient.TokenResponse tokenResponse = getAccessToken(mbtConfig);
       accessToken = tokenResponse.accessToken;
       Calendar onehour = Calendar.getInstance();
       onehour.add(Calendar.SECOND, tokenResponse.expiresIn);
@@ -102,13 +102,13 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
     return Strings.isNullOrEmpty(accessToken) || now.after(accessTokenExpiration);
   }
 
-  protected HttpClient.TokenResponse getAccessToken() {
+  protected HttpClient.TokenResponse getAccessToken(EnvironmentConfig.MBT mbtConfig) {
     // TODO: Map.of should be able to be used instead of Form (see VirtuousClient), but getting errors about no writer
     return post(
         AUTH_ENDPOINT,
         new Form()
-            .param("client_id", env.getConfig().mbt.clientId)
-            .param("client_secret", env.getConfig().mbt.clientSecret)
+            .param("client_id", mbtConfig.clientId)
+            .param("client_secret", mbtConfig.clientSecret)
             .param("grant_type", "client_credentials"),
         APPLICATION_FORM_URLENCODED,
         HttpClient.HeaderBuilder.builder(),
@@ -177,28 +177,5 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   public static class SubscriberRelation {
     public String name;
     public String relationship;
-  }
-
-  public static void main(String[] args) {
-    Environment env = new Environment() {
-      @Override
-      public EnvironmentConfig getConfig() {
-        EnvironmentConfig envConfig = new EnvironmentConfig();
-        envConfig.mbt.clientId = "GVU05RE7VMACNUU96ME8";
-        envConfig.mbt.clientSecret = "CPMw462MQdLTW6MDDlagUWlOhxXXJgDRc0D8cBHuUqhO=g6ELo";
-        envConfig.mbt.campusId = "cf774a3b-4910-4b16-b6b0-608f80d216a4";
-        return envConfig;
-      }
-    };
-    MinistryByTextCommunicationService mbtClient = new MinistryByTextCommunicationService();
-    mbtClient.init(env);
-
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = "98765";
-    crmContact.firstName = "Brett";
-    crmContact.lastName = "Meyer";
-    crmContact.mobilePhone = "(260) 267-0709";
-    Subscriber subscriber = mbtClient.upsertSubscriber(crmContact, "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b");
-    System.out.println(subscriber);
   }
 }

@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus;
 
 import com.impactupgrade.nucleus.controller.AccountingController;
 import com.impactupgrade.nucleus.controller.BackupController;
+import com.impactupgrade.nucleus.controller.CommunicationController;
 import com.impactupgrade.nucleus.controller.CrmController;
 import com.impactupgrade.nucleus.controller.DonationFormController;
 import com.impactupgrade.nucleus.controller.EmailController;
@@ -86,6 +87,7 @@ public class App {
     apiConfig.register(MultiPartFeature.class);
 
     apiConfig.register(backupController());
+    apiConfig.register(communicationController());
     apiConfig.register(crmController());
     apiConfig.register(donationFormController());
     apiConfig.register(emailController());
@@ -144,6 +146,7 @@ public class App {
 
   // Allow orgs to override specific controllers.
   protected BackupController backupController() { return new BackupController(envFactory); }
+  protected CommunicationController communicationController() { return new CommunicationController(envFactory); }
   protected CrmController crmController() { return new CrmController(envFactory); }
   protected DonationFormController donationFormController() { return new DonationFormController(envFactory); }
   protected EmailController emailController() { return new EmailController(envFactory); }
