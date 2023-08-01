@@ -724,6 +724,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+
+  }
+
+  @Override
   public Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
     Map<String, List<String>> contactCampaigns = new HashMap<>();
     List<SObject> campaignMembers = sfdcClient.getEmailCampaignsByContactIds(contactIds);

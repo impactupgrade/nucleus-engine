@@ -701,6 +701,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+
+  }
+
+  @Override
   public String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
     throw new RuntimeException("not implemented");
   }
