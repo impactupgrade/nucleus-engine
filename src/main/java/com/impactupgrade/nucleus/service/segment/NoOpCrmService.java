@@ -104,6 +104,11 @@ public class NoOpCrmService implements CrmService {
   }
 
   @Override
+  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+
+  }
+
+  @Override
   public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
     return Collections.emptyList();
   }

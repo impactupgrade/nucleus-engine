@@ -416,6 +416,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+    //TODO?
+  }
+
+  @Override
   public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
     return getDonation(
         contactId,
