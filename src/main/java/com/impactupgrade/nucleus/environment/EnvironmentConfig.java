@@ -286,8 +286,6 @@ public class EnvironmentConfig implements Serializable {
     public String campusId = "";
   }
 
-  public MBT mbt = new MBT();
-
   public static class Raisely extends Platform {
     public String stripeAppId = "";
   }
