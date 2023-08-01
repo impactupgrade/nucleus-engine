@@ -1,8 +1,6 @@
 package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.impactupgrade.nucleus.dao.HibernateDao;
-import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -19,37 +17,21 @@ import static com.impactupgrade.nucleus.util.HttpClient.post;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 // TODO: To eventually become a mbt-java-client open source lib?
-public class MinistryByTextClient {
+public class MinistryByTextClient extends OrgConfiguredClient {
 
   protected static String AUTH_ENDPOINT = "https://login-qa.ministrybytext.com/connect/token";
   protected static String API_ENDPOINT_BASE = "https://api-qa.ministrybytext.com/";
 
-  protected final Environment env;
-  protected HibernateDao<Long, Organization> organizationDao;
-
   private final OAuth2.Context oAuth2Context;
 
   public MinistryByTextClient(Environment env) {
-    this.env = env;
-    this.organizationDao = new HibernateDao<>(Organization.class);
+    super(env);
 
-    Organization org = getOrganization();
-    JSONObject envJson = org.getEnvironmentJson();
-    JSONObject mbtJson = envJson.getJSONObject("mbt");
+    JSONObject mbtJson = getEnvJson().getJSONObject("mbt");
 
     this.oAuth2Context = new OAuth2.ClientCredentialsContext(
       env.getConfig().mbt.clientId, env.getConfig().mbt.clientSecret, 
       mbtJson.getString("accessToken"), mbtJson.getLong("expiresAt"), mbtJson.getString("refreshToken"), AUTH_ENDPOINT);
-  }
-  
-  // TODO: move the code to util/common parent class?
-  protected Organization getOrganization() {
-    return organizationDao.getQueryResult(
-        "from Organization o where o.nucleusApiKey=:apiKey",
-        query -> {
-          query.setParameter("apiKey", env.getConfig().apiKey);
-        }
-    ).get();
   }
 
   public List<Group> getGroups(String campusId) {
@@ -67,6 +49,15 @@ public class MinistryByTextClient {
   public Subscriber upsertSubscriber(CrmContact crmContact, String groupId) {
     Subscriber subscriber = toMBTSubscriber(crmContact);
     return post(API_ENDPOINT_BASE + "campuses/" + env.getConfig().mbt.campusId + "/groups/" + groupId + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
+  }
+
+  protected HttpClient.HeaderBuilder headers() {
+    String accessToken = oAuth2Context.accessToken();
+    if (oAuth2Context.refresh().accessToken() != accessToken)  {
+      // tokens updated - need to update env json config
+      updateEnvJson("mbt", oAuth2Context);
+    }
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   protected Subscriber toMBTSubscriber(CrmContact crmContact) {
@@ -113,24 +104,6 @@ public class MinistryByTextClient {
   public static class SubscriberRelation {
     public String name;
     public String relationship;
-  }
-
-  // TODO: move the code to util/common parent class?
-  protected HttpClient.HeaderBuilder headers() {
-    String currentAccessToken = oAuth2Context.accessToken();
-    if (currentAccessToken != oAuth2Context.refresh().accessToken()) {
-      Organization org = getOrganization();
-      JSONObject envJson = org.getEnvironmentJson();
-      JSONObject mbtJson = envJson.getJSONObject("mbt");
-
-      mbtJson.put("accessToken", oAuth2Context.accessToken());
-      mbtJson.put("expiresAt", oAuth2Context.expiresAt() != null ? oAuth2Context.expiresAt() : null);
-      mbtJson.put("refreshToken", oAuth2Context.refreshToken());
-      org.setEnvironmentJson(envJson);
-      organizationDao.update(org);
-    }
-    
-    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   //TODO: remove once done with testing

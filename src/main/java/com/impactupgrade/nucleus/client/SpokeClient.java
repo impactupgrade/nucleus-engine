@@ -20,36 +20,21 @@ import static com.impactupgrade.nucleus.util.HttpClient.put;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 // TODO: To eventually become a spoke-phone-java-client open source lib?
-public class SpokeClient {
+public class SpokeClient extends OrgConfiguredClient {
 
   protected static String AUTH_ENDPOINT = "https://auth.spokephone.com/oauth/token";
   protected static String API_ENDPOINT_BASE = "https://integration.spokephone.com/";
 
-  protected final Environment env;
-  protected HibernateDao<Long, Organization> organizationDao;
-
   private final OAuth2.Context oAuth2Context;
 
   public SpokeClient(Environment env) {
-    this.env = env;
-    this.organizationDao = new HibernateDao<>(Organization.class);
+    super(env);
 
-    Organization org = getOrganization();
-    JSONObject envJson = org.getEnvironmentJson();
-    JSONObject spokeJson = envJson.getJSONObject("spoke");
+    JSONObject spokeJson = getEnvJson().getJSONObject("spoke");
 
     this.oAuth2Context = new OAuth2.ClientCredentialsContext(
       env.getConfig().spoke.clientId, env.getConfig().spoke.clientSecret, 
       spokeJson.getString("accessToken"), spokeJson.getLong("expiresAt"), spokeJson.getString("refreshToken"), AUTH_ENDPOINT);
-  }
-
-  protected Organization getOrganization() {
-    return organizationDao.getQueryResult(
-        "from Organization o where o.nucleusApiKey=:apiKey",
-        query -> {
-          query.setParameter("apiKey", env.getConfig().apiKey);
-        }
-    ).get();
   }
 
   public List<Phonebook> getPhonebooks() {
@@ -100,6 +85,15 @@ public class SpokeClient {
     return contact;
   }
 
+  protected HttpClient.HeaderBuilder headers() {
+    String accessToken = oAuth2Context.accessToken();
+    if (oAuth2Context.refresh().accessToken() != accessToken)  {
+      // tokens updated - need to update config in db
+      updateEnvJson("spoke", oAuth2Context);
+    }
+    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
+  }
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Phonebook {
     public String id;
@@ -127,23 +121,6 @@ public class SpokeClient {
   public static class ContactRequest {
     public Contact contact;
     public String countryIso;
-  }
-
-  protected HttpClient.HeaderBuilder headers() {
-    String currentAccessToken = oAuth2Context.accessToken();
-    if (currentAccessToken != oAuth2Context.refresh().accessToken()) {
-      Organization org = getOrganization();
-      JSONObject envJson = org.getEnvironmentJson();
-      JSONObject spokeJson = envJson.getJSONObject("spoke");
-
-      spokeJson.put("accessToken", oAuth2Context.accessToken());
-      spokeJson.put("expiresAt", oAuth2Context.expiresAt() != null ? oAuth2Context.expiresAt() : null);
-      spokeJson.put("refreshToken", oAuth2Context.refreshToken());
-      org.setEnvironmentJson(envJson);
-      organizationDao.update(org);
-    }
-    
-    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   //TODO: remove once done with testing

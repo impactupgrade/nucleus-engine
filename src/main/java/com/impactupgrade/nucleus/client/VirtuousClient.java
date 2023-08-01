@@ -3,8 +3,6 @@ package com.impactupgrade.nucleus.client;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.dao.HibernateDao;
-import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.HttpClient;
@@ -25,39 +23,24 @@ import static com.impactupgrade.nucleus.util.HttpClient.post;
 import static com.impactupgrade.nucleus.util.HttpClient.put;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-public class VirtuousClient {
+public class VirtuousClient extends OrgConfiguredClient {
 
     private static final String VIRTUOUS_API_URL = "https://api.virtuoussoftware.com/api";
     private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_LIMIT = 100;
 
-    protected final Environment env;
-    protected HibernateDao<Long, Organization> organizationDao;
-
     private String apiKey;
     private final OAuth2.Context oAuth2Context;
 
     public VirtuousClient(Environment env) {
-        this.env = env;
-        this.organizationDao = new HibernateDao<>(Organization.class);
+        super(env);
 
-        Organization org = getOrganization();
-        JSONObject envJson = org.getEnvironmentJson();
-        JSONObject virtuousJson = envJson.getJSONObject("virtuous");
+        JSONObject virtuousJson = getEnvJson().getJSONObject("virtuous");
         
         this.apiKey = env.getConfig().virtuous.secretKey;
         this.oAuth2Context = new OAuth2.UsernamePasswordContext(
             env.getConfig().virtuous.username, env.getConfig().virtuous.password, null,
             virtuousJson.getString("accessToken"), virtuousJson.getLong("expiresAt"), virtuousJson.getString("refreshToken"), env.getConfig().virtuous.tokenServerUrl);
-    }
-
-    protected Organization getOrganization() {
-        return organizationDao.getQueryResult(
-          "from Organization o where o.nucleusApiKey=:apiKey",
-            query -> {
-                query.setParameter("apiKey", env.getConfig().apiKey);
-            }
-        ).get();
     }
 
     // Contact
@@ -275,19 +258,11 @@ public class VirtuousClient {
     //If the verification code and user credentials are correct, you will receive a token as seen in the Token authentication above.
     //To request a new Token after the user enters the verification code, add an OTP header:
     //curl -d "grant_type=password&username=YOUR_EMAIL&password=YOUR_PASSWORD&otp=YOUR_OTP" -X POST https://api.virtuoussoftware.com/Token  
-    String currentAccessToken = oAuth2Context.accessToken();
-    if (currentAccessToken != oAuth2Context.refresh().accessToken()) {
-        Organization org = getOrganization();
-        JSONObject envJson = org.getEnvironmentJson();
-        JSONObject virtuousJson = envJson.getJSONObject("virtuous");
-  
-        virtuousJson.put("accessToken", oAuth2Context.accessToken());
-        virtuousJson.put("expiresAt", oAuth2Context.expiresAt() != null ? oAuth2Context.expiresAt() : null);
-        virtuousJson.put("refreshToken", oAuth2Context.refreshToken());
-        org.setEnvironmentJson(envJson);
-        organizationDao.update(org);  
+    String accessToken = oAuth2Context.accessToken();
+    if (oAuth2Context.refresh().accessToken() != accessToken)  {
+        // tokens updated - need to update config in db
+        updateEnvJson("virtuous", oAuth2Context);
     }
-
     return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
