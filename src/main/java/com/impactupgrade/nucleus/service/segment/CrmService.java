@@ -179,15 +179,16 @@ public interface CrmService extends SegmentService {
   void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // EMAIL SYNC
+  // COMMUNICATION SYNC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception;
+  List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
+  List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
   // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
   // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
-  Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception;
+  Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Users

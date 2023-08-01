@@ -13,8 +13,6 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -474,28 +472,53 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
+    public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
         List<VirtuousClient.Contact> contacts = virtuousClient.getContactsModifiedAfter(updatedSince);
         if (CollectionUtils.isEmpty(contacts)) {
             return Collections.emptyList();
         }
 
-        if (!Strings.isNullOrEmpty(emailList.crmFilter)) {
-            List<VirtuousClient.ContactIndividualShort> contactIndividuals = virtuousClient.getContactIndividuals(emailList.crmFilter);
+        if (!Strings.isNullOrEmpty(communicationList.crmFilter)) {
+            List<VirtuousClient.ContactIndividualShort> contactIndividuals = virtuousClient.getContactIndividuals(communicationList.crmFilter);
             if (CollectionUtils.isEmpty(contactIndividuals)) {
                 return Collections.emptyList();
             }
             Set<Integer> ids = contactIndividuals.stream()
-                    .map(contactIndividualShort -> contactIndividualShort.id)
-                    .collect(Collectors.toSet());
+                .map(contactIndividualShort -> contactIndividualShort.id)
+                .collect(Collectors.toSet());
             contacts = contacts.stream()
-                    .filter(contact -> ids.contains(contact.id))
-                    .collect(Collectors.toList());
+                .filter(contact -> ids.contains(contact.id))
+                .collect(Collectors.toList());
         }
 
         return contacts.stream()
-                .map(this::asCrmContact)
+            .map(this::asCrmContact)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+        List<VirtuousClient.Contact> contacts = virtuousClient.getContactsModifiedAfter(updatedSince);
+        if (CollectionUtils.isEmpty(contacts)) {
+            return Collections.emptyList();
+        }
+
+        if (!Strings.isNullOrEmpty(communicationList.crmFilter)) {
+            List<VirtuousClient.ContactIndividualShort> contactIndividuals = virtuousClient.getContactIndividuals(communicationList.crmFilter);
+            if (CollectionUtils.isEmpty(contactIndividuals)) {
+                return Collections.emptyList();
+            }
+            Set<Integer> ids = contactIndividuals.stream()
+                .map(contactIndividualShort -> contactIndividualShort.id)
+                .collect(Collectors.toSet());
+            contacts = contacts.stream()
+                .filter(contact -> ids.contains(contact.id))
                 .collect(Collectors.toList());
+        }
+
+        return contacts.stream()
+            .map(this::asCrmContact)
+            .collect(Collectors.toList());
     }
 
     @Override

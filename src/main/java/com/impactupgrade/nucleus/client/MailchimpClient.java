@@ -51,7 +51,7 @@ public class MailchimpClient {
   protected final com.ecwid.maleorang.MailchimpClient client;
   protected final Environment env;
 
-  public MailchimpClient(EnvironmentConfig.EmailPlatform mailchimpConfig, Environment env) {
+  public MailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig, Environment env) {
     client = new com.ecwid.maleorang.MailchimpClient(mailchimpConfig.secretKey);
     this.env = env;
   }

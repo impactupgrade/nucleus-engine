@@ -942,7 +942,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<Filter> filters = new ArrayList<>();
     filters.add(new Filter("email", "HAS_PROPERTY", null));
     if (updatedSince != null) {
@@ -951,19 +951,42 @@ public class HubSpotCrmService implements CrmService {
     }
 
     // TODO: more than one query? support and vs. or?
-    if (!Strings.isNullOrEmpty(emailList.crmFilter)) {
+    if (!Strings.isNullOrEmpty(communicationList.crmFilter)) {
       // TODO: more than one query? support and vs. or?
       // ex: type eq Foo Bar <-- note that Foo Bar needs to be reassembled back into one value
-      String[] filterSplit = emailList.crmFilter.split(" ");
-      String filterValue = emailList.crmFilter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
+      String[] filterSplit = communicationList.crmFilter.split(" ");
+      String filterValue = communicationList.crmFilter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
       filters.add(new Filter(filterSplit[0], filterSplit[1].toUpperCase(Locale.ROOT), filterValue));
     }
 
-//    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
-//    ContactResults results = hsClient.contact().search(filterGroups, getCustomFieldNames());
-//    return results.getResults().stream().map(this::toCrmContact).collect(Collectors.toList());
-
     List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
+    List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, getCustomFieldNames());
+    return results.stream().map(this::toCrmContact).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    List<Filter> filters1 = new ArrayList<>();
+    List<Filter> filters2 = new ArrayList<>();
+    filters1.add(new Filter("phone", "HAS_PROPERTY", null));
+    filters2.add(new Filter("mobilephone", "HAS_PROPERTY", null));
+    if (updatedSince != null) {
+      String dateString = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+      filters1.add(new Filter("lastmodifieddate", "gte", dateString));
+      filters2.add(new Filter("lastmodifieddate", "gte", dateString));
+    }
+
+    // TODO: more than one query? support and vs. or?
+    if (!Strings.isNullOrEmpty(communicationList.crmFilter)) {
+      // TODO: more than one query? support and vs. or?
+      // ex: type eq Foo Bar <-- note that Foo Bar needs to be reassembled back into one value
+      String[] filterSplit = communicationList.crmFilter.split(" ");
+      String filterValue = communicationList.crmFilter.replace(filterSplit[0], "").replace(filterSplit[1], "").trim();
+      filters1.add(new Filter(filterSplit[0], filterSplit[1].toUpperCase(Locale.ROOT), filterValue));
+      filters2.add(new Filter(filterSplit[0], filterSplit[1].toUpperCase(Locale.ROOT), filterValue));
+    }
+
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(filters1), new FilterGroup(filters2));
     List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, getCustomFieldNames());
     return results.stream().map(this::toCrmContact).collect(Collectors.toList());
   }
@@ -1001,7 +1024,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
+  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
     // TODO
     return Collections.emptyMap();
   }

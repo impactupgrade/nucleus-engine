@@ -162,7 +162,7 @@ public class EnvironmentConfig implements Serializable {
     public HubspotCustomFields customQueryFields = new HubspotCustomFields();
     public String defaultSmsOptInList = "";
     public boolean enableRecurring = false;
-    public EmailPlatform email = new EmailPlatform();
+    public CommunicationPlatform email = new CommunicationPlatform();
 
     public static class HubSpotDonationPipeline implements Serializable {
       public String id = "";
@@ -251,35 +251,42 @@ public class EnvironmentConfig implements Serializable {
     public boolean recordOwnerFilter = true;
   }
 
-  public enum EmailListType {
+  public enum CommunicationListType {
     MARKETING, TRANSACTIONAL
   }
 
-  public static class EmailTagFilters implements Serializable {
+  public static class CommunicationTagFilters implements Serializable {
     public Integer majorDonorAmount = null;
     public Integer recentDonorDays = null;
     public Integer frequentDonorCount = null;
   }
 
-  public static class EmailList implements Serializable {
+  public static class CommunicationList implements Serializable {
     public String id = "";
-    public EmailListType type = EmailListType.MARKETING;
+    public CommunicationListType type = CommunicationListType.MARKETING;
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
     public String crmFilter = "";
     public String crmLeadFilter = "";
   }
 
-  public static class EmailPlatform extends Platform {
-    public List<EmailList> lists = new ArrayList<>();
-    public EmailTagFilters tagFilters = new EmailTagFilters();
+  public static class CommunicationPlatform extends Platform {
+    public List<CommunicationList> lists = new ArrayList<>();
+    public CommunicationTagFilters tagFilters = new CommunicationTagFilters();
     public Set<String> contactTagFilters = new HashSet<>();
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;
   }
 
-  public List<EmailPlatform> mailchimp = new ArrayList<>();
-  public List<EmailPlatform> sendgrid = new ArrayList<>();
+  public List<CommunicationPlatform> mailchimp = new ArrayList<>();
+  public List<CommunicationPlatform> sendgrid = new ArrayList<>();
+  public List<MBT> ministrybytext = new ArrayList<>();
+
+  public static class MBT extends CommunicationPlatform {
+    public String campusId = "";
+  }
+
+  public MBT mbt = new MBT();
 
   public static class Raisely extends Platform {
     public String stripeAppId = "";
@@ -339,12 +346,6 @@ public class EnvironmentConfig implements Serializable {
   public Xero xero = new Xero();
 
   public Platform spoke = new Platform();
-
-  public static class MBT extends Platform {
-    public String campusId = "";
-  }
-
-  public MBT mbt = new MBT();
 
   public MetadataKeys metadataKeys = new MetadataKeys();
 
