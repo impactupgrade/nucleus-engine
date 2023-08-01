@@ -39,18 +39,33 @@ public class CommunicationController {
       try {
         String jobName = "Communication: Daily Sync";
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        boolean success = true;
+
         for (CommunicationService communicationService : env.allCommunicationServices()) {
           try {
             // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             communicationService.syncUnsubscribes(lastSync);
             env.logJobInfo("{}: sync unsubscribes done", communicationService.name());
+          } catch (Exception e) {
+            env.logJobError("communication syncUnsubscribes failed for {}", communicationService.name(), e);
+            env.logJobError(e.getMessage());
+            success = false;
+          }
+
+          try {
             communicationService.syncContacts(lastSync);
             env.logJobInfo("{}: sync contacts done", communicationService.name());
-            env.endJobLog(JobStatus.DONE);
           } catch (Exception e) {
-            env.logJobError("communication syncDaily failed for {}", communicationService.name(), e);
+            env.logJobError("communication syncContacts failed for {}", communicationService.name(), e);
             env.logJobError(e.getMessage());
+            success = false;
           }
+        }
+
+        if (success) {
+          env.endJobLog(JobStatus.DONE);
+        } else {
+          env.endJobLog(JobStatus.FAILED);
         }
       } catch (Exception e) {
         env.logJobError("communication syncDaily failed", e);
@@ -72,20 +87,34 @@ public class CommunicationController {
       try {
         String jobName = "Communication: Full Sync";
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        boolean success = true;
+
         for (CommunicationService communicationService : env.allCommunicationServices()) {
           try {
             // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             communicationService.syncUnsubscribes(null);
             env.logJobInfo("{}: sync unsubscribes done", communicationService.name());
+          } catch (Exception e) {
+            env.logJobError("communication syncUnsubscribes failed for {}", communicationService.name(), e);
+            env.logJobError(e.getMessage());
+            success = false;
+          }
+
+          try {
             communicationService.syncContacts(null);
             env.logJobInfo("{}: sync contacts done", communicationService.name());
           } catch (Exception e) {
-            env.logJobError("communication syncAll failed for {}", communicationService.name(), e);
+            env.logJobError("communication syncContacts failed for {}", communicationService.name(), e);
             env.logJobError(e.getMessage());
-            env.endJobLog(JobStatus.FAILED);
+            success = false;
           }
         }
-        env.endJobLog(JobStatus.DONE);
+
+        if (success) {
+          env.endJobLog(JobStatus.DONE);
+        } else {
+          env.endJobLog(JobStatus.FAILED);
+        }
       } catch (Exception e) {
         env.logJobError("communication syncAll failed", e);
         env.logJobError(e.getMessage());

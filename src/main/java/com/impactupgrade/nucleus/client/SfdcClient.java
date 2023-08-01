@@ -469,12 +469,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    List<SObject> contacts = getEmailContacts(updatedSinceClause, filter, extraFields);
+    List<SObject> contacts = queryEmailContacts(updatedSinceClause, filter, extraFields);
 
     if (updatedSince != null) {
       updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
     }
-    contacts.addAll(getEmailContacts(updatedSinceClause, filter, extraFields));
+    contacts.addAll(queryEmailContacts(updatedSinceClause, filter, extraFields));
 
     // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
     Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
@@ -486,7 +486,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
-  protected List<SObject> getEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  protected List<SObject> queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " and " + filter;
     }
@@ -519,12 +519,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    List<SObject> contacts = getSmsContacts(updatedSinceClause, filter, extraFields);
+    List<SObject> contacts = querySmsContacts(updatedSinceClause, filter, extraFields);
 
     if (updatedSince != null) {
       updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
     }
-    contacts.addAll(getSmsContacts(updatedSinceClause, filter, extraFields));
+    contacts.addAll(querySmsContacts(updatedSinceClause, filter, extraFields));
 
     // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
     Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
@@ -545,7 +545,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
-  protected List<SObject> getSmsContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  protected List<SObject> querySmsContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " and " + filter;
     }
