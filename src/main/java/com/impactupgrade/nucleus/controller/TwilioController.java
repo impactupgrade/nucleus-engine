@@ -34,6 +34,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
@@ -79,9 +80,15 @@ public class TwilioController {
       @FormParam("OpportunityOwnerId") String opportunityOwnerId,
       @FormParam("OpportunityNotes") String opportunityNotes,
       @FormParam("nucleus-username") String nucleusUsername,
-      @Context HttpServletRequest request
+      @Context HttpServletRequest request,
+      MultivaluedMap<String, String> customResponses
   ) throws Exception {
     Environment env = envFactory.init(request);
+
+    List<String> params = Arrays.asList("From", "FirstName", "LastName", "FullName", "Email", "EmailOptIn", "SmsOptIn", "Language", "ListId", "HubSpotListId", "CampaignId", "OpportunityName", "OpportunityRecordTypeId", "OpportunityOwnerId", "OpportunityNotes", "nucleus-username");
+    for(String key : params) {
+      customResponses.remove(key);
+    }
 
     env.startJobLog(JobType.EVENT, nucleusUsername, "SMS Flow", "Twilio");
     env.logJobInfo("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
@@ -115,7 +122,8 @@ public class TwilioController {
             smsOptIn,
             language,
             campaignId,
-            listId
+            listId,
+            customResponses
         );
 
         // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
