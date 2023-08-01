@@ -2,8 +2,6 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.environment.Environment;
 import com.sun.mail.smtp.SMTPTransport;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
@@ -13,14 +11,15 @@ import javax.mail.internet.MimeMessage;
 import java.util.Date;
 import java.util.Properties;
 
-public abstract class SmtpEmailService extends AbstractEmailService {
+public abstract class SmtpEmailService implements EmailService {
 
-  protected Properties props = new Properties();
+  protected final Properties props = new Properties();
+
+  protected Environment env;
 
   @Override
   public void init(Environment env) {
-    super.init(env);
-
+    this.env = env;
     props.put("mail.smtp.host", host());
     props.put("mail.smtp.auth", "true");
     props.put("mail.smtp.port", port());

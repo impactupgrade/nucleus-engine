@@ -724,7 +724,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
+  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
     Map<String, List<String>> contactCampaigns = new HashMap<>();
     List<SObject> campaignMembers = sfdcClient.getEmailCampaignsByContactIds(contactIds);
     for (SObject campaignMember : campaignMembers) {
@@ -813,12 +813,17 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
-    List<CrmContact> contacts = sfdcClient.getEmailContacts(updatedSince, emailList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
-    if (!Strings.isNullOrEmpty(emailList.crmLeadFilter)) {
-      contacts.addAll(sfdcClient.getEmailLeads(updatedSince, emailList.crmLeadFilter).stream().map(this::toCrmContact).toList());
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    List<CrmContact> contacts = sfdcClient.getEmailContacts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
+    if (!Strings.isNullOrEmpty(communicationList.crmLeadFilter)) {
+      contacts.addAll(sfdcClient.getEmailLeads(updatedSince, communicationList.crmLeadFilter).stream().map(this::toCrmContact).toList());
     }
     return contacts;
+  }
+
+  @Override
+  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return sfdcClient.getSmsContacts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
