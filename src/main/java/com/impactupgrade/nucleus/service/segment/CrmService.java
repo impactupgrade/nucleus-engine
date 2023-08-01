@@ -83,7 +83,7 @@ public interface CrmService extends SegmentService {
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
-
+  void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception;
   String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
 
   // transaction id, secondary id, refund id, etc.

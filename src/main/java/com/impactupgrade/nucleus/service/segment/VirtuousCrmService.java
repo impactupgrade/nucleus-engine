@@ -129,6 +129,11 @@ public class VirtuousCrmService implements BasicCrmService {
         virtuousClient.updateContact(updatingContact);
     }
 
+    @Override
+    public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+        //TODO?
+    }
+
     private List<VirtuousClient.ContactMethod> getContactMethodsToCreate(VirtuousClient.ContactIndividual existing, VirtuousClient.ContactIndividual updating) {
         List<VirtuousClient.ContactMethod> toCreate = new ArrayList<>();
         for (VirtuousClient.ContactMethod updatingContactMethod : updating.contactMethods) {

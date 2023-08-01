@@ -63,6 +63,11 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
+    public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+        //TODO?
+    }
+
+    @Override
     public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
         return null;
     }

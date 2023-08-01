@@ -98,6 +98,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+    //TODO?
+  }
+
+  @Override
   public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
     // TODO: Josh?
     return Collections.emptyList();
