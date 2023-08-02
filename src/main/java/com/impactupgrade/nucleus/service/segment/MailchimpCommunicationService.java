@@ -112,15 +112,9 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       List<MemberInfo> memberInfos = toMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
 
       String upsertBatchId = mailchimpClient.upsertContactsBatch(communicationList.id, memberInfos);
-      // Getting batch processing results synchronously to make sure
+      // batch processing results synchronously to make sure
       // all contacts were processed before updating tags
-      List<MailchimpClient.BatchOperation> batchOperations = getBatchOperations(mailchimpClient, mailchimpConfig, upsertBatchId, 0);
-
-      // Logging error operations
-      batchOperations.stream()
-          .filter(batchOperation -> batchOperation.status >= 300)
-          .forEach(batchOperation ->
-              env.logJobWarn("Failed Batch Operation (status: detail): {}: {}", batchOperation.response.status, batchOperation.response.detail));
+      runBatchOperations(mailchimpClient, mailchimpConfig, upsertBatchId, 0);
 
       Map<String, List<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
       List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
@@ -140,8 +134,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected List<MailchimpClient.BatchOperation> getBatchOperations(MailchimpClient mailchimpClient, EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
-    List<MailchimpClient.BatchOperation> batchOperations = null;
+  protected void runBatchOperations(MailchimpClient mailchimpClient, EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
     if (attemptCount == BATCH_STATUS_MAX_RETRIES) {
       env.logJobError("exhausted retries; returning...");
     } else {
@@ -150,7 +143,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         env.logJobInfo("Batch '{}' is not finished: {}/{} Retrying in {} seconds...", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
         Thread.sleep(BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS * 1000);
         Integer newAttemptCount = attemptCount + 1;
-        batchOperations = getBatchOperations(mailchimpClient, mailchimpConfig, batchStatusId, newAttemptCount);
+        runBatchOperations(mailchimpClient, mailchimpConfig, batchStatusId, newAttemptCount);
       } else {
         env.logJobInfo("Batch '{}' finished! (finished/total) {}/{}", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations);
         if (batchStatus.errored_operations > 0) {
@@ -158,11 +151,23 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         } else {
           env.logJobInfo("All operations processed OK!");
         }
-        String batchResponse = getBatchResponseAsString(batchStatus, mailchimpConfig);
-        batchOperations = deserializeBatchOperations(batchResponse);
+
+        // TODO: Periodically failing, but don't hold up everything else if it does. Or compression in the response
+        //  body may be different for large operations -- getting this: java.util.zip.ZipException: ZipFile invalid LOC header (bad signature)
+        try {
+          String batchResponse = getBatchResponseAsString(batchStatus, mailchimpConfig);
+          List<MailchimpClient.BatchOperation> batchOperations = deserializeBatchOperations(batchResponse);
+
+          // Logging error operations
+          batchOperations.stream()
+              .filter(batchOperation -> batchOperation.status >= 300)
+              .forEach(batchOperation ->
+                  env.logJobWarn("Failed Batch Operation (status: detail): {}: {}", batchOperation.response.status, batchOperation.response.detail));
+        } catch (Exception e) {
+          env.logJobError("failed to fetch batch operation results", e);
+        }
       }
     }
-    return batchOperations;
   }
 
   protected String getBatchResponseAsString(BatchStatus batchStatus, EnvironmentConfig.CommunicationPlatform mailchimpConfig) throws Exception {
