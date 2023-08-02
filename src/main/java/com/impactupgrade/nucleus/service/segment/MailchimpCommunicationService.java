@@ -9,7 +9,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -46,9 +45,12 @@ import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
 
 public class MailchimpCommunicationService extends AbstractCommunicationService {
 
-  private static final Integer BATCH_REQUEST_OPERATIONS_SIZE = 500;
-  private static final Integer BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS = 10;
-  private static final Integer BATCH_STATUS_MAX_RETRIES = 5;
+  // TODO: For now, letting a single, massive batch run.
+//  private static final Integer BATCH_REQUEST_OPERATIONS_SIZE = 500;
+
+  // 2 hours
+  private static final Integer BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS = 300;
+  private static final Integer BATCH_STATUS_MAX_RETRIES = 24;
 
   private final Map<String, String> mergeFieldsNameToTag = new HashMap<>();
 
@@ -73,19 +75,21 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
         Map<String, List<String>> tags = new MailchimpClient(mailchimpConfig, env).getContactsTags(communicationList.id);
 
-        List<List<CrmContact>> partitions = Lists.partition(crmContacts, BATCH_REQUEST_OPERATIONS_SIZE);
-        int i = 1;
-        for (List<CrmContact> contactsBatch : partitions) {
-          env.logJobInfo("Processing contacts batch {} of total {}...", i, partitions.size());
-          syncContacts(contactsBatch, crmContactCampaignNames, tags, mailchimpConfig, communicationList);
-          i++;
-        }
+//        List<List<CrmContact>> partitions = Lists.partition(crmContacts, BATCH_REQUEST_OPERATIONS_SIZE);
+//        int i = 1;
+//        for (List<CrmContact> contactsBatch : partitions) {
+//          env.logJobInfo("Processing contacts batch {} of total {}...", i, partitions.size());
+//          syncContacts(contactsBatch, crmContactCampaignNames, tags, mailchimpConfig, communicationList);
+//          i++;
+//        }
+        syncContacts(crmContacts, crmContactCampaignNames, tags, mailchimpConfig, communicationList);
       }
     }
   }
 
   protected void syncContacts(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames,
-                              Map<String, List<String>> tags, EnvironmentConfig.CommunicationPlatform mailchimpConfig, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+      Map<String, List<String>> tags, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
 
     List<CrmContact> contactsToUpsert = new ArrayList<>();
@@ -143,7 +147,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     } else {
       BatchStatus batchStatus = mailchimpClient.getBatchStatus(batchStatusId);
       if (!"finished".equalsIgnoreCase(batchStatus.status)) {
-        env.logJobInfo("Batch '{}' is not finished. Retrying in {} seconds...", batchStatusId, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
+        env.logJobInfo("Batch '{}' is not finished: {}/{} Retrying in {} seconds...", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
         Thread.sleep(BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS * 1000);
         Integer newAttemptCount = attemptCount + 1;
         batchOperations = getBatchOperations(mailchimpClient, mailchimpConfig, batchStatusId, newAttemptCount);
