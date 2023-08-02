@@ -702,7 +702,11 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
-
+     Contact rawContact = (Contact) contact.crmRawObject;
+    for (String fieldName : fields.keySet()) {
+      rawContact.getProperties().getOtherProperties().put(fieldName, fields.get(fieldName));
+    }
+    updateContact(toCrmContact(rawContact));
   }
 
   @Override

@@ -725,7 +725,11 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
-
+    SObject rawContact = (SObject) contact.crmRawObject;
+    for (String fieldName : fields.keySet()) {
+      rawContact.setField(fieldName, fields.get(fieldName));
+    }
+    sfdcClient.update(rawContact);
   }
 
   @Override
