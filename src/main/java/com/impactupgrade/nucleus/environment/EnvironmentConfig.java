@@ -316,6 +316,8 @@ public class EnvironmentConfig implements Serializable {
     public boolean enableCrmBasedArchival = false;
   }
 
+  public List<CommunicationPlatform> constantContact = new ArrayList<>();
+
   public List<MBT> ministrybytext = new ArrayList<>();
   public static class MBT extends CommunicationPlatform {
     public String campusId = "";

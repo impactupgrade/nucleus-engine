@@ -68,7 +68,7 @@ public abstract class OAuthClient extends DBConfiguredClient {
     }
 
     String accessToken = oAuthContext.accessToken();
-    if (!Objects.equals(oAuthContext.refresh().accessToken(), accessToken))  {
+    if (!Objects.equals(oAuthContext.refresh().accessToken(), accessToken)) {
       // tokens updated - need to update config in db
       updateEnvJson(oAuthContext);
     }
@@ -80,6 +80,11 @@ public abstract class OAuthClient extends DBConfiguredClient {
     protected Tokens tokens;
     protected final String tokenUrl;
     protected final boolean enableRefresh;
+
+    protected Map<String, String> getTokensAdditionalHeaders; // if any
+    protected Map<String, String> getTokensAdditionalParams; // if any
+    protected Map<String, String> refreshTokensAdditionalHeaders; // if any
+    protected Map<String, String> refreshTokensAdditionalParams; // if any
 
     public OAuthContext(EnvironmentConfig.Platform platform, String tokenUrl, boolean enableRefresh) {
       Date expiresAtDate = platform.expiresAt != null ? Date.from(Instant.ofEpochSecond(platform.expiresAt)) : null;
@@ -126,8 +131,9 @@ public abstract class OAuthClient extends DBConfiguredClient {
       Map<String, String> params = new HashMap<>();
       params.put("refresh_token", tokens.refreshToken);
       params.put("grant_type", "refresh_token");
+      mergeAdditionalParams(params, refreshTokensAdditionalParams);
 
-      TokenResponse tokenResponse = getTokenResponse(tokenUrl, params, null);
+      TokenResponse tokenResponse = getTokenResponse(tokenUrl, refreshTokensAdditionalHeaders, params);
       if (tokenResponse == null) {
         log.warn("failed to refresh tokens!");
       }
@@ -157,8 +163,9 @@ public abstract class OAuthClient extends DBConfiguredClient {
       params.put("client_id", clientId);
       params.put("client_secret", clientSecret);
       params.put("grant_type", "client_credentials");
+      mergeAdditionalParams(params, getTokensAdditionalParams);
 
-      TokenResponse tokenResponse = getTokenResponse(tokenUrl, params, null);
+      TokenResponse tokenResponse = getTokenResponse(tokenUrl, getTokensAdditionalHeaders, params);
       if (tokenResponse == null) {
         log.warn("failed to get new tokens for client_id={}", clientId);
       }
@@ -171,14 +178,10 @@ public abstract class OAuthClient extends DBConfiguredClient {
     private final String username;
     private final String password;
 
-    private final Map<String, String> requestTokenParams;
-
-    public UsernamePasswordOAuthContext(EnvironmentConfig.Platform platform, String tokenUrl, boolean enableRefresh,
-        Map<String, String> requestTokenParams) {
+    public UsernamePasswordOAuthContext(EnvironmentConfig.Platform platform, String tokenUrl, boolean enableRefresh) {
       super(platform, tokenUrl, enableRefresh);
       this.username = platform.username;
       this.password = platform.password;
-      this.requestTokenParams = requestTokenParams;
     }
 
     @Override
@@ -190,8 +193,9 @@ public abstract class OAuthClient extends DBConfiguredClient {
       params.put("password", password);
       params.put("grant_type", "password");
       params.put("scope", "offline_access");
+      mergeAdditionalParams(params, getTokensAdditionalParams);
 
-      TokenResponse tokenResponse = getTokenResponse(tokenUrl, params, requestTokenParams);
+      TokenResponse tokenResponse = getTokenResponse(tokenUrl, getTokensAdditionalHeaders, params);
       if (tokenResponse == null) {
         log.warn("failed to get new tokens for username={}", username);
       }
@@ -200,17 +204,25 @@ public abstract class OAuthClient extends DBConfiguredClient {
   }
 
   // Utils
-  private static TokenResponse getTokenResponse(String url, Map<String, String> params, Map<String, String> additionalParams) {
+
+  private static Map<String, String> mergeAdditionalParams(Map<String, String> baseParams, Map<String, String> additionalParams) {
+    if (MapUtils.isEmpty(baseParams) || MapUtils.isEmpty(additionalParams)) {
+      return baseParams;
+    }
+    additionalParams.forEach(baseParams::putIfAbsent);
+    return baseParams;
+  }
+
+  private static TokenResponse getTokenResponse(String url, Map<String, String> headers, Map<String, String> params) {
+    HttpClient.HeaderBuilder headerBuilder = HttpClient.HeaderBuilder.builder();
+    if (MapUtils.isNotEmpty(headers)) {
+      headers.forEach((k, v) -> headerBuilder.header(k, v));
+    }
+
     Form form = new Form();
     params.forEach((k, v) -> form.param(k, v));
 
-    if (MapUtils.isNotEmpty(additionalParams)) {
-      additionalParams.entrySet().stream()
-          .filter(e -> !params.containsKey(e.getKey()))
-          .forEach(e -> form.param(e.getKey(), e.getValue()));
-    }
-
-    return post(url, form, APPLICATION_FORM_URLENCODED, HttpClient.HeaderBuilder.builder(), TokenResponse.class);
+    return post(url, form, APPLICATION_FORM_URLENCODED, headerBuilder, TokenResponse.class);
   }
 
   private static Tokens toTokens(TokenResponse tokenResponse) {
