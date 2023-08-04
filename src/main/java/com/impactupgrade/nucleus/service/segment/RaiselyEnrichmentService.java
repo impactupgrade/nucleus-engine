@@ -49,20 +49,20 @@ public class RaiselyEnrichmentService implements EnrichmentService {
       // TODO: Are there other types of items? Could there be a ticket + products + donation?
       List<RaiselyClient.DonationItem> donationItems = raiselyDonation.items.stream().filter(i -> !"ticket".equalsIgnoreCase(i.type)).toList();
       List<RaiselyClient.DonationItem> ticketItems = raiselyDonation.items.stream().filter(i -> "ticket".equalsIgnoreCase(i.type)).toList();
+      double coveredFee = raiselyDonation.feeCovered ? (raiselyDonation.fee / 100.0) : 0.0;
       if (ticketItems.isEmpty()) {
         // donations only
         crmDonation.transactionType = EnvironmentConfig.TransactionType.DONATION;
-        crmDonation.amount = calculateTotalAmount(donationItems);
+        crmDonation.amount = calculateTotalAmount(donationItems) + coveredFee;
       } else if (donationItems.isEmpty()) {
         // tickets only
         crmDonation.transactionType = EnvironmentConfig.TransactionType.TICKET;
-        crmDonation.amount = calculateTotalAmount(ticketItems);
+        crmDonation.amount = calculateTotalAmount(ticketItems) + coveredFee;
       } else {
         // multiple of each -- let the ticket be the primary and donation secondary
         crmDonation.transactionType = EnvironmentConfig.TransactionType.TICKET;
         double ticketAmount = calculateTotalAmount(ticketItems);
         double donationAmount = calculateTotalAmount(donationItems);
-        double coveredFee = raiselyDonation.feeCovered ? (raiselyDonation.fee / 100.0) : 0.0;
         crmDonation.amount = ticketAmount + coveredFee;
 
         // TODO: This will have the same Stripe IDs! For most clients, this won't work, since we skip processing
