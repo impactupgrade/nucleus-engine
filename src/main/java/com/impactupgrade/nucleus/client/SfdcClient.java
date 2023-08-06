@@ -385,10 +385,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
           return;
         }
 
-        if (key.equalsIgnoreCase("Contact Id") && value.startsWith("003") && Strings.isNullOrEmpty(sobject.getId())) {
+        if (key.equalsIgnoreCase("Contact Id") && value.startsWith("003")) {
           hasValues[0] = true;
           sobject.setId(value);
-        } else if (key.equalsIgnoreCase("Id") && value.startsWith("003") && Strings.isNullOrEmpty(sobject.getId())) {
+        } else if (key.equalsIgnoreCase("Id") && value.startsWith("003")) {
           hasValues[0] = true;
           sobject.setId(value);
         } else if (key.equalsIgnoreCase("Email")) {
@@ -399,7 +399,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
           sobject.setField("Phone", value);
         } else if (key.equalsIgnoreCase("Mobile")) {
           hasValues[0] = true;
-          sobject.setField("Mobile", value);
+          sobject.setField("MobilePhone", value);
+        } else if (key.equalsIgnoreCase("MobilePhone")) {
+          hasValues[0] = true;
+          sobject.setField("MobilePhone", value);
         }
       });
 
