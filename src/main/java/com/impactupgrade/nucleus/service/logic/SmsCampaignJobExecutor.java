@@ -21,8 +21,6 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.time.Instant;
 import java.util.Calendar;
@@ -87,6 +85,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     String contactListId = jobPayload.crmListId;
     if (Strings.isNullOrEmpty(contactListId)) {
       env.logJobWarn("Failed to get contact list id for job id {}! Skipping...", job.id);
+      env.endJobLog(JobStatus.FAILED);
       return;
     }
 
@@ -95,6 +94,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     List<CrmContact> crmContacts = crmService.getContactsFromList(contactListId);
     if (CollectionUtils.isEmpty(crmContacts)) {
       env.logJobInfo("No contacts returned for job id {}! Skipping...");
+      env.endJobLog(JobStatus.DONE);
       return;
     }
 
