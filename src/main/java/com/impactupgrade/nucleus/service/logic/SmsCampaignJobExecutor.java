@@ -24,7 +24,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -91,7 +93,10 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
     env.logJobInfo("Retrieving contacts using contactListId {}", contactListId);
 
-    List<CrmContact> crmContacts = crmService.getContactsFromList(contactListId);
+    // get the list and dedup by phone number
+    Collection<CrmContact> crmContacts = crmService.getContactsFromList(contactListId).stream()
+        .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
+        .collect(Collectors.toMap(c -> c.phoneNumberForSMS().replaceAll("[\\D]", ""), c -> c, (c1, c2) -> c1, LinkedHashMap::new)).values();
     if (CollectionUtils.isEmpty(crmContacts)) {
       env.logJobInfo("No contacts returned for job id {}! Skipping...");
       env.endJobLog(JobStatus.DONE);

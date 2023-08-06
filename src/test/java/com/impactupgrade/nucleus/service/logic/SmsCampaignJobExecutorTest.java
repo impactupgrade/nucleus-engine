@@ -92,7 +92,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     CrmContact contact1 = crmContact("contact1", "+12345678901", "EN");
     CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");
-    when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2));
+    CrmContact contact3 = crmContact("contact3", "+12345678902", "EN"); // dup
+    when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2, contact3));
 
     service.processJobSchedules(Instant.now());
 
@@ -856,8 +857,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     CrmContact contact1 = crmContact("contact1", "+12345678901", null);
     CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");
-    CrmContact contact3 = crmContact("contact3", "+12345678902", "KSW");
-    CrmContact contact4 = crmContact("contact4", "+12345678902", "FR");
+    CrmContact contact3 = crmContact("contact3", "+12345678903", "KSW");
+    CrmContact contact4 = crmContact("contact4", "+12345678904", "FR");
     when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2, contact3, contact4));
 
     service.processJobSchedules(Instant.now());
