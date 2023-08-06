@@ -109,16 +109,16 @@ public class StripeToSfdcIT extends AbstractIT {
     List<SObject> rds = sfdcClient.getRecurringDonationsByAccountId(accountId);
     assertEquals(1, rds.size());
     SObject rd = rds.get(0);
-    assertEquals("100.0", rd.getField("npe03__Amount__c"));
+    assertEquals("105.0", rd.getField("npe03__Amount__c"));
     assertEquals("Open", rd.getField("npe03__Open_Ended_Status__c"));
     assertEquals("Multiply By", rd.getField("npe03__Schedule_Type__c"));
     assertEquals("Monthly", rd.getField("npe03__Installment_Period__c"));
-    assertEquals("2021-11-11", rd.getField("npe03__Date_Established__c"));
+    assertEquals("2023-08-06", rd.getField("npe03__Date_Established__c"));
     // TODO: periodically fails -- may have a timing issue where this isn't being updated fast enough
-    assertEquals("2021-11-11", rd.getField("npe03__Next_Payment_Date__c"));
+    assertEquals("2023-09-06", rd.getField("npe03__Next_Payment_Date__c"));
     assertEquals("Stripe", rd.getField("Payment_Gateway_Name__c"));
     assertEquals("cus_JPgkris8GTsXIH", rd.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("sub_1JufwxHAwJOu5brrARMtj1Gb", rd.getField("Payment_Gateway_Subscription_Id__c"));
+    assertEquals("sub_1NcEBfHAwJOu5brrwWSlKSWx", rd.getField("Payment_Gateway_Subscription_Id__c"));
 
     // verify the Closed Won opp
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
@@ -126,12 +126,12 @@ public class StripeToSfdcIT extends AbstractIT {
     SObject opp = opps.get(0);
     assertEquals(rd.getId(), opp.getField("npe03__Recurring_Donation__c"));
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
-    assertEquals("pi_3JufwxHAwJOu5brr0WP4aAVs", opp.getField("Payment_Gateway_Transaction_Id__c"));
+    assertEquals("pi_3NcEBfHAwJOu5brr1mtwduxc", opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertEquals("cus_JPgkris8GTsXIH", opp.getField("Payment_Gateway_Customer_Id__c"));
     assertEquals("Closed Won", opp.getField("StageName"));
-    assertEquals("2021-11-11", opp.getField("CloseDate"));
+    assertEquals("2023-08-06", opp.getField("CloseDate"));
     assertEquals("Integration Tester Donation", opp.getField("Name"));
-    assertEquals("100.0", opp.getField("Amount"));
+    assertEquals("105.0", opp.getField("Amount"));
   }
 
   @Test
