@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.client.TwilioClient;
+import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
@@ -247,6 +248,7 @@ public class Environment {
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
+  public VirtuousClient virtuousClient() { return new VirtuousClient(this); }
 
   // job logging services
 

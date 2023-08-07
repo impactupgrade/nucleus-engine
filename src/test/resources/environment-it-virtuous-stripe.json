@@ -1,0 +1,20 @@
+{
+  "crmPrimary": "virtuous",
+
+  "virtuous": {
+    "secretKey": "v_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiNjNhODk0NTktZjUzNy00Zjc1LTkxOGUtZjE5OWM2ZTVhZTg5IiwiZXhwIjoyMTQ3NDgzNjQ3LCJpc3MiOiJodHRwczovL2FwcC52aXJ0dW91c3NvZnR3YXJlLmNvbSIsImF1ZCI6Imh0dHBzOi8vYXBpLnZpcnR1b3Vzc29mdHdhcmUuY29tIn0.NYtSk4rjReLQ1SvQrgyBa316K3lpMxA2xaqjvJMHW9k",
+
+    "fieldDefinitions": {
+      "paymentGatewayName": "paymentGatewayName",
+      "paymentGatewaySubscriptionId": "paymentGatewaySubscriptionId",
+      "paymentGatewayDepositId": "paymentGatewayDepositId",
+      "paymentGatewayDepositDate": "paymentGatewayDepositDate",
+      "paymentGatewayDepositFee": "paymentGatewayDepositFee",
+      "paymentGatewayDepositNetAmount": "paymentGatewayDepositNetAmount"
+    }
+  },
+
+  "stripe": {
+    "secretKey": "sk_test_51Imqu3HAwJOu5brrFI1LeFsnRbGSKo01FLQ9tJijlMtTZPXl4XyB2Kidg9qrWqCP6VlDK5EO0YxSXAbPcWZBp7ey00dhw2OuZg"
+  }
+}

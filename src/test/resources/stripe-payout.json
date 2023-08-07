@@ -1,0 +1,41 @@
+{
+  "id": "evt_1NipOgHWkN7Doln8swe5iwxO",
+  "object": "event",
+  "api_version": "2020-08-27",
+  "created": 1631064718,
+  "data": {
+    "object": {
+      "id": "po_1JXFdqHAwJOu5brrPx0caF45",
+      "object": "payout",
+      "amount": 9680,
+      "arrival_date": 1631059200,
+      "automatic": true,
+      "balance_transaction": "txn_1JXFdqHAwJOu5brrUUv0aX0q",
+      "created": 1631064718,
+      "currency": "usd",
+      "description": "STRIPE PAYOUT",
+      "destination": "ba_1JWuY8HAwJOu5brrGYYpqcXe",
+      "failure_balance_transaction": null,
+      "failure_code": null,
+      "failure_message": null,
+      "livemode": false,
+      "metadata": {
+      },
+      "method": "standard",
+      "original_payout": null,
+      "reconciliation_status": "completed",
+      "reversed_by": null,
+      "source_type": "card",
+      "statement_descriptor": null,
+      "status": "paid",
+      "type": "bank_account"
+    }
+  },
+  "livemode": true,
+  "pending_webhooks": 4,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "payout.paid"
+}

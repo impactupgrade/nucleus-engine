@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
@@ -65,7 +66,7 @@ public class VirtuousClient {
     return contact;
   }
 
-  public Contact getContactById(Integer id) {
+  public Contact getContactById(int id) {
     return getContact(VIRTUOUS_API_URL + "/Contact/" + id);
   }
 
@@ -144,6 +145,11 @@ public class VirtuousClient {
     return contact;
   }
 
+  public void deleteContact(int contactId) {
+    put(VIRTUOUS_API_URL + "/Contact/Archive/" + contactId, "", APPLICATION_JSON, headers());
+    env.logJobInfo("Deleted contact: {}", contactId);
+  }
+
   public ContactMethod createContactMethod(ContactMethod contactMethod) {
     contactMethod = post(VIRTUOUS_API_URL + "/ContactMethod", contactMethod, APPLICATION_JSON, headers(), ContactMethod.class);
     if (contactMethod != null) {
@@ -187,8 +193,12 @@ public class VirtuousClient {
     return response.contactIndividualShorts;
   }
 
-  // Gift
-  public Gifts getGiftsByContact(String contactId) {
+  public Gift getGiftById(int Id){
+    String giftUrl = VIRTUOUS_API_URL + "/Gift/" + Id;
+    return getGift(giftUrl);
+  }
+
+  public Gifts getGiftsByContact(int contactId) {
     String giftUrl = VIRTUOUS_API_URL + "/Gift/ByContact/" + contactId + "?take=1000";
     return get(giftUrl, headers(), Gifts.class);
   }
@@ -216,13 +226,13 @@ public class VirtuousClient {
     return gift;
   }
 
-  // This is the recommended way to create a gift.
-  // This ensures the gift is matched using the Virtuous matching algorithms
-  // for Contacts, Recurring gifts, Designations, etc.
-  // https://docs.virtuoussoftware.com/#e4a6a1e3-71a4-44f9-bd7c-9466996befac
-  public void createGiftAsync(GiftTransaction giftTransaction) {
-    post(VIRTUOUS_API_URL + "/v2/Gift/Transaction", giftTransaction, APPLICATION_JSON, headers());
-  }
+//  // This is the recommended way to create a gift.
+//  // This ensures the gift is matched using the Virtuous matching algorithms
+//  // for Contacts, Recurring gifts, Designations, etc.
+//  // https://docs.virtuoussoftware.com/#e4a6a1e3-71a4-44f9-bd7c-9466996befac
+//  public void createGiftAsync(GiftTransaction giftTransaction) {
+//    post(VIRTUOUS_API_URL + "/v2/Gift/Transaction", giftTransaction, APPLICATION_JSON, headers());
+//  }
 
   public Gift updateGift(Gift gift) {
     gift = put(VIRTUOUS_API_URL + "/Gift" + "/" + gift.id, gift, APPLICATION_JSON, headers(), Gift.class);
@@ -230,6 +240,10 @@ public class VirtuousClient {
       env.logJobInfo("Updated gift: {}", gift);
     }
     return gift;
+  }
+
+  public void deleteGift(int giftId) {
+    delete(VIRTUOUS_API_URL + "/Gift/" + giftId, headers());
   }
 
   // TODO: Should this return ReversingTransaction? Does the API respond with ReversingTransaction or the Gift?
@@ -248,6 +262,45 @@ public class VirtuousClient {
     reversingTransaction.notes = "Reverting transaction: " +
         gift.transactionSource + "/" + gift.transactionId;
     return reversingTransaction;
+  }
+
+  public RecurringGift createRecurringGift(RecurringGift recurringGift) {
+    recurringGift = post(VIRTUOUS_API_URL + "/RecurringGift", recurringGift, APPLICATION_JSON, headers(), RecurringGift.class);
+    if (recurringGift != null) {
+      env.logJobInfo("Created gift: {}", recurringGift);
+    }
+    return recurringGift;
+  }
+
+  public RecurringGift getRecurringGiftById(int id) {
+    String giftUrl = VIRTUOUS_API_URL + "/RecurringGift/" + id;
+    return get(giftUrl, headers(), RecurringGift.class);
+  }
+
+  public RecurringGift updateRecurringGift(RecurringGift recurringGift) {
+    recurringGift = put(VIRTUOUS_API_URL + "/RecurringGift/" + recurringGift.id, recurringGift, APPLICATION_JSON, headers(), RecurringGift.class);
+    if (recurringGift != null) {
+      env.logJobInfo("Updated RecurringGift: {}", recurringGift);
+    }
+    return recurringGift;
+  }
+
+  public RecurringGift cancelRecurringGift(int id) {
+    RecurringGift recurringGift = put(VIRTUOUS_API_URL + "/RecurringGift/Cancel/" + id, "{}", APPLICATION_JSON, headers(), RecurringGift.class);
+    if (recurringGift != null) {
+      env.logJobInfo("Canceled RecurringGift: {}", recurringGift);
+    }
+    return recurringGift;
+  }
+
+  public RecurringGifts getRecurringGiftsByContact(int contactId) {
+    String giftUrl = VIRTUOUS_API_URL + "/RecurringGift/ByContact/" + contactId + "?take=1000";
+    return get(giftUrl, headers(), RecurringGifts.class);
+  }
+
+  public RecurringGiftPayments getRecurringGiftPayments(int recurringGiftId) {
+    String giftUrl = VIRTUOUS_API_URL + "/RecurringGiftPayment/" + recurringGiftId;
+    return get(giftUrl, headers(), RecurringGiftPayments.class);
   }
 
   public Task createTask(Task task) throws Exception {
@@ -305,6 +358,18 @@ public class VirtuousClient {
     return post(tokenServerUrl, Map.of("grant_type", "password", "username", username, "password", password), APPLICATION_FORM_URLENCODED, headers(), TokenResponse.class);
   }
 
+  public static class HasCustomFields {
+    public List<CustomField> customFields = new ArrayList<>();
+
+    @JsonIgnore
+    protected String getValue(String fieldName) {
+      if (Strings.isNullOrEmpty(fieldName)) {
+        return null;
+      }
+      return customFields.stream().filter(f -> f.name.equalsIgnoreCase(fieldName)).findFirst().map(f -> f.value).orElse(null);
+    }
+  }
+
   public static class ContactSearchResponse {
     @JsonProperty("list")
     public List<ContactIndividualShort> contactIndividualShorts = new ArrayList<>();
@@ -321,48 +386,16 @@ public class VirtuousClient {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Contact {
-    //        public Boolean isCurrentUserFollowing;
     public Integer id;
     public String contactType;
     public Boolean isPrivate;
     public String name;
-    //        public String informalName;
     public String description;
-    //        public String website;
-//        public String maritalStatus;
-//        public Integer anniversaryMonth;
-//        public Integer anniversaryDay;
-//        public Integer anniversaryYear;
-//        public Integer mergedIntoContactId;
     // TODO: address is needed for GET, but contactAddresses for POST
     public Address address;
     public List<Address> contactAddresses = new ArrayList<>();
-    //        public String giftAskAmount;
-//        public String giftAskType;
-//        public String lifeToDateGiving;
-//        public String yearToDateGiving;
-//        public String lastGiftAmount;
     public String lastGiftDate;
     public List<ContactIndividual> contactIndividuals = new ArrayList<>();
-//        public String contactGiftsUrl;
-//        public String contactPassthroughGiftsUrl;
-//        public String contactPlannedGiftsUrl;
-//        public String contactRecurringGiftsUrl;
-//        public String contactImportantNotesUrl;
-//        public String contactNotesUrl;
-//        public String contactTagsUrl;
-//        public String contactRelationshipsUrl;
-//        public String primaryAvatarUrl;
-//        public List<ContactReference> contactReferences;
-//        public Integer originSegmentId;
-//        public String originSegment;
-//        public Date createDateTimeUtc;
-//        public Date modifiedDateTimeUtc;
-//        public List<String> tags;
-//        public List<String> organizationGroups;
-//        public List<CustomField> customFields;
-//        public List<CustomCollection> customCollections;
-
 
     @Override
     public String toString() {
@@ -382,20 +415,13 @@ public class VirtuousClient {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Address {
     public Integer id;
-    //        public String label;
     public String address1;
-    //        public String address2;
+    public String address2;
     public String city;
     public String state;
     public String postal;
     public String country;
     public Boolean isPrimary;
-//        public Boolean canBePrimary;
-//        public Integer startDay;
-//        public Integer startMonth;
-//        public Integer endMonth;
-//        public Integer endDay;
-
 
     @Override
     public String toString() {
@@ -415,30 +441,12 @@ public class VirtuousClient {
   public static class ContactIndividual {
     public Integer id;
     public Integer contactId;
-    //        public String prefix;
     public String firstName;
-    //        public String middleName;
     public String lastName;
-    //        public String suffix;
-//        public String gender;
     public Boolean isPrimary;
-    //        public Boolean canBePrimary;
     public Boolean isSecondary;
-    //        public Boolean canBeSecondary;
-//        public Integer birthMonth;
-//        public Integer birthDay;
-//        public Integer birthYear;
-//        public String birthDate;
-//        public Integer approximateAge;
     public Boolean isDeceased;
-    //        public String passion;
-//        public String avatarUrl;
     public List<ContactMethod> contactMethods = new ArrayList<>();
-//        public Date createDateTimeUtc;
-//        public Date modifiedDateTimeUtc;
-//        public List<CustomField> customFields = new ArrayList<>();
-//        public List<CustomCollection> customCollections = new ArrayList<>();
-
 
     @Override
     public String toString() {
@@ -468,7 +476,6 @@ public class VirtuousClient {
     public String email;
     public String phone;
 //        public String contactViewUrl;
-
 
     @Override
     public String toString() {
@@ -506,33 +513,6 @@ public class VirtuousClient {
     }
   }
 
-//    @JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class CustomField {
-//        public String name;
-//        public String value;
-//        public String displayName;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class CustomCollection {
-//        public Integer customCollectionId;
-//        public String customCollectionName;
-//        public Integer collectionInstanceId;
-//        public List<Field> fields = new ArrayList<>();
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class Field {
-//        public String name;
-//        public String value;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class ContactReference {
-//        public String source;
-//        public String id;
-//    }
-
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class ContactsSearchCriteria {
     public String search;
@@ -546,55 +526,41 @@ public class VirtuousClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class Gift {
+  public static class Gift extends HasCustomFields {
     public Integer id;
     //        public Integer reversedGiftId;
     public String transactionSource;
     public String transactionId;
     public String contactId;
-    //        public String contactName;
-//        public String contactUrl;
     public String giftType;
-    //        public String giftTypeFormatted;
     public String giftDate;
-    //        public String giftDateFormatted;
     public String amount;
-    //        public String amountFormatted;
-//        public String batch;
-//        public Integer segmentId;
     public String segment;
-    //        public String segmentCode;
-//        public String segmentUrl;
-//        public Integer mediaOutletId;
-//        public String mediaOutlet;
-//        public Integer grantId;
-//        public String grant;
-//        public String grantUrl;
     public String notes;
-    //        public String tribute;
-//        public Integer tributeId;
-//        public String tributeType;
-//        public Integer acknowledgeeIndividualId;
-//        public Date receiptDate;
-//        public String receiptDateFormatted;
-//        public Integer contactPassthroughId;
-//        public String contactPassthroughUrl;
-//        public Integer contactIndividualId;
-//        public String cashAccountingCode;
-//        public Integer giftAskId;
-//        public Integer contactMembershipId;
-//        public List<GiftDesignation> giftDesignations = new ArrayList<>();
-//        public List<GiftPremium> giftPremiums = new ArrayList<>();
-//        public List<PledgePayment> pledgePayments = new ArrayList<>();
-//        public List<RecurringGiftPayment> recurringGiftPayments = new ArrayList<>();
+    public List<CreateRecurringGiftPayment> recurringGiftPayments = new ArrayList<>();
     public String giftUrl;
     public Boolean isPrivate;
     public Boolean isTaxDeductible;
-//        public List<CustomField> customFields = new ArrayList<>();
-//        public String creditCardType;
-//        public String currencyCode;
-//        public String exchangeRate;
-//        public String baseCurrencyCode;
+
+    @JsonIgnore
+    public String paymentGatewayDepositId(Environment env) {
+      return getValue(env.getConfig().virtuous.fieldDefinitions.paymentGatewayDepositId);
+    }
+
+    @JsonIgnore
+    public String paymentGatewayDepositDate(Environment env) {
+      return getValue(env.getConfig().virtuous.fieldDefinitions.paymentGatewayDepositDate);
+    }
+
+    @JsonIgnore
+    public String paymentGatewayDepositFee(Environment env) {
+      return getValue(env.getConfig().virtuous.fieldDefinitions.paymentGatewayDepositFee);
+    }
+
+    @JsonIgnore
+    public String paymentGatewayDepositNetAmount(Environment env) {
+      return getValue(env.getConfig().virtuous.fieldDefinitions.paymentGatewayDepositNetAmount);
+    }
 
     @Override
     public String toString() {
@@ -620,155 +586,78 @@ public class VirtuousClient {
     public List<Gift> list = new ArrayList<>();
   }
 
-//    @JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class GiftDesignation {
-//        public Integer id;
-//        public Integer projectId;
-//        public String project;
-//        public String projectCode;
-//        public String externalAccountingCode;
-//        public String projectType;
-//        public String projectLocation;
-//        public String projectUrl;
-//        public Double amountDesignated;
-//        public String display;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class GiftPremium {
-//        public Integer id;
-//        public Integer premiumId;
-//        public String premium;
-//        public String premiumUrl;
-//        public Integer quantity;
-//        public String display;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class PledgePayment {
-//        public Integer id;
-//        public Date expectedPaymentDate;
-//        public Double expectedAmount;
-//        public Integer giftId;
-//        public Double actualAmount;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class RecurringGiftPayment {
-//        public Integer id;
-//        public Gift gift;
-//        public Double expectedAmount;
-//        public Date expectedPaymentDate;
-//        public Date dismissPaymentDate;
-//        public Date fulfillPaymentDate;
-//    }
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class RecurringGifts {
+    public List<RecurringGift> list = new ArrayList<>();
+  }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class GiftTransaction {
-    public String transactionSource;
-    public String transactionId;
-    public Contact contact;
-    public String giftDate;
-    //        public String cancelDate;
-//        public String giftType;
-    public String amount;
-    //        public String currencyCode;
+  public static class RecurringGift extends HasCustomFields {
+    public Integer id;
+    public Integer contactId;
+    public String startDate;
+    public Double amount;
     public String frequency;
-    //        public String recurringGiftTransactionId;
-    public Boolean recurringGiftTransactionUpdate;
-    //        public String pledgeFrequency;
-//        public String pledgeTransactionId;
-//        public String batch;
-    public String notes;
-    public String segment;
-    //        public String mediaOutlet;
-//        public String receiptDate;
-//        public String receiptSegment;
-//        public String cashAccountingCode;
-//        public String tribute;
-//        public TributeDedication tributeDedication;
+    public String anticipatedEndDate;
+    public String cancelDateTimeUtc;
+    public Boolean automatedPayments;
+    public Boolean trackPayments;
     public Boolean isPrivate;
-    public Boolean isTaxDeductible;
-//        public String checkNumber;
-//        public String creditCardType;
-//        public String nonCashGiftType;
-//        public String nonCashGiftDescription;
-//        public String stockTickerSymbol;
-//        public Integer stockNumberOfShares;
-//        public String submissionUrl;
-//        public List<Designation> designations = new ArrayList<>();
-//        public List<Premium> premiums = new ArrayList<>();
-//        public List<CustomField> customFields = new ArrayList<>();
-//        public Integer contactIndividualId;
-//        public Contact passthroughContact;
-//        public EventAttendee eventAttendee;
+    public String status;
+    public String nextExpectedPaymentDate;
 
+    @JsonIgnore
+    public String paymentGatewayName(Environment env) {
+      return getValue(env.getConfig().virtuous.fieldDefinitions.paymentGatewayName);
+    }
+
+    @JsonIgnore
+    public String paymentGatewaySubscriptionId(Environment env) {
+      return getValue(env.getConfig().virtuous.fieldDefinitions.paymentGatewaySubscriptionId);
+    }
 
     @Override
     public String toString() {
-      return "GiftTransaction{" +
-          "transactionSource='" + transactionSource + '\'' +
-          ", transactionId='" + transactionId + '\'' +
-          ", contact=" + contact +
-          ", giftDate='" + giftDate + '\'' +
-          ", amount='" + amount + '\'' +
+      return "RecurringGift{" +
+          "id=" + id +
+          ", contactId=" + contactId +
+          ", startDate='" + startDate + '\'' +
+          ", amount=" + amount +
           ", frequency='" + frequency + '\'' +
-          ", recurringGiftTransactionUpdate=" + recurringGiftTransactionUpdate +
-          ", notes='" + notes + '\'' +
-          ", segment='" + segment + '\'' +
+          ", anticipatedEndDate='" + anticipatedEndDate + '\'' +
+          ", cancelDateTimeUtc='" + cancelDateTimeUtc + '\'' +
+          ", automatedPayments=" + automatedPayments +
+          ", trackPayments=" + trackPayments +
           ", isPrivate=" + isPrivate +
-          ", isTaxDeductible=" + isTaxDeductible +
+          ", status='" + status + '\'' +
+          ", nextExpectedPaymentDate='" + nextExpectedPaymentDate + '\'' +
           '}';
     }
   }
 
-//    @JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class TributeDedication {
-//        public Integer tributeId;
-//        public String tributeType;
-//        public String tributeFirstName;
-//        public String tributeLastName;
-//        public String tributeCity;
-//        public String tributeState;
-//        public Integer acknowledgeeIndividualId;
-//        public String acknowledgeeLastName;
-//        public String acknowledgeeAddress;
-//        public String acknowledgeeCity;
-//        public String acknowledgeeState;
-//        public String acknowledgeePostal;
-//        public String acknowledgeeEmail;
-//        public String acknowledgeePhone;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class Designation {
-//        public Integer id;
-//        public String name;
-//        public String code;
-//        public String amountDesignated;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class Premium {
-//        public Integer id;
-//        public String name;
-//        public String code;
-//        public String quantity;
-//    }
-//
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class EventAttendee {
-//        public Integer eventId;
-//        public String eventName;
-//        public Boolean invited;
-//        public Boolean rsvp;
-//        public Boolean rsvpResponse;
-//        public Boolean attended;
-//    }
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class RecurringGiftPayments {
+    public List<RecurringGiftPayment> list = new ArrayList<>();
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class RecurringGiftPayment {
+    public Integer id;
+    public Gift gift;
+    public Double expectedAmount;
+    public Date expectedPaymentDate;
+    public Date fulfillPaymentDate;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CreateRecurringGiftPayment {
+    public Integer id;
+    public Double amount;
+    public String state;
+  }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class ContactQuery {
-    //        public QueryLocation queryLocation;
     public List<QueryConditionGroup> groups = new ArrayList<>();
     public String sortBy;
     public Boolean descending;
@@ -783,20 +672,12 @@ public class VirtuousClient {
     }
   }
 
-//    @JsonIgnoreProperties(ignoreUnknown = true)
-//    public static class QueryLocation {
-//        public Double topLatitude;
-//        public Double leftLongitude;
-//        public Double bottomLatitude;
-//        public Double rightLongitude;
-//    }
-
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class QueryCondition {
     public String parameter;
     public String operator;
     public String value;
-    //        public String secondaryValue;
+    public String secondaryValue;
     public List<String> values = new ArrayList<>();
 
     @Override
@@ -826,8 +707,7 @@ public class VirtuousClient {
   public static class ContactQueryResponse {
     @JsonProperty("list")
     public List<Contact> contacts = new ArrayList<>();
-//        public Integer total;
-
+    public Integer total;
 
     @Override
     public String toString() {
@@ -886,5 +766,12 @@ public class VirtuousClient {
       @JsonProperty("Meeting")
       MEETING;
     }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CustomField {
+    public String name;
+    public String value;
+    public String dataType;
   }
 }

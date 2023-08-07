@@ -320,7 +320,11 @@ public class EnvironmentConfig implements Serializable {
     public String form = "";
   }
 
-  public Platform virtuous = new Platform();
+  public static class VirtuousPlatform extends Platform {
+    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
+  }
+
+  public VirtuousPlatform virtuous = new VirtuousPlatform();
 
   public static class SharePointPlatform extends Platform {
     public String tenantId = "";
