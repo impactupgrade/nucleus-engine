@@ -13,8 +13,12 @@ import com.impactupgrade.integration.hubspot.crm.v3.HubSpotCrmV3Client;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -48,8 +52,9 @@ public abstract class AbstractIT extends JerseyTest {
   private static final Lock LOCK = new ReentrantLock();
 
   // definitions of common environments
-  protected static final EnvironmentFactory envFactorySfdcStripe = new EnvironmentFactory("environment-it-sfdc-stripe.json");
   protected static final EnvironmentFactory envFactoryHubspotStripe = new EnvironmentFactory("environment-it-hubspot-stripe.json");
+  protected static final EnvironmentFactory envFactorySfdcStripe = new EnvironmentFactory("environment-it-sfdc-stripe.json");
+  protected static final EnvironmentFactory envFactoryVirtuousStripe = new EnvironmentFactory("environment-it-virtuous-stripe.json");
 
   protected final App app;
   protected final Environment env;
@@ -168,5 +173,27 @@ public abstract class AbstractIT extends JerseyTest {
 
   protected void clearDonorwranglerByName(String name) throws Exception {
     // TODO
+  }
+
+  protected void clearVirtuous() throws Exception {
+    clearVirtuousByName("Tester");
+  }
+
+  protected void clearVirtuousByName(String name) throws Exception {
+    CrmService crmService = env.crmService("virtuous");
+    VirtuousClient virtuousClient = env.virtuousClient();
+
+    List<CrmContact> existingContacts = crmService.searchContacts(ContactSearch.byKeywords("Tester")).getResults();
+    for (CrmContact existingContact : existingContacts) {
+      VirtuousClient.Gifts gifts = virtuousClient.getGiftsByContact(Integer.parseInt(existingContact.id));
+      for (VirtuousClient.Gift gift : gifts.list) {
+        virtuousClient.deleteGift(gift.id);
+      }
+
+      virtuousClient.deleteContact(Integer.parseInt(existingContact.id));
+    }
+
+    // ensure we're actually clean
+    assertEquals(0, crmService.searchContacts(ContactSearch.byKeywords("Tester")).getResults().size());
   }
 }

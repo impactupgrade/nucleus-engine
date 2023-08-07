@@ -265,6 +265,15 @@ public class StripeClient {
     return Payout.list(payoutParams, requestOptions).getData();
   }
 
+  public Payout getPayout(String id) throws StripeException {
+    return new Retriever<Payout>() {
+      @Override
+      protected Payout retrieve() throws StripeException {
+        return Payout.retrieve(id, requestOptions);
+      }
+    }.result();
+  }
+
   public List<BalanceTransaction> getBalanceTransactions(String payoutId) throws StripeException {
     Payout payout = Payout.retrieve(payoutId, requestOptions);
     return getBalanceTransactions(payout);
