@@ -151,10 +151,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public String updateOrCreateContact(CrmContact crmContact) throws Exception {
+        Contact contact = toContact(crmContact);
         Contacts contacts = new Contacts();
-        contacts.setContacts(List.of(toContact(crmContact)));
+        contacts.setContacts(List.of(contact));
         try {
-            Contacts createdContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
+            // This method works very similar to POST Contacts (xeroApi.updateOrCreateContacts) 
+            // but if an existing contact matches our ContactName or ContactNumber then we will receive an error
+            Contacts createdContacts = xeroApi.createContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
             Contact upsertedContact = createdContacts.getContacts().stream().findFirst().get();
             return upsertedContact.getContactID().toString();
         } catch (XeroBadRequestException e) {
@@ -165,7 +168,31 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
                     if (crmContact.crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
-                        return getContact(supporterId).map(c -> c.getContactID().toString()).orElse(null);
+                        return getContactForAccountNumber(supporterId).map(c -> c.getContactID().toString()).orElse(null);
+                    }
+                }
+                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("contact name must be unique across all active contacts"))) {
+                    // TODO: Same as toContact -- DR specific, SFDC specific, etc.
+                    if (crmContact.crmRawObject instanceof SObject sObject) {
+                        String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+                        return getContactForName(contact.getName()).map(c -> {
+                            if (c.getAccountNumber().equals(supporterId)) {
+                                return c.getContactID().toString();
+                            } else {
+                                // Send notification if name already exists for different supporter id (account number)
+                                try {
+                                    env.logJobInfo("Sending notification for duplicated contact name '{}'...", crmContact.getFullName());
+                                    env.notificationService().sendNotification(
+                                        "Xero: Contact name already exists",
+                                        "Xero: Contact with name '" + crmContact.getFullName() + "' already exists. Supporter ID: " + supporterId + ".",
+                                        "xero:contact-name-exists"
+                                    );
+                                } catch (Exception ex) {
+                                    env.logJobError("Failed to send notification! {}", getExceptionDetails(e));
+                                }
+                                return null;
+                            }    
+                        }).orElse(null);
                     }
                 }
             }
@@ -178,12 +205,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
     }
 
-    protected Optional<Contact> getContact(String accountNumber) throws Exception {
+    protected Optional<Contact> getContact(String where) throws Exception {
         Contacts contacts = xeroApi.getContacts(getAccessToken(), xeroTenantId,
 //            OffsetDateTime ifModifiedSince,
             null,
 //            String where,
-            "AccountNumber=\"" + accountNumber + "\"",
+            where,
 //            String order,
             null,
 //            List<UUID> ids,
@@ -196,6 +223,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             true
         );
         return contacts.getContacts().stream().findFirst();
+    }
+
+    private Optional<Contact> getContactForName(String name) throws Exception {
+        return getContact("Name=\"" + name + "\"");
+    }
+
+    private Optional<Contact> getContactForAccountNumber(String accountNumber) throws Exception {
+        return getContact("AccountNumber=\"" + accountNumber + "\"");
     }
 
     @Override

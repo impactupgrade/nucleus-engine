@@ -190,7 +190,8 @@
       }
     },
     "donations:close-recurring-donation": {},
-    "sms:inbound-default": {}
+    "sms:inbound-default": {},
+    "xero:contact-name-exists": {}
   },
 
   "metadataKeys": {
