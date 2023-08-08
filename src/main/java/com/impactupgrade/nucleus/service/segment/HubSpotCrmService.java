@@ -57,6 +57,7 @@ import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.Writer;
@@ -701,10 +702,10 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
      Contact rawContact = (Contact) contact.crmRawObject;
     for (String fieldName : fields.keySet()) {
-      rawContact.getProperties().getOtherProperties().put(fieldName, fields.get(fieldName));
+      rawContact.getProperties().getOtherProperties().put(fieldName, fields.getFirst(fieldName));
     }
     updateContact(toCrmContact(rawContact));
   }

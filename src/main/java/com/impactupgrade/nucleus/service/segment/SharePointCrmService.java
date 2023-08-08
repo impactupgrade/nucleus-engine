@@ -24,6 +24,7 @@ import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -304,7 +305,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+    public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
 
     }
 

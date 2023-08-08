@@ -16,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -130,7 +131,7 @@ public class VirtuousCrmService implements BasicCrmService {
     }
 
     @Override
-    public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+    public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
         //TODO?
     }
 

@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
@@ -63,7 +64,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+    public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
         //TODO?
     }
 

@@ -36,6 +36,7 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import com.stripe.util.CaseInsensitiveMap;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -724,10 +725,10 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
     SObject rawContact = (SObject) contact.crmRawObject;
     for (String fieldName : fields.keySet()) {
-      rawContact.setField(fieldName, fields.get(fieldName));
+      rawContact.setField(fieldName, fields.getFirst(fieldName));
     }
     sfdcClient.update(rawContact);
   }

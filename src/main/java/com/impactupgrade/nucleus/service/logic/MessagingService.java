@@ -150,10 +150,8 @@ public class MessagingService {
       crmContact.emailOptIn = emailOptIn;
       crmContact.smsOptIn = smsOptIn;
       crmContact.language = language;
-      for (String field : customResponses.keySet() ){
-        crmContact.addMetadata(field, customResponses.get(field).get(0));
-      }
       crmContact.id = crmService.insertContact(crmContact);
+      crmService.setAdditionalFields(crmContact, customResponses);
     } else {
       // Existed, so use it
       env.logJobInfo("contact already existed in CRM: {}", crmContact.id);
@@ -186,10 +184,7 @@ public class MessagingService {
 
       if (!customResponses.equals(Collections.emptyMap())){
         env.logJobInfo("Updating custom response fields for contact {}", crmContact.id);
-        for (String field : customResponses.keySet() ){
-          //TODO check that this will update existing meta data fields & won't break
-          crmContact.addMetadata(field, customResponses.get(field).get(0));
-        }
+        crmService.setAdditionalFields(crmContact, customResponses);
         update = true;
       }
 

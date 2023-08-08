@@ -30,6 +30,7 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -416,7 +417,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception {
+  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
     //TODO?
   }
 

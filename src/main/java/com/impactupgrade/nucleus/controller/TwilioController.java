@@ -84,7 +84,6 @@ public class TwilioController {
       MultivaluedMap<String, String> customResponses
   ) throws Exception {
     Environment env = envFactory.init(request);
-
     List<String> params = Arrays.asList("From", "FirstName", "LastName", "FullName", "Email", "EmailOptIn", "SmsOptIn", "Language", "ListId", "HubSpotListId", "CampaignId", "OpportunityName", "OpportunityRecordTypeId", "OpportunityOwnerId", "OpportunityNotes", "nucleus-username");
     for(String key : params) {
       customResponses.remove(key);

@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -83,7 +84,7 @@ public interface CrmService extends SegmentService {
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
-  void setAdditionalFields(CrmContact contact, Map<String, String> fields) throws Exception;
+  void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception;
   String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
 
   // transaction id, secondary id, refund id, etc.
