@@ -34,6 +34,7 @@ import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import com.sforce.ws.bind.XmlObject;
 import com.stripe.util.CaseInsensitiveMap;
 
 import javax.ws.rs.core.MultivaluedMap;
@@ -45,6 +46,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -726,11 +728,12 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
-    SObject rawContact = (SObject) contact.crmRawObject;
+    SObject toUpdate = new SObject("Contact");
+    toUpdate.setId(contact.id);
     for (String fieldName : fields.keySet()) {
-      rawContact.setField(fieldName, fields.getFirst(fieldName));
+      toUpdate.setField(fieldName, fields.getFirst(fieldName));
     }
-    sfdcClient.update(rawContact);
+    sfdcClient.update(toUpdate);
   }
 
   @Override
