@@ -350,14 +350,14 @@ public class CrmImportEvent {
   }
   public List<String> getAccountCustomFieldNames() {
     return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom "))
-        .map(k -> k.replace("Account Custom ", "").replace("Append ", "")).toList();
+        .map(k -> k.replace("Account Custom ", "").replace("Append ", "").trim()).toList();
   }
   public List<String> getContactColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Contact ")).toList();
   }
   public List<String> getContactCustomFieldNames() {
     List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom "))
-        .map(k -> k.replace("Contact Custom ", "").replace("Append ", "")).toList();
+        .map(k -> k.replace("Contact Custom ", "").replace("Append ", "").trim()).toList();
     // We also need the account values!
     List<String> accountFields = getAccountCustomFieldNames().stream().map(f -> "Account." + f).toList();
     return Stream.concat(contactFields.stream(), accountFields.stream()).toList();
@@ -367,14 +367,14 @@ public class CrmImportEvent {
   }
   public List<String> getRecurringDonationCustomFieldNames() {
     return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom "))
-        .map(k -> k.replace("Recurring Donation Custom ", "").replace("Append ", "")).toList();
+        .map(k -> k.replace("Recurring Donation Custom ", "").replace("Append ", "").trim()).toList();
   }
   public List<String> getOpportunityColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Opportunity ")).toList();
   }
   public List<String> getOpportunityCustomFieldNames() {
     return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom "))
-        .map(k -> k.replace("Opportunity Custom ", "").replace("Append ", "")).toList();
+        .map(k -> k.replace("Opportunity Custom ", "").replace("Append ", "").trim()).toList();
   }
   public List<String> getContactCampaignColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign ")).toList();
