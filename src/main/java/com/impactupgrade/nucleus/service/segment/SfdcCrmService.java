@@ -1985,14 +1985,20 @@ public class SfdcCrmService implements CrmService {
       env.logJobError("failed to parse date", e);
     }
 
-    // TODO: yes/no -> bool is causing trouble for picklist/text imports that include those values
     if (c != null) {
       sObject.setField(key, c);
-    } else if ("true".equalsIgnoreCase(value)/* || "yes".equalsIgnoreCase(value)*/) {
+    }
+    // TODO: yes/no -> bool is causing trouble for picklist/text imports that include those values
+    else if ("true".equalsIgnoreCase(value)/* || "yes".equalsIgnoreCase(value)*/) {
       sObject.setField(key, true);
     } else if ("false".equalsIgnoreCase(value)/* || "no".equalsIgnoreCase(value)*/) {
       sObject.setField(key, false);
-    } else {
+    }
+    // But this seems safe?
+    else if ("x".equalsIgnoreCase(value)) {
+      sObject.setField(key, true);
+    }
+    else {
       sObject.setField(key, value);
     }
   }
