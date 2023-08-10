@@ -34,8 +34,10 @@ import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import com.sforce.ws.bind.XmlObject;
 import com.stripe.util.CaseInsensitiveMap;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
@@ -46,6 +48,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -726,6 +729,13 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
+    SObject toUpdate = (SObject) contact.crmRawObject;
+    for (String fieldName : fields.keySet()) {
+      toUpdate.setField(fieldName, fields.getFirst(fieldName));
+    }
+  }
+  
   public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
     Map<String, List<String>> contactCampaigns = new HashMap<>();
     List<SObject> campaignMembers = sfdcClient.getEmailCampaignsByContactIds(contactIds);

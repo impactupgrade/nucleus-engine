@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
@@ -58,6 +59,11 @@ public class GoogleSheetCrmService implements BasicCrmService {
         // listId is assumed to be the full URL of a GSheet
         return GoogleSheetsUtil.getSheetData(listId).stream()
             .map(this::toCrmContact).collect(Collectors.toList());
+    }
+
+    @Override
+    public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
+        //TODO?
     }
 
     @Override

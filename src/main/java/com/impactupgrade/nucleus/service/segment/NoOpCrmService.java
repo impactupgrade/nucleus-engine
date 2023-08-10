@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
@@ -100,6 +101,11 @@ public class NoOpCrmService implements CrmService {
 
   @Override
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
+
+  }
+
+  @Override
+  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
 
   }
 

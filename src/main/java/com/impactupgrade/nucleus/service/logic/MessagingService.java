@@ -13,7 +13,8 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;
-
+import javax.ws.rs.core.MultivaluedMap;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -105,7 +106,8 @@ public class MessagingService {
       String __smsOptIn,
       String language,
       String campaignId,
-      String listId
+      String listId,
+      MultivaluedMap<String, String> customResponses
   ) throws Exception {
     // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
     if (email != null && !email.contains("@")) {
@@ -148,8 +150,8 @@ public class MessagingService {
       crmContact.emailOptIn = emailOptIn;
       crmContact.smsOptIn = smsOptIn;
       crmContact.language = language;
-
       crmContact.id = crmService.insertContact(crmContact);
+      crmService.setAdditionalFields(crmContact, customResponses);
     } else {
       // Existed, so use it
       env.logJobInfo("contact already existed in CRM: {}", crmContact.id);
@@ -177,6 +179,12 @@ public class MessagingService {
       if (Strings.isNullOrEmpty(crmContact.mobilePhone) && !Strings.isNullOrEmpty(phone)) {
         env.logJobInfo("contact {} missing mobilePhone; updating it...", crmContact.id);
         crmContact.mobilePhone = phone;
+        update = true;
+      }
+
+      if (!customResponses.equals(Collections.emptyMap())){
+        env.logJobInfo("Updating custom response fields for contact {}", crmContact.id);
+        crmService.setAdditionalFields(crmContact, customResponses);
         update = true;
       }
 

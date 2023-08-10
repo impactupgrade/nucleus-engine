@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
@@ -93,6 +94,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   @Override
   public void updateContact(CrmContact crmContact) throws Exception {
     dwClient.upsertContact(crmContact);
+  }
+
+  @Override
+  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
+    //TODO?
   }
 
   @Override
