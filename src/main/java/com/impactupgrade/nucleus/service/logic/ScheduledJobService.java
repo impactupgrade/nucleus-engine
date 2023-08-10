@@ -14,6 +14,8 @@ import java.util.List;
 
 public class ScheduledJobService {
 
+  private static final Logger log = LogManager.getLogger(ScheduledJobService.class);
+
   private final HibernateDao<Long, Job> jobDao;
   private final Environment env;
 
@@ -25,9 +27,9 @@ public class ScheduledJobService {
   // May seem a little odd to require the now argument, rather than simply doing Instant.now() inline. However:
   // 1) Helps with testing.
   // 2) May be future situations where we need granular control...
-  public void processJobSchedules(Instant now) throws Exception {
+  public void processJobSchedules(Instant now) {
     if (Strings.isNullOrEmpty(env.getConfig().apiKey)) {
-      env.logJobInfo("no apiKey in the env config; skipping the scheduled job run");
+      log.info("no apiKey in the env config; skipping the scheduled job run");
       return;
     }
 
@@ -49,16 +51,16 @@ public class ScheduledJobService {
     //  it to the executors to control when something is actually happening.
 
     if (CollectionUtils.isEmpty(jobs)) {
-      env.logJobInfo("Could not find any active job schedules. Skipping...");
+      log.info("Could not find any active job schedules. Skipping...");
     }
     for (Job job : jobs) {
-      env.logJobInfo("Processing job {}...", job.id);
+      log.info("Processing job {}...", job.id);
       try {
         switch (job.jobType) {
           case SMS_CAMPAIGN -> new SmsCampaignJobExecutor(env).execute(job, now);
         }
       } catch (Exception e) {
-        env.logJobError("scheduled job {} failed", job.id, e);
+        log.error("scheduled job {} failed", job.id, e);
       }
     }
   }

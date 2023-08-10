@@ -116,12 +116,12 @@ public class HttpClient {
     }
   }
 
-  private static Client client() {
-    return ClientBuilder.newClient();
+  public static boolean isOk(Response response) {
+    return response.getStatus() < 300;
   }
 
-  private static boolean isOk(Response response) {
-    return response.getStatus() < 300;
+  private static Client client() {
+    return ClientBuilder.newClient();
   }
 
   public static class HeaderBuilder {

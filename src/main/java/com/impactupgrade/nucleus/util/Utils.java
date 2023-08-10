@@ -87,7 +87,7 @@ public class Utils {
   public static boolean checkboxToBool(String checkboxValue) {
     if (checkboxValue == null) return false;
 
-    return Set.of("yes", "on", "true", "1").contains(checkboxValue.toLowerCase(Locale.ROOT));
+    return Set.of("yes", "on", "true", "1", "x").contains(checkboxValue.toLowerCase(Locale.ROOT));
   }
 
   public static String emptyStringToNull(String s) {

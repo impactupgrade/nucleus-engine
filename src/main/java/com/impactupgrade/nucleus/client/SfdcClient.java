@@ -360,7 +360,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //    return queryListAutoPaged(query);
 //  }
 
-  public List<SObject> getContactsByReportId(String reportId, String... extraFields) throws ConnectionException, InterruptedException, IOException {
+  public List<SObject> getContactsByReportId(String reportId) throws ConnectionException, InterruptedException, IOException {
     if (Strings.isNullOrEmpty(reportId)) {
       return Collections.emptyList();
     }
@@ -372,32 +372,47 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     // use that to run a normal query to grab all fields we care about.
 
     // Get report content as a map of (columnLabel -> columnValues)
-    List<String> resultIds = new ArrayList<>();
+    List<SObject> results = new ArrayList<>();
     CsvMapper mapper = new CsvMapper();
     CsvSchema schema = CsvSchema.emptySchema().withHeader();
     MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(reportContent);
     while (iterator.hasNext()) {
-      Map<String, String> row = iterator.next();
-      row.entrySet().stream()
-          // Collect only values for filtered (searchable) columns
-          .filter(e -> "id".equalsIgnoreCase(e.getKey()) || "contact id".equalsIgnoreCase(e.getKey()))
-          .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
-          // Important to include this, as some CSV exports include footer details that get picked up as one column rows.
-          .filter(e -> e.getValue().startsWith("003"))
-          .forEach(e -> {
-            resultIds.add(e.getValue());
-          });
+      SObject sobject = new SObject("Contact");
+      final boolean[] hasValues = {false};
+
+      iterator.next().forEach((key, value) -> {
+        if (Strings.isNullOrEmpty(value)) {
+          return;
+        }
+
+        if (key.equalsIgnoreCase("Contact Id") && value.startsWith("003")) {
+          hasValues[0] = true;
+          sobject.setId(value);
+        } else if (key.equalsIgnoreCase("Id") && value.startsWith("003")) {
+          hasValues[0] = true;
+          sobject.setId(value);
+        } else if (key.equalsIgnoreCase("Email")) {
+          hasValues[0] = true;
+          sobject.setField("Email", value);
+        } else if (key.equalsIgnoreCase("Phone")) {
+          hasValues[0] = true;
+          sobject.setField("Phone", value);
+        } else if (key.equalsIgnoreCase("Mobile")) {
+          hasValues[0] = true;
+          sobject.setField("MobilePhone", value);
+        } else if (key.equalsIgnoreCase("MobilePhone")) {
+          hasValues[0] = true;
+          sobject.setField("MobilePhone", value);
+        }
+      });
+
+      // Important to check this, as some CSV exports include footer details that get picked up as one column rows.
+      if (hasValues[0]) {
+        results.add(sobject);
+      }
     }
 
-    env.logJobInfo("report contained {} contacts", resultIds.size());
-    if (resultIds.isEmpty()) {
-      return Collections.emptyList();
-    } else {
-      // Get contacts using ID column
-      String where = resultIds.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
-      String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id in (" + where + ")";
-      return queryListAutoPaged(query);
-    }
+    return results;
   }
 
 //  public String getReportDescription(String reportId) {
@@ -469,12 +484,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    List<SObject> contacts = getEmailContacts(updatedSinceClause, filter, extraFields);
+    List<SObject> contacts = queryEmailContacts(updatedSinceClause, filter, extraFields);
 
     if (updatedSince != null) {
       updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
     }
-    contacts.addAll(getEmailContacts(updatedSinceClause, filter, extraFields));
+    contacts.addAll(queryEmailContacts(updatedSinceClause, filter, extraFields));
 
     // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
     Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
@@ -486,7 +501,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return uniqueContacts.values();
   }
 
-  protected List<SObject> getEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  protected List<SObject> queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " and " + filter;
     }
@@ -510,6 +525,47 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
 
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter + optInOutFilters;
+    return queryListAutoPaged(query);
+  }
+
+  public Collection<SObject> getSmsContacts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "";
+
+    if (updatedSince != null) {
+      updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
+    List<SObject> contacts = querySmsContacts(updatedSinceClause, filter, extraFields);
+
+    if (updatedSince != null) {
+      updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
+    }
+    contacts.addAll(querySmsContacts(updatedSinceClause, filter, extraFields));
+
+    // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
+    Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
+        so -> {
+          String phone = (String) so.getField("MobilePhone");
+          if (Strings.isNullOrEmpty(phone)) {
+            phone = (String) so.getField("HomePhone");
+          }
+          if (Strings.isNullOrEmpty(phone)) {
+            phone = (String) so.getField("Phone");
+          }
+          return phone.replaceAll("[\\D]", "");
+        },
+        Function.identity(),
+        // FIFO
+        (so1, so2) -> so1
+    ));
+    return uniqueContacts.values();
+  }
+
+  protected List<SObject> querySmsContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where (Phone != '' OR MobilePhone != '')" + updatedSinceClause + filter;
     return queryListAutoPaged(query);
   }
 

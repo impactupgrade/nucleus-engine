@@ -1,10 +1,6 @@
 package com.impactupgrade.nucleus.controller;
 
-import com.impactupgrade.nucleus.entity.JobStatus;
-import com.impactupgrade.nucleus.entity.JobType;
-import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.service.segment.EmailService;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -14,8 +10,8 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
-import java.util.Calendar;
 
+@Deprecated
 @Path("/email")
 public class EmailController {
 
@@ -28,107 +24,22 @@ public class EmailController {
   @GET
   @Path("/sync/daily")
   public Response syncDaily(@Context HttpServletRequest request) throws Exception {
-    Environment env = envFactory.init(request);
-
-    Calendar lastSync = Calendar.getInstance();
-    // run daily, but setting this high to catch previous misses
-    int syncDays = 3;
-    lastSync.add(Calendar.DATE, -syncDays);
-
-    Runnable thread = () -> {
-      try {
-        String jobName = "Email: Daily Sync";
-        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
-        for (EmailService emailPlatformService : env.allEmailServices()) {
-          try {
-            // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
-            emailPlatformService.syncUnsubscribes(lastSync);
-            env.logJobInfo("{}: sync unsubscribes done", emailPlatformService.name());
-            emailPlatformService.syncContacts(lastSync);
-            env.logJobInfo("{}: sync contacts done", emailPlatformService.name());
-            env.endJobLog(JobStatus.DONE);
-          } catch (Exception e) {
-            env.logJobError("email syncDaily failed for {}", emailPlatformService.name(), e);
-            env.logJobError(e.getMessage());
-          }
-        }
-      } catch (Exception e) {
-        env.logJobError("email syncDaily failed", e);
-        env.logJobError(e.getMessage());
-        env.endJobLog(JobStatus.FAILED);
-      }
-    };
-    new Thread(thread).start();
-
-    return Response.ok().build();
+    return new CommunicationController(envFactory).syncDaily(request);
   }
 
   @GET
   @Path("/sync/all")
   public Response syncAll(@Context HttpServletRequest request) throws Exception {
-    Environment env = envFactory.init(request);
-
-    Runnable thread = () -> {
-      try {
-        String jobName = "Email: Full Sync";
-        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
-        for (EmailService emailPlatformService : env.allEmailServices()) {
-          try {
-            // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
-            emailPlatformService.syncUnsubscribes(null);
-            env.logJobInfo("{}: sync unsubscribes done", emailPlatformService.name());
-            emailPlatformService.syncContacts(null);
-            env.logJobInfo("{}: sync contacts done", emailPlatformService.name());
-          } catch (Exception e) {
-            env.logJobError("email syncAll failed for {}", emailPlatformService.name(), e);
-            env.logJobError(e.getMessage());
-            env.endJobLog(JobStatus.FAILED);
-          }
-        }
-        env.endJobLog(JobStatus.DONE);
-      } catch (Exception e) {
-        env.logJobError("email syncAll failed", e);
-        env.logJobError(e.getMessage());
-        env.endJobLog(JobStatus.FAILED);
-      }
-    };
-    new Thread(thread).start();
-
-    return Response.ok().build();
+    return new CommunicationController(envFactory).syncAll(request);
   }
 
   @POST
   @Path("/upsert")
   @Consumes("application/x-www-form-urlencoded")
   public Response upsertContact(
-      @FormParam("email") String email,
       @FormParam("contact-id") String contactId,
       @Context HttpServletRequest request
   ) throws Exception {
-    Environment env = envFactory.init(request);
-    Runnable thread = () -> {
-      try {
-        String jobName = "Email: Single Contact";
-        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
-        for (EmailService emailPlatformService : env.allEmailServices()) {
-          try {
-            // TODO: TER and STS still using contactId, update to use email only.
-            emailPlatformService.upsertContact(email, contactId);
-            env.logJobInfo("{}: upsert contact done", emailPlatformService.name());
-          } catch (Exception e) {
-            env.logJobError("contact upsert failed for contact: {} {} platform: {}", email, contactId, emailPlatformService.name(), e);
-            env.logJobError(e.getMessage());
-          }
-        }
-        env.endJobLog(JobStatus.DONE);
-      } catch (Exception e) {
-        env.logJobError("email upsert contact failed", e);
-        env.logJobError(e.getMessage());
-        env.endJobLog(JobStatus.FAILED);
-      }
-    };
-    new Thread(thread).start();
-
-    return Response.ok().build();
+    return new CommunicationController(envFactory).upsertContact(contactId, request);
   }
 }

@@ -117,7 +117,7 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
+  default Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
     return null;
   }
 

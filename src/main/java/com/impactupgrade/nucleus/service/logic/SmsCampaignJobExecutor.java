@@ -1,5 +1,9 @@
 package com.impactupgrade.nucleus.service.logic;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -17,12 +21,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.time.Instant;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -53,14 +57,19 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
   @Override
   public void execute(Job job, Instant now) throws Exception {
+    JobPayload jobPayload = getJobPayload(job);
+    if (jobPayload == null) {
+      // don't have payload to process - should be unreachable
+      return;
+    }
     // First, is it time to fire off this job?
-    if (getJsonLong(job.payload, "lastTimestamp") == null) {
+    if (jobPayload.lastTimestamp == null) {
       if (now.isBefore(job.scheduleStart)) {
         // too soon for a new run
         return;
       }
     } else {
-      Instant lastTimestamp = Instant.ofEpochMilli(getJsonLong(job.payload, "lastTimestamp"));
+      Instant lastTimestamp = Instant.ofEpochMilli(jobPayload.lastTimestamp);
       Optional<Instant> nextFireTime = getNextFireTime(job, lastTimestamp);
       // One time send
       if (nextFireTime.isEmpty()
@@ -75,21 +84,24 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
     env.logJobInfo("job {} is ready for the next message", job.id);
 
-    String contactListId = getJsonText(job.payload, "crm_list");
+    String contactListId = jobPayload.crmListId;
     if (Strings.isNullOrEmpty(contactListId)) {
       env.logJobWarn("Failed to get contact list id for job id {}! Skipping...", job.id);
+      env.endJobLog(JobStatus.FAILED);
       return;
     }
 
     env.logJobInfo("Retrieving contacts using contactListId {}", contactListId);
 
-    List<CrmContact> crmContacts = crmService.getContactsFromList(contactListId);
+    // get the list and dedup by phone number
+    Collection<CrmContact> crmContacts = crmService.getContactsFromList(contactListId).stream()
+        .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
+        .collect(Collectors.toMap(c -> c.phoneNumberForSMS().replaceAll("[\\D]", ""), c -> c, (c1, c2) -> c1, LinkedHashMap::new)).values();
     if (CollectionUtils.isEmpty(crmContacts)) {
       env.logJobInfo("No contacts returned for job id {}! Skipping...");
+      env.endJobLog(JobStatus.DONE);
       return;
     }
-
-    JsonNode messagesNode = getJsonNode(job.payload, "messages");
 
     Map<String, JobProgress> progressesByContacts = job.jobProgresses.stream()
         .filter(jp -> !Strings.isNullOrEmpty(jp.targetId))
@@ -134,7 +146,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           if (job.sequenceOrder == JobSequenceOrder.BEGINNING) {
             nextMessage = 1;
           } else {
-            Integer lastMessage = getJsonInt(job.payload, "lastMessage");
+            Integer lastMessage = jobPayload.lastMessage;
             if (lastMessage == null) {
               nextMessage = 1;
             } else {
@@ -148,7 +160,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           env.logJobInfo("Next message id to send: {}", nextMessage);
         }
 
-        if (nextMessage > messagesNode.size()) {
+        if (jobPayload.sequenceMessages != null && nextMessage > jobPayload.sequenceMessages.size()) {
           env.logJobInfo("All messages sent for contact {}!", targetId);
           continue;
         }
@@ -156,24 +168,23 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         // TODO: getMessage assumes the code ("EN") use, not the language name ("English"). The SMS campaign JSON
         //  technically includes a "languages" array with both. So if the CRM uses the full name, may need to convert
         //  here using the JSON mappings.
+        String defaultLanguageCode = getDefaultLanguage(jobPayload.languages);
+        
         String languageCode = crmContact.language;
         if (Strings.isNullOrEmpty(languageCode)) {
-          languageCode = getDefaultLanguage(getJsonNode(job.payload, "languages"));
+          env.logJobInfo("Failed to get contact language for contact {}; assuming {}", targetId, defaultLanguageCode);
+          languageCode = defaultLanguageCode;
         }
-        if (Strings.isNullOrEmpty(languageCode)) {
-          env.logJobInfo("Failed to get contact language for contact {}; assuming EN", targetId);
-          languageCode = "EN";
-        } else {
-          languageCode = languageCode.toUpperCase(Locale.ROOT);
-        }
-        String message = getMessage(messagesNode, nextMessage, languageCode);
+        languageCode = languageCode.toUpperCase(Locale.ROOT);
+       
+        Message message = getMessage(jobPayload.sequenceMessages, nextMessage, languageCode, defaultLanguageCode);
 
         // If the message is empty, it's likely due to the campaign not being configured for the given language. Skip
         // attempting to send the message, but still log "progress" so that this step isn't reattempted over and over
         // for a single contact.
-        if (!Strings.isNullOrEmpty(message)) {
-          String sender = getJsonText(job.payload, "campaign_phone");
-          messagingService.sendMessage(message, crmContact, sender);
+        if (!Strings.isNullOrEmpty(message.messageBody)) {
+          String sender = jobPayload.campaignPhone;
+          messagingService.sendMessage(message.messageBody, message.attachmentUrl, crmContact, sender);
         }
 
         updateJobProgress(jobProgress.payload, nextMessage);
@@ -200,47 +211,73 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     env.endJobLog(JobStatus.DONE);
   }
 
-  // TODO: Let's introduce jsonpath? Or a limited set of Jackson bindings?
-
-  private String getMessage(JsonNode messagesNode, Integer id, String languageCode) {
-    if (messagesNode.isArray()) {
-      for (JsonNode messageNode : messagesNode) {
-        if (id.equals(getJsonInt(messageNode, "id"))) {
-          JsonNode languagesNode = messageNode.findValue("languages");
-          if (languagesNode != null) {
-            JsonNode languageNode = getJsonNode(languagesNode, languageCode);
-            if (languageNode != null) {
-              return getJsonText(languageNode, "message");
-            }
-          }
-        }
-      }
+  private JobPayload getJobPayload(Job job) {
+    if (job == null || job.payload == null) {
+      return null;
     }
-
-    return null;
+    JobPayload jobPayload = null;
+    try {
+      jobPayload = new ObjectMapper().readValue(job.payload.toString(), new TypeReference<>() {});
+    } catch (JsonProcessingException e) {
+      env.logJobWarn("Failed to get job payload from json node! {}", e.getMessage());
+    }
+    return jobPayload;
   }
 
-  private String getDefaultLanguage(JsonNode languagesNode) {
-    if (languagesNode.isArray()) {
-      for (JsonNode languageNode : languagesNode) {
-        Boolean isDefault = getJsonBoolean(languageNode, "default");
-        if (isDefault != null && isDefault) {
-          return getJsonText(languageNode, "code");
+  private String getDefaultLanguage(List<Language> languages) {
+    String defaultLanguage = null;
+
+    if (CollectionUtils.isNotEmpty(languages)) {
+      defaultLanguage = languages.stream()
+          .filter(l -> l.isDefault)
+          .findFirst()
+          .map(l -> l.code)
+          .orElse(null);;
+    }
+
+    if (Strings.isNullOrEmpty(defaultLanguage)) {
+      env.logJobWarn("Using default language '{}'...", defaultLanguage);
+      defaultLanguage = "EN";
+    }
+    
+    return defaultLanguage;
+  }
+  
+  private Message getMessage(List<SequenceMessage> sequenceMessages, Integer id, String languageCode, String defaultLanguageCode) {
+    Message message = null;
+    SequenceMessage sequenceMessage = sequenceMessages.stream()
+        .filter(sm -> id == sm.id)
+        .findFirst().orElse(null);
+    
+    if (sequenceMessage != null && sequenceMessage.messagesByLanguages != null) {
+      Message languageCodeMessage = sequenceMessage.messagesByLanguages.get(languageCode);
+      
+      if (languageCodeMessage != null) {
+        message = languageCodeMessage;
+
+        if ("primary_attachment".equalsIgnoreCase(languageCodeMessage.useAttachment)) {
+          Message defaultLanguageCodeMessage = sequenceMessage.messagesByLanguages.get(defaultLanguageCode);
+
+          if (defaultLanguageCodeMessage != null) {
+            message.attachmentUrl = defaultLanguageCodeMessage.attachmentUrl;
+          }
+        } else if ("none".equalsIgnoreCase(languageCodeMessage.useAttachment)) {
+          message.attachmentUrl = null;
         }
       }
     }
-
-    return null;
+    return message;
   }
 
   private void updateJob(Job job, Instant now) {
-    if (Objects.isNull(job.payload.findValue("firstTimestamp"))) {
+    JobPayload jobPayload = getJobPayload(job);
+    if (jobPayload.firstTimestamp == null) {
       ((ObjectNode) job.payload).put("firstTimestamp", now.toEpochMilli());
     }
     ((ObjectNode) job.payload).put("lastTimestamp", now.toEpochMilli());
 
     if (job.sequenceOrder == JobSequenceOrder.NEXT) {
-      Integer lastMessage = getJsonInt(job.payload, "lastMessage");
+      Integer lastMessage = jobPayload.lastMessage;
       if (lastMessage == null) {
         ((ObjectNode) job.payload).put("lastMessage", 1);
       } else {
@@ -276,5 +313,44 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       default -> throw new RuntimeException("unexpected frequency: " + frequency);
     };
     return calendar.getTime().toInstant();
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class JobPayload {
+    public String name;
+    @JsonProperty("campaign_phone")
+    public String campaignPhone;
+    @JsonProperty("crm_list")
+    public String crmListId;
+    public List<Language> languages;
+    @JsonProperty("messages")
+    public List<SequenceMessage> sequenceMessages;
+
+    public Long firstTimestamp;
+    public Long lastTimestamp;
+    public Integer lastMessage;
+  }
+  
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class Language {
+    public String language;
+    public String code;
+    @JsonProperty("default")
+    public boolean isDefault;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class SequenceMessage {
+    public Integer id;
+    @JsonProperty("languages")
+    public Map<String, Message> messagesByLanguages;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class Message {
+    public String useAttachment;
+    public String attachmentUrl;
+    @JsonProperty("message")
+    public String messageBody;
   }
 }

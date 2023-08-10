@@ -1,0 +1,3 @@
+com.impactupgrade.nucleus.service.segment.MailchimpCommunicationService
+com.impactupgrade.nucleus.service.segment.MinistryByTextCommunicationService
+com.impactupgrade.nucleus.service.segment.SendGridCommunicationService

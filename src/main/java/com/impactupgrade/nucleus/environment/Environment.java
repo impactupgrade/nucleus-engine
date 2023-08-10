@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
+import com.impactupgrade.nucleus.service.segment.CommunicationService;
 import com.impactupgrade.nucleus.service.segment.ConsoleJobLoggingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.DBJobLoggingService;
@@ -181,8 +182,8 @@ public class Environment {
     return segmentService(getConfig().emailTransactional, EmailService.class);
   }
 
-  public List<EmailService> allEmailServices() {
-    return segmentServices(EmailService.class);
+  public List<CommunicationService> allCommunicationServices() {
+    return segmentServices(CommunicationService.class);
   }
 
   public List<EnrichmentService> allEnrichmentServices() {

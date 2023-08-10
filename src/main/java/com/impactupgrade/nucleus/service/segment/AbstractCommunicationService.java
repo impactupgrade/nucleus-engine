@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public abstract class AbstractEmailService implements EmailService {
+public abstract class AbstractCommunicationService implements CommunicationService {
 
   protected Environment env;
 
@@ -25,20 +25,16 @@ public abstract class AbstractEmailService implements EmailService {
     //  SendGridEmailService, even when no CrmService is identified.
   }
 
-  protected List<CrmContact> getCrmContacts(EnvironmentConfig.EmailList emailList, Calendar lastSync) throws Exception {
-      return env.primaryCrmService().getEmailContacts(lastSync, emailList);
-  }
-
   protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts) throws Exception {
     List<String> crmContactIds = crmContacts.stream().map(c -> c.id).collect(Collectors.toList());
     if (crmContactIds.isEmpty()) {
       return Collections.emptyMap();
     }
-    return env.primaryCrmService().getEmailCampaignsByContactIds(crmContactIds);
+    return env.primaryCrmService().getContactCampaignsByContactIds(crmContactIds);
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,
-      EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
+      EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
     List<CustomField> customFields = new ArrayList<>();
 
     if (!Strings.isNullOrEmpty(crmContact.mailingAddress.city)) {
@@ -98,8 +94,8 @@ public abstract class AbstractEmailService implements EmailService {
   }
 
   protected final List<String> getContactTagsCleaned(CrmContact crmContact, List<String> contactCampaignNames,
-      EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
-    List<String> tags = buildContactTags(crmContact, contactCampaignNames, emailPlatform);
+      EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
+    List<String> tags = buildContactTags(crmContact, contactCampaignNames, communicationPlatform);
 
     // Mailchimp's Salesforce plugin chokes on tags > 80 chars, which seems like a sane limit anyway.
     List<String> cleanedTags = new ArrayList<>();
@@ -117,32 +113,32 @@ public abstract class AbstractEmailService implements EmailService {
   // NOTE: Only use alphanumeric and _ chars! Some providers, like SendGrid, are using custom fields for
   //  tags and have limitations on field names.
   protected List<String> buildContactTags(CrmContact crmContact, List<String> contactCampaignNames,
-      EnvironmentConfig.EmailPlatform emailPlatform) throws Exception {
+      EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
     List<String> tags = new ArrayList<>();
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // DONATION METRICS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (crmContact.totalDonationAmount != null && emailPlatform.tagFilters.majorDonorAmount != null
-        && crmContact.totalDonationAmount >= emailPlatform.tagFilters.majorDonorAmount) {
+    if (crmContact.totalDonationAmount != null && communicationPlatform.tagFilters.majorDonorAmount != null
+        && crmContact.totalDonationAmount >= communicationPlatform.tagFilters.majorDonorAmount) {
       tags.add("major_donor");
     }
 
     if (crmContact.lastDonationDate != null) {
       tags.add("donor");
 
-      if (emailPlatform.tagFilters.recentDonorDays != null) {
+      if (communicationPlatform.tagFilters.recentDonorDays != null) {
         Calendar limit = Calendar.getInstance();
-        limit.add(Calendar.DAY_OF_MONTH, -emailPlatform.tagFilters.recentDonorDays);
+        limit.add(Calendar.DAY_OF_MONTH, -communicationPlatform.tagFilters.recentDonorDays);
         if (crmContact.lastDonationDate.after(limit)) {
           tags.add("recent_donor");
         }
       }
     }
 
-    if (crmContact.numDonations != null && emailPlatform.tagFilters.frequentDonorCount != null
-        && crmContact.numDonations >= emailPlatform.tagFilters.frequentDonorCount) {
+    if (crmContact.numDonations != null && communicationPlatform.tagFilters.frequentDonorCount != null
+        && crmContact.numDonations >= communicationPlatform.tagFilters.frequentDonorCount) {
       tags.add("frequent_donor");
     }
 

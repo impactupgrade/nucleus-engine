@@ -349,7 +349,12 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return Collections.emptyList();
   }
 
@@ -521,7 +526,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
+  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Collections.emptyMap();
   }

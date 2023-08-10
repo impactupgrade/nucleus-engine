@@ -38,6 +38,8 @@ import com.sforce.ws.bind.XmlObject;
 import com.stripe.util.CaseInsensitiveMap;
 
 import javax.ws.rs.core.MultivaluedMap;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -733,9 +735,8 @@ public class SfdcCrmService implements CrmService {
       toUpdate.setField(fieldName, fields.getFirst(fieldName));
     }
   }
-
-  @Override
-  public Map<String, List<String>> getEmailCampaignsByContactIds(List<String> contactIds) throws Exception {
+  
+  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
     Map<String, List<String>> contactCampaigns = new HashMap<>();
     List<SObject> campaignMembers = sfdcClient.getEmailCampaignsByContactIds(contactIds);
     for (SObject campaignMember : campaignMembers) {
@@ -824,12 +825,17 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.EmailList emailList) throws Exception {
-    List<CrmContact> contacts = sfdcClient.getEmailContacts(updatedSince, emailList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
-    if (!Strings.isNullOrEmpty(emailList.crmLeadFilter)) {
-      contacts.addAll(sfdcClient.getEmailLeads(updatedSince, emailList.crmLeadFilter).stream().map(this::toCrmContact).toList());
+  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    List<CrmContact> contacts = sfdcClient.getEmailContacts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
+    if (!Strings.isNullOrEmpty(communicationList.crmLeadFilter)) {
+      contacts.addAll(sfdcClient.getEmailLeads(updatedSince, communicationList.crmLeadFilter).stream().map(this::toCrmContact).toList());
     }
     return contacts;
+  }
+
+  @Override
+  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return sfdcClient.getSmsContacts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
   @Override
@@ -1897,22 +1903,21 @@ public class SfdcCrmService implements CrmService {
       if (key.startsWith("Append ")) {
         // appending to a multiselect picklist
         key = key.replace("Append ", "");
-        String value = getMultiselectPicklistValue(key, entry.getValue(), existingSObject);
-        sObject.setField(key, value);
+        setMultiselectPicklistValue(key, entry.getValue(), sObject, existingSObject);
       } else {
-        sObject.setField(key, getCustomBulkValue(entry.getValue()));
+        setCustomBulkValue(key, entry.getValue(), sObject);
       }
     });
   }
 
-  protected String getMultiselectPicklistValue(String key, String value, SObject existingSObject) {
+  protected void setMultiselectPicklistValue(String key, String value, SObject sObject, SObject existingSObject) {
     if (existingSObject != null) {
       String existingValue = (String) existingSObject.getField(key);
       if (!Strings.isNullOrEmpty(existingValue) && !existingValue.contains(value)) {
-        return Strings.isNullOrEmpty(existingValue) ? value : existingValue + ";" + value;
+        value = Strings.isNullOrEmpty(existingValue) ? value : existingValue + ";" + value;
       }
     }
-    return value;
+    sObject.setField(key, value);
   }
 
   protected void processBulkImportCampaignRecords(List<CrmImportEvent> importEvents) throws Exception {
@@ -1958,22 +1963,53 @@ public class SfdcCrmService implements CrmService {
 
   // TODO: This is going to be a pain in the butt, but we'll try to dynamically support different data types for custom
   //  fields in bulk imports/updates, without requiring the data type to be provided. This is going to be brittle...
-  protected Object getCustomBulkValue(String value) {
+  protected void setCustomBulkValue(String key, String value, SObject sObject) {
     Calendar c = null;
     try {
-      // If a client is uploading a sheet for bulk upsert,
-      // the dates are most likely to be in their own TZ
-      c = Utils.getCalendarFromDateString(value, env.getConfig().timezoneId);
-    } catch (Exception e) {}
+      if (key.contains("dd/mm/yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(value));
+        key = key.replace("dd/mm/yyyy", "");
+      } else if (key.contains("dd-mm-yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(value));
+        key = key.replace("dd-mm-yyyy", "");
+      } else if (key.contains("mm/dd/yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(value));
+        key = key.replace("mm/dd/yyyy", "");
+      } else if (key.contains("mm/dd/yy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM/dd/yy").parse(value));
+        key = key.replace("mm/dd/yy", "");
+      } else if (key.contains("mm-dd-yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(value));
+        key = key.replace("mm-dd-yyyy", "");
+      } else if (key.contains("yyyy-mm-dd")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(value));
+        key = key.replace("yyyy-mm-dd", "");
+      }
+    } catch (ParseException e) {
+      env.logJobError("failed to parse date", e);
+    }
 
     if (c != null) {
-      return c;
-    } else if ("true".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value)) {
-      return true;
-    } else if ("false".equalsIgnoreCase(value) || "no".equalsIgnoreCase(value)) {
-      return false;
-    } else {
-      return value;
+      sObject.setField(key, c);
+    }
+    // TODO: yes/no -> bool is causing trouble for picklist/text imports that include those values
+    else if ("true".equalsIgnoreCase(value)/* || "yes".equalsIgnoreCase(value)*/) {
+      sObject.setField(key, true);
+    } else if ("false".equalsIgnoreCase(value)/* || "no".equalsIgnoreCase(value)*/) {
+      sObject.setField(key, false);
+    }
+    // But this seems safe?
+    else if ("x".equalsIgnoreCase(value)) {
+      sObject.setField(key, true);
+    }
+    else {
+      sObject.setField(key, value);
     }
   }
 
