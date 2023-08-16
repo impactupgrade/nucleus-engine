@@ -127,7 +127,7 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
     } else {
       String message = response.readEntity(String.class);
       if (!message.contains("Subscriber exist")) {
-        env.logJobError("POST failed: url={} code={} message={}", url, response.getStatus(), message);
+        env.logJobWarn("POST failed: url={} code={} message={}", url, response.getStatus(), message);
       }
     }
     return null;
