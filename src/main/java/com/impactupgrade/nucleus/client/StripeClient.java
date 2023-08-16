@@ -497,12 +497,26 @@ public class StripeClient {
     PaymentSource newSource = addCustomerSource(customer, paymentMethodToken);
 
     // set source as defaultSource for subscription
-    updateSubscriptionPaymentMethod(subscription, newSource);
+    updateSubscriptionDefaultSource(subscription, newSource);
 
     env.logJobInfo("updated customer {} payment method on subscription {}", customerId, subscriptionId);
   }
+  
+  public void disableSubscriptionProration(String subscriptionId) throws StripeException {
+    env.logJobInfo("updating subscription proration behaviour to {} for subscription {}", SubscriptionUpdateParams.ProrationBehavior.NONE, subscriptionId);
 
-  public void updateSubscriptionPaymentMethod(Subscription subscription, PaymentSource newSource) throws StripeException {
+    Subscription subscription = Subscription.retrieve(subscriptionId, requestOptions);
+
+    SubscriptionUpdateParams subscriptionUpdateParams = SubscriptionUpdateParams.builder()
+        .setProrationBehavior(SubscriptionUpdateParams.ProrationBehavior.NONE)
+        .build();
+
+    subscription.update(subscriptionUpdateParams, requestOptions);
+
+    env.logJobInfo("updated subscription proration behaviour to {} for subscription {}", SubscriptionUpdateParams.ProrationBehavior.NONE, subscriptionId);
+  }
+
+  public void updateSubscriptionDefaultSource(Subscription subscription, PaymentSource newSource) throws StripeException {
     SubscriptionUpdateParams subscriptionParams = SubscriptionUpdateParams.builder()
         .setDefaultSource(newSource.getId())
         .build();
