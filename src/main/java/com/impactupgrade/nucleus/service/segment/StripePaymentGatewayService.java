@@ -374,6 +374,8 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     if (manageDonationEvent.getStripeToken() != null) {
       stripeClient.updateSubscriptionPaymentMethod(crmRecurringDonation.subscriptionId, manageDonationEvent.getStripeToken());
     }
+    
+    stripeClient.disableSubscriptionProration(crmRecurringDonation.subscriptionId);
   }
 
   @Override

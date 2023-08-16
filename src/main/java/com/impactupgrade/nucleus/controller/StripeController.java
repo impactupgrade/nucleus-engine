@@ -373,7 +373,7 @@ public class StripeController {
           }
 
           if (!newSource.getId().equalsIgnoreCase(subscriptionPaymentMethodId)) {
-            stripeClient.updateSubscriptionPaymentMethod(subscription, newSource);
+            stripeClient.updateSubscriptionDefaultSource(subscription, newSource);
             env.logJobInfo("updated payment method for subscription {}", subscription.getId());
           }
         }
