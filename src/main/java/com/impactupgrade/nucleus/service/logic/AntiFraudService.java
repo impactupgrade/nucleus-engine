@@ -40,7 +40,7 @@ public class AntiFraudService {
     this.siteSecret = siteSecret;
   }
 
-  public boolean isRecaptchaTokenValid(String recaptchaToken) throws IOException {
+  public boolean isRecaptchaTokenV2Valid(String recaptchaToken) throws IOException {
     if (Strings.isNullOrEmpty(siteSecret)) {
       env.logJobInfo("recaptcha: disabled");
       return true;
@@ -51,28 +51,30 @@ public class AntiFraudService {
       return false;
     }
 
-    URL url = new URL(RECAPTCHA_SITE_VERIFY_URL);
-    StringBuilder postData = new StringBuilder();
-    addParam(postData, "secret", siteSecret);
-    addParam(postData, "response", recaptchaToken);
+    try {
+      JSONObject jsonObject = getRecaptchaResponse(recaptchaToken);
+      boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
+      env.logJobWarn("recaptcha failed: {}", jsonObject);
+      return success;
+    } catch (Exception e) {
+      env.logJobWarn("recaptcha failed; defaulting to invalid", e);
+      return false;
+    }
+  }
 
-    // TODO: Taken from https://github.com/googlecodelabs/recaptcha-codelab/blob/master/final/src/main/java/com/example/feedback/FeedbackServlet.java, but this could be cleaned up...
+  public boolean isRecaptchaTokenV3Valid(String recaptchaToken) throws IOException {
+    if (Strings.isNullOrEmpty(siteSecret)) {
+      env.logJobInfo("recaptcha: disabled");
+      return true;
+    }
+
+    if (Strings.isNullOrEmpty(recaptchaToken)) {
+      env.logJobInfo("recaptcha: null or empty recaptchaToken");
+      return false;
+    }
 
     try {
-      HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-      urlConnection.setDoOutput(true);
-      urlConnection.setRequestMethod("POST");
-      urlConnection.setRequestProperty(
-          "Content-Type", "application/x-www-form-urlencoded");
-      urlConnection.setRequestProperty(
-          "charset", StandardCharsets.UTF_8.displayName());
-      urlConnection.setRequestProperty(
-          "Content-Length", Integer.toString(postData.length()));
-      urlConnection.setUseCaches(false);
-      urlConnection.getOutputStream()
-          .write(postData.toString().getBytes(StandardCharsets.UTF_8));
-      JSONTokener jsonTokener = new JSONTokener(urlConnection.getInputStream());
-      JSONObject jsonObject = new JSONObject(jsonTokener);
+      JSONObject jsonObject = getRecaptchaResponse(recaptchaToken);
 
       boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
       double score = jsonObject.has("score") ? jsonObject.getDouble("score") : 0.0;
@@ -93,6 +95,30 @@ public class AntiFraudService {
       env.logJobWarn("recaptcha failed; defaulting to invalid", e);
       return false;
     }
+  }
+
+  protected JSONObject getRecaptchaResponse(String recaptchaToken) throws IOException {
+    URL url = new URL(RECAPTCHA_SITE_VERIFY_URL);
+    StringBuilder postData = new StringBuilder();
+    addParam(postData, "secret", siteSecret);
+    addParam(postData, "response", recaptchaToken);
+
+    // TODO: Taken from https://github.com/googlecodelabs/recaptcha-codelab/blob/master/final/src/main/java/com/example/feedback/FeedbackServlet.java, but this could be cleaned up...
+
+    HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+    urlConnection.setDoOutput(true);
+    urlConnection.setRequestMethod("POST");
+    urlConnection.setRequestProperty(
+        "Content-Type", "application/x-www-form-urlencoded");
+    urlConnection.setRequestProperty(
+        "charset", StandardCharsets.UTF_8.displayName());
+    urlConnection.setRequestProperty(
+        "Content-Length", Integer.toString(postData.length()));
+    urlConnection.setUseCaches(false);
+    urlConnection.getOutputStream()
+        .write(postData.toString().getBytes(StandardCharsets.UTF_8));
+    JSONTokener jsonTokener = new JSONTokener(urlConnection.getInputStream());
+    return new JSONObject(jsonTokener);
   }
 
   private StringBuilder addParam(

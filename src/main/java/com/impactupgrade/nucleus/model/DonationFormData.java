@@ -46,7 +46,8 @@ public class DonationFormData {
   // although we fall back to env.json defaults, allow explicit overrides
   @FormParam("currency") private String currency;
 
-  @FormParam("g-recaptcha-response") private String recaptchaToken;
+  @FormParam("g-recaptcha-response") String recaptchaTokenV2;
+  @FormParam("g-recaptcha-response-v3") String recaptchaTokenV3;
 
   @FormParam("custom-metadata-customer") private Map<String, String> customMetadataCustomer;
   @FormParam("custom-metadata-subscription") private Map<String, String> customMetadataSubscription;
@@ -407,12 +408,20 @@ public class DonationFormData {
     this.currency = currency;
   }
 
-  public String getRecaptchaToken() {
-    return recaptchaToken;
+  public String getRecaptchaTokenV2() {
+    return recaptchaTokenV2;
   }
 
-  public void setRecaptchaToken(String recaptchaToken) {
-    this.recaptchaToken = recaptchaToken;
+  public void setRecaptchaTokenV2(String recaptchaTokenV2) {
+    this.recaptchaTokenV2 = recaptchaTokenV2;
+  }
+
+  public String getRecaptchaTokenV3() {
+    return recaptchaTokenV3;
+  }
+
+  public void setRecaptchaTokenV3(String recaptchaTokenV3) {
+    this.recaptchaTokenV3 = recaptchaTokenV3;
   }
 
   public Map<String, String> getCustomMetadataCustomer() {

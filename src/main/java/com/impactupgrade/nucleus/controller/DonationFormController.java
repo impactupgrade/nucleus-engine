@@ -78,7 +78,8 @@ public class DonationFormController {
 
       if (
           formData.isFraudAttempt(env)
-          || !antiFraudService.isRecaptchaTokenValid(formData.getRecaptchaToken())
+              || (!Strings.isNullOrEmpty(formData.getRecaptchaTokenV2()) && !antiFraudService.isRecaptchaTokenV2Valid(formData.getRecaptchaTokenV2()))
+              || (!Strings.isNullOrEmpty(formData.getRecaptchaTokenV3()) && !antiFraudService.isRecaptchaTokenV3Valid(formData.getRecaptchaTokenV3()))
       ) {
         // Return something meaningful, just in case it's actually a human, but not detailed to the point where
         // it tips off the nefarious person/bot to the specific issue we detected.
