@@ -71,7 +71,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         // clear the cache, since fields differ between audiences
         mergeFieldsNameToTag.clear();
 
-        List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
+        List<CrmContact> crmContacts = getEmailContacts(lastSync, communicationList);
         Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
         Map<String, List<String>> tags = new MailchimpClient(mailchimpConfig, env).getContactsTags(communicationList.id);
 

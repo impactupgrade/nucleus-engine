@@ -11,6 +11,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class AbstractCommunicationService implements CommunicationService {
@@ -31,6 +32,18 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       return Collections.emptyMap();
     }
     return env.primaryCrmService().getContactCampaignsByContactIds(crmContactIds);
+  }
+
+  protected List<CrmContact> getEmailContacts(Calendar lastSync, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
+
+    Map<String, CrmContact> uniqueContacts = crmContacts.stream().collect(Collectors.toMap(
+        so -> so.email,
+        Function.identity(),
+        // FIFO
+        (so1, so2) -> so1
+    ));
+    return new ArrayList<>(uniqueContacts.values());
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,

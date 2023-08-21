@@ -93,8 +93,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     super(
         username,
         password,
-        isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION,
-        200
+        isSandbox ? AUTH_URL_SANDBOX : AUTH_URL_PRODUCTION
     );
     this.env = env;
 
@@ -491,14 +490,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
     contacts.addAll(queryEmailContacts(updatedSinceClause, filter, extraFields));
 
-    // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
-    Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
-        so -> so.getField("Email").toString(),
-        Function.identity(),
-        // FIFO
-        (so1, so2) -> so1
-    ));
-    return uniqueContacts.values();
+    return contacts;
   }
 
   protected List<SObject> queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
