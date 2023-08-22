@@ -15,7 +15,7 @@ public class StripeWebhookUtil {
 
   private static final Logger log = LogManager.getLogger(StripeWebhookUtil.class.getName());
 
-  public void setupWebhook(Environment env, String url) {
+  public void setupWebhook(Environment env, String hostname) {
     try {
       StripeClient stripeClient = new StripeClient(env);
 
@@ -35,7 +35,7 @@ public class StripeWebhookUtil {
       );
 
       Map<String, Object> params = new HashMap<>();
-      params.put("url", url);
+      params.put("url", "https://" + hostname + "/api/stripe/webhook");
       params.put("enabled_events", enabledEvents);
       params.put("api_version", "2020-08-27");
 
