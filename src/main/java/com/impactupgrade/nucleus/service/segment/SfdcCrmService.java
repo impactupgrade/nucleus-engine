@@ -34,7 +34,6 @@ import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import com.sforce.ws.bind.XmlObject;
 import com.stripe.util.CaseInsensitiveMap;
 
 import javax.ws.rs.core.MultivaluedMap;
@@ -48,7 +47,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -877,8 +875,13 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public double getDonationsTotal(String filter) throws Exception {
-    // TODO
-    return 0.0;
+    if (Strings.isNullOrEmpty(filter)) {
+      env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
+      return 0.0;
+    }
+
+    SObject result = sfdcClient.querySingle("SELECT SUM(Amount) TotalAmount FROM Opportunity WHERE StageName='Closed Won' AND " + filter).get();
+    return (Double) result.getField("TotalAmount");
   }
 
   @Override
