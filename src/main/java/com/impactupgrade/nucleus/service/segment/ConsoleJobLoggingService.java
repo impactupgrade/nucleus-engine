@@ -2,11 +2,26 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
+import com.impactupgrade.nucleus.environment.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.util.StackLocatorUtil;
 
 public class ConsoleJobLoggingService implements JobLoggingService {
+
+  @Override
+  public String name() {
+    return "console";
+  }
+
+  @Override
+  public boolean isConfigured(Environment env) {
+    return true;
+  }
+
+  @Override
+  public void init(Environment env) {
+  }
 
   @Override
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
@@ -32,6 +47,6 @@ public class ConsoleJobLoggingService implements JobLoggingService {
   }
 
   private Logger getLogger() {
-    return LogManager.getLogger(StackLocatorUtil.getCallerClass(5));
+    return LogManager.getLogger(StackLocatorUtil.getCallerClass(6));
   }
 }

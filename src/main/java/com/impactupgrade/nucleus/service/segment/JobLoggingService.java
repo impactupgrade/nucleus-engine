@@ -6,7 +6,7 @@ import com.impactupgrade.nucleus.entity.JobType;
 
 import java.util.List;
 
-public interface JobLoggingService {
+public interface JobLoggingService extends SegmentService {
 
   void startLog(JobType jobType, String username, String jobName, String originatingPlatform);
   void endLog(JobStatus jobStatus);
@@ -20,5 +20,20 @@ public interface JobLoggingService {
   }
   default List<Job> getJobs(JobType jobType) {
     return null;
+  }
+
+  default String format(String message, Object... params) {
+    // Keeping the {} placeholder format, so we're compatible with log4j.
+    for (int i = 0; i < params.length; i++) {
+      Object param = params[i];
+      if (param == null) param = "";
+
+      if (i == params.length - 1 && param instanceof Throwable) {
+        message = message + " :: " + ((Throwable) param).getMessage();
+      } else {
+        message = message.replace("{}", param.toString());
+      }
+    }
+    return message;
   }
 }

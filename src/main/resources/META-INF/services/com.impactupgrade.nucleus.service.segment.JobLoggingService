@@ -1,0 +1,3 @@
+com.impactupgrade.nucleus.service.segment.ConsoleJobLoggingService
+com.impactupgrade.nucleus.service.segment.DBJobLoggingService
+com.impactupgrade.nucleus.service.segment.RollbarLoggingService
