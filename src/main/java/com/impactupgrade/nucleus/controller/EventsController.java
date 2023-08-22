@@ -4,6 +4,7 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.event.Event;
 import com.impactupgrade.nucleus.entity.event.Interaction;
 import com.impactupgrade.nucleus.entity.event.Participant;
+import com.impactupgrade.nucleus.entity.event.ResponseOption;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.messaging.Body;
@@ -16,6 +17,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -110,7 +114,18 @@ protected final HibernateDao<Long, Participant> participantDao;
         response.id = UUID.randomUUID();
         response.participant = participant.get();
         response.interaction = interaction.get();
-        response.freeResponse = body;
+        //TODO: check the type string
+        if (interaction.get().type.equals("MULTI") || interaction.get().type.equals("Multi-Select Multiple Choice")){
+          for (String option : Arrays.asList(body.split(","))){
+            ResponseOption newOption = new ResponseOption();
+            newOption.id = UUID.randomUUID();
+            newOption.response = response;
+            newOption.value = option;
+            response.selectedOptions.add(newOption);
+          }
+        }else{
+          response.freeResponse = body;
+        }
         responseDao.create(response);
       }
     }

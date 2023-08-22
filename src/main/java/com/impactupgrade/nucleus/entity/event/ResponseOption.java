@@ -1,8 +1,7 @@
 package com.impactupgrade.nucleus.entity.event;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
@@ -11,19 +10,16 @@ import javax.persistence.Table;
 import java.util.UUID;
 
 @Entity
-@Table(name = "events_interaction")
-public class Interaction {
+@Table(name = "response_option")
+public class ResponseOption {
 
   @Id
   public UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "event_id", nullable = false)
-  public Event event;
+  @JoinColumn(name = "response_id", nullable = false)
+  public Response response;
 
-  @Enumerated(EnumType.STRING)
-  public InteractionStatus status;
-
-  @Enumerated(EnumType.STRING)
-  public InteractionStatus type;
+  @Column(name = "value")
+  public String value;
 }

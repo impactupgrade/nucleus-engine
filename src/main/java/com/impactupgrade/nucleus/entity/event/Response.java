@@ -7,6 +7,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -26,4 +27,7 @@ public class Response {
 
   @Column(name = "free_response")
   public String freeResponse;
+
+  @Column(name = "selected_options")
+  public List<ResponseOption> selectedOptions ;
 }
