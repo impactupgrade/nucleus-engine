@@ -19,18 +19,30 @@ import java.time.Instant;
 import java.util.List;
 import java.util.TimeZone;
 
-public class DBJobLoggingService extends ConsoleJobLoggingService {
+public class DBJobLoggingService implements JobLoggingService {
 
   private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
-  private final SessionFactory sessionFactory;
+  protected Environment env;
+  protected SessionFactory sessionFactory;
 
-  private final String nucleusApikey;
-  private final String jobTraceId;
-  private final String defaultTimezoneId;
+  protected String nucleusApikey;
+  protected String jobTraceId;
+  protected String defaultTimezoneId;
 
-  public DBJobLoggingService(Environment env) {
-    super();
+  @Override
+  public String name() {
+    return "db-logger";
+  }
+
+  @Override
+  public boolean isConfigured(Environment env) {
+    return "true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"));
+  }
+
+  @Override
+  public void init(Environment env) {
+    this.env = env;
     this.sessionFactory = HibernateUtil.getSessionFactory();
 
     if (!Strings.isNullOrEmpty(env.getHeaders().get("Nucleus-Api-Key"))) {
@@ -47,7 +59,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
     Organization org = getOrg(nucleusApikey);
     if (org == null) {
-      super.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      env.jobLoggingService("console").warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return;
     }
 
@@ -57,21 +69,21 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
 
   @Override
   public void info(String message, Object... params) {
-    super.info(message, params);
+    env.jobLoggingService("console").info(message, params);
 
     insertLog(message, params);
   }
 
   @Override
   public void warn(String message, Object... params) {
-    super.warn(message, params);
+    env.jobLoggingService("console").warn(message, params);
 
     insertLog(message, params);
   }
 
   @Override
   public void error(String message, Object... params) {
-    super.error(message, params);
+    env.jobLoggingService("console").error(message, params);
 
     message = "[Please contact support@impactnucleus.com and mention Job ID " + jobTraceId + ". We'll dive in!] " + message;
     insertLog(message, params);
@@ -152,17 +164,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
     Job job = getJob(jobTraceId, false);
     if (job == null) return;
 
-    // Keeping the {} placeholder format so we're compatible with log4j.
-    for (int i = 0; i < params.length; i++) {
-      Object param = params[i];
-      if (param == null) param = "";
-
-      if (i == params.length - 1 && param instanceof Throwable) {
-        logMessage = logMessage + " :: " + ((Throwable) param).getMessage();
-      } else {
-        logMessage = logMessage.replace("{}", param.toString());
-      }
-    }
+    logMessage = format(logMessage, params);
 
     try (Session session = openSession()) {
       String queryString = "INSERT INTO job_logs(job_id, log) VALUES (:jobId, :logMessage)";
@@ -179,7 +181,7 @@ public class DBJobLoggingService extends ConsoleJobLoggingService {
   public List<Job> getJobs(JobType jobType) {
     Organization org = getOrg(nucleusApikey);
     if (org == null) {
-      super.warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      env.jobLoggingService("console").warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
       return null;
     }
     return getJobs(org, jobType);

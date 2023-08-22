@@ -24,15 +24,14 @@ import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.segment.CommunicationService;
-import com.impactupgrade.nucleus.service.segment.ConsoleJobLoggingService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import com.impactupgrade.nucleus.service.segment.DBJobLoggingService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.service.segment.NoOpCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -256,38 +256,37 @@ public class Environment {
 
   // job logging services
 
-  private JobLoggingService _jobLoggingService = null;
-
-  public JobLoggingService jobLoggingService() {
-    if (_jobLoggingService == null) {
-      if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
-        // DB connection is configured, so use the DB+Console logger.
-        _jobLoggingService = new DBJobLoggingService(this);
-      } else {
-        // No DB connection, so fall back to console logs.
-        _jobLoggingService = new ConsoleJobLoggingService();
-      }
+  public JobLoggingService jobLoggingService(String name) {
+    return segmentService(name, JobLoggingService.class);
+  }
+  
+  public Set<JobLoggingService> jobLoggingServices() {
+    if (CollectionUtils.isNotEmpty(_config.loggers)) {
+      return _config.loggers.stream()
+          .map(name -> segmentService(name, JobLoggingService.class))
+          .collect(Collectors.toSet());
+    } else {
+      return Set.of(segmentService("console", JobLoggingService.class));
     }
-    return _jobLoggingService;
   }
 
   public void startJobLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    jobLoggingService().startLog(jobType, username, jobName, originatingPlatform);
+    jobLoggingServices().forEach(logger -> logger.startLog(jobType, username, jobName, originatingPlatform));
   }
 
   public void logJobInfo(String message, Object... params) {
-    jobLoggingService().info(message, params);
+    jobLoggingServices().forEach(logger -> logger.info(message, params));
   }
 
   public void logJobWarn(String message, Object... params) {
-    jobLoggingService().warn(message, params);
+    jobLoggingServices().forEach(logger -> logger.warn(message, params));
   }
 
   public void logJobError(String message, Object... params) {
-    jobLoggingService().error(message, params);
+    jobLoggingServices().forEach(logger -> logger.error(message, params));
   }
 
   public void endJobLog(JobStatus jobStatus) {
-    jobLoggingService().endLog(jobStatus);
+    jobLoggingServices().forEach(logger -> logger.endLog(jobStatus));
   }
 }
