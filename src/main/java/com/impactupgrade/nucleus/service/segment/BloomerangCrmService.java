@@ -762,6 +762,7 @@ public class BloomerangCrmService implements CrmService {
         "Recurring Donation",
         CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
+        null, // String ownerId,
         designation.recurringDonationStatus,
         null, // String subscriptionCurrency,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId),

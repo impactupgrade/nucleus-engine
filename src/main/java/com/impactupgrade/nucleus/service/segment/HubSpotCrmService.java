@@ -1285,6 +1285,7 @@ public class HubSpotCrmService implements CrmService {
         deal.getProperties().getDealname(),
         frequency,
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, deal.getProperties().getOtherProperties()),
+        null, // String ownerId,
         deal.getProperties().getDealstage(),
         null, // String subscriptionCurrency,
         (String) getProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, deal.getProperties().getOtherProperties()),

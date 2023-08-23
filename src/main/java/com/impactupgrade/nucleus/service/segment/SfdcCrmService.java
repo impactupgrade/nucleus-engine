@@ -2347,6 +2347,7 @@ public class SfdcCrmService implements CrmService {
         getStringField(sObject, "Name"),
         frequency,
         paymentGatewayName,
+        getStringField(sObject, "OwnerId"),
         getStringField(sObject, "npe03__Open_Ended_Status__c"),
         null, // String subscriptionCurrency,
         subscriptionId,
