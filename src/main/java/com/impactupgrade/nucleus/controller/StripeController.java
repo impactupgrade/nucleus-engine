@@ -333,7 +333,13 @@ public class StripeController {
 
       if (customers.isEmpty()) {
         env.logJobInfo("unable to find donor using {}", customerEmail);
-        String error = URLEncoder.encode("Unable to find the donor record", StandardCharsets.UTF_8);
+        String error = URLEncoder.encode("Unable to find the donor record.", StandardCharsets.UTF_8);
+        return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
+      }
+
+      if (customers.size() > 1) {
+        env.logJobInfo("unable to find donor using {}", customerEmail);
+        String error = URLEncoder.encode("Multiple donor records exist with that email address.", StandardCharsets.UTF_8);
         return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
       }
 
