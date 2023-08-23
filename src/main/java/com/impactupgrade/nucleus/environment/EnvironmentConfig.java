@@ -301,7 +301,9 @@ public class EnvironmentConfig implements Serializable {
   public Recaptcha recaptcha = new Recaptcha();
 
   public static class Recaptcha implements Serializable {
-    public String siteSecret = "";
+    @Deprecated public String siteSecret = "";
+    public String v2SiteSecret = "";
+    public String v3SiteSecret = "";
   }
 
   // NOTE: ODK is a data collection platform that we're using with a client, supporting offline mobile forms.

@@ -22,25 +22,23 @@ public class AntiFraudService {
   protected static final double MIN_SCORE = 0.3;
 
   protected final Environment env;
-  protected final String siteSecret;
 
   public AntiFraudService(Environment env) {
     this.env = env;
-
-    if (!Strings.isNullOrEmpty(env.getConfig().recaptcha.siteSecret)) {
-      siteSecret = env.getConfig().recaptcha.siteSecret;
-    } else {
-      siteSecret = System.getenv("RECAPTCHA_SITE_SECRET");
-    }
-  }
-
-  // Use case example: Donation Spring, which has a single, non-client-specific key.
-  public AntiFraudService(String siteSecret, Environment env) {
-    this.env = env;
-    this.siteSecret = siteSecret;
   }
 
   public boolean isRecaptchaTokenV2Valid(String recaptchaToken) throws IOException {
+    String siteSecret;
+    if (!Strings.isNullOrEmpty(env.getConfig().recaptcha.v2SiteSecret)) {
+      siteSecret = env.getConfig().recaptcha.v2SiteSecret;
+    } else if (!Strings.isNullOrEmpty(env.getConfig().recaptcha.siteSecret)) {
+      siteSecret = env.getConfig().recaptcha.siteSecret;
+    } else if (!Strings.isNullOrEmpty(System.getenv("RECAPTCHA_V2_SITE_SECRET"))) {
+      siteSecret = System.getenv("RECAPTCHA_V2_SITE_SECRET");
+    } else {
+      siteSecret = System.getenv("RECAPTCHA_SITE_SECRET");
+    }
+
     if (Strings.isNullOrEmpty(siteSecret)) {
       env.logJobInfo("recaptcha: disabled");
       return true;
@@ -52,7 +50,7 @@ public class AntiFraudService {
     }
 
     try {
-      JSONObject jsonObject = getRecaptchaResponse(recaptchaToken);
+      JSONObject jsonObject = getRecaptchaResponse(recaptchaToken, siteSecret);
       boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
       env.logJobWarn("recaptcha failed: {}", jsonObject);
       return success;
@@ -63,6 +61,17 @@ public class AntiFraudService {
   }
 
   public boolean isRecaptchaTokenV3Valid(String recaptchaToken) throws IOException {
+    String siteSecret;
+    if (!Strings.isNullOrEmpty(env.getConfig().recaptcha.v3SiteSecret)) {
+      siteSecret = env.getConfig().recaptcha.v3SiteSecret;
+    } else if (!Strings.isNullOrEmpty(env.getConfig().recaptcha.siteSecret)) {
+      siteSecret = env.getConfig().recaptcha.siteSecret;
+    } else if (!Strings.isNullOrEmpty(System.getenv("RECAPTCHA_V3_SITE_SECRET"))) {
+      siteSecret = System.getenv("RECAPTCHA_V3_SITE_SECRET");
+    } else {
+      siteSecret = System.getenv("RECAPTCHA_SITE_SECRET");
+    }
+
     if (Strings.isNullOrEmpty(siteSecret)) {
       env.logJobInfo("recaptcha: disabled");
       return true;
@@ -74,7 +83,7 @@ public class AntiFraudService {
     }
 
     try {
-      JSONObject jsonObject = getRecaptchaResponse(recaptchaToken);
+      JSONObject jsonObject = getRecaptchaResponse(recaptchaToken, siteSecret);
 
       boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
       double score = jsonObject.has("score") ? jsonObject.getDouble("score") : 0.0;
@@ -97,7 +106,7 @@ public class AntiFraudService {
     }
   }
 
-  protected JSONObject getRecaptchaResponse(String recaptchaToken) throws IOException {
+  protected JSONObject getRecaptchaResponse(String recaptchaToken, String siteSecret) throws IOException {
     URL url = new URL(RECAPTCHA_SITE_VERIFY_URL);
     StringBuilder postData = new StringBuilder();
     addParam(postData, "secret", siteSecret);
