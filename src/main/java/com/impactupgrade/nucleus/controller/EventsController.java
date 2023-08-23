@@ -114,8 +114,8 @@ protected final HibernateDao<Long, Participant> participantDao;
         response.id = UUID.randomUUID();
         response.participant = participant.get();
         response.interaction = interaction.get();
-        //TODO: check the type string
-        if (interaction.get().type.equals("MULTI") || interaction.get().type.equals("Multi-Select Multiple Choice")){
+        //TODO: check the type string, simplify this if statement
+        if (interaction.get().type.equals("MULTI") || interaction.get().type.equals("SINGLE")){
           for (String option : Arrays.asList(body.split(","))){
             ResponseOption newOption = new ResponseOption();
             newOption.id = UUID.randomUUID();
