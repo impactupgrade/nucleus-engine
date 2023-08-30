@@ -818,6 +818,7 @@ public class VirtuousCrmService implements CrmService {
     recurringGift.amount = recurringDonation.amount;
     recurringGift.frequency = recurringDonation.frequency.toString();
     recurringGift.startDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(recurringDonation.subscriptionStartDate);
+    recurringGift.nextExpectedPaymentDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(recurringDonation.subscriptionStartDate);
     recurringGift.frequency = recurringDonation.frequency.name();
     recurringGift.automatedPayments = true;
     recurringGift.trackPayments = true;
