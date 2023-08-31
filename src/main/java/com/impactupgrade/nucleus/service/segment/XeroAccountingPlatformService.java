@@ -18,6 +18,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
 import com.xero.api.XeroBadRequestException;
@@ -29,8 +30,6 @@ import com.xero.models.accounting.Element;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
@@ -182,11 +181,11 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                                 // Send notification if name already exists for different supporter id (account number)
                                 try {
                                     env.logJobInfo("Sending notification for duplicated contact name '{}'...", crmContact.getFullName());
-                                    env.notificationService().sendNotification(
+                                    NotificationService.Notification notification = new NotificationService.Notification(
                                         "Xero: Contact name already exists",
-                                        "Xero: Contact with name '" + crmContact.getFullName() + "' already exists. Supporter ID: " + supporterId + ".",
-                                        "xero:contact-name-exists"
+                                        "Xero: Contact with name '" + crmContact.getFullName() + "' already exists. Supporter ID: " + supporterId + "."
                                     );
+                                    env.notificationService().sendNotification(notification, "xero:contact-name-exists");
                                 } catch (Exception ex) {
                                     env.logJobError("Failed to send notification! {}", getExceptionDetails(e));
                                 }

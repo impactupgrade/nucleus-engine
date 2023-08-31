@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
+import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.VoiceResponse;
@@ -33,9 +34,11 @@ import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.util.List;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
@@ -177,15 +180,44 @@ public class TwilioController {
       String body = smsData.get("Body").get(0).trim();
       // prevent opt-out messages, like "STOP", from polluting the notifications
       if (!STOP_WORDS.contains(body.toUpperCase(Locale.ROOT))) {
+        // https://www.baeldung.com/java-regex-validate-phone-numbers
+        String pnPatterns
+            = "(\\+\\d{1,3}( )?)?((\\(\\d{3}\\))|\\d{3})[- .]?\\d{3}[- .]?\\d{4}"
+            + "|(\\+\\d{1,3}( )?)?(\\d{3}[ ]?){2}\\d{3}"
+            + "|(\\+\\d{1,3}( )?)?(\\d{3}[ ]?)(\\d{2}[ ]?){2}\\d{2}";
+        Pattern r = Pattern.compile("reply\s+(" + pnPatterns + ")\s+(.*)");
+        Matcher m = r.matcher(body.toLowerCase(Locale.ROOT));
+
+        if (m.find()) {
+          String mobilePhone = m.group(1);
+          // PN matching contains multiple, inner groups, so the message is the very last one.
+          String message = m.group(m.groupCount());
+
+          String twilioNumber = smsData.get("To").get(0);
+
+          CrmContact crmContact = new CrmContact();
+          crmContact.mobilePhone = mobilePhone;
+          env.messagingService().sendMessage(message, null, crmContact, twilioNumber);
+
+          MessagingResponse response = new MessagingResponse.Builder().build();
+          return Response.ok().entity(response.toXml()).build();
+        }
+
         if (env.notificationService().notificationConfigured("sms:inbound-default")) {
+          String subject = "Text Message Received";
+          String message = "Text message received from " + from + " :: " + body;
+          NotificationService.Notification notification = new NotificationService.Notification(subject, message);
+          notification.smsBody = message + " :: To respond, first type their phone number and then your message. Ex: 260-123-4567 Thanks, I got your message!";
+
           String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
-          env.notificationService().sendNotification(
-              "Text Message Received",
-              "Text message received from " + from + ": " + body,
-              targetId,
-              "sms:inbound-default"
-          );
-        } else if (!Strings.isNullOrEmpty(env.getConfig().twilio.defaultResponse)) {
+
+          env.notificationService().sendNotification(notification, targetId, "sms:inbound-default");
+
+          MessagingResponse response = new MessagingResponse.Builder().build();
+          return Response.ok().entity(response.toXml()).build();
+        }
+
+        if (!Strings.isNullOrEmpty(env.getConfig().twilio.defaultResponse)) {
           env.logJobInfo("responding with: {}", env.getConfig().twilio.defaultResponse);
 
           responseBody = new Body.Builder(env.getConfig().twilio.defaultResponse).build();

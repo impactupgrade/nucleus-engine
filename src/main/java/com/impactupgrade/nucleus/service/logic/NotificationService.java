@@ -22,11 +22,11 @@ public class NotificationService {
     return notificationsConfig != null;
   }
 
-  public void sendNotification(String subject, String body, String notificationKey) throws Exception {
-    sendNotification(subject, body, null, notificationKey);
+  public void sendNotification(Notification notification, String notificationKey) throws Exception {
+    sendNotification(notification, null, notificationKey);
   }
 
-  public void sendNotification(String subject, String body, String targetId, String notificationKey) throws Exception {
+  public void sendNotification(Notification notification, String targetId, String notificationKey) throws Exception {
     if (!notificationConfigured(notificationKey)) {
       env.logJobInfo("no notification configured for: {}", notificationKey);
 
@@ -37,42 +37,42 @@ public class NotificationService {
     EnvironmentConfig.Notifications notificationsConfig = env.getConfig().notifications.get(notificationKey);
 
     if (notificationsConfig.email != null) {
-      sendEmailNotification(subject, body, notificationsConfig.email);
+      sendEmailNotification(notification, notificationsConfig.email);
     }
     if (notificationsConfig.sms != null) {
-      sendSmsNotification(body, notificationsConfig.sms);
+      sendSmsNotification(notification, notificationsConfig.sms);
     }
     if (notificationsConfig.task != null) {
-      createCrmTask(subject, body, targetId, notificationsConfig.task);
+      createCrmTask(notification, targetId, notificationsConfig.task);
     }
   }
 
-  protected void sendEmailNotification(String subject, String body, EnvironmentConfig.Notification notificationConfig) {
+  protected void sendEmailNotification(Notification notification, EnvironmentConfig.Notification notificationConfig) {
     if (Strings.isNullOrEmpty(notificationConfig.from) || CollectionUtils.isEmpty(notificationConfig.to)) {
       env.logJobWarn("Email notification is not valid (missing required parameters). Skipping notification...");
       return;
     }
     String emailFrom = notificationConfig.from;
     String emailTo = String.join(",", notificationConfig.to);
-    env.transactionalEmailService().sendEmailText(subject, body, true, emailTo, emailFrom);
+    env.transactionalEmailService().sendEmailText(notification.emailSubject, notification.emailBody, true, emailTo, emailFrom);
 
     env.logJobInfo("emailed notification to: {}", emailTo);
   }
 
-  protected void sendSmsNotification(String body, EnvironmentConfig.Notification notificationConfig) {
+  protected void sendSmsNotification(Notification notification, EnvironmentConfig.Notification notificationConfig) {
     if (CollectionUtils.isEmpty(notificationConfig.to)) {
-      env.logJobWarn("Email notification is not valid (missing required parameters). Skipping notification...");
+      env.logJobWarn("SMS notification is not valid (missing required parameters). Skipping notification...");
       return;
     }
 
     for (String to : notificationConfig.to) {
-      env.twilioClient().sendMessage(to, body);
+      env.twilioClient().sendMessage(to, notification.smsBody);
 
       env.logJobInfo("texted notification to: {}", to);
     }
   }
 
-  protected void createCrmTask(String subject, String body, String targetId, EnvironmentConfig.Task notificationConfig)
+  protected void createCrmTask(Notification notification, String targetId, EnvironmentConfig.Task notificationConfig)
       throws Exception {
     CrmService crmService = env.primaryCrmService();
 
@@ -95,8 +95,24 @@ public class NotificationService {
 
     crmService.insertTask(new CrmTask(
         targetId, assignTo,
-        subject, body,
+        notification.taskSubject, notification.taskBody,
         CrmTask.Status.TO_DO, CrmTask.Priority.MEDIUM, dueDate
     ));
+  }
+
+  public static class Notification {
+    public String emailSubject;
+    public String emailBody;
+    public String smsBody;
+    public String taskSubject;
+    public String taskBody;
+
+    public Notification(String subject, String body) {
+      emailSubject = subject;
+      emailBody = body;
+      smsBody = body;
+      taskSubject = subject;
+      taskBody = body;
+    }
   }
 }

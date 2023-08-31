@@ -12,8 +12,6 @@ import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -165,12 +163,11 @@ public class DonationService {
     }
 
     if (!"draft-incomplete-cancelled".equalsIgnoreCase(paymentGatewayEvent.getMetadataValue(List.of("status")))) {
-      notificationservice.sendNotification(
+      NotificationService.Notification notification = new NotificationService.Notification(
           "Recurring Donation Closed",
-          "Recurring donation " + recurringDonation.get().id + " has been closed.",
-          targetId,
-          "donations:close-recurring-donation"
+          "Recurring donation " + recurringDonation.get().id + " has been closed."
       );
+      notificationservice.sendNotification(notification, targetId, "donations:close-recurring-donation");
     }
   }
 

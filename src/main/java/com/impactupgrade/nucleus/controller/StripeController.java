@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
@@ -288,12 +289,11 @@ public class StripeController {
               }
 
               if (!Strings.isNullOrEmpty(targetId)) {
-                env.notificationService().sendNotification(
+                NotificationService.Notification notification = new NotificationService.Notification(
                     "Recurring Donation: Card Expiring",
-                    "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.<br/>Stripe Subscription: <a href=\"https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "\">https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "</a><br/>Recurring Donation: <a href=\"" + crmRecurringDonationOptional.get().crmUrl + "\">" + crmRecurringDonationOptional.get().crmUrl + "</a>",
-                    targetId,
-                    "donations:card-expiring"
+                    "Recurring donation " + crmRecurringDonationOptional.get().id + " is using a card that's about to expire.<br/>Stripe Subscription: <a href=\"https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "\">https://dashboard.stripe.com/subscriptions/" + subscription.getId() + "</a><br/>Recurring Donation: <a href=\"" + crmRecurringDonationOptional.get().crmUrl + "\">" + crmRecurringDonationOptional.get().crmUrl + "</a>"
                 );
+                env.notificationService().sendNotification(notification, targetId, "donations:card-expiring");
               }
             }
           }
