@@ -36,6 +36,31 @@ public class DonationService {
       return;
     }
 
+    CrmDonation crmDonation = paymentGatewayEvent.getCrmDonation();
+
+    if (crmDonation.isRecurring()) {
+      Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
+          crmDonation.recurringDonation.id,
+          crmDonation.recurringDonation.subscriptionId,
+          crmDonation.account.id,
+          crmDonation.contact.id
+      );
+
+      if (recurringDonation.isEmpty()) {
+        env.logJobInfo("unable to find CRM recurring donation using subscriptionId {}; creating it...",
+            crmDonation.recurringDonation.subscriptionId);
+        // NOTE: See the note on the customer.subscription.created event handling. We insert recurring donations
+        // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
+        // first donation do it in order to prevent timing issues.
+        crmDonation.recurringDonation.id = crmService.insertRecurringDonation(crmDonation.recurringDonation);
+      } else {
+        String recurringDonationId = recurringDonation.get().id;
+        env.logJobInfo("found CRM recurring donation {} using subscriptionId {}",
+            recurringDonationId, crmDonation.recurringDonation.subscriptionId);
+        crmDonation.recurringDonation.id = recurringDonationId;
+      }
+    }
+
     Optional<CrmDonation> existingDonation = crmService.getDonationByTransactionIds(
         paymentGatewayEvent.getCrmDonation().getTransactionIds(),
         paymentGatewayEvent.getCrmDonation().account.id,
@@ -60,39 +85,12 @@ public class DonationService {
       return;
     }
 
-    paymentGatewayEvent.getCrmDonation().id = createDonation(paymentGatewayEvent.getCrmDonation());
+    paymentGatewayEvent.getCrmDonation().id = crmService.insertDonation(paymentGatewayEvent.getCrmDonation());
 
     for (CrmDonation child : paymentGatewayEvent.getCrmDonation().children) {
-      child.id = createDonation(child);
+      child.id = crmService.insertDonation(child);
       child.parent.id = paymentGatewayEvent.getCrmDonation().id;
     }
-  }
-
-  protected String createDonation(CrmDonation crmDonation) throws Exception {
-    if (crmDonation.isRecurring()) {
-      Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
-          crmDonation.recurringDonation.id,
-          crmDonation.recurringDonation.subscriptionId,
-          crmDonation.account.id,
-          crmDonation.contact.id
-      );
-
-      if (recurringDonation.isEmpty()) {
-        env.logJobInfo("unable to find CRM recurring donation using subscriptionId {}; creating it...",
-            crmDonation.recurringDonation.subscriptionId);
-        // NOTE: See the note on the customer.subscription.created event handling. We insert recurring donations
-        // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
-        // first donation do it in order to prevent timing issues.
-        crmDonation.recurringDonation.id = crmService.insertRecurringDonation(crmDonation.recurringDonation);
-      } else {
-        String recurringDonationId = recurringDonation.get().id;
-        env.logJobInfo("found CRM recurring donation {} using subscriptionId {}",
-            recurringDonationId, crmDonation.recurringDonation.subscriptionId);
-        crmDonation.recurringDonation.id = recurringDonationId;
-      }
-    }
-
-    return crmService.insertDonation(crmDonation);
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
