@@ -7,15 +7,22 @@ package com.impactupgrade.nucleus.it;
 import com.google.common.io.Resources;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.VirtuousClient;
+import com.impactupgrade.nucleus.it.util.StripeUtil;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.stripe.model.Charge;
+import com.stripe.model.Customer;
+import com.stripe.model.PaymentIntent;
+import com.stripe.model.Subscription;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,27 +37,30 @@ public class StripeToVirtuousIT extends AbstractIT {
 
   @Test
   public void testOneTime() throws Exception {
-    clearVirtuous();
+    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
 
-    // play a Stripe webhook, captured directly from our Stripe account itself
-    String json = Resources.toString(Resources.getResource("stripe-charge-success.json"), StandardCharsets.UTF_8);
+    Customer customer = StripeUtil.createCustomer(env);
+    Charge charge = StripeUtil.createCharge(customer, env);
+    String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
+
+    // play as a Stripe webhook
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     CrmService virtuousCrmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
+    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
-    assertEquals("Integration Tester", contact.getFullName());
-    assertEquals("13022 Redding Drive", contact.mailingAddress.street);
+    assertEquals(customer.getName(), contact.getFullName());
+    assertEquals("123 Somewhere St", contact.mailingAddress.street);
     assertEquals("Fort Wayne", contact.mailingAddress.city);
     assertEquals("IN", contact.mailingAddress.state);
     assertEquals("46814", contact.mailingAddress.postalCode);
     assertEquals("United States", contact.mailingAddress.country);
-    assertEquals("team+integration+tester@impactupgrade.com", contact.email);
-    assertEquals("+12603495732", contact.mobilePhone);
+    assertEquals(customer.getEmail(), contact.email);
+    assertEquals("260-123-4567", contact.mobilePhone);
 
     VirtuousClient.Gifts gifts = virtuousClient.getGiftsByContact(Integer.parseInt(contact.id));
     assertEquals(1, gifts.list.size());
@@ -58,45 +68,52 @@ public class StripeToVirtuousIT extends AbstractIT {
     gift = virtuousClient.getGiftById(gift.id); // need the full object, searches return limited fields
     assertEquals(0, gift.recurringGiftPayments.size());
     assertEquals("Stripe", gift.transactionSource);
-    assertEquals("pi_1ImrOLHAwJOu5brrpQ71F1G9", gift.transactionId);
-    assertEquals("2021-05-03T00:00:00", gift.giftDate);
-    assertEquals("100.00", gift.amount);
+    assertEquals(charge.getId(), gift.transactionId);
+    assertEquals(nowDate + "T00:00:00", gift.giftDate);
+    assertEquals("1.00", gift.amount);
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearVirtuous(customer.getName());
   }
 
   @Test
   public void testSubscription() throws Exception {
-    clearVirtuous();
+    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
 
-    // play a Stripe webhook, captured directly from our Stripe account itself
-    String json = Resources.toString(Resources.getResource("stripe-subscription-charge-success.json"), StandardCharsets.UTF_8);
+    Customer customer = StripeUtil.createCustomer(env);
+    Subscription subscription = StripeUtil.createSubscription(customer, env);
+    List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
+    PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
+    String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
+
+    // play as a Stripe webhook
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     CrmService virtuousCrmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
+    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
-    assertEquals("Integration Tester", contact.getFullName());
-    assertEquals("13022 Redding Drive", contact.mailingAddress.street);
+    assertEquals(customer.getName(), contact.getFullName());
+    assertEquals("123 Somewhere St", contact.mailingAddress.street);
     assertEquals("Fort Wayne", contact.mailingAddress.city);
     assertEquals("IN", contact.mailingAddress.state);
     assertEquals("46814", contact.mailingAddress.postalCode);
     assertEquals("United States", contact.mailingAddress.country);
-    assertEquals("team+integration+tester@impactupgrade.com", contact.email);
-    assertEquals("+12603495732", contact.mobilePhone);
+    assertEquals(customer.getEmail(), contact.email);
+    assertEquals("260-123-4567", contact.mobilePhone);
 
     List<VirtuousClient.RecurringGift> rds = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(contact.id)).list;
     assertEquals(1, rds.size());
     VirtuousClient.RecurringGift rd = rds.get(0);
-    assertEquals(105.0, rd.amount);
+    assertEquals(1.0, rd.amount);
     assertEquals("UpToDate", rd.status);
     assertEquals("Monthly", rd.frequency);
-    assertEquals("2023-08-06T00:00:00", rd.startDate.toString());
-    assertEquals("2023-09-06T00:00:00", rd.nextExpectedPaymentDate.toString());
+    assertEquals(nowDate + "T00:00:00", rd.startDate.toString());
     assertEquals("Stripe", rd.paymentGatewayName(env));
-    assertEquals("sub_1NcEBfHAwJOu5brrwWSlKSWx", rd.paymentGatewaySubscriptionId(env));
+    assertEquals(subscription.getId(), rd.paymentGatewaySubscriptionId(env));
 
     VirtuousClient.Gifts gifts = virtuousClient.getGiftsByContact(Integer.parseInt(contact.id));
     assertEquals(1, gifts.list.size());
@@ -104,9 +121,9 @@ public class StripeToVirtuousIT extends AbstractIT {
     gift = virtuousClient.getGiftById(gift.id); // need the full object, searches return limited fields
     assertEquals(1, gift.recurringGiftPayments.size());
     assertEquals("Stripe", gift.transactionSource);
-    assertEquals("pi_3NcEBfHAwJOu5brr1mtwduxc", gift.transactionId);
-    assertEquals("2023-08-06T00:00:00", gift.giftDate);
-    assertEquals("105.00", gift.amount);
+    assertEquals(paymentIntent.getId(), gift.transactionId);
+    assertEquals(nowDate + "T00:00:00", gift.giftDate);
+    assertEquals("1.00", gift.amount);
 
     // then delete the gift, reprocess it, and ensure the RD isn't recreated as a duplicate
 
@@ -115,20 +132,18 @@ public class StripeToVirtuousIT extends AbstractIT {
     gifts = virtuousClient.getGiftsByContact(Integer.parseInt(contact.id));
     assertEquals(0, gifts.list.size());
 
-    json = Resources.toString(Resources.getResource("stripe-subscription-charge-success.json"), StandardCharsets.UTF_8);
     response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     rds = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(contact.id)).list;
     assertEquals(1, rds.size());
     rd = rds.get(0);
-    assertEquals(105.0, rd.amount);
+    assertEquals(1.0, rd.amount);
     assertEquals("UpToDate", rd.status);
     assertEquals("Monthly", rd.frequency);
-    assertEquals("2023-08-06T00:00:00", rd.startDate.toString());
-    assertEquals("2023-09-06T00:00:00", rd.nextExpectedPaymentDate.toString());
+    assertEquals(nowDate + "T00:00:00", rd.startDate.toString());
     assertEquals("Stripe", rd.paymentGatewayName(env));
-    assertEquals("sub_1NcEBfHAwJOu5brrwWSlKSWx", rd.paymentGatewaySubscriptionId(env));
+    assertEquals(subscription.getId(), rd.paymentGatewaySubscriptionId(env));
 
     gifts = virtuousClient.getGiftsByContact(Integer.parseInt(contact.id));
     assertEquals(1, gifts.list.size());
@@ -136,14 +151,18 @@ public class StripeToVirtuousIT extends AbstractIT {
     gift = virtuousClient.getGiftById(gift.id); // need the full object, searches return limited fields
     assertEquals(1, gift.recurringGiftPayments.size());
     assertEquals("Stripe", gift.transactionSource);
-    assertEquals("pi_3NcEBfHAwJOu5brr1mtwduxc", gift.transactionId);
-    assertEquals("2023-08-06T00:00:00", gift.giftDate);
-    assertEquals("105.00", gift.amount);
+    assertEquals(paymentIntent.getId(), gift.transactionId);
+    assertEquals(nowDate + "T00:00:00", gift.giftDate);
+    assertEquals("1.00", gift.amount);
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearVirtuous(customer.getName());
   }
 
+  // TODO: Doesn't appear to be possible to programmatically create a Payout? Do we need to use Mockito for this one?
   @Test
   public void testDeposit() throws Exception {
-    clearVirtuous();
+    clearVirtuous("Tester");
 
     // play a Stripe webhook, captured directly from our Stripe account itself
     String json = Resources.toString(Resources.getResource("stripe-charge-success.json"), StandardCharsets.UTF_8);
@@ -177,16 +196,20 @@ public class StripeToVirtuousIT extends AbstractIT {
 
   @Test
   public void testCancel() throws Exception {
-    clearVirtuous();
+    Customer customer = StripeUtil.createCustomer(env);
+    Subscription subscription = StripeUtil.createSubscription(customer, env);
+    List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
+    PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
+    String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
 
-    String json = Resources.toString(Resources.getResource("stripe-subscription-charge-success.json"), StandardCharsets.UTF_8);
+    // play as a Stripe webhook
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     CrmService virtuousCrmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
+    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
 
@@ -201,5 +224,8 @@ public class StripeToVirtuousIT extends AbstractIT {
     rd = rds.get(0);
 
     assertEquals("Cancelled", rd.status);
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearVirtuous(customer.getName());
   }
 }
