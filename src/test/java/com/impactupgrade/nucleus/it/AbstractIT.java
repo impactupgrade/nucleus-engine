@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.it;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.AssociationSearchResult;
 import com.impactupgrade.integration.hubspot.AssociationSearchResults;
 import com.impactupgrade.integration.hubspot.Company;
@@ -105,11 +106,11 @@ public abstract class AbstractIT extends JerseyTest {
     return new ResourceConfig();
   }
 
-  protected void clearSfdc() throws Exception {
-    clearSfdcByName("Tester");
-  }
+  protected void clearSfdc(String name) throws Exception {
+    if (Strings.isNullOrEmpty(name)) {
+      return;
+    }
 
-  protected void clearSfdcByName(String name) throws Exception {
     SfdcClient sfdcClient = env.sfdcClient();
 
     List<SObject> existingAccounts = sfdcClient.getAccountsByName(name);
@@ -133,11 +134,11 @@ public abstract class AbstractIT extends JerseyTest {
     assertEquals(0, sfdcClient.getAccountsByName(name).size());
   }
 
-  protected void clearHubspot() throws Exception {
-    clearHubspotByName("Tester");
-  }
+  protected void clearHubspot(String name) throws Exception {
+    if (Strings.isNullOrEmpty(name)) {
+      return;
+    }
 
-  protected void clearHubspotByName(String name) throws Exception {
     HubSpotCrmV3Client hsClient = HubSpotClientFactory.crmV3Client(env);
 
     CompanyResults existingAccounts = hsClient.company().searchByName(name, Collections.emptyList());
@@ -167,19 +168,11 @@ public abstract class AbstractIT extends JerseyTest {
     assertEquals(0, hsClient.company().searchByName(name, Collections.emptyList()).getResults().size());
   }
 
-  protected void clearDonorwrangler() throws Exception {
-    clearDonorwranglerByName("Tester");
-  }
+  protected void clearVirtuous(String name) throws Exception {
+    if (Strings.isNullOrEmpty(name)) {
+      return;
+    }
 
-  protected void clearDonorwranglerByName(String name) throws Exception {
-    // TODO
-  }
-
-  protected void clearVirtuous() throws Exception {
-    clearVirtuousByName("Tester");
-  }
-
-  protected void clearVirtuousByName(String name) throws Exception {
     CrmService crmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 

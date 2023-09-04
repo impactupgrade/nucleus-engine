@@ -37,6 +37,7 @@ import com.stripe.param.CustomerRetrieveParams;
 import com.stripe.param.CustomerSearchParams;
 import com.stripe.param.CustomerUpdateParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentListParams;
 import com.stripe.param.PaymentIntentUpdateParams;
 import com.stripe.param.PaymentSourceCollectionCreateParams;
 import com.stripe.param.PayoutListParams;
@@ -81,6 +82,11 @@ public class StripeClient {
         return Charge.retrieve(id, requestOptions);
       }
     }.result();
+  }
+
+  public List<Charge> getChargesFromCustomer(String customerId) throws StripeException {
+    ChargeListParams params = ChargeListParams.builder().setCustomer(customerId).build();
+    return Charge.list(params, requestOptions).getData();
   }
 
   public Invoice getInvoice(String id) throws StripeException {
@@ -146,6 +152,11 @@ public class StripeClient {
         return PaymentIntent.retrieve(id, requestOptions);
       }
     }.result();
+  }
+
+  public List<PaymentIntent> getPaymentIntentsFromCustomer(String customerId) throws StripeException {
+    PaymentIntentListParams params = PaymentIntentListParams.builder().setCustomer(customerId).build();
+    return PaymentIntent.list(params, requestOptions).getData();
   }
 
   public Refund getRefund(String id) throws StripeException {
@@ -307,6 +318,8 @@ public class StripeClient {
     transactionExpand.add("data.source");
     // also include the customer -- need it as a fallback for campaigns
     transactionExpand.add("data.source.customer");
+    // and the charge
+    transactionExpand.add("data.source.charge");
     // and the payment intent
     transactionExpand.add("data.source.payment_intent");
     transactionParams.put("expand", transactionExpand);

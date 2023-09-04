@@ -4,17 +4,22 @@
 
 package com.impactupgrade.nucleus.it;
 
-import com.google.common.io.Resources;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.client.StripeClient;
+import com.impactupgrade.nucleus.it.util.StripeUtil;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.sforce.soap.partner.sobject.SObject;
+import com.stripe.model.Charge;
+import com.stripe.param.ChargeCreateParams;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
-import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,33 +34,57 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    clearSfdc();
+    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
 
-    // play a Stripe webhook, captured directly from our Stripe account itself
-    String json = Resources.toString(Resources.getResource("custom-donations-charge-success.json"), StandardCharsets.UTF_8);
+    String randomFirstName = StripeUtil.generateName();
+    String randomLastName = StripeUtil.generateName();
+    String randomEmail = StripeUtil.generateName().toLowerCase() + "@test.com";
+
+    // Custom Donations uses metadata instead of Customers.
+    StripeClient stripeClient = env.stripeClient();
+    Map<String, String> metadata = Map.of(
+        "First Name", randomFirstName,
+        "Last Name", randomLastName,
+        "Donor Email", randomEmail,
+        "Phone Number", "260-123-4567",
+        "Street Address", "123 Somewhere St",
+        "City", "Fort Wayne",
+        "State", "IN",
+        "Postal Code", "46814",
+        "Country", "US"
+    );
+    ChargeCreateParams.Builder chargeBuilder = ChargeCreateParams.builder()
+        .setSource("tok_visa")
+        .setAmount(100L)
+        .setCurrency("USD")
+        .putAllMetadata(metadata);
+    Charge charge = stripeClient.createCharge(chargeBuilder);
+    String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
+
+    // play as a Stripe webhook
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     SfdcClient sfdcClient = env.sfdcClient();
 
     // verify ContactService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(randomEmail)).getSingleResult();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
     Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
-    assertEquals("Integration Tester", account.getField("Name"));
-    assertEquals("13022 Redding Drive", account.getField("BillingStreet"));
+    assertEquals(randomFirstName + " " + randomLastName, account.getField("Name"));
+    assertEquals("123 Somewhere St", account.getField("BillingStreet"));
     assertEquals("Fort Wayne", account.getField("BillingCity"));
     assertEquals("IN", account.getField("BillingState"));
     assertEquals("46814", account.getField("BillingPostalCode"));
     assertEquals("US", account.getField("BillingCountry"));
-    assertEquals("Integration", contact.getField("FirstName"));
-    assertEquals("Tester", contact.getField("LastName"));
-    assertEquals("team+integration+tester@impactupgrade.com", contact.getField("Email"));
-    assertEquals("260-349-5732", contact.getField("MobilePhone"));
+    assertEquals(randomFirstName, contact.getField("FirstName"));
+    assertEquals(randomLastName, contact.getField("LastName"));
+    assertEquals(randomEmail, contact.getField("Email"));
+    assertEquals("260-123-4567", contact.getField("MobilePhone"));
 
     // verify DonationService -> SfdcCrmService
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
@@ -63,76 +92,19 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     SObject opp = opps.get(0);
     assertNull(opp.getField("Npe03__Recurring_Donation__c"));
     assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
-    assertEquals("ch_3JWulhHAwJOu5brr1EEbHa4z", opp.getField("Payment_Gateway_Transaction_Id__c"));
+    assertEquals(charge.getId(), opp.getField("Payment_Gateway_Transaction_Id__c"));
     assertNull(opp.getField("Payment_Gateway_Customer_Id__c"));
     assertEquals("Closed Won", opp.getField("StageName"));
-    assertEquals("2021-09-07", opp.getField("CloseDate"));
-    assertEquals("Integration Tester Donation", opp.getField("Name"));
-    assertEquals("104.92", opp.getField("Amount"));
+    assertEquals(nowDate, opp.getField("CloseDate"));
+    assertEquals(randomFirstName + " " + randomLastName + " Donation", opp.getField("Name"));
+    assertEquals("1.0", opp.getField("Amount"));
 
     // TODO: Allocation Name (singular) and Allocations List (plural)
     // TODO: Campaign
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(randomLastName);
   }
 
-  @Test
-  public void coreSubscription() throws Exception {
-    clearSfdc();
-
-    // play a Stripe webhook, captured directly from our Stripe account itself
-    String json = Resources.toString(Resources.getResource("custom-donations-subscription-success.json"), StandardCharsets.UTF_8);
-    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
-    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-
-    SfdcClient sfdcClient = env.sfdcClient();
-
-    // verify DonorService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
-    assertTrue(contactO.isPresent());
-    SObject contact = contactO.get();
-    String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
-    assertTrue(accountO.isPresent());
-    SObject account = accountO.get();
-    assertEquals("Integration Tester", account.getField("Name"));
-    assertEquals("13022 Redding Drive", account.getField("BillingStreet"));
-    assertEquals("Fort Wayne", account.getField("BillingCity"));
-    assertEquals("IN", account.getField("BillingState"));
-    assertEquals("46814", account.getField("BillingPostalCode"));
-    assertEquals("US", account.getField("BillingCountry"));
-    assertEquals("Integration", contact.getField("FirstName"));
-    assertEquals("Tester", contact.getField("LastName"));
-    assertEquals("team+integration+tester@impactupgrade.com", contact.getField("Email"));
-    assertEquals("260-349-5732", contact.getField("MobilePhone"));
-
-    // verify the RD
-    List<SObject> rds = sfdcClient.getRecurringDonationsByAccountId(accountId);
-    assertEquals(1, rds.size());
-    SObject rd = rds.get(0);
-    assertEquals("52.62", rd.getField("npe03__Amount__c"));
-    assertEquals("Open", rd.getField("npe03__Open_Ended_Status__c"));
-    assertEquals("Multiply By", rd.getField("npe03__Schedule_Type__c"));
-    assertEquals("Monthly", rd.getField("npe03__Installment_Period__c"));
-    assertEquals("2021-09-07", rd.getField("npe03__Date_Established__c"));
-    // TODO: periodically fails -- may have a timing issue where this isn't being updated fast enough
-    assertEquals("2021-09-07", rd.getField("npe03__Next_Payment_Date__c"));
-    assertEquals("Stripe", rd.getField("Payment_Gateway_Name__c"));
-    assertEquals("cus_KBHqPAS8xHRjcM", rd.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("sub_KBHqz0v4OgY68l", rd.getField("Payment_Gateway_Subscription_Id__c"));
-
-    // verify the Closed Won opp
-    List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
-    assertEquals(1, opps.size());
-    SObject opp = opps.get(0);
-    assertEquals(rd.getId(), opp.getField("npe03__Recurring_Donation__c"));
-    assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
-    assertEquals("pi_3JWvHFHAwJOu5brr0jae8t9x", opp.getField("Payment_Gateway_Transaction_Id__c"));
-    assertEquals("cus_KBHqPAS8xHRjcM", rd.getField("Payment_Gateway_Customer_Id__c"));
-    assertEquals("Closed Won", opp.getField("StageName"));
-    assertEquals("2021-09-07", opp.getField("CloseDate"));
-    assertEquals("Integration Tester Donation", opp.getField("Name"));
-    assertEquals("52.62", opp.getField("Amount"));
-
-    // TODO: Allocation Name (singular) and Allocations List (plural)
-    // TODO: Campaign
-  }
+  // Custom Donations handles recurring gifts with standard Customer/Subscription data. No need to retest that!
 }
