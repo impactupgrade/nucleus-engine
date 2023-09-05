@@ -160,6 +160,11 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
+
+  }
+
+  @Override
   public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
 
   }

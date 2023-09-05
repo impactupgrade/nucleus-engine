@@ -42,6 +42,8 @@ public class CrmImportEvent {
 
   // could be a contact's household, could be an organization itself -- both are assumed to be the primary account
   public CrmAccount account = new CrmAccount();
+  public List<String> accountCampaignIds = new ArrayList<>();
+  public List<String> accountCampaignNames = new ArrayList<>();
   // organization affiliations
   public List<CrmAccount> contactOrganizations = new ArrayList<>();
   public List<String> contactOrganizationRoles = new ArrayList<>();
@@ -174,6 +176,29 @@ public class CrmImportEvent {
     importEvent.account.ownerId = data.get("Account Owner ID");
     importEvent.account.recordTypeId = data.get("Account Record Type ID");
     importEvent.account.recordTypeName = data.get("Account Record Type Name");
+
+    // 3 ways campaigns can be provided, using column headers:
+    // 1: Account Campaign n ID
+    // 2: Account Campaign n Name
+    // 3: Account Campaign [Some Name] -> boolean (true, yes, 1) values
+    // #3 is helpful in many cases where we're migrating tags/fields with boolean values to campaign membership
+    for (int i = 1; i <= 5; i++) {
+      String columnPrefix = "Account Campaign " + i;
+      if (data.keySet().stream().anyMatch(k -> k.startsWith(columnPrefix))) {
+        importEvent.accountCampaignIds.add(data.get(columnPrefix + " ID"));
+        importEvent.accountCampaignNames.add(data.get(columnPrefix + " Name"));
+      }
+    }
+    for (String columnName : importEvent.getAccountCampaignColumnNames()) {
+      if (columnName.startsWith("Account Campaign Name ")) { // note the extra space at the end, different than the above
+        String s = data.get(columnName);
+        boolean value = Utils.checkboxToBool(s);
+        if (value) {
+          String campaignName = columnName.replace("Account Campaign Name ", "");
+          importEvent.accountCampaignNames.add(campaignName);
+        }
+      }
+    }
 
     for (int i = 1; i <= 5; i++) {
       String columnPrefix = "Organization " + i;
@@ -352,6 +377,9 @@ public class CrmImportEvent {
     return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom "))
         .map(k -> k.replace("Account Custom ", "").replace("Append ", "").trim()).toList();
   }
+  public List<String> getAccountCampaignColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Account Campaign ")).toList();
+  }
   public List<String> getContactColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Contact ")).toList();
   }
@@ -361,6 +389,9 @@ public class CrmImportEvent {
     // We also need the account values!
     List<String> accountFields = getAccountCustomFieldNames().stream().map(f -> "Account." + f).toList();
     return Stream.concat(contactFields.stream(), accountFields.stream()).toList();
+  }
+  public List<String> getContactCampaignColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign ")).toList();
   }
   public List<String> getRecurringDonationColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Recurring Donation ")).toList();
@@ -376,11 +407,12 @@ public class CrmImportEvent {
     return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom "))
         .map(k -> k.replace("Opportunity Custom ", "").replace("Append ", "").trim()).toList();
   }
-  public List<String> getContactCampaignColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign ")).toList();
-  }
   public List<String> getCampaignColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Campaign ")).toList();
+  }
+  public List<String> getCampaignCustomFieldNames() {
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom "))
+        .map(k -> k.replace("Campaign Custom ", "").replace("Append ", "").trim()).toList();
   }
 
   public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
