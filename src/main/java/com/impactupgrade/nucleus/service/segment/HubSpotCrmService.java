@@ -368,6 +368,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
+    // TODO
+  }
+
+  @Override
   public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
     // TODO
   }

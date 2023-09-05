@@ -50,6 +50,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
+  void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception;
   // TODO: For now, need this to clean up orphaned accounts (see ContactService). But could eventually expand it
   //  to be a full-blown cascade-delete, much like what we do in IT cleanup.
   void deleteAccount(String accountId) throws Exception;
