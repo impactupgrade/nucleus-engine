@@ -121,7 +121,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           .map(crmContact -> new MailchimpClient.EmailContact(crmContact.email, activeTags.get(crmContact.email), tags.get(crmContact.email)))
           .collect(Collectors.toList());
 
-      updateTagsBatch(communicationList.id, emailContacts, mailchimpClient);
+      updateTagsBatch(communicationList.id, emailContacts, mailchimpClient, mailchimpConfig);
 
       // if they can't, they're archived, and will be failed to be retrieved for update
       List<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email).collect(Collectors.toList());
@@ -228,7 +228,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   }
 
   protected List<MemberInfo> toMemberInfos(EnvironmentConfig.CommunicationList communicationList, List<CrmContact> crmContacts,
-                                           Map<String, Map<String, Object>> customFieldsMap) {
+      Map<String, Map<String, Object>> customFieldsMap) {
     return crmContacts.stream()
         .map(crmContact -> toMcMemberInfo(crmContact, customFieldsMap.get(crmContact.email), communicationList.groups))
         .collect(Collectors.toList());
@@ -403,12 +403,15 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected String updateTagsBatch(String listId,
-      List<MailchimpClient.EmailContact> emailContacts,
-      MailchimpClient mailchimpClient) {
+  protected String updateTagsBatch(String listId, List<MailchimpClient.EmailContact> emailContacts,
+      MailchimpClient mailchimpClient, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
+
     emailContacts.stream()
             .filter(emailContact -> CollectionUtils.isNotEmpty(emailContact.inactiveTags()))
-            .forEach(emailContact -> emailContact.inactiveTags().removeAll(emailContact.activeTags()));
+            .forEach(emailContact -> {
+              emailContact.inactiveTags().removeAll(emailContact.activeTags());
+              emailContact.inactiveTags().removeAll(mailchimpConfig.contactTagFilters);
+            });
     try {
       return mailchimpClient.updateContactTagsBatch(listId, emailContacts);
     } catch (Exception e) {
