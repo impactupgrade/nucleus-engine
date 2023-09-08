@@ -419,7 +419,7 @@ public class SfdcCrmService implements CrmService {
     contact.setField("LastName", crmContact.lastName);
     contact.setField("Email", crmContact.email);
     contact.setField("MobilePhone", crmContact.mobilePhone);
-    if (crmContact.preferredPhone != null) {
+    if (env.getConfig().salesforce.npsp && crmContact.preferredPhone != null) {
       contact.setField("Npe01__PreferredPhone__c", crmContact.preferredPhone.toString());
     }
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contactLanguage, crmContact.language);
@@ -2171,7 +2171,7 @@ public class SfdcCrmService implements CrmService {
 
   protected CrmContact toCrmContact(SObject sObject) {
     CrmContact.PreferredPhone preferredPhone = null;
-    if (sObject.getField("npe01__PreferredPhone__c") != null) {
+    if (env.getConfig().salesforce.npsp && sObject.getField("npe01__PreferredPhone__c") != null) {
       preferredPhone = CrmContact.PreferredPhone.fromName((String) sObject.getField("npe01__PreferredPhone__c"));
     }
 
@@ -2195,18 +2195,20 @@ public class SfdcCrmService implements CrmService {
           (String) sObject.getChild("Account").getField("BillingCountry")
       );
 
-      totalDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"));
-      totalDonationAmountYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppAmountThisYear__c"));
-      if (sObject.getChild("Account").getField("npo02__LargestAmount__c") != null) {
-        largestDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__LargestAmount__c"));
-      }
-      numberOfDonations = Double.valueOf((String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c")).intValue();
-      numberOfDonationsYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppsClosedThisYear__c")).intValue();
-      try {
-        firstCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
-        lastCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
-      } catch (Exception e) {
-        env.logJobError("unable to parse first/last close date", e);
+      if (env.getConfig().salesforce.npsp) {
+        totalDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"));
+        totalDonationAmountYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppAmountThisYear__c"));
+        if (sObject.getChild("Account").getField("npo02__LargestAmount__c") != null) {
+          largestDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__LargestAmount__c"));
+        }
+        numberOfDonations = Double.valueOf((String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c")).intValue();
+        numberOfDonationsYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppsClosedThisYear__c")).intValue();
+        try {
+          firstCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
+          lastCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
+        } catch (Exception e) {
+          env.logJobError("unable to parse first/last close date", e);
+        }
       }
     }
 
