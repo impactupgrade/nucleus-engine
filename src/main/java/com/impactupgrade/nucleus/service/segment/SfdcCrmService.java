@@ -1940,9 +1940,9 @@ public class SfdcCrmService implements CrmService {
     raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(prefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {
       String key = entry.getKey().replace(prefix, "");
 
-      if (key.startsWith("Append ")) {
+      if (key.startsWith("Append")) {
         // appending to a multiselect picklist
-        key = key.replace("Append ", "");
+        key = key.replace("Append", "").trim();
         setMultiselectPicklistValue(key, entry.getValue(), sObject, existingSObject);
       } else {
         setCustomBulkValue(key, entry.getValue(), sObject);
@@ -2032,6 +2032,8 @@ public class SfdcCrmService implements CrmService {
     } catch (ParseException e) {
       env.logJobError("failed to parse date", e);
     }
+
+    key = key.trim();
 
     if (c != null) {
       sObject.setField(key, c);

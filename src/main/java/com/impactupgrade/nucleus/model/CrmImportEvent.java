@@ -371,48 +371,52 @@ public class CrmImportEvent {
   }
 
   public List<String> getAccountColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Account ")).toList();
+    return raw.keySet().stream().filter(k -> k.startsWith("Account")).toList();
   }
   public List<String> getAccountCustomFieldNames() {
-    return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom "))
-        .map(k -> k.replace("Account Custom ", "").replace("Append ", "").trim()).toList();
+    return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom"))
+        .map(k -> k.replace("Account Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getAccountCampaignColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Account Campaign ")).toList();
+    return raw.keySet().stream().filter(k -> k.startsWith("Account Campaign")).toList();
   }
   public List<String> getContactColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Contact ")).toList();
+    return raw.keySet().stream().filter(k -> k.startsWith("Contact")).toList();
   }
   public List<String> getContactCustomFieldNames() {
-    List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom "))
-        .map(k -> k.replace("Contact Custom ", "").replace("Append ", "").trim()).toList();
+    List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom"))
+        .map(k -> k.replace("Contact Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
     // We also need the account values!
     List<String> accountFields = getAccountCustomFieldNames().stream().map(f -> "Account." + f).toList();
     return Stream.concat(contactFields.stream(), accountFields.stream()).toList();
   }
   public List<String> getContactCampaignColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign ")).toList();
+    return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign")).toList();
   }
   public List<String> getRecurringDonationColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Recurring Donation ")).toList();
+    return raw.keySet().stream().filter(k -> k.startsWith("Recurring Donation")).toList();
   }
   public List<String> getRecurringDonationCustomFieldNames() {
-    return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom "))
-        .map(k -> k.replace("Recurring Donation Custom ", "").replace("Append ", "").trim()).toList();
+    return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom"))
+        .map(k -> k.replace("Recurring Donation Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getOpportunityColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Opportunity ")).toList();
+    return raw.keySet().stream().filter(k -> k.startsWith("Opportunity")).toList();
   }
   public List<String> getOpportunityCustomFieldNames() {
-    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom "))
-        .map(k -> k.replace("Opportunity Custom ", "").replace("Append ", "").trim()).toList();
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom"))
+        .map(k -> k.replace("Opportunity Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getCampaignColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Campaign ")).toList();
+    return raw.keySet().stream().filter(k -> k.startsWith("Campaign")).toList();
   }
   public List<String> getCampaignCustomFieldNames() {
-    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom "))
-        .map(k -> k.replace("Campaign Custom ", "").replace("Append ", "").trim()).toList();
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom"))
+        .map(k -> k.replace("Campaign Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+  }
+  private String removeDateSelectors(String s) {
+    return s.replace("dd/mm/yyyy", "").replace("dd-mm-yyyy", "").replace("mm/dd/yyyy", "").replace("mm/dd/yy", "")
+        .replace("mm-dd-yyyy", "").replace("yyyy-mm-dd", "").trim();
   }
 
   public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
