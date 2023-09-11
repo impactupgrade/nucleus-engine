@@ -25,5 +25,5 @@ public class Interaction {
   public InteractionStatus status;
 
   @Enumerated(EnumType.STRING)
-  public InteractionStatus type;
+  public InteractionType type;
 }

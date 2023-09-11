@@ -3,13 +3,16 @@ package com.impactupgrade.nucleus.controller;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.event.Event;
 import com.impactupgrade.nucleus.entity.event.Interaction;
+import com.impactupgrade.nucleus.entity.event.InteractionOption;
 import com.impactupgrade.nucleus.entity.event.Participant;
 import com.impactupgrade.nucleus.entity.event.ResponseOption;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.messaging.Message;
+import org.checkerframework.checker.nullness.Opt;
 
+import javax.swing.text.html.Option;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
@@ -30,7 +33,8 @@ public class EventsController {
 
   protected final HibernateDao<Long, Event> eventDao;
   protected final HibernateDao<Long, Interaction> interactionDao;
-protected final HibernateDao<Long, Participant> participantDao;
+  protected final HibernateDao<Long, Participant> participantDao;
+  protected final HibernateDao<Long, InteractionOption> interactionOptionDao;
   protected final HibernateDao<Long, com.impactupgrade.nucleus.entity.event.Response> responseDao;
 
   public EventsController(EnvironmentFactory envFactory) {
@@ -40,6 +44,7 @@ protected final HibernateDao<Long, Participant> participantDao;
     interactionDao = new HibernateDao<>(Interaction.class);
     participantDao = new HibernateDao<>(Participant.class);
     responseDao = new HibernateDao<>(com.impactupgrade.nucleus.entity.event.Response.class);
+    interactionOptionDao = new HibernateDao<>(com.impactupgrade.nucleus.entity.event.InteractionOption.class);
   }
 
   // TODO: Twilio specific
@@ -114,20 +119,39 @@ protected final HibernateDao<Long, Participant> participantDao;
         response.id = UUID.randomUUID();
         response.participant = participant.get();
         response.interaction = interaction.get();
-        //TODO: check the type string, simplify this if statement
-        if (interaction.get().type.equals("MULTI") || interaction.get().type.equals("SINGLE")){
-          for (String option : Arrays.asList(body.split(","))){
-            ResponseOption newOption = new ResponseOption();
-            newOption.id = UUID.randomUUID();
-            newOption.response = response;
-            newOption.value = option;
-            response.selectedOptions.add(newOption);
+
+        switch (interaction.get().type) {
+          case MULTI, SELECT -> {
+            String[] optionValues = body.split(",");
+            //TODO will likely need some input validation/cleaning for the way participants will be sending in their selections, "1" vs "One" etc.
+            for (String optionValue : optionValues) {
+              Optional<InteractionOption> option = interactionOptionDao.getQueryResult(
+                  "SELECT * FROM interaction_option WHERE UPPER(value) = UPPER(optionValue)",
+                  query -> {
+                    query.setParameter("optionValue", optionValue);
+                  }
+              );
+              if (option.isPresent()) {
+                ResponseOption newOption = new ResponseOption();
+                newOption.id = UUID.randomUUID();
+                newOption.response = response;
+                newOption.value = option.get();
+                response.selectedOptions.add(newOption);
+              }
+            }
           }
-        }else{
-          response.freeResponse = body;
+          case FREE -> {
+            response.freeResponse = body;
+          }
+          default -> {
+
+          }
         }
+
         responseDao.create(response);
       }
+
     }
   }
+
 }
