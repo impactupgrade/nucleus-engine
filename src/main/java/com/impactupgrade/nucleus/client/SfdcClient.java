@@ -465,6 +465,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     container.getEnvironment().put("SFDC_URL", env.getConfig().salesforce.url);
     container.getEnvironment().put("SFDC_REPORT_ID", reportId);
     container.runScriptlet(PathType.CLASSPATH, "salesforce-downloader/salesforce-report.rb");
+    container.terminate();
 
     env.logJobInfo("report downloaded!");
 

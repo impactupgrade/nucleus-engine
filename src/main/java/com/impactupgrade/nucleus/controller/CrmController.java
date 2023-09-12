@@ -422,6 +422,21 @@ public class CrmController {
 
     return Response.status(200).entity(filteredList).build();
   }
+
+  @Path("/contact-list-members")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getContactListMembers(
+      @QueryParam("listId") String listId,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+    CrmService crmService = env.primaryCrmService();
+    List<CrmContact> contacts = crmService.getContactsFromList(listId);
+
+    return Response.status(200).entity(contacts).build();
+  }
   
   private List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
     String fileExtension = Utils.getFileExtension(fileDisposition.getFileName());
