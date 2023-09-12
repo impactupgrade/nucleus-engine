@@ -396,7 +396,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         } else if (key.endsWith("MobilePhone") || key.endsWith("Mobile")) {
           hasValues[0] = true;
           sobject.setField("MobilePhone", value);
-        } else if (key.equalsIgnoreCase("Phone")) {
+        } else if (key.endsWith("Phone")) {
           hasValues[0] = true;
           sobject.setField("Phone", value);
         }
