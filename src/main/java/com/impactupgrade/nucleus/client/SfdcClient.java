@@ -384,24 +384,21 @@ public class SfdcClient extends SFDCPartnerAPIClient {
           return;
         }
 
-        if (key.equalsIgnoreCase("Contact Id") && value.startsWith("003")) {
+        // Why endsWith? The field names can take multiple variations depending on the report type used. Ex: if it's
+        // a simple Contact report, it might only have Email and Phone. If it's a with/and report, where Contact
+        // is mixed in with other objects, you could see it prefixed with something like Contact: Email and Contact: Phone.
+        if ((key.equalsIgnoreCase("Id") || key.equalsIgnoreCase("Contact Id") || key.equalsIgnoreCase("Contact: Id")) && value.startsWith("003")) {
           hasValues[0] = true;
           sobject.setId(value);
-        } else if (key.equalsIgnoreCase("Id") && value.startsWith("003")) {
-          hasValues[0] = true;
-          sobject.setId(value);
-        } else if (key.equalsIgnoreCase("Email")) {
+        } else if (key.endsWith("Email")) {
           hasValues[0] = true;
           sobject.setField("Email", value);
+        } else if (key.endsWith("MobilePhone") || key.endsWith("Mobile")) {
+          hasValues[0] = true;
+          sobject.setField("MobilePhone", value);
         } else if (key.equalsIgnoreCase("Phone")) {
           hasValues[0] = true;
           sobject.setField("Phone", value);
-        } else if (key.equalsIgnoreCase("Mobile")) {
-          hasValues[0] = true;
-          sobject.setField("MobilePhone", value);
-        } else if (key.equalsIgnoreCase("MobilePhone")) {
-          hasValues[0] = true;
-          sobject.setField("MobilePhone", value);
         }
       });
 

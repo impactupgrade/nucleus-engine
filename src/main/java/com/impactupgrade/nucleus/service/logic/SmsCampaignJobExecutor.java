@@ -98,7 +98,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
         .collect(Collectors.toMap(c -> c.phoneNumberForSMS().replaceAll("[\\D]", ""), c -> c, (c1, c2) -> c1, LinkedHashMap::new)).values();
     if (CollectionUtils.isEmpty(crmContacts)) {
-      env.logJobInfo("No contacts returned for job id {}! Skipping...");
+      env.logJobInfo("No contacts returned for job id {}! Skipping...", job.id);
       env.endJobLog(JobStatus.DONE);
       return;
     }
