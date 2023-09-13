@@ -52,7 +52,7 @@ public class AntiFraudService {
     try {
       JSONObject jsonObject = getRecaptchaResponse(recaptchaToken, siteSecret);
       boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
-      env.logJobWarn("recaptcha: {}", jsonObject);
+      env.logJobInfo("recaptcha: {}", jsonObject);
       return success;
     } catch (Exception e) {
       env.logJobWarn("recaptcha failed; defaulting to invalid", e);
