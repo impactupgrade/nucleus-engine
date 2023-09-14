@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
@@ -185,6 +186,7 @@ public class StripeController {
 
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+        env.contactService().processDonor(paymentGatewayEvent);
         paymentGatewayEvent.initStripe(refund);
         env.donationService().refundDonation(paymentGatewayEvent);
       }
@@ -223,6 +225,7 @@ public class StripeController {
 
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+        env.contactService().processDonor(paymentGatewayEvent);
         paymentGatewayEvent.initStripe(subscription, deletedSubscriptionCustomer);
         // NOTE: the customer.subscription.deleted name is a little misleading -- it instead means
         // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
