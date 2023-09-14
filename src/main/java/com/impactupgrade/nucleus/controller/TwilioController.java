@@ -207,7 +207,7 @@ public class TwilioController {
           String subject = "Text Message Received";
           String message = "Text message received from " + from + " :: " + body;
           NotificationService.Notification notification = new NotificationService.Notification(subject, message);
-          notification.smsBody = message + " :: To respond, first type their phone number and then your message. Ex: 260-123-4567 Thanks, I got your message!";
+          notification.smsBody = message + " // To respond: type 'reply', then their phone number, and then your message. Ex: reploy 260-123-4567 Thanks, I got your message!";
 
           String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
 
