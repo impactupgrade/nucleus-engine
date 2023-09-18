@@ -12,7 +12,6 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
-import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
@@ -186,8 +185,9 @@ public class StripeController {
 
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
-        env.contactService().processDonor(paymentGatewayEvent);
         paymentGatewayEvent.initStripe(refund);
+        paymentGatewayEvent.getCrmDonation().addMetadata("event_Type", eventType);
+        env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().refundDonation(paymentGatewayEvent);
       }
       case "customer.subscription.created" -> {
@@ -225,8 +225,9 @@ public class StripeController {
 
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
-        env.contactService().processDonor(paymentGatewayEvent);
         paymentGatewayEvent.initStripe(subscription, deletedSubscriptionCustomer);
+        paymentGatewayEvent.getCrmRecurringDonation().addMetadata("event_type", eventType);
+        env.contactService().processDonor(paymentGatewayEvent);
         // NOTE: the customer.subscription.deleted name is a little misleading -- it instead means
         // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
         // simply close the recurring donation.
