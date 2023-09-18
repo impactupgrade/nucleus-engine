@@ -28,6 +28,7 @@ public class Response {
   @Column(name = "free_response")
   public String freeResponse;
 
-  @Column(name = "selected_options")
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "selected_options")
   public List<ResponseOption> selectedOptions ;
 }

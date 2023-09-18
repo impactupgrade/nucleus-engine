@@ -1,8 +1,6 @@
 package com.impactupgrade.nucleus.entity.event;
 
-import jnr.ffi.annotations.In;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
@@ -24,6 +22,6 @@ public class ResponseOption {
   public Response response;
 
   @ManyToMany(fetch = FetchType.LAZY)
-  @Column(name = "value")
+  @JoinColumn(name = "value")
   public InteractionOption value;
 }
