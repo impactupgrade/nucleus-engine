@@ -10,9 +10,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.messaging.Message;
-import org.checkerframework.checker.nullness.Opt;
 
-import javax.swing.text.html.Option;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
@@ -20,9 +18,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.lang.reflect.Array;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -122,11 +117,12 @@ public class EventsController {
 
         switch (interaction.get().type) {
           case MULTI, SELECT -> {
-            String[] optionValues = body.split(",");
+            //TODO: might need to expand this to be more robust, currently only separating by commas and whitespace chars
+            String[] optionValues = body.trim().split("[,\\s]+");
             //TODO will likely need some input validation/cleaning for the way participants will be sending in their selections, "1" vs "One" etc.
             for (String optionValue : optionValues) {
               Optional<InteractionOption> option = interactionOptionDao.getQueryResult(
-                  "SELECT * FROM interaction_option WHERE UPPER(value) = UPPER(optionValue)",
+                  "SELECT Id FROM interaction_option WHERE UPPER(value) = UPPER(optionValue)",
                   query -> {
                     query.setParameter("optionValue", optionValue);
                   }
