@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEventType;
 import com.impactupgrade.nucleus.model.PaymentGatewayTransaction;
 import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
@@ -23,8 +24,6 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -412,7 +411,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
         paymentGatewayEvent.getCrmDonation().depositId = payout.getId();
         paymentGatewayEvent.getCrmDonation().depositDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC"));
-
+        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYOUT_SUCCESS);
         paymentGatewayEvents.add(paymentGatewayEvent);
       } else if (balanceTransaction.getSourceObject() instanceof Refund refund) {
         env.logJobInfo("found refund {}", refund.getId());

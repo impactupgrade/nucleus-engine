@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
+import com.impactupgrade.nucleus.model.PaymentGatewayEventType;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
@@ -128,7 +129,7 @@ public class StripeController {
           env.logJobInfo("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
-
+          paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.CHARGE_SUCCESS);
           // must first process the account/contact so they're available for the enricher
           env.contactService().processDonor(paymentGatewayEvent);
 
@@ -143,7 +144,7 @@ public class StripeController {
         env.logJobInfo("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
-
+        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_SUCCESS);
         // must first process the account/contact so they're available for the enricher
         env.contactService().processDonor(paymentGatewayEvent);
 
@@ -160,6 +161,7 @@ public class StripeController {
           env.logJobInfo("charge {} is part of an intent; skipping...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
+          paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.CHARGE_FAILURE);
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
         }
@@ -169,6 +171,7 @@ public class StripeController {
         env.logJobInfo("found payment intent {}", paymentIntent.getId());
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
+        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_FAILURE);
         env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().createDonation(paymentGatewayEvent);
       }
@@ -186,7 +189,7 @@ public class StripeController {
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
         paymentGatewayEvent.initStripe(refund);
-        paymentGatewayEvent.getCrmDonation().addMetadata("event_Type", eventType);
+        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.CHARGE_REFUNDED);
         env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().refundDonation(paymentGatewayEvent);
       }
@@ -210,6 +213,7 @@ public class StripeController {
 
           // TODO: Move to StripePaymentGatewayService?
           PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+          paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.SUBSCRIPTION_CREATED);
           paymentGatewayEvent.initStripe(subscription, createdSubscriptionCustomer);
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().processSubscription(paymentGatewayEvent);
@@ -225,6 +229,7 @@ public class StripeController {
 
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.SUBSCRIPTION_CLOSED);
         paymentGatewayEvent.initStripe(subscription, deletedSubscriptionCustomer);
         paymentGatewayEvent.getCrmRecurringDonation().addMetadata("event_type", eventType);
         env.contactService().processDonor(paymentGatewayEvent);
@@ -274,6 +279,7 @@ public class StripeController {
           for (Subscription subscription: affectedSubscriptions) {
             // TODO: Move to StripePaymentGatewayService?
             PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+            paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.SOURCE_EXPIRING);
             paymentGatewayEvent.initStripe(subscription, customer);
             // For each open subscription using that payment source,
             // look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
