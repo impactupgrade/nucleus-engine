@@ -31,12 +31,12 @@ public abstract class OAuthClient extends DBConfiguredClient {
   private static final Logger log = LogManager.getLogger(OAuthClient.class);
 
   protected final String name;
-  protected final OAuthContext oAuthContext;
+
+  protected OAuthContext oAuthContext = null;
 
   public OAuthClient(String name, Environment env) {
     super(env);
     this.name = name;
-    oAuthContext = oAuthContext();
   }
 
   protected abstract OAuthContext oAuthContext();
@@ -47,24 +47,30 @@ public abstract class OAuthClient extends DBConfiguredClient {
     return envJson.getJSONObject(name);
   }
 
-  protected void updateEnvJson() {
-    Organization org = getOrganization();
-    JSONObject envJson = org.getEnvironmentJson();
-    JSONObject clientConfigJson = getClientConfigJson(envJson);
+  protected void updateEnvJson(OAuthContext oAuthContext) {
+    if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
+      Organization org = getOrganization();
+      JSONObject envJson = org.getEnvironmentJson();
+      JSONObject clientConfigJson = getClientConfigJson(envJson);
 
-    clientConfigJson.put("accessToken", oAuthContext.accessToken());
-    clientConfigJson.put("expiresAt", oAuthContext.expiresAt() != null ? oAuthContext.expiresAt() : null);
-    clientConfigJson.put("refreshToken", oAuthContext.refreshToken());
+      clientConfigJson.put("accessToken", oAuthContext.accessToken());
+      clientConfigJson.put("expiresAt", oAuthContext.expiresAt() != null ? oAuthContext.expiresAt() : null);
+      clientConfigJson.put("refreshToken", oAuthContext.refreshToken());
 
-    org.setEnvironmentJson(envJson);
-    organizationDao.update(org);
+      org.setEnvironmentJson(envJson);
+      organizationDao.update(org);
+    }
   }
 
   protected HttpClient.HeaderBuilder headers() {
+    if (oAuthContext == null) {
+      oAuthContext = oAuthContext();
+    }
+
     String accessToken = oAuthContext.accessToken();
     if (!Objects.equals(oAuthContext.refresh().accessToken(), accessToken))  {
       // tokens updated - need to update config in db
-      updateEnvJson();
+      updateEnvJson(oAuthContext);
     }
     return HttpClient.HeaderBuilder.builder().authBearerToken(oAuthContext.accessToken());
   }
@@ -98,11 +104,11 @@ public abstract class OAuthClient extends DBConfiguredClient {
       return tokens != null ? tokens.expiresAt : null;
     }
 
-    public String refreshToken() {
+    private String refreshToken() {
       return tokens != null ? tokens.refreshToken() : null;
     }
 
-    protected Tokens refreshTokens() {
+    private Tokens refreshTokens() {
       if (tokens == null) {
         log.warn("can't refresh null!");
         return null;

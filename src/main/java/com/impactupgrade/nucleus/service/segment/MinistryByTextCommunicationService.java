@@ -32,13 +32,15 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
     for (EnvironmentConfig.MBT mbtConfig : env.getConfig().ministrybytext) {
+      MinistryByTextClient mbtClient = new MinistryByTextClient(mbtConfig, env);
+
       for (EnvironmentConfig.CommunicationList communicationList : mbtConfig.lists) {
         List<CrmContact> crmContacts = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
 
         for (CrmContact crmContact : crmContacts) {
           if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
             env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phoneNumberForSMS(), communicationList.id);
-            new MinistryByTextClient(mbtConfig, env).upsertSubscriber(crmContact, mbtConfig, communicationList);
+            mbtClient.upsertSubscriber(crmContact, mbtConfig, communicationList);
           }
         }
       }
@@ -55,12 +57,14 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
     CrmService crmService = env.primaryCrmService();
 
     for (EnvironmentConfig.MBT mbtConfig : env.getConfig().ministrybytext) {
+      MinistryByTextClient mbtClient = new MinistryByTextClient(mbtConfig, env);
+
       for (EnvironmentConfig.CommunicationList communicationList : mbtConfig.lists) {
         Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
 
         if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().phoneNumberForSMS())) {
           env.logJobInfo("upserting contact {} {} on list {}", crmContact.get().id, crmContact.get().phoneNumberForSMS(), communicationList.id);
-          new MinistryByTextClient(mbtConfig, env).upsertSubscriber(crmContact.get(), mbtConfig, communicationList);
+          mbtClient.upsertSubscriber(crmContact.get(), mbtConfig, communicationList);
         }
       }
     }

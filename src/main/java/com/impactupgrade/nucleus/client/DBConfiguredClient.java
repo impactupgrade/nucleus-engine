@@ -15,9 +15,13 @@ public abstract class DBConfiguredClient {
   }
 
   protected Organization getOrganization() {
-    return organizationDao.getQueryResult(
-        "from Organization o where o.nucleusApiKey=:apiKey", 
-        query -> query.setParameter("apiKey", env.getConfig().apiKey)
-    ).get();
+    if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
+      return organizationDao.getQueryResult(
+          "from Organization o where o.nucleusApiKey=:apiKey",
+          query -> query.setParameter("apiKey", env.getConfig().apiKey)
+      ).get();
+    } else {
+      return null;
+    }
   }
 }
