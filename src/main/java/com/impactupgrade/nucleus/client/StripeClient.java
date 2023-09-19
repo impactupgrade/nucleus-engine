@@ -19,11 +19,15 @@ import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventCollection;
 import com.stripe.model.Invoice;
+import com.stripe.model.InvoiceItem;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.PaymentSource;
 import com.stripe.model.Payout;
 import com.stripe.model.Plan;
+import com.stripe.model.Price;
+import com.stripe.model.PriceCollection;
 import com.stripe.model.Product;
+import com.stripe.model.ProductSearchResult;
 import com.stripe.model.Refund;
 import com.stripe.model.RefundCollection;
 import com.stripe.model.Subscription;
@@ -36,13 +40,19 @@ import com.stripe.param.CustomerListParams;
 import com.stripe.param.CustomerRetrieveParams;
 import com.stripe.param.CustomerSearchParams;
 import com.stripe.param.CustomerUpdateParams;
+import com.stripe.param.InvoiceCreateParams;
+import com.stripe.param.InvoiceItemCreateParams;
+import com.stripe.param.InvoiceSendInvoiceParams;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PaymentIntentListParams;
 import com.stripe.param.PaymentIntentUpdateParams;
 import com.stripe.param.PaymentSourceCollectionCreateParams;
 import com.stripe.param.PayoutListParams;
 import com.stripe.param.PlanCreateParams;
+import com.stripe.param.PriceCreateParams;
+import com.stripe.param.PriceListParams;
 import com.stripe.param.ProductCreateParams;
+import com.stripe.param.ProductSearchParams;
 import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionListParams;
@@ -650,6 +660,59 @@ public class StripeClient {
     env.logJobInfo("created plan {}", planId);
 
     return plan;
+  }
+
+  public Product getOrCreateProduct(String productName) throws StripeException {
+    ProductSearchParams productSearchParams = ProductSearchParams.builder()
+        .setQuery("name:'" + productName + "'")
+        .build();
+    ProductSearchResult productSearchResult = Product.search(productSearchParams, requestOptions);
+    if (!productSearchResult.getData().isEmpty()) {
+      return productSearchResult.getData().get(0);
+    }
+
+    ProductCreateParams productCreateParams = ProductCreateParams.builder()
+        .setName(productName)
+        .build();
+    return Product.create(productCreateParams, requestOptions);
+  }
+
+  public Price getOrCreatePrice(Product product, long amount, String currency) throws StripeException {
+    PriceListParams priceListParams = PriceListParams.builder()
+        .setProduct(product.getId())
+        .build();
+    PriceCollection priceCollection = Price.list(priceListParams, requestOptions);
+    Optional<Price> price = priceCollection.getData().stream()
+        .filter(p -> p.getUnitAmount() == amount && p.getCurrency().equalsIgnoreCase(currency)).findFirst();
+    if (price.isPresent()) {
+      return price.get();
+    }
+
+    PriceCreateParams priceCreateParams = PriceCreateParams.builder()
+        .setProduct(product.getId())
+        .setUnitAmount(amount)
+        .setCurrency(currency)
+        .build();
+    return Price.create(priceCreateParams, requestOptions);
+  }
+
+  public Invoice createAndSendInvoice(Customer customer, Price price, String itemDescription) throws StripeException {
+    InvoiceCreateParams invoiceCreateParams = InvoiceCreateParams.builder()
+        .setCustomer(customer.getId())
+        .setCollectionMethod(InvoiceCreateParams.CollectionMethod.SEND_INVOICE)
+        .setDaysUntilDue(30L)
+        .build();
+    Invoice invoice = Invoice.create(invoiceCreateParams, requestOptions);
+    InvoiceItemCreateParams invoiceItemParams = InvoiceItemCreateParams.builder()
+        .setCustomer(customer.getId())
+        .setDescription(itemDescription)
+        .setPrice(price.getId())
+        .setInvoice(invoice.getId())
+        .build();
+    InvoiceItem.create(invoiceItemParams, requestOptions);
+    InvoiceSendInvoiceParams params = InvoiceSendInvoiceParams.builder().build();
+    invoice.sendInvoice(params, requestOptions);
+    return invoice;
   }
 
   private abstract class Retriever<T> {
