@@ -129,7 +129,7 @@ public class StripeController {
           env.logJobInfo("charge {} is part of an intent; skipping and waiting for the payment_intent.succeeded event...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
-          paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.CHARGE_SUCCESS);
+          paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_SUCCESS);
           // must first process the account/contact so they're available for the enricher
           env.contactService().processDonor(paymentGatewayEvent);
 
@@ -161,7 +161,7 @@ public class StripeController {
           env.logJobInfo("charge {} is part of an intent; skipping...", charge.getId());
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
-          paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.CHARGE_FAILURE);
+          paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_FAILURE);
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().createDonation(paymentGatewayEvent);
         }
@@ -189,7 +189,7 @@ public class StripeController {
         // TODO: Move to StripePaymentGatewayService?
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
         paymentGatewayEvent.initStripe(refund);
-        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.CHARGE_REFUNDED);
+        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_REFUNDED);
         env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().refundDonation(paymentGatewayEvent);
       }
