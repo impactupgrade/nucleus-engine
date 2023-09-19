@@ -231,7 +231,6 @@ public class StripeController {
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
         paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.SUBSCRIPTION_CLOSED);
         paymentGatewayEvent.initStripe(subscription, deletedSubscriptionCustomer);
-        paymentGatewayEvent.getCrmRecurringDonation().addMetadata("event_type", eventType);
         env.contactService().processDonor(paymentGatewayEvent);
         // NOTE: the customer.subscription.deleted name is a little misleading -- it instead means
         // that the subscription has been canceled immediately, either by manual action or subscription settings. So,
