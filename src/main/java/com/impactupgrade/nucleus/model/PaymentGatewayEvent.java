@@ -543,7 +543,7 @@ public class PaymentGatewayEvent implements Serializable {
     crmDonation.recurringDonation.id = crmRecurringDonationId;
   }
 
-  public PaymentGatewayEventType getEventType() {
+  public PaymentGatewayEventType getPaymentGatewayEventType() {
     return eventType;
   }
 
