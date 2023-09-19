@@ -411,7 +411,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
         paymentGatewayEvent.getCrmDonation().depositId = payout.getId();
         paymentGatewayEvent.getCrmDonation().depositDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC"));
-        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYOUT_SUCCESS);
+        paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_SUCCESS);
         paymentGatewayEvents.add(paymentGatewayEvent);
       } else if (balanceTransaction.getSourceObject() instanceof Refund refund) {
         env.logJobInfo("found refund {}", refund.getId());
