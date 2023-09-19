@@ -52,7 +52,7 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     // TODO: HS needs time to catch up, and we arbitrarily have to keep increasing this...
-    Thread.sleep(15000);
+    Thread.sleep(30000);
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
@@ -106,7 +106,7 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     // TODO: HS needs time to catch up, and we arbitrarily have to keep increasing this...
-    Thread.sleep(15000);
+    Thread.sleep(30000);
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
@@ -169,7 +169,7 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     // TODO: HS needs time to catch up, and we arbitrarily have to keep increasing this...
-    Thread.sleep(15000);
+    Thread.sleep(30000);
 
     HubSpotCrmService hsCrmService = (HubSpotCrmService) env.crmService("hubspot");
 
