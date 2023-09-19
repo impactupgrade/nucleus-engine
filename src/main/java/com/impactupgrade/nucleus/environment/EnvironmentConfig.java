@@ -62,6 +62,7 @@ public class EnvironmentConfig implements Serializable {
     public String clientSecret = "";
     public String tokenServerUrl = "";
     public String accessToken = "";
+    public Long expiresAt = 0L;
     public String refreshToken = "";
   }
 

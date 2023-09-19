@@ -3,31 +3,24 @@ package com.impactupgrade.nucleus.client;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.util.HttpClient;
-import com.impactupgrade.nucleus.util.OAuth2;
-import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 
-public class RaiselyClient extends OrgConfiguredClient {
+public class RaiselyClient extends OAuthClient {
 
   private static final String RAISELY_API_URL = "https://api.raisely.com/v3";
   private static final String AUTH_URL = RAISELY_API_URL + "/login";
 
-  private final OAuth2.Context oAuth2Context;
-
   public RaiselyClient(Environment env) {
-    super(env);
+    super("raisely", env);
+  }
 
-    JSONObject raiselyJson = getEnvJson().getJSONObject("raisely");
-
-    this.oAuth2Context = new OAuth2.UsernamePasswordContext(
-      env.getConfig().raisely.username, env.getConfig().raisely.password, Map.of("requestAdminToken", "true"),
-      raiselyJson.getString("accessToken"), raiselyJson.getLong("expiresAt"), raiselyJson.getString("refreshToken"),  AUTH_URL);
+  @Override
+  protected OAuthContext oAuthContext() {
+    return new UsernamePasswordOAuthContext(env.getConfig().raisely, Map.of("requestAdminToken", "true"), AUTH_URL);
   }
 
   //*Note this uses the donation ID from the Stripe metadata. Different from the donation UUID
@@ -53,15 +46,6 @@ public class RaiselyClient extends OrgConfiguredClient {
     }
 
     return null;
-  }
-
-  protected HttpClient.HeaderBuilder headers() {
-    String accessToken = oAuth2Context.accessToken();
-    if (oAuth2Context.refresh().accessToken() != accessToken)  {
-      // tokens updated - need to update config in db
-      updateEnvJson("raisely", oAuth2Context);
-    }
-    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
 
   //Response Objects
@@ -114,24 +98,6 @@ public class RaiselyClient extends OrgConfiguredClient {
               ", quantity='" + quantity + '\'' +
               '}';
     }
-  }
-
-  //TODO: remove once done with testing
-  public static void main(String[] args) {
-    Environment env = new Environment() {
-      @Override
-      public EnvironmentConfig getConfig() {
-        EnvironmentConfig envConfig = new EnvironmentConfig();
-        envConfig.raisely.username = "brett@impactupgrade.com";
-        envConfig.raisely.password = "6.tw*gghr.fyDDjkjaZj";
-        return envConfig;
-      }
-    };
-    
-    RaiselyClient raiselyClient = new RaiselyClient(env);
-    
-    raiselyClient.getDonation("123");
-    raiselyClient.getDonation("123");
   }
 }
 
