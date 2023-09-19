@@ -29,7 +29,7 @@ public class RaiselyEnrichmentService implements EnrichmentService {
   @Override
   public void init(Environment env) {
     this.env = env;
-    raiselyClient = new RaiselyClient(env);
+    raiselyClient = env.raiselyClient();
   }
 
 

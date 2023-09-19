@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
+import com.impactupgrade.nucleus.client.RaiselyClient;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
@@ -242,6 +243,7 @@ public class Environment {
   // vendor clients
 
   public DonorWranglerClient donorwranglerClient() { return new DonorWranglerClient(this); }
+  public RaiselyClient raiselyClient() { return new RaiselyClient(this); }
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password) { return new SfdcClient(this, username, password); }
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }

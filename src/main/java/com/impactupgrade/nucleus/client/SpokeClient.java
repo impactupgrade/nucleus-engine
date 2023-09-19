@@ -3,11 +3,7 @@ package com.impactupgrade.nucleus.client;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.util.HttpClient;
-import com.impactupgrade.nucleus.util.OAuth2;
-import org.json.JSONObject;
 
 import javax.ws.rs.core.GenericType;
 import java.util.ArrayList;
@@ -18,21 +14,18 @@ import static com.impactupgrade.nucleus.util.HttpClient.put;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 // TODO: To eventually become a spoke-phone-java-client open source lib?
-public class SpokeClient extends OrgConfiguredClient {
+public class SpokeClient extends OAuthClient {
 
   protected static String AUTH_ENDPOINT = "https://auth.spokephone.com/oauth/token";
   protected static String API_ENDPOINT_BASE = "https://integration.spokephone.com/";
 
-  private final OAuth2.Context oAuth2Context;
-
   public SpokeClient(Environment env) {
-    super(env);
+    super("spoke", env);
+  }
 
-    JSONObject spokeJson = getEnvJson().getJSONObject("spoke");
-
-    this.oAuth2Context = new OAuth2.ClientCredentialsContext(
-      env.getConfig().spoke.clientId, env.getConfig().spoke.clientSecret, 
-      spokeJson.getString("accessToken"), spokeJson.getLong("expiresAt"), spokeJson.getString("refreshToken"), AUTH_ENDPOINT);
+  @Override
+  protected OAuthContext oAuthContext() {
+    return new ClientCredentialsOAuthContext(env.getConfig().spoke, AUTH_ENDPOINT);
   }
 
   public List<Phonebook> getPhonebooks() {
@@ -83,15 +76,6 @@ public class SpokeClient extends OrgConfiguredClient {
     return contact;
   }
 
-  protected HttpClient.HeaderBuilder headers() {
-    String accessToken = oAuth2Context.accessToken();
-    if (oAuth2Context.refresh().accessToken() != accessToken)  {
-      // tokens updated - need to update config in db
-      updateEnvJson("spoke", oAuth2Context);
-    }
-    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
-  }
-
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Phonebook {
     public String id;
@@ -119,31 +103,5 @@ public class SpokeClient extends OrgConfiguredClient {
   public static class ContactRequest {
     public Contact contact;
     public String countryIso;
-  }
-
-  //TODO: remove once done with testing
-  public static void main(String[] args) {
-    Environment env = new Environment() {
-      @Override
-      public EnvironmentConfig getConfig() {
-        EnvironmentConfig envConfig = new EnvironmentConfig();
-        envConfig.spoke.clientId = "1fkdv7al7lr0smo2pq2jq06fbc";
-        envConfig.spoke.clientSecret = "7m9ci3r300lurue114m5rc0f2adm2fhhh0t8subv6grfpc2nncu";
-        return envConfig;
-      }
-    };
-    SpokeClient spokeClient = new SpokeClient(env);
-
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = "12345";
-    crmContact.firstName = "Brett";
-    crmContact.lastName = "Meyer";
-    crmContact.mobilePhone = "260-349-5732";
-//    Phonebook phonebook = spokeClient.createPhonebook("Salesforce US", "Salesforce contacts in the US", "US");
-    List<Phonebook> phonebooks = spokeClient.getPhonebooks();
-//    Contact contact = spokeClient.upsertContact(crmContact, "Salesforce", phonebooks.get(0).id);
-    System.out.println(phonebooks);
-    // To check same access token is used
-    spokeClient.getPhonebooks();
   }
 }
