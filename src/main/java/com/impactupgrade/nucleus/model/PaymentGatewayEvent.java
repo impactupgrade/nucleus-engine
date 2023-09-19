@@ -41,6 +41,7 @@ public class PaymentGatewayEvent implements Serializable {
   protected CrmContact crmContact = new CrmContact();
   protected CrmDonation crmDonation = new CrmDonation();
   protected CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
+  protected PaymentGatewayEventType eventType;
 
   public PaymentGatewayEvent(Environment env) {
     envConfig = env.getConfig();
@@ -540,6 +541,14 @@ public class PaymentGatewayEvent implements Serializable {
   public void setCrmRecurringDonationId(String crmRecurringDonationId) {
     crmRecurringDonation.id = crmRecurringDonationId;
     crmDonation.recurringDonation.id = crmRecurringDonationId;
+  }
+
+  public PaymentGatewayEventType getEventType() {
+    return eventType;
+  }
+
+  public void setPaymentGatewayEventType(PaymentGatewayEventType type){
+    eventType = type;
   }
 
   @Override
