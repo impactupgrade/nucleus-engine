@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.PaypalClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
@@ -467,6 +468,77 @@ public class PaymentGatewayEvent implements Serializable {
 
     // TODO: We could shift this to MetadataRetriever, but odds are we're the only ones setting it...
     crmRecurringDonation.description = stripeSubscription.getMetadata().get("description");
+  }
+  
+  public void initPaypal(PaypalClient.Capture capture) {
+    if ("completed".equalsIgnoreCase(capture.status)) {
+      crmDonation.status = CrmDonation.Status.SUCCESSFUL;
+      crmDonation.depositId = capture.id;
+      crmDonation.depositDate = Utils.toZonedDateTime(capture.createTime.toInstant().getEpochSecond(), "UTC");
+    } else if ("declined".equalsIgnoreCase(capture.status) || "failed".equalsIgnoreCase(capture.status)) {
+      crmDonation.status = CrmDonation.Status.FAILED;
+    } else if ("partially_refunded".equalsIgnoreCase(capture.status) || "refunded".equalsIgnoreCase(capture.status)) {
+      crmDonation.status = CrmDonation.Status.REFUNDED;
+      crmDonation.refundId = capture.id;
+      crmDonation.refundDate = Utils.toZonedDateTime(capture.updateTime.toInstant().getEpochSecond(), "UTC");
+    } else if ("pending".equalsIgnoreCase(capture.status)) {
+      crmDonation.status = CrmDonation.Status.PENDING;
+    }
+
+    crmDonation.amount = capture.amount.value;
+    crmDonation.customerId = capture.payee.merchantId;
+    
+    crmDonation.gatewayName = "PayPal";
+    crmDonation.originalCurrency = capture.amount.currencyCode;
+    //TODO: convert to USD from EUR?
+    //crmDonation.exchangeRate = ?
+    crmDonation.feeInDollars = capture.sellerReceivableBreakdown.paypalFee.value;
+    crmDonation.url = capture.links.stream()
+        .filter(link -> "self".equalsIgnoreCase(link.rel))
+        .findFirst().map(link -> link.href).orElse(null);
+    
+    if (capture.payee != null) {
+      initPaypalPayee(capture.payee);  
+    }
+  }
+
+  public void initPaypalSubscription(PaypalClient.Subscription subscription) {
+    crmRecurringDonation.gatewayName = "PayPal";
+
+    crmRecurringDonation.subscriptionStartDate = Utils.toZonedDateTime(subscription.startTime.toInstant().getEpochSecond(), "UTC");
+    crmRecurringDonation.subscriptionNextDate = crmRecurringDonation.subscriptionStartDate;
+
+    crmRecurringDonation.subscriptionId = subscription.id;
+    
+    String intervalUnit = subscription.plan.billingCycles.stream()
+        .filter(billingcycle -> "regular".equalsIgnoreCase(billingcycle.tenureType))
+        .findFirst().map(billingCycle -> billingCycle.frequency.intervalUnit)
+        // by default, assume monthly
+        .orElse("monthly");
+    
+    crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.fromName(intervalUnit);
+
+    crmRecurringDonation.amount = subscription.plan.billingCycles.stream()
+        .filter(billingcycle -> "regular".equalsIgnoreCase(billingcycle.tenureType))
+        .findFirst().map(billingCycle -> billingCycle.pricingScheme.fixedPrice.value).orElse(null);
+    
+    crmRecurringDonation.description = subscription.plan.name; //?
+    
+    crmRecurringDonation.contact.firstName = subscription.subscriber.name.givenName;
+    crmRecurringDonation.contact.lastName = subscription.subscriber.name.surname;
+    crmRecurringDonation.contact.email = subscription.subscriber.emailAddress;
+    
+    crmRecurringDonation.contact.mailingAddress.postalCode = subscription.subscriber.shippingAddress.address.postalCode;
+    crmRecurringDonation.contact.mailingAddress.street = subscription.subscriber.shippingAddress.address.addressLine1;
+    crmRecurringDonation.contact.mailingAddress.city = subscription.subscriber.shippingAddress.address.adminArea1;
+    crmRecurringDonation.contact.mailingAddress.state = subscription.subscriber.shippingAddress.address.adminArea2;
+    crmRecurringDonation.contact.mailingAddress.country = subscription.subscriber.shippingAddress.address.countryCode;
+  }
+
+  protected void initPaypalPayee(PaypalClient.Payee payee) {
+    crmDonation.customerId = payee.merchantId;
+    crmRecurringDonation.customerId = payee.merchantId;
+    crmContact.email = payee.emailAddress;
   }
 
   public Map<String, String> getAllMetadata() {
