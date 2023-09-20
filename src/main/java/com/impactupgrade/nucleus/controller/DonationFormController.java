@@ -386,7 +386,7 @@ public class DonationFormController {
         subscriptionMetadata.putAll(formData.getCustomMetadataSubscription());
       }
       ProductCreateParams.Builder productBuilder = stripeClient.defaultProductBuilder(stripeCustomer, formData.getAmountInCents(), currency);
-      PlanCreateParams.Builder planBuilder = stripeClient.defaultPlanBuilder(formData.getAmountInCents(), currency);
+      PlanCreateParams.Builder planBuilder = stripeClient.defaultPlanBuilder(formData.getAmountInCents(), currency, PlanCreateParams.Interval.valueOf(formData.getFrequency()));
       SubscriptionCreateParams.Builder subscriptionBuilder = stripeClient.defaultSubscriptionBuilder(stripeCustomer, stripeSource)
           .setMetadata(subscriptionMetadata);
       Subscription subscription = stripeClient.createSubscription(productBuilder, planBuilder, subscriptionBuilder);

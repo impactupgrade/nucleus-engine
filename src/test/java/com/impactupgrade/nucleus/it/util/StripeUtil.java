@@ -58,11 +58,11 @@ public class StripeUtil {
     return stripeClient.createCharge(chargeBuilder);
   }
 
-  public static Subscription createSubscription(Customer customer, Environment env) throws StripeException {
+  public static Subscription createSubscription(Customer customer, Environment env, PlanCreateParams.Interval interval ) throws StripeException {
     StripeClient stripeClient = env.stripeClient();
 
     ProductCreateParams.Builder productBuilder = stripeClient.defaultProductBuilder(customer, 100, "USD");
-    PlanCreateParams.Builder planBuilder = stripeClient.defaultPlanBuilder(100, "USD");
+    PlanCreateParams.Builder planBuilder = stripeClient.defaultPlanBuilder(100, "USD", interval);
     SubscriptionCreateParams.Builder subscriptionBuilder = stripeClient.defaultSubscriptionBuilder(customer, customer.getSources().getData().get(0));
     return stripeClient.createSubscription(productBuilder, planBuilder, subscriptionBuilder);
   }
