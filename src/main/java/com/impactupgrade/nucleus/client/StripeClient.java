@@ -553,9 +553,9 @@ public class StripeClient {
         .setName(name + ": $" + new DecimalFormat("#.##").format(amountInCents / 100.0) + " " + currency.toUpperCase(Locale.ROOT) + " (monthly)");
   }
 
-  public PlanCreateParams.Builder defaultPlanBuilder(long amountInCents, String currency) {
+  public PlanCreateParams.Builder defaultPlanBuilder(long amountInCents, String currency, PlanCreateParams.Interval interval) {
     return PlanCreateParams.builder()
-        .setInterval(PlanCreateParams.Interval.MONTH)
+        .setInterval(interval)
         .setAmount(amountInCents)
         .setCurrency(currency);
   }

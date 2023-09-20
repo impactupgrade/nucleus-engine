@@ -451,10 +451,11 @@ public class PaymentGatewayEvent implements Serializable {
     crmRecurringDonation.subscriptionNextDate = crmRecurringDonation.subscriptionStartDate;
 
     crmRecurringDonation.subscriptionId = stripeSubscription.getId();
-    if (stripeSubscription.getPendingInvoiceItemInterval() != null) {
-      crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.fromName(stripeSubscription.getPendingInvoiceItemInterval().getInterval());
+    if (stripeSubscription.getItems().getData().get(0).getPlan().getInterval() != null) {
+      crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.fromName(stripeSubscription.getItems().getData().get(0).getPlan().getInterval());
     }
     // by default, assume monthly
+    //TODO: potentially redundant/unused? crmRecurringDonation is initialized with frequency being monthly
     if (crmRecurringDonation.frequency == null) crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.MONTHLY;
 
     // Stripe is in cents

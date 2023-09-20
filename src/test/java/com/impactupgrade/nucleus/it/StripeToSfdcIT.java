@@ -13,6 +13,7 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
+import com.stripe.param.PlanCreateParams;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.client.Entity;
@@ -93,7 +94,7 @@ public class StripeToSfdcIT extends AbstractIT {
     String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
 
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env);
+    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
@@ -146,6 +147,42 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(nowDate, opp.getField("CloseDate"));
     assertEquals(customer.getName() + " Donation", opp.getField("Name"));
     assertEquals("1.0", opp.getField("Amount"));
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(customer.getName());
+  }
+
+  @Test
+  public void coreSubscriptionFrequency() throws Exception {
+    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+
+    Customer customer = StripeUtil.createCustomer(env);
+    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.YEAR);
+    List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
+    PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
+    String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
+
+    // play as a Stripe webhook
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
+    assertTrue(contactO.isPresent());
+    SObject contact = contactO.get();
+    String accountId = contact.getField("AccountId").toString();
+    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    assertTrue(accountO.isPresent());
+
+
+    List<SObject> rds = sfdcClient.getRecurringDonationsByAccountId(accountId);
+    assertEquals(1, rds.size());
+    SObject rd = rds.get(0);
+    String sfdcPeriod = rd.getField("npe03__Installment_Period__c").toString();
+    String sfdcPeriodFormatted = sfdcPeriod.endsWith("ly") ? sfdcPeriod.substring(0, sfdcPeriod.length() - 2) : sfdcPeriod;
+    assertEquals("year", sfdcPeriodFormatted.toString().toLowerCase());
+
 
     // only delete if the test passed -- keep failures in SFDC for analysis
     clearSfdc(customer.getName());
