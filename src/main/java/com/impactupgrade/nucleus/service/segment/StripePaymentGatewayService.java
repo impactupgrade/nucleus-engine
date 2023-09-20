@@ -45,7 +45,9 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   protected StripeObjectFilter stripeObjectFilter;
 
   @Override
-  public String name() { return "stripe"; }
+  public String name() {
+    return "stripe";
+  }
 
   @Override
   public boolean isConfigured(Environment env) {
@@ -64,7 +66,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     List<PaymentGatewayTransaction> transactions = new ArrayList<>();
     List<Charge> charges = new ArrayList<>();
     // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
-    stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0,  c));
+    stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0, c));
     for (Charge charge : charges) {
       if (Strings.isNullOrEmpty(charge.getBalanceTransaction())) {
         // hasn't been deposited yet, so skip it
@@ -130,7 +132,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
       List<Charge> charges = new ArrayList<>();
       // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
-      stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0,  c));
+      stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0, c));
       int count = 0;
       for (Charge charge : charges) {
         if (!charge.getStatus().equalsIgnoreCase("succeeded")
@@ -180,6 +182,76 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     return missingDonations;
   }
 
+  @Override
+  public void verifyCharge(String id) throws Exception {
+
+    Charge charge = stripeClient.getCharge(id);
+    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+
+    if (!charge.getStatus().equalsIgnoreCase("succeeded")
+        || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+      env.logJobInfo("Charge {} succeeded", id);
+    }
+
+
+    try {
+      String paymentIntentId = charge.getPaymentIntent();
+      String chargeId = charge.getId();
+      String transactionId = chargeId;
+      Optional<CrmDonation> donation = Optional.empty();
+      if (!Strings.isNullOrEmpty(paymentIntentId)) {
+        donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
+        transactionId = paymentIntentId;
+      }
+      if (donation.isEmpty()) {
+        donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
+      }
+
+      if (donation.isEmpty()) {
+        env.logJobInfo("verify-charge: MISSING," + transactionId + "," + SDF.format(charge.getCreated() * 1000));
+      } else if (donation.get().status != CrmDonation.Status.SUCCESSFUL) {
+        env.logJobInfo("verify-charge: WRONG-STATE," + transactionId + "," + SDF.format(charge.getCreated() * 1000) + "," + donation.get().status);
+      }
+
+    } catch (Exception e) {
+      env.logJobError("charge verify failed", e);
+    }
+  }
+
+
+  @Override
+  public void verifyAndReplayCharge(String id) throws Exception {
+    Charge charge = stripeClient.getCharge(id);
+
+    if (charge == null) {
+      env.logJobInfo("Failed to verify and replay charge, no charge with the ID: {} found", id);
+      return;
+    }
+    if (!charge.getStatus().equalsIgnoreCase("succeeded")
+        || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+      env.logJobInfo("Charge {} succeeded", id);
+      return;
+    }
+
+    try {
+      String paymentIntentId = charge.getPaymentIntent();
+
+      PaymentGatewayEvent paymentGatewayEvent;
+      if (Strings.isNullOrEmpty(paymentIntentId)) {
+        paymentGatewayEvent = chargeToPaymentGatewayEvent(charge, true);
+      } else {
+        paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), true);
+      }
+      env.contactService().processDonor(paymentGatewayEvent);
+      env.donationService().createDonation(paymentGatewayEvent);
+      env.accountingService().processTransaction(paymentGatewayEvent);
+
+    } catch (Exception e) {
+      env.logJobError("charge replay failed", e);
+    }
+  }
+
+
   // TODO: Once the above is returning results, use this. But for now, keeping the original one...
 //  @Override
 //  public void verifyAndReplayCharges(Date startDate, Date endDate) {
@@ -211,7 +283,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
       List<Charge> charges = new ArrayList<>();
       // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
-      stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0,  c));
+      stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0, c));
       int count = 0;
       int total = charges.size();
       for (Charge charge : charges) {
@@ -237,15 +309,15 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 //          if (donation.isEmpty()) {
 //            env.logJobInfo("(" + count + ") MISSING: " + chargeId + "/" + paymentIntentId + " " + SDF.format(charge.getCreated() * 1000));
 
-            PaymentGatewayEvent paymentGatewayEvent;
-            if (Strings.isNullOrEmpty(paymentIntentId)) {
-              paymentGatewayEvent = chargeToPaymentGatewayEvent(charge, true);
-            } else {
-              paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), true);
-            }
-            env.contactService().processDonor(paymentGatewayEvent);
-            env.donationService().createDonation(paymentGatewayEvent);
-            env.accountingService().processTransaction(paymentGatewayEvent);
+          PaymentGatewayEvent paymentGatewayEvent;
+          if (Strings.isNullOrEmpty(paymentIntentId)) {
+            paymentGatewayEvent = chargeToPaymentGatewayEvent(charge, true);
+          } else {
+            paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), true);
+          }
+          env.contactService().processDonor(paymentGatewayEvent);
+          env.donationService().createDonation(paymentGatewayEvent);
+          env.accountingService().processTransaction(paymentGatewayEvent);
 //          }
         } catch (Exception e) {
           env.logJobError("charge replay failed", e);
@@ -282,7 +354,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   @Override
   public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
-    
+
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
       stripeClient.updateSubscriptionAmount(crmRecurringDonation.subscriptionId, crmRecurringDonation.amount);
     }
