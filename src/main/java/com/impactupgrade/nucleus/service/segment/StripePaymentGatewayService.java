@@ -57,7 +57,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   @Override
   public void init(Environment env) {
     this.env = env;
-    stripeClient = env.stripeClient();
+    this.stripeClient = env.stripeClient();
     this.stripeObjectFilter = new StripeObjectFilter(env.getConfig().stripe.filteringExpressions);
   }
 

@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.controller.FactsController;
 import com.impactupgrade.nucleus.controller.JobController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
+import com.impactupgrade.nucleus.controller.PaypalController;
 import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
@@ -100,6 +101,7 @@ public class App {
     apiConfig.register(sfdcController());
     apiConfig.register(scheduledJobController());
     apiConfig.register(stripeController());
+    apiConfig.register(paypalController());
     apiConfig.register(twilioController());
     apiConfig.register(twilioFrontlineController());
 
@@ -157,6 +159,7 @@ public class App {
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory); }
   protected SfdcController sfdcController() { return new SfdcController(envFactory); }
   protected StripeController stripeController() { return new StripeController(envFactory); }
+  protected PaypalController paypalController() { return new PaypalController(envFactory); }
   protected TwilioController twilioController() { return new TwilioController(envFactory); }
   protected TwilioFrontlineController twilioFrontlineController() { return new TwilioFrontlineController(envFactory); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }

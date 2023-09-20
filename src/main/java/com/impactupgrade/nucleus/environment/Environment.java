@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.client.FactsClient;
 import com.impactupgrade.nucleus.client.RaiselyClient;
+import com.impactupgrade.nucleus.client.PaypalClient;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
@@ -254,6 +255,7 @@ public class Environment {
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
   public VirtuousClient virtuousClient() { return new VirtuousClient(this); }
+  public PaypalClient paypalClient() { return new PaypalClient(this); }
 
   // job logging services
 
