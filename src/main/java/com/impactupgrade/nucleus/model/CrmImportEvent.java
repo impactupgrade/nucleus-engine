@@ -105,6 +105,7 @@ public class CrmImportEvent {
   public String campaignRecordTypeName;
   // TODO: In the future, could add OOTB support for dates, etc. but need to see this play out.
 
+  // used during processing
   public boolean secondPass = false;
 
   public String contactFullName() {
@@ -176,6 +177,7 @@ public class CrmImportEvent {
     importEvent.account.ownerId = data.get("Account Owner ID");
     importEvent.account.recordTypeId = data.get("Account Record Type ID");
     importEvent.account.recordTypeName = data.get("Account Record Type Name");
+    importEvent.account.website = data.get("Account Website");
 
     // 3 ways campaigns can be provided, using column headers:
     // 1: Account Campaign n ID
@@ -240,8 +242,9 @@ public class CrmImportEvent {
         organization.recordType = EnvironmentConfig.AccountType.ORGANIZATION;
         organization.recordTypeId = data.get(columnPrefix + " Record Type ID");
         organization.recordTypeName = data.get(columnPrefix + " Record Type Name");
-        importEvent.contactOrganizations.add(organization);
+        organization.website = data.get(columnPrefix + " Website");
 
+        importEvent.contactOrganizations.add(organization);
         importEvent.contactOrganizationRoles.add(data.get(columnPrefix + " Role"));
       }
     }

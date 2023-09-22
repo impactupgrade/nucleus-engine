@@ -58,6 +58,16 @@ public class Utils {
     return s.replaceAll("\\s", "");
   }
 
+  public static String alphanumericOnly(String s) {
+    if (s == null) return null;
+    return s.replaceAll("[^A-Za-z0-9]", "");
+  }
+
+  public static String numericOnly(String s) {
+    if (s == null) return null;
+    return s.replaceAll("\\D", "");
+  }
+
   public static String[] fullNameToFirstLast(String fullName) {
     if (Strings.isNullOrEmpty(fullName)) {
       return new String[]{null, null};
