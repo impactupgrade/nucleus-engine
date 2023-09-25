@@ -6,16 +6,19 @@ import com.impactupgrade.nucleus.entity.event.Interaction;
 import com.impactupgrade.nucleus.entity.event.InteractionOption;
 import com.impactupgrade.nucleus.entity.event.Participant;
 import com.impactupgrade.nucleus.entity.event.ResponseOption;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.messaging.Body;
 import com.twilio.twiml.messaging.Message;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Optional;
@@ -49,10 +52,11 @@ public class EventsController {
   @Produces(MediaType.APPLICATION_XML)
   public Response inbound(
       @FormParam("From") String from,
-      @FormParam("Body") String _body
+      @FormParam("Body") String _body,
+      @Context HttpServletRequest request
   ) throws Exception {
     String body = _body.trim();
-
+    Environment env = envFactory.init(request);
     Optional<Event> eventForOptIn = eventDao.getQueryResult(
         "FROM Event WHERE lower(keyword) = lower(:keyword) AND status = 'ACTIVE'",
         query -> {
@@ -94,7 +98,7 @@ public class EventsController {
 
   // TODO: Post-demo, allow multiple free-form responses, allow multiple responses for multi-select options,
   //  but disallow multiple responses for all others.
-  private void createResponse(String from, String body) {
+  private void createResponse(String from, String body, Environment env) {
     Optional<Participant> participant = participantDao.getQueryResult(
         "FROM Participant p JOIN FETCH p.event e WHERE p.mobilePhone = :mobilePhone AND e.status = 'ACTIVE'",
         query -> {
@@ -122,9 +126,10 @@ public class EventsController {
             //TODO will likely need some input validation/cleaning for the way participants will be sending in their selections, "1" vs "One" etc.
             for (String optionValue : optionValues) {
               Optional<InteractionOption> option = interactionOptionDao.getQueryResult(
-                  "SELECT Id FROM interaction_option WHERE UPPER(value) = UPPER(optionValue)",
+                  "SELECT Id FROM interaction_option WHERE UPPER(value) = UPPER(optionValue) AND interaction_option.interaction_id = interactionId",
                   query -> {
                     query.setParameter("optionValue", optionValue);
+                    query.setParameter("interactionId",interaction.get().id);
                   }
               );
               if (option.isPresent()) {
@@ -133,6 +138,8 @@ public class EventsController {
                 newOption.response = response;
                 newOption.value = option.get();
                 response.selectedOptions.add(newOption);
+              }else{
+                env.logJobWarn("Failed to find a ResponseOption with value: {}, interaction: {}", optionValue, interaction.get().id);
               }
             }
           }
