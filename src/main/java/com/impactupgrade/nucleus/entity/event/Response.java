@@ -6,6 +6,7 @@ import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import java.util.List;
 import java.util.UUID;
@@ -28,7 +29,7 @@ public class Response {
   @Column(name = "free_response")
   public String freeResponse;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "selected_options")
+  @OneToMany(fetch = FetchType.LAZY)
+  @JoinColumn(name = "interaction_option_id")
   public List<ResponseOption> selectedOptions ;
 }
