@@ -182,41 +182,41 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     return missingDonations;
   }
 
-  @Override
-  public void verifyCharge(String id) throws Exception {
-
-    Charge charge = stripeClient.getCharge(id);
-    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-
-    if (!charge.getStatus().equalsIgnoreCase("succeeded")
-        || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
-      env.logJobInfo("Charge {} succeeded", id);
-    }
-
-
-    try {
-      String paymentIntentId = charge.getPaymentIntent();
-      String chargeId = charge.getId();
-      String transactionId = chargeId;
-      Optional<CrmDonation> donation = Optional.empty();
-      if (!Strings.isNullOrEmpty(paymentIntentId)) {
-        donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
-        transactionId = paymentIntentId;
-      }
-      if (donation.isEmpty()) {
-        donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
-      }
-
-      if (donation.isEmpty()) {
-        env.logJobInfo("verify-charge: MISSING," + transactionId + "," + SDF.format(charge.getCreated() * 1000));
-      } else if (donation.get().status != CrmDonation.Status.SUCCESSFUL) {
-        env.logJobInfo("verify-charge: WRONG-STATE," + transactionId + "," + SDF.format(charge.getCreated() * 1000) + "," + donation.get().status);
-      }
-
-    } catch (Exception e) {
-      env.logJobError("charge verify failed", e);
-    }
-  }
+//  @Override
+//  public void verifyCharge(String id) throws Exception {
+//
+//    Charge charge = stripeClient.getCharge(id);
+//    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
+//
+//    if (!charge.getStatus().equalsIgnoreCase("succeeded")
+//        || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+//      env.logJobInfo("Charge {} succeeded", id);
+//    }
+//
+//
+//    try {
+//      String paymentIntentId = charge.getPaymentIntent();
+//      String chargeId = charge.getId();
+//      String transactionId = chargeId;
+//      Optional<CrmDonation> donation = Optional.empty();
+//      if (!Strings.isNullOrEmpty(paymentIntentId)) {
+//        donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
+//        transactionId = paymentIntentId;
+//      }
+//      if (donation.isEmpty()) {
+//        donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
+//      }
+//
+//      if (donation.isEmpty()) {
+//        env.logJobInfo("verify-charge: MISSING," + transactionId + "," + SDF.format(charge.getCreated() * 1000));
+//      } else if (donation.get().status != CrmDonation.Status.SUCCESSFUL) {
+//        env.logJobInfo("verify-charge: WRONG-STATE," + transactionId + "," + SDF.format(charge.getCreated() * 1000) + "," + donation.get().status);
+//      }
+//
+//    } catch (Exception e) {
+//      env.logJobError("charge verify failed", e);
+//    }
+//  }
 
 
   @Override
@@ -227,8 +227,8 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       env.logJobInfo("Failed to verify and replay charge, no charge with the ID: {} found", id);
       return;
     }
-    if (!charge.getStatus().equalsIgnoreCase("succeeded")
-        || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+    if (charge.getStatus().equalsIgnoreCase("succeeded")
+        || charge.getPaymentIntentObject() != null && charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
       env.logJobInfo("Charge {} succeeded", id);
       return;
     }
