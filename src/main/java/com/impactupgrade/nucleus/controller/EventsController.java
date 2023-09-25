@@ -71,7 +71,7 @@ public class EventsController {
       MessagingResponse response = new MessagingResponse.Builder().message(responseSms).build();
       return Response.ok().entity(response.toXml()).build();
     } else {
-      createResponse(from, body);
+      createResponse(from, body, env);
       MessagingResponse response = new MessagingResponse.Builder().build();
       return Response.ok().entity(response.toXml()).build();
     }
