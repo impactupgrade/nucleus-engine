@@ -97,7 +97,7 @@ public abstract class AbstractMockTest {
   @BeforeEach
   public void beforeEach() {
     Message message = mock(Message.class);
-    lenient().when(twilioClientMock.sendMessage(any(), any(), any(), any())).thenReturn(message);
+    lenient().when(twilioClientMock.sendMessage(any(), any(), any(), any(), any())).thenReturn(message);
   }
 
   // Rebuild the SessionFactory each time, letting hibernate.hbm2ddl.auto create-drop (see hibernate.properties)

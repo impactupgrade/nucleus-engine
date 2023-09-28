@@ -20,6 +20,6 @@ public class InteractionOption {
   @JoinColumn(name = "interaction_id", nullable = false)
   public Interaction interaction;
 
-  @Column(name = "value")
+  @Column(name = "`value`")
   public String value;
 }
