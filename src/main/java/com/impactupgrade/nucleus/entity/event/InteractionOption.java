@@ -10,7 +10,7 @@ import javax.persistence.Table;
 import java.util.UUID;
 
 @Entity
-@Table(name = "interaction_option")
+@Table(name = "events_interactionoption")
 public class InteractionOption {
 
   @Id

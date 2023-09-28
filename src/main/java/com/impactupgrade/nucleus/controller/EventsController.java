@@ -4,6 +4,7 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.event.Event;
 import com.impactupgrade.nucleus.entity.event.Interaction;
 import com.impactupgrade.nucleus.entity.event.InteractionOption;
+import com.impactupgrade.nucleus.entity.event.InteractionType;
 import com.impactupgrade.nucleus.entity.event.Participant;
 import com.impactupgrade.nucleus.entity.event.ResponseOption;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -34,6 +35,7 @@ public class EventsController {
   protected final HibernateDao<Long, Participant> participantDao;
   protected final HibernateDao<Long, InteractionOption> interactionOptionDao;
   protected final HibernateDao<Long, com.impactupgrade.nucleus.entity.event.Response> responseDao;
+  protected final HibernateDao<Long, ResponseOption> responseOptionDao;
 
   public EventsController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
@@ -41,8 +43,9 @@ public class EventsController {
     eventDao = new HibernateDao<>(Event.class);
     interactionDao = new HibernateDao<>(Interaction.class);
     participantDao = new HibernateDao<>(Participant.class);
+    interactionOptionDao = new HibernateDao<>(InteractionOption.class);
     responseDao = new HibernateDao<>(com.impactupgrade.nucleus.entity.event.Response.class);
-    interactionOptionDao = new HibernateDao<>(com.impactupgrade.nucleus.entity.event.InteractionOption.class);
+    responseOptionDao = new HibernateDao<>(ResponseOption.class);
   }
 
   // TODO: Twilio specific
@@ -93,6 +96,7 @@ public class EventsController {
     participant.id = UUID.randomUUID();
     participant.mobilePhone = from;
     participant.event = event;
+    participant.responded = false;
     participantDao.create(participant);
   }
 
@@ -119,6 +123,12 @@ public class EventsController {
         response.participant = participant.get();
         response.interaction = interaction.get();
 
+        if (interaction.get().type == InteractionType.FREE) {
+          response.freeResponse = body;
+        }
+
+        responseDao.create(response);
+
         switch (interaction.get().type) {
           case MULTI, SELECT -> {
             //TODO: might need to expand this to be more robust, currently only separating by commas and whitespace chars
@@ -126,32 +136,31 @@ public class EventsController {
             //TODO will likely need some input validation/cleaning for the way participants will be sending in their selections, "1" vs "One" etc.
             for (String optionValue : optionValues) {
               Optional<InteractionOption> option = interactionOptionDao.getQueryResult(
-                  "SELECT Id FROM interaction_option WHERE UPPER(value) = UPPER(optionValue) AND interaction_option.interaction_id = interactionId",
+                  "FROM InteractionOption io WHERE UPPER(value) = UPPER(:optionValue) AND io.interaction.id = :interactionId",
                   query -> {
                     query.setParameter("optionValue", optionValue);
-                    query.setParameter("interactionId",interaction.get().id);
+                    query.setParameter("interactionId", interaction.get().id);
                   }
               );
               if (option.isPresent()) {
-                ResponseOption newOption = new ResponseOption();
-                newOption.id = UUID.randomUUID();
-                newOption.response = response;
-                newOption.value = option.get();
-                response.selectedOptions.add(newOption);
-              }else{
+                ResponseOption responseOption = new ResponseOption();
+                responseOption.id = UUID.randomUUID();
+                responseOption.response = response;
+                responseOption.interactionOption = option.get();
+
+                responseOptionDao.create(responseOption);
+              } else{
                 env.logJobWarn("Failed to find a ResponseOption with value: {}, interaction: {}", optionValue, interaction.get().id);
               }
             }
           }
-          case FREE -> {
-            response.freeResponse = body;
-          }
-          default -> {
-
-          }
         }
 
-        responseDao.create(response);
+        // update the Participant to "responded", if not set already
+        if (participant.get().responded == null || !participant.get().responded) {
+          participant.get().responded = true;
+          participantDao.update(participant.get());
+        }
       }
 
     }

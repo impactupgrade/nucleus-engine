@@ -19,6 +19,9 @@ public class Participant {
   @Column(name = "mobile_phone")
   public String mobilePhone;
 
+  @Column(name = "responded")
+  public Boolean responded;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "event_id", nullable = false)
   public Event event;

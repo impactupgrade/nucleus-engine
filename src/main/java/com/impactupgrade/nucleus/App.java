@@ -86,11 +86,13 @@ public class App {
     apiConfig.register(new SecurityExceptionMapper());
     apiConfig.register(MultiPartFeature.class);
 
+    apiConfig.register(accountingController());
     apiConfig.register(backupController());
     apiConfig.register(communicationController());
     apiConfig.register(crmController());
     apiConfig.register(donationFormController());
     apiConfig.register(emailController());
+    apiConfig.register(jobController());
     apiConfig.register(mailchimpController());
     apiConfig.register(paymentGatewayController());
     apiConfig.register(sfdcController());
@@ -98,8 +100,6 @@ public class App {
     apiConfig.register(stripeController());
     apiConfig.register(twilioController());
     apiConfig.register(twilioFrontlineController());
-    apiConfig.register(accountingController());
-    apiConfig.register(jobController());
 
     // Controllers that require DB connectivity -- prevent JDBC/Hikari connection errors.
     if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {

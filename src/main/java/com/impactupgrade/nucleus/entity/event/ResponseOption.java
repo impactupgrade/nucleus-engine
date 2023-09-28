@@ -10,7 +10,7 @@ import javax.persistence.Table;
 import java.util.UUID;
 
 @Entity
-@Table(name = "response_option")
+@Table(name = "events_responseoption")
 public class ResponseOption {
 
   @Id
@@ -22,5 +22,5 @@ public class ResponseOption {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "interaction_option_id")
-  public InteractionOption value;
+  public InteractionOption interactionOption;
 }
