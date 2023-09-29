@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SendGridCommunicationService extends AbstractCommunicationService {
@@ -107,7 +108,7 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
       contact.country = crmContact.mailingAddress.country;
       // TODO: contact.canReceiveEmail()? Is there a "status" field, or do we instead need to simply remove from the list?
 
-      List<String> activeTags = getContactTagsCleaned(crmContact, campaignNames, communicationPlatform);
+      Set<String> activeTags = getContactTagsCleaned(crmContact, campaignNames, communicationPlatform);
       // TODO: may need to use https://docs.sendgrid.com/api-reference/contacts/get-contacts-by-emails to get the
       //  total list
 //      List<String> inactiveTags =

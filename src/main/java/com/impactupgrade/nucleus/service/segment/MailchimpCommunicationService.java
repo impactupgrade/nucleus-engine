@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -73,7 +74,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
         List<CrmContact> crmContacts = getEmailContacts(lastSync, communicationList);
         Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
-        Map<String, List<String>> tags = new MailchimpClient(mailchimpConfig, env).getContactsTags(communicationList.id);
+        Map<String, Set<String>> tags = new MailchimpClient(mailchimpConfig, env).getContactsTags(communicationList.id);
 
 //        List<List<CrmContact>> partitions = Lists.partition(crmContacts, BATCH_REQUEST_OPERATIONS_SIZE);
 //        int i = 1;
@@ -88,7 +89,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   }
 
   protected void syncContacts(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames,
-      Map<String, List<String>> tags, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
+      Map<String, Set<String>> tags, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
     MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
 
@@ -116,7 +117,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       // all contacts were processed before updating tags
       runBatchOperations(mailchimpClient, mailchimpConfig, upsertBatchId, 0);
 
-      Map<String, List<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
+      Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
       List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
           .map(crmContact -> new MailchimpClient.EmailContact(crmContact.email, activeTags.get(crmContact.email), tags.get(crmContact.email)))
           .collect(Collectors.toList());
@@ -218,10 +219,10 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     return batchOperations;
   }
 
-  protected Map<String, List<String>> getActiveTags(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform mailchimpConfig) throws Exception {
-    Map<String, List<String>> activeTags = new HashMap<>();
+  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform mailchimpConfig) throws Exception {
+    Map<String, Set<String>> activeTags = new HashMap<>();
     for (CrmContact crmContact : crmContacts) {
-      List<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig);
+      Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig);
       activeTags.put(crmContact.email, tagsCleaned);
     }
     return activeTags;
@@ -245,9 +246,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  // TODO: Purely allowing this to unsubscribe in the CRM, as opposed to archiving immediately in MC. Let organizations
-  //  decide if their unsubscribe-from-CRM code does an archive...
-  private void syncUnsubscribes(List<MemberInfo> unsubscribes, Consumer<CrmContact> consumer) throws Exception {
+  protected void syncUnsubscribes(List<MemberInfo> unsubscribes, Consumer<CrmContact> consumer) throws Exception {
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
 
@@ -387,15 +386,15 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   protected void updateTags(String listId, CrmContact crmContact, List<String> crmContactCampaignNames,
       MailchimpClient mailchimpClient, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
     try {
-      List<String> activeTags = getContactTagsCleaned(crmContact, crmContactCampaignNames, mailchimpConfig);
-      List<String> contactTags = mailchimpClient.getContactTags(listId, crmContact.email);
+      Set<String> activeTags = getContactTagsCleaned(crmContact, crmContactCampaignNames, mailchimpConfig);
+      Set<String> contactTags = mailchimpClient.getContactTags(listId, crmContact.email);
       
       String[] contactTagFilters = mailchimpConfig.contactTagFilters.toArray(new String[]{});
-      List<String> inactiveTags = contactTags.stream()
+      Set<String> inactiveTags = contactTags.stream()
           .filter(tag -> !activeTags.contains(tag))
           // filter out any tags that need to remain (IE, ones that were manually created in MC)
           .filter(tag -> !StringUtils.containsAny(tag, contactTagFilters))
-          .collect(Collectors.toList());
+          .collect(Collectors.toSet());
 
       mailchimpClient.updateContactTags(listId, crmContact.email, activeTags, inactiveTags);
     } catch (Exception e) {

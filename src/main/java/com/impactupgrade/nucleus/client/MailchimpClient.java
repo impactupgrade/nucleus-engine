@@ -145,25 +145,25 @@ public class MailchimpClient {
     return contact.interests.mapping.keySet();
   }
 
-  public List<String> getContactTags(String listId, String contactEmail) throws IOException, MailchimpException {
+  public Set<String> getContactTags(String listId, String contactEmail) throws IOException, MailchimpException {
     MemberInfo member = getContactInfo(listId, contactEmail);
     List<MailchimpObject> tags = (List<MailchimpObject>) member.mapping.get(TAGS);
-    return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toList());
+    return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toSet());
   }
 
-  public Map<String, List<String>> getContactsTags(String listId) throws IOException, MailchimpException {
+  public Map<String, Set<String>> getContactsTags(String listId) throws IOException, MailchimpException {
     List<MemberInfo> memberInfos = getListMembers(listId);
-    Map<String, List<String>> tagsMap = memberInfos.stream()
+    Map<String, Set<String>> tagsMap = memberInfos.stream()
         .collect(Collectors.toMap(
             memberInfo -> memberInfo.email_address, memberInfo -> {
               List<MailchimpObject> tags = (List<MailchimpObject>) memberInfo.mapping.get(TAGS);
-              return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toList());
+              return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toSet());
             }
         ));
     return tagsMap;
   }
 
-  public void updateContactTags(String listId, String contactEmail, List<String> activeTags, List<String> inactiveTags) throws IOException, MailchimpException {
+  public void updateContactTags(String listId, String contactEmail, Set<String> activeTags, Set<String> inactiveTags) throws IOException, MailchimpException {
     ArrayList<MailchimpObject> tags = new ArrayList<>();
     for (String activeTag : activeTags) {
       MailchimpObject tag = new MailchimpObject();
@@ -187,8 +187,8 @@ public class MailchimpClient {
     List<EditMemberMethod.AddorRemoveTag> editMemberMethods =
         emailContacts.stream()
             .map(emailContact -> {
-              List<String> active = emailContact.activeTags;
-              List<String> inactive = emailContact.inactiveTags;
+              Set<String> active = emailContact.activeTags;
+              Set<String> inactive = emailContact.inactiveTags;
               ArrayList<MailchimpObject> tags = new ArrayList<>();
               if (CollectionUtils.isNotEmpty(active)) {
                 for (String activeTag : active) {
@@ -247,7 +247,7 @@ public class MailchimpClient {
     return description;
   }
 
-  public record EmailContact(String email, List<String> activeTags, List<String> inactiveTags) {};
+  public record EmailContact(String email, Set<String> activeTags, Set<String> inactiveTags) {};
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static final class BatchOperation {

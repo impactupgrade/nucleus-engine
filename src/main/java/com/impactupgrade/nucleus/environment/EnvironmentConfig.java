@@ -268,6 +268,7 @@ public class EnvironmentConfig implements Serializable {
     public Map<String, String> groups = new HashMap<>(); // <Name, ID>
     public String crmFilter = "";
     public String crmLeadFilter = "";
+    public String crmAccountFilter = "";
   }
 
   public static class CommunicationPlatform extends Platform {

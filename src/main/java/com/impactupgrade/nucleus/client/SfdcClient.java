@@ -112,7 +112,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       //  has them due to the Household vs. Organization default, but commercial entities have a flatter setup.
       //  IF we need these commercially, needs to become a configurable option in env.json. Unfortunately, SFDC
       //  returns a query error if you try to query them but no record types exist for that object.
-      ACCOUNT_FIELDS += ", RecordTypeId, RecordType.Id, RecordType.Name, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c";
+      ACCOUNT_FIELDS += ", RecordTypeId, RecordType.Id, RecordType.Name, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c, npo02__FirstCloseDate__c";
       // TODO: Same point about NPSP.
       CONTACT_FIELDS += ", Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, account.npo02__LargestAmount__c, account.npo02__OppsClosedThisYear__c, account.npo02__OppAmountThisYear__c, npe01__Home_Address__c, npe01__workphone__c, npe01__preferredphone__c";
       DONATION_FIELDS += ", npe03__Recurring_Donation__c, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name";
