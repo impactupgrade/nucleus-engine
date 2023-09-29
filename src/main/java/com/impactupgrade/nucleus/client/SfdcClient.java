@@ -845,6 +845,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType,
       String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
+
+    conditions = conditions.stream().filter(c -> !Strings.isNullOrEmpty(c)).toList();
+
     if (conditions.isEmpty()) {
       return List.of();
     }
