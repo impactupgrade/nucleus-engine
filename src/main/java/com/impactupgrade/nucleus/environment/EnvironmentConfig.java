@@ -294,6 +294,13 @@ public class EnvironmentConfig implements Serializable {
 
   public Raisely raisely = new Raisely();
 
+  public static class CustomDonations extends Platform {
+    public String stripeAppId = "";
+    //Set in the env in case CustomDonations updates naming
+    public String feeField = "";
+  }
+
+  public CustomDonations customDonations = new CustomDonations();
   public Backblaze backblaze = new Backblaze();
 
   public static class Backblaze extends Platform {
