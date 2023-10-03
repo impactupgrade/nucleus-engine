@@ -33,16 +33,19 @@ public class BulkImportIT extends AbstractIT {
     SObject contact2 = randomContactSfdc();
     SObject contact3 = randomContactSfdc();
     SObject contact4 = randomContactSfdc();
+    SObject contact5 = randomContactSfdc();
 
     SfdcClient sfdcClient = env.sfdcClient();
 
     contact1.setField("Test_Multi_Select__c", "Value 1");
     contact2.setField("Test_Multi_Select__c", "Value 1;Value 3");
     contact3.setField("Test_Multi_Select__c", "Value 2");
-    // nothing for contact 4
+    contact4.setField("Test_Multi_Select__c", "Value 2;Value 3");
+    // nothing for contact 5
     sfdcClient.batchUpdate(contact1);
     sfdcClient.batchUpdate(contact2);
     sfdcClient.batchUpdate(contact3);
+    sfdcClient.batchUpdate(contact4);
     sfdcClient.batchFlush();
 
     final List<Object> values = List.of(
@@ -50,7 +53,8 @@ public class BulkImportIT extends AbstractIT {
         List.of(contact1.getId(), "Value 2"),
         List.of(contact2.getId(), "Value 2"),
         List.of(contact3.getId(), "Value 2"),
-        List.of(contact4.getId(), "Value 2")
+        List.of(contact4.getId(), "Value 2"),
+        List.of(contact5.getId(), "Value 2")
     );
     postToBulkImport(values);
 
@@ -58,11 +62,13 @@ public class BulkImportIT extends AbstractIT {
     contact2 = sfdcClient.getContactById(contact2.getId(), "Test_Multi_Select__c").get();
     contact3 = sfdcClient.getContactById(contact3.getId(), "Test_Multi_Select__c").get();
     contact4 = sfdcClient.getContactById(contact4.getId(), "Test_Multi_Select__c").get();
+    contact5 = sfdcClient.getContactById(contact5.getId(), "Test_Multi_Select__c").get();
 
     assertEquals("Value 1;Value 2", contact1.getField("Test_Multi_Select__c").toString());
     assertEquals("Value 1;Value 2;Value 3", contact2.getField("Test_Multi_Select__c").toString());
     assertEquals("Value 2", contact3.getField("Test_Multi_Select__c").toString());
-    assertEquals("Value 2", contact4.getField("Test_Multi_Select__c").toString());
+    assertEquals("Value 2;Value 3", contact4.getField("Test_Multi_Select__c").toString());
+    assertEquals("Value 2", contact5.getField("Test_Multi_Select__c").toString());
   }
 
   @Test

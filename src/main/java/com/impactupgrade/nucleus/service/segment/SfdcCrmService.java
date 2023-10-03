@@ -1941,8 +1941,15 @@ public class SfdcCrmService implements CrmService {
   protected void setMultiselectPicklistValue(String key, String value, SObject sObject, SObject existingSObject) {
     if (existingSObject != null) {
       String existingValue = (String) existingSObject.getField(key);
-      if (!Strings.isNullOrEmpty(existingValue) && !existingValue.contains(value)) {
-        value = Strings.isNullOrEmpty(existingValue) ? value : existingValue + ";" + value;
+      if (!Strings.isNullOrEmpty(existingValue)) {
+        if (existingValue.contains(value)) {
+          // existing values already include the new value, so set the existing value verbatim so that we don't
+          // wipe anything out
+          value = existingValue;
+        } else {
+          // existing values did not include the new value, so append it
+          value = Strings.isNullOrEmpty(existingValue) ? value : existingValue + ";" + value;
+        }
       }
     }
     sObject.setField(key, value);
