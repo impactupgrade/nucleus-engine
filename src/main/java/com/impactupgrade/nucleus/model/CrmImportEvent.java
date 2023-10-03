@@ -342,86 +342,6 @@ public class CrmImportEvent {
     return importEvent;
   }
 
-  // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
-  private static Calendar getDate(CaseInsensitiveMap<String> data, String columnName) {
-    Calendar c = null;
-    
-    try {
-      if (data.containsKey(columnName + " dd/mm/yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get(columnName + " dd/mm/yyyy")));
-      } else if (data.containsKey(columnName + " dd-mm-yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(data.get(columnName + " dd-mm-yyyy")));
-      } else if (data.containsKey(columnName + " mm/dd/yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get(columnName + " mm/dd/yyyy")));
-      } else if (data.containsKey(columnName + " mm/dd/yy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM/dd/yy").parse(data.get(columnName + " mm/dd/yy")));
-      } else if (data.containsKey(columnName + " mm-dd-yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(data.get(columnName + " mm-dd-yyyy")));
-      } else if (data.containsKey(columnName + " yyyy-mm-dd")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get(columnName + " yyyy-mm-dd")));
-      }
-    } catch (ParseException e) {
-      throw new RuntimeException("failed to parse date", e);
-    }
-    
-    return c;
-  }
-
-  public List<String> getAccountColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Account")).toList();
-  }
-  public List<String> getAccountCustomFieldNames() {
-    return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom"))
-        .map(k -> k.replace("Account Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
-  }
-  public List<String> getAccountCampaignColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Account Campaign")).toList();
-  }
-  public List<String> getContactColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Contact")).toList();
-  }
-  public List<String> getContactCustomFieldNames() {
-    List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom"))
-        .map(k -> k.replace("Contact Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
-    // We also need the account values!
-    List<String> accountFields = getAccountCustomFieldNames().stream().map(f -> "Account." + f).toList();
-    return Stream.concat(contactFields.stream(), accountFields.stream()).toList();
-  }
-  public List<String> getContactCampaignColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign")).toList();
-  }
-  public List<String> getRecurringDonationColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Recurring Donation")).toList();
-  }
-  public List<String> getRecurringDonationCustomFieldNames() {
-    return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom"))
-        .map(k -> k.replace("Recurring Donation Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
-  }
-  public List<String> getOpportunityColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Opportunity")).toList();
-  }
-  public List<String> getOpportunityCustomFieldNames() {
-    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom"))
-        .map(k -> k.replace("Opportunity Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
-  }
-  public List<String> getCampaignColumnNames() {
-    return raw.keySet().stream().filter(k -> k.startsWith("Campaign")).toList();
-  }
-  public List<String> getCampaignCustomFieldNames() {
-    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom"))
-        .map(k -> k.replace("Campaign Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
-  }
-  private String removeDateSelectors(String s) {
-    return s.replace("dd/mm/yyyy", "").replace("dd-mm-yyyy", "").replace("mm/dd/yyyy", "").replace("mm/dd/yy", "")
-        .replace("mm-dd-yyyy", "").replace("yyyy-mm-dd", "").trim();
-  }
-
   public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
     return data.stream().map(CrmImportEvent::fromFBFundraiser).filter(Objects::nonNull).collect(Collectors.toList());
   }
@@ -579,6 +499,86 @@ public class CrmImportEvent {
     } else {
       return null;
     }
+  }
+
+  public List<String> getAccountColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Account")).toList();
+  }
+  public List<String> getAccountCustomFieldNames() {
+    return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom"))
+        .map(k -> k.replace("Account Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+  }
+  public List<String> getAccountCampaignColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Account Campaign")).toList();
+  }
+  public List<String> getContactColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Contact")).toList();
+  }
+  public List<String> getContactCustomFieldNames() {
+    List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom"))
+        .map(k -> k.replace("Contact Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+    // We also need the account values!
+    List<String> accountFields = getAccountCustomFieldNames().stream().map(f -> "Account." + f).toList();
+    return Stream.concat(contactFields.stream(), accountFields.stream()).toList();
+  }
+  public List<String> getContactCampaignColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Contact Campaign")).toList();
+  }
+  public List<String> getRecurringDonationColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Recurring Donation")).toList();
+  }
+  public List<String> getRecurringDonationCustomFieldNames() {
+    return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom"))
+        .map(k -> k.replace("Recurring Donation Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+  }
+  public List<String> getOpportunityColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Opportunity")).toList();
+  }
+  public List<String> getOpportunityCustomFieldNames() {
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom"))
+        .map(k -> k.replace("Opportunity Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+  }
+  public List<String> getCampaignColumnNames() {
+    return raw.keySet().stream().filter(k -> k.startsWith("Campaign")).toList();
+  }
+  public List<String> getCampaignCustomFieldNames() {
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom"))
+        .map(k -> k.replace("Campaign Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+  }
+
+  // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
+  private static Calendar getDate(CaseInsensitiveMap<String> data, String columnName) {
+    Calendar c = null;
+
+    try {
+      if (data.containsKey(columnName + " dd/mm/yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get(columnName + " dd/mm/yyyy")));
+      } else if (data.containsKey(columnName + " dd-mm-yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(data.get(columnName + " dd-mm-yyyy")));
+      } else if (data.containsKey(columnName + " mm/dd/yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get(columnName + " mm/dd/yyyy")));
+      } else if (data.containsKey(columnName + " mm/dd/yy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM/dd/yy").parse(data.get(columnName + " mm/dd/yy")));
+      } else if (data.containsKey(columnName + " mm-dd-yyyy")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(data.get(columnName + " mm-dd-yyyy")));
+      } else if (data.containsKey(columnName + " yyyy-mm-dd")) {
+        c = Calendar.getInstance();
+        c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get(columnName + " yyyy-mm-dd")));
+      }
+    } catch (ParseException e) {
+      throw new RuntimeException("failed to parse date", e);
+    }
+
+    return c;
+  }
+  private String removeDateSelectors(String s) {
+    return s.replace("dd/mm/yyyy", "").replace("dd-mm-yyyy", "").replace("mm/dd/yyyy", "").replace("mm/dd/yy", "")
+        .replace("mm-dd-yyyy", "").replace("yyyy-mm-dd", "").trim();
   }
 
   private static BigDecimal getAmount(CaseInsensitiveMap<String> data, String columnName) {

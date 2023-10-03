@@ -159,8 +159,8 @@ public abstract class AbstractIT extends JerseyTest {
     contact.setField("LastName", randomLastName);
     contact.setField("Email", randomEmail);
     String contactId = sfdcClient.insert(contact).getId();
-
     contact.setId(contactId);
+
     return contact;
   }
 

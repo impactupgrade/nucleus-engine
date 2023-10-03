@@ -18,6 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 // TODO: This test relies on some picklists existing in our dev edition of SFDC. Make it more resilient to auto create
 //  those fields if they don't already exist!
 
+// IMPORTANT: When debugging these tests, note that the Bulk Import endpoint spins off an async thread. So a breakpoint
+// in the code processing the import does NOT pause the IT code!
+
 public class BulkImportIT extends AbstractIT {
 
   protected BulkImportIT() {
@@ -92,6 +95,8 @@ public class BulkImportIT extends AbstractIT {
         .post(Entity.entity(multiPart, multiPart.getMediaType()));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
+    // The endpoint spins off an async thread, so give it time to complete. May need to bump this up if we introduce
+    // tests with a larger number of import rows.
     Thread.sleep(5000L);
   }
 }
