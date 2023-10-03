@@ -22,6 +22,9 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
@@ -106,6 +109,11 @@ public abstract class AbstractIT extends JerseyTest {
     return new ResourceConfig();
   }
 
+  @Override
+  protected void configureClient(ClientConfig config) {
+    config.register(MultiPartFeature.class);
+  }
+
   protected void clearSfdc(String name) throws Exception {
     if (Strings.isNullOrEmpty(name)) {
       return;
@@ -132,6 +140,28 @@ public abstract class AbstractIT extends JerseyTest {
 
     // ensure we're actually clean
     assertEquals(0, sfdcClient.getAccountsByName(name).size());
+  }
+
+  protected SObject randomContactSfdc() throws Exception {
+    String randomFirstName = RandomStringUtils.randomAlphabetic(8);
+    String randomLastName = RandomStringUtils.randomAlphabetic(8);
+    String randomEmail = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    SObject account = new SObject("Account");
+    account.setField("Name", randomLastName + " Household");
+    String accountId = sfdcClient.insert(account).getId();
+
+    SObject contact = new SObject("Contact");
+    contact.setField("AccountId", accountId);
+    contact.setField("FirstName", randomFirstName);
+    contact.setField("LastName", randomLastName);
+    contact.setField("Email", randomEmail);
+    String contactId = sfdcClient.insert(contact).getId();
+
+    contact.setId(contactId);
+    return contact;
   }
 
   protected void clearHubspot(String name) throws Exception {

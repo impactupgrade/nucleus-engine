@@ -1,4 +1,6 @@
 {
+  "apiKey": "abc123",
+
   "crmPrimary": "hubspot",
 
   "hubspot": {

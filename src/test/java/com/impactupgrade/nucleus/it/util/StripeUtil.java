@@ -19,9 +19,9 @@ import org.apache.commons.lang3.RandomStringUtils;
 public class StripeUtil {
 
   public static Customer createCustomer(Environment env) throws StripeException {
-    String randomFirstName = generateName();
-    String randomLastName = generateName();
-    String randomEmail = generateName().toLowerCase() + "@test.com";
+    String randomFirstName = RandomStringUtils.randomAlphabetic(8);
+    String randomLastName = RandomStringUtils.randomAlphabetic(8);
+    String randomEmail = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
 
     return createCustomer(randomFirstName, randomLastName, randomEmail, env);
   }
@@ -44,10 +44,6 @@ public class StripeUtil {
         "tok_visa"
     ).setAddress(address).setPhone("260-123-4567");
     return stripeClient.createCustomer(customerBuilder);
-  }
-
-  public static String generateName() {
-    return RandomStringUtils.randomAlphabetic(8);
   }
 
   public static Charge createCharge(Customer customer, Environment env) throws StripeException {

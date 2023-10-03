@@ -19,6 +19,7 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.client.Entity;
@@ -160,7 +161,7 @@ public class StripeToHubspotIT extends AbstractIT {
 
   @Test
   public void invalidEmail() throws Exception {
-    Customer customer = StripeUtil.createCustomer(StripeUtil.generateName(), StripeUtil.generateName(), "bademail@test.asdfasdf", env);
+    Customer customer = StripeUtil.createCustomer(RandomStringUtils.randomAlphabetic(8), RandomStringUtils.randomAlphabetic(8), "bademail@test.asdfasdf", env);
     Charge charge = StripeUtil.createCharge(customer, env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 

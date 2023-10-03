@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.model.Charge;
 import com.stripe.param.ChargeCreateParams;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.client.Entity;
@@ -36,9 +37,9 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
   public void coreOneTime() throws Exception {
     String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
 
-    String randomFirstName = StripeUtil.generateName();
-    String randomLastName = StripeUtil.generateName();
-    String randomEmail = StripeUtil.generateName().toLowerCase() + "@test.com";
+    String randomFirstName = RandomStringUtils.randomAlphabetic(8);
+    String randomLastName = RandomStringUtils.randomAlphabetic(8);
+    String randomEmail = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
 
     // Custom Donations uses metadata instead of Customers.
     StripeClient stripeClient = env.stripeClient();
