@@ -12,10 +12,13 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
@@ -50,6 +53,7 @@ import java.util.regex.Pattern;
 
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
+import static com.stripe.net.ApiResource.GSON;
 
 @Path("/crm")
 public class CrmController {
@@ -61,10 +65,95 @@ public class CrmController {
     this.envFactory = envFactory;
   }
 
+  @Path("/create-contact")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response createNewContact(
+      @FormParam("user_email") String userEmail,
+      @FormParam("first_name") String firstName,
+      @FormParam("last_name") String lastName,
+      @FormParam("email_lists") List<String> emailLists,
+      @FormParam("email_address") String emailAddress,
+      @FormParam("pref_phone") String prefPhone,
+      @FormParam("h_phone") String hPhone,
+      @FormParam("w_phone") String wPhone,
+      @FormParam("m_phone") String mPhone,
+      @FormParam("pri_street") String priStreet,
+      @FormParam("pri_city") String priCity,
+      @FormParam("pri_state") String priState,
+      @FormParam("pri_zip") String priZip,
+      @FormParam("pri_country") String priCountry,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    CrmService crmService = env.primaryCrmService();
+
+    // Create Account
+    //TODO: Separate endpoints for contacts and accounts or all in one like the old endpoint?
+    CrmAccount newAccount = new CrmAccount();
+    newAccount.name = firstName + " " + lastName;
+
+    // Assign ownership based on checkmark value
+    env.jobLoggingService().info("User Email: {}", userEmail);
+
+    // Check for a user to assign as an account and contact owner
+    Optional<CrmUser> user = Optional.empty();
+
+    if (!Strings.isNullOrEmpty(userEmail)) {
+      user = crmService.getUserByEmail(userEmail);
+      if (user.isEmpty()) {
+        env.logJobInfo("Staff user not found by email {}", userEmail);
+        //TODO: Old function returned an error if this failed, guessing that we don't want that now
+      }else{
+        newAccount.ownerId = user.get().id();
+      }
+    }
+
+    crmService.insertAccount(newAccount);
+
+
+    // Create Contact
+    CrmContact newContact = new CrmContact();
+    newContact.firstName = firstName;
+    newContact.lastName = lastName;
+    newContact.email = emailAddress;
+    newContact.emailGroups = emailLists;
+    newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(prefPhone);
+    newContact.homePhone = hPhone;
+    newContact.mobilePhone = mPhone;
+    newContact.workPhone = wPhone;
+
+    //Create Address
+    CrmAddress contactAddress = new CrmAddress();
+    contactAddress.street = priStreet;
+    contactAddress.city = priCity;
+    contactAddress.state = priState;
+    contactAddress.postalCode = priZip;
+    contactAddress.country = priCountry;
+
+    newContact.mailingAddress = contactAddress;
+
+    newContact.account = newAccount;
+
+    user.ifPresent(crmUser -> newContact.ownerId = crmUser.id());
+
+    crmService.insertContact(newContact);
+
+
+    String json = GSON.toJson(newContact);
+    env.logJobInfo("Contact Created: {}", json);
+    return Response.ok().entity(json).type(MediaType.APPLICATION_JSON).build();
+  }
+
+
   /**
    * Retrieves a contact from the primary CRM using a variety of optional parameters. For use in external integrations,
    * like Twilio Studio's retrieval of the CRM's Contact ID by phone number.
    */
+  //TODO: LJI contact search included FirstName LastName & Address will we want that for the task or does our existing endpoint cover what we need?
   @Path("/contact")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -105,6 +194,43 @@ public class CrmController {
       return Response.status(404).build();
     }
   }
+
+  @Path("/account")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getAccount(
+      @QueryParam("id") String id,
+      @QueryParam("customerId") String customerId,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    id = noWhitespace(id);
+    customerId = trim(customerId);
+
+    CrmService crmService = env.primaryCrmService();
+    //TODO using the search methods we already have, same question for contacts, do we need to implement more?
+    Optional<CrmAccount> account = Optional.empty();
+    if (!Strings.isNullOrEmpty(id)) {
+      env.logJobInfo("searching id={}", id);
+      account = crmService.getAccountById(id);
+    } else if (!Strings.isNullOrEmpty(customerId)) {
+      env.logJobInfo("searching customerId={}", customerId);
+      account = crmService.getAccountByCustomerId(customerId);
+    } else {
+      env.logJobWarn("no search params provided");
+    }
+
+    if (account.isPresent()) {
+      env.logJobInfo("returning Account {}", account.get().id);
+      return Response.status(200).entity(account.get()).build();
+    } else {
+      env.logJobInfo("Account not found");
+      return Response.status(404).build();
+    }
+  }
+
 
   @Path("/bulk-import/file")
   @POST
