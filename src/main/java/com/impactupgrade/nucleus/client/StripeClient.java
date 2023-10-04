@@ -62,6 +62,7 @@ import com.stripe.param.common.EmptyParam;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -135,8 +136,12 @@ public class StripeClient {
   }
 
   public List<Customer> getCustomersByEmail(String email) throws StripeException {
+    if (Strings.isNullOrEmpty(email)) {
+      return Collections.emptyList();
+    }
+
     CustomerListParams customerParams = CustomerListParams.builder()
-        .setEmail(email)
+        .setEmail(email.toLowerCase(Locale.ROOT)) // Stripe is case-sensitive, oddly
         .addExpand("data.sources")
         .build();
     return Customer.list(customerParams, requestOptions).getData();

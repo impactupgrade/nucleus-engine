@@ -337,6 +337,8 @@ public class StripeController {
     Environment env = envFactory.init(request);
     StripeClient stripeClient = env.stripeClient();
 
+    env.logJobInfo("updateSource: customerEmail={} stripeToken={}", customerEmail, stripeToken);
+
     try {
       List<Customer> customers = stripeClient.getCustomersByEmail(customerEmail);
 
