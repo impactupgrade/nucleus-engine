@@ -914,6 +914,16 @@ public class SfdcCrmService implements CrmService {
       return;
     }
 
+    // For any ExtRef columns, ensure we also have the same column names as Custom values -- important so that they get
+    // retrieved and set correctly.
+    for (CrmImportEvent importEvent : importEvents) {
+      for (Map.Entry<String, String> entry : importEvent.raw.entrySet()) {
+        if (entry.getKey().contains("ExtRef")) {
+          importEvent.raw.put(entry.getKey().replaceFirst("ExtRef", "Custom"), entry.getValue());
+        }
+      }
+    }
+
     boolean campaignMode = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
         .anyMatch(entry -> entry.getKey().startsWith("Campaign") && !Strings.isNullOrEmpty(entry.getValue()));
     if (campaignMode) {
@@ -1164,9 +1174,8 @@ public class SfdcCrmService implements CrmService {
           // account already exists (which wasn't true, above) OR that it should be created. REGARDLESS of the contact's
           // current account, if any. We're opting to create the new account, update the contact's account ID, and
           // possibly abandon its old account (if it exists).
-          // TODO: This was mainly due to CLHS' original FACTS migration that created isolated households or, worse,
-          //  combined grandparents into the student's household. Raiser's Edge has the correct relationships and
-          //  households, so we're using this to override the past.
+          // TODO: That's only true when we're running initial migrations or upserting from past primary data sources.
+          //  This should NEVER be used for anything else! Gate it with a property?
 //          account = insertBulkImportAccount(importEvent.account, importEvent.raw,
 //              accountExtRefFieldName, existingAccountsByExtRef, accountMode);
         }
