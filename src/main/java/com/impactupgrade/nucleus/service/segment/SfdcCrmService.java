@@ -21,6 +21,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecord;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -238,6 +239,31 @@ public class SfdcCrmService implements CrmService {
     SObject task = new SObject("Task");
     setTaskFields(task, crmTask);
     return sfdcClient.insert(task).getId();
+  }
+
+  @Override
+  public String insertNote(CrmNote crmNote) throws Exception {
+    SObject cn = new SObject("ContentNote");
+
+    if (!Strings.isNullOrEmpty(crmNote.title)) {
+      cn.setField("Title", crmNote.title);
+    } else {
+      cn.setField("Title", "Note"); // required field
+    }
+    cn.setField("Content", crmNote.note);
+    SaveResult result = sfdcClient.insert(cn);
+
+    if (!result.isSuccess() || Strings.isNullOrEmpty(result.getId())) {
+      env.logJobInfo("ContentNote insert may have failed; skipping ContentDocumentLink insert");
+      return null;
+    }
+
+    SObject cdl = new SObject("ContentDocumentLink");
+    cdl.setField("ContentDocumentId", result.getId());
+    cdl.setField("LinkedEntityId", crmNote.targetId);
+    sfdcClient.insert(cdl);
+
+    return result.getId();
   }
 
   @Override
@@ -1362,6 +1388,11 @@ public class SfdcCrmService implements CrmService {
             }
           }
         }
+
+        if (!Strings.isNullOrEmpty(importEvent.accountNote)) {
+          CrmNote crmNote = new CrmNote(account.getId(), null, importEvent.accountNote, Calendar.getInstance());
+          insertNote(crmNote);
+        }
       }
 
       if (contact != null) {
@@ -1381,6 +1412,11 @@ public class SfdcCrmService implements CrmService {
               addContactToCampaign(contact.getId(), campaignId, true);
             }
           }
+        }
+
+        if (!Strings.isNullOrEmpty(importEvent.contactNote)) {
+          CrmNote crmNote = new CrmNote(contact.getId(), null, importEvent.contactNote, Calendar.getInstance());
+          insertNote(crmNote);
         }
       }
 

@@ -12,6 +12,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
@@ -533,6 +534,11 @@ public class VirtuousCrmService implements CrmService {
     VirtuousClient.Task task = asTask(crmTask);
     VirtuousClient.Task createdTask = virtuousClient.createTask(task);
     return createdTask == null ? null : createdTask.id + "";
+  }
+
+  @Override
+  public String insertNote(CrmNote crmNote) throws Exception {
+    return null;
   }
 
   @Override

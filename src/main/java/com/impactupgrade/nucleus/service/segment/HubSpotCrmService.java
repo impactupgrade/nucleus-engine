@@ -49,6 +49,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
@@ -237,6 +238,11 @@ public class HubSpotCrmService implements CrmService {
     setTaskFields(engagementRequest, crmTask);
     EngagementRequest response = engagementClient.insert(engagementRequest);
     return response == null ? null : response.getId() + "";
+  }
+
+  @Override
+  public String insertNote(CrmNote crmNote) throws Exception {
+    return null;
   }
 
   @Override

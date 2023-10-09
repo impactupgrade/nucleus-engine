@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
@@ -194,7 +195,7 @@ public interface CrmService extends SegmentService {
   Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Users
+  // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   List<CrmUser> getUsers() throws Exception;
   Optional<CrmUser> getUserById(String id) throws Exception;
@@ -225,6 +226,7 @@ public interface CrmService extends SegmentService {
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   String insertTask(CrmTask crmTask) throws Exception;
+  String insertNote(CrmNote crmNote) throws Exception;
 
   List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
 

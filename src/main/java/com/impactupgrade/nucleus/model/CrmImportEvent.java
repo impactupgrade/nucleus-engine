@@ -44,6 +44,7 @@ public class CrmImportEvent {
   public CrmAccount account = new CrmAccount();
   public List<String> accountCampaignIds = new ArrayList<>();
   public List<String> accountCampaignNames = new ArrayList<>();
+  public String accountNote;
   // organization affiliations
   public List<CrmAccount> contactOrganizations = new ArrayList<>();
   public List<String> contactOrganizationRoles = new ArrayList<>();
@@ -62,6 +63,7 @@ public class CrmImportEvent {
   public String contactMailingState;
   public String contactMailingZip;
   public String contactMailingCountry;
+  public String contactNote;
   public Boolean contactOptInEmail;
   public Boolean contactOptOutEmail;
   public Boolean contactOptInSms;
@@ -174,6 +176,7 @@ public class CrmImportEvent {
     importEvent.account.mailingAddress.country = data.get("Account Shipping Country");
     importEvent.account.description = data.get("Account Description");
     importEvent.account.name = data.get("Account Name");
+    importEvent.accountNote = data.get("Account Note");
     importEvent.account.ownerId = data.get("Account Owner ID");
     importEvent.account.recordTypeId = data.get("Account Record Type ID");
     importEvent.account.recordTypeName = data.get("Account Record Type Name");
@@ -301,6 +304,7 @@ public class CrmImportEvent {
     importEvent.contactMailingState = data.get("Contact Mailing State");
     importEvent.contactMailingZip = data.get("Contact Mailing Postal Code");
     importEvent.contactMailingCountry = data.get("Contact Mailing Country");
+    importEvent.contactNote = data.get("Contact Note");
     importEvent.contactOptInEmail = checkboxToBool(data.get("Contact Email Opt In"));
     importEvent.contactOptOutEmail = "no".equalsIgnoreCase(data.get("Contact Email Opt In")) || "false".equalsIgnoreCase(data.get("Contact Email Opt In")) || "0".equalsIgnoreCase(data.get("Contact Email Opt In"));
     importEvent.contactOptInSms = checkboxToBool(data.get("Contact SMS Opt In"));

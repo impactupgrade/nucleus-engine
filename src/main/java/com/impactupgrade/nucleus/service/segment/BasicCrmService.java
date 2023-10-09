@@ -6,6 +6,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
+import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmTask;
@@ -117,6 +118,10 @@ public interface BasicCrmService extends CrmService {
   }
 
   default String insertTask(CrmTask crmTask) throws Exception {
+    return null;
+  }
+
+  default String insertNote(CrmNote crmNote) throws Exception {
     return null;
   }
 
