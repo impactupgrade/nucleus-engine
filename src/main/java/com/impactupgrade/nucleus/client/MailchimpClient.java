@@ -21,6 +21,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.io.IOException;
@@ -28,8 +31,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -89,14 +94,26 @@ public class MailchimpClient {
     return batchStatus.id;
   }
 
-  public List<MemberInfo> getListMembers(String listId) throws IOException, MailchimpException {
-    return getListMembers(listId, null, null);
+  public List<MemberInfo> getListMembers(EnvironmentConfig.CommunicationList communicationList) throws IOException, MailchimpException {
+    return getListMembers(communicationList, null, null);
   }
 
-  public List<MemberInfo> getListMembers(String listId, String status, Calendar sinceLastChanged) throws IOException, MailchimpException {
+  public List<MemberInfo> getListMembers(EnvironmentConfig.CommunicationList communicationList, String status, Calendar sinceLastChanged) throws IOException, MailchimpException {
+    String listId = communicationList.id;
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
     getMembersMethod.status = status;
-    getMembersMethod.fields = "members.email_address,members.tags,total_items"; // HUGE performance improvement -- limit to only what we need
+    //TODO clean up this loop if possible
+    String crmSyncFields = "";
+    int count = 0;
+    for (String field : communicationList.crmRawFieldsToSet.values()){
+      if (count == communicationList.crmRawFieldsToSet.values().size()){
+        crmSyncFields += field;
+      }else{
+        crmSyncFields += field + ",";
+      }
+      count++;
+    }
+    getMembersMethod.fields = "members.email_address,members.tags,members.merge_fields.predicted_gender,members.merge_fields.predicted_age,total_items," + crmSyncFields; // HUGE performance improvement -- limit to only what we need
     getMembersMethod.count = 1000; // subjective, but this is timing out periodically -- may need to dial it back further
     env.logJobInfo("retrieving list {} contacts", listId);
     if (sinceLastChanged != null) {
@@ -151,8 +168,8 @@ public class MailchimpClient {
     return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toSet());
   }
 
-  public Map<String, Set<String>> getContactsTags(String listId) throws IOException, MailchimpException {
-    List<MemberInfo> memberInfos = getListMembers(listId);
+  public Map<String, Set<String>> getContactsTags(List<MemberInfo> memberInfos) throws Exception {
+    //Get contacts tags
     Map<String, Set<String>> tagsMap = memberInfos.stream()
         .collect(Collectors.toMap(
             memberInfo -> memberInfo.email_address, memberInfo -> {
@@ -247,6 +264,24 @@ public class MailchimpClient {
     return description;
   }
 
+  public void syncDemographicInfoToCrm(List<MemberInfo> memberInfos, Map<String, String> syncFields) throws Exception {
+    CrmService crmService = env.primaryCrmService();
+    // Sync contact demographic info back to the crm
+    for (MemberInfo member: memberInfos) {
+      //This gets funky because we have to search for the CrmContact here...
+      ContactSearch contactSearch = new ContactSearch();
+      contactSearch.email = member.email_address;
+      Optional<CrmContact> contact = crmService.searchContacts(contactSearch).getSingleResult();
+      if (contact.isPresent()) {
+        for (String fieldName : syncFields.keySet()){
+          contact.get().crmRawFieldsToSet.put(fieldName, (String) member.merge_fields.mapping.get(syncFields.get(fieldName)));
+        }
+        crmService.updateContact(contact.get());
+      }else{
+        env.logJobError("Could not find contact: {}", member.email_address);
+      }
+    }
+  }
   public record EmailContact(String email, Set<String> activeTags, Set<String> inactiveTags) {};
 
   @JsonIgnoreProperties(ignoreUnknown = true)

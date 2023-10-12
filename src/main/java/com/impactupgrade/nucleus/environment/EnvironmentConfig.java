@@ -269,6 +269,7 @@ public class EnvironmentConfig implements Serializable {
     public String crmFilter = "";
     public String crmLeadFilter = "";
     public String crmAccountFilter = "";
+    public Map<String, String> crmRawFieldsToSet = new HashMap<>();
   }
 
   public static class CommunicationPlatform extends Platform {
