@@ -97,7 +97,7 @@ public class CrmController {
     newAccount.name = firstName + " " + lastName;
 
     // Assign ownership based on checkmark value
-    env.jobLoggingService().info("User Email: {}", userEmail);
+    env.logJobInfo("User Email: {}", userEmail);
 
     // Check for a user to assign as an account and contact owner
     Optional<CrmUser> user = Optional.empty();
