@@ -1138,6 +1138,7 @@ public class HubSpotCrmService implements CrmService {
         preferredPhone,
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptIn, contact.getProperties().getOtherProperties()),
         getPropertyBoolean(env.getConfig().hubspot.fieldDefinitions.smsOptOut, contact.getProperties().getOtherProperties()),
+        null, // String title,
         null, // Double totalDonationAmount,
         null, // Double totalDonationAmountYtd
         null, // String workPhone,
@@ -1186,6 +1187,7 @@ public class HubSpotCrmService implements CrmService {
         null, //  CrmContact.PreferredPhone preferredPhone,
         null, // Boolean smsOptIn,
         null, //    Boolean smsOptOut,
+        null, // String title,
         null, //   Double totalDonationAmount,
         null, // Double totalDonationAmountYtd
         null, //   String workPhone,

@@ -2301,6 +2301,7 @@ public class SfdcCrmService implements CrmService {
         preferredPhone,
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
+        (String) sObject.getField("Title"),
         totalDonationAmount,
         totalDonationAmountYtd,
         (String) sObject.getField("npe01__WorkPhone__c"),

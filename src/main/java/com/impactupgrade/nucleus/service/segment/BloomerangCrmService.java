@@ -681,6 +681,7 @@ public class BloomerangCrmService implements CrmService {
         null, // CrmContact.PreferredPhone preferredPhone,
         null, // Boolean smsOptIn,
         null, // Boolean smsOptOut,
+        null, // String title,
         null, // Double totalDonationAmount,
         null, // Double totalDonationAmountYtd
         null, // String workPhone,

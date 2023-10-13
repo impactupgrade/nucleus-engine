@@ -53,6 +53,10 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
     List<CustomField> customFields = new ArrayList<>();
 
+    if (!Strings.isNullOrEmpty(crmContact.title)) {
+      customFields.add(new CustomField("title", CustomFieldType.STRING, crmContact.title));
+    }
+
     if (!Strings.isNullOrEmpty(crmContact.mailingAddress.city)) {
       customFields.add(new CustomField("city", CustomFieldType.STRING, crmContact.mailingAddress.city));
     }

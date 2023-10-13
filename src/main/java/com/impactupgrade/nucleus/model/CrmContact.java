@@ -70,6 +70,7 @@ public class CrmContact extends CrmRecord {
   public PreferredPhone preferredPhone = PreferredPhone.MOBILE;
   public Boolean smsOptIn;
   public Boolean smsOptOut;
+  public String title;
   public Double totalDonationAmount;
   public Double totalDonationAmountYtd;
   public String workPhone;
@@ -114,6 +115,7 @@ public class CrmContact extends CrmRecord {
       PreferredPhone preferredPhone,
       Boolean smsOptIn,
       Boolean smsOptOut,
+      String title,
       Double totalDonationAmount,
       Double totalDonationAmountYtd,
       String workPhone,
@@ -147,6 +149,7 @@ public class CrmContact extends CrmRecord {
     if (preferredPhone != null) this.preferredPhone = preferredPhone;
     this.smsOptIn = smsOptIn;
     this.smsOptOut = smsOptOut;
+    this.title = title;
     this.totalDonationAmount = totalDonationAmount;
     this.totalDonationAmountYtd = totalDonationAmountYtd;
     this.workPhone = workPhone;
