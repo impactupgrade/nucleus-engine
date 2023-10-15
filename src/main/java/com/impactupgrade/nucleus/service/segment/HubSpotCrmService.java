@@ -58,7 +58,6 @@ import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 
-import javax.ws.rs.core.MultivaluedMap;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.Writer;
@@ -443,6 +442,10 @@ public class HubSpotCrmService implements CrmService {
         removeContactFromList(crmContact, defaultListId);
       }
     }
+
+    for (String fieldName : crmContact.crmRawFieldsToSet.keySet()) {
+      setProperty(fieldName, crmContact.crmRawFieldsToSet.get(fieldName), contact.getOtherProperties());
+    }
   }
 
   @Override
@@ -709,15 +712,6 @@ public class HubSpotCrmService implements CrmService {
       // TODO: shift to V3
       HubSpotClientFactory.v1Client(env).contactList().removeContactFromList(Long.parseLong(listId), Long.parseLong(crmContact.id));
       env.logJobInfo("removed HubSpot contact {} from list {}", crmContact.id, listId);
-    }
-  }
-
-  @Override
-  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
-    Contact rawContact = (Contact) contact.crmRawObject;
-    ContactProperties contactProperties = rawContact.getProperties();
-    for (String fieldName : fields.keySet()) {
-      contactProperties.getOtherProperties().put(fieldName, fields.getFirst(fieldName));
     }
   }
 

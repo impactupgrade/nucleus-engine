@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -287,5 +288,13 @@ public class Utils {
       extension = fileName.substring(index + 1).toLowerCase(Locale.ROOT);
     }
     return extension;
+  }
+
+  public static Map<String, String> toMap(MultivaluedMap<String, String> multiMap) {
+    Map<String, String> hashMap = new HashMap<>();
+    for (String key : multiMap.keySet()) {
+      hashMap.put(key, multiMap.getFirst(key));
+    }
+    return hashMap;
   }
 }

@@ -13,7 +13,6 @@ import com.impactupgrade.nucleus.model.CrmTask;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 
-import javax.ws.rs.core.MultivaluedMap;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -98,9 +97,6 @@ public interface BasicCrmService extends CrmService {
   default void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
   }
 
-  default void setAdditionalContacts(CrmContact contacts, MultivaluedMap<String, String> fields) throws Exception{
-
-  }
   default String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
     return null;
   }

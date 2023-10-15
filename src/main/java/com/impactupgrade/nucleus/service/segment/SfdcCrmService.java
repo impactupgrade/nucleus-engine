@@ -37,7 +37,6 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import com.stripe.util.CaseInsensitiveMap;
 
-import javax.ws.rs.core.MultivaluedMap;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
@@ -478,6 +477,10 @@ public class SfdcCrmService implements CrmService {
     }
 
     // TODO: Avoiding setting the mailing address of a Contact, instead allowing the Account to handle it. But should we?
+
+    for (String fieldName : crmContact.crmRawFieldsToSet.keySet()) {
+      contact.setField(fieldName, crmContact.crmRawFieldsToSet.get(fieldName));
+    }
   }
 
   @Override
@@ -768,14 +771,6 @@ public class SfdcCrmService implements CrmService {
   @Override
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
     // likely not relevant in SFDC
-  }
-
-  @Override
-  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
-    SObject toUpdate = (SObject) contact.crmRawObject;
-    for (String fieldName : fields.keySet()) {
-      toUpdate.setField(fieldName, fields.getFirst(fieldName));
-    }
   }
   
   public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {

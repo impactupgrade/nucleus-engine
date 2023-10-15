@@ -6,6 +6,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,6 +19,8 @@ public class CrmRecord implements Serializable {
 
   @JsonIgnore
   public Object crmRawObject;
+  @JsonIgnore
+  public Map<String, String> crmRawFieldsToSet = new HashMap<>();
   @JsonIgnore
   public String crmUrl;
 

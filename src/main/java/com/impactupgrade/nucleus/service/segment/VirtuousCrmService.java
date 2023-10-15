@@ -22,7 +22,6 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.ws.rs.core.MultivaluedMap;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -183,11 +182,6 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
 
-  }
-
-  @Override
-  public void setAdditionalFields(CrmContact contact, MultivaluedMap<String, String> fields) throws Exception {
-    // TODO
   }
 
   @Override

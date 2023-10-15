@@ -125,7 +125,7 @@ public class TwilioController {
             language,
             campaignId,
             listId,
-            customResponses
+            Utils.toMap(customResponses)
         );
 
         // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
