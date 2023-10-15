@@ -59,11 +59,13 @@ public class AccountingService {
         }
 
         String contactId = _accountingPlatformService.get().updateOrCreateContact(crmContact);
-        env.logJobInfo("Upserted contact: {}", contactId);
+        if (!Strings.isNullOrEmpty(contactId)) {
+            env.logJobInfo("Upserted contact: {}", contactId);
 
-        AccountingTransaction accountingTransaction = toAccountingTransaction(crmDonation, contactId, crmContact.id);
-        String transactionId = _accountingPlatformService.get().createTransaction(accountingTransaction);
-        env.logJobInfo("Created transaction: {}", transactionId);
+            AccountingTransaction accountingTransaction = toAccountingTransaction(crmDonation, contactId, crmContact.id);
+            String transactionId = _accountingPlatformService.get().createTransaction(accountingTransaction);
+            env.logJobInfo("Created transaction: {}", transactionId);
+        }
     }
 
     private CrmContact getDonationContact(CrmDonation crmDonation) throws Exception {
@@ -72,7 +74,7 @@ public class AccountingService {
         CrmContact crmContact = null;
         if (!StringUtils.isEmpty(crmDonation.account.id)) {
             CrmAccount crmAccount = env.donationsCrmService().getAccountById(crmDonation.account.id).orElse(null);
-            // Get contact for org type account
+            // create a faux contact for org type account
             if (crmAccount != null && crmAccount.recordType == EnvironmentConfig.AccountType.ORGANIZATION) {
                 crmContact = new CrmContact();
                 crmContact.id = crmAccount.id;
@@ -80,6 +82,7 @@ public class AccountingService {
                 crmContact.firstName = firstLastName[0];
                 crmContact.lastName = firstLastName[1];
                 crmContact.mailingAddress = crmAccount.billingAddress;
+                crmContact.crmRawObject = crmAccount.crmRawObject;
             }
         }
         if (crmContact == null) {
