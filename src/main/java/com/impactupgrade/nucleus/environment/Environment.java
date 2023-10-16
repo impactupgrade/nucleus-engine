@@ -193,10 +193,10 @@ public class Environment {
   }
 
   public Optional<AccountingPlatformService> accountingPlatformService() {
-    if (Strings.isNullOrEmpty(getConfig().primaryAccounting)) {
+    if (Strings.isNullOrEmpty(getConfig().accountingPrimary)) {
       return Optional.empty();
     }
-    return Optional.of(segmentService(getConfig().primaryAccounting, AccountingPlatformService.class));
+    return Optional.of(segmentService(getConfig().accountingPrimary, AccountingPlatformService.class));
   }
 
   public List<AccountingPlatformService> allAccountingPlatformServices() {
