@@ -14,10 +14,10 @@ import com.impactupgrade.nucleus.controller.EventsController;
 import com.impactupgrade.nucleus.controller.JobController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
+import com.impactupgrade.nucleus.controller.SMSController;
 import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
-import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.controller.TwilioFrontlineController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
@@ -98,7 +98,7 @@ public class App {
     apiConfig.register(sfdcController());
     apiConfig.register(scheduledJobController());
     apiConfig.register(stripeController());
-    apiConfig.register(twilioController());
+    apiConfig.register(smsController());
     apiConfig.register(twilioFrontlineController());
 
     // Controllers that require DB connectivity -- prevent JDBC/Hikari connection errors.
@@ -154,7 +154,7 @@ public class App {
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory); }
   protected SfdcController sfdcController() { return new SfdcController(envFactory); }
   protected StripeController stripeController() { return new StripeController(envFactory); }
-  protected TwilioController twilioController() { return new TwilioController(envFactory); }
+  protected SMSController smsController() { return new SMSController(envFactory); }
   protected TwilioFrontlineController twilioFrontlineController() { return new TwilioFrontlineController(envFactory); }
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
   protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
