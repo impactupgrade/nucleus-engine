@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.controller.CrmController;
 import com.impactupgrade.nucleus.controller.DonationFormController;
 import com.impactupgrade.nucleus.controller.EmailController;
 import com.impactupgrade.nucleus.controller.EventsController;
+import com.impactupgrade.nucleus.controller.FactsController;
 import com.impactupgrade.nucleus.controller.JobController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
@@ -92,6 +93,7 @@ public class App {
     apiConfig.register(crmController());
     apiConfig.register(donationFormController());
     apiConfig.register(emailController());
+    apiConfig.register(factsController());
     apiConfig.register(jobController());
     apiConfig.register(mailchimpController());
     apiConfig.register(paymentGatewayController());
@@ -150,6 +152,7 @@ public class App {
   protected CrmController crmController() { return new CrmController(envFactory); }
   protected DonationFormController donationFormController() { return new DonationFormController(envFactory); }
   protected EmailController emailController() { return new EmailController(envFactory); }
+  protected FactsController factsController() { return new FactsController(envFactory); }
   protected EventsController eventsController() { return new EventsController(envFactory); }
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory); }
   protected SfdcController sfdcController() { return new SfdcController(envFactory); }

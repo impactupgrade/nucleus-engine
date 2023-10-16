@@ -79,25 +79,19 @@ public class EnvironmentConfig implements Serializable {
   //  Needs careful thought...
   public static class CRMFieldDefinitions implements Serializable {
     public String paymentGatewayName = "";
-
     public String paymentGatewayTransactionId = "";
     public String paymentGatewayCustomerId = "";
     public String paymentGatewaySubscriptionId = "";
-
     public String paymentGatewayRefundId = "";
     public String paymentGatewayRefundDate = "";
     public String paymentGatewayRefundDepositId = "";
     public String paymentGatewayRefundDepositDate = "";
-
     public String paymentGatewayDepositId = "";
     public String paymentGatewayDepositDate = "";
     public String paymentGatewayDepositNetAmount = "";
     public String paymentGatewayDepositFee = "";
-
     public String paymentGatewayFailureReason = "";
-
-    // donation designation
-    public String fund = "";
+    public String fund = ""; // donation designation
 
     public String emailOptIn = "";
     public String emailOptOut = "";
@@ -109,6 +103,9 @@ public class EnvironmentConfig implements Serializable {
     public String smsOptOut = "";
 
     public String contactLanguage = "";
+
+    public String sisContactId = "";
+    public String sisHouseholdId = "";
   }
   public enum AccountType {
     HOUSEHOLD, ORGANIZATION
@@ -302,6 +299,8 @@ public class EnvironmentConfig implements Serializable {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // SIS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public Platform facts = new Platform();
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // FORMS
