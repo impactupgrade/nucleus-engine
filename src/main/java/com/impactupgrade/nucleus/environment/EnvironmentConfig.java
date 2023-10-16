@@ -52,6 +52,7 @@ public class EnvironmentConfig implements Serializable {
   public String accountingPrimary = "";
 
   public String emailTransactional = "";
+  public String smsService = "";
 
   public String currency = "";
   public String timezoneId = "";
@@ -224,7 +225,6 @@ public class EnvironmentConfig implements Serializable {
   public static class Stripe extends Platform {
     public List<Expression> filteringExpressions = new ArrayList<>();
   }
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // FUNDRAISING
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,10 +245,10 @@ public class EnvironmentConfig implements Serializable {
     public String accountCode = "";
   }
 
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   public enum CommunicationListType {
     MARKETING, TRANSACTIONAL
   }
@@ -295,7 +295,12 @@ public class EnvironmentConfig implements Serializable {
     public String senderPn;
     public boolean recordOwnerFilter = true;
   }
-
+  public MessageBird messageBird = new MessageBird();
+  public static class MessageBird extends Platform {
+    public String accessKey = "";
+    public String SMSChannelId = "";
+    public String SMSWorkspaceId = "";
+  }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // SIS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
