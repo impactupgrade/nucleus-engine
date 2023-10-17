@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
 
@@ -48,9 +49,12 @@ public class MessageBirdSMSClient {
 
   // using the new engagement platform direct API call
   public Response sendMessageEngagement(String to, String from, String body) {
+    SMSMessage message = new SMSMessage();
+    message.body = body;
+    message.to = to;
     return post(
         MESSAGE_BIRD_ENGAGEMENT_API_URL + "/workspaces/" + smsWorkspaceId + "/channels/"+ smsChannelId +"/messages",
-        createSMSMessageBody(to, body),
+        message.toString(),
         MediaType.APPLICATION_JSON,
         headers()
     );
@@ -59,9 +63,19 @@ public class MessageBirdSMSClient {
   private HttpClient.HeaderBuilder headers(){
     return HttpClient.HeaderBuilder.builder().header("Authorization","AccessKey " + accessKey);
   }
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class SMSMessage {
+    public String to;
+    public String body;
 
-  private String createSMSMessageBody(String to, String body) {
-    return "{\"receiver\": {\"contacts\": [{\"identifierValue\": \"" + to + "\"}]}, " +
-        "\"body\": {\"type\": \"text\", \"text\": {\"text\": \"" + body + "\"}}}";
+
+    @Override
+    public String toString() {
+      return "{\"receiver\": " +
+          "{\"contacts\": " +
+          "[{\"identifierValue\": \"" + to + "\"}]}, " +
+          "\"body\": " +
+          "{\"type\": \"text\", \"text\": {\"text\": \"" + body + "\"}}}";
+    }
   }
 }

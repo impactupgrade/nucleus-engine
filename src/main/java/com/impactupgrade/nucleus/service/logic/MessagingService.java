@@ -39,24 +39,24 @@ public class MessagingService {
       }
     } catch (ApiException e1) {
       if (e1.getCode() == 21610) {
-        log.info("message to {} failed due to blacklist; updating contact in CRM", crmContact.phoneNumberForSMS());
+        env.logJobInfo("message to {} failed due to blacklist; updating contact in CRM", crmContact.phoneNumberForSMS());
         try {
           env.messagingService().optOut(crmContact);
         } catch (Exception e2) {
-          log.error("CRM contact update failed", e2);
+          env.logJobError("CRM contact update failed", e2);
         }
       } else if (e1.getCode() == 21408 || e1.getCode() == 21211) {
-        log.info("invalid phone number: {}; updating contact in CRM", crmContact.phoneNumberForSMS());
+        env.logJobInfo("invalid phone number: {}; updating contact in CRM", crmContact.phoneNumberForSMS());
         try {
           env.messagingService().optOut(crmContact);
         } catch (Exception e2) {
-          log.error("CRM contact update failed", e2);
+          env.logJobError("CRM contact update failed", e2);
         }
       } else {
-        log.warn("message to {} failed: {} {}", crmContact.phoneNumberForSMS(), e1.getCode(), e1.getMessage(), e1);
+        env.logJobWarn("message to {} failed: {} {}", crmContact.phoneNumberForSMS(), e1.getCode(), e1.getMessage(), e1);
       }
     } catch (Exception e) {
-      log.warn("message to {} failed", crmContact.phoneNumberForSMS(), e);
+      env.logJobWarn("message to {} failed", crmContact.phoneNumberForSMS(), e);
     }
   }
 
@@ -147,7 +147,7 @@ public class MessagingService {
       crmContact.id = crmService.insertContact(crmContact);
     } else {
       // Existed, so use it
-      log.info("contact already existed in CRM: {}", crmContact.id);
+      env.logJobInfo("contact already existed in CRM: {}", crmContact.id);
 
       boolean update = emailOptIn || smsOptIn;
 
@@ -155,22 +155,22 @@ public class MessagingService {
       crmContact.smsOptIn = smsOptIn;
 
       if (Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(firstName)) {
-        log.info("contact {} missing firstName; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing firstName; updating it...", crmContact.id);
         crmContact.firstName = firstName;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.lastName) && !Strings.isNullOrEmpty(lastName)) {
-        log.info("contact {} missing lastName; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing lastName; updating it...", crmContact.id);
         crmContact.lastName = lastName;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.email) && !Strings.isNullOrEmpty(email)) {
-        log.info("contact {} missing email; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing email; updating it...", crmContact.id);
         crmContact.email = email;
         update = true;
       }
       if (Strings.isNullOrEmpty(crmContact.mobilePhone) && !Strings.isNullOrEmpty(phone)) {
-        log.info("contact {} missing mobilePhone; updating it...", crmContact.id);
+        env.logJobInfo("contact {} missing mobilePhone; updating it...", crmContact.id);
         crmContact.mobilePhone = phone;
         update = true;
       }
@@ -195,13 +195,13 @@ public class MessagingService {
     // First, look for an existing contact with the PN
     CrmContact crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
     if (crmContact != null) {
-      log.info("opting {} ({}) into sms...", crmContact.id, phone);
+      env.logJobInfo("opting {} ({}) into sms...", crmContact.id, phone);
       crmContact.smsOptIn = true;
       crmContact.smsOptOut = false;
       crmService.updateContact(crmContact);
     } else {
       // TODO: There MIGHT be value in processing this as a signup and inserting the Contact...
-      log.info("unable to find a CRM contact with phone number {}", phone);
+      env.logJobInfo("unable to find a CRM contact with phone number {}", phone);
     }
   }
 
@@ -211,12 +211,12 @@ public class MessagingService {
     if (crmContact != null) {
       optOut(crmContact);
     } else {
-      log.info("unable to find a CRM contact with phone number {}", phone);
+      env.logJobInfo("unable to find a CRM contact with phone number {}", phone);
     }
   }
 
   public void optOut(CrmContact crmContact) throws Exception {
-    log.info("opting {} ({}) out of sms...", crmContact.id, crmContact.mobilePhone);
+    env.logJobInfo("opting {} ({}) out of sms...", crmContact.id, crmContact.mobilePhone);
     crmContact.smsOptIn = false;
     crmContact.smsOptOut = true;
     crmService.updateContact(crmContact);
