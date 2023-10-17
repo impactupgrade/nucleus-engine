@@ -281,7 +281,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
       List<Charge> charges = new ArrayList<>();
       // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
-      stripeClient.getAllCharges(startDate, endDate).forEach(c -> charges.add(0, c));
+      stripeClient.getBalanceTransactions(startDate, endDate).forEach(balanceTransaction -> {
+        Charge charge = (Charge) balanceTransaction.getSourceObject();
+        charges.add(0, charge);
+      });
       int count = 0;
       int total = charges.size();
       for (Charge charge : charges) {
