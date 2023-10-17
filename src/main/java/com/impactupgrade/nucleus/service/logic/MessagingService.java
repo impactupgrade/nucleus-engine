@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2021 3River Development LLC, DBA Impact Upgrade. All rights reserved.
+ */
+
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
@@ -8,16 +12,14 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.SMSService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MessagingService {
-
-  private static final Logger log = LogManager.getLogger(MessagingService.class);
 
   private final Environment env;
   private final CrmService crmService;
@@ -53,7 +55,7 @@ public class MessagingService {
           env.logJobError("CRM contact update failed", e2);
         }
       } else {
-        env.logJobWarn("message to {} failed: {} {}", crmContact.phoneNumberForSMS(), e1.getCode(), e1.getMessage(), e1);
+        env.logJobWarn("message to {} failed: {}", crmContact.phoneNumberForSMS(), e1.getCode(), e1);
       }
     } catch (Exception e) {
       env.logJobWarn("message to {} failed", crmContact.phoneNumberForSMS(), e);
@@ -100,7 +102,8 @@ public class MessagingService {
       String __smsOptIn,
       String language,
       String campaignId,
-      String listId
+      String listId,
+      Map<String, String> customResponses
   ) throws Exception {
     // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
     if (email != null && !email.contains("@")) {
@@ -138,12 +141,17 @@ public class MessagingService {
       crmContact = new CrmContact();
       crmContact.mobilePhone = phone;
       crmContact.firstName = firstName;
-      crmContact.lastName = lastName;
+      if (!Strings.isNullOrEmpty(lastName)) {
+        crmContact.lastName = lastName;
+      } else {
+        // required field, so use the phone number if we have nothing else
+        crmContact.lastName = phone;
+      }
       crmContact.email = email;
       crmContact.emailOptIn = emailOptIn;
       crmContact.smsOptIn = smsOptIn;
       crmContact.language = language;
-
+      crmContact.crmRawFieldsToSet = customResponses;
       crmContact.id = crmService.insertContact(crmContact);
     } else {
       // Existed, so use it
@@ -172,6 +180,12 @@ public class MessagingService {
       if (Strings.isNullOrEmpty(crmContact.mobilePhone) && !Strings.isNullOrEmpty(phone)) {
         env.logJobInfo("contact {} missing mobilePhone; updating it...", crmContact.id);
         crmContact.mobilePhone = phone;
+        update = true;
+      }
+
+      if (!customResponses.equals(Collections.emptyMap())){
+        env.logJobInfo("Updating custom response fields for contact {}", crmContact.id);
+        crmContact.crmRawFieldsToSet = customResponses;
         update = true;
       }
 

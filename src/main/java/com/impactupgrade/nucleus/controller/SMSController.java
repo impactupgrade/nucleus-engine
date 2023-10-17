@@ -63,7 +63,8 @@ public class SMSController {
       @FormParam("OpportunityOwnerId") String opportunityOwnerId,
       @FormParam("OpportunityNotes") String opportunityNotes,
       @FormParam("nucleus-username") String nucleusUsername,
-      @Context HttpServletRequest request
+      @Context HttpServletRequest request,
+      MultivaluedMap<String, String> customResponses
   ) throws Exception {
     log.info("from={} firstName={} lastName={} fullName={} email={} emailOptIn={} smsOptIn={} language={} listId={} hsListId={} campaignId={} opportunityName={} opportunityRecordTypeId={} opportunityOwnerId={} opportunityNotes={}",
         from, _firstName, _lastName, fullName, _email, emailOptIn, smsOptIn, _language, _listId, hsListId, campaignId, opportunityName, opportunityRecordTypeId, opportunityOwnerId, opportunityNotes);
@@ -105,7 +106,8 @@ public class SMSController {
             smsOptIn,
             language,
             campaignId,
-            listId
+            listId,
+            Utils.toMap(customResponses)
         );
 
         // avoid the insertOpportunity call unless we're actually creating a non-donation opportunity
