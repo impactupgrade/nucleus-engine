@@ -34,6 +34,7 @@ import com.stripe.model.Source;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.net.RequestOptions;
+import com.stripe.param.BalanceTransactionListParams;
 import com.stripe.param.ChargeCreateParams;
 import com.stripe.param.ChargeListParams;
 import com.stripe.param.CustomerCreateParams;
@@ -320,6 +321,22 @@ public class StripeClient {
     }
 
     return balanceTransactions;
+  }
+
+  public Iterable<BalanceTransaction> getBalanceTransactions(Date startDate, Date endDate) throws StripeException {
+    BalanceTransactionListParams.Created created = BalanceTransactionListParams.Created.builder()
+        .setGte(startDate.getTime() / 1000)
+        .setLte(endDate.getTime() / 1000)
+        .build();
+    BalanceTransactionListParams params = BalanceTransactionListParams.builder()
+        .setLimit(100L)
+        .setCreated(created)
+        .setType("charge")
+        .addExpand("data.source")
+        .addExpand("data.source.customer")
+        .addExpand("data.source.payment_intent")
+        .build();
+    return BalanceTransaction.list(params).autoPagingIterable();
   }
 
   /**
