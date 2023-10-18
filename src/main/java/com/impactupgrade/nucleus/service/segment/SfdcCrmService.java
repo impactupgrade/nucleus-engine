@@ -1181,39 +1181,7 @@ public class SfdcCrmService implements CrmService {
       boolean hasContactExtRef = contactExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(contactExtRefKey.get()));
       boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contactId) || !Strings.isNullOrEmpty(importEvent.contactEmail) || !Strings.isNullOrEmpty(importEvent.contactLastName) || hasContactExtRef;
 
-      // If the accountId or account extref is explicitly given, run the account update. Otherwise, let the contact queries determine it.
       SObject account = null;
-      if (!Strings.isNullOrEmpty(importEvent.account.id)) {
-        SObject existingAccount = existingAccountsById.get(importEvent.account.id);
-
-        if (existingAccount != null) {
-          account = new SObject("Account");
-          account.setId(existingAccount.getId());
-
-          setBulkImportAccountFields(account, existingAccount, importEvent.account, "Account", importEvent.raw);
-          sfdcClient.batchUpdate(account);
-        }
-      } else if (accountExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(accountExtRefKey.get()))) {
-        SObject existingAccount = existingAccountsByExtRef.get(importEvent.raw.get(accountExtRefKey.get()));
-
-        if (existingAccount != null) {
-          account = new SObject("Account");
-          account.setId(existingAccount.getId());
-
-          setBulkImportAccountFields(account, existingAccount, importEvent.account, "Account", importEvent.raw);
-          sfdcClient.batchUpdate(account);
-        } else {
-          // IMPORTANT: We're making an assumption here that if an ExtRef is provided, the expectation is that the
-          // account already exists (which wasn't true, above) OR that it should be created. REGARDLESS of the contact's
-          // current account, if any. We're opting to create the new account, update the contact's account ID, and
-          // possibly abandon its old account (if it exists).
-          // TODO: That's only true when we're running initial migrations or upserting from past primary data sources.
-          //  This should NEVER be used for anything else! Gate it with a property?
-//          account = insertBulkImportAccount(importEvent.account, importEvent.raw,
-//              accountExtRefFieldName, existingAccountsByExtRef, accountMode);
-        }
-      }
-
       SObject contact = null;
 
       // A few situations have come up where there were not cleanly-split first vs. last name columns, but instead a
@@ -1238,11 +1206,14 @@ public class SfdcCrmService implements CrmService {
         contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
             existingContactsByEmail, existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode);
       }
-      // If we're in account-only mode, we have no contact info to match against, so stick to accounts by-name
+      // If we're in account-only mode (we have no contact info to match against):
       else if (hasAccountColumns && (!hasContactColumns || !hasContactLookups) && !Strings.isNullOrEmpty(importEvent.account.name)) {
         SObject existingAccount;
-        if (account != null) {
-          existingAccount = account;
+
+        if (!Strings.isNullOrEmpty(importEvent.account.id)) {
+          existingAccount = existingAccountsById.get(importEvent.account.id);
+        } else if (accountExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(accountExtRefKey.get()))) {
+          existingAccount = existingAccountsByExtRef.get(importEvent.raw.get(accountExtRefKey.get()));
         } else {
           existingAccount = existingAccountsByName.get(importEvent.account.name.toLowerCase(Locale.ROOT)).stream().findFirst().orElse(null);
         }

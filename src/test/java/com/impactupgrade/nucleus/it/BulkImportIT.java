@@ -4,6 +4,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.sforce.soap.partner.sobject.SObject;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.junit.jupiter.api.Test;
@@ -73,6 +74,41 @@ public class BulkImportIT extends AbstractIT {
 
   @Test
   public void doNotOverwriteHouseholdName() throws Exception {
+    SObject contact = randomContactSfdc();
+
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    SObject accountOld = new SObject("Account");
+    accountOld.setId((String) contact.getField("AccountId"));
+    String accountOldExtRef = RandomStringUtils.randomAlphabetic(8);
+    accountOld.setField("External_Reference__c", accountOldExtRef);
+    sfdcClient.update(accountOld);
+
+    SObject accountNew = new SObject("Account");
+    accountNew.setField("Name", "FooBar");
+    String accountNewExtRef = RandomStringUtils.randomAlphabetic(8);
+    accountNew.setField("External_Reference__c", accountNewExtRef);
+    sfdcClient.insert(accountNew);
+
+    final List<Object> values = List.of(
+        List.of("Contact ID", "Account ExtRef External_Reference__c"),
+        List.of(contact.getId(), accountNewExtRef)
+    );
+    postToBulkImport(values);
+
+    SObject updatedContact = sfdcClient.getContactById(contact.getId()).get();
+
+    assertEquals(accountOld.getId(), updatedContact.getField("AccountId"));
+  }
+
+  /**
+   * If a Contact belongs to an Account, and that Account is different than the Account identified by the import's
+   * ExtRef, DO NOT move the Contact! Ex: SIS imports often have grandparents in the same household as the parents/student.
+   * Staff will later move the grandparents into their own household. Since that new household is different than
+   * what the SIS sync's import identifies as the Account ExtRef, ignore it so that their manual movements aren't nuked!
+   */
+  @Test
+  public void doNotOverwriteHousehold() throws Exception {
     SObject contact = randomContactSfdc();
 
     SfdcClient sfdcClient = env.sfdcClient();
