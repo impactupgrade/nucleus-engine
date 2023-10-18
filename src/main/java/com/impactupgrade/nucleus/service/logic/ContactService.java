@@ -12,15 +12,13 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.Optional;
 
 public class ContactService {
 
-  private final Environment env;
-  private final CrmService crmService;
+  protected final Environment env;
+  protected final CrmService crmService;
 
   public ContactService(Environment env) {
     this.env = env;

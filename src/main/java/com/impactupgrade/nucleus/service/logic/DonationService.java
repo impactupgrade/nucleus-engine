@@ -19,9 +19,9 @@ import java.util.Optional;
 
 public class DonationService {
 
-  private final Environment env;
-  private final CrmService crmService;
-  private final NotificationService notificationservice;
+  protected final Environment env;
+  protected final CrmService crmService;
+  protected final NotificationService notificationservice;
 
   public DonationService(Environment env) {
     this.env = env;
