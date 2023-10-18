@@ -443,6 +443,12 @@ public class HubSpotCrmService implements CrmService {
       }
     }
 
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmSource, crmContact.getMetadataValue("utm_source"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmCampaign, crmContact.getMetadataValue("utm_campaign"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmMedium, crmContact.getMetadataValue("utm_medium"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmTerm, crmContact.getMetadataValue("utm_term"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmContent, crmContact.getMetadataValue("utm_content"), contact.getOtherProperties());
+
     for (String fieldName : crmContact.crmRawFieldsToSet.keySet()) {
       setProperty(fieldName, crmContact.crmRawFieldsToSet.get(fieldName), contact.getOtherProperties());
     }
@@ -509,6 +515,12 @@ public class HubSpotCrmService implements CrmService {
       setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountOriginalCurrency, crmDonation.originalCurrency, deal.getOtherProperties());
       setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountExchangeRate, crmDonation.exchangeRate, deal.getOtherProperties());
     }
+
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmSource, crmDonation.getMetadataValue("utm_source"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmCampaign, crmDonation.getMetadataValue("utm_campaign"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmMedium, crmDonation.getMetadataValue("utm_medium"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmTerm, crmDonation.getMetadataValue("utm_term"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmContent, crmDonation.getMetadataValue("utm_content"), deal.getOtherProperties());
   }
 
   @Override

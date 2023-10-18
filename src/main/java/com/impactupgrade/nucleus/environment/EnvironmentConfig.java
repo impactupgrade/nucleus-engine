@@ -106,6 +106,25 @@ public class EnvironmentConfig implements Serializable {
 
     public String sisContactId = "";
     public String sisHouseholdId = "";
+
+    // TODO: refactor all of the above into record-specific definitions (below)
+
+    public ContactCRMFieldDefinitions contact = new ContactCRMFieldDefinitions();
+    public DonationCRMFieldDefinitions donation = new DonationCRMFieldDefinitions();
+  }
+  public static class ContactCRMFieldDefinitions implements Serializable {
+    public String utmSource = "";
+    public String utmCampaign = "";
+    public String utmMedium = "";
+    public String utmTerm = "";
+    public String utmContent = "";
+  }
+  public static class DonationCRMFieldDefinitions implements Serializable {
+    public String utmSource = "";
+    public String utmCampaign = "";
+    public String utmMedium = "";
+    public String utmTerm = "";
+    public String utmContent = "";
   }
   public enum AccountType {
     HOUSEHOLD, ORGANIZATION

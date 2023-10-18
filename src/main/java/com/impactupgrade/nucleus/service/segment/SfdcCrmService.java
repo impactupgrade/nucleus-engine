@@ -476,6 +476,12 @@ public class SfdcCrmService implements CrmService {
       contact.setField("Description", crmContact.notes);
     }
 
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmSource, crmContact.getMetadataValue("utm_source"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmCampaign, crmContact.getMetadataValue("utm_campaign"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmMedium, crmContact.getMetadataValue("utm_medium"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmTerm, crmContact.getMetadataValue("utm_term"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmContent, crmContact.getMetadataValue("utm_content"));
+
     // TODO: Avoiding setting the mailing address of a Contact, instead allowing the Account to handle it. But should we?
 
     for (String fieldName : crmContact.crmRawFieldsToSet.keySet()) {
@@ -577,6 +583,12 @@ public class SfdcCrmService implements CrmService {
 
     // purely a default, but we generally expect this to be overridden
     opportunity.setField("Name", crmDonation.contact.getFullName() + " Donation");
+
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmSource, crmDonation.getMetadataValue("utm_source"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmCampaign, crmDonation.getMetadataValue("utm_campaign"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmMedium, crmDonation.getMetadataValue("utm_medium"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmTerm, crmDonation.getMetadataValue("utm_term"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmContent, crmDonation.getMetadataValue("utm_content"));
   }
 
   @Override
