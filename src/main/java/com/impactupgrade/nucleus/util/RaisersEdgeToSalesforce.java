@@ -21,6 +21,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -164,11 +165,11 @@ public class RaisersEdgeToSalesforce {
 //      }
 //    }
 //
-//    // TODO: HACK! We shouldn't technically need to run these as separate upsert batches. However, since batch
+//    // We shouldn't technically need to run these as separate upsert batches. However, since batch
 //    //  inserts don't have a deterministic order, the spouses sometimes get inserted first, which causes NPSP to
 //    //  automatically set them as the primary contact on the household. I can't find a way to force that, without
 //    //  complicated logic to update the account after the fact.
-//    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
+//    // Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
 //    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
 //    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(primaryRows);
 //    env.primaryCrmService().processBulkImport(importEvents);
@@ -978,7 +979,7 @@ public class RaisersEdgeToSalesforce {
 //    sfdcClient.batchFlush();
   }
 
-  private static void migrateConstituent(Map<String, String> row, String householdId, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows, List<String> seenEmails) {
+  private static void migrateConstituent(Map<String, String> row, String accountExtRef, List<Map<String, String>> primaryRows, List<Map<String, String>> secondaryRows, List<String> seenEmails) {
 
     // these eventually get combined, but separating them so that (as an ex) spouses can repurpose the account
     // data we've already parsed
@@ -986,14 +987,14 @@ public class RaisersEdgeToSalesforce {
     Map<String, String> contactData = new HashMap<>();
     List<Map<String, String>> secondaryContactData = new ArrayList<>();
 
-    String id = row.get("CnBio_ID");
+    String contactExtRef = row.get("CnBio_ID");
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ACCOUNT
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", householdId);
-    accountData.put("Account Custom Blackbaud_Constituent_ID__c", householdId);
+    accountData.put("Account ExtRef Blackbaud_Constituent_ID__c", accountExtRef);
+    accountData.put("Account Custom Blackbaud_Constituent_ID__c", accountExtRef);
 
     boolean isBusiness = !Strings.isNullOrEmpty(row.get("CnBio_Org_Name"));
 
@@ -1030,8 +1031,8 @@ public class RaisersEdgeToSalesforce {
     // CONTACT
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    contactData.put("Contact ExtRef Blackbaud_Constituent_ID__c", id);
-    contactData.put("Contact Custom Blackbaud_Constituent_ID__c", id);
+    contactData.put("Contact ExtRef Blackbaud_Constituent_ID__c", contactExtRef);
+    contactData.put("Contact Custom Blackbaud_Constituent_ID__c", contactExtRef);
     contactData.put("Contact Custom Append Source__c", "Blackbaud");
 
     // Combine all ph/comments and dump in single notes/desc field
@@ -1053,12 +1054,13 @@ public class RaisersEdgeToSalesforce {
       }
 
       if ("Email".equalsIgnoreCase(row.get(cnPhType))) {
+        String email = row.get(cnPhPhone).toLowerCase(Locale.ROOT).trim();
         if (isBusiness) {
-          accountData.put("Account Custom Email__c", row.get(cnPhPhone));
+          accountData.put("Account Custom Email__c", email);
         } else {
-          if (!seenEmails.contains(row.get(cnPhPhone))) {
-            contactData.put("Contact Email", row.get(cnPhPhone));
-            seenEmails.add(row.get(cnPhPhone));
+          if (!seenEmails.contains(email)) {
+            contactData.put("Contact Email", email);
+            seenEmails.add(email);
           }
         }
       } else if ("Home".equalsIgnoreCase(row.get(cnPhType))) {
