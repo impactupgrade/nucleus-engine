@@ -258,7 +258,7 @@ public class FactsController {
     addressData.put("Contact Mailing Street 2", address.address2);
     addressData.put("Contact Mailing City", address.city);
     addressData.put("Contact Mailing State", address.state);
-    addressData.put("Contact Mailing PostCode", address.zip);
+    addressData.put("Contact Mailing Postal Code", address.zip);
     addressData.put("Contact Mailing Country", address.state);
     return addressData;
   }
@@ -273,7 +273,7 @@ public class FactsController {
     addressData.put("Account Billing Street 2", address.address2);
     addressData.put("Account Billing City", address.city);
     addressData.put("Account Billing State", address.state);
-    addressData.put("Account Billing PostCode", address.zip);
+    addressData.put("Account Billing Postal Code", address.zip);
     addressData.put("Account Billing Country", address.state);
     return addressData;
   }
