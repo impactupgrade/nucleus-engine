@@ -83,8 +83,6 @@ public class RaisersEdgeToSalesforceHOUSEHOLDFIXES {
         continue;
       }
 
-      String id = row.get("CnBio_ID");
-
       for (int i = 1; i <= 25; i++) {
         String prefix = "CnRelInd_1_" + new DecimalFormat("00").format(i) + "_";
         if ("Yes".equalsIgnoreCase(row.get(prefix + "Is_Headofhousehold"))) {
@@ -138,10 +136,6 @@ public class RaisersEdgeToSalesforceHOUSEHOLDFIXES {
     for (Map<String, String> row : rows) {
       String id = row.get("CnBio_ID");
 
-      if (!id.equalsIgnoreCase("47080")) {
-        continue;
-      }
-
       if (!headOfHouseholdIds.contains(id)) {
         Set<String> cnAdrPrfAddr = new LinkedHashSet<>();
         for (int i = 1; i <= 4; i++) {
@@ -171,7 +165,7 @@ public class RaisersEdgeToSalesforceHOUSEHOLDFIXES {
             // only one contact in the house, so they'll be primary already
           }
           else {
-            System.out.println(id + " (" + row.get("CnBio_First_Name") + " " + row.get("CnBio_Last_Name")+ ")");
+            System.out.println(id + " " + existingContactsByExtRef.get(id).getId() + " (" + row.get("CnBio_First_Name") + " " + row.get("CnBio_Last_Name")+ ")");
           }
         }
       }

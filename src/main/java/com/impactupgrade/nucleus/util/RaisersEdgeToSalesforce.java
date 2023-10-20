@@ -1017,7 +1017,7 @@ public class RaisersEdgeToSalesforce {
     accountData.put("Account Billing Street", cnAdrPrfAddrStr);
     accountData.put("Account Billing City", row.get("CnAdrPrf_City"));
     accountData.put("Account Billing State", row.get("CnAdrPrf_State"));
-    accountData.put("Account Billing PostCode", row.get("CnAdrPrf_ZIP"));
+    accountData.put("Account Billing Postal Code", row.get("CnAdrPrf_ZIP"));
     accountData.put("Account Billing Country", row.get("CnAdrPrf_ContryLongDscription"));
     accountData.put("Account Custom BB_Address_Type__c", row.get("CnAdrPrf_Type"));
     if ("No".equalsIgnoreCase(row.get("CnAdrPrf_Sndmailtthisaddrss"))) {
