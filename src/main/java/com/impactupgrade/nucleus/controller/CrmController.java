@@ -64,12 +64,13 @@ public class CrmController {
     this.envFactory = envFactory;
   }
 
-  @Path("/create-contact")
+  @Path("/upsert-contact")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response createNewContact(
+  public Response upsertContact(
       @FormParam("user_email") String userEmail,
+      @FormParam("contact_id") String contactId,
       @FormParam("first_name") String firstName,
       @FormParam("last_name") String lastName,
       @FormParam("email_lists") List<String> emailLists,
@@ -84,44 +85,60 @@ public class CrmController {
       @FormParam("pri_zip") String priZip,
       @FormParam("pri_country") String priCountry,
       @Context HttpServletRequest request
-  ) {
+  ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     CrmService crmService = env.primaryCrmService();
+    CrmContact contact = new CrmContact();
+    CrmAccount account = new CrmAccount();
+    Optional<CrmUser> user = Optional.empty();
+
+    if (!Strings.isNullOrEmpty(contactId)){
+      //Existing contact is being updated
+      if (crmService.getContactById(contactId).isPresent()){
+        contact = crmService.getContactById(contactId).get();
+        //Check for an existing account
+        if (crmService.getAccountById(contact.account.id).isPresent()){
+          account = crmService.getAccountById(contact.account.id).get();
+        }
+      }else{
+        env.logJobError("No contact with the ID: {} found", contactId);
+        return Response.serverError().build();
+      }
+    }
 
     try {
-      // Create Account
-      CrmAccount newAccount = new CrmAccount();
-      newAccount.name = firstName + " " + lastName;
+      //TODO: Had pulled the account building process from the old code, keeping it as is for now
+      //only create the account if it doesn't exist
+      if (!Strings.isNullOrEmpty(account.id)) {
+        account.name = firstName + " " + lastName;
 
-      // Assign ownership based on checkmark value
-      env.logJobInfo("User Email: {}", userEmail);
+        // Assign ownership based on checkmark value
+        env.logJobInfo("User Email: {}", userEmail);
 
-      // Check for a user to assign as an account and contact owner
-      Optional<CrmUser> user = Optional.empty();
-
-      if (!Strings.isNullOrEmpty(userEmail)) {
-        user = crmService.getUserByEmail(userEmail);
-        if (user.isEmpty()) {
-          env.logJobInfo("Staff user not found by email {}", userEmail);
-        } else {
-          newAccount.ownerId = user.get().id();
+        // Check for a user to assign as an account and contact owner
+        if (!Strings.isNullOrEmpty(userEmail)) {
+          user = crmService.getUserByEmail(userEmail);
+          if (user.isEmpty()) {
+            env.logJobInfo("Staff user not found by email {}", userEmail);
+          } else {
+            account.ownerId = user.get().id();
+          }
         }
+
+        crmService.insertAccount(account);
       }
 
-      crmService.insertAccount(newAccount);
-
       // Create Contact
-      CrmContact newContact = new CrmContact();
-      newContact.firstName = firstName;
-      newContact.lastName = lastName;
-      newContact.email = emailAddress;
-      newContact.emailGroups = emailLists;
-      newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(prefPhone);
-      newContact.homePhone = hPhone;
-      newContact.mobilePhone = mPhone;
-      newContact.workPhone = wPhone;
+      contact.firstName = firstName;
+      contact.lastName = lastName;
+      contact.email = emailAddress;
+      contact.emailGroups = emailLists;
+      contact.preferredPhone = CrmContact.PreferredPhone.valueOf(prefPhone);
+      contact.homePhone = hPhone;
+      contact.mobilePhone = mPhone;
+      contact.workPhone = wPhone;
 
       //Create Address
       CrmAddress contactAddress = new CrmAddress();
@@ -131,13 +148,20 @@ public class CrmController {
       contactAddress.postalCode = priZip;
       contactAddress.country = priCountry;
 
-      newContact.mailingAddress = contactAddress;
+      contact.mailingAddress = contactAddress;
 
-      newContact.account = newAccount;
+      contact.account = account;
 
-      user.ifPresent(crmUser -> newContact.ownerId = crmUser.id());
+      if(user.isPresent()){
+        contact.ownerId = user.get().id();
+      }
 
-      crmService.insertContact(newContact);
+      //update or insert the contact
+      if (Strings.isNullOrEmpty(contact.id)){
+        crmService.insertContact(contact);
+      }else{
+        crmService.updateContact(contact);
+      }
 
       return Response.ok().build();
     } catch (Exception e) {
