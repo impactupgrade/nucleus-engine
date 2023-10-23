@@ -53,7 +53,6 @@ import java.util.regex.Pattern;
 
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
-import static com.stripe.net.ApiResource.GSON;
 
 @Path("/crm")
 public class CrmController {
@@ -85,67 +84,66 @@ public class CrmController {
       @FormParam("pri_zip") String priZip,
       @FormParam("pri_country") String priCountry,
       @Context HttpServletRequest request
-  ) throws Exception {
+  ) {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     CrmService crmService = env.primaryCrmService();
 
-    // Create Account
-    //TODO: Separate endpoints for contacts and accounts or all in one like the old endpoint?
-    CrmAccount newAccount = new CrmAccount();
-    newAccount.name = firstName + " " + lastName;
+    try {
+      // Create Account
+      CrmAccount newAccount = new CrmAccount();
+      newAccount.name = firstName + " " + lastName;
 
-    // Assign ownership based on checkmark value
-    env.logJobInfo("User Email: {}", userEmail);
+      // Assign ownership based on checkmark value
+      env.logJobInfo("User Email: {}", userEmail);
 
-    // Check for a user to assign as an account and contact owner
-    Optional<CrmUser> user = Optional.empty();
+      // Check for a user to assign as an account and contact owner
+      Optional<CrmUser> user = Optional.empty();
 
-    if (!Strings.isNullOrEmpty(userEmail)) {
-      user = crmService.getUserByEmail(userEmail);
-      if (user.isEmpty()) {
-        env.logJobInfo("Staff user not found by email {}", userEmail);
-        //TODO: Old function returned an error if this failed, guessing that we don't want that now
-      }else{
-        newAccount.ownerId = user.get().id();
+      if (!Strings.isNullOrEmpty(userEmail)) {
+        user = crmService.getUserByEmail(userEmail);
+        if (user.isEmpty()) {
+          env.logJobInfo("Staff user not found by email {}", userEmail);
+        } else {
+          newAccount.ownerId = user.get().id();
+        }
       }
+
+      crmService.insertAccount(newAccount);
+
+      // Create Contact
+      CrmContact newContact = new CrmContact();
+      newContact.firstName = firstName;
+      newContact.lastName = lastName;
+      newContact.email = emailAddress;
+      newContact.emailGroups = emailLists;
+      newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(prefPhone);
+      newContact.homePhone = hPhone;
+      newContact.mobilePhone = mPhone;
+      newContact.workPhone = wPhone;
+
+      //Create Address
+      CrmAddress contactAddress = new CrmAddress();
+      contactAddress.street = priStreet;
+      contactAddress.city = priCity;
+      contactAddress.state = priState;
+      contactAddress.postalCode = priZip;
+      contactAddress.country = priCountry;
+
+      newContact.mailingAddress = contactAddress;
+
+      newContact.account = newAccount;
+
+      user.ifPresent(crmUser -> newContact.ownerId = crmUser.id());
+
+      crmService.insertContact(newContact);
+
+      return Response.ok().build();
+    } catch (Exception e) {
+      env.logJobError("Contact create failed: {}", e.toString());
+      return Response.serverError().build();
     }
-
-    crmService.insertAccount(newAccount);
-
-
-    // Create Contact
-    CrmContact newContact = new CrmContact();
-    newContact.firstName = firstName;
-    newContact.lastName = lastName;
-    newContact.email = emailAddress;
-    newContact.emailGroups = emailLists;
-    newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(prefPhone);
-    newContact.homePhone = hPhone;
-    newContact.mobilePhone = mPhone;
-    newContact.workPhone = wPhone;
-
-    //Create Address
-    CrmAddress contactAddress = new CrmAddress();
-    contactAddress.street = priStreet;
-    contactAddress.city = priCity;
-    contactAddress.state = priState;
-    contactAddress.postalCode = priZip;
-    contactAddress.country = priCountry;
-
-    newContact.mailingAddress = contactAddress;
-
-    newContact.account = newAccount;
-
-    user.ifPresent(crmUser -> newContact.ownerId = crmUser.id());
-
-    crmService.insertContact(newContact);
-
-
-    String json = GSON.toJson(newContact);
-    env.logJobInfo("Contact Created: {}", json);
-    return Response.ok().entity(json).type(MediaType.APPLICATION_JSON).build();
   }
 
 
