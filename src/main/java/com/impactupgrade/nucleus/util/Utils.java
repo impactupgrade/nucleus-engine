@@ -109,6 +109,13 @@ public class Utils {
     return s;
   }
 
+  public static String nullToEmptyString(String s) {
+    if (s == null) {
+      return "";
+    }
+    return s;
+  }
+
   public static Calendar getCalendarFromDateString(String date, String timezoneId) {
     return toCalendar(getZonedDateFromDateString(date, timezoneId), null);
   }
