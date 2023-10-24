@@ -94,15 +94,15 @@ public class CrmController {
     CrmAccount account = new CrmAccount();
     Optional<CrmUser> user = Optional.empty();
 
-    if (!Strings.isNullOrEmpty(contactId)){
+    if (!Strings.isNullOrEmpty(contactId)) {
       //Existing contact is being updated
-      if (crmService.getContactById(contactId).isPresent()){
+      if (crmService.getContactById(contactId).isPresent()) {
         contact = crmService.getContactById(contactId).get();
         //Check for an existing account
-        if (crmService.getAccountById(contact.account.id).isPresent()){
+        if (crmService.getAccountById(contact.account.id).isPresent()) {
           account = crmService.getAccountById(contact.account.id).get();
         }
-      }else{
+      } else {
         env.logJobError("No contact with the ID: {} found", contactId);
         return Response.serverError().build();
       }
@@ -152,14 +152,14 @@ public class CrmController {
 
       contact.account = account;
 
-      if(user.isPresent()){
+      if (user.isPresent()) {
         contact.ownerId = user.get().id();
       }
 
       //update or insert the contact
-      if (Strings.isNullOrEmpty(contact.id)){
+      if (Strings.isNullOrEmpty(contact.id)) {
         crmService.insertContact(contact);
-      }else{
+      } else {
         crmService.updateContact(contact);
       }
 
@@ -170,6 +170,92 @@ public class CrmController {
     }
   }
 
+  @Path("/contact-and-account")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response addContactAndAccount(
+      @FormParam("contact_owner_email") String contactOwnerEmail,
+      @FormParam("first_name") String firstName,
+      @FormParam("last_name") String lastName,
+      @FormParam("email_address") String emailAddress,
+      @FormParam("pref_phone") String prefPhone,
+      @FormParam("h_phone") String hPhone,
+      @FormParam("w_phone") String wPhone,
+      @FormParam("m_phone") String mPhone,
+      @FormParam("contact_street") String contactStreet,
+      @FormParam("contact_city") String contactCity,
+      @FormParam("contact_state") String contactState,
+      @FormParam("contact_zip") String contactZip,
+      @FormParam("contact_country") String contactCountry,
+      @FormParam("account_owner_email") String accountOwnerEmail,
+      @FormParam("account_name") String accountName,
+      @FormParam("account_email") String accountEmail,
+      @FormParam("account_phone") String accountPhone,
+      @FormParam("account_website") String accountWebsite,
+      @FormParam("account_type") String accountType,
+      @FormParam("account_street") String accountStreet,
+      @FormParam("account_city") String accountCity,
+      @FormParam("account_state") String accountState,
+      @FormParam("account_zip") String accountZip,
+      @FormParam("account_country") String accountCountry,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    CrmService crmService = env.primaryCrmService();
+
+    try {
+      //ACCOUNT
+      CrmAccount newAccount = new CrmAccount();
+
+      if (crmService.getUserByEmail(accountOwnerEmail).isPresent()){
+        newAccount.ownerId = crmService.getUserByEmail(accountOwnerEmail).get().id();
+      }
+      newAccount.name = accountName;
+      //TODO: do we have an account email concept/way to add that?
+      newAccount.phone = accountPhone;
+      newAccount.website = accountWebsite;
+      newAccount.type = accountType;
+      //TODO: use mailing or billing address?
+      CrmAddress accountAddress = new CrmAddress();
+      accountAddress.street = accountStreet;
+      accountAddress.city = accountCity;
+      accountAddress.state = accountState;
+      accountAddress.postalCode = accountZip;
+      accountAddress.country = accountCountry;
+      newAccount.mailingAddress = accountAddress;
+
+      crmService.insertAccount(newAccount);
+
+      //CONTACT
+      CrmContact newContact = new CrmContact();
+
+      if (crmService.getUserByEmail(contactOwnerEmail).isPresent()){
+        newAccount.ownerId = crmService.getUserByEmail(contactOwnerEmail).get().id();
+      }
+      newContact.firstName = firstName;
+      newContact.lastName = lastName;
+      newContact.email = emailAddress;
+      newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(prefPhone);
+      newContact.homePhone = hPhone;
+      newContact.mobilePhone = mPhone;
+      newContact.workPhone = wPhone;
+      CrmAddress contactAddress = new CrmAddress();
+      contactAddress.street = contactStreet;
+      contactAddress.city = contactCity;
+      contactAddress.state = contactState;
+      contactAddress.postalCode = contactZip;
+      contactAddress.country = contactCountry;
+      newContact.mailingAddress = contactAddress;
+      return Response.ok().build();
+
+    } catch (Exception e) {
+      env.logJobError("Error Creating Contact/Account {}", e.getMessage());
+      return Response.serverError().build();
+    }
+  }
 
   /**
    * Retrieves a contact from the primary CRM using a variety of optional parameters. For use in external integrations,
@@ -180,43 +266,31 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContact(
-      @QueryParam("id") String id,
-      @QueryParam("email") String email,
-      @QueryParam("phone") String phone,
+      @QueryParam("keyword") String keyword,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    id = noWhitespace(id);
-    email = noWhitespace(email);
-    phone = trim(phone);
-
     CrmService crmService = env.primaryCrmService();
 
-    Optional<CrmContact> contact = Optional.empty();
-    if (!Strings.isNullOrEmpty(id)) {
-      env.logJobInfo("searching id={}", id);
-      contact = crmService.getContactById(id);
-    } else if (!Strings.isNullOrEmpty(email)) {
-      env.logJobInfo("searching email={}", email);
-      contact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
-    } else if (!Strings.isNullOrEmpty(phone)) {
-      env.logJobInfo("searching phone={}", phone);
-      contact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
+    List<CrmContact> contacts = new ArrayList<>();
+    if (!Strings.isNullOrEmpty(keyword)) {
+      contacts.addAll(crmService.searchContacts(ContactSearch.byKeywords(keyword)).getResults());
     } else {
       env.logJobWarn("no search params provided");
     }
 
-    if (contact.isPresent()) {
-      env.logJobInfo("returning Contact {}", contact.get().id);
-      return Response.status(200).entity(contact.get()).build();
+    if (!contacts.isEmpty()) {
+      env.logJobInfo("returning {} Contacts ", contacts.size());
+      return Response.status(200).entity(contacts).build();
     } else {
-      env.logJobInfo("Contact not found");
+      env.logJobInfo("Contacts not found");
       return Response.status(404).build();
     }
   }
 
+  //TODO implement account search like existing ContactSearch
   @Path("/account")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -518,7 +592,7 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContactLists(
-          @Context HttpServletRequest request
+      @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -532,8 +606,8 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContactFields(
-          @QueryParam("type") String type,
-          @Context HttpServletRequest request
+      @QueryParam("type") String type,
+      @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -585,7 +659,7 @@ public class CrmController {
 
     return Response.status(200).entity(contacts).build();
   }
-  
+
   private List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
     String fileExtension = Utils.getFileExtension(fileDisposition.getFileName());
     List<Map<String, String>> data = new ArrayList<>();
