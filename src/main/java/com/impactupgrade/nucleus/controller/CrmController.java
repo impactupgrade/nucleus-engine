@@ -183,7 +183,8 @@ public class CrmController {
       @FormParam("h_phone") String hPhone,
       @FormParam("w_phone") String wPhone,
       @FormParam("m_phone") String mPhone,
-      @FormParam("contact_street") String contactStreet,
+      @FormParam("contact_line_one") String contactLineOne,
+      @FormParam("contact_line_two") String contactLineTwo,
       @FormParam("contact_city") String contactCity,
       @FormParam("contact_state") String contactState,
       @FormParam("contact_zip") String contactZip,
@@ -194,7 +195,8 @@ public class CrmController {
       @FormParam("account_phone") String accountPhone,
       @FormParam("account_website") String accountWebsite,
       @FormParam("account_type") String accountType,
-      @FormParam("account_street") String accountStreet,
+      @FormParam("account_line_one") String accountLineOne,
+      @FormParam("account_line_two") String accountLineTwo,
       @FormParam("account_city") String accountCity,
       @FormParam("account_state") String accountState,
       @FormParam("account_zip") String accountZip,
@@ -220,7 +222,10 @@ public class CrmController {
       newAccount.type = accountType;
       //TODO: use mailing or billing address?
       CrmAddress accountAddress = new CrmAddress();
-      accountAddress.street = accountStreet;
+      accountAddress.street = accountLineOne;
+      if (!Strings.isNullOrEmpty(accountLineTwo)){
+        accountAddress.street = accountAddress.street + "," + accountLineTwo;
+      }
       accountAddress.city = accountCity;
       accountAddress.state = accountState;
       accountAddress.postalCode = accountZip;
@@ -243,7 +248,10 @@ public class CrmController {
       newContact.mobilePhone = mPhone;
       newContact.workPhone = wPhone;
       CrmAddress contactAddress = new CrmAddress();
-      contactAddress.street = contactStreet;
+      contactAddress.street = contactLineOne;
+      if (!Strings.isNullOrEmpty(contactLineTwo)){
+        contactAddress.street = contactAddress.street + "," + contactLineTwo;
+      }
       contactAddress.city = contactCity;
       contactAddress.state = contactState;
       contactAddress.postalCode = contactZip;
