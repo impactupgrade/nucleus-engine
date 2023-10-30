@@ -280,6 +280,7 @@ public class StripeController {
             PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
             paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.SOURCE_EXPIRING);
             paymentGatewayEvent.initStripe(subscription, customer);
+            env.contactService().processDonor(paymentGatewayEvent);
             // For each open subscription using that payment source,
             // look up the associated recurring donation from CrmService's getRecurringDonationBySubscriptionId
             Optional<CrmRecurringDonation> crmRecurringDonationOptional = crmService.getRecurringDonation(

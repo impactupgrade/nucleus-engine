@@ -691,24 +691,23 @@ public class VirtuousClient extends OAuthClient {
   public static class Task {
     public Integer id;
     public Type taskType;
-    public String task; // TODO: rename?
+    @JsonProperty("task")
+    public String subject;
     public String description;
     public String dueDateTime;
     public Integer contactId;
-    public String contact;
-    public String contactUrl;
+    public String ownerEmail;
 
     @Override
     public String toString() {
       return "Task{" +
           "id=" + id +
-          ", taskType='" + taskType + '\'' +
-          ", task='" + task + '\'' +
+          ", taskType=" + taskType +
+          ", subject='" + subject + '\'' +
           ", description='" + description + '\'' +
-          ", dueDateTime=" + dueDateTime +
+          ", dueDateTime='" + dueDateTime + '\'' +
           ", contactId=" + contactId +
-          ", contact='" + contact + '\'' +
-          ", contactUrl='" + contactUrl + '\'' +
+          ", ownerEmail='" + ownerEmail + '\'' +
           '}';
     }
 

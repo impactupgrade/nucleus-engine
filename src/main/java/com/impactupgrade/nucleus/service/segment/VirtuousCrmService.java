@@ -546,7 +546,7 @@ public class VirtuousCrmService implements CrmService {
     }
     VirtuousClient.Task task = new VirtuousClient.Task();
     task.taskType = VirtuousClient.Task.Type.GENERAL;
-    task.task = crmTask.subject;
+    task.subject = crmTask.subject;
     task.description = crmTask.description;
     if (crmTask.dueDate != null) {
       task.dueDateTime = new SimpleDateFormat(DATE_TIME_FORMAT).format(crmTask.dueDate.getTime());
@@ -556,8 +556,8 @@ public class VirtuousCrmService implements CrmService {
     } catch (NumberFormatException e) {
       env.logJobWarn("Failed to parse Integer from String '{}'!", task.contactId);
     }
+    task.ownerEmail = crmTask.assignTo;
 
-    task.contact = crmTask.targetId;
     return task;
   }
 
