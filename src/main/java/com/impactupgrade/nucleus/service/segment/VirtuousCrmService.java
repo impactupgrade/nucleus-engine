@@ -812,7 +812,7 @@ public class VirtuousCrmService implements CrmService {
         getDateTime(recurringGift.nextExpectedPaymentDate),
         getDateTime(recurringGift.startDate),
         recurringGift,
-        null // String crmUrl
+        "https://app.virtuoussoftware.com/Generosity/Contact/Gifts/" + recurringGift.contactId
     );
   }
 
