@@ -378,6 +378,10 @@ public class SfdcCrmService implements CrmService {
     if (crmAccount.recordType != null && accountTypeToRecordTypeIds.containsKey(crmAccount.recordType)) {
       account.setField("RecordTypeId", accountTypeToRecordTypeIds.get(crmAccount.recordType));
     }
+
+    for (String fieldName : crmAccount.crmRawFieldsToSet.keySet()) {
+      account.setField(fieldName, crmAccount.crmRawFieldsToSet.get(fieldName));
+    }
   }
 
   @Override
@@ -589,6 +593,10 @@ public class SfdcCrmService implements CrmService {
     setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmMedium, crmDonation.getMetadataValue("utm_medium"));
     setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmTerm, crmDonation.getMetadataValue("utm_term"));
     setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmContent, crmDonation.getMetadataValue("utm_content"));
+
+    for (String fieldName : crmDonation.crmRawFieldsToSet.keySet()) {
+      opportunity.setField(fieldName, crmDonation.crmRawFieldsToSet.get(fieldName));
+    }
   }
 
   @Override
@@ -730,6 +738,10 @@ public class SfdcCrmService implements CrmService {
       // Legacy behavior was to always use the Account, regardless if it was a business or household. Stick with that
       // by default -- we have some orgs that depend on it.
       recurringDonation.setField("Npe03__Organization__c", crmRecurringDonation.account.id);
+    }
+
+    for (String fieldName : crmRecurringDonation.crmRawFieldsToSet.keySet()) {
+      recurringDonation.setField(fieldName, crmRecurringDonation.crmRawFieldsToSet.get(fieldName));
     }
   }
 
