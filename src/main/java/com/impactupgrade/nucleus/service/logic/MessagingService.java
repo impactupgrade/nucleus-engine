@@ -5,14 +5,13 @@
 package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.SMSService;
 import com.impactupgrade.nucleus.util.Utils;
 import com.twilio.exception.ApiException;
-import com.twilio.rest.api.v2010.account.Message;
 
 import java.util.Collections;
 import java.util.Map;
@@ -23,26 +22,22 @@ import java.util.regex.Pattern;
 public class MessagingService {
 
   private final Environment env;
-  private final TwilioClient twilioClient;
   private final CrmService crmService;
-
+  private final SMSService smsService;
   public MessagingService(Environment env) {
     this.env = env;
-    twilioClient = env.twilioClient();
+    smsService = env.smsService();
     crmService = env.messagingCrmService();
   }
 
-  public void sendMessage(String message, String attachmentUrl, CrmContact crmContact, String sender) {
+  public void sendMessage(String message, CrmContact crmContact, String sender) {
     try {
       String pn = crmContact.phoneNumberForSMS();
       pn = pn.replaceAll("[^0-9\\+]", "");
 
       if (!Strings.isNullOrEmpty(pn)) {
         String personalizedMessage = personalizeMessage(message, crmContact);
-
-        Message twilioMessage = twilioClient.sendMessage(pn, sender, personalizedMessage, attachmentUrl, null);
-
-        env.logJobInfo("sent messageSid {} to {}; status={} errorCode={} errorMessage={}", twilioMessage.getSid(), pn, twilioMessage.getStatus(), twilioMessage.getErrorCode(), twilioMessage.getErrorMessage());
+        smsService.sendMessage(personalizedMessage, crmContact, pn, sender);
       }
     } catch (ApiException e1) {
       if (e1.getCode() == 21610) {
