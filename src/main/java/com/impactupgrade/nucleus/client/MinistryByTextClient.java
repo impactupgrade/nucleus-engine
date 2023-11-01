@@ -44,7 +44,7 @@ public class MinistryByTextClient extends OAuthClient {
 
   @Override
   protected OAuthContext oAuthContext() {
-    return new ClientCredentialsOAuthContext(mbtConfig, AUTH_ENDPOINT);
+    return new ClientCredentialsOAuthContext(mbtConfig, AUTH_ENDPOINT, true);
   }
 
   public List<Group> getGroups(EnvironmentConfig.MBT mbtConfig) {

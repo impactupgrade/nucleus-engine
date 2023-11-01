@@ -25,7 +25,7 @@ public class SpokeClient extends OAuthClient {
 
   @Override
   protected OAuthContext oAuthContext() {
-    return new ClientCredentialsOAuthContext(env.getConfig().spoke, AUTH_ENDPOINT);
+    return new ClientCredentialsOAuthContext(env.getConfig().spoke, AUTH_ENDPOINT, true);
   }
 
   public List<Phonebook> getPhonebooks() {
