@@ -28,6 +28,8 @@ public class VirtuousClient extends OAuthClient {
   private static final int DEFAULT_OFFSET = 0;
   private static final int DEFAULT_LIMIT = 100;
 
+  private static final int MAXIMUM_LIMIT = 1000;
+
   private String apiKey;
 
   public VirtuousClient(Environment env) {
@@ -185,6 +187,24 @@ public class VirtuousClient extends OAuthClient {
   public Gifts getGiftsByContact(int contactId) {
     String giftUrl = VIRTUOUS_API_URL + "/Gift/ByContact/" + contactId + "?take=1000";
     return get(giftUrl, headers(), Gifts.class);
+  }
+
+  /***
+   *
+   * @param query
+   * @param fullGift Determines if the query returns the full gift details, more efficient to not do so
+   * @return
+   */
+  public List<Gift> queryGifts(GiftQuery query, Boolean fullGift) {
+    String path = "/Gift/Query";
+    if (fullGift) {
+      path += "/FullGift";
+    }
+    GiftQueryResponse response = post(VIRTUOUS_API_URL + path + "?skip=" + DEFAULT_OFFSET + "&take=" + MAXIMUM_LIMIT, query, APPLICATION_JSON, headers(), GiftQueryResponse.class);
+    if (response == null) {
+      return Collections.emptyList();
+    }
+    return response.gifts;
   }
 
   public Gift getGiftByTransactionSourceAndId(String transactionSource, String transactionId) {
@@ -625,7 +645,21 @@ public class VirtuousClient extends OAuthClient {
           '}';
     }
   }
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class GiftQuery {
+    public List<QueryConditionGroup> groups = new ArrayList<>();
+    public String sortBy;
+    public Boolean descending;
 
+    @Override
+    public String toString() {
+      return "GiftQuery{" +
+          "groups=" + groups +
+          ", sortBy='" + sortBy + '\'' +
+          ", descending=" + descending +
+          '}';
+    }
+  }
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class QueryCondition {
     public String parameter;
@@ -670,7 +704,19 @@ public class VirtuousClient extends OAuthClient {
           '}';
     }
   }
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class GiftQueryResponse {
+    @JsonProperty("list")
+    public List<Gift> gifts = new ArrayList<>();
+    public Integer total;
 
+    @Override
+    public String toString() {
+      return "GiftQueryResponse{" +
+          "contacts=" + gifts +
+          '}';
+    }
+  }
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class ReversingTransaction {
     public String giftDate;
