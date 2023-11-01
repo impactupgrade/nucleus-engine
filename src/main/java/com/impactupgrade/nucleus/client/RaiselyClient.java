@@ -20,7 +20,7 @@ public class RaiselyClient extends OAuthClient {
 
   @Override
   protected OAuthContext oAuthContext() {
-    return new UsernamePasswordOAuthContext(env.getConfig().raisely, Map.of("requestAdminToken", "true"), AUTH_URL);
+    return new UsernamePasswordOAuthContext(env.getConfig().raisely, AUTH_URL, false, Map.of("requestAdminToken", "true"));
   }
 
   //*Note this uses the donation ID from the Stripe metadata. Different from the donation UUID

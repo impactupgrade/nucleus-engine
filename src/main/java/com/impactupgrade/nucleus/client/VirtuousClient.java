@@ -38,7 +38,7 @@ public class VirtuousClient extends OAuthClient {
 
   @Override
   protected OAuthContext oAuthContext() {
-    return new UsernamePasswordOAuthContext(env.getConfig().virtuous, null, env.getConfig().virtuous.tokenServerUrl);
+    return new UsernamePasswordOAuthContext(env.getConfig().virtuous, env.getConfig().virtuous.tokenServerUrl, true, null);
   }
 
   // Contact

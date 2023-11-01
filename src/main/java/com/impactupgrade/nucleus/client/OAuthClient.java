@@ -78,47 +78,47 @@ public abstract class OAuthClient extends DBConfiguredClient {
   protected static abstract class OAuthContext {
 
     protected Tokens tokens;
-    protected String tokenUrl;
+    protected final String tokenUrl;
+    protected final boolean enableRefresh;
 
-    public OAuthContext(EnvironmentConfig.Platform platform, String tokenUrl) {
+    public OAuthContext(EnvironmentConfig.Platform platform, String tokenUrl, boolean enableRefresh) {
       Date expiresAtDate = platform.expiresAt != null ? Date.from(Instant.ofEpochSecond(platform.expiresAt)) : null;
       this.tokens = new Tokens(platform.accessToken, expiresAtDate, platform.refreshToken);
       this.tokenUrl = tokenUrl;
+      this.enableRefresh = enableRefresh;
     }
 
     public OAuthContext refresh() {
-      // Refresh tokens using current refresh token
-      tokens = refreshTokens();
-      if (tokens == null) {
-        // Get a new pair of tokens if failed to refresh
+      if (tokens.isValid()) {
+        log.info("access token is still valid - returning as-is...");
+        return this;
+      }
+
+      if (enableRefresh) {
+        tokens = refreshTokens();
+      }
+      if (tokens == null || !tokens.isValid()) {
         tokens = getTokens();
       }
       return this;
     }
 
-    public String accessToken() {
-      return tokens != null ? tokens.accessToken() : null;
+    protected String accessToken() {
+      return tokens != null ? tokens.accessToken : null;
     }
 
-    public Date expiresAt() {
+    protected Date expiresAt() {
       return tokens != null ? tokens.expiresAt : null;
     }
 
-    private String refreshToken() {
-      return tokens != null ? tokens.refreshToken() : null;
+    protected String refreshToken() {
+      return tokens != null ? tokens.refreshToken : null;
     }
 
-    private Tokens refreshTokens() {
+    protected Tokens refreshTokens() {
       if (tokens == null) {
         log.warn("can't refresh null!");
         return null;
-      }
-      if (!Strings.isNullOrEmpty(tokens.accessToken)
-          && tokens.expiresAt != null
-          && tokens.expiresAt.after(new Date())) {
-        // No need to refresh
-        log.info("access token is still valid - returning as-is...");
-        return tokens;
       }
 
       log.info("refreshing access token...");
@@ -143,8 +143,8 @@ public abstract class OAuthClient extends DBConfiguredClient {
     private final String clientId;
     private final String clientSecret;
 
-    public ClientCredentialsOAuthContext(EnvironmentConfig.Platform platform, String tokenUrl) {
-      super(platform, tokenUrl);
+    public ClientCredentialsOAuthContext(EnvironmentConfig.Platform platform, String tokenUrl, boolean enableRefresh) {
+      super(platform, tokenUrl, enableRefresh);
       this.clientId = platform.clientId;
       this.clientSecret = platform.clientSecret;
     }
@@ -157,10 +157,11 @@ public abstract class OAuthClient extends DBConfiguredClient {
       params.put("client_id", clientId);
       params.put("client_secret", clientSecret);
       params.put("grant_type", "client_credentials");
+      params.put("scope", "offline_access");
 
       TokenResponse tokenResponse = getTokenResponse(tokenUrl, params, null);
       if (tokenResponse == null) {
-        log.warn("failed to get new tokens for username and password!");
+        log.warn("failed to get new tokens for client_id={}", clientId);
       }
       return toTokens(tokenResponse);
     }
@@ -173,9 +174,9 @@ public abstract class OAuthClient extends DBConfiguredClient {
 
     private final Map<String, String> requestTokenParams;
 
-    public UsernamePasswordOAuthContext(EnvironmentConfig.Platform platform, Map<String, String> requestTokenParams,
-        String tokenUrl) {
-      super(platform, tokenUrl);
+    public UsernamePasswordOAuthContext(EnvironmentConfig.Platform platform, String tokenUrl, boolean enableRefresh,
+        Map<String, String> requestTokenParams) {
+      super(platform, tokenUrl, enableRefresh);
       this.username = platform.username;
       this.password = platform.password;
       this.requestTokenParams = requestTokenParams;
@@ -189,10 +190,11 @@ public abstract class OAuthClient extends DBConfiguredClient {
       params.put("username", username);
       params.put("password", password);
       params.put("grant_type", "password");
+      params.put("scope", "offline_access");
 
       TokenResponse tokenResponse = getTokenResponse(tokenUrl, params, requestTokenParams);
       if (tokenResponse == null) {
-        log.warn("failed to get new tokens for username and password!");
+        log.warn("failed to get new tokens for username={}", username);
       }
       return toTokens(tokenResponse);
     }
@@ -243,7 +245,23 @@ public abstract class OAuthClient extends DBConfiguredClient {
     return expiresAt;
   }
 
-  private record Tokens(String accessToken, Date expiresAt, String refreshToken) {}
+  private static class Tokens {
+    public String accessToken;
+    public Date expiresAt;
+    public String refreshToken;
+
+    public Tokens(String accessToken, Date expiresAt, String refreshToken) {
+      this.accessToken = accessToken;
+      this.expiresAt = expiresAt;
+      this.refreshToken = refreshToken;
+    }
+
+    public boolean isValid() {
+      return !Strings.isNullOrEmpty(accessToken)
+          && expiresAt != null
+          && expiresAt.after(new Date());
+    }
+  }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   protected static final class TokenResponse {
