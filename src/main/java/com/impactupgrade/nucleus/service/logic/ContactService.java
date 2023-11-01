@@ -67,8 +67,13 @@ public class ContactService {
     // IMPORTANT: Skip this step if an existingAccount was found! A Stripe customer has sf_account defined but not
     // sf_contact, the email address might still be a match here. We assume that sf_account without the presence of
     // sf_contact is a business gift!
-    if (existingAccount.isEmpty() && existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)) {
-      existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
+    if (existingAccount.isEmpty() && existingContact.isEmpty()) {
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)) {
+        existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
+      } else if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())) {
+        existingContact = crmService.searchContacts(ContactSearch.byPhone(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())).getSingleResult();
+      }
+
       if (existingContact.isPresent()) {
         env.logJobInfo("found CRM contact {}", existingContact.get().id);
 
