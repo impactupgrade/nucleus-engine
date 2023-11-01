@@ -117,6 +117,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public void insertFailedDonationAttempt(CrmDonation crmDonation) throws Exception {
+
+  }
+
+  @Override
   public List<CrmUser> getUsers() throws Exception {
     return Collections.emptyList();
   }

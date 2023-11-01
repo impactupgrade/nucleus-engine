@@ -77,6 +77,14 @@ public class DonationService {
             existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
         crmService.updateDonation(paymentGatewayEvent.getCrmDonation());
         return;
+
+      } else if (paymentGatewayEvent.getCrmDonation().status == CrmDonation.Status.FAILED
+          && existingDonation.get().status == CrmDonation.Status.FAILED) {
+        // allow updates to error attempts, to catch all failed retries
+        env.logJobInfo("found existing CRM donation {} using transaction {}, in error state; updating it with the reattempt...",
+            existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
+        crmService.insertFailedDonationAttempt(paymentGatewayEvent.getCrmDonation());
+        return;
       }
 
       // posted donation already exists in the CRM with the transactionId - do not process the donation

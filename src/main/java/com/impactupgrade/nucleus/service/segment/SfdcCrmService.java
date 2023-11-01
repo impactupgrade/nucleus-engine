@@ -669,6 +669,11 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
+  @Override
+  public void insertFailedDonationAttempt(CrmDonation crmDonation) throws Exception {
+
+  }
+
   protected void setDonationDepositFields(SObject existingOpportunity, SObject opportunityUpdate,
       CrmDonation crmDonation) throws InterruptedException {
     // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!

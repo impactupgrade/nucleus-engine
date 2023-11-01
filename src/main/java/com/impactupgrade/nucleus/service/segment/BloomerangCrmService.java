@@ -465,6 +465,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public void insertFailedDonationAttempt(CrmDonation crmDonation) throws Exception {
+
+  }
+
+  @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     Donation recurringDonation = getDonation(id);
     return Optional.ofNullable(toCrmRecurringDonation(recurringDonation));

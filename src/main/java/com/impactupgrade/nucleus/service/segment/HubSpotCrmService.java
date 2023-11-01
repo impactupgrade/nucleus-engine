@@ -576,6 +576,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public void insertFailedDonationAttempt(CrmDonation crmDonation) throws Exception {
+
+  }
+
+  @Override
   public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     // TODO: campaign
 

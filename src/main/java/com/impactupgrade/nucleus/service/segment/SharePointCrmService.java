@@ -343,6 +343,11 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
+    public void insertFailedDonationAttempt(CrmDonation crmDonation) throws Exception {
+
+    }
+
+    @Override
     public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
         return null;
     }

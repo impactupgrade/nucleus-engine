@@ -135,6 +135,7 @@ public interface CrmService extends SegmentService {
   void updateDonation(CrmDonation crmDonation) throws Exception;
   void refundDonation(CrmDonation crmDonation) throws Exception;
   void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception;
+  void insertFailedDonationAttempt(CrmDonation crmDonation) throws Exception;
 
   // Some CRMs do not have full-blown notions of RDs, so no RD ID. Searching by the payment gateway's
   // subscription is at times the only option.

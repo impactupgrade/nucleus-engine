@@ -366,6 +366,11 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public void insertFailedDonationAttempt(CrmDonation crmDonation) throws Exception {
+
+  }
+
+  @Override
   public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
     VirtuousClient.RecurringGift recurringGift = asRecurringGift(recurringDonation);
     recurringGift = virtuousClient.createRecurringGift(recurringGift);
