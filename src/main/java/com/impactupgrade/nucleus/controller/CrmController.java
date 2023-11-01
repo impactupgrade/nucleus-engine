@@ -126,8 +126,7 @@ public class CrmController {
             account.ownerId = user.get().id();
           }
         }
-
-        crmService.insertAccount(account);
+        account.id = crmService.insertAccount(account);
       }
 
       // Create Contact
@@ -220,7 +219,6 @@ public class CrmController {
       newAccount.phone = accountPhone;
       newAccount.website = accountWebsite;
       newAccount.type = accountType;
-      //TODO: use mailing or billing address?
       CrmAddress accountAddress = new CrmAddress();
       accountAddress.street = accountLineOne;
       if (!Strings.isNullOrEmpty(accountLineTwo)){
@@ -230,7 +228,7 @@ public class CrmController {
       accountAddress.state = accountState;
       accountAddress.postalCode = accountZip;
       accountAddress.country = accountCountry;
-      newAccount.mailingAddress = accountAddress;
+      newAccount.billingAddress = accountAddress;
 
       crmService.insertAccount(newAccount);
 
@@ -269,7 +267,6 @@ public class CrmController {
    * Retrieves a contact from the primary CRM using a variety of optional parameters. For use in external integrations,
    * like Twilio Studio's retrieval of the CRM's Contact ID by phone number.
    */
-  //TODO: LJI contact search included FirstName LastName & Address will we want that for the task or does our existing endpoint cover what we need?
   @Path("/contact")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -304,14 +301,12 @@ public class CrmController {
   @Produces(MediaType.APPLICATION_JSON)
   public Response getAccount(
       @QueryParam("id") String id,
-      @QueryParam("customerId") String customerId,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     id = noWhitespace(id);
-    customerId = trim(customerId);
 
     CrmService crmService = env.primaryCrmService();
     //TODO using the search methods we already have, same question for contacts, do we need to implement more?
@@ -319,9 +314,6 @@ public class CrmController {
     if (!Strings.isNullOrEmpty(id)) {
       env.logJobInfo("searching id={}", id);
       account = crmService.getAccountById(id);
-    } else if (!Strings.isNullOrEmpty(customerId)) {
-      env.logJobInfo("searching customerId={}", customerId);
-      account = crmService.getAccountByCustomerId(customerId);
     } else {
       env.logJobWarn("no search params provided");
     }
