@@ -385,11 +385,8 @@ public class EnvironmentConfig implements Serializable {
   // INSTRUMENTATION/MONITORING/LOGGING
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public static class Rollbar extends Platform {
-    public String env = "";
-    public String codeVersion = "";
-  }
-  public Rollbar rollbar = new Rollbar();
+  public Platform rollbar = new Platform();
+
   public Set<String> loggers = new HashSet<>();
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -424,8 +421,13 @@ public class EnvironmentConfig implements Serializable {
   // INITIALIZATION
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private static final boolean IS_PROD = "production".equalsIgnoreCase(System.getenv("PROFILE"));
-  private static final boolean IS_SANDBOX = "sandbox".equalsIgnoreCase(System.getenv("PROFILE"));
+  private static final String profile = System.getenv("PROFILE");
+  public String getProfile() {
+    return profile;
+  }
+
+  private static final boolean IS_PROD = "production".equalsIgnoreCase(profile);
+  private static final boolean IS_SANDBOX = "sandbox".equalsIgnoreCase(profile);
   private static final String OTHER_JSON_FILENAME = System.getenv("OTHER_JSON_FILENAME");
 
   private static final ObjectMapper mapper = new ObjectMapper();
