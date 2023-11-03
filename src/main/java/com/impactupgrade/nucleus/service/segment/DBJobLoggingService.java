@@ -1,7 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.dao.HibernateUtil;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobFrequency;
@@ -26,7 +25,6 @@ public class DBJobLoggingService implements JobLoggingService {
   protected Environment env;
   protected SessionFactory sessionFactory;
 
-  protected String nucleusApikey;
   protected String jobTraceId;
   protected String defaultTimezoneId;
 
@@ -45,21 +43,15 @@ public class DBJobLoggingService implements JobLoggingService {
     this.env = env;
     this.sessionFactory = HibernateUtil.getSessionFactory();
 
-    if (!Strings.isNullOrEmpty(env.getHeaders().get("Nucleus-Api-Key"))) {
-      nucleusApikey = env.getHeaders().get("Nucleus-Api-Key");
-    } else {
-      nucleusApikey = env.getConfig().apiKey;
-    }
-
     jobTraceId = env.getJobTraceId();
     defaultTimezoneId = env.getConfig().timezoneId;
   }
 
   @Override
   public void startLog(JobType jobType, String username, String jobName, String originatingPlatform) {
-    Organization org = getOrg(nucleusApikey);
+    Organization org = getOrg(env.getConfig().apiKey);
     if (org == null) {
-      env.jobLoggingService("console").warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      env.jobLoggingService("console").warn("Can not get org for nucleus api key '{}'!", env.getConfig().apiKey);
       return;
     }
 
@@ -69,22 +61,16 @@ public class DBJobLoggingService implements JobLoggingService {
 
   @Override
   public void info(String message, Object... params) {
-    env.jobLoggingService("console").info(message, params);
-
     insertLog(message, params);
   }
 
   @Override
   public void warn(String message, Object... params) {
-    env.jobLoggingService("console").warn(message, params);
-
     insertLog(message, params);
   }
 
   @Override
   public void error(String message, Object... params) {
-    env.jobLoggingService("console").error(message, params);
-
     message = "[Please contact support@impactnucleus.com and mention Job ID " + jobTraceId + ". We'll dive in!] " + message;
     insertLog(message, params);
   }
@@ -179,9 +165,9 @@ public class DBJobLoggingService implements JobLoggingService {
 
   @Override
   public List<Job> getJobs(JobType jobType) {
-    Organization org = getOrg(nucleusApikey);
+    Organization org = getOrg(env.getConfig().apiKey);
     if (org == null) {
-      env.jobLoggingService("console").warn("Can not get org for nucleus api key '{}'!", nucleusApikey);
+      env.jobLoggingService("console").warn("Can not get org for nucleus api key '{}'!", env.getConfig().apiKey);
       return null;
     }
     return getJobs(org, jobType);
