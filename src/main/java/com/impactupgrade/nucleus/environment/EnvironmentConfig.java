@@ -387,7 +387,7 @@ public class EnvironmentConfig implements Serializable {
 
   public Platform rollbar = new Platform();
 
-  public Set<String> loggers = new HashSet<>();
+  public Set<String> loggers = Set.of("console", "db");
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMON
