@@ -209,6 +209,7 @@ public class Environment {
     T segmentService = loader.stream()
         .map(ServiceLoader.Provider::get)
         .filter(service -> name.equalsIgnoreCase(service.name()))
+        .filter(service -> service.isConfigured(this))
         // Custom overrides will appear first naturally due to CL order!
         .findFirst()
         .orElseThrow(() -> new RuntimeException("segment service not found: " + name));
