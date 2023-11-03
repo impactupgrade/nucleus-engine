@@ -49,11 +49,11 @@ public class JobController {
 
     List<JobDto> jobDtos;
 
-    JobLoggingService jobLoggingService = env.jobLoggingService("db-logger");
+    JobLoggingService jobLoggingService = env.jobLoggingService("db");
     if (jobLoggingService == null) {
       jobDtos = Collections.emptyList();
     } else {
-      List<Job> jobs = env.jobLoggingService("db-logger").getJobs(jobType);
+      List<Job> jobs = env.jobLoggingService("db").getJobs(jobType);
       jobDtos = toJobDtos(jobs, env.getConfig().timezoneId);
     }
 
@@ -69,12 +69,12 @@ public class JobController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    JobLoggingService jobLoggingService = env.jobLoggingService("db-logger");
+    JobLoggingService jobLoggingService = env.jobLoggingService("db");
     if (jobLoggingService == null) {
       return Response.status(404).entity("Failed to find job!").build();
     }
 
-    Job job = env.jobLoggingService("db-logger").getJob(traceId);
+    Job job = env.jobLoggingService("db").getJob(traceId);
     if (job == null) {
       return Response.status(404).entity("Failed to find job!").build();
     }

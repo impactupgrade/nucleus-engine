@@ -30,7 +30,7 @@ public class DBJobLoggingService implements JobLoggingService {
 
   @Override
   public String name() {
-    return "db-logger";
+    return "db";
   }
 
   @Override
