@@ -48,7 +48,7 @@ public abstract class OAuthClient extends DBConfiguredClient {
   }
 
   protected void updateEnvJson(OAuthContext oAuthContext) {
-    if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
+    if (env.getConfig().isDatabaseConnected()) {
       Organization org = getOrganization();
       JSONObject envJson = org.getEnvironmentJson();
       JSONObject clientConfigJson = getClientConfigJson(envJson);
