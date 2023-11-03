@@ -91,6 +91,21 @@ public class DonationService {
       child.id = crmService.insertDonation(child);
       child.parent.id = paymentGatewayEvent.getCrmDonation().id;
     }
+
+    if (paymentGatewayEvent.getCrmDonation().status == CrmDonation.Status.FAILED) {
+      String targetId = null;
+      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().account.id)) {
+        targetId = paymentGatewayEvent.getCrmDonation().account.id;
+      } else if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().contact.id)) {
+        targetId = paymentGatewayEvent.getCrmDonation().contact.id;
+      }
+
+      NotificationService.Notification notification = new NotificationService.Notification(
+          "Donation: Payment Failed",
+          "Donation payment attempt " + paymentGatewayEvent.getCrmDonation().id + " failed.<br/>Payment Gateway: <a href=\"" + paymentGatewayEvent.getCrmDonation().url + "\">" + paymentGatewayEvent.getCrmDonation().url + "</a>"
+      );
+      env.notificationService().sendNotification(notification, targetId, "donations:payment-failed");
+    }
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
@@ -162,7 +177,7 @@ public class DonationService {
 
     if (!"draft-incomplete-cancelled".equalsIgnoreCase(paymentGatewayEvent.getMetadataValue(List.of("status")))) {
       NotificationService.Notification notification = new NotificationService.Notification(
-          "Recurring Donation Closed",
+          "Recurring Donation: Closed",
           "Recurring donation " + recurringDonation.get().id + " has been closed."
       );
       notificationservice.sendNotification(notification, targetId, "donations:close-recurring-donation");
