@@ -6,6 +6,7 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityUtil;
+import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -46,8 +47,15 @@ public class JobController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    List<Job> jobs = env.jobLoggingService("db-logger").getJobs(jobType);
-    List<JobDto> jobDtos = toJobDtos(jobs, env.getConfig().timezoneId);
+    List<JobDto> jobDtos;
+
+    JobLoggingService jobLoggingService = env.jobLoggingService("db-logger");
+    if (jobLoggingService == null) {
+      jobDtos = Collections.emptyList();
+    } else {
+      List<Job> jobs = env.jobLoggingService("db-logger").getJobs(jobType);
+      jobDtos = toJobDtos(jobs, env.getConfig().timezoneId);
+    }
 
     return Response.ok(jobDtos).build();
   }
@@ -60,6 +68,11 @@ public class JobController {
       @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
+
+    JobLoggingService jobLoggingService = env.jobLoggingService("db-logger");
+    if (jobLoggingService == null) {
+      return Response.status(404).entity("Failed to find job!").build();
+    }
 
     Job job = env.jobLoggingService("db-logger").getJob(traceId);
     if (job == null) {
