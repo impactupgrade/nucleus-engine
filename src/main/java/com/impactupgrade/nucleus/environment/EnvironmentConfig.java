@@ -387,7 +387,7 @@ public class EnvironmentConfig implements Serializable {
 
   public Platform rollbar = new Platform();
 
-  public Set<String> loggers = Set.of("console", "db");
+  public Set<String> loggers = isDatabaseConnected() ? Set.of("console", "db") : Set.of("console");
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMON
@@ -421,13 +421,18 @@ public class EnvironmentConfig implements Serializable {
   // INITIALIZATION
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private static final String profile = System.getenv("PROFILE");
+  private static final String PROFILE = System.getenv("PROFILE");
   public String getProfile() {
-    return profile;
+    return PROFILE;
   }
 
-  private static final boolean IS_PROD = "production".equalsIgnoreCase(profile);
-  private static final boolean IS_SANDBOX = "sandbox".equalsIgnoreCase(profile);
+  private static final String DATABASE_CONNECTED = System.getenv("DATABASE_CONNECTED");
+  public boolean isDatabaseConnected() {
+    return "true".equalsIgnoreCase(DATABASE_CONNECTED);
+  }
+
+  private static final boolean IS_PROD = "production".equalsIgnoreCase(PROFILE);
+  private static final boolean IS_SANDBOX = "sandbox".equalsIgnoreCase(PROFILE);
   private static final String OTHER_JSON_FILENAME = System.getenv("OTHER_JSON_FILENAME");
 
   private static final ObjectMapper mapper = new ObjectMapper();

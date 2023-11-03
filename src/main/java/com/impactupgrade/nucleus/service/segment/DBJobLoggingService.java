@@ -35,7 +35,7 @@ public class DBJobLoggingService implements JobLoggingService {
 
   @Override
   public boolean isConfigured(Environment env) {
-    return "true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"));
+    return env.getConfig().isDatabaseConnected();
   }
 
   @Override

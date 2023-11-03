@@ -15,7 +15,7 @@ public abstract class DBConfiguredClient {
   }
 
   protected Organization getOrganization() {
-    if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
+    if (env.getConfig().isDatabaseConnected()) {
       return organizationDao.getQueryResult(
           "from Organization o where o.nucleusApiKey=:apiKey",
           query -> query.setParameter("apiKey", env.getConfig().apiKey)

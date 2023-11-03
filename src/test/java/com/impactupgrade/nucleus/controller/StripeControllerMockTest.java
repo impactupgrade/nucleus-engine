@@ -29,6 +29,7 @@ public class StripeControllerMockTest extends AbstractMockTest {
   public void testCustomCampaignMetadata() throws Exception {
     EnvironmentConfig envConfig = new EnvironmentConfig();
     envConfig.metadataKeys.campaign = Set.of("sf_campaign", "Designation Code");
+    envConfig.stripe.secretKey = "abc123";
     Environment env = new DefaultEnvironment() {
       @Override
       public EnvironmentConfig getConfig() {
