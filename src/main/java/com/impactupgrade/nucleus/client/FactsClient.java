@@ -339,7 +339,7 @@ public class FactsClient {
 //        public Boolean correspondence;
     public String relationship;
     public Boolean grandparent;
-//        public Boolean emergencyContact;
+    public Boolean emergencyContact;
 //        public Boolean reportCard;
 //        public Boolean pickUp;
 //        public Boolean parentsWeb;

@@ -24,10 +24,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * This is lazy cheating. For DS clients, allow Nucleus tasks like Manage Recurring Donation to work without a CRM.
+ * For DS clients, allow Nucleus tasks like Manage Recurring Donation to work without a CRM.
  * We could muddy the code to check for "Has a CRM?" all over. Or we can use this no-op flavor to simply drop all calls.
+ *
+ * Additionally, this allows clients to have a bare starting point for a CrmService, with the ability to override
+ * only what they actually need.
  */
-public class NoOpCrmService implements CrmService {
+public class BareCrmService implements CrmService {
 
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {

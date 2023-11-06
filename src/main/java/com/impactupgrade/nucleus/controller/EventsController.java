@@ -97,7 +97,7 @@ public class EventsController {
     participant.mobilePhone = from;
     participant.event = event;
     participant.responded = false;
-    participantDao.create(participant);
+    participantDao.insert(participant);
   }
 
   // TODO: Post-demo, allow multiple free-form responses, allow multiple responses for multi-select options,
@@ -127,7 +127,7 @@ public class EventsController {
           response.freeResponse = body;
         }
 
-        responseDao.create(response);
+        responseDao.insert(response);
 
         switch (interaction.get().type) {
           case MULTI, SELECT -> {
@@ -148,7 +148,7 @@ public class EventsController {
                 responseOption.response = response;
                 responseOption.interactionOption = option.get();
 
-                responseOptionDao.create(responseOption);
+                responseOptionDao.insert(responseOption);
               } else{
                 env.logJobWarn("Failed to find a ResponseOption with value: {}, interaction: {}", optionValue, interaction.get().id);
               }
