@@ -327,7 +327,14 @@ public class EnvironmentConfig implements Serializable {
   // SIS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Platform facts = new Platform();
+  public Facts facts = new Facts();
+  public static class Facts extends Platform {
+    // For CRMs, we sync parents first -- it helps ensure a cleaner household with the correct primary contacts.
+    // But for some purposes (ex: NSU), we need the student first. Allow the logic to be overriden!
+    public boolean syncStudentsBeforeParents = false;
+    // Sync emergency contacts, in addition to parents/grandparents?
+    public boolean syncEmergency = false;
+  }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // FORMS

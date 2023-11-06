@@ -47,7 +47,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Organization org = new Organization();
     org.setId(1);
     org.setNucleusApiKey(env.getConfig().apiKey);
-    organizationDao.create(org);
+    organizationDao.insert(org);
 
     Job job = new Job();
     job.org = org;
@@ -88,7 +88,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.jobName = "Test job";
     job.originatingPlatform = "IT test";
     job.startedAt = Instant.now();
-    jobDao.create(job);
+    jobDao.insert(job);
 
     CrmContact contact1 = crmContact("contact1", "+12345678901", "EN");
     CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");
@@ -130,7 +130,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Organization org = new Organization();
     org.setId(1);
     org.setNucleusApiKey(env.getConfig().apiKey);
-    organizationDao.create(org);
+    organizationDao.insert(org);
 
     Job job = new Job();
     job.org = org;
@@ -190,7 +190,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.jobName = "Test job";
     job.originatingPlatform = "IT test";
     job.startedAt = Instant.now();
-    jobDao.create(job);
+    jobDao.insert(job);
 
     List<CrmContact> contacts = new ArrayList<>();
     contacts.add(crmContact("contact1", "+12345678901", "EN"));
@@ -447,7 +447,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Organization org = new Organization();
     org.setId(1);
     org.setNucleusApiKey(env.getConfig().apiKey);
-    organizationDao.create(org);
+    organizationDao.insert(org);
 
     Job job = new Job();
     job.org = org;
@@ -507,7 +507,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.jobName = "Test job";
     job.originatingPlatform = "IT test";
     job.startedAt = Instant.now();
-    jobDao.create(job);
+    jobDao.insert(job);
 
     List<CrmContact> contacts = new ArrayList<>();
     contacts.add(crmContact("contact1", "+12345678901", "EN"));
@@ -689,7 +689,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Organization org = new Organization();
     org.setId(1);
     org.setNucleusApiKey(env.getConfig().apiKey);
-    organizationDao.create(org);
+    organizationDao.insert(org);
 
     Job job = new Job();
     job.org = org;
@@ -746,7 +746,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.jobName = "Test job";
     job.originatingPlatform = "IT test";
     job.startedAt = Instant.now();
-    jobDao.create(job);
+    jobDao.insert(job);
 
     JobProgress jobProgress = new JobProgress();
     jobProgress.job = job;
@@ -760,7 +760,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
       ((ObjectNode) jobProgress.payload).putArray("sentMessages");
     }
     ((ArrayNode) jobProgress.payload.findValue("sentMessages")).add(1);
-    jobProgressDao.create(jobProgress);
+    jobProgressDao.insert(jobProgress);
 
     List<CrmContact> contacts = new ArrayList<>();
     contacts.add(crmContact("contact1", "+12345678901", "EN"));
@@ -787,7 +787,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     Organization org = new Organization();
     org.setId(1);
     org.setNucleusApiKey(env.getConfig().apiKey);
-    organizationDao.create(org);
+    organizationDao.insert(org);
 
     Job job = new Job();
     job.org = org;
@@ -853,7 +853,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.jobName = "Test job";
     job.originatingPlatform = "IT test";
     job.startedAt = Instant.now();
-    jobDao.create(job);
+    jobDao.insert(job);
 
     CrmContact contact1 = crmContact("contact1", "+12345678901", null);
     CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");

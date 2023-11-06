@@ -26,10 +26,10 @@ public class HibernateDao<I extends Serializable, E> {
     this.sessionFactory = HibernateUtil.getSessionFactory();
   }
 
-  public E create(E entity) {
+  public E insert(E entity) {
     final Session session = openSession();
     Transaction transaction = session.beginTransaction();
-    session.saveOrUpdate(entity);
+    session.save(entity);
     transaction.commit();
     session.close();
     return entity;

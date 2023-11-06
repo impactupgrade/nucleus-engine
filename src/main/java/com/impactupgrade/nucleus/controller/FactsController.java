@@ -49,6 +49,7 @@ public class FactsController {
     Environment env = envFactory.init(request);
 
     EnvironmentConfig.CRMFieldDefinitions crmFieldDefinitions = env.primaryCrmService().getFieldDefinitions();
+    EnvironmentConfig.Facts factsConfig = env.getConfig().facts;
 
     FactsClient factsClient = new FactsClient(env);
 
@@ -98,14 +99,25 @@ public class FactsController {
           if ("Graduate".equalsIgnoreCase(student.school.status)) {
             continue;
           }
+          // TODO: Needed if they're withdrawn from the current year?.
+          if ("Withdrawn".equalsIgnoreCase(student.school.status)) {
+            continue;
+          }
+          // TODO: Seeing this for NSU's first school. True for CLHS too? Could be the source of lots of graduates
+          //  accidentally being imported? Although, how is this different than graduate/withdrawn?
+          if (Strings.isNullOrEmpty(student.school.status)) {
+            continue;
+          }
+
+          // TODO: Do not enable any of the above without adding status as a custom field to all families/contacts
+          //  and switches to turn each of these on/off.
+          //  NSU only needs current students, so it at least needs to be configurable.
+
+          // TODO: We'll likely also need a way to delete/archive previously current families that are no longer current in SIS.
 
           // confusingly, studentId appears to be the person, not personStudentId
           FactsClient.Person personStudent = persons.get(student.studentId);
           List<FactsClient.PersonFamily> studentFamilies = personToFamilies.get(personStudent.personId);
-
-//                    if (!personStudent.lastName.equals("Leighty")) {
-//                        continue;
-//                    }
 
           Map<Integer, String> familyIdToAddressStreet = new HashMap<>();
 
@@ -114,41 +126,43 @@ public class FactsController {
             List<Integer> studentFamilyIds = studentFamilies.stream().map(f -> f.familyId).toList();
 
             for (FactsClient.ParentStudent parent : studentToParents.get(student.studentId)) {
-              if (isParent(parent) || isGrandparent(parent)) {
-                FactsClient.Person personParent = persons.get(parent.parentID);
-                FactsClient.Address address = addresses.get(personParent.addressID);
-
-                // parents sometimes have multiple (duplicate) households, so we need to pick the one
-                // actually used by the student
-                List<FactsClient.PersonFamily> parentFamilies = personToFamilies.get(personParent.personId);
-                Optional<Integer> _householdId = parentFamilies.stream()
-                    .filter(f -> studentFamilyIds.contains(f.familyId))
-                    .map(f -> f.familyId)
-                    .findFirst();
-                if (_householdId.isEmpty()) {
-                  // TODO: There appear to be some persons that were originally listed as a parent,
-                  //  then the household was removed from the student, but the parent remains
-                  //  tied to them behind the scenes? Seemed to be mostly step parents?
-                  //  Ex: https://renweb1.renweb.com/renweb1/#/peoplemanagement/student/10126/student_dashboard?personFilterType=0&date=03-22-2023
-                  //  Family members with Bush as the last name, but Emily Bush
-                  //  https://renweb1.renweb.com/renweb1/#/peoplemanagement/parent/11134/parent_dashboard
-                  //  is returned in the getParentStudents call, but her family is no longer listed
-                  //  as a family of the students.
-                  //  Only 7 of these, so it's not a pervasive issue.
-                  log.info("skipping parent with a family not attached to the student");
-                  continue;
-                }
-                Integer householdId = _householdId.get();
-
-                if (address != null && isParent(parent)) {
-                  familyIdToAddressStreet.put(householdId, address.address1);
-                }
-
-                Map<String, String> accountData = toAccountData(student, parent, personParent, householdId, address, crmFieldDefinitions);
-                Map<String, String> parentContactData = toParentContactData(student, parent, personParent, address, crmFieldDefinitions);
-                parentContactData.putAll(accountData);
-                parentImports.add(parentContactData);
+              if (!isParent(parent) && !isGrandparent(parent) && (!factsConfig.syncEmergency || !isEmergency(parent))) {
+                continue;
               }
+
+              FactsClient.Person personParent = persons.get(parent.parentID);
+              FactsClient.Address address = addresses.get(personParent.addressID);
+
+              // parents sometimes have multiple (duplicate) households, so we need to pick the one
+              // actually used by the student
+              List<FactsClient.PersonFamily> parentFamilies = personToFamilies.get(personParent.personId);
+              Optional<Integer> _householdId = parentFamilies.stream()
+                  .filter(f -> studentFamilyIds.contains(f.familyId))
+                  .map(f -> f.familyId)
+                  .findFirst();
+              if (_householdId.isEmpty()) {
+                // TODO: There appear to be some persons that were originally listed as a parent,
+                //  then the household was removed from the student, but the parent remains
+                //  tied to them behind the scenes? Seemed to be mostly step parents?
+                //  Ex: https://renweb1.renweb.com/renweb1/#/peoplemanagement/student/10126/student_dashboard?personFilterType=0&date=03-22-2023
+                //  Family members with Bush as the last name, but Emily Bush
+                //  https://renweb1.renweb.com/renweb1/#/peoplemanagement/parent/11134/parent_dashboard
+                //  is returned in the getParentStudents call, but her family is no longer listed
+                //  as a family of the students.
+                //  Only 7 of these, so it's not a pervasive issue.
+                log.info("skipping parent with a family not attached to the student");
+                continue;
+              }
+              Integer householdId = _householdId.get();
+
+              if (address != null && isParent(parent)) {
+                familyIdToAddressStreet.put(householdId, address.address1);
+              }
+
+              Map<String, String> accountData = toAccountData(student, parent, personParent, householdId, address, crmFieldDefinitions);
+              Map<String, String> parentContactData = toParentContactData(student, parent, personParent, address, crmFieldDefinitions);
+              parentContactData.putAll(accountData);
+              parentImports.add(parentContactData);
             }
           }
 
@@ -178,12 +192,22 @@ public class FactsController {
 
         // We make two passes: 1) Import the parent data, since the parents are more likely to exist in the CRM already.
         // Helps keep the Households cleaner. 2) Then import the students.
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(parentImports);
+        // But that can be overriden! See note on EnvironmentConfig#Facts
+        List<Map<String, String>> firstPass, secondPass;
+        if (factsConfig.syncStudentsBeforeParents) {
+          firstPass = studentImports;
+          secondPass = parentImports;
+        } else {
+          firstPass = parentImports;
+          secondPass = studentImports;
+        }
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(firstPass);
         env.primaryCrmService().processBulkImport(importEvents);
-        importEvents = CrmImportEvent.fromGeneric(studentImports);
+        importEvents = CrmImportEvent.fromGeneric(secondPass);
         env.primaryCrmService().processBulkImport(importEvents);
 
-        insertRelationships(studentToParents, env, crmFieldDefinitions);
+        // TODO: need genericized for non-SFDC environments
+//        insertRelationships(studentToParents, env, crmFieldDefinitions);
 
         log.info("DONE");
       } catch (Exception e) {
@@ -288,11 +312,11 @@ public class FactsController {
     if (!Strings.isNullOrEmpty(address.address2)) {
       street += ", " + address.address2;
     }
-    addressData.put("Account Custom ShippingStreet", street);
-    addressData.put("Account Custom ShippingCity", address.city);
-    addressData.put("Account Custom ShippingState", address.state);
-    addressData.put("Account Custom ShippingPostalCode", address.zip);
-    addressData.put("Account Custom ShippingCountry", address.country);
+    addressData.put("Account Shipping Street", street);
+    addressData.put("Account Shipping City", address.city);
+    addressData.put("Account Shipping State", address.state);
+    addressData.put("Account Shipping Postal Code", address.zip);
+    addressData.put("Account Shipping Country", address.country);
     return addressData;
   }
 
@@ -378,5 +402,9 @@ public class FactsController {
 
   protected boolean isGrandparent(FactsClient.ParentStudent parentStudent) {
     return parentStudent != null && parentStudent.grandparent != null && parentStudent.grandparent;
+  }
+
+  protected boolean isEmergency(FactsClient.ParentStudent parentStudent) {
+    return parentStudent != null && parentStudent.emergencyContact != null && parentStudent.emergencyContact;
   }
 }

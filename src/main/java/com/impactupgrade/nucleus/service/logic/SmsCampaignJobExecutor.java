@@ -141,7 +141,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           jobProgress.targetId = targetId;
           jobProgress.payload = objectMapper.createObjectNode();
           jobProgress.job = job;
-          jobProgressDao.create(jobProgress);
+          jobProgressDao.insert(jobProgress);
 
           if (job.sequenceOrder == JobSequenceOrder.BEGINNING) {
             nextMessage = 1;
