@@ -13,7 +13,7 @@ public class CacheUtil {
 
   public static <K, V> LoadingCache<K, V> buildLoadingCache(Function<K, V> loader) {
     return CacheBuilder.newBuilder()
-        .refreshAfterWrite(15, TimeUnit.MINUTES)
+        .refreshAfterWrite(5, TimeUnit.MINUTES)
         .build(CacheLoader.asyncReloading(
             new CacheLoader<>() {
               @Override
@@ -27,7 +27,7 @@ public class CacheUtil {
 
   public static <K, V> Cache<K, V> buildManualCache() {
     return CacheBuilder.newBuilder()
-        .expireAfterWrite(15, TimeUnit.MINUTES)
+        .expireAfterWrite(5, TimeUnit.MINUTES)
         .build();
   }
 }
