@@ -407,4 +407,52 @@ public class FactsController {
   protected boolean isEmergency(FactsClient.ParentStudent parentStudent) {
     return parentStudent != null && parentStudent.emergencyContact != null && parentStudent.emergencyContact;
   }
+
+  @Path("/sync-staff")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response syncStaff(
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    EnvironmentConfig.CRMFieldDefinitions crmFieldDefinitions = env.primaryCrmService().getFieldDefinitions();
+    EnvironmentConfig.Facts factsConfig = env.getConfig().facts;
+
+    FactsClient factsClient = new FactsClient(env);
+
+    Runnable runnable = () -> {
+      try {
+        // NOTE: FACTS has absurdly restricted API limits, so fetching details as-needed within loops isn't
+        // possible. We instead fetch the whole database and hold it in memory...
+
+        List<FactsClient.Staff> allStaff = factsClient.getStaff(new FactsClient.Filter("active", FactsClient.Operator.EQUALS, "true"));
+        List<Map<String, String>> staffImports = new ArrayList<>();
+
+        for (FactsClient.Staff staff : allStaff) {
+          Map<String, String> staffData = toStaffData(staff, crmFieldDefinitions);
+          staffImports.add(staffData);
+        }
+
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(staffImports);
+        env.primaryCrmService().processBulkImport(importEvents);
+
+        log.info("DONE");
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    };
+    // Away from the main thread
+    new Thread(runnable).start();
+
+    return Response.ok().build();
+  }
+
+  protected Map<String, String> toStaffData(FactsClient.Staff staff,
+      EnvironmentConfig.CRMFieldDefinitions crmFieldDefinitions) {
+    Map<String, String> contactData = new HashMap<>();
+    contactData.put("Contact ExtRef " + crmFieldDefinitions.sisContactId, staff.staffId + "");
+    contactData.put("Contact Name", staff.name);
+    return contactData;
+  }
 }

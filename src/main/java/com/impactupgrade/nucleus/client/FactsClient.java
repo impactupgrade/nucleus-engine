@@ -74,11 +74,11 @@ public class FactsClient {
 
   //Parent-Student
   public List<ParentStudent> getParentStudents(List<Integer> personIds) throws Exception {
-    return getByIds("/people/ParentStudent", "studentID", personIds, ParentStudent.class);
+    return getByIds("/People/ParentStudent", "studentID", personIds, ParentStudent.class);
   }
 
   public List<ParentStudent> getParentStudents(Filter... filters) throws Exception {
-    return get("/people/ParentStudent", Arrays.asList(filters), ParentStudent.class);
+    return get("/People/ParentStudent", Arrays.asList(filters), ParentStudent.class);
   }
 
 //    public List<Person> getParents(Integer personId) throws Exception {
@@ -96,19 +96,23 @@ public class FactsClient {
 
   // Address
 //    public Address getAddress(Integer id) {
-//        return HttpClient.get(FACTS_API_URL + "/people/Address/" + id, headers(), Address.class);
+//        return HttpClient.get(FACTS_API_URL + "/People/Address/" + id, headers(), Address.class);
 //    }
 
   public List<PersonFamily> getPersonFamilies(Filter... filters) throws Exception {
-    return get("/people/PersonFamily", Arrays.asList(filters), PersonFamily.class);
+    return get("/People/PersonFamily", Arrays.asList(filters), PersonFamily.class);
   }
 
   public List<Address> getAddresses(List<Integer> ids) throws Exception {
-    return getByIds("/people/Address", "addressID", ids, Address.class);
+    return getByIds("/People/Address", "addressID", ids, Address.class);
   }
 
   public List<Address> getAddresses(Filter... filters) throws Exception {
-    return get("/people/Address", Arrays.asList(filters), Address.class);
+    return get("/People/Address", Arrays.asList(filters), Address.class);
+  }
+
+  public List<Staff> getStaff(Filter... filters) throws Exception {
+    return get("/People/Staff", Arrays.asList(filters), Staff.class);
   }
 
   // Utils
@@ -156,7 +160,7 @@ public class FactsClient {
   private String toParametersUrl(List<Filter> filters, String sortBy, Integer page, Integer pageSize) throws Exception {
     List<String> parameters = new ArrayList<>();
     if (CollectionUtils.isNotEmpty(filters)) {
-      parameters.add("filters=" + encodeFilters(filters));
+      parameters.add("Filters=" + encodeFilters(filters));
     }
     if (!Strings.isNullOrEmpty(sortBy)) {
       parameters.add("sorts=" + sortBy);
@@ -392,6 +396,24 @@ public class FactsClient {
           ", address2='" + address2 + '\'' +
           ", city='" + city + '\'' +
           ", state='" + state + '\'' +
+          '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Staff {
+    public Integer staffId;
+    public Boolean active;
+    public String name;
+    public String department;
+
+    @Override
+    public String toString() {
+      return "Staff{" +
+          "staffId=" + staffId +
+          ", active=" + active +
+          ", name='" + name + '\'' +
+          ", department='" + department + '\'' +
           '}';
     }
   }
