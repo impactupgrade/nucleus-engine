@@ -1,5 +1,8 @@
 package com.impactupgrade.nucleus.controller;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.event.Event;
 import com.impactupgrade.nucleus.entity.event.Interaction;
@@ -24,6 +27,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Path("/events")
 public class EventsController {
@@ -37,6 +41,8 @@ public class EventsController {
   protected final HibernateDao<Long, com.impactupgrade.nucleus.entity.event.Response> responseDao;
   protected final HibernateDao<Long, ResponseOption> responseOptionDao;
 
+  protected final LoadingCache<String, Optional<Event>> eventKeywordToEventCache;
+
   public EventsController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
 
@@ -46,6 +52,21 @@ public class EventsController {
     interactionOptionDao = new HibernateDao<>(InteractionOption.class);
     responseDao = new HibernateDao<>(com.impactupgrade.nucleus.entity.event.Response.class);
     responseOptionDao = new HibernateDao<>(ResponseOption.class);
+
+    eventKeywordToEventCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(5, TimeUnit.MINUTES)
+        .build(new CacheLoader<>() {
+          @Override
+          public Optional<Event> load(String keyword) {
+            System.out.println("LOADING");
+            return eventDao.getQueryResult(
+                "FROM Event WHERE lower(keyword) = lower(:keyword) AND status = 'ACTIVE'",
+                query -> {
+                  query.setParameter("keyword", keyword);
+                }
+            );
+          }
+        });
   }
 
   // TODO: Twilio specific
@@ -60,14 +81,13 @@ public class EventsController {
   ) throws Exception {
     String body = _body.trim();
     Environment env = envFactory.init(request);
-    Optional<Event> eventForOptIn = eventDao.getQueryResult(
-        "FROM Event WHERE lower(keyword) = lower(:keyword) AND status = 'ACTIVE'",
-        query -> {
-          query.setParameter("keyword", body);
-        }
-    );
-    if (eventForOptIn.isPresent()) {
-      createParticipant(from, eventForOptIn.get());
+
+    env.logJobInfo("from={} body={}", from, body);
+
+    Optional<Event> activeEventByKeyword = eventKeywordToEventCache.get(body);
+
+    if (activeEventByKeyword != null && activeEventByKeyword.isPresent()) {
+      createParticipant(from, activeEventByKeyword.get());
 
       Body responseBody = new Body.Builder("Thank you for joining!").build();
       Message responseSms = new Message.Builder().body(responseBody).build();
@@ -103,67 +123,74 @@ public class EventsController {
   // TODO: Post-demo, allow multiple free-form responses, allow multiple responses for multi-select options,
   //  but disallow multiple responses for all others.
   private void createResponse(String from, String body, Environment env) {
+    // TODO: Cache, with a decently long TTL?
     Optional<Participant> participant = participantDao.getQueryResult(
         "FROM Participant p JOIN FETCH p.event e WHERE p.mobilePhone = :mobilePhone AND e.status = 'ACTIVE'",
         query -> {
           query.setParameter("mobilePhone", from);
         }
     );
-    if (participant.isPresent()) {
-      Optional<Interaction> interaction = interactionDao.getQueryResult(
-          "FROM Interaction WHERE event.id = :eventId AND event.status = 'ACTIVE' AND status = 'ACTIVE'",
-          query -> {
-            query.setParameter("eventId", participant.get().event.id);
-          }
-      );
+    if (participant.isEmpty()) {
+      env.logJobWarn("participant {} not opted into an event; dropping the response ({})", from, body);
+      return;
+    }
 
-      if (interaction.isPresent()) {
-        com.impactupgrade.nucleus.entity.event.Response response = new com.impactupgrade.nucleus.entity.event.Response();
-        response.id = UUID.randomUUID();
-        response.participant = participant.get();
-        response.interaction = interaction.get();
-
-        if (interaction.get().type == InteractionType.FREE) {
-          response.freeResponse = body;
+    // TODO: Cache, with a really short TTL (3 sec?)
+    Optional<Interaction> interaction = interactionDao.getQueryResult(
+        "FROM Interaction WHERE event.id = :eventId AND event.status = 'ACTIVE' AND status = 'ACTIVE'",
+        query -> {
+          query.setParameter("eventId", participant.get().event.id);
         }
+    );
 
-        responseDao.insert(response);
+    if (interaction.isEmpty()) {
+      env.logJobWarn("participant {} sent response, but no active interaction; dropping the response ({})", from, body);
+      return;
+    }
 
-        switch (interaction.get().type) {
-          case MULTI, SELECT -> {
-            //TODO: might need to expand this to be more robust, currently only separating by commas and whitespace chars
-            String[] optionValues = body.trim().split("[,\\s]+");
-            //TODO will likely need some input validation/cleaning for the way participants will be sending in their selections, "1" vs "One" etc.
-            for (String optionValue : optionValues) {
-              Optional<InteractionOption> option = interactionOptionDao.getQueryResult(
-                  "FROM InteractionOption io WHERE UPPER(value) = UPPER(:optionValue) AND io.interaction.id = :interactionId",
-                  query -> {
-                    query.setParameter("optionValue", optionValue);
-                    query.setParameter("interactionId", interaction.get().id);
-                  }
-              );
-              if (option.isPresent()) {
-                ResponseOption responseOption = new ResponseOption();
-                responseOption.id = UUID.randomUUID();
-                responseOption.response = response;
-                responseOption.interactionOption = option.get();
+    com.impactupgrade.nucleus.entity.event.Response response = new com.impactupgrade.nucleus.entity.event.Response();
+    response.id = UUID.randomUUID();
+    response.participant = participant.get();
+    response.interaction = interaction.get();
 
-                responseOptionDao.insert(responseOption);
-              } else{
-                env.logJobWarn("Failed to find a ResponseOption with value: {}, interaction: {}", optionValue, interaction.get().id);
+    if (interaction.get().type == InteractionType.FREE) {
+      response.freeResponse = body;
+    }
+
+    responseDao.insert(response);
+
+    switch (interaction.get().type) {
+      case MULTI, SELECT -> {
+        String[] optionValues = body.trim().split("[,\\s]+");
+
+        for (String optionValue : optionValues) {
+          // TODO: Cache with a LONG TTL!
+          Optional<InteractionOption> option = interactionOptionDao.getQueryResult(
+              "FROM InteractionOption io WHERE UPPER(io.value) = UPPER(:optionValue) AND io.interaction.id = :interactionId",
+              query -> {
+                query.setParameter("optionValue", optionValue);
+                query.setParameter("interactionId", interaction.get().id);
               }
-            }
+          );
+          if (option.isEmpty()) {
+            env.logJobWarn("Failed to find a ResponseOption with value: {}, interaction: {}", optionValue, interaction.get().id);
+            continue;
           }
-        }
 
-        // update the Participant to "responded", if not set already
-        if (participant.get().responded == null || !participant.get().responded) {
-          participant.get().responded = true;
-          participantDao.update(participant.get());
+          ResponseOption responseOption = new ResponseOption();
+          responseOption.id = UUID.randomUUID();
+          responseOption.response = response;
+          responseOption.interactionOption = option.get();
+
+          responseOptionDao.insert(responseOption);
         }
       }
+    }
 
+    // update the Participant to "responded", if not set already
+    if (participant.get().responded == null || !participant.get().responded) {
+      participant.get().responded = true;
+      participantDao.update(participant.get());
     }
   }
-
 }
