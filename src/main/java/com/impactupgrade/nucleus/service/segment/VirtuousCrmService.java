@@ -46,8 +46,6 @@ public class VirtuousCrmService implements CrmService {
   private static final String DATE_FORMAT = "MM/dd/yyyy";
   private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
-  private static final Integer GIFT_QUERY_DATE_RANGE = 180;
-
   private VirtuousClient virtuousClient;
   protected Environment env;
 
@@ -257,15 +255,15 @@ public class VirtuousCrmService implements CrmService {
       }
     }
 
-    VirtuousClient.ContactQuery contactQuery = contactQuery(conditions);
-    List<CrmContact> contacts = virtuousClient.queryContacts(contactQuery).stream().map(this::asCrmContact).collect(Collectors.toList());
+    VirtuousClient.Query query = contactQuery(conditions);
+    List<CrmContact> contacts = virtuousClient.queryContacts(query).stream().map(this::asCrmContact).collect(Collectors.toList());
     return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
   }
 
-  private VirtuousClient.ContactQuery contactQuery(List<VirtuousClient.QueryCondition> queryConditions) {
+  private VirtuousClient.Query contactQuery(List<VirtuousClient.QueryCondition> queryConditions) {
     VirtuousClient.QueryConditionGroup group = new VirtuousClient.QueryConditionGroup();
     group.conditions = queryConditions;
-    VirtuousClient.ContactQuery query = new VirtuousClient.ContactQuery();
+    VirtuousClient.Query query = new VirtuousClient.Query();
     //query.queryLocation = null; // TODO: decide if we need this param
     query.groups = List.of(group);
     query.sortBy = "Last Name";
@@ -571,65 +569,30 @@ public class VirtuousCrmService implements CrmService {
 
   @Override
   public double getDonationsTotal(String filter) throws Exception {
-    Calendar lastDate = null;
-    Double donationTotal = 0.0;
-    Calendar endDate = Calendar.getInstance();
-    endDate.add(Calendar.DATE, 1);
+    List<VirtuousClient.Gift> campaignGifts = getCampaignGifts(filter);
+    if (CollectionUtils.isEmpty(campaignGifts)) {
+      return 0.0;
+    }
+    return campaignGifts.stream()
+        .mapToDouble(gift -> Double.parseDouble(gift.amount))
+        .sum();
+  }
 
-    //Campaign Filter Condition
+  private List<VirtuousClient.Gift> getCampaignGifts(String campaign) {
     VirtuousClient.QueryCondition campaignCondition = new VirtuousClient.QueryCondition();
     campaignCondition.parameter = "Project Name";
     campaignCondition.operator = "Is";
-    campaignCondition.values.add(filter);
-    System.out.println( "Condition to string: \n " +campaignCondition.toString());
+    campaignCondition.values.add(campaign);
+    System.out.println("Condition to string: \n " + campaignCondition);
 
-    do {
-      List<VirtuousClient.Gift> gifts;
-      if (lastDate == null){
-        // first time querying
-        VirtuousClient.GiftQuery giftQuery = new VirtuousClient.GiftQuery();
-        VirtuousClient.QueryConditionGroup queryConditionGroup = new VirtuousClient.QueryConditionGroup();
-        queryConditionGroup.conditions.add(campaignCondition);
-        giftQuery.groups.add(queryConditionGroup);
+    VirtuousClient.QueryConditionGroup queryConditionGroup = new VirtuousClient.QueryConditionGroup();
+    queryConditionGroup.conditions.add(campaignCondition);
 
-        giftQuery.sortBy = "Date";
-        giftQuery.descending = false;
-        System.out.println("Gift Query to String: \n " + giftQuery.toString());
-        gifts = virtuousClient.queryGifts(giftQuery, false);
-      }else{
-        //Get donations after the last date queried + the next month
-        //TODO tweak this for efficiency,?
-        VirtuousClient.QueryCondition dateCondition = new VirtuousClient.QueryCondition();
-        dateCondition.parameter = "Gift Date";
-        dateCondition.operator = "Between";
-        lastDate.add(Calendar.DATE, 1);
-        dateCondition.value = getDateString(lastDate);
-        //Could make this a bigger range maybe 2-6 months at a time, queryGifts returns a max of 1k gifts, Axis currently has 21K gifts in Virtuous, the fewest potential times this would loop is 21 times, that is 21 API calls minimum
-        lastDate.add(Calendar.DATE, GIFT_QUERY_DATE_RANGE);
-        dateCondition.secondaryValue = getDateString(lastDate);
+    VirtuousClient.Query giftQuery = new VirtuousClient.Query();
+    giftQuery.groups.add(queryConditionGroup);
+    System.out.println("Gift Query to String: \n " + giftQuery);
 
-        VirtuousClient.GiftQuery giftQuery = new VirtuousClient.GiftQuery();
-        VirtuousClient.QueryConditionGroup queryConditionGroup = new VirtuousClient.QueryConditionGroup();
-        queryConditionGroup.conditions.add(campaignCondition);
-        queryConditionGroup.conditions.add(dateCondition);
-
-        giftQuery.groups.add(queryConditionGroup);
-
-        giftQuery.sortBy = "Date";
-        giftQuery.descending = false;
-        System.out.println("Gift Query to String: \n " + giftQuery.toString());
-        gifts = virtuousClient.queryGifts(giftQuery, false);
-      }
-
-      for (VirtuousClient.Gift gift: gifts){
-        donationTotal += Double.parseDouble(gift.amount);
-        lastDate = getDate(gift.giftDate);
-      }
-
-    } while (lastDate == null || lastDate.before(endDate));
-
-
-    return donationTotal;
+    return virtuousClient.queryGifts(giftQuery, false);
   }
 
   @Override
@@ -746,19 +709,6 @@ public class VirtuousCrmService implements CrmService {
     return null;
   }
 
-  private String getDateString(Calendar date){
-    if (date != null) {
-      try {
-        SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
-        String dateString = dateFormat.format(date.getTime());
-        return dateString;
-      } catch (Exception e) {
-        //TODO: Test
-        env.logJobError("Failed to format calendar to string!");
-      }
-    }
-    return null;
-  }
   private VirtuousClient.Contact asContact(CrmContact crmContact) {
     if (crmContact == null) {
       return null;
