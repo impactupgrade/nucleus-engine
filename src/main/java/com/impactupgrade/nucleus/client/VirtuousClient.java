@@ -27,10 +27,9 @@ public class VirtuousClient extends OAuthClient {
   private static final String VIRTUOUS_API_URL = "https://api.virtuoussoftware.com/api";
   private static final int DEFAULT_OFFSET = 0;
   private static final int DEFAULT_LIMIT = 100;
-
   private static final int MAXIMUM_LIMIT = 1000;
 
-  private String apiKey;
+  private final String apiKey;
 
   public VirtuousClient(Environment env) {
     super("virtuous", env);
@@ -64,6 +63,22 @@ public class VirtuousClient extends OAuthClient {
     return get(contactUrl, headers(), Contact.class);
   }
 
+  public List<Contact> queryContacts(Query query) {
+    return queryContacts(query, true);
+  }
+
+  public List<Contact> queryContacts(Query query, boolean fullContact) {
+    String path = "/Contact/Query";
+    if (fullContact) {
+      path += "/FullContact";
+    }
+    ContactQueryResponse response = post(VIRTUOUS_API_URL + path + "?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT, query, APPLICATION_JSON, headers(), ContactQueryResponse.class);
+    if (response == null) {
+      return Collections.emptyList();
+    }
+    return response.contacts;
+  }
+
   public List<Contact> getContactsModifiedAfter(Calendar modifiedAfter) {
     QueryCondition queryCondition = new QueryCondition();
     queryCondition.parameter = "Last Modified Date";
@@ -73,7 +88,7 @@ public class VirtuousClient extends OAuthClient {
     QueryConditionGroup group = new QueryConditionGroup();
     group.conditions = List.of(queryCondition);
 
-    ContactQuery query = new ContactQuery();
+    Query query = new Query();
     //query.queryLocation = null; // TODO: decide if we need this param
     query.groups = List.of(group);
     query.sortBy = "Last Name";
@@ -102,11 +117,10 @@ public class VirtuousClient extends OAuthClient {
     LocalDateTime then = LocalDateTime.ofInstant(calendar.toInstant(), ZoneId.of("UTC"));
     long daysAgo = Duration.between(then, LocalDateTime.now()).toDays();
     String lastModifiedDate;
-    if (daysAgo < 1) {
+    if (daysAgo == 0) {
       lastModifiedDate = "Today";
-      // TODO: daysAgo >= 1 is always true. What was intended here?
-    } else if (daysAgo >= 1) {
-      lastModifiedDate = "Yesterday";
+    } else if (daysAgo >= 1 && daysAgo < 30) {
+      lastModifiedDate = "Yesterday"; // TODO: check if there is more accurate String (last week?)
     } else if (daysAgo >= 30 && daysAgo < 60) {
       lastModifiedDate = "30 Days Ago";
     } else if (daysAgo >= 60 && daysAgo < 90) {
@@ -136,6 +150,7 @@ public class VirtuousClient extends OAuthClient {
     env.logJobInfo("Deleted contact: {}", contactId);
   }
 
+  // Contact Method
   public ContactMethod createContactMethod(ContactMethod contactMethod) {
     contactMethod = post(VIRTUOUS_API_URL + "/ContactMethod", contactMethod, APPLICATION_JSON, headers(), ContactMethod.class);
     if (contactMethod != null) {
@@ -157,35 +172,24 @@ public class VirtuousClient extends OAuthClient {
     env.logJobInfo("Deleted contactMethod: {}", contactMethod.id);
   }
 
-  public List<Contact> queryContacts(ContactQuery query) {
-    ContactQueryResponse response = post(VIRTUOUS_API_URL + "/Contact/Query/FullContact?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT, query, APPLICATION_JSON, headers(), ContactQueryResponse.class);
-    if (response == null) {
-      return Collections.emptyList();
-    }
-    return response.contacts;
-  }
-
   public List<ContactIndividualShort> getContactIndividuals(String searchString) {
-    return getContactIndividuals(searchString, DEFAULT_OFFSET, DEFAULT_LIMIT);
-  }
-
-  public List<ContactIndividualShort> getContactIndividuals(String searchString, int offset, int limit) {
     ContactsSearchCriteria criteria = new ContactsSearchCriteria();
     criteria.search = searchString;
-    ContactSearchResponse response = post(VIRTUOUS_API_URL + "/Contact/Search?skip=" + offset + "&take=" + limit, criteria, APPLICATION_JSON, headers(), ContactSearchResponse.class);
+    ContactSearchResponse response = post(VIRTUOUS_API_URL + "/Contact/Search?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT, criteria, APPLICATION_JSON, headers(), ContactSearchResponse.class);
     if (response == null) {
       return Collections.emptyList();
     }
     return response.contactIndividualShorts;
   }
 
-  public Gift getGiftById(int Id){
+  // Gift
+  public Gift getGiftById(int Id) {
     String giftUrl = VIRTUOUS_API_URL + "/Gift/" + Id;
     return getGift(giftUrl);
   }
 
   public Gifts getGiftsByContact(int contactId) {
-    String giftUrl = VIRTUOUS_API_URL + "/Gift/ByContact/" + contactId + "?take=1000";
+    String giftUrl = VIRTUOUS_API_URL + "/Gift/ByContact/" + contactId + "?take=" + MAXIMUM_LIMIT;
     return get(giftUrl, headers(), Gifts.class);
   }
 
@@ -195,16 +199,25 @@ public class VirtuousClient extends OAuthClient {
    * @param fullGift Determines if the query returns the full gift details, more efficient to not do so
    * @return
    */
-  public List<Gift> queryGifts(GiftQuery query, Boolean fullGift) {
+  public List<Gift> queryGifts(Query query, boolean fullGift) {
     String path = "/Gift/Query";
     if (fullGift) {
       path += "/FullGift";
     }
-    GiftQueryResponse response = post(VIRTUOUS_API_URL + path + "?skip=" + DEFAULT_OFFSET + "&take=" + MAXIMUM_LIMIT, query, APPLICATION_JSON, headers(), GiftQueryResponse.class);
-    if (response == null) {
-      return Collections.emptyList();
+    return getGiftQueryResults(VIRTUOUS_API_URL + path, query, 0, DEFAULT_LIMIT);
+  }
+
+  private List<Gift> getGiftQueryResults(String url, Query query, int page, int limit) {
+    int offset = page * DEFAULT_LIMIT;
+    List<Gift> queryResults = new ArrayList<>();
+    GiftQueryResponse response = post(url + "?skip=" + offset + "&take=" + limit, query, APPLICATION_JSON, headers(), GiftQueryResponse.class);
+    if (response != null) {
+      queryResults.addAll(response.gifts);
+      if (response.gifts.size() == limit) {
+        queryResults.addAll(getGiftQueryResults(url, query, page + 1, limit));
+      }
     }
-    return response.gifts;
+    return queryResults;
   }
 
   public Gift getGiftByTransactionSourceAndId(String transactionSource, String transactionId) {
@@ -631,35 +644,21 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class ContactQuery {
+  public static class Query {
     public List<QueryConditionGroup> groups = new ArrayList<>();
     public String sortBy;
     public Boolean descending;
 
     @Override
     public String toString() {
-      return "ContactQuery{" +
+      return "Query{" +
           "groups=" + groups +
           ", sortBy='" + sortBy + '\'' +
           ", descending=" + descending +
           '}';
     }
   }
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class GiftQuery {
-    public List<QueryConditionGroup> groups = new ArrayList<>();
-    public String sortBy;
-    public Boolean descending;
 
-    @Override
-    public String toString() {
-      return "GiftQuery{" +
-          "groups=" + groups +
-          ", sortBy='" + sortBy + '\'' +
-          ", descending=" + descending +
-          '}';
-    }
-  }
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class QueryCondition {
     public String parameter;
@@ -704,6 +703,7 @@ public class VirtuousClient extends OAuthClient {
           '}';
     }
   }
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class GiftQueryResponse {
     @JsonProperty("list")
@@ -717,6 +717,7 @@ public class VirtuousClient extends OAuthClient {
           '}';
     }
   }
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class ReversingTransaction {
     public String giftDate;
