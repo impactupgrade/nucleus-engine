@@ -58,7 +58,6 @@ public class EventsController {
         .build(new CacheLoader<>() {
           @Override
           public Optional<Event> load(String keyword) {
-            System.out.println("LOADING");
             return eventDao.getQueryResult(
                 "FROM Event WHERE lower(keyword) = lower(:keyword) AND status = 'ACTIVE'",
                 query -> {
