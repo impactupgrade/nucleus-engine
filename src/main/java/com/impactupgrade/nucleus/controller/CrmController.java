@@ -69,7 +69,7 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContact(
-      @QueryParam("id") String id,
+      @QueryParam("keyword") String keywords,
       @QueryParam("email") String email,
       @QueryParam("phone") String phone,
       @Context HttpServletRequest request
@@ -77,16 +77,16 @@ public class CrmController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    id = noWhitespace(id);
+    keywords = trim(keywords);
     email = noWhitespace(email);
     phone = trim(phone);
 
     CrmService crmService = env.primaryCrmService();
 
     Optional<CrmContact> contact = Optional.empty();
-    if (!Strings.isNullOrEmpty(id)) {
-      env.logJobInfo("searching id={}", id);
-      contact = crmService.getContactById(id);
+    if (!Strings.isNullOrEmpty(keywords)) {
+      env.logJobInfo("searching keyword={}", keywords);
+      contact = crmService.searchContacts(ContactSearch.byKeywords(keywords)).getSingleResult();
     } else if (!Strings.isNullOrEmpty(email)) {
       env.logJobInfo("searching email={}", email);
       contact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
