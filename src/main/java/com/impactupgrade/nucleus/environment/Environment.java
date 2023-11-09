@@ -33,6 +33,7 @@ import com.impactupgrade.nucleus.service.segment.BareCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -72,8 +73,8 @@ public class Environment {
   // However, many (most?) frameworks don't allow aspects of request to be accessed over and over. Due to the mechanics,
   // some only allow it to be streamed once.
   protected String uri = null;
-  protected final Map<String, String> headers = new HashMap<>();
-  protected final Map<String, String> queryParams = new HashMap<>();
+  protected final CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
+  protected final CaseInsensitiveMap<String, String> queryParams = new CaseInsensitiveMap<>();
   protected MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
 
   // Whenever possible, we focus on being configuration-driven using one, large JSON file.

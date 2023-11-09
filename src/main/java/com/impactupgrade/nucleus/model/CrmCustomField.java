@@ -1,7 +1,7 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
-import com.stripe.util.CaseInsensitiveMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +29,7 @@ public class CrmCustomField {
 
     public static CrmCustomField fromGeneric(Map<String, String> _data) {
         // Be case-insensitive, for sources that aren't always consistent.
-        CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
+        CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
 
         CrmCustomField crmCustomField = new CrmCustomField();
         crmCustomField.objectName = data.get("Object");
