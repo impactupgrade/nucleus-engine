@@ -36,7 +36,6 @@ import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -1541,7 +1540,7 @@ public class SfdcCrmService implements CrmService {
     env.logJobInfo("bulk import complete");
   }
 
-  protected SObject updateBulkImportAccount(SObject existingAccount, CrmAccount crmAccount, CaseInsensitiveMap<String, String> raw,
+  protected SObject updateBulkImportAccount(SObject existingAccount, CrmAccount crmAccount, Map<String, String> raw,
       String columnPrefix, boolean hasAccountColumns) throws InterruptedException, ExecutionException {
     // TODO: Odd situation. When insertBulkImportContact creates a contact, it's also creating an Account, sets the
     //  AccountId on the Contact and then adds the Contact to existingContactsByEmail so we can reuse it. But when
@@ -1568,7 +1567,7 @@ public class SfdcCrmService implements CrmService {
 
   protected SObject insertBulkImportAccount(
       CrmAccount crmAccount,
-      CaseInsensitiveMap<String, String> raw,
+      Map<String, String> raw,
       Optional<String> accountExtRefFieldName,
       Map<String, SObject> existingAccountsByExtRef,
       String columnPrefix,
@@ -1734,7 +1733,7 @@ public class SfdcCrmService implements CrmService {
     setBulkImportCustomFields(contact, existingContact, "Contact", importEvent.raw);
   }
 
-  protected void setBulkImportAccountFields(SObject account, SObject existingAccount, CrmAccount crmAccount, String columnPrefix, CaseInsensitiveMap<String, String> raw)
+  protected void setBulkImportAccountFields(SObject account, SObject existingAccount, CrmAccount crmAccount, String columnPrefix, Map<String, String> raw)
       throws ExecutionException {
     if (!Strings.isNullOrEmpty(crmAccount.recordTypeId)) {
       account.setField("RecordTypeId", crmAccount.recordTypeId);
@@ -1969,7 +1968,7 @@ public class SfdcCrmService implements CrmService {
     setBulkImportCustomFields(opportunity, existingOpportunity, "Opportunity", importEvent.raw);
   }
 
-  protected void setBulkImportCustomFields(SObject sObject, SObject existingSObject, String columnPrefix, CaseInsensitiveMap<String, String> raw) {
+  protected void setBulkImportCustomFields(SObject sObject, SObject existingSObject, String columnPrefix, Map<String, String> raw) {
     String prefix = columnPrefix + " Custom ";
 
     raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(prefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {

@@ -8,7 +8,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
-import com.stripe.util.CaseInsensitiveMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,6 +16,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,8 +29,11 @@ import static com.impactupgrade.nucleus.util.Utils.fullNameToFirstLast;
 
 public class CrmImportEvent {
 
-  // Be case-insensitive, for sources that aren't always consistent.
-  public CaseInsensitiveMap<String> raw = new CaseInsensitiveMap<>();
+  // TODO: It originally made sense to use CaseInsensitiveMap here. But, we run into issues since most
+  //  impls of CaseInsensitiveMap automatically lowercase all keys and values. That wrecks havoc for CRMs like SFDC,
+  //  where the API is unfortunately case sensitive. For now, keep the originals and require column heads to be
+  //  case sensitive
+  public Map<String, String> raw = new HashMap<>();
 
   // For updates only, used for retrieval.
   public String contactId;
@@ -124,8 +128,12 @@ public class CrmImportEvent {
   }
 
   public static CrmImportEvent fromGeneric(Map<String, String> _data) {
-    // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
+    // TODO: It originally made sense to use CaseInsensitiveMap here. But, we run into issues since most
+    //  impls of CaseInsensitiveMap automatically lowercase all keys and values. That wrecks havoc for CRMs like SFDC,
+    //  where the API is unfortunately case sensitive. For now, keep the originals and require column heads to be
+    //  case sensitive
+//    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
+    Map<String, String> data = _data;
 
     CrmImportEvent importEvent = new CrmImportEvent();
     importEvent.raw = data;
@@ -352,7 +360,7 @@ public class CrmImportEvent {
 
   public static CrmImportEvent fromFBFundraiser(Map<String, String> _data) {
     // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
+    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
 
 //  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
@@ -457,7 +465,7 @@ public class CrmImportEvent {
     // Campaign Member Status
 
     // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String> data = CaseInsensitiveMap.of(_data);
+    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
 
     // TODO: Other types? Skipping gift-in-kind
     if (data.get("Donation Type").equalsIgnoreCase("Donation") || data.get("Donation Type").equalsIgnoreCase("Auction")) {
@@ -551,7 +559,7 @@ public class CrmImportEvent {
   }
 
   // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
-  private static Calendar getDate(CaseInsensitiveMap<String> data, String columnName) {
+  private static Calendar getDate(Map<String, String> data, String columnName) {
     Calendar c = null;
 
     try {
@@ -585,7 +593,7 @@ public class CrmImportEvent {
         .replace("mm-dd-yyyy", "").replace("yyyy-mm-dd", "").trim();
   }
 
-  private static BigDecimal getAmount(CaseInsensitiveMap<String> data, String columnName) {
+  private static BigDecimal getAmount(Map<String, String> data, String columnName) {
     if (!data.containsKey(columnName)) {
       return null;
     }
