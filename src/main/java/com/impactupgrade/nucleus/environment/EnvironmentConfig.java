@@ -102,6 +102,7 @@ public class EnvironmentConfig implements Serializable {
     public String smsOptIn = "";
     public String smsOptOut = "";
 
+    public String accountEmail = "";
     public String contactLanguage = "";
 
     public String sisContactId = "";

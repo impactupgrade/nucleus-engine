@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
@@ -227,6 +228,11 @@ public class VirtuousCrmService implements CrmService {
       }
     }
     return toDelete;
+  }
+
+  @Override
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+    return Collections.emptyList();
   }
 
   @Override

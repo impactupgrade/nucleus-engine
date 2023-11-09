@@ -9,12 +9,13 @@ import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmAccount;
-import com.impactupgrade.nucleus.model.CrmAddress;
+import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -46,6 +47,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -63,10 +65,6 @@ public class CrmController {
     this.envFactory = envFactory;
   }
 
-  /**
-   * Retrieves a contact from the primary CRM using a variety of optional parameters. For use in external integrations,
-   * like Twilio Studio's retrieval of the CRM's Contact ID by phone number.
-   */
   @Path("/contact")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -108,97 +106,121 @@ public class CrmController {
     }
   }
 
-  @Path("/create/contact-and-account")
+  @Path("/contact")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response addContactAndAccount(
-      @FormParam("contact_owner_email") String contactOwnerEmail,
-      @FormParam("first_name") String firstName,
-      @FormParam("last_name") String lastName,
-      @FormParam("email_address") String emailAddress,
-      @FormParam("pref_phone") String prefPhone,
-      @FormParam("h_phone") String hPhone,
-      @FormParam("w_phone") String wPhone,
-      @FormParam("m_phone") String mPhone,
-      @FormParam("contact_line_one") String contactLineOne,
-      @FormParam("contact_line_two") String contactLineTwo,
-      @FormParam("contact_city") String contactCity,
-      @FormParam("contact_state") String contactState,
-      @FormParam("contact_zip") String contactZip,
-      @FormParam("contact_country") String contactCountry,
+  public Response upsertContact(
       @FormParam("account_owner_email") String accountOwnerEmail,
+      @FormParam("account_id") String accountId,
       @FormParam("account_name") String accountName,
       @FormParam("account_email") String accountEmail,
       @FormParam("account_phone") String accountPhone,
       @FormParam("account_website") String accountWebsite,
       @FormParam("account_type") String accountType,
-      @FormParam("account_line_one") String accountLineOne,
-      @FormParam("account_line_two") String accountLineTwo,
+      @FormParam("account_street") String accountStreet,
+      @FormParam("account_street_2") String accountStreet2,
       @FormParam("account_city") String accountCity,
       @FormParam("account_state") String accountState,
       @FormParam("account_zip") String accountZip,
       @FormParam("account_country") String accountCountry,
+      @FormParam("contact_owner_email") String contactOwnerEmail,
+      @FormParam("contact_first_name") String contactFirstName,
+      @FormParam("contact_last_name") String contactLastName,
+      @FormParam("contact_email") String contactEmail,
+      @FormParam("contact_phone_pref") String contactPhonePref,
+      @FormParam("contact_home_phone") String contactHomePhone,
+      @FormParam("contact_work_phone") String contactWorkPhone,
+      @FormParam("contact_mobile_phone") String contactMobilePhone,
+      @FormParam("contact_street") String contactStreet,
+      @FormParam("contact_street_2") String contactStreet2,
+      @FormParam("contact_city") String contactCity,
+      @FormParam("contact_state") String contactState,
+      @FormParam("contact_zip") String contactZip,
+      @FormParam("contact_country") String contactCountry,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    CrmService crmService = env.primaryCrmService();
-
     try {
-      //ACCOUNT
-      CrmAccount newAccount = new CrmAccount();
+      CrmService crmService = env.primaryCrmService();
 
-      if (crmService.getUserByEmail(accountOwnerEmail).isPresent()){
-        newAccount.ownerId = crmService.getUserByEmail(accountOwnerEmail).get().id();
+      // TODO: update support
+
+      if (Strings.isNullOrEmpty(accountId)) {
+        CrmAccount newAccount = new CrmAccount();
+
+        if (crmService.getUserByEmail(accountOwnerEmail).isPresent()) {
+          newAccount.ownerId = crmService.getUserByEmail(accountOwnerEmail).get().id();
+        }
+        newAccount.name = accountName;
+        newAccount.email = accountPhone;
+        newAccount.phone = accountPhone;
+        newAccount.website = accountWebsite;
+        if (!Strings.isNullOrEmpty(accountType)) {
+          newAccount.recordType = EnvironmentConfig.AccountType.valueOf(accountType.toUpperCase(Locale.ROOT));
+        }
+        newAccount.billingAddress.street = accountStreet;
+        if (!Strings.isNullOrEmpty(accountStreet2)) {
+          newAccount.billingAddress.street = newAccount.billingAddress.street + "," + accountStreet2;
+        }
+        newAccount.billingAddress.city = accountCity;
+        newAccount.billingAddress.state = accountState;
+        newAccount.billingAddress.postalCode = accountZip;
+        newAccount.billingAddress.country = accountCountry;
+
+        accountId = crmService.insertAccount(newAccount);
       }
-      newAccount.name = accountName;
-      //TODO: do we have an account email concept/way to add that?
-      newAccount.phone = accountPhone;
-      newAccount.website = accountWebsite;
-      newAccount.type = accountType;
-      CrmAddress accountAddress = new CrmAddress();
-      accountAddress.street = accountLineOne;
-      if (!Strings.isNullOrEmpty(accountLineTwo)){
-        accountAddress.street = accountAddress.street + "," + accountLineTwo;
-      }
-      accountAddress.city = accountCity;
-      accountAddress.state = accountState;
-      accountAddress.postalCode = accountZip;
-      accountAddress.country = accountCountry;
-      newAccount.billingAddress = accountAddress;
 
-      newAccount.id = crmService.insertAccount(newAccount);
-
-      //CONTACT
       CrmContact newContact = new CrmContact();
 
       if (crmService.getUserByEmail(contactOwnerEmail).isPresent()){
         newContact.ownerId = crmService.getUserByEmail(contactOwnerEmail).get().id();
       }
-      newContact.firstName = firstName;
-      newContact.lastName = lastName;
-      newContact.email = emailAddress;
-      newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(prefPhone);
-      newContact.homePhone = hPhone;
-      newContact.mobilePhone = mPhone;
-      newContact.workPhone = wPhone;
-      newContact.account = newAccount;
-      CrmAddress contactAddress = new CrmAddress();
-      contactAddress.street = contactLineOne;
-      if (!Strings.isNullOrEmpty(contactLineTwo)){
-        contactAddress.street = contactAddress.street + "," + contactLineTwo;
+      newContact.firstName = contactFirstName;
+      newContact.lastName = contactLastName;
+      newContact.email = contactEmail;
+      newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(contactPhonePref);
+      newContact.homePhone = contactHomePhone;
+      newContact.mobilePhone = contactMobilePhone;
+      newContact.workPhone = contactWorkPhone;
+      newContact.account.id = accountId;
+      newContact.mailingAddress.street = contactStreet;
+      if (!Strings.isNullOrEmpty(contactStreet2)){
+        newContact.mailingAddress.street = newContact.mailingAddress.street + "," + contactStreet2;
       }
-      contactAddress.city = contactCity;
-      contactAddress.state = contactState;
-      contactAddress.postalCode = contactZip;
-      contactAddress.country = contactCountry;
-      newContact.mailingAddress = contactAddress;
-      return Response.ok().build();
+      newContact.mailingAddress.city = contactCity;
+      newContact.mailingAddress.state = contactState;
+      newContact.mailingAddress.postalCode = contactZip;
+      newContact.mailingAddress.country = contactCountry;
 
+      crmService.insertContact(newContact);
+
+      return Response.ok().build();
     } catch (Exception e) {
-      env.logJobError("Error Creating Contact/Account {}", e.getMessage());
+      env.logJobError("failed to create account/contact", e);
+      return Response.serverError().build();
+    }
+  }
+
+  @Path("/account")
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getAllAccounts(
+      @Context HttpServletRequest request
+  ) {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    try {
+      CrmService crmService = env.primaryCrmService();
+      AccountSearch accountSearch = new AccountSearch();
+      accountSearch.basicSearch = true;
+      List<CrmAccount> accounts = crmService.searchAccounts(accountSearch);
+      return Response.ok().entity(accounts).build();
+    } catch (Exception e) {
+      env.logJobError("failed to get accounts", e);
       return Response.serverError().build();
     }
   }
@@ -462,20 +484,6 @@ public class CrmController {
 
     return Response.status(200).build();
   }
-
-//  @Path("/all-accounts")
-//  @GET
-//  @Produces(MediaType.APPLICATION_JSON)
-//  public Response getAllAccounts(
-//      @Context HttpServletRequest request
-//  ){
-//    Environment env = envFactory.init(request);
-//    SecurityUtil.verifyApiKey(env);
-//
-//    CrmService crmService = env.primaryCrmService();
-//
-//
-//  }
 
   @Path("/contact-lists")
   @GET

@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -44,6 +45,10 @@ public interface BasicCrmService extends CrmService {
 
   default Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
     return Optional.empty();
+  }
+
+  default List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+    return Collections.emptyList();
   }
 
   default String insertAccount(CrmAccount crmAccount) throws Exception {

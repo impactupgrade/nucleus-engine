@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
@@ -89,6 +90,12 @@ public class BloomerangCrmService implements CrmService {
   public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
     //TODO Not currently implemented
     return Optional.empty();
+  }
+
+  @Override
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) {
+    // TODO
+    return Collections.emptyList();
   }
 
   @Override
