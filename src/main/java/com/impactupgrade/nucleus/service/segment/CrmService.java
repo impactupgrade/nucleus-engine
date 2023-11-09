@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -48,6 +49,7 @@ public interface CrmService extends SegmentService {
   // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
+  List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
   void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception;
@@ -74,7 +76,6 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
-  // TODO: Pagination initially needed for Twilio Frontline, but should we start introducing pagination across the board?
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;

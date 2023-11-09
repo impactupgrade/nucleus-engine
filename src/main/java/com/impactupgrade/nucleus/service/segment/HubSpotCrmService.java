@@ -41,6 +41,7 @@ import com.impactupgrade.integration.hubspot.v1.model.HasValue;
 import com.impactupgrade.nucleus.client.HubSpotClientFactory;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
@@ -188,6 +189,12 @@ public class HubSpotCrmService implements CrmService {
     } else {
       return null;
     }
+  }
+
+  @Override
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) {
+    // TODO
+    return Collections.emptyList();
   }
 
   // Needed by an IT.
@@ -1093,6 +1100,7 @@ public class HubSpotCrmService implements CrmService {
         company.getId(),
         crmAddress,
         company.getProperties().getDescription(),
+        null, // email
         null, // mailingAddress
         company.getProperties().getName(),
         null, // ownerId

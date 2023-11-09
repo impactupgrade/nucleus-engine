@@ -11,6 +11,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
@@ -151,6 +152,46 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId + " = '" + customerId + "'";
     return querySingle(query);
+  }
+
+  public List<SObject> searchAccounts(AccountSearch accountSearch, String... extraFields)
+      throws ConnectionException, InterruptedException {
+    List<String> clauses = new ArrayList<>();
+
+    if (!Strings.isNullOrEmpty(accountSearch.ownerId)) {
+      clauses.add("OwnerId = '" + accountSearch.ownerId + "'");
+    }
+
+    if (!Strings.isNullOrEmpty(accountSearch.keywords)) {
+      String[] keywordSplit = accountSearch.keywords.trim().split("\\s+");
+      for (String keyword : keywordSplit) {
+        clauses.add("(Name LIKE '%" + keyword + "%' OR BillingAddress LIKE '%" + keyword + "%' OR ShippingAddress LIKE '%" + keyword + "%')");
+      }
+    }
+
+    String fullClause = String.join( " AND ", clauses);
+    if (!Strings.isNullOrEmpty(fullClause)) {
+      fullClause = "where " + fullClause;
+    }
+
+    String select;
+    if (accountSearch.basicSearch) {
+      select = "Id, Name";
+    } else {
+      select = getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
+    }
+
+    String query ="select " + select +  " from account " + fullClause + " ORDER BY Name";
+
+    if (accountSearch.pageSize != null && accountSearch.pageSize > 0) {
+      query += " LIMIT " + accountSearch.pageSize;
+    }
+    Integer offset = accountSearch.getPageOffset();
+    if (offset != null && offset > 0) {
+      query += " OFFSET " + offset;
+    }
+
+    return queryListAutoPaged(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -613,7 +654,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String fullClause = String.join( " AND ", clauses);
-    String query ="select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where " + fullClause + " ORDER BY LastName, FirstName";
+    if (!Strings.isNullOrEmpty(fullClause)) {
+      fullClause = "where " + fullClause;
+    }
+
+    String select;
+    if (contactSearch.basicSearch) {
+      select = "Id, FirstName, LastName";
+    } else {
+      select = getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+    }
+
+    String query ="select " + select +  " from contact " + fullClause + " ORDER BY LastName, FirstName";
 
     if (contactSearch.pageSize != null && contactSearch.pageSize > 0) {
       query += " LIMIT " + contactSearch.pageSize;

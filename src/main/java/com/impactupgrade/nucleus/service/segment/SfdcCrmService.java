@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
@@ -35,7 +36,7 @@ import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
-import com.stripe.util.CaseInsensitiveMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -141,6 +142,12 @@ public class SfdcCrmService implements CrmService {
   // currentPageToken assumed to be the offset index
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws InterruptedException, ConnectionException {
     return toCrmContact(sfdcClient.searchContacts(contactSearch));
+  }
+
+  @Override
+  // currentPageToken assumed to be the offset index
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws InterruptedException, ConnectionException {
+    return toCrmAccount(sfdcClient.searchAccounts(accountSearch));
   }
 
   @Override
@@ -368,11 +375,16 @@ public class SfdcCrmService implements CrmService {
     account.setField("BillingState", crmAccount.billingAddress.state);
     account.setField("BillingPostalCode", crmAccount.billingAddress.postalCode);
     account.setField("BillingCountry", crmAccount.billingAddress.country);
+    account.setField("Description", crmAccount.description);
+    setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmail, crmAccount.email);
+    account.setField("Phone", crmAccount.phone);
     account.setField("ShippingStreet", crmAccount.mailingAddress.street);
     account.setField("ShippingCity", crmAccount.mailingAddress.city);
     account.setField("ShippingState", crmAccount.mailingAddress.state);
     account.setField("ShippingPostalCode", crmAccount.mailingAddress.postalCode);
     account.setField("ShippingCountry", crmAccount.mailingAddress.country);
+    account.setField("Type", crmAccount.type);
+    account.setField("Website", crmAccount.website);
 
     Map<EnvironmentConfig.AccountType, String> accountTypeToRecordTypeIds = env.getConfig().salesforce.accountTypeToRecordTypeIds;
     if (crmAccount.recordType != null && accountTypeToRecordTypeIds.containsKey(crmAccount.recordType)) {
@@ -1529,7 +1541,7 @@ public class SfdcCrmService implements CrmService {
     env.logJobInfo("bulk import complete");
   }
 
-  protected SObject updateBulkImportAccount(SObject existingAccount, CrmAccount crmAccount, CaseInsensitiveMap<String> raw,
+  protected SObject updateBulkImportAccount(SObject existingAccount, CrmAccount crmAccount, CaseInsensitiveMap<String, String> raw,
       String columnPrefix, boolean hasAccountColumns) throws InterruptedException, ExecutionException {
     // TODO: Odd situation. When insertBulkImportContact creates a contact, it's also creating an Account, sets the
     //  AccountId on the Contact and then adds the Contact to existingContactsByEmail so we can reuse it. But when
@@ -1556,7 +1568,7 @@ public class SfdcCrmService implements CrmService {
 
   protected SObject insertBulkImportAccount(
       CrmAccount crmAccount,
-      CaseInsensitiveMap<String> raw,
+      CaseInsensitiveMap<String, String> raw,
       Optional<String> accountExtRefFieldName,
       Map<String, SObject> existingAccountsByExtRef,
       String columnPrefix,
@@ -1722,7 +1734,7 @@ public class SfdcCrmService implements CrmService {
     setBulkImportCustomFields(contact, existingContact, "Contact", importEvent.raw);
   }
 
-  protected void setBulkImportAccountFields(SObject account, SObject existingAccount, CrmAccount crmAccount, String columnPrefix, CaseInsensitiveMap<String> raw)
+  protected void setBulkImportAccountFields(SObject account, SObject existingAccount, CrmAccount crmAccount, String columnPrefix, CaseInsensitiveMap<String, String> raw)
       throws ExecutionException {
     if (!Strings.isNullOrEmpty(crmAccount.recordTypeId)) {
       account.setField("RecordTypeId", crmAccount.recordTypeId);
@@ -1957,7 +1969,7 @@ public class SfdcCrmService implements CrmService {
     setBulkImportCustomFields(opportunity, existingOpportunity, "Opportunity", importEvent.raw);
   }
 
-  protected void setBulkImportCustomFields(SObject sObject, SObject existingSObject, String columnPrefix, CaseInsensitiveMap<String> raw) {
+  protected void setBulkImportCustomFields(SObject sObject, SObject existingSObject, String columnPrefix, CaseInsensitiveMap<String, String> raw) {
     String prefix = columnPrefix + " Custom ";
 
     raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(prefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {
@@ -2177,6 +2189,7 @@ public class SfdcCrmService implements CrmService {
         sObject.getId(),
         billingAddress,
         (String) sObject.getField("Description"),
+        getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.accountEmail),
         shippingAddress,
         (String) sObject.getField("Name"),
         (String) sObject.getField("OwnerId"),
@@ -2197,6 +2210,11 @@ public class SfdcCrmService implements CrmService {
 
   protected List<CrmAccount> toCrmAccount(List<SObject> sObjects) {
     return sObjects.stream().map(this::toCrmAccount).collect(Collectors.toList());
+  }
+
+  protected PagedResults<CrmAccount> toCrmAccount(PagedResults<SObject> sObjects) {
+    return new PagedResults<>(sObjects.getResults().stream().map(this::toCrmAccount).collect(Collectors.toList()),
+        sObjects.getPageSize(), sObjects.getNextPageToken());
   }
 
   protected CrmContact toCrmContact(SObject sObject) {

@@ -8,6 +8,7 @@ public class ContactSearch extends AbstractSearch {
   public String accountId;
   public String ownerId;
   public String keywords;
+  public boolean basicSearch = false;
 
   // helpers
 

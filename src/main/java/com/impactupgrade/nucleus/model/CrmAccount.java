@@ -10,6 +10,7 @@ public class CrmAccount extends CrmRecord {
 
   public CrmAddress billingAddress = new CrmAddress();
   public String description;
+  public String email;
   public CrmAddress mailingAddress = new CrmAddress();
   public String name;
   public String ownerId;
@@ -33,6 +34,7 @@ public class CrmAccount extends CrmRecord {
       String id,
       CrmAddress billingAddress,
       String description,
+      String email,
       CrmAddress mailingAddress,
       String name,
       String ownerId,
@@ -49,6 +51,7 @@ public class CrmAccount extends CrmRecord {
 
     this.billingAddress = billingAddress;
     this.description = description;
+    this.email = email;
     this.mailingAddress = mailingAddress;
     this.name = name;
     this.ownerId = ownerId;

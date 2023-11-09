@@ -7,6 +7,7 @@ import com.google.common.cache.LoadingCache;
 import com.impactupgrade.nucleus.client.MSGraphClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -170,6 +171,11 @@ public class SharePointCrmService implements CrmService {
     public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
         //TODO Not currently implemented
         return Optional.empty();
+    }
+
+    @Override
+    public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+        return Collections.emptyList();
     }
 
     @Override
