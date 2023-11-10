@@ -82,6 +82,12 @@ public class Environment {
 
   private final String jobTraceId = UUID.randomUUID().toString();
 
+  public Environment() {}
+
+  public Environment(String otherJsonFilename) {
+    _config.addOtherJson(otherJsonFilename);
+  }
+
   public EnvironmentConfig getConfig() {
     return _config;
   }
