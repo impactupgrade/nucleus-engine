@@ -479,7 +479,7 @@ public class EnvironmentConfig implements Serializable {
       }
 
       if (jsonOther != null) {
-        log.info("Including {} in the environment...", jsonOther);
+        log.debug("Including {} in the environment...", OTHER_JSON_FILENAME);
         mapper.readerForUpdating(envConfig).readValue(jsonOther);
       }
 
