@@ -60,6 +60,7 @@ import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionListParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.common.EmptyParam;
+import org.checkerframework.checker.units.qual.C;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -406,6 +407,15 @@ public class StripeClient {
     }
 
     return newSource;
+  }
+
+  public PaymentSource removeCustomerSource(Customer customer, String paymentSourceId) throws StripeException {
+    PaymentSource paymentSource = customer.getSources().retrieve(paymentSourceId, requestOptions);
+    if (paymentSource instanceof Card) {
+      // TODO: Assumes cards only (same as for add customer source)
+      ((Card) paymentSource).delete();
+    }
+    return paymentSource;
   }
 
   public void setCustomerDefaultSource(Customer customer, PaymentSource source) throws StripeException {
