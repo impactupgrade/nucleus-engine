@@ -371,19 +371,21 @@ public class StripeController {
 
         List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(customer.getId());
         for (Subscription subscription: activeSubscriptions) {
-          String subscriptionPaymentMethodId = subscription.getDefaultPaymentMethod();
-          if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
-            subscriptionPaymentMethodId = subscription.getDefaultSource();
+          String subscriptionPaymentSourceId = subscription.getDefaultPaymentMethod();
+          if (Strings.isNullOrEmpty(subscriptionPaymentSourceId)) {
+            subscriptionPaymentSourceId = subscription.getDefaultSource();
           }
           // If neither are set, invoices will use the customer’s invoice_settings.default_payment_method
           // or default_source.
-          if (Strings.isNullOrEmpty(subscriptionPaymentMethodId)) {
-            subscriptionPaymentMethodId = customer.getDefaultSource();
+          if (Strings.isNullOrEmpty(subscriptionPaymentSourceId)) {
+            subscriptionPaymentSourceId = customer.getDefaultSource();
           }
 
-          if (!newSource.getId().equalsIgnoreCase(subscriptionPaymentMethodId)) {
+          if (!newSource.getId().equalsIgnoreCase(subscriptionPaymentSourceId)) {
             stripeClient.updateSubscriptionDefaultSource(subscription, newSource);
             env.logJobInfo("updated payment method for subscription {}", subscription.getId());
+            stripeClient.removeCustomerSource(customer, subscriptionPaymentSourceId);
+            env.logJobInfo("removed payment source {} from customer {}", subscriptionPaymentSourceId, customer.getId());
           }
         }
       }
