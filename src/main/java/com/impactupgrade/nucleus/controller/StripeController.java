@@ -350,13 +350,22 @@ public class StripeController {
       }
 
       if (customers.size() > 1) {
-        env.logJobInfo("unable to find donor using {}", customerEmail);
-        String error = URLEncoder.encode("Multiple donor records exist with that email address.", StandardCharsets.UTF_8);
-        return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
+        env.logJobWarn("multiple donor records exist for email address {}", customerEmail);
       }
 
+      String originalSource = null;
+
       for (Customer customer : customers) {
-        PaymentSource newSource = stripeClient.addCustomerSource(customer, stripeToken);
+        PaymentSource newSource;
+        if (originalSource == null) {
+          // new source for the first customer
+          newSource = stripeClient.addCustomerSource(customer, stripeToken);
+          originalSource = newSource.getId();
+        } else {
+          // re-using source from the first customer
+          newSource = stripeClient.createReusableCustomerSource(customer, originalSource);
+        }
+
         stripeClient.setCustomerDefaultSource(customer, newSource);
         env.logJobInfo("created new source {} for customer {}", customer.getId(), newSource.getId());
 
