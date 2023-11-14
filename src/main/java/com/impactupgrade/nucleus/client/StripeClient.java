@@ -30,6 +30,7 @@ import com.stripe.model.Product;
 import com.stripe.model.ProductSearchResult;
 import com.stripe.model.Refund;
 import com.stripe.model.RefundCollection;
+import com.stripe.model.Source;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.net.RequestOptions;
@@ -53,6 +54,7 @@ import com.stripe.param.PriceCreateParams;
 import com.stripe.param.PriceListParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductSearchParams;
+import com.stripe.param.SourceCreateParams;
 import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionListParams;
@@ -401,6 +403,15 @@ public class StripeClient {
 
   public void setCustomerDefaultSource(Customer customer, PaymentSource source) throws StripeException {
     customer.update(CustomerUpdateParams.builder().setDefaultSource(source.getId()).build(), requestOptions);
+  }
+
+  public PaymentSource createReusableCustomerSource(Customer customer, String originalSource) throws StripeException {
+    SourceCreateParams sourceCreateParams = SourceCreateParams.builder()
+        .setCustomer(customer.getId())
+        .setOriginalSource(originalSource)
+        .setUsage(SourceCreateParams.Usage.REUSABLE)
+        .build();
+    return Source.create(sourceCreateParams);
   }
 
   public void updateSubscriptionAmount(String subscriptionId, double dollarAmount) throws StripeException {
