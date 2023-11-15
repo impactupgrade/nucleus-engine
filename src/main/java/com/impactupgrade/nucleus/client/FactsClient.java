@@ -111,6 +111,10 @@ public class FactsClient {
     return get("/People/Address", Arrays.asList(filters), Address.class);
   }
 
+  public List<EmergencyContact> getEmergencyContacts(Filter... filters) throws Exception {
+    return get("/People/EmergencyContact", Arrays.asList(filters), EmergencyContact.class);
+  }
+
   public List<Staff> getStaff(Filter... filters) throws Exception {
     return get("/People/Staff", Arrays.asList(filters), Staff.class);
   }
@@ -353,6 +357,32 @@ public class FactsClient {
       return "ParentStudent{" +
           "parentID=" + parentID +
           ", studentID=" + studentID +
+          ", relationship='" + relationship + '\'' +
+          '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class EmergencyContact {
+    public Integer emergencyContactID;
+    public Integer studentID;
+    public String firstName;
+    public String lastName;
+    public String homePhone;
+    public String cellPhone;
+    public String email;
+    public String relationship;
+
+    @Override
+    public String toString() {
+      return "EmergencyContact{" +
+          "emergencyContactID=" + emergencyContactID +
+          ", studentID=" + studentID +
+          ", firstName='" + firstName + '\'' +
+          ", lastName='" + lastName + '\'' +
+          ", homePhone='" + homePhone + '\'' +
+          ", cellPhone='" + cellPhone + '\'' +
+          ", email='" + email + '\'' +
           ", relationship='" + relationship + '\'' +
           '}';
     }

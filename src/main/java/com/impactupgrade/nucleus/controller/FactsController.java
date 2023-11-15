@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -72,6 +73,17 @@ public class FactsController {
           studentToParents.get(parentStudent.studentID).add(parentStudent);
         }
 
+        Map<Integer, List<FactsClient.EmergencyContact>> studentToEmergencyContacts = new HashMap<>();
+        if (factsConfig.syncEmergency) {
+          List<FactsClient.EmergencyContact> emergencyContacts = factsClient.getEmergencyContacts();
+          for (FactsClient.EmergencyContact emergencyContact : emergencyContacts) {
+            if (!studentToEmergencyContacts.containsKey(emergencyContact.studentID)) {
+              studentToEmergencyContacts.put(emergencyContact.studentID, new ArrayList<>());
+            }
+            studentToEmergencyContacts.get(emergencyContact.studentID).add(emergencyContact);
+          }
+        }
+
         Map<Integer, List<FactsClient.PersonFamily>> personToFamilies = new HashMap<>();
         List<FactsClient.PersonFamily> personFamilies = factsClient.getPersonFamilies();
         for (FactsClient.PersonFamily personFamily : personFamilies) {
@@ -85,6 +97,7 @@ public class FactsController {
 
         List<Map<String, String>> parentImports = new ArrayList<>();
         List<Map<String, String>> studentImports = new ArrayList<>();
+        List<Map<String, String>> emergencyContactImports = new ArrayList<>();
 
         for (FactsClient.Student student : students) {
           // Inactive == applied but never enrolled. For now, keeping this out of SFDC.
@@ -109,6 +122,8 @@ public class FactsController {
             continue;
           }
 
+          Set<String> seenNames = new HashSet<>();
+
           // TODO: Do not enable any of the above without adding status as a custom field to all families/contacts
           //  and switches to turn each of these on/off.
           //  NSU only needs current students, so it at least needs to be configurable.
@@ -126,11 +141,23 @@ public class FactsController {
             List<Integer> studentFamilyIds = studentFamilies.stream().map(f -> f.familyId).toList();
 
             for (FactsClient.ParentStudent parent : studentToParents.get(student.studentId)) {
-              if (!isParent(parent) && !isGrandparent(parent) && (!factsConfig.syncEmergency || !isEmergency(parent))) {
+              FactsClient.Person personParent = persons.get(parent.parentID);
+
+              // It seems that FACTS rarely checks emergencyContact on parents, more often centering on a separate table.
+              // Do that first and check the box directly on parent when applicable.
+              if (factsConfig.syncEmergency && studentToEmergencyContacts.containsKey(student.studentId)) {
+                boolean found = studentToEmergencyContacts.get(student.studentId).stream()
+                    .anyMatch(c -> c.firstName.equalsIgnoreCase(personParent.firstName) && c.lastName.equalsIgnoreCase(personParent.lastName));
+                if (found) {
+                  parent.emergencyContact = true;
+                  seenNames.add(personParent.firstName.toLowerCase(Locale.ROOT) + " " + personParent.lastName.toLowerCase(Locale.ROOT));
+                }
+              }
+
+              if (!isParent(parent) && !isGrandparent(parent) && !(factsConfig.syncEmergency && isEmergency(parent))) {
                 continue;
               }
 
-              FactsClient.Person personParent = persons.get(parent.parentID);
               FactsClient.Address address = addresses.get(personParent.addressID);
 
               // parents sometimes have multiple (duplicate) households, so we need to pick the one
@@ -188,6 +215,16 @@ public class FactsController {
           Map<String, String> studentContactData = toStudentContactData(student, personStudent, address, crmFieldDefinitions);
           studentContactData.putAll(accountData);
           studentImports.add(studentContactData);
+
+          if (factsConfig.syncEmergency && studentToEmergencyContacts.containsKey(student.studentId)) {
+            for (FactsClient.EmergencyContact emergencyContact : studentToEmergencyContacts.get(student.studentId)) {
+              if (!seenNames.contains(emergencyContact.firstName.toLowerCase(Locale.ROOT) + " " + emergencyContact.lastName.toLowerCase(Locale.ROOT))) {
+                seenNames.add(emergencyContact.firstName.toLowerCase(Locale.ROOT) + " " + emergencyContact.lastName.toLowerCase(Locale.ROOT));
+                Map<String, String> emergencyContactData = toEmergencyContactData(student, emergencyContact, crmFieldDefinitions);
+                emergencyContactImports.add(emergencyContactData);
+              }
+            }
+          }
         }
 
         // We make two passes: 1) Import the parent data, since the parents are more likely to exist in the CRM already.
@@ -205,6 +242,11 @@ public class FactsController {
         env.primaryCrmService().processBulkImport(importEvents);
         importEvents = CrmImportEvent.fromGeneric(secondPass);
         env.primaryCrmService().processBulkImport(importEvents);
+
+        if (factsConfig.syncEmergency) {
+          importEvents = CrmImportEvent.fromGeneric(emergencyContactImports);
+          env.primaryCrmService().processBulkImport(importEvents);
+        }
 
         // TODO: need genericized for non-SFDC environments
 //        insertRelationships(studentToParents, env, crmFieldDefinitions);
@@ -266,6 +308,23 @@ public class FactsController {
       FactsClient.Person personParent, FactsClient.Address address,
       EnvironmentConfig.CRMFieldDefinitions crmFieldDefinitions) {
     Map<String, String> contactData = toContactData(personParent, address, crmFieldDefinitions);
+
+    // additional fields added by client subclasses
+
+    return contactData;
+  }
+
+  protected Map<String, String> toEmergencyContactData(FactsClient.Student student, FactsClient.EmergencyContact emergencyContact,
+      EnvironmentConfig.CRMFieldDefinitions crmFieldDefinitions) {
+    Map<String, String> contactData = new HashMap<>();
+    contactData.put("Contact ExtRef " + crmFieldDefinitions.sisContactId, emergencyContact.emergencyContactID + "");
+    contactData.put("Contact First Name", emergencyContact.firstName);
+    contactData.put("Contact Last Name", emergencyContact.lastName);
+    if (emergencyContact.email != null && emergencyContact.email.contains("@")) {
+      contactData.put("Contact Email", emergencyContact.email);
+    }
+    contactData.put("Contact Mobile Phone", emergencyContact.cellPhone);
+    contactData.put("Contact Home Phone", emergencyContact.homePhone);
 
     // additional fields added by client subclasses
 
