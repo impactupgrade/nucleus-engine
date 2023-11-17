@@ -412,7 +412,7 @@ public class CrmController {
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
-    env.logJobInfo("Filter: " + filter);
+    env.logJobInfo("Filter: {}", filter);
 
     double donationsTotal = env.donationsCrmService().getDonationsTotal(filter);
     return Response.status(200).entity(donationsTotal).build();

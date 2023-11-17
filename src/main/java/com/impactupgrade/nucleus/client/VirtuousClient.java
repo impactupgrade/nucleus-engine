@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -204,11 +205,11 @@ public class VirtuousClient extends OAuthClient {
     if (fullGift) {
       path += "/FullGift";
     }
-    return getGiftQueryResults(VIRTUOUS_API_URL + path, query, 0, DEFAULT_LIMIT);
+    return getGiftQueryResults(VIRTUOUS_API_URL + path, query, 0, MAXIMUM_LIMIT);
   }
 
   private List<Gift> getGiftQueryResults(String url, Query query, int page, int limit) {
-    int offset = page * DEFAULT_LIMIT;
+    int offset = page * limit;
     List<Gift> queryResults = new ArrayList<>();
     GiftQueryResponse response = post(url + "?skip=" + offset + "&take=" + limit, query, APPLICATION_JSON, headers(), GiftQueryResponse.class);
     if (response != null) {
@@ -328,6 +329,11 @@ public class VirtuousClient extends OAuthClient {
     return task;
   }
 
+  public Segment getSegmentByCode(String segmentCode) {
+    String giftUrl = VIRTUOUS_API_URL + "/Segment/Code/" + segmentCode;
+    return get(giftUrl, headers(), Segment.class);
+  }
+
   @Override
   protected HttpClient.HeaderBuilder headers() {
     // First, use the simple API key, if available.
@@ -372,6 +378,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Contact {
     public Integer id;
     public String contactType;
@@ -400,6 +407,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Address {
     public Integer id;
     public String address1;
@@ -425,6 +433,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ContactIndividual {
     public Integer id;
     public Integer contactId;
@@ -453,6 +462,7 @@ public class VirtuousClient extends OAuthClient {
   // TODO: use 1 entity with merged fields?
   // TODO: find a better name
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ContactIndividualShort {
     //        public Integer individualId;
     public String name;
@@ -477,6 +487,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ContactMethod {
     public Integer id;
     public Integer contactIndividualId;
@@ -501,6 +512,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ContactsSearchCriteria {
     public String search;
 
@@ -513,6 +525,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Gift extends HasCustomFields {
     public Integer id;
     //        public Integer reversedGiftId;
@@ -522,7 +535,7 @@ public class VirtuousClient extends OAuthClient {
     public String giftType;
     public String giftDate;
     public String amount;
-    public String segment;
+    public String segmentId;
     public String notes;
     public List<CreateRecurringGiftPayment> recurringGiftPayments = new ArrayList<>();
     public String giftUrl;
@@ -559,7 +572,7 @@ public class VirtuousClient extends OAuthClient {
           ", giftType='" + giftType + '\'' +
           ", giftDate='" + giftDate + '\'' +
           ", amount=" + amount +
-          ", segment='" + segment + '\'' +
+          ", segmentId='" + segmentId + '\'' +
           ", notes='" + notes + '\'' +
           ", giftUrl='" + giftUrl + '\'' +
           ", isPrivate=" + isPrivate +
@@ -569,16 +582,19 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Gifts {
     public List<Gift> list = new ArrayList<>();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class RecurringGifts {
     public List<RecurringGift> list = new ArrayList<>();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class RecurringGift extends HasCustomFields {
     public Integer id;
     public Integer contactId;
@@ -623,11 +639,13 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class RecurringGiftPayments {
     public List<RecurringGiftPayment> list = new ArrayList<>();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class RecurringGiftPayment {
     public Integer id;
     public Gift gift;
@@ -637,6 +655,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class CreateRecurringGiftPayment {
     public Integer id;
     public Double amount;
@@ -644,6 +663,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Query {
     public List<QueryConditionGroup> groups = new ArrayList<>();
     public String sortBy;
@@ -660,25 +680,24 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class QueryCondition {
     public String parameter;
     public String operator;
     public String value;
-    public String secondaryValue;
-    public List<String> values = new ArrayList<>();
 
     @Override
     public String toString() {
       return "QueryCondition{" +
           "parameter='" + parameter + '\'' +
           ", operator='" + operator + '\'' +
-          ", value='" + value + '\'' +
-          ", values=" + values +
+          ", value=" + value +
           '}';
     }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class QueryConditionGroup {
     public List<QueryCondition> conditions = new ArrayList<>();
 
@@ -691,6 +710,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ContactQueryResponse {
     @JsonProperty("list")
     public List<Contact> contacts = new ArrayList<>();
@@ -705,6 +725,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class GiftQueryResponse {
     @JsonProperty("list")
     public List<Gift> gifts = new ArrayList<>();
@@ -719,6 +740,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class ReversingTransaction {
     public String giftDate;
     public Integer reversedGiftId;
@@ -735,6 +757,7 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Task {
     public Integer id;
     public Type taskType;
@@ -769,9 +792,18 @@ public class VirtuousClient extends OAuthClient {
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class CustomField {
     public String name;
     public String value;
     public String dataType;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public static class Segment {
+    public String id;
+    public String name;
+    public String code;
   }
 }
