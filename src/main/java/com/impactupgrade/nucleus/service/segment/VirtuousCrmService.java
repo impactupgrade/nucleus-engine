@@ -569,30 +569,25 @@ public class VirtuousCrmService implements CrmService {
 
   @Override
   public double getDonationsTotal(String filter) throws Exception {
-    List<VirtuousClient.Gift> campaignGifts = getCampaignGifts(filter);
+    VirtuousClient.QueryCondition queryCondition = new VirtuousClient.QueryCondition();
+    // TODO: Assuming 'Is' is the only operator...
+    String[] split = filter.split(" Is ");
+    queryCondition.parameter = split[0];
+    queryCondition.operator = "Is";
+    queryCondition.value = split[1];
+    VirtuousClient.QueryConditionGroup group = new VirtuousClient.QueryConditionGroup();
+    group.conditions.add(queryCondition);
+    VirtuousClient.Query query = new VirtuousClient.Query();
+    query.groups = List.of(group);
+
+    List<VirtuousClient.Gift> campaignGifts = virtuousClient.queryGifts(query, false);
+
     if (CollectionUtils.isEmpty(campaignGifts)) {
       return 0.0;
     }
     return campaignGifts.stream()
-        .mapToDouble(gift -> Double.parseDouble(gift.amount))
+        .mapToDouble(gift -> Double.parseDouble(gift.amount.replace("$", "")))
         .sum();
-  }
-
-  private List<VirtuousClient.Gift> getCampaignGifts(String campaign) {
-    VirtuousClient.QueryCondition campaignCondition = new VirtuousClient.QueryCondition();
-    campaignCondition.parameter = "Project Name";
-    campaignCondition.operator = "Is";
-    campaignCondition.values.add(campaign);
-    System.out.println("Condition to string: \n " + campaignCondition);
-
-    VirtuousClient.QueryConditionGroup queryConditionGroup = new VirtuousClient.QueryConditionGroup();
-    queryConditionGroup.conditions.add(campaignCondition);
-
-    VirtuousClient.Query giftQuery = new VirtuousClient.Query();
-    giftQuery.groups.add(queryConditionGroup);
-    System.out.println("Gift Query to String: \n " + giftQuery);
-
-    return virtuousClient.queryGifts(giftQuery, false);
   }
 
   @Override
@@ -801,6 +796,15 @@ public class VirtuousCrmService implements CrmService {
     gift.transactionId = crmDonation.transactionId;
     gift.isPrivate = false;
     gift.isTaxDeductible = true;
+
+    // assumed to be the unique code that the UI gives for a *segment*
+    String segmentCode = crmDonation.getMetadataValue(env.getConfig().metadataKeys.campaign);
+    if (!Strings.isNullOrEmpty(segmentCode)) {
+      VirtuousClient.Segment segment = virtuousClient.getSegmentByCode(segmentCode);
+      if (segment != null) {
+        gift.segmentId = segment.id;
+      }
+    }
 
     return gift;
   }
