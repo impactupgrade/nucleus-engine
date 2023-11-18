@@ -157,7 +157,6 @@ public abstract class OAuthClient extends DBConfiguredClient {
       params.put("client_id", clientId);
       params.put("client_secret", clientSecret);
       params.put("grant_type", "client_credentials");
-      params.put("scope", "offline_access");
 
       TokenResponse tokenResponse = getTokenResponse(tokenUrl, params, null);
       if (tokenResponse == null) {
