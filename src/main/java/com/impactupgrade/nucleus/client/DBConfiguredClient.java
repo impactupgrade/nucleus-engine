@@ -11,7 +11,11 @@ public abstract class DBConfiguredClient {
 
   public DBConfiguredClient(Environment env) {
     this.env = env;
-    this.organizationDao = new HibernateDao<>(Organization.class);
+    if (env.getConfig().isDatabaseConnected()) {
+      this.organizationDao = new HibernateDao<>(Organization.class);
+    } else {
+      this.organizationDao = null;
+    }
   }
 
   protected Organization getOrganization() {
