@@ -8,50 +8,37 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
-import com.impactupgrade.nucleus.util.OAuth2;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.json.JSONObject;
 
-import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.impactupgrade.nucleus.util.HttpClient.post;
-import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
-
-public class DynamicsCrmClient extends OrgConfiguredClient {
-
-  private static final Logger log = LogManager.getLogger(DynamicsCrmClient.class);
+public class DynamicsCrmClient extends OAuthClient {
 
   private final static String TOKEN_URL = "https://login.microsoftonline.com";
   private final static String API_URL = "/api/data/v9.2";
 
-  private final OAuth2.Context oAuth2Context;
-
   public DynamicsCrmClient(Environment env) {
-    super(env);
+    super("dynamics", env);
+  }
 
-    JSONObject dynamicsJson = getEnvJson().getJSONObject("dynamics");
-
-    this.oAuth2Context = new OAuth2.ClientCredentialsContext(
-        env.getConfig().dynamicsPlatform.clientId, env.getConfig().dynamicsPlatform.clientSecret,
-        dynamicsJson.getString("accessToken"), 
-        dynamicsJson.getLong("expiresAt"), 
-        dynamicsJson.getString("refreshToken"),
-        TOKEN_URL + "/" + env.getConfig().dynamicsPlatform.tenantId + "/oauth2/token");
+  @Override
+  protected OAuthContext oAuthContext() {
+    return new ClientCredentialsOAuthContext(
+        env.getConfig().dynamicsPlatform,
+        TOKEN_URL + "/" + env.getConfig().dynamicsPlatform.tenantId + "/oauth2/token",
+        true
+    );
   }
 
   // Contact
@@ -101,7 +88,7 @@ public class DynamicsCrmClient extends OrgConfiguredClient {
     String contactId = contact.id;
     String url = env.getConfig().dynamicsPlatform.resourceUrl + API_URL + "/contacts(" + contactId + ")";
     contact.id = null; // ID in payload results in Bad Request
-    patch(url, Map.of("Authorization", "Bearer " + oAuth2Context.accessToken()), contact);
+    patch(url, headers().headersMap(), contact);
     contact.id = contactId;
     return contact;
   }
@@ -141,7 +128,7 @@ public class DynamicsCrmClient extends OrgConfiguredClient {
     String oppId = opportunity.id;
     String url = env.getConfig().dynamicsPlatform.resourceUrl + API_URL + "/opportunities(" + oppId + ")";
     opportunity.id = null; // ID in payload results in Bad Request
-    patch(url, Map.of("Authorization", "Bearer " + oAuth2Context.accessToken()), opportunity);
+    patch(url, headers().headersMap(), opportunity);
     opportunity.id = oppId;
     return opportunity;
   }
@@ -184,10 +171,10 @@ public class DynamicsCrmClient extends OrgConfiguredClient {
   }
 
   // Utils
-  private void patch(String url, Map<String, Object> headers, Object entity) throws JsonProcessingException {
+  private void patch(String url, MultivaluedMap<String, Object> headers, Object entity) throws JsonProcessingException {
     HttpPatch httpPatch = new HttpPatch(url);
 
-    headers.entrySet().forEach(e -> httpPatch.setHeader(e.getKey(), e.getValue().toString()));
+    headers.forEach((key, value) -> httpPatch.setHeader(key, value.toString()));
 
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -201,15 +188,15 @@ public class DynamicsCrmClient extends OrgConfiguredClient {
       if (statusCode < 300) {
         String responseBody = response.getEntity() != null ? response.getEntity().toString() : null;
         if (Strings.isNullOrEmpty(responseBody)) {
-          log.info("PATCH OK: url={} code={} (empty response body)", url, statusCode);
+          env.logJobInfo("PATCH OK: url={} code={} (empty response body)", url, statusCode);
         } else {
-          log.info("PATCH OK: url={} code={} response body={}", url, statusCode, responseBody);
+          env.logJobInfo("PATCH OK: url={} code={} response body={}", url, statusCode, responseBody);
         }
       } else {
-        log.error("PATCH failed: url={} code={} message={}", url, statusCode, response.getEntity().toString());
+        env.logJobError("PATCH failed: url={} code={} message={}", url, statusCode, response.getEntity().toString());
       }
     } catch (IOException e) {
-      log.error("PATCH failed: {}", e);
+      env.logJobError("PATCH failed: {}", e);
     }
   }
 
@@ -218,18 +205,9 @@ public class DynamicsCrmClient extends OrgConfiguredClient {
     try {
       encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString());
     } catch (Exception e) {
-      log.warn("Failed to encode url: {}! {}", e);
+      env.logJobWarn("Failed to encode url: {}! {}", e);
     }
     return encodedUrl;
-  }
-
-  protected HttpClient.HeaderBuilder headers() {
-    String accessToken = oAuth2Context.accessToken();
-    if (oAuth2Context.refresh().accessToken() != accessToken)  {
-      // tokens updated - need to update config in db
-      updateEnvJson("dynamics", oAuth2Context);
-    }
-    return HttpClient.HeaderBuilder.builder().authBearerToken(oAuth2Context.accessToken());
   }
   
 //  @JsonIgnoreProperties(ignoreUnknown = true)

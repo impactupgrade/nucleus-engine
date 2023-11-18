@@ -134,5 +134,8 @@ public class HttpClient {
       headers.add("Authorization", "Bearer " + v);
       return this;
     }
+    public MultivaluedMap<String, Object> headersMap() {
+      return headers;
+    }
   }
 }

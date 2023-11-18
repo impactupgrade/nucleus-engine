@@ -3,7 +3,6 @@ package com.impactupgrade.nucleus.client;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.util.OAuth2;
 import org.json.JSONObject;
 
 public class OrgConfiguredClient {
