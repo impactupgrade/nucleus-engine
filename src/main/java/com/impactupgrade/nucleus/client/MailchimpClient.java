@@ -151,8 +151,7 @@ public class MailchimpClient {
     return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toSet());
   }
 
-  public Map<String, Set<String>> getContactsTags(String listId) throws IOException, MailchimpException {
-    List<MemberInfo> memberInfos = getListMembers(listId);
+  public Map<String, Set<String>> getContactsTags(String listId, List<MemberInfo> memberInfos) throws IOException, MailchimpException {
     Map<String, Set<String>> tagsMap = memberInfos.stream()
         .collect(Collectors.toMap(
             memberInfo -> memberInfo.email_address, memberInfo -> {
