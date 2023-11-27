@@ -221,6 +221,20 @@ public class StripeController {
           env.logJobInfo("subscription is not trialing, so doing nothing; allowing the charge.succeeded event to create the recurring donation");
         }
       }
+      case "customer.subscription.updated",
+          "subscription_schedule.updated" -> {
+        Subscription subscription = (Subscription) stripeObject;
+        env.logJobInfo("found subscription {}", subscription.getId());
+
+        Customer updatedSubscriptionCustomer = env.stripeClient().getCustomer(subscription.getCustomer());
+        env.logJobInfo("found customer {}", updatedSubscriptionCustomer.getId());
+
+        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+        paymentGatewayEvent.initStripe(subscription, updatedSubscriptionCustomer);
+
+        // update the recurring donation.
+        env.donationService().processSubscription(paymentGatewayEvent);
+      }
       case "customer.subscription.deleted" -> {
         Subscription subscription = (Subscription) stripeObject;
         env.logJobInfo("found subscription {}", subscription.getId());

@@ -311,6 +311,11 @@ public class BloomerangCrmService implements CrmService {
     return donation.id + "";
   }
 
+  @Override
+  public void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+
+  }
+
   protected void setProperty(String fieldKey, String value, List<JsonNode> customFields) {
     // Optional field names may not be configured in env.json, so ensure we actually have a name first...
     // Likewise, don't set a null or empty value.

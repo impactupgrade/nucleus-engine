@@ -158,6 +158,11 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
+  public void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+
+  }
+
+  @Override
   public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
 
   }

@@ -156,6 +156,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception;
   List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
+  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 //  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
   // Provide the full CRM model in case additional context is needed (close reasons, etc.)
   void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
