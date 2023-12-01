@@ -11,6 +11,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -41,7 +42,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
 
     Map<String, CrmContact> uniqueContacts = crmContacts.stream().collect(Collectors.toMap(
-        so -> so.email,
+        so -> so.email.toLowerCase(Locale.ROOT),
         Function.identity(),
         // FIFO
         (so1, so2) -> so1

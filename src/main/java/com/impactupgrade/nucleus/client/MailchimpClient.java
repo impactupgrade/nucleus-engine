@@ -281,7 +281,7 @@ public class MailchimpClient {
     public String type;
     public String title;
     public String status;
-    public List<Error> errors;
+    public List<Error> errors = new ArrayList<>();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

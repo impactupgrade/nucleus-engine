@@ -130,22 +130,22 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       List<MemberInfo> memberInfos = toMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
 
       String upsertBatchId = mailchimpClient.upsertContactsBatch(communicationList.id, memberInfos);
-      // batch processing results synchronously to make sure
-      // all contacts were processed before updating tags
       runBatchOperations(mailchimpClient, mailchimpConfig, upsertBatchId, 0);
 
       List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
           .map(crmContact -> new MailchimpClient.EmailContact(crmContact.email, activeTags.get(crmContact.email), tags.get(crmContact.email)))
           .collect(Collectors.toList());
 
-      updateTagsBatch(communicationList.id, emailContacts, mailchimpClient, mailchimpConfig);
+      String tagsBatchId = updateTagsBatch(communicationList.id, emailContacts, mailchimpClient, mailchimpConfig);
+      runBatchOperations(mailchimpClient, mailchimpConfig, tagsBatchId, 0);
 
       // if they can't, they're archived, and will be failed to be retrieved for update
       List<String> emailsToArchive = new ArrayList<>();
       emailsToArchive.addAll(contactsToArchive.stream().map(crmContact -> crmContact.email).toList());
       emailsToArchive.addAll(mcEmailsToArchive);
 
-      mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
+      String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
+      runBatchOperations(mailchimpClient, mailchimpConfig, archiveBatchId, 0);
     } catch (MailchimpException e) {
       env.logJobWarn("Mailchimp syncContacts failed: {}", mailchimpClient.exceptionToString(e));
     } catch (Exception e) {
@@ -181,7 +181,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           batchOperations.stream()
               .filter(batchOperation -> batchOperation.status >= 300)
               .forEach(batchOperation ->
-                  env.logJobWarn("Failed Batch Operation (status: detail): {}: {}", batchOperation.response.status, batchOperation.response.detail));
+                  env.logJobWarn("Failed Batch Operation {}: {} -- errors: {}", batchOperation.response.status, batchOperation.response.detail, String.join(", ", batchOperation.response.errors.stream().map(e -> "(" + e.field + ") " + e.message).toList())));
         } catch (Exception e) {
           env.logJobError("failed to fetch batch operation results", e);
         }
