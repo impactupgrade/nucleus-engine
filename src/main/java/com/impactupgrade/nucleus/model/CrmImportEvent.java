@@ -29,6 +29,67 @@ import static com.impactupgrade.nucleus.util.Utils.fullNameToFirstLast;
 
 public class CrmImportEvent {
 
+  public enum ContactEmailPreference {
+    PERSONAL("personal"),
+    WORK("work"),
+    OTHER("other");
+
+    private final String name;
+
+    ContactEmailPreference(String name) {
+      this.name = name;
+    }
+
+    public static ContactEmailPreference fromName(String name) {
+      if (Strings.isNullOrEmpty(name)) {
+        return null;
+      }
+
+      if (PERSONAL.name.equals(name.toLowerCase(Locale.ROOT))) {
+        return PERSONAL;
+      } else if (WORK.name.equals(name.toLowerCase(Locale.ROOT))) {
+        return WORK;
+      } else if (OTHER.name.equals(name.toLowerCase(Locale.ROOT))) {
+        return OTHER;
+      } else {
+        // default to personal
+        return PERSONAL;
+      }
+    }
+  }
+
+  public enum ContactPhonePreference {
+    HOME("home"),
+    MOBILE("mobile"),
+    WORK("work"),
+    OTHER("other");
+
+    private final String name;
+
+    ContactPhonePreference(String name) {
+      this.name = name;
+    }
+
+    public static ContactPhonePreference fromName(String name) {
+      if (Strings.isNullOrEmpty(name)) {
+        return null;
+      }
+
+      if (HOME.name.equals(name.toLowerCase(Locale.ROOT))) {
+        return HOME;
+      } else if (MOBILE.name.equals(name.toLowerCase(Locale.ROOT))) {
+        return MOBILE;
+      } else if (WORK.name.equals(name.toLowerCase(Locale.ROOT))) {
+        return WORK;
+      } else if (OTHER.name.equals(name.toLowerCase(Locale.ROOT))) {
+        return OTHER;
+      } else {
+        // default to personal
+        return MOBILE;
+      }
+    }
+  }
+
   // TODO: It originally made sense to use CaseInsensitiveMap here. But, we run into issues since most
   //  impls of CaseInsensitiveMap automatically lowercase all keys and values. That wrecks havoc for CRMs like SFDC,
   //  where the API is unfortunately case sensitive. For now, keep the originals and require column heads to be
@@ -42,7 +103,10 @@ public class CrmImportEvent {
   public String campaignId;
 
   // Can also be used for update retrieval, as well as inserts.
-  public String contactEmail;
+  public String contactPersonalEmail;
+  public String contactWorkEmail;
+  public String contactOtherEmail;
+  public ContactEmailPreference contactEmailPreference = ContactEmailPreference.PERSONAL;
 
   // could be a contact's household, could be an organization itself -- both are assumed to be the primary account
   public CrmAccount account = new CrmAccount();
@@ -59,9 +123,14 @@ public class CrmImportEvent {
   public List<String> contactCampaignNames = new ArrayList<>();
   public String contactDescription;
   public String contactFirstName;
-  public String contactHomePhone;
   public String contactLastName;
+
+  public String contactHomePhone;
   public String contactMobilePhone;
+  public String contactWorkPhone;
+  public String contactOtherPhone;
+  public ContactPhonePreference contactPhonePreference = ContactPhonePreference.MOBILE;
+
   public String contactMailingStreet;
   public String contactMailingCity;
   public String contactMailingState;
@@ -73,11 +142,9 @@ public class CrmImportEvent {
   public Boolean contactOptInSms;
   public Boolean contactOptOutSms;
   public String contactOwnerId;
-  public String contactPreferredPhone;
   public String contactRecordTypeId;
   public String contactRecordTypeName;
   public String contactSalutation;
-  public String contactWorkPhone;
 
   public BigDecimal opportunityAmount;
   public String opportunityCampaignId;
@@ -144,12 +211,32 @@ public class CrmImportEvent {
     importEvent.recurringDonationId = data.get("Recurring Donation ID");
     importEvent.campaignId = data.get("Campaign ID");
 
-    if (data.get("Contact Email") != null && data.get("Contact Email").contains("@")) {
-      importEvent.contactEmail = data.get("Contact Email");
-      // TODO: SFDC "where in ()" queries appear to be case sensitive, and SFDC lower cases all emails internally.
-      //  For now, ensure we follow suit.
-      importEvent.contactEmail = importEvent.contactEmail.toLowerCase(Locale.ROOT);
-      importEvent.contactEmail = Utils.noWhitespace(importEvent.contactEmail);
+    if (data.get("Contact Personal Email") != null && data.get("Contact Personal Email").contains("@")) {
+      importEvent.contactPersonalEmail = data.get("Contact Personal Email");
+      // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
+      // For now, ensure we follow suit.
+      importEvent.contactPersonalEmail = importEvent.contactPersonalEmail.toLowerCase(Locale.ROOT);
+      importEvent.contactPersonalEmail = Utils.noWhitespace(importEvent.contactPersonalEmail);
+    }
+
+    if (data.get("Contact Work Email") != null && data.get("Contact Work Email").contains("@")) {
+      importEvent.contactWorkEmail = data.get("Contact Work Email");
+      // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
+      // For now, ensure we follow suit.
+      importEvent.contactWorkEmail = importEvent.contactWorkEmail.toLowerCase(Locale.ROOT);
+      importEvent.contactWorkEmail = Utils.noWhitespace(importEvent.contactWorkEmail);
+    }
+
+    if (data.get("Contact Other Email") != null && data.get("Contact Other Email").contains("@")) {
+      importEvent.contactOtherEmail = data.get("Contact Other Email");
+      // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
+      // For now, ensure we follow suit.
+      importEvent.contactOtherEmail = importEvent.contactOtherEmail.toLowerCase(Locale.ROOT);
+      importEvent.contactOtherEmail = Utils.noWhitespace(importEvent.contactOtherEmail);
+    }
+
+    if (data.get("Contact Preferred Email") != null) {
+      importEvent.contactEmailPreference = ContactEmailPreference.fromName(data.get("Contact Preferred Email"));
     }
 
     importEvent.account.billingAddress.street = data.get("Account Billing Street");
@@ -296,7 +383,7 @@ public class CrmImportEvent {
     importEvent.contactHomePhone = data.get("Contact Home Phone");
     importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
     importEvent.contactWorkPhone = data.get("Contact Work Phone");
-    importEvent.contactPreferredPhone = data.get("Contact Preferred Phone");
+    importEvent.contactPhonePreference = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
     importEvent.contactMailingStreet = data.get("Contact Mailing Street");
     if (!Strings.isNullOrEmpty(data.get("Contact Mailing Street 2"))) {
       importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Street 2");
@@ -392,7 +479,7 @@ public class CrmImportEvent {
 
       importEvent.contactFirstName = Utils.nameToTitleCase(data.get("First Name"));
       importEvent.contactLastName = Utils.nameToTitleCase(data.get("Last Name"));
-      importEvent.contactEmail = data.get("Email Address");
+      importEvent.contactPersonalEmail = data.get("Email Address");
       importEvent.opportunitySource = (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) ? data.get("Fundraiser Title") : data.get("Fundraiser Type");
       importEvent.opportunityTerminal = data.get("Payment Processor");
       importEvent.opportunityStageName = "Posted";
@@ -481,11 +568,14 @@ public class CrmImportEvent {
 
       importEvent.contactFirstName = data.get("Contact1 First Name");
       importEvent.contactLastName = data.get("Contact1 Last Name");
-      importEvent.contactEmail = data.get("Contact1 Personal Email");
+      importEvent.contactPersonalEmail = data.get("Contact1 Personal Email");
+      importEvent.contactWorkEmail = data.get("Contact1 Work Email");
+      importEvent.contactOtherEmail = data.get("Contact1 Other Email");
       importEvent.contactMobilePhone = data.get("Contact1 Mobile Phone");
       importEvent.contactHomePhone = data.get("Contact1 Home Phone");
       importEvent.contactWorkPhone = data.get("Contact1 Work Phone");
-      importEvent.contactPreferredPhone = data.get("Contact1 Preferred Phone");
+      importEvent.contactOtherPhone = data.get("Contact1 Other Phone");
+      importEvent.contactPhonePreference = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
       if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
         importEvent.contactCampaignNames.add(data.get("Campaign Name"));
       }
