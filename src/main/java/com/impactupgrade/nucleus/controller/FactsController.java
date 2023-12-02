@@ -269,10 +269,21 @@ public class FactsController {
     contactData.put("Contact First Name", person.firstName);
     contactData.put("Contact Last Name", person.lastName);
     if (person.email != null && person.email.contains("@")) {
-      contactData.put("Contact Email", person.email);
+      contactData.put("Contact Personal Email", person.email);
     }
+    if (person.email2 != null && person.email2.contains("@")) {
+      contactData.put("Contact Other Email", person.email2);
+    }
+    contactData.put("Contact Preferred Email", CrmImportEvent.ContactEmailPreference.PERSONAL.name());
+
     contactData.put("Contact Mobile Phone", person.cellPhone);
     contactData.put("Contact Home Phone", person.homePhone);
+
+    contactData.put("Contact Preferred Phone", CrmImportEvent.ContactPhonePreference.MOBILE.name());
+    if (Strings.isNullOrEmpty(person.cellPhone) && !Strings.isNullOrEmpty(person.homePhone)) {
+      contactData.put("Contact Preferred Phone", CrmImportEvent.ContactPhonePreference.HOME.name());
+    }
+
     contactData.putAll(toMailingAddressData(address));
     return contactData;
   }

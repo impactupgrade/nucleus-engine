@@ -40,18 +40,7 @@ import com.sforce.ws.ConnectionException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -1073,7 +1062,9 @@ public class SfdcCrmService implements CrmService {
       });
     }
 
-    List<String> contactEmails = importEvents.stream().map(e -> e.contactEmail)
+    List<String> contactEmails = importEvents.stream()
+        .map(e -> List.of(e.contactPersonalEmail, e.contactWorkEmail, e.contactOtherEmail))
+        .flatMap(Collection::stream)
         .filter(email -> !Strings.isNullOrEmpty(email)).distinct().toList();
     Multimap<String, SObject> existingContactsByEmail = ArrayListMultimap.create();
     if (contactEmails.size() > 0) {
@@ -1230,7 +1221,9 @@ public class SfdcCrmService implements CrmService {
       // in with rows that have contacts. The column headers exist, but if there are no values, we assume
       // account-only import for that individual row. Not an all-or-nothing situation.
       boolean hasContactExtRef = contactExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(contactExtRefKey.get()));
-      boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contactId) || !Strings.isNullOrEmpty(importEvent.contactEmail) || !Strings.isNullOrEmpty(importEvent.contactLastName) || hasContactExtRef;
+      boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contactId)
+              || !Strings.isNullOrEmpty(importEvent.contactPersonalEmail) || !Strings.isNullOrEmpty(importEvent.contactWorkEmail)|| !Strings.isNullOrEmpty(importEvent.contactOtherEmail)
+              || !Strings.isNullOrEmpty(importEvent.contactLastName) || hasContactExtRef;
 
       SObject account = null;
       SObject contact = null;
@@ -1309,22 +1302,37 @@ public class SfdcCrmService implements CrmService {
         contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
       // Else if a contact already exists with the given email address, update.
-      else if (!Strings.isNullOrEmpty(importEvent.contactEmail) && existingContactsByEmail.containsKey(importEvent.contactEmail.toLowerCase(Locale.ROOT))) {
-        // If the email address has duplicates, use the oldest.
-        SObject existingContact = existingContactsByEmail.get(importEvent.contactEmail.toLowerCase(Locale.ROOT)).stream()
-            .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate")))).get();
+      else if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail)
+        || !Strings.isNullOrEmpty(importEvent.contactWorkEmail)
+        || !Strings.isNullOrEmpty(importEvent.contactOtherEmail)) {
 
-        if (account == null) {
-          String accountId = (String) existingContact.getField("AccountId");
-          if (!Strings.isNullOrEmpty(accountId)) {
-            SObject existingAccount = (SObject) existingContact.getChild("Account");
-            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns);
+        List<String> emails = Stream.of(importEvent.contactPersonalEmail, importEvent.contactWorkEmail, importEvent.contactOtherEmail)
+                        .filter(email -> !Strings.isNullOrEmpty(email))
+                        .map(email -> email.toLowerCase(Locale.ROOT))
+                        .toList();
+
+        Optional<SObject> existingContactO = existingContactsByEmail.entries().stream()
+                // find contacts for given emails
+                .filter(e -> emails.contains(e.getKey()))
+                .map(e -> e.getValue())
+                // If the email address has duplicates, use the oldest.
+                .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate"))));
+
+        if (existingContactO.isPresent()) {
+          SObject existingContact = existingContactO.get();
+          if (account == null) {
+            String accountId = (String) existingContact.getField("AccountId");
+            if (!Strings.isNullOrEmpty(accountId)) {
+              SObject existingAccount = (SObject) existingContact.getChild("Account");
+              account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns);
+            }
           }
+
+          // use accountId, not account.id -- if the contact was recently imported by this current process,
+          // the contact.account child relationship will not yet exist in the existingContactsByEmail map
+          contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
         }
 
-        // use accountId, not account.id -- if the contact was recently imported by this current process,
-        // the contact.account child relationship will not yet exist in the existingContactsByEmail map
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
       // If we have a first and last name, try searching for an existing contact by name.
       // Only do this if we can match against street address or phone number as well. Simply by-name is too risky.
@@ -1732,13 +1740,25 @@ public class SfdcCrmService implements CrmService {
     contact.setField("MobilePhone", importEvent.contactMobilePhone);
     if (env.getConfig().salesforce.npsp) {
       contact.setField("npe01__WorkPhone__c", importEvent.contactWorkPhone);
-      contact.setField("npe01__PreferredPhone__c", importEvent.contactPreferredPhone);
+
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactEmail) && !"na".equalsIgnoreCase(importEvent.contactEmail) && !"n/a".equalsIgnoreCase(importEvent.contactEmail)) {
+    if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail) && !"na".equalsIgnoreCase(importEvent.contactPersonalEmail) && !"n/a".equalsIgnoreCase(importEvent.contactPersonalEmail)) {
       // Some sources provide comma separated lists. Simply use the first one.
-      String email = importEvent.contactEmail.split("[,;\\s]+")[0];
-      contact.setField("Email", email);
+      String email = importEvent.contactPersonalEmail.split("[,;\\s]+")[0];
+      contact.setField("npe01__HomeEmail__c", email);
+    }
+
+    if (!Strings.isNullOrEmpty(importEvent.contactWorkEmail) && !"na".equalsIgnoreCase(importEvent.contactWorkEmail) && !"n/a".equalsIgnoreCase(importEvent.contactWorkEmail)) {
+      // Some sources provide comma separated lists. Simply use the first one.
+      String workEmail = importEvent.contactWorkEmail.split("[,;\\s]+")[0];
+      contact.setField("npe01__WorkEmail__c", workEmail);
+    }
+
+    if (!Strings.isNullOrEmpty(importEvent.contactOtherEmail) && !"na".equalsIgnoreCase(importEvent.contactOtherEmail) && !"n/a".equalsIgnoreCase(importEvent.contactOtherEmail)) {
+      // Some sources provide comma separated lists. Simply use the first one.
+      String otherEmail = importEvent.contactOtherEmail.split("[,;\\s]+")[0];
+      contact.setField("npe01__AlternateEmail__c", otherEmail);
     }
 
     if (importEvent.contactOptInEmail != null && importEvent.contactOptInEmail) {
