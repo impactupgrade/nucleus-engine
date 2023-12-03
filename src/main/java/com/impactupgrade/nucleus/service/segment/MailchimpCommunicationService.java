@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -103,8 +104,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
     try {
       List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
-      List<String> membersEmails = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).toList();
-      List<String> crmContactsEmails = new ArrayList<>();
+      Set<String> crmContactsEmails = new HashSet<>();
       crmContacts.forEach(crmContact -> {
             crmContactsEmails.add(crmContact.email.toLowerCase(Locale.ROOT));
             if (crmContact.account != null && !Strings.isNullOrEmpty(crmContact.account.email)) {
@@ -113,9 +113,8 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           });
 
       // archive mc emails that are not in CRM
-      List<String> mcEmailsToArchive = membersEmails.stream()
-          .filter(email -> !crmContactsEmails.contains(email))
-          .toList();
+      Set<String> mcEmailsToArchive = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+      mcEmailsToArchive.removeAll(crmContactsEmails);
 
       Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
       for (CrmContact crmContact : contactsToUpsert) {
