@@ -19,14 +19,29 @@ import com.ecwid.maleorang.method.v3_0.lists.merge_fields.GetMergeFieldsMethod;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.util.HttpClient;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.commons.io.IOUtils;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +60,10 @@ public class MailchimpClient {
   public static final String TAG_STATUS = "status";
   public static final String TAG_ACTIVE = "active";
   public static final String TAG_INACTIVE = "inactive";
+
+  // 2 hours
+  protected static final Integer BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS = 300;
+  protected static final Integer BATCH_STATUS_MAX_RETRIES = 24;
 
   protected final com.ecwid.maleorang.MailchimpClient client;
   protected final Environment env;
@@ -170,9 +189,89 @@ public class MailchimpClient {
     return batchStatus.id;
   }
 
-  public BatchStatus getBatchStatus(String batchStatusId) throws IOException, MailchimpException {
-    GetBatchStatusMethod getBatchStatusMethod = new GetBatchStatusMethod(batchStatusId);
-    return client.execute(getBatchStatusMethod);
+  public void runBatchOperations(EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
+    if (attemptCount == BATCH_STATUS_MAX_RETRIES) {
+      env.logJobError("exhausted retries; returning...");
+    } else {
+      GetBatchStatusMethod getBatchStatusMethod = new GetBatchStatusMethod(batchStatusId);
+      BatchStatus batchStatus = client.execute(getBatchStatusMethod);
+      if (!"finished".equalsIgnoreCase(batchStatus.status)) {
+        env.logJobInfo("Batch '{}' is not finished: {}/{} Retrying in {} seconds...", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
+        Thread.sleep(BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS * 1000);
+        Integer newAttemptCount = attemptCount + 1;
+        runBatchOperations(mailchimpConfig, batchStatusId, newAttemptCount);
+      } else {
+        env.logJobInfo("Batch '{}' finished! (finished/total) {}/{}", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations);
+        if (batchStatus.errored_operations > 0) {
+          env.logJobWarn("Errored operations count: {}", batchStatus.errored_operations);
+        } else {
+          env.logJobInfo("All operations processed OK!");
+        }
+
+        // TODO: Periodically failing, but don't hold up everything else if it does. Or compression in the response
+        //  body may be different for large operations -- getting this: java.util.zip.ZipException: ZipFile invalid LOC header (bad signature)
+        try {
+          String batchResponse = getBatchResponseAsString(batchStatus, mailchimpConfig);
+          List<MailchimpClient.BatchOperation> batchOperations = deserializeBatchOperations(batchResponse);
+
+          // Logging error operations
+          batchOperations.stream()
+                  .filter(batchOperation -> batchOperation.status >= 300)
+                  .forEach(batchOperation ->
+                          env.logJobWarn("Failed Batch Operation {}: {} -- errors: {}", batchOperation.response.status, batchOperation.response.detail, String.join(", ", batchOperation.response.errors.stream().map(e -> "(" + e.field + ") " + e.message).toList())));
+        } catch (Exception e) {
+          env.logJobError("failed to fetch batch operation results", e);
+        }
+      }
+    }
+  }
+
+  protected String getBatchResponseAsString(BatchStatus batchStatus, EnvironmentConfig.CommunicationPlatform mailchimpConfig) throws Exception {
+    if (Strings.isNullOrEmpty(batchStatus.response_body_url)) {
+      return null;
+    }
+
+    String responseString = null;
+    InputStream inputStream = HttpClient.get(batchStatus.response_body_url, HttpClient.HeaderBuilder.builder()
+            .authBearerToken(mailchimpConfig.secretKey)
+            .header("Accept-Encoding", "application/gzip"), InputStream.class);
+
+    try (TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(
+            new GzipCompressorInputStream(new BufferedInputStream(inputStream)))) {
+      TarArchiveEntry tarArchiveEntry;
+      while ((tarArchiveEntry = (TarArchiveEntry) tarArchiveInputStream.getNextEntry()) != null) {
+        if (!tarArchiveEntry.isDirectory()) {
+          responseString = IOUtils.toString(tarArchiveInputStream, StandardCharsets.UTF_8);
+        }
+      }
+    } catch (Exception e) {
+      env.logJobError("Failed to get batch response body! {}", e);
+    }
+    return responseString;
+  }
+
+  protected List<MailchimpClient.BatchOperation> deserializeBatchOperations(String batchOperationsString) {
+    if (Strings.isNullOrEmpty(batchOperationsString)) {
+      return Collections.emptyList();
+    }
+    List<MailchimpClient.BatchOperation> batchOperations = new ArrayList<>();
+    try {
+      JSONArray jsonArray = new JSONArray(batchOperationsString);
+      ObjectMapper objectMapper = new ObjectMapper();
+
+      for (int i = 0; i< jsonArray.length(); i ++) {
+        JSONObject batchOperation = jsonArray.getJSONObject(i);
+        // Response is an escaped string - converting it to json object and back to string to unescape
+        String response = batchOperation.getString("response");
+        JSONObject responseObject = new JSONObject(response);
+        batchOperation.put("response", responseObject);
+
+        batchOperations.add(objectMapper.readValue(batchOperation.toString(), new TypeReference<>() {}));
+      }
+    } catch (JsonProcessingException e) {
+      env.logJobWarn("Failed to deserialize batch operations! {}", e.getMessage());
+    }
+    return batchOperations;
   }
 
   public List<MergeFieldInfo> getMergeFields(String listId) throws IOException, MailchimpException {
