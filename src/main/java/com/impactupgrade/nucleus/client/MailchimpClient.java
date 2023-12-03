@@ -37,12 +37,10 @@ import java.util.stream.Collectors;
 public class MailchimpClient {
 
   public static final String SUBSCRIBED = "subscribed";
-  public static final String ARCHIVED = "archived";
   public static final String FIRST_NAME = "FNAME";
   public static final String LAST_NAME = "LNAME";
   public static final String PHONE_NUMBER = "PHONE";
   public static final String TAGS = "tags";
-  public static final String TAG_COUNT = "tags_count";
   public static final String TAG_NAME = "name";
   public static final String TAG_STATUS = "status";
   public static final String TAG_ACTIVE = "active";
@@ -116,19 +114,6 @@ public class MailchimpClient {
     return members;
   }
 
-  public void archiveContact(String listId, String email) throws IOException, MailchimpException {
-    DeleteMemberMethod deleteMemberMethod = new DeleteMemberMethod(listId, email);
-    try {
-      client.execute(deleteMemberMethod);
-    } catch (MailchimpException e) {
-      if (e.code == 404) {
-        // swallow it -- contact doesn't exist
-      } else {
-        throw e;
-      }
-    }
-  }
-
   public String archiveContactsBatch(String listId, List<String> emails) throws IOException, MailchimpException {
     List<DeleteMemberMethod> deleteMemberMethods = emails.stream()
         .map(email -> new DeleteMemberMethod(listId, email))
@@ -139,19 +124,7 @@ public class MailchimpClient {
     return batchStatus.id;
   }
 
-  // TODO: TEST THIS
-  public Set<String> getContactGroupIds(String listId, String contactEmail) throws IOException, MailchimpException {
-    MemberInfo contact = getContactInfo(listId, contactEmail);
-    return contact.interests.mapping.keySet();
-  }
-
-  public Set<String> getContactTags(String listId, String contactEmail) throws IOException, MailchimpException {
-    MemberInfo member = getContactInfo(listId, contactEmail);
-    List<MailchimpObject> tags = (List<MailchimpObject>) member.mapping.get(TAGS);
-    return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toSet());
-  }
-
-  public Map<String, Set<String>> getContactsTags(String listId, List<MemberInfo> memberInfos) throws IOException, MailchimpException {
+  public Map<String, Set<String>> getContactsTags(List<MemberInfo> memberInfos) throws IOException, MailchimpException {
     Map<String, Set<String>> tagsMap = memberInfos.stream()
         .collect(Collectors.toMap(
             memberInfo -> memberInfo.email_address, memberInfo -> {
@@ -160,26 +133,6 @@ public class MailchimpClient {
             }
         ));
     return tagsMap;
-  }
-
-  public void updateContactTags(String listId, String contactEmail, Set<String> activeTags, Set<String> inactiveTags) throws IOException, MailchimpException {
-    ArrayList<MailchimpObject> tags = new ArrayList<>();
-    for (String activeTag : activeTags) {
-      MailchimpObject tag = new MailchimpObject();
-      tag.mapping.put(TAG_STATUS, TAG_ACTIVE);
-      tag.mapping.put(TAG_NAME, activeTag);
-      tags.add(tag);
-    }
-    for (String inactiveTag : inactiveTags) {
-      MailchimpObject tag = new MailchimpObject();
-      tag.mapping.put(TAG_STATUS, TAG_INACTIVE);
-      tag.mapping.put(TAG_NAME, inactiveTag);
-      tags.add(tag);
-    }
-
-    EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, contactEmail);
-    editMemberMethod.tags = tags;
-    client.execute(editMemberMethod);
   }
 
   public String updateContactTagsBatch(String listId, List<EmailContact> emailContacts) throws IOException, MailchimpException {
