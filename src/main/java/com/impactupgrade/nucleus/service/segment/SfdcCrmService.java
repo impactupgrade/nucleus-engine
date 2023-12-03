@@ -1181,13 +1181,14 @@ public class SfdcCrmService implements CrmService {
     // If it were the other way around, there's a good chance that Spouse B would land in their own isolated Account,
     // unless there was a direct address match.
 
-    for (int _i = 0; _i < importEvents.size() * 2; _i++) {
+    int eventsSize = importEvents.size();
+    for (int _i = 0; _i < eventsSize * 2; _i++) {
       // TODO: Not sure if this setup is clever or hacky...
-      boolean secondPass = _i >= importEvents.size();
-      if (_i == importEvents.size()) {
+      boolean secondPass = _i >= eventsSize;
+      if (_i == eventsSize) {
         sfdcClient.batchFlush();
       }
-      int i = _i % importEvents.size();
+      int i = _i % eventsSize;
 
       CrmImportEvent importEvent = importEvents.get(i);
 
@@ -1195,7 +1196,7 @@ public class SfdcCrmService implements CrmService {
         continue;
       }
 
-      env.logJobInfo("import processing contacts/account on row {} of {}", i + 2, importEvents.size() + 1);
+      env.logJobInfo("import processing contacts/account on row {} of {}", i + 2, eventsSize + 1);
 
       // Special case. Unlike the other "hasLookup" fields that are defined outside of the loop, we need to know if
       // this row actually has values for those fields. In some imports, organizations with no contacts are mixed
@@ -1343,12 +1344,14 @@ public class SfdcCrmService implements CrmService {
               list1.retainAll(list2);
               return !list1.isEmpty();
             }).toList();
-        env.logJobInfo("number of contacts for name {} {}: {}", importEvent.contactFirstName, importEvent.contactLastName, existingContacts.size());
 
-        if (existingContacts.size() > 1) {
+        int contactsSize = existingContacts.size();
+        env.logJobInfo("number of contacts for name {} {}: {}", importEvent.contactFirstName, importEvent.contactLastName, contactsSize);
+
+        if (contactsSize > 1) {
           // To be safe, let's skip this row for now and deal with it manually...
           env.logJobWarn("skipping contact in row {} due to multiple contacts found by-name", i + 2);
-        } else if (existingContacts.size() == 1) {
+        } else if (contactsSize == 1) {
           SObject existingContact = existingContacts.get(0);
 
           if (account == null) {
@@ -1437,10 +1440,10 @@ public class SfdcCrmService implements CrmService {
 
     if (hasRdLookups) {
       // TODO: Won't this loop process the same RD over and over each time it appears in an Opp row? Keep track of "visited"?
-      for (int i = 0; i < importEvents.size(); i++) {
+      for (int i = 0; i < eventsSize; i++) {
         CrmImportEvent importEvent = importEvents.get(i);
 
-        env.logJobInfo("import processing recurring donations on row {} of {}", i + 2, importEvents.size() + 1);
+        env.logJobInfo("import processing recurring donations on row {} of {}", i + 2, eventsSize + 1);
 
         SObject recurringDonation = new SObject("npe03__Recurring_Donation__c");
 
@@ -1486,10 +1489,10 @@ public class SfdcCrmService implements CrmService {
     }
 
     if (hasOppLookups) {
-      for (int i = 0; i < importEvents.size(); i++) {
+      for (int i = 0; i < eventsSize; i++) {
         CrmImportEvent importEvent = importEvents.get(i);
 
-        env.logJobInfo("import processing opportunities on row {} of {}", i + 2, importEvents.size() + 1);
+        env.logJobInfo("import processing opportunities on row {} of {}", i + 2, eventsSize + 1);
 
         SObject opportunity = new SObject("Opportunity");
 
@@ -1781,7 +1784,8 @@ public class SfdcCrmService implements CrmService {
       Set<String> seenRelationships,
       CrmImportEvent importEvent
   ) throws ExecutionException, InterruptedException, ConnectionException {
-    for (int j = 0; j < importEvent.contactOrganizations.size(); j++) {
+    int size = importEvent.contactOrganizations.size();
+    for (int j = 0; j < size; j++) {
       CrmAccount crmOrg = importEvent.contactOrganizations.get(j);
       String role = importEvent.contactOrganizationRoles.get(j);
 
@@ -2011,10 +2015,11 @@ public class SfdcCrmService implements CrmService {
       sfdcClient.getCampaignsByIds(campaignIds, campaignCustomFields).forEach(c -> existingCampaignById.put(c.getId(), c));
     }
 
-    for (int i = 0; i < importEvents.size(); i++) {
+    int eventsSize = importEvents.size();
+    for (int i = 0; i < eventsSize; i++) {
       CrmImportEvent importEvent = importEvents.get(i);
 
-      env.logJobInfo("import processing campaigns on row {} of {}", i + 2, importEvents.size() + 1);
+      env.logJobInfo("import processing campaigns on row {} of {}", i + 2, eventsSize + 1);
 
       SObject campaign = new SObject("Campaign");
       campaign.setField("Name", importEvent.campaignName);

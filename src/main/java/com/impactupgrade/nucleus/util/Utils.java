@@ -243,10 +243,12 @@ public class Utils {
       }
     }
 
+    int numCols = headerData.size();
+
     while (rowIterator.hasNext()) {
       Row row = rowIterator.next();
       Map<String, String> rowData = new HashMap<>();
-      for (int i = 0; i < headerData.size(); i++) {
+      for (int i = 0; i < numCols; i++) {
         Cell cell = row.getCell(i, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK);
         if (cell == null) {
           rowData.put(headerData.get(i), "");

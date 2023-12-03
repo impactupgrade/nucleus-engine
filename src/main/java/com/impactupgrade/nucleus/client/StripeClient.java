@@ -341,11 +341,12 @@ public class StripeClient {
     transactionExpand.add("data.source.payment_intent");
     transactionParams.put("expand", transactionExpand);
     BalanceTransactionCollection balanceTransactionsPage = BalanceTransaction.list(transactionParams, requestOptions);
-    env.logJobInfo("found {} transactions in payout page", balanceTransactionsPage.getData().size());
+    int size = balanceTransactionsPage.getData().size();
+    env.logJobInfo("found {} transactions in payout page", size);
 
     List<BalanceTransaction> balanceTransactions = new ArrayList<>(balanceTransactionsPage.getData());
     // if there were 100 transactions, iterate to add the next page
-    if (balanceTransactionsPage.getData().size() >= 100) {
+    if (size >= 100) {
       balanceTransactions.addAll(getBalanceTransactions(payout, Iterables.getLast(balanceTransactionsPage.getData())));
     }
 
