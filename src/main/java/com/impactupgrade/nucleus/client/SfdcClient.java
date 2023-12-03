@@ -225,9 +225,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     List<String> page;
     List<String> more;
-    if (contactIds.size() > MAX_ID_QUERY_LIST_SIZE) {
+    int size = contactIds.size();
+    if (size > MAX_ID_QUERY_LIST_SIZE) {
       page = contactIds.subList(0, MAX_ID_QUERY_LIST_SIZE);
-      more = contactIds.subList(MAX_ID_QUERY_LIST_SIZE, contactIds.size());
+      more = contactIds.subList(MAX_ID_QUERY_LIST_SIZE, size);
     } else {
       page = contactIds;
       more = Collections.emptyList();
@@ -737,10 +738,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public List<SObject> getDonationsByTransactionIds(List<String> transactionIds, String... extraFields) throws ConnectionException, InterruptedException {
     List<String> page;
     List<String> more;
+    int size = transactionIds.size();
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-    if (transactionIds.size() > MAX_ID_QUERY_LIST_SIZE) {
+    if (size > MAX_ID_QUERY_LIST_SIZE) {
       page = transactionIds.subList(0, MAX_ID_QUERY_LIST_SIZE);
-      more = transactionIds.subList(MAX_ID_QUERY_LIST_SIZE, transactionIds.size());
+      more = transactionIds.subList(MAX_ID_QUERY_LIST_SIZE, size);
     } else {
       page = transactionIds;
       more = Collections.emptyList();
@@ -906,10 +908,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     List<String> page;
     List<String> more;
+    int size = conditions.size();
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-    if (conditions.size() > MAX_ID_QUERY_LIST_SIZE) {
+    if (size > MAX_ID_QUERY_LIST_SIZE) {
       page = conditions.subList(0, MAX_ID_QUERY_LIST_SIZE);
-      more = conditions.subList(MAX_ID_QUERY_LIST_SIZE, conditions.size());
+      more = conditions.subList(MAX_ID_QUERY_LIST_SIZE, size);
     } else {
       page = conditions;
       more = Collections.emptyList();

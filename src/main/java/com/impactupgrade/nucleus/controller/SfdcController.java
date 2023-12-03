@@ -100,10 +100,11 @@ public class SfdcController {
         Set<String> contactIds = new HashSet<>();
         Set<String> accountIds = new HashSet<>();
 
-        for (int i = 0; i < data.size(); i++) {
+        int size = data.size();
+        for (int i = 0; i < size; i++) {
           Map<String, String> row = data.get(i);
 
-          env.logJobInfo("processing row {} of {}: {}", i + 2, data.size() + 1, row);
+          env.logJobInfo("processing row {} of {}: {}", i + 2, size + 1, row);
 
           if (row.containsKey("Opportunity ID")) {
             opportunityIds.add(row.get("Opportunity ID"));
@@ -115,7 +116,7 @@ public class SfdcController {
           if (row.containsKey("Account ID")) {
             accountIds.add(row.get("Account ID"));
           }
-          env.logJobInfo("{} row of {} processed", (i + 1), data.size());
+          env.logJobInfo("{} row of {} processed", (i + 1), size);
         }
 
         for (String opportunityId : opportunityIds) {

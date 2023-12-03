@@ -275,8 +275,9 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     List<CrmContact> unsubscribeContacts = crmService.getContactsByEmails(unsubscribeEmails);
 
     int count = 0;
+    int total = unsubscribeContacts.size();
     for (CrmContact crmContact : unsubscribeContacts) {
-      env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, unsubscribeContacts.size());
+      env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, total);
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;
       consumer.accept(updateContact);
