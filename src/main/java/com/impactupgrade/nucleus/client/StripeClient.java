@@ -92,7 +92,13 @@ public class StripeClient {
     return new Retriever<Charge>() {
       @Override
       protected Charge retrieve() throws StripeException {
-        return Charge.retrieve(id, requestOptions);
+        Map<String, Object> params = new HashMap<>();
+        List<String> expand = new ArrayList<>();
+        expand.add("customer");
+        expand.add("payment_intent");
+        expand.add("balance_transaction");
+        params.put("expand", expand);
+        return Charge.retrieve(id, params, requestOptions);
       }
     }.result();
   }
