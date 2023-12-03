@@ -586,7 +586,7 @@ public class VirtuousCrmService implements CrmService {
       return 0.0;
     }
     return campaignGifts.stream()
-        .mapToDouble(gift -> Double.parseDouble(gift.amount.replace("$", "")))
+        .mapToDouble(gift -> Double.parseDouble(gift.amount.replace("$", "").replace(",", "")))
         .sum();
   }
 
