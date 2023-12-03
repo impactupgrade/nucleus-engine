@@ -309,7 +309,10 @@ public class EnvironmentConfig implements Serializable {
     public boolean transactionalSender = false;
   }
 
-  public List<CommunicationPlatform> mailchimp = new ArrayList<>();
+  public List<Mailchimp> mailchimp = new ArrayList<>();
+  public static class Mailchimp extends CommunicationPlatform {
+    public Map<String, String> fieldsToSyncToCrm = new HashMap<>();
+  }
 
   public List<MBT> ministrybytext = new ArrayList<>();
   public static class MBT extends CommunicationPlatform {

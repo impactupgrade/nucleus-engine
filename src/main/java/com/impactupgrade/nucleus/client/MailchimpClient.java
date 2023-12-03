@@ -73,11 +73,6 @@ public class MailchimpClient {
     this.env = env;
   }
 
-  public MemberInfo getContactInfo(String listId, String contactEmail) throws IOException, MailchimpException {
-    GetMemberMethod getMemberMethod = new GetMemberMethod(listId, contactEmail);
-    return client.execute(getMemberMethod);
-  }
-
   public void upsertContact(String listId, MemberInfo contact) throws IOException, MailchimpException {
     EditMemberMethod.CreateOrUpdate upsertMemberMethod = new EditMemberMethod.CreateOrUpdate(listId, contact.email_address);
     upsertMemberMethod.status_if_new = contact.status;
@@ -106,16 +101,29 @@ public class MailchimpClient {
     return batchStatus.id;
   }
 
-  public List<MemberInfo> getListMembers(String listId) throws IOException, MailchimpException {
-    return getListMembers(listId, null, null);
+  public MemberInfo getListMember(String listId, String contactEmail) throws IOException, MailchimpException {
+    GetMemberMethod getMemberMethod = new GetMemberMethod(listId, contactEmail);
+    return client.execute(getMemberMethod);
   }
 
-  public List<MemberInfo> getListMembers(String listId, String status, Calendar sinceLastChanged) throws IOException, MailchimpException {
-    GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
+  public List<MemberInfo> getListMembers(EnvironmentConfig.Mailchimp mailchimpConfig,
+      EnvironmentConfig.CommunicationList communicationList) throws IOException, MailchimpException {
+    return getListMembers(mailchimpConfig, communicationList, null, null);
+  }
+
+  public List<MemberInfo> getListMembers(EnvironmentConfig.Mailchimp mailchimpConfig,
+      EnvironmentConfig.CommunicationList communicationList, String status, Calendar sinceLastChanged)
+      throws IOException, MailchimpException {
+    GetMembersMethod getMembersMethod = new GetMembersMethod(communicationList.id);
     getMembersMethod.status = status;
     getMembersMethod.fields = "members.email_address,members.tags,total_items"; // HUGE performance improvement -- limit to only what we need
+    for (String field : mailchimpConfig.fieldsToSyncToCrm.keySet()) {
+      // TODO: predictive demographics are not in the merge fields -- any other way to get them from the API,
+      //  or do we have to create segments and pull from there?
+      getMembersMethod.fields += ",members.merge_fields." + field;
+    }
     getMembersMethod.count = 1000; // subjective, but this is timing out periodically -- may need to dial it back further
-    env.logJobInfo("retrieving list {} contacts", listId);
+    env.logJobInfo("retrieving list {} contacts", communicationList.id);
     if (sinceLastChanged != null) {
       getMembersMethod.since_last_changed = sinceLastChanged.getTime();
       String formattedDate = new SimpleDateFormat("yyyy-MM-dd").format(sinceLastChanged.getTime());
@@ -125,7 +133,8 @@ public class MailchimpClient {
     List<MemberInfo> members = new ArrayList<>(getMemberResponse.members);
     while (getMemberResponse.total_items > members.size()) {
       getMembersMethod.offset = members.size();
-      env.logJobInfo("retrieving list {} contacts (offset {} of total {})", listId, getMembersMethod.offset, getMemberResponse.total_items);
+      env.logJobInfo("retrieving list {} contacts (offset {} of total {})",
+          communicationList.id, getMembersMethod.offset, getMemberResponse.total_items);
       getMemberResponse = client.execute(getMembersMethod);
       members.addAll(getMemberResponse.members);
     }
@@ -216,9 +225,16 @@ public class MailchimpClient {
 
           // Logging error operations
           batchOperations.stream()
-                  .filter(batchOperation -> batchOperation.status >= 300)
-                  .forEach(batchOperation ->
-                          env.logJobWarn("Failed Batch Operation {}: {} -- errors: {}", batchOperation.response.status, batchOperation.response.detail, String.join(", ", batchOperation.response.errors.stream().map(e -> "(" + e.field + ") " + e.message).toList())));
+              .filter(batchOperation -> batchOperation.status >= 300)
+              .forEach(batchOperation ->
+                  env.logJobWarn(
+                      "Failed Batch Operation for {}: {} {} :: errors: {}",
+                      batchOperation.response.email,
+                      batchOperation.response.status,
+                      batchOperation.response.detail,
+                      String.join(", ", batchOperation.response.errors.stream().map(e -> "(" + e.field + ") " + e.message).toList())
+                  )
+              );
         } catch (Exception e) {
           env.logJobError("failed to fetch batch operation results", e);
         }

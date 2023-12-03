@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.util.Utils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -30,7 +31,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     //  SendGridEmailService, even when no CrmService is identified.
   }
 
-  protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts) throws Exception {
+  protected Map<String, List<String>> getContactCampaignNames(Collection<CrmContact> crmContacts) throws Exception {
     List<String> crmContactIds = crmContacts.stream().map(c -> c.id).filter(Objects::nonNull).collect(Collectors.toList());
     if (crmContactIds.isEmpty()) {
       return Collections.emptyMap();
@@ -38,16 +39,15 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     return env.primaryCrmService().getContactCampaignsByContactIds(crmContactIds);
   }
 
-  protected List<CrmContact> getEmailContacts(Calendar lastSync, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+  protected Map<String, CrmContact> getEmailContacts(Calendar lastSync, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
 
-    Map<String, CrmContact> uniqueContacts = crmContacts.stream().collect(Collectors.toMap(
+    return crmContacts.stream().collect(Collectors.toMap(
         so -> so.email.toLowerCase(Locale.ROOT),
         Function.identity(),
         // FIFO
         (so1, so2) -> so1
     ));
-    return new ArrayList<>(uniqueContacts.values());
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,
