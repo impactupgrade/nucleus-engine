@@ -46,7 +46,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
   @Override
   public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
+    for (EnvironmentConfig.Mailchimp mailchimpConfig : env.getConfig().mailchimp) {
       for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
         // clear the cache, since fields differ between audiences
         mergeFieldsNameToTag.clear();
@@ -57,7 +57,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected void syncContacts(List<CrmContact> crmContacts, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
+  protected void syncContacts(List<CrmContact> crmContacts, EnvironmentConfig.Mailchimp mailchimpConfig,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
     MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
 
@@ -102,17 +102,19 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email).collect(Collectors.toSet());
       emailsToArchive.retainAll(mcEmails); // (but only if they actually exist in mc)
       // or 2) not in the CRM at all
-      Set<String> crmContactsEmails = new HashSet<>();
-      // get all email address in the entire CRM
-      crmContacts.forEach(crmContact -> {
-        crmContactsEmails.add(crmContact.email.toLowerCase(Locale.ROOT));
-        if (crmContact.account != null && !Strings.isNullOrEmpty(crmContact.account.email)) {
-          crmContactsEmails.add(crmContact.account.email.toLowerCase(Locale.ROOT));
-        }
-      });
-      // remove all CRM emails from the list of MC emails, which lives us with the list that needs to be archived
-      mcEmails.removeAll(crmContactsEmails);
-      emailsToArchive.addAll(mcEmails);
+      if (mailchimpConfig.enableCrmBasedArchival) {
+        Set<String> crmContactsEmails = new HashSet<>();
+        // get all email address in the entire CRM
+        crmContacts.forEach(crmContact -> {
+          crmContactsEmails.add(crmContact.email.toLowerCase(Locale.ROOT));
+          if (crmContact.account != null && !Strings.isNullOrEmpty(crmContact.account.email)) {
+            crmContactsEmails.add(crmContact.account.email.toLowerCase(Locale.ROOT));
+          }
+        });
+        // remove all CRM emails from the list of MC emails, which lives us with the list that needs to be archived
+        mcEmails.removeAll(crmContactsEmails);
+        emailsToArchive.addAll(mcEmails);
+      }
 
       String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
       mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
@@ -169,7 +171,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   public void upsertContact(String contactId) throws Exception {
     CrmService crmService = env.primaryCrmService();
 
-    for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
+    for (EnvironmentConfig.Mailchimp mailchimpConfig : env.getConfig().mailchimp) {
       for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
         // clear the cache, since fields differ between audiences
         mergeFieldsNameToTag.clear();

@@ -309,7 +309,12 @@ public class EnvironmentConfig implements Serializable {
     public boolean transactionalSender = false;
   }
 
-  public List<CommunicationPlatform> mailchimp = new ArrayList<>();
+  public List<Mailchimp> mailchimp = new ArrayList<>();
+  public static class Mailchimp extends CommunicationPlatform {
+    // Auto archive the MC contact if they don't exist as a subscriber in the CRM. Enable only if the organization
+    // ensures all contacts are first in the CRM. If they still manually upload to MC directly, keep this turned off.
+    public boolean enableCrmBasedArchival = false;
+  }
 
   public List<MBT> ministrybytext = new ArrayList<>();
   public static class MBT extends CommunicationPlatform {
