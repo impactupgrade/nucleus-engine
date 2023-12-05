@@ -73,44 +73,46 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
     try {
       List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
-      Set<String> crmContactsEmails = new HashSet<>();
-      crmContacts.forEach(crmContact -> {
-            crmContactsEmails.add(crmContact.email.toLowerCase(Locale.ROOT));
-            if (crmContact.account != null && !Strings.isNullOrEmpty(crmContact.account.email)) {
-              crmContactsEmails.add(crmContact.account.email.toLowerCase(Locale.ROOT));
-            }
-          });
-
-      // archive mc emails that are not in CRM
-      Set<String> mcEmailsToArchive = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-      mcEmailsToArchive.removeAll(crmContactsEmails);
 
       Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
       for (CrmContact crmContact : contactsToUpsert) {
         Map<String, Object> customFieldMap = getCustomFields(communicationList.id, crmContact, mailchimpClient, mailchimpConfig);
         contactsCustomFields.put(crmContact.email, customFieldMap);
       }
-
       Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
       Map<String, Set<String>> tags = mailchimpClient.getContactsTags(listMembers);
       Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
 
-      List<MemberInfo> memberInfos = toMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
-
-      String upsertBatchId = mailchimpClient.upsertContactsBatch(communicationList.id, memberInfos);
+      // run the actual contact upserts
+      List<MemberInfo> upsertMemberInfos = toMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
+      String upsertBatchId = mailchimpClient.upsertContactsBatch(communicationList.id, upsertMemberInfos);
       mailchimpClient.runBatchOperations(mailchimpConfig, upsertBatchId, 0);
 
+      // update all contacts' tags
       List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
           .map(crmContact -> new MailchimpClient.EmailContact(crmContact.email, activeTags.get(crmContact.email), tags.get(crmContact.email)))
           .collect(Collectors.toList());
-
       String tagsBatchId = updateTagsBatch(communicationList.id, emailContacts, mailchimpClient, mailchimpConfig);
       mailchimpClient.runBatchOperations(mailchimpConfig, tagsBatchId, 0);
 
-      // if they can't, they're archived, and will be failed to be retrieved for update
-      List<String> emailsToArchive = new ArrayList<>();
-      emailsToArchive.addAll(contactsToArchive.stream().map(crmContact -> crmContact.email).toList());
-      emailsToArchive.addAll(mcEmailsToArchive);
+      // this part's a little funky -- make sure to read the comments carefully
+      // get all mc email addresses in the entire audience
+      Set<String> mcEmails = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+      // archive mc emails that are 1) marked as unsubscribed in the CRM
+      Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email).collect(Collectors.toSet());
+      emailsToArchive.retainAll(mcEmails); // (but only if they actually exist in mc)
+      // or 2) not in the CRM at all
+      Set<String> crmContactsEmails = new HashSet<>();
+      // get all email address in the entire CRM
+      crmContacts.forEach(crmContact -> {
+        crmContactsEmails.add(crmContact.email.toLowerCase(Locale.ROOT));
+        if (crmContact.account != null && !Strings.isNullOrEmpty(crmContact.account.email)) {
+          crmContactsEmails.add(crmContact.account.email.toLowerCase(Locale.ROOT));
+        }
+      });
+      // remove all CRM emails from the list of MC emails, which lives us with the list that needs to be archived
+      mcEmails.removeAll(crmContactsEmails);
+      emailsToArchive.addAll(mcEmails);
 
       String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
       mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
