@@ -41,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -133,7 +134,7 @@ public class MailchimpClient {
     return members;
   }
 
-  public String archiveContactsBatch(String listId, List<String> emails) throws IOException, MailchimpException {
+  public String archiveContactsBatch(String listId, Collection<String> emails) throws IOException, MailchimpException {
     List<DeleteMemberMethod> deleteMemberMethods = emails.stream()
         .map(email -> new DeleteMemberMethod(listId, email))
         .collect(Collectors.toList());
@@ -216,9 +217,16 @@ public class MailchimpClient {
 
           // Logging error operations
           batchOperations.stream()
-                  .filter(batchOperation -> batchOperation.status >= 300)
-                  .forEach(batchOperation ->
-                          env.logJobWarn("Failed Batch Operation {}: {} -- errors: {}", batchOperation.response.status, batchOperation.response.detail, String.join(", ", batchOperation.response.errors.stream().map(e -> "(" + e.field + ") " + e.message).toList())));
+              .filter(batchOperation -> batchOperation.status >= 300)
+              .forEach(batchOperation ->
+                  env.logJobWarn(
+                      "Failed Batch Operation for {}: {} {} :: errors: {}",
+                      batchOperation.response.email,
+                      batchOperation.response.status,
+                      batchOperation.response.detail,
+                      String.join(", ", batchOperation.response.errors.stream().map(e -> "(" + e.field + ") " + e.message).toList())
+                  )
+              );
         } catch (Exception e) {
           env.logJobError("failed to fetch batch operation results", e);
         }
