@@ -733,17 +733,24 @@ public class StripeClient {
     return Price.create(priceCreateParams, requestOptions);
   }
 
-  public Invoice createAndSendInvoice(Customer customer, Price price, String itemDescription) throws StripeException {
-    InvoiceCreateParams invoiceCreateParams = InvoiceCreateParams.builder()
+  public InvoiceCreateParams.Builder defaultInvoiceBuilder(Customer customer) {
+    return InvoiceCreateParams.builder()
         .setCustomer(customer.getId())
         .setCollectionMethod(InvoiceCreateParams.CollectionMethod.SEND_INVOICE)
-        .setDaysUntilDue(30L)
-        .build();
-    Invoice invoice = Invoice.create(invoiceCreateParams, requestOptions);
-    InvoiceItemCreateParams invoiceItemParams = InvoiceItemCreateParams.builder()
+        .setDaysUntilDue(30L);
+  }
+
+  public InvoiceItemCreateParams.Builder defaultInvoiceItemBuilder(Customer customer, Price price, String itemDescription) {
+    return InvoiceItemCreateParams.builder()
         .setCustomer(customer.getId())
-        .setDescription(itemDescription)
         .setPrice(price.getId())
+        .setDescription(itemDescription);
+  }
+
+  public Invoice createAndSendInvoice(InvoiceCreateParams.Builder invoiceBuilder,
+      InvoiceItemCreateParams.Builder invoiceItemBuilder) throws StripeException {
+    Invoice invoice = Invoice.create(invoiceBuilder.build(), requestOptions);
+    InvoiceItemCreateParams invoiceItemParams = invoiceItemBuilder
         .setInvoice(invoice.getId())
         .build();
     InvoiceItem.create(invoiceItemParams, requestOptions);
