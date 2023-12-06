@@ -103,7 +103,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     ACCOUNT_FIELDS = "id, OwnerId, Owner.Id, Owner.IsActive, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, ShippingStreet, ShippingCity, ShippingPostalCode, ShippingState, ShippingCountry";
     CAMPAIGN_FIELDS = "id, name, parentid, ownerid, owner.id, owner.isactive";
     CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, Owner.IsActive, FirstName, LastName, Title, Account.Id, Account.Name, Account.BillingStreet, Account.BillingCity, Account.BillingPostalCode, Account.BillingState, Account.BillingCountry, Account.ShippingStreet, Account.ShippingCity, Account.ShippingPostalCode, Account.ShippingState, Account.ShippingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, HomePhone, MobilePhone, Phone";
-    LEAD_FIELDS = "Id, FirstName, LastName, Email";
+    LEAD_FIELDS = "Id, FirstName, LastName, Email, OwnerId, Owner.Id, Owner.Name, Owner.IsActive";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId, Owner.Id, Owner.IsActive";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";
     REPORT_FIELDS = "Id, Name";
