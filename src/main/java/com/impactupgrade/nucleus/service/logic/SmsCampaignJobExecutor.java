@@ -130,7 +130,6 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         //  support non-CRM sources. Keeping this for now as a fallback for existing campaigns, as of May 2023.
         //  Remove in the future!
         if (jobProgress == null && !Strings.isNullOrEmpty(crmContact.id)) {
-          env.logJobInfo("Failed to get job progress using target id {}. Trying to find job progress using contact id {}...", targetId, crmContact.id);
           jobProgress = progressesByContacts.get(crmContact.id);
         }
 
