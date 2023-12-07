@@ -24,7 +24,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -94,10 +93,10 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     env.logJobInfo("Retrieving contacts using contactListId {}", contactListId);
 
     // get the list and dedup by phone number
-    Collection<CrmContact> crmContacts = crmService.getContactsFromList(contactListId).stream()
+    Map<String, CrmContact> crmContacts = crmService.getContactsFromList(contactListId).stream()
         .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
-        .collect(Collectors.toMap(c -> c.phoneNumberForSMS().replaceAll("[\\D]", ""), c -> c, (c1, c2) -> c1, LinkedHashMap::new)).values();
-    if (CollectionUtils.isEmpty(crmContacts)) {
+        .collect(Collectors.toMap(CrmContact::phoneNumberForSMS, c -> c, (c1, c2) -> c1, LinkedHashMap::new));
+    if (crmContacts.isEmpty()) {
       env.logJobInfo("No contacts returned for job id {}! Skipping...", job.id);
       env.endJobLog(JobStatus.DONE);
       return;
@@ -114,12 +113,9 @@ public class SmsCampaignJobExecutor implements JobExecutor {
             }
         ));
 
-    for (CrmContact crmContact : crmContacts) {
-      String targetId = crmContact.phoneNumberForSMS();
-      if (Strings.isNullOrEmpty(targetId)) {
-        continue;
-      }
-      targetId = targetId.replaceAll("[\\D]", "");
+    for (Map.Entry<String, CrmContact> entry : crmContacts.entrySet()) {
+      String targetId = entry.getKey();
+      CrmContact crmContact = entry.getValue();
 
       try {
         int nextMessage;

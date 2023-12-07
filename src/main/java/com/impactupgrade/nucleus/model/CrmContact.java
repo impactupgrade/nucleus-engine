@@ -189,9 +189,21 @@ public class CrmContact extends CrmRecord {
   }
 
   public String phoneNumberForSMS() {
-    if (!Strings.isNullOrEmpty(mobilePhone)) {
-      return mobilePhone;
+    String pn = mobilePhone;
+    if (Strings.isNullOrEmpty(pn)) {
+      pn = homePhone;
     }
-    return homePhone;
+    if (Strings.isNullOrEmpty(pn)) {
+      return null;
+    }
+
+    pn = pn.replaceAll("[^0-9+]", "");
+    // obviously US specific
+    if (pn.length() == 10) {
+      pn = "+1" + pn;
+    } else if (pn.length() == 11) {
+      pn = "+" + pn;
+    }
+    return pn;
   }
 }
