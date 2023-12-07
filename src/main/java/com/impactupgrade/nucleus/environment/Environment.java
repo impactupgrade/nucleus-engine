@@ -255,7 +255,7 @@ public class Environment {
   public FactsClient factsClient() { return new FactsClient(this); }
   public RaiselyClient raiselyClient() { return new RaiselyClient(this); }
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
-  public SfdcClient sfdcClient(String username, String password) { return new SfdcClient(this, username, password); }
+  public SfdcClient sfdcClient(String username, String password, boolean isSandbox) { return new SfdcClient(this, username, password, isSandbox); }
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }
   public SfdcMetadataClient sfdcMetadataClient() { return new SfdcMetadataClient(this); }
   public StripeClient stripeClient() { return new StripeClient(this); }

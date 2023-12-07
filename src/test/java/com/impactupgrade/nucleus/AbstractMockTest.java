@@ -79,7 +79,7 @@ public abstract class AbstractMockTest {
     }
 
     @Override
-    public SfdcClient sfdcClient(String username, String password) {
+    public SfdcClient sfdcClient(String username, String password, boolean isSandbox) {
       return sfdcClientMock;
     }
 

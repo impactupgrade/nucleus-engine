@@ -55,6 +55,7 @@ public class SfdcMetadataClient {
   protected final Environment env;
   private final String username;
   private final String password;
+  private final boolean isSandbox;
 
   // Keep it simple and build on-demand, since this is rarely used! But if caching is needed, see the
   // approach in SFDCPartnerAPIClient.
@@ -64,7 +65,7 @@ public class SfdcMetadataClient {
     metadataConfig.setPassword(password);
     // Oh, Salesforce. We must call the login endpoint to obtain the metadataServerUrl and sessionId.
     // No idea why this isn't generated as a part of the connection, like Enterprise WSDL does it...
-    LoginResult loginResult = env.sfdcClient(username, password).login();
+    LoginResult loginResult = env.sfdcClient(username, password, isSandbox).login();
     metadataConfig.setServiceEndpoint(loginResult.getMetadataServerUrl());
     metadataConfig.setSessionId(loginResult.getSessionId());
     return Connector.newConnection(metadataConfig);
@@ -77,10 +78,11 @@ public class SfdcMetadataClient {
    * @param username
    * @param password
    */
-  public SfdcMetadataClient(Environment env, String username, String password) {
+  public SfdcMetadataClient(Environment env, String username, String password, boolean isSandbox) {
     this.env = env;
     this.username = username;
     this.password = password;
+    this.isSandbox = isSandbox;
   }
 
   /**
@@ -88,8 +90,9 @@ public class SfdcMetadataClient {
    */
   public SfdcMetadataClient(Environment env) {
     this.env = env;
-    this.username = env.getConfig().salesforce.username;
-    this.password = env.getConfig().salesforce.password;
+    username = env.getConfig().salesforce.username;
+    password = env.getConfig().salesforce.password;
+    isSandbox = env.getConfig().salesforce.sandbox;
   }
 
   /**
