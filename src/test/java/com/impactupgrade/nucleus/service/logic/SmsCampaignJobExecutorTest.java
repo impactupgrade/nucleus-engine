@@ -93,7 +93,12 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     CrmContact contact1 = crmContact("contact1", "+12345678901", "EN");
     CrmContact contact2 = crmContact("contact2", "+12345678902", "EN");
     CrmContact contact3 = crmContact("contact3", "+12345678902", "EN"); // dup
-    when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2, contact3));
+    CrmContact contact4 = crmContact("contact4", "12345678902", "EN"); // dup
+    CrmContact contact5 = crmContact("contact5", "2345678902", "EN"); // dup
+    CrmContact contact6 = crmContact("contact6", "(234) 567-8902", "EN"); // dup
+    CrmContact contact7 = crmContact("contact7", "234.567.8902", "EN"); // dup
+    CrmContact contact8 = crmContact("contact8", "+1 234 567 8902", "EN"); // dup
+    when(crmServiceMock.getContactsFromList("list1234")).thenReturn(List.of(contact1, contact2, contact3, contact4, contact5, contact6, contact7, contact8));
 
     service.processJobSchedules(Instant.now());
 
@@ -102,8 +107,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     List<JobProgress> jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
   }
 
   @Test
@@ -266,11 +271,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
     String contact1ProgressPayload = jobProgresses.get(0).payload.toString();
     assertTrue(contact1ProgressPayload.contains("\"lastMessage\":1,"));
     assertTrue(contact1ProgressPayload.contains("\"sentMessages\":[1]"));
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
     String contact2ProgressPayload = jobProgresses.get(1).payload.toString();
     assertTrue(contact2ProgressPayload.contains("\"lastMessage\":1,"));
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1]"));
@@ -292,9 +297,9 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -314,9 +319,9 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -337,11 +342,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
     contact1ProgressPayload = jobProgresses.get(0).payload.toString();
     assertTrue(contact1ProgressPayload.contains("\"lastMessage\":2,"));
     assertTrue(contact1ProgressPayload.contains("\"sentMessages\":[1,2]"));
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
     contact2ProgressPayload = jobProgresses.get(1).payload.toString();
     assertTrue(contact2ProgressPayload.contains("\"lastMessage\":2,"));
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1,2]"));
@@ -366,9 +371,9 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -389,15 +394,15 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(3, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
     contact1ProgressPayload = jobProgresses.get(0).payload.toString();
     assertTrue(contact1ProgressPayload.contains("\"lastMessage\":3,"));
     assertTrue(contact1ProgressPayload.contains("\"sentMessages\":[1,2,3]"));
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
     contact2ProgressPayload = jobProgresses.get(1).payload.toString();
     assertTrue(contact2ProgressPayload.contains("\"lastMessage\":3,"));
     assertTrue(contact2ProgressPayload.contains("\"sentMessages\":[1,2,3]"));
-    assertEquals("12345678903", jobProgresses.get(2).targetId);
+    assertEquals("+12345678903", jobProgresses.get(2).targetId);
     String contact3ProgressPayload = jobProgresses.get(2).payload.toString();
     if (sequenceOrder == JobSequenceOrder.BEGINNING) {
       assertTrue(contact3ProgressPayload.contains("\"lastMessage\":1,"));
@@ -424,11 +429,11 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     jobProgresses = jobProgressDao.getAll();
     assertEquals(3, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
     assertEquals(contact1ProgressPayload, jobProgresses.get(0).payload.toString());
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
     assertEquals(contact2ProgressPayload, jobProgresses.get(1).payload.toString());
-    assertEquals("12345678903", jobProgresses.get(2).targetId);
+    assertEquals("+12345678903", jobProgresses.get(2).targetId);
     assertEquals(contact3ProgressPayload, jobProgresses.get(2).payload.toString());
   }
 
@@ -771,8 +776,8 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
 
     List<JobProgress> jobProgresses = jobProgressDao.getAll();
     assertEquals(2, jobProgresses.size());
-    assertEquals("12345678901", jobProgresses.get(0).targetId);
-    assertEquals("12345678902", jobProgresses.get(1).targetId);
+    assertEquals("+12345678901", jobProgresses.get(0).targetId);
+    assertEquals("+12345678902", jobProgresses.get(1).targetId);
   }
 
   @Test
