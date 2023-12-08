@@ -13,6 +13,7 @@ import com.ecwid.maleorang.method.v3_0.lists.members.DeleteMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
+import com.ecwid.maleorang.method.v3_0.lists.members.GetSegmentMembersMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.EditMergeFieldMethod;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.GetMergeFieldsMethod;
@@ -132,6 +133,23 @@ public class MailchimpClient {
     }
 
     return members;
+  }
+
+  public List<MemberInfo> getSegmentMembers(String listId, String segmentId) throws IOException, MailchimpException {
+    GetSegmentMembersMethod getSegmentMembersMethod = new GetSegmentMembersMethod(listId, segmentId);
+    getSegmentMembersMethod.fields = "members.email_address,total_items"; // HUGE performance improvement -- limit to only what we need
+    getSegmentMembersMethod.count = 1000; // subjective, but this is timing out periodically -- may need to dial it back further
+    env.logJobInfo("retrieving list/segment {}/{} contacts", listId, segmentId);
+    GetSegmentMembersMethod.Response getSegmentMemberResponse = client.execute(getSegmentMembersMethod);
+    List<MemberInfo> segmentMembers = new ArrayList<>(getSegmentMemberResponse.members);
+    while (getSegmentMemberResponse.total_items > segmentMembers.size()) {
+      getSegmentMembersMethod.offset = segmentMembers.size();
+      env.logJobInfo("retrieving list/segment {}/{} contacts (offset {} of total {})", listId, segmentId, getSegmentMembersMethod.offset, getSegmentMemberResponse.total_items);
+      getSegmentMemberResponse = client.execute(getSegmentMembersMethod);
+      segmentMembers.addAll(getSegmentMemberResponse.members);
+    }
+
+    return segmentMembers;
   }
 
   public String archiveContactsBatch(String listId, Collection<String> emails) throws IOException, MailchimpException {

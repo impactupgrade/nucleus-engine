@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -53,6 +54,8 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
         List<CrmContact> crmContacts = getEmailContacts(lastSync, communicationList);
         syncContacts(crmContacts, mailchimpConfig, communicationList);
+
+        syncContactsBackToCrm(crmContacts, mailchimpConfig, communicationList);
       }
     }
   }
@@ -280,5 +283,28 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.interests = groupMap;
 
     return mcContact;
+  }
+
+  public void syncContactsBackToCrm(List<CrmContact> crmContacts, EnvironmentConfig.Mailchimp mailchimpConfig,
+                                    EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
+
+    Map<String, String> emailToAge = new HashMap<>();
+    if (MapUtils.isNotEmpty(communicationList.ageSegments)) {
+      for (String segmentId: communicationList.ageSegments.keySet()) {
+        List<MemberInfo> segmentMembers = mailchimpClient.getSegmentMembers(communicationList.id, segmentId);
+        segmentMembers.stream().forEach(memberInfo -> {
+          String value = communicationList.ageSegments.get(segmentId);
+          emailToAge.put(memberInfo.email_address, value);
+        });
+      }
+    }
+
+    crmContacts.stream().forEach(crmContact -> {
+      if (emailToAge.containsKey(crmContact.email)) {
+        crmContact.crmRawFieldsToSet.put("Mailchimp_Age__c", emailToAge.get(crmContact.email));
+      }
+    });
+
   }
 }

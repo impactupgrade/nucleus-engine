@@ -299,6 +299,7 @@ public class EnvironmentConfig implements Serializable {
     public String crmFilter = "";
     public String crmLeadFilter = "";
     public String crmAccountFilter = "";
+    public Map<String, String> ageSegments = new HashMap<>(); // <SegmentID, Age<from-to>>
   }
   public static class CommunicationPlatform extends Platform {
     public List<CommunicationList> lists = new ArrayList<>();
