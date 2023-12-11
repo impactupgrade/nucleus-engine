@@ -27,15 +27,6 @@ public class ContactService {
   }
 
   public void processDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: Happens both here and DonationService, since we need both processes to halt. Refactor?
-    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)
-        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())
-        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)
-        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
-      env.logJobWarn("payment gateway event {} had no email address or CRM IDs; skipping processing", paymentGatewayEvent.getCrmDonation().transactionId);
-      return;
-    }
-
     Optional<CrmAccount> existingAccount = Optional.empty();
     Optional<CrmContact> existingContact = Optional.empty();
 

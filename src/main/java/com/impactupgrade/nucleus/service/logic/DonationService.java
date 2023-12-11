@@ -30,6 +30,7 @@ public class DonationService {
   }
 
   public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    // TODO: Hate this pattern. Refactor upstream and halt sooner?
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
       env.logJobWarn("payment gateway event {} failed to process the donor; skipping donation processing", paymentGatewayEvent.getCrmDonation().transactionId);
