@@ -245,13 +245,15 @@ public class VirtuousCrmService implements CrmService {
       // TODO: Contains?
       conditions.add(queryCondition("Phone Number", "Is", contactSearch.phone));
     }
-    if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
-      String[] keywordSplit = contactSearch.keywords.trim().split("\\s+");
-      for (String keyword : keywordSplit) {
+    // TODO: by name?
+    if (!contactSearch.keywords.isEmpty()) {
+      for (String keyword : contactSearch.keywords) {
+        keyword = keyword.trim();
         if (keyword.equalsIgnoreCase("and") || keyword.equalsIgnoreCase("&")) {
           continue;
         }
         conditions.add(queryCondition("Contact Name", "Contains", keyword));
+        // TODO: other Virtuous fields that could contain the keyword?
       }
     }
 
@@ -431,7 +433,7 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
     ContactSearch contactSearch = new ContactSearch();
-    name.ifPresent(s -> contactSearch.keywords = s);
+    name.ifPresent(s -> contactSearch.keywords = Set.of(s));
     email.ifPresent(s -> contactSearch.email = s);
     phone.ifPresent(s -> contactSearch.phone = s);
     PagedResults<CrmContact> crmContacts = searchContacts(contactSearch);

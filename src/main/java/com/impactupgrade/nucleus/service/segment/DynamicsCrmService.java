@@ -59,6 +59,7 @@ public class DynamicsCrmService implements BasicCrmService {
 
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+    // TODO: by name and by keywords
     DynamicsCrmClient.Contact contact;
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       contact = dynamicsCrmClient.getContactByEmail(contactSearch.email);
@@ -67,7 +68,7 @@ public class DynamicsCrmService implements BasicCrmService {
       contact = dynamicsCrmClient.getContactByPhoneNumber(contactSearch.phone);
       return PagedResults.getPagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
     } else {
-      return null;
+      return new PagedResults<>();
     }
   }
 

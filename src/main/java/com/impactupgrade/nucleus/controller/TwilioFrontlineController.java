@@ -84,7 +84,8 @@ public class TwilioFrontlineController {
         break;
       case "GetCustomersList":
         ContactSearch contactSearch = new ContactSearch();
-        contactSearch.keywords = searchQuery;
+        String[] keywordSplit = searchQuery == null ? new String[] {} : searchQuery.trim().split("\\s+");
+        contactSearch.keywords = Set.of(keywordSplit);
         contactSearch.hasPhone = true;
         contactSearch.pageSize = pageSize;
         contactSearch.pageToken = nextPageToken;

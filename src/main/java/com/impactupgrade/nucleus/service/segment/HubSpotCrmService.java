@@ -178,7 +178,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
-    //  combining clauses, owner, keyword search, pagination, etc.
+    //  combining clauses, owner, by-namd, keyword search, pagination, etc.
 
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       List<CrmContact> contacts = toCrmContact(hsClient.contact().searchByEmail(contactSearch.email, contactFields).getResults());
@@ -187,7 +187,7 @@ public class HubSpotCrmService implements CrmService {
       List<CrmContact> contacts =  toCrmContact(hsClient.contact().searchByPhone(contactSearch.phone, contactFields).getResults());
       return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
     } else {
-      return null;
+      return new PagedResults<>();
     }
   }
 

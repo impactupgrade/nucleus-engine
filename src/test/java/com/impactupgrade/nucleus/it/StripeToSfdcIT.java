@@ -14,15 +14,16 @@ import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
 import com.stripe.param.PlanCreateParams;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
+import static com.impactupgrade.nucleus.util.Utils.now;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,7 +36,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Charge charge = StripeUtil.createCharge(customer, env);
@@ -64,7 +65,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(customer.getName().split(" ")[0], contact.getField("FirstName"));
     assertEquals(customer.getName().split(" ")[1], contact.getField("LastName"));
     assertEquals(customer.getEmail(), contact.getField("Email"));
-    assertEquals("260-123-4567", contact.getField("MobilePhone"));
+    assertEquals(customer.getPhone(), contact.getField("MobilePhone"));
 
     // verify DonationService -> SfdcCrmService
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
@@ -90,8 +91,68 @@ public class StripeToSfdcIT extends AbstractIT {
   }
 
   @Test
+  public void coreOneTimeByName() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    Customer customer = StripeUtil.createCustomer(env);
+
+    String firstName = customer.getName().split(" ")[0];
+    String lastName = customer.getName().split(" ")[1];
+
+    // precreate a contact that has the same name and address
+    SObject existingAccount = new SObject("Account");
+    existingAccount.setField("Name", customer.getName());
+    // same address
+    existingAccount.setField("BillingStreet", "123 Somewhere St");
+    existingAccount.setField("BillingCity", "Fort Wayne");
+    existingAccount.setField("BillingState", "IN");
+    existingAccount.setField("BillingPostalCode", "46814");
+    existingAccount.setField("BillingCountry", "US");
+    String existingAccountId = sfdcClient.insert(existingAccount).getId();
+    SObject existingContact = new SObject("Contact");
+    existingContact.setField("AccountId", existingAccountId);
+    // same name
+    existingContact.setField("FirstName", firstName);
+    existingContact.setField("LastName", lastName);
+    // different email
+    existingContact.setField("Email", RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com");
+    // different phone
+    String existingContactId = sfdcClient.insert(existingContact).getId();
+
+    Charge charge = StripeUtil.createCharge(customer, env);
+    String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
+
+    // play as a Stripe webhook
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // verify ContactService -> SfdcCrmService
+    List<SObject> contacts = sfdcClient.searchContacts(ContactSearch.byName(firstName, lastName)).getResults();
+    // main test -- this would be 2 if the by-name match didn't work
+    assertEquals(1, contacts.size());
+    SObject contact = contacts.get(0);
+    String accountId = contact.getField("AccountId").toString();
+    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    assertTrue(accountO.isPresent());
+    SObject account = accountO.get();
+    assertEquals(customer.getName(), account.getField("Name"));
+    assertEquals("123 Somewhere St", account.getField("BillingStreet"));
+    assertEquals("Fort Wayne", account.getField("BillingCity"));
+    assertEquals("IN", account.getField("BillingState"));
+    assertEquals("46814", account.getField("BillingPostalCode"));
+    assertEquals("US", account.getField("BillingCountry"));
+    assertEquals(customer.getName().split(" ")[0], contact.getField("FirstName"));
+    assertEquals(customer.getName().split(" ")[1], contact.getField("LastName"));
+    // should be the existing CRM field, not the Stripe customer
+    assertEquals(existingContact.getField("Email"), contact.getField("Email"));
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(customer.getName());
+  }
+
+  @Test
   public void coreSubscription() throws Exception {
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
@@ -121,7 +182,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(customer.getName().split(" ")[0], contact.getField("FirstName"));
     assertEquals(customer.getName().split(" ")[1], contact.getField("LastName"));
     assertEquals(customer.getEmail(), contact.getField("Email"));
-    assertEquals("260-123-4567", contact.getField("MobilePhone"));
+    assertEquals(customer.getPhone(), contact.getField("MobilePhone"));
 
     List<SObject> rds = sfdcClient.getRecurringDonationsByAccountId(accountId);
     assertEquals(1, rds.size());
@@ -154,8 +215,6 @@ public class StripeToSfdcIT extends AbstractIT {
 
   @Test
   public void coreSubscriptionFrequency() throws Exception {
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
-
     Customer customer = StripeUtil.createCustomer(env);
     Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.YEAR);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
@@ -205,7 +264,7 @@ public class StripeToSfdcIT extends AbstractIT {
     existingContact.setField("Email", customer.getEmail());
     String existingContactId = sfdcClient.insert(existingContact).getId();
 
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Charge charge = StripeUtil.createCharge(customer, env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
@@ -231,7 +290,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(customer.getName().split(" ")[0], contact.getField("FirstName"));
     assertEquals(customer.getName().split(" ")[1], contact.getField("LastName"));
     assertEquals(customer.getEmail(), contact.getField("Email"));
-    assertEquals("260-123-4567", contact.getField("MobilePhone"));
+    assertEquals(customer.getPhone(), contact.getField("MobilePhone"));
 
     // verify DonationService -> SfdcCrmService
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
@@ -273,7 +332,7 @@ public class StripeToSfdcIT extends AbstractIT {
     existingContact.setField("MobilePhone", "260-987-6543");
     String existingContactId = sfdcClient.insert(existingContact).getId();
 
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Charge charge = StripeUtil.createCharge(customer, env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());

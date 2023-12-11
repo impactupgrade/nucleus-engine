@@ -39,6 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -198,7 +199,7 @@ public class SharePointCrmService implements CrmService {
                 if (!Strings.isNullOrEmpty(csvRow.get(phoneColumn)) && csvRow.get(phoneColumn).replace("+1", "").replaceAll("[^\\d]", "").equals(contactSearch.phone.replace("+1", "").replaceAll("[^\\d]", ""))) {
                     foundContacts.add(toCrmContact(csvRow));
                 }
-            } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
+            } else if (!contactSearch.keywords.isEmpty()) {
                 if (keywordMatch(contactSearch.keywords, csvRow)) {
                     foundContacts.add(toCrmContact(csvRow));
                 }
@@ -228,10 +229,9 @@ public class SharePointCrmService implements CrmService {
     }
 
     // Separate method, since some orgs will want to skip specific columns.
-    protected boolean keywordMatch(String keywords, Map<String, String> csvRow) {
-        String[] keywordSplit = keywords.split("[^\\w]+");
+    protected boolean keywordMatch(Set<String> keywords, Map<String, String> csvRow) {
         // TODO: Not a super performant way of doing this...
-        for (String keyword : keywordSplit) {
+        for (String keyword : keywords) {
             boolean found = csvRow.entrySet().stream()
                 .filter(entry -> !env.getConfig().sharePoint.searchColumnsToSkip.contains(entry.getKey()))
                 .map(Map.Entry::getValue)

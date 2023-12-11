@@ -638,6 +638,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       }
     }
 
+    if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
+      clauses.add("FirstName = '" + contactSearch.firstName + "'");
+    }
+    if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
+      clauses.add("LastName = '" + contactSearch.lastName + "'");
+    }
+
     if (!Strings.isNullOrEmpty(contactSearch.accountId)) {
       clauses.add("AccountId = '" + contactSearch.accountId + "'");
     }
@@ -646,11 +653,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       clauses.add("OwnerId = '" + contactSearch.ownerId + "'");
     }
 
-    if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
-      String[] keywordSplit = contactSearch.keywords.trim().split("\\s+");
-      for (String keyword : keywordSplit) {
+    if (!contactSearch.keywords.isEmpty()) {
+      for (String keyword : contactSearch.keywords) {
+        keyword = keyword.trim();
         // TODO: Finding a few clients with no homephone, so taking that out for now.
-        clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR npe01__Home_Address__c LIKE '%" + keyword + "%')");
+        clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR MailingStreet LIKE '%" + keyword + "%' OR MailingCity LIKE '%" + keyword + "%' OR MailingState LIKE '%" + keyword + "%' OR MailingPostalCode LIKE '%" + keyword + "%' OR Account.ShippingStreet LIKE '%" + keyword + "%' OR Account.ShippingCity LIKE '%" + keyword + "%' OR Account.ShippingState LIKE '%" + keyword + "%' OR Account.ShippingPostalCode LIKE '%" + keyword + "%' OR Account.BillingStreet LIKE '%" + keyword + "%' OR Account.BillingCity LIKE '%" + keyword + "%' OR Account.BillingState LIKE '%" + keyword + "%' OR Account.BillingPostalCode LIKE '%" + keyword + "%')");
       }
     }
 

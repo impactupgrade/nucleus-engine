@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.model;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,12 @@ public class PagedResults<T> {
     this.results = results;
     this.pageSize = pageSize;
     this.nextPageToken = nextPageToken;
+  }
+
+  public PagedResults() {
+    results = new ArrayList<>();
+    pageSize = 0;
+    nextPageToken = null;
   }
 
   public List<T> getResults() {

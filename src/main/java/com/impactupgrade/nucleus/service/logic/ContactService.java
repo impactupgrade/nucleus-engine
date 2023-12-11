@@ -14,6 +14,7 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 
 import java.util.Optional;
+import java.util.Set;
 
 public class ContactService {
 
@@ -28,6 +29,7 @@ public class ContactService {
   public void processDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     // TODO: Happens both here and DonationService, since we need both processes to halt. Refactor?
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
       env.logJobWarn("payment gateway event {} had no email address or CRM IDs; skipping processing", paymentGatewayEvent.getCrmDonation().transactionId);
@@ -70,14 +72,34 @@ public class ContactService {
     if (existingAccount.isEmpty() && existingContact.isEmpty()) {
       if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)) {
         existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
-      } else if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())) {
+      }
+      if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())) {
         existingContact = crmService.searchContacts(ContactSearch.byPhone(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())).getSingleResult();
+      }
+      if (existingContact.isEmpty()
+          && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().firstName) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().lastName)) {
+        ContactSearch contactSearch = new ContactSearch();
+        contactSearch.firstName = paymentGatewayEvent.getCrmContact().firstName;
+        contactSearch.lastName = paymentGatewayEvent.getCrmContact().lastName;
+        // Only return results if an address was also available!
+        if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().mailingAddress.street)) {
+          contactSearch.keywords = Set.of(paymentGatewayEvent.getCrmContact().mailingAddress.street);
+          existingContact = crmService.searchContacts(contactSearch).getSingleResult();
+        }
+        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().mailingAddress.street)) {
+          contactSearch.keywords = Set.of(paymentGatewayEvent.getCrmAccount().mailingAddress.street);
+          existingContact = crmService.searchContacts(contactSearch).getSingleResult();
+        }
+        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().billingAddress.street)) {
+          contactSearch.keywords = Set.of(paymentGatewayEvent.getCrmAccount().billingAddress.street);
+          existingContact = crmService.searchContacts(contactSearch).getSingleResult();
+        }
       }
 
       if (existingContact.isPresent()) {
         env.logJobInfo("found CRM contact {}", existingContact.get().id);
 
-        if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().account.id)) {
+        if (!Strings.isNullOrEmpty(existingContact.get().account.id)) {
           existingAccount = crmService.getAccountById(existingContact.get().account.id);
           if (existingAccount.isPresent()) {
             env.logJobInfo("found CRM account {}", existingContact.get().account.id);

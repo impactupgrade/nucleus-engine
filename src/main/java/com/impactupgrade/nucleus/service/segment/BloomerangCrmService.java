@@ -40,10 +40,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
@@ -100,19 +102,28 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
-    List<String> keywords = new ArrayList<>();
+    Set<String> keywords = new HashSet<>();
 
     String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
 
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       keywords.add(contactSearch.email);
-    } else if (!Strings.isNullOrEmpty(phone)) {
+    }
+    if (!Strings.isNullOrEmpty(phone)) {
       keywords.add(phone);
-    } else if (!Strings.isNullOrEmpty(contactSearch.keywords)) {
-      keywords.add(contactSearch.keywords);
+    }
+    if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
+      keywords.add(contactSearch.firstName);
+    }
+    if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
+      keywords.add(contactSearch.lastName);
+    }
+    if (!contactSearch.keywords.isEmpty()) {
+      keywords.addAll(contactSearch.keywords);
     }
 
     String query = keywords.stream().map(k -> {
+      k = k.trim();
       try {
         return URLEncoder.encode(k, StandardCharsets.UTF_8.toString());
       } catch (UnsupportedEncodingException e) {
@@ -142,7 +153,7 @@ public class BloomerangCrmService implements CrmService {
       }
     }
 
-    // API appears to be doing SUPER forgiving fuzzy matches. If the search was by email/phone, verify those explicitly.
+    // API appears to be doing SUPER forgiving fuzzy matches. If the search was by email/phone/name, verify those explicitly.
     // If it was a name search, make sure the name actually matches.
     List<Constituent> constituents = constituentSearchResults.results.stream()
         .filter(c -> Strings.isNullOrEmpty(contactSearch.email)
@@ -151,6 +162,8 @@ public class BloomerangCrmService implements CrmService {
         .filter(c -> Strings.isNullOrEmpty(phone)
             || (c.primaryPhone != null && !Strings.isNullOrEmpty(c.primaryPhone.number) && c.primaryPhone.number.replaceAll("[\\D]", "").contains(phone))
             || (c.secondaryPhones.stream().anyMatch(p -> p.number.replaceAll("[\\D]", "").contains(phone))))
+        .filter(c -> Strings.isNullOrEmpty(contactSearch.firstName) || contactSearch.firstName.equalsIgnoreCase(c.firstName))
+        .filter(c -> Strings.isNullOrEmpty(contactSearch.lastName) || contactSearch.lastName.equalsIgnoreCase(c.lastName))
         .collect(Collectors.toList());
 
     List<CrmContact> crmContacts = toCrmContact(constituents);
@@ -448,7 +461,7 @@ public class BloomerangCrmService implements CrmService {
     ContactSearch contactSearch = new ContactSearch();
     contactSearch.email = email.orElse(null);
     contactSearch.phone = phone.orElse(null);
-    contactSearch.keywords = name.orElse(null);
+    contactSearch.keywords = name.map(Set::of).orElse(null);
     // TODO: page them?
     PagedResults<CrmContact> contacts = searchContacts(contactSearch);
 

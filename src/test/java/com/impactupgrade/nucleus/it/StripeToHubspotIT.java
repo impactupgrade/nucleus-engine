@@ -43,8 +43,6 @@ public class StripeToHubspotIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
-
     Customer customer = StripeUtil.createCustomer(env);
     Charge charge = StripeUtil.createCharge(customer, env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
@@ -74,7 +72,7 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(customer.getName().split(" ")[0], contact.firstName);
     assertEquals(customer.getName().split(" ")[1], contact.lastName);
     assertEquals(customer.getEmail(), contact.email);
-    assertEquals("260-123-4567", contact.mobilePhone);
+    assertEquals(customer.getPhone(), contact.mobilePhone);
 
     List<CrmDonation> donations = hsCrmService.getDonationsByAccountId(accountId);
     assertEquals(1, donations.size());
@@ -128,7 +126,7 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(customer.getName().split(" ")[0], contact.firstName);
     assertEquals(customer.getName().split(" ")[1], contact.lastName);
     assertEquals(customer.getEmail(), contact.email);
-    assertEquals("260-123-4567", contact.mobilePhone);
+    assertEquals(customer.getPhone(), contact.mobilePhone);
 
     Optional<CrmRecurringDonation> _rd = hsCrmService.getRecurringDonationBySubscriptionId(subscription.getId(), null, null);
     assertTrue(_rd.isPresent());
