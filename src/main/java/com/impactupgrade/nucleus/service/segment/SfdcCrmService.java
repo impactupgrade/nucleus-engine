@@ -973,11 +973,13 @@ public class SfdcCrmService implements CrmService {
     // For any ExtRef columns, ensure we also have the same column names as Custom values -- important so that they get
     // retrieved and set correctly.
     for (CrmImportEvent importEvent : importEvents) {
+      Map<String, String> toAdd = new HashMap<>();
       for (Map.Entry<String, String> entry : importEvent.raw.entrySet()) {
         if (entry.getKey().contains("ExtRef")) {
-          importEvent.raw.put(entry.getKey().replaceFirst("ExtRef", "Custom"), entry.getValue());
+          toAdd.put(entry.getKey().replaceFirst("ExtRef", "Custom"), entry.getValue());
         }
       }
+      importEvent.raw.putAll(toAdd);
     }
 
     boolean campaignMode = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())

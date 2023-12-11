@@ -17,12 +17,13 @@ import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.impactupgrade.nucleus.it.util.TestUtil.randomPhoneNumber;
+import static com.impactupgrade.nucleus.util.Utils.now;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,11 +36,12 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     String randomFirstName = RandomStringUtils.randomAlphabetic(8);
     String randomLastName = RandomStringUtils.randomAlphabetic(8);
     String randomEmail = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+    String randomPhoneNumber = randomPhoneNumber();
 
     // Custom Donations uses metadata instead of Customers.
     StripeClient stripeClient = env.stripeClient();
@@ -47,7 +49,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
         "First Name", randomFirstName,
         "Last Name", randomLastName,
         "Donor Email", randomEmail,
-        "Phone Number", "260-123-4567",
+        "Phone Number", randomPhoneNumber,
         "Street Address", "123 Somewhere St",
         "City", "Fort Wayne",
         "State", "IN",
@@ -85,7 +87,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     assertEquals(randomFirstName, contact.getField("FirstName"));
     assertEquals(randomLastName, contact.getField("LastName"));
     assertEquals(randomEmail, contact.getField("Email"));
-    assertEquals("260-123-4567", contact.getField("MobilePhone"));
+    assertEquals(randomPhoneNumber, contact.getField("MobilePhone"));
 
     // verify DonationService -> SfdcCrmService
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);

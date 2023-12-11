@@ -22,11 +22,11 @@ import org.junit.jupiter.api.Test;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
+import static com.impactupgrade.nucleus.util.Utils.now;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,7 +38,7 @@ public class StripeToVirtuousIT extends AbstractIT {
 
   @Test
   public void testOneTime() throws Exception {
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Charge charge = StripeUtil.createCharge(customer, env);
@@ -61,7 +61,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     assertEquals("46814", contact.mailingAddress.postalCode);
     assertEquals("United States", contact.mailingAddress.country);
     assertEquals(customer.getEmail(), contact.email);
-    assertEquals("260-123-4567", contact.mobilePhone);
+    assertEquals(customer.getPhone(), contact.mobilePhone);
 
     VirtuousClient.Gifts gifts = virtuousClient.getGiftsByContact(Integer.parseInt(contact.id));
     assertEquals(1, gifts.list.size());
@@ -79,7 +79,7 @@ public class StripeToVirtuousIT extends AbstractIT {
 
   @Test
   public void testSubscription() throws Exception {
-    String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
@@ -104,7 +104,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     assertEquals("46814", contact.mailingAddress.postalCode);
     assertEquals("United States", contact.mailingAddress.country);
     assertEquals(customer.getEmail(), contact.email);
-    assertEquals("260-123-4567", contact.mobilePhone);
+    assertEquals(customer.getPhone(), contact.mobilePhone);
 
     List<VirtuousClient.RecurringGift> rds = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(contact.id)).list;
     assertEquals(1, rds.size());

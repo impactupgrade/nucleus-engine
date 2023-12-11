@@ -16,6 +16,8 @@ import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
 import org.apache.commons.lang3.RandomStringUtils;
 
+import static com.impactupgrade.nucleus.it.util.TestUtil.randomPhoneNumber;
+
 public class StripeUtil {
 
   public static Customer createCustomer(Environment env) throws StripeException {
@@ -42,7 +44,7 @@ public class StripeUtil {
         randomFirstName + " " + randomLastName,
         randomEmail,
         "tok_visa"
-    ).setAddress(address).setPhone("260-123-4567");
+    ).setAddress(address).setPhone(randomPhoneNumber());
     return stripeClient.createCustomer(customerBuilder);
   }
 
