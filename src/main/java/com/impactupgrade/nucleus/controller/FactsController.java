@@ -268,6 +268,8 @@ public class FactsController {
     contactData.put("Contact ExtRef " + crmFieldDefinitions.sisContactId, person.personId + "");
     contactData.put("Contact First Name", person.firstName);
     contactData.put("Contact Last Name", person.lastName);
+    contactData.putAll(toMailingAddressData(address));
+
     if (person.email != null && person.email.contains("@")) {
       contactData.put("Contact Personal Email", person.email);
     }
@@ -278,13 +280,12 @@ public class FactsController {
 
     contactData.put("Contact Mobile Phone", person.cellPhone);
     contactData.put("Contact Home Phone", person.homePhone);
-
-    contactData.put("Contact Preferred Phone", CrmImportEvent.ContactPhonePreference.MOBILE.name());
     if (Strings.isNullOrEmpty(person.cellPhone) && !Strings.isNullOrEmpty(person.homePhone)) {
       contactData.put("Contact Preferred Phone", CrmImportEvent.ContactPhonePreference.HOME.name());
+    } else {
+      contactData.put("Contact Preferred Phone", CrmImportEvent.ContactPhonePreference.MOBILE.name());
     }
 
-    contactData.putAll(toMailingAddressData(address));
     return contactData;
   }
 
@@ -336,6 +337,19 @@ public class FactsController {
     }
     contactData.put("Contact Mobile Phone", emergencyContact.cellPhone);
     contactData.put("Contact Home Phone", emergencyContact.homePhone);
+
+    if (emergencyContact.email != null && emergencyContact.email.contains("@")) {
+      contactData.put("Contact Personal Email", emergencyContact.email);
+    }
+    contactData.put("Contact Preferred Email", CrmImportEvent.ContactEmailPreference.PERSONAL.name());
+
+    contactData.put("Contact Mobile Phone", emergencyContact.cellPhone);
+    contactData.put("Contact Home Phone", emergencyContact.homePhone);
+    if (Strings.isNullOrEmpty(emergencyContact.cellPhone) && !Strings.isNullOrEmpty(emergencyContact.homePhone)) {
+      contactData.put("Contact Preferred Phone", CrmImportEvent.ContactPhonePreference.HOME.name());
+    } else {
+      contactData.put("Contact Preferred Phone", CrmImportEvent.ContactPhonePreference.MOBILE.name());
+    }
 
     // additional fields added by client subclasses
 

@@ -40,7 +40,19 @@ import com.sforce.ws.ConnectionException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -1303,17 +1315,16 @@ public class SfdcCrmService implements CrmService {
       }
       // Else if a contact already exists with the given email address, update.
       else if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail)
-        || !Strings.isNullOrEmpty(importEvent.contactWorkEmail)
-        || !Strings.isNullOrEmpty(importEvent.contactOtherEmail)) {
-
+          || !Strings.isNullOrEmpty(importEvent.contactWorkEmail)
+          || !Strings.isNullOrEmpty(importEvent.contactOtherEmail)) {
         List<String> emails = Stream.of(importEvent.contactPersonalEmail, importEvent.contactWorkEmail, importEvent.contactOtherEmail)
                         .filter(email -> !Strings.isNullOrEmpty(email))
                         .map(email -> email.toLowerCase(Locale.ROOT))
+                        .distinct()
                         .toList();
-
         Optional<SObject> existingContactO = existingContactsByEmail.entries().stream()
                 // find contacts for given emails
-                .filter(e -> emails.contains(e.getKey()))
+                .filter(e -> emails.contains(e.getKey().toLowerCase(Locale.ROOT)))
                 .map(e -> e.getValue())
                 // If the email address has duplicates, use the oldest.
                 .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate"))));
