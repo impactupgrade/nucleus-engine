@@ -144,8 +144,9 @@ public class EventsController {
       return;
     }
 
-    Optional<com.impactupgrade.nucleus.entity.event.Response> _response = responseDao.getQueryResult(
-        "FROM Response WHERE participant.id = :participantId AND interaction.id = :interactionId",
+    // Skip FREE in this, since we allow multiple per person per interaction.
+    Optional<com.impactupgrade.nucleus.entity.event.Response> existingResponse = responseDao.getQueryResult(
+        "FROM Response WHERE participant.id = :participantId AND interaction.id = :interactionId AND interaction.type != 'FREE'",
         query -> {
           query.setParameter("participantId", participant.get().id);
           query.setParameter("interactionId", interaction.get().id);
@@ -153,17 +154,20 @@ public class EventsController {
     );
 
     com.impactupgrade.nucleus.entity.event.Response response;
-    if (_response.isPresent()) {
-      if (interaction.get().type != InteractionType.FREE && interaction.get().type != InteractionType.MULTI) {
+    if (existingResponse.isPresent()) {
+      if (interaction.get().type != InteractionType.MULTI) {
         return;
       }
-
-      response = _response.get();
+      response = existingResponse.get();
     } else {
       response = new com.impactupgrade.nucleus.entity.event.Response();
       response.id = UUID.randomUUID();
       response.participant = participant.get();
       response.interaction = interaction.get();
+
+      if (interaction.get().type == InteractionType.FREE) {
+        response.freeResponse = body;
+      }
 
       responseDao.insert(response);
     }
@@ -183,22 +187,16 @@ public class EventsController {
           );
           if (option.isEmpty()) {
             env.logJobWarn("Failed to find a ResponseOption with value: {}, interaction: {}", optionValue, interaction.get().id);
-            return;
+            continue;
           }
 
           ResponseOption responseOption = new ResponseOption();
           responseOption.id = UUID.randomUUID();
           responseOption.response = response;
           responseOption.interactionOption = option.get();
+
           responseOptionDao.insert(responseOption);
         }
-      }
-      case FREE -> {
-        ResponseOption responseOption = new ResponseOption();
-        responseOption.id = UUID.randomUUID();
-        responseOption.response = response;
-        responseOption.freeResponse = body;
-        responseOptionDao.insert(responseOption);
       }
     }
 
