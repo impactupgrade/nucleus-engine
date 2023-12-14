@@ -221,7 +221,7 @@ public class MailchimpClient {
               .forEach(batchOperation ->
                   env.logJobWarn(
                       "Failed Batch Operation for {}: {} {} :: errors: {}",
-                      batchOperation.response.email,
+                      batchOperation.response.contactId,
                       batchOperation.response.status,
                       batchOperation.response.detail,
                       String.join(", ", batchOperation.response.errors.stream().map(e -> "(" + e.field + ") " + e.message).toList())

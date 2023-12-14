@@ -44,7 +44,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     Map<String, CrmContact> uniqueContacts = crmContacts.stream().collect(Collectors.toMap(
         so -> so.email.toLowerCase(Locale.ROOT),
         Function.identity(),
-        // FIFO
+        // IMPORTANT: FIFO. If contacts share an email address, the oldest record is typically the truth.
         (so1, so2) -> so1
     ));
     return new ArrayList<>(uniqueContacts.values());

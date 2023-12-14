@@ -522,12 +522,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
+
     List<SObject> contacts = queryEmailContacts(updatedSinceClause, filter, extraFields);
 
     if (updatedSince != null) {
       updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
+      contacts.addAll(queryEmailContacts(updatedSinceClause, filter, extraFields));
     }
-    contacts.addAll(queryEmailContacts(updatedSinceClause, filter, extraFields));
 
     return contacts;
   }
@@ -555,7 +556,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
     String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
 
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter + optInOutFilters;
+    // IMPORTANT: Order by CreatedDate ASC, ensuring this is FIFO for contacts sharing the same email address.
+    // The oldest record is typically the truth.
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
     return queryListAutoPaged(query);
   }
 
