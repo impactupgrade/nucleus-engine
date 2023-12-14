@@ -13,8 +13,6 @@ import com.impactupgrade.nucleus.entity.event.ResponseOption;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.twilio.twiml.MessagingResponse;
-import com.twilio.twiml.messaging.Body;
-import com.twilio.twiml.messaging.Message;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -88,9 +86,10 @@ public class EventsController {
     if (activeEventByKeyword != null && activeEventByKeyword.isPresent()) {
       createParticipant(from, activeEventByKeyword.get());
 
-      Body responseBody = new Body.Builder("Thank you for joining!").build();
-      Message responseSms = new Message.Builder().body(responseBody).build();
-      MessagingResponse response = new MessagingResponse.Builder().message(responseSms).build();
+      // We don't use Twiml responses here since this may be positioned in a Studio Flow.
+      env.twilioClient().sendMessage(from, "Thank you for joining!");
+
+      MessagingResponse response = new MessagingResponse.Builder().build();
       return Response.ok().entity(response.toXml()).build();
     } else {
       createResponse(from, body, env);
