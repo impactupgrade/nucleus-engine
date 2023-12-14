@@ -1,6 +1,7 @@
 package com.impactupgrade.nucleus.entity.event;
 
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
@@ -23,4 +24,7 @@ public class ResponseOption {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "interaction_option_id")
   public InteractionOption interactionOption;
+
+  @Column(name = "free_response")
+  public String freeResponse;
 }

@@ -118,8 +118,6 @@ public class EventsController {
     participantDao.insert(participant);
   }
 
-  // TODO: Post-demo, allow multiple free-form responses, allow multiple responses for multi-select options,
-  //  but disallow multiple responses for all others.
   private void createResponse(String from, String body, Environment env) {
     // TODO: Cache, with a decently long TTL?
     Optional<Participant> participant = participantDao.getQueryResult(
@@ -146,16 +144,29 @@ public class EventsController {
       return;
     }
 
-    com.impactupgrade.nucleus.entity.event.Response response = new com.impactupgrade.nucleus.entity.event.Response();
-    response.id = UUID.randomUUID();
-    response.participant = participant.get();
-    response.interaction = interaction.get();
+    Optional<com.impactupgrade.nucleus.entity.event.Response> _response = responseDao.getQueryResult(
+        "FROM Response WHERE participant.id = :participantId AND interaction.id = :interactionId",
+        query -> {
+          query.setParameter("participantId", participant.get().id);
+          query.setParameter("interactionId", interaction.get().id);
+        }
+    );
 
-    if (interaction.get().type == InteractionType.FREE) {
-      response.freeResponse = body;
+    com.impactupgrade.nucleus.entity.event.Response response;
+    if (_response.isPresent()) {
+      if (interaction.get().type != InteractionType.FREE && interaction.get().type != InteractionType.MULTI) {
+        return;
+      }
+
+      response = _response.get();
+    } else {
+      response = new com.impactupgrade.nucleus.entity.event.Response();
+      response.id = UUID.randomUUID();
+      response.participant = participant.get();
+      response.interaction = interaction.get();
+
+      responseDao.insert(response);
     }
-
-    responseDao.insert(response);
 
     switch (interaction.get().type) {
       case MULTI, SELECT -> {
@@ -172,16 +183,22 @@ public class EventsController {
           );
           if (option.isEmpty()) {
             env.logJobWarn("Failed to find a ResponseOption with value: {}, interaction: {}", optionValue, interaction.get().id);
-            continue;
+            return;
           }
 
           ResponseOption responseOption = new ResponseOption();
           responseOption.id = UUID.randomUUID();
           responseOption.response = response;
           responseOption.interactionOption = option.get();
-
           responseOptionDao.insert(responseOption);
         }
+      }
+      case FREE -> {
+        ResponseOption responseOption = new ResponseOption();
+        responseOption.id = UUID.randomUUID();
+        responseOption.response = response;
+        responseOption.freeResponse = body;
+        responseOptionDao.insert(responseOption);
       }
     }
 
