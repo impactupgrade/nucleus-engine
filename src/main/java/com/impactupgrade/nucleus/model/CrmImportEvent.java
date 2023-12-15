@@ -647,6 +647,17 @@ public class CrmImportEvent {
     return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom"))
         .map(k -> k.replace("Campaign Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
+  public List<String> getAllContactEmails() {
+    return Stream.of(contactPersonalEmail, contactWorkEmail, contactOtherEmail)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+  }
+  public boolean hasEmail() {
+    return !Strings.isNullOrEmpty(contactPersonalEmail)
+            || !Strings.isNullOrEmpty(contactWorkEmail)
+            || !Strings.isNullOrEmpty(contactOtherEmail);
+  }
+
 
   // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
   private static Calendar getDate(Map<String, String> data, String columnName) {
