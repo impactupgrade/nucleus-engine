@@ -1075,14 +1075,26 @@ public class SfdcCrmService implements CrmService {
     }
 
     List<String> contactEmails = importEvents.stream()
-        .map(e -> List.of(e.contactPersonalEmail, e.contactWorkEmail, e.contactOtherEmail))
+        .map(CrmImportEvent::getAllContactEmails)
         .flatMap(Collection::stream)
         .filter(email -> !Strings.isNullOrEmpty(email)).distinct().toList();
     Multimap<String, SObject> existingContactsByEmail = ArrayListMultimap.create();
     if (contactEmails.size() > 0) {
       // Normalize the case!
       sfdcClient.getContactsByEmails(contactEmails, contactCustomFields)
-          .forEach(c -> existingContactsByEmail.put(c.getField("Email").toString().toLowerCase(Locale.ROOT), c));
+        .forEach(c -> {
+            existingContactsByEmail.put(c.getField("Email").toString().toLowerCase(Locale.ROOT), c);
+            if (!Strings.isNullOrEmpty((String) c.getField("npe01__HomeEmail__c"))) {
+              existingContactsByEmail.put(c.getField("npe01__HomeEmail__c").toString().toLowerCase(Locale.ROOT), c);
+            }
+            if (!Strings.isNullOrEmpty((String) c.getField("npe01__WorkEmail__c"))) {
+              existingContactsByEmail.put(c.getField("npe01__WorkEmail__c").toString().toLowerCase(Locale.ROOT), c);
+            }
+            if (!Strings.isNullOrEmpty((String) c.getField("npe01__AlternateEmail__c"))) {
+              existingContactsByEmail.put(c.getField("npe01__AlternateEmail__c").toString().toLowerCase(Locale.ROOT), c);
+            }
+          }
+        );
     }
 
     List<String> contactNames = importEvents.stream().map(e -> e.contactFirstName + " " + e.contactLastName)
@@ -1234,7 +1246,7 @@ public class SfdcCrmService implements CrmService {
       // account-only import for that individual row. Not an all-or-nothing situation.
       boolean hasContactExtRef = contactExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(contactExtRefKey.get()));
       boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contactId)
-              || !Strings.isNullOrEmpty(importEvent.contactPersonalEmail) || !Strings.isNullOrEmpty(importEvent.contactWorkEmail)|| !Strings.isNullOrEmpty(importEvent.contactOtherEmail)
+              || importEvent.hasEmail()
               || !Strings.isNullOrEmpty(importEvent.contactLastName) || hasContactExtRef;
 
       SObject account = null;
@@ -1314,19 +1326,17 @@ public class SfdcCrmService implements CrmService {
         contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
       // Else if a contact already exists with the given email address, update.
-      else if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail)
-          || !Strings.isNullOrEmpty(importEvent.contactWorkEmail)
-          || !Strings.isNullOrEmpty(importEvent.contactOtherEmail)) {
-        List<String> emails = Stream.of(importEvent.contactPersonalEmail, importEvent.contactWorkEmail, importEvent.contactOtherEmail)
+      else if (importEvent.hasEmail()) {
+
+        List<String> emails = importEvent.getAllContactEmails().stream()
                         .filter(email -> !Strings.isNullOrEmpty(email))
                         .map(email -> email.toLowerCase(Locale.ROOT))
-                        .distinct()
+                        .filter(existingContactsByEmail::containsKey)
                         .toList();
-        Optional<SObject> existingContactO = existingContactsByEmail.entries().stream()
-                // find contacts for given emails
-                .filter(e -> emails.contains(e.getKey().toLowerCase(Locale.ROOT)))
-                .map(e -> e.getValue())
-                // If the email address has duplicates, use the oldest.
+
+        Optional<SObject> existingContactO = emails.stream()
+                .map(email -> existingContactsByEmail.get(email))
+                .flatMap(Collection::stream)
                 .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate"))));
 
         if (existingContactO.isPresent()) {
@@ -1722,6 +1732,16 @@ public class SfdcCrmService implements CrmService {
     if (!Strings.isNullOrEmpty((String) contact.getField("Email"))) {
       existingContactsByEmail.put(contact.getField("Email").toString().toLowerCase(Locale.ROOT), contact);
     }
+    if (!Strings.isNullOrEmpty((String) contact.getField("npe01__HomeEmail__c"))) {
+      existingContactsByEmail.put(contact.getField("npe01__HomeEmail__c").toString().toLowerCase(Locale.ROOT), contact);
+    }
+    if (!Strings.isNullOrEmpty((String) contact.getField("npe01__WorkEmail__c"))) {
+      existingContactsByEmail.put(contact.getField("npe01__WorkEmail__c").toString().toLowerCase(Locale.ROOT), contact);
+    }
+    if (!Strings.isNullOrEmpty((String) contact.getField("npe01__AlternateEmail__c"))) {
+      existingContactsByEmail.put(contact.getField("npe01__AlternateEmail__c").toString().toLowerCase(Locale.ROOT), contact);
+    }
+
     if (!isAnonymous && !Strings.isNullOrEmpty(fullName)) {
       existingContactsByName.put(fullName.toLowerCase(Locale.ROOT), contact);
     }
@@ -1772,6 +1792,16 @@ public class SfdcCrmService implements CrmService {
       contact.setField("npe01__AlternateEmail__c", otherEmail);
     }
 
+    if (existingContact == null || existingContact.getField("npe01__PreferredPhone__c") == null) {
+      String customFieldValue = switch (importEvent.contactPhonePreference) {
+        case HOME -> "Home";
+        case MOBILE -> "Mobile";
+        case WORK -> "Work";
+        case OTHER -> "Other";
+      };
+      contact.setField("npe01__PreferredPhone__c", customFieldValue);
+    }
+
     if (importEvent.contactOptInEmail != null && importEvent.contactOptInEmail) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
@@ -1787,6 +1817,15 @@ public class SfdcCrmService implements CrmService {
     if (importEvent.contactOptOutSms != null && importEvent.contactOptOutSms) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
+    }
+
+    if (existingContact != null || existingContact.getField("npe01__Preferred_Email__c") == null) {
+      String customFieldValue = switch (importEvent.contactEmailPreference) {
+        case PERSONAL -> "Personal";
+        case WORK -> "Work";
+        case OTHER -> "Alternate";
+      };
+      contact.setField("npe01__Preferred_Email__c", customFieldValue);
     }
 
     contact.setField("OwnerId", importEvent.contactOwnerId);
