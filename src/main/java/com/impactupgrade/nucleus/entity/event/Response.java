@@ -7,6 +7,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Entity
@@ -26,4 +27,6 @@ public class Response {
 
   @Column(name = "free_response")
   public String freeResponse;
+
+  public ZonedDateTime datetime;
 }
