@@ -23,6 +23,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -115,6 +117,7 @@ public class EventsController {
     participant.mobilePhone = from;
     participant.event = event;
     participant.responded = false;
+    participant.datetime = ZonedDateTime.now(ZoneId.of("UTC"));
     participantDao.insert(participant);
   }
 
@@ -164,6 +167,7 @@ public class EventsController {
       response.id = UUID.randomUUID();
       response.participant = participant.get();
       response.interaction = interaction.get();
+      response.datetime = ZonedDateTime.now(ZoneId.of("UTC"));
 
       if (interaction.get().type == InteractionType.FREE) {
         response.freeResponse = body;

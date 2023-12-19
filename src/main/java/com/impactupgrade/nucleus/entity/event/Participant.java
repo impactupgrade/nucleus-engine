@@ -7,6 +7,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Entity
@@ -25,4 +26,6 @@ public class Participant {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "event_id", nullable = false)
   public Event event;
+
+  public ZonedDateTime datetime;
 }
