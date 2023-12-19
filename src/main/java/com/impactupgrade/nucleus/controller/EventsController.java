@@ -190,6 +190,19 @@ public class EventsController {
             continue;
           }
 
+          if (interaction.get().type == InteractionType.MULTI) {
+            Optional<ResponseOption> existingResponseOption = responseOptionDao.getQueryResult(
+                "FROM ResponseOption WHERE response.id = :responseId AND interactionOption.value = :optionValue",
+                query -> {
+                  query.setParameter("responseId", response.id);
+                  query.setParameter("optionValue", optionValue);
+                }
+            );
+            if (existingResponseOption.isPresent()) {
+              continue;
+            }
+          }
+
           ResponseOption responseOption = new ResponseOption();
           responseOption.id = UUID.randomUUID();
           responseOption.response = response;
