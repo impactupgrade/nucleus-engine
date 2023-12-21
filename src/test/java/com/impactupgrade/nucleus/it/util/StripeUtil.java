@@ -16,6 +16,8 @@ import com.stripe.param.ProductCreateParams;
 import com.stripe.param.SubscriptionCreateParams;
 import org.apache.commons.lang3.RandomStringUtils;
 
+import java.util.Map;
+
 import static com.impactupgrade.nucleus.it.util.TestUtil.randomPhoneNumber;
 
 public class StripeUtil {
@@ -48,7 +50,7 @@ public class StripeUtil {
     return stripeClient.createCustomer(customerBuilder);
   }
 
-  public static Charge createCharge(Customer customer, Environment env) throws StripeException {
+  public static Charge createCharge(Customer customer, Map<String, String> metadata, Environment env) throws StripeException {
     StripeClient stripeClient = env.stripeClient();
 
     ChargeCreateParams.Builder chargeBuilder = stripeClient.defaultChargeBuilder(
@@ -56,16 +58,17 @@ public class StripeUtil {
         customer.getSources().getData().get(0),
         100,
         "USD"
-    );
+    ).putAllMetadata(metadata);
     return stripeClient.createCharge(chargeBuilder);
   }
 
-  public static Subscription createSubscription(Customer customer, Environment env, PlanCreateParams.Interval interval ) throws StripeException {
+  public static Subscription createSubscription(PlanCreateParams.Interval interval, Map<String, String> metadata, Customer customer, Environment env) throws StripeException {
     StripeClient stripeClient = env.stripeClient();
 
     ProductCreateParams.Builder productBuilder = stripeClient.defaultProductBuilder(customer, 100, "USD");
     PlanCreateParams.Builder planBuilder = stripeClient.defaultPlanBuilder(100, "USD", interval);
-    SubscriptionCreateParams.Builder subscriptionBuilder = stripeClient.defaultSubscriptionBuilder(customer, customer.getSources().getData().get(0));
+    SubscriptionCreateParams.Builder subscriptionBuilder = stripeClient
+        .defaultSubscriptionBuilder(customer, customer.getSources().getData().get(0)).putAllMetadata(metadata);
     return stripeClient.createSubscription(productBuilder, planBuilder, subscriptionBuilder);
   }
 

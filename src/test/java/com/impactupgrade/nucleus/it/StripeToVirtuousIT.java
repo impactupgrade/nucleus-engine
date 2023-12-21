@@ -24,6 +24,7 @@ import javax.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.impactupgrade.nucleus.util.Utils.now;
@@ -41,7 +42,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
-    Charge charge = StripeUtil.createCharge(customer, env);
+    Charge charge = StripeUtil.createCharge(customer, Map.of(), env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 
     // play as a Stripe webhook
@@ -82,7 +83,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
+    Subscription subscription = StripeUtil.createSubscription(PlanCreateParams.Interval.MONTH, Map.of(), customer, env);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
@@ -198,7 +199,7 @@ public class StripeToVirtuousIT extends AbstractIT {
   @Test
   public void testCancel() throws Exception {
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
+    Subscription subscription = StripeUtil.createSubscription(PlanCreateParams.Interval.MONTH, Map.of(),customer, env);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());

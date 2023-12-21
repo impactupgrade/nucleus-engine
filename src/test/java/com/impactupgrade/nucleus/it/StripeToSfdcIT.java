@@ -8,6 +8,8 @@ import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.it.util.StripeUtil;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
@@ -21,10 +23,12 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.impactupgrade.nucleus.util.Utils.now;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,7 +43,7 @@ public class StripeToSfdcIT extends AbstractIT {
     String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
-    Charge charge = StripeUtil.createCharge(customer, env);
+    Charge charge = StripeUtil.createCharge(customer, Map.of(), env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 
     // play as a Stripe webhook
@@ -119,7 +123,7 @@ public class StripeToSfdcIT extends AbstractIT {
     // different phone
     String existingContactId = sfdcClient.insert(existingContact).getId();
 
-    Charge charge = StripeUtil.createCharge(customer, env);
+    Charge charge = StripeUtil.createCharge(customer, Map.of(), env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 
     // play as a Stripe webhook
@@ -155,7 +159,7 @@ public class StripeToSfdcIT extends AbstractIT {
     String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
+    Subscription subscription = StripeUtil.createSubscription(PlanCreateParams.Interval.MONTH, Map.of("campaign", "7015Y000004SQG4QAO"), customer, env);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
@@ -195,6 +199,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals("Stripe", rd.getField("Payment_Gateway_Name__c"));
     assertEquals(customer.getId(), rd.getField("Payment_Gateway_Customer_Id__c"));
     assertEquals(subscription.getId(), rd.getField("Payment_Gateway_Subscription_Id__c"));
+    assertEquals("7015Y000004SQG4QAO", rd.getField("npe03__Recurring_Donation_Campaign__c"));
 
     // verify the Closed Won opp
     List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
@@ -208,6 +213,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(nowDate, opp.getField("CloseDate"));
     assertEquals(customer.getName() + " Donation", opp.getField("Name"));
     assertEquals("1.0", opp.getField("Amount"));
+    assertEquals("7015Y000004SQG4QAO", opp.getField("CampaignId"));
 
     // only delete if the test passed -- keep failures in SFDC for analysis
     clearSfdc(customer.getName());
@@ -216,7 +222,7 @@ public class StripeToSfdcIT extends AbstractIT {
   @Test
   public void coreSubscriptionFrequency() throws Exception {
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.YEAR);
+    Subscription subscription = StripeUtil.createSubscription(PlanCreateParams.Interval.YEAR, Map.of(), customer, env);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
@@ -266,7 +272,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
     String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
-    Charge charge = StripeUtil.createCharge(customer, env);
+    Charge charge = StripeUtil.createCharge(customer, Map.of(), env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 
     // play as a Stripe webhook
@@ -334,7 +340,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
     String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
 
-    Charge charge = StripeUtil.createCharge(customer, env);
+    Charge charge = StripeUtil.createCharge(customer, Map.of(), env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 
     // play as a Stripe webhook
@@ -374,6 +380,144 @@ public class StripeToSfdcIT extends AbstractIT {
     // the Contact/Account the CRM itself (data wasn't overwritten).
     assertEquals(customer.getName() + " Donation", opp.getField("Name"));
     assertEquals("1.0", opp.getField("Amount"));
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(customer.getName());
+  }
+
+  @Test
+  public void recurringDonationPledgedUpdate() throws Exception {
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+
+    CrmService crmService = env.primaryCrmService();
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    // pre-create the contact
+    SObject contact = randomContactSfdc();
+    String accountId = contact.getField("AccountId").toString();
+
+    Customer customer = StripeUtil.createCustomer((String) contact.getField("FirstName"), (String) contact.getField("LastName"), (String) contact.getField("Email"), env);
+    Subscription subscription = StripeUtil.createSubscription(PlanCreateParams.Interval.MONTH, Map.of(), customer, env);
+    List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
+    PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
+    String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
+
+    // pre-create the RD
+    CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
+    crmRecurringDonation.account.id = accountId;
+    crmRecurringDonation.contact.id = contact.getId();
+    crmRecurringDonation.amount = 1.0;
+    crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.MONTHLY;
+    crmRecurringDonation.addMetadata("campaign", "7015Y000004SQG4QAO");
+    crmRecurringDonation.customerId = customer.getId();
+    crmRecurringDonation.subscriptionId = subscription.getId();
+    String rdId = crmService.insertRecurringDonation(crmRecurringDonation);
+
+    Optional<SObject> _rd = sfdcClient.getRecurringDonationById(rdId);
+    assertTrue(_rd.isPresent());
+    SObject rd = _rd.get();
+    assertEquals("1.0", rd.getField("npe03__Amount__c"));
+    assertEquals("Open", rd.getField("npe03__Open_Ended_Status__c"));
+    assertEquals(customer.getId(), rd.getField("Payment_Gateway_Customer_Id__c"));
+    assertEquals(subscription.getId(), rd.getField("Payment_Gateway_Subscription_Id__c"));
+    assertEquals("7015Y000004SQG4QAO", rd.getField("npe03__Recurring_Donation_Campaign__c"));
+
+    // verify the Pledged opp
+    Optional<SObject> _opp = sfdcClient.getNextPledgedDonationByRecurringDonationId(rdId);
+    assertTrue(_opp.isPresent());
+    SObject opp = _opp.get();
+    assertEquals(rd.getId(), opp.getField("npe03__Recurring_Donation__c"));
+    assertEquals("Pledged", opp.getField("StageName"));
+    assertEquals("1.0", opp.getField("Amount"));
+    assertEquals("7015Y000004SQG4QAO", opp.getField("CampaignId"));
+
+    // play as a Stripe webhook
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // verify the Closed Won opp
+    List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
+    assertEquals(1, opps.size());
+    opp = opps.get(0);
+    assertEquals(rd.getId(), opp.getField("npe03__Recurring_Donation__c"));
+    assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
+    assertEquals(paymentIntent.getId(), opp.getField("Payment_Gateway_Transaction_Id__c"));
+    assertEquals(customer.getId(), opp.getField("Payment_Gateway_Customer_Id__c"));
+    assertEquals("Closed Won", opp.getField("StageName"));
+    assertEquals(nowDate, opp.getField("CloseDate"));
+    assertEquals(customer.getName() + " Donation", opp.getField("Name"));
+    assertEquals("1.0", opp.getField("Amount"));
+    assertEquals("7015Y000004SQG4QAO", opp.getField("CampaignId"));
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(customer.getName());
+  }
+
+  @Test
+  public void recurringDonationFailedAttemptUpdate() throws Exception {
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+
+    CrmService crmService = env.primaryCrmService();
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    // pre-create the contact
+    SObject contact = randomContactSfdc();
+    String accountId = contact.getField("AccountId").toString();
+
+    Customer customer = StripeUtil.createCustomer((String) contact.getField("FirstName"), (String) contact.getField("LastName"), (String) contact.getField("Email"), env);
+    Subscription subscription = StripeUtil.createSubscription(PlanCreateParams.Interval.MONTH, Map.of("campaign", "7015Y000004SQG4QAO"), customer, env);
+    List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
+    PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
+    String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
+
+    // pre-create the RD
+    CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
+    crmRecurringDonation.account.id = accountId;
+    crmRecurringDonation.contact.id = contact.getId();
+    crmRecurringDonation.amount = 1.0;
+    crmRecurringDonation.frequency = CrmRecurringDonation.Frequency.MONTHLY;
+    crmRecurringDonation.addMetadata("campaign", "7015Y000004SQG4QAO");
+    crmRecurringDonation.customerId = customer.getId();
+    crmRecurringDonation.subscriptionId = subscription.getId();
+    String rdId = crmService.insertRecurringDonation(crmRecurringDonation);
+
+    Optional<SObject> _rd = sfdcClient.getRecurringDonationById(rdId);
+    assertTrue(_rd.isPresent());
+    SObject rd = _rd.get();
+    assertEquals("1.0", rd.getField("npe03__Amount__c"));
+    assertEquals("Open", rd.getField("npe03__Open_Ended_Status__c"));
+    assertEquals(customer.getId(), rd.getField("Payment_Gateway_Customer_Id__c"));
+    assertEquals(subscription.getId(), rd.getField("Payment_Gateway_Subscription_Id__c"));
+    assertEquals("7015Y000004SQG4QAO", rd.getField("npe03__Recurring_Donation_Campaign__c"));
+
+    // update the pledge to be a failed attempt
+    Optional<SObject> _opp = sfdcClient.getNextPledgedDonationByRecurringDonationId(rdId);
+    assertTrue(_opp.isPresent());
+    SObject opp = _opp.get();
+    SObject update = new SObject("Opportunity");
+    update.setId(opp.getId());
+    update.setField("StageName", "Failed Attempt");
+    sfdcClient.update(update);
+
+    // play as a Stripe webhook
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // verify the Closed Won opp is NOT the original failed attempt, but a brand new opp with the correct campaign
+    List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
+    assertEquals(2, opps.size());
+    // first will be the new one that posted, second will be original failed attempt
+    opp = opps.get(0);
+    assertNotEquals(opp.getId(), update.getId());
+    assertEquals(rd.getId(), opp.getField("npe03__Recurring_Donation__c"));
+    assertEquals("Stripe", opp.getField("Payment_Gateway_Name__c"));
+    assertEquals(paymentIntent.getId(), opp.getField("Payment_Gateway_Transaction_Id__c"));
+    assertEquals(customer.getId(), opp.getField("Payment_Gateway_Customer_Id__c"));
+    assertEquals("Closed Won", opp.getField("StageName"));
+    assertEquals(nowDate, opp.getField("CloseDate"));
+    assertEquals(customer.getName() + " Donation", opp.getField("Name"));
+    assertEquals("1.0", opp.getField("Amount"));
+    assertEquals("7015Y000004SQG4QAO", opp.getField("CampaignId"));
 
     // only delete if the test passed -- keep failures in SFDC for analysis
     clearSfdc(customer.getName());

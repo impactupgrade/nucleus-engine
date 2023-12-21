@@ -29,6 +29,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,7 +45,7 @@ public class StripeToHubspotIT extends AbstractIT {
   @Test
   public void coreOneTime() throws Exception {
     Customer customer = StripeUtil.createCustomer(env);
-    Charge charge = StripeUtil.createCharge(customer, env);
+    Charge charge = StripeUtil.createCharge(customer, Map.of(), env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 
     // play as a Stripe webhook
@@ -96,7 +97,7 @@ public class StripeToHubspotIT extends AbstractIT {
     String nowDate = new SimpleDateFormat("yyyy-MM-dd").format(Calendar.getInstance().getTime());
 
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
+    Subscription subscription = StripeUtil.createSubscription(PlanCreateParams.Interval.MONTH, Map.of(), customer, env);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
@@ -161,7 +162,7 @@ public class StripeToHubspotIT extends AbstractIT {
   @Test
   public void invalidEmail() throws Exception {
     Customer customer = StripeUtil.createCustomer(RandomStringUtils.randomAlphabetic(8), RandomStringUtils.randomAlphabetic(8), "bademail@test.asdfasdf", env);
-    Charge charge = StripeUtil.createCharge(customer, env);
+    Charge charge = StripeUtil.createCharge(customer, Map.of(), env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
 
     // play as a Stripe webhook

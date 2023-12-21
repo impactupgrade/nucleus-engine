@@ -462,7 +462,7 @@ public class SfdcCrmService implements CrmService {
     contact.setField("Email", crmContact.email);
     contact.setField("MobilePhone", crmContact.mobilePhone);
     if (env.getConfig().salesforce.npsp && crmContact.preferredPhone != null) {
-      contact.setField("Npe01__PreferredPhone__c", crmContact.preferredPhone.toString());
+      contact.setField("npe01__PreferredPhone__c", crmContact.preferredPhone.toString());
     }
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contactLanguage, crmContact.language);
 
@@ -551,7 +551,7 @@ public class SfdcCrmService implements CrmService {
 
     opportunity.setField("AccountId", crmDonation.account.id);
     opportunity.setField("ContactId", crmDonation.contact.id);
-    opportunity.setField("Npe03__Recurring_Donation__c", recurringDonationId);
+    opportunity.setField("npe03__Recurring_Donation__c", recurringDonationId);
 
     setOpportunityFields(opportunity, campaign, crmDonation);
 
@@ -700,7 +700,7 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
-    SObject recurringDonation = new SObject("Npe03__Recurring_Donation__c");
+    SObject recurringDonation = new SObject("npe03__Recurring_Donation__c");
     setRecurringDonationFields(recurringDonation, getCampaignOrDefault(crmRecurringDonation), crmRecurringDonation);
     return sfdcClient.insert(recurringDonation).getId();
   }
@@ -719,15 +719,15 @@ public class SfdcCrmService implements CrmService {
       recurringDonation.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId, crmRecurringDonation.customerId);
     }
 
-    recurringDonation.setField("Npe03__Amount__c", crmRecurringDonation.amount);
-    recurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
-    recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
+    recurringDonation.setField("npe03__Amount__c", crmRecurringDonation.amount);
+    recurringDonation.setField("npe03__Open_Ended_Status__c", "Open");
+    recurringDonation.setField("npe03__Schedule_Type__c", "Multiply By");
     if (crmRecurringDonation.frequency != null) {
-      recurringDonation.setField("Npe03__Installment_Period__c", crmRecurringDonation.frequency.name());
+      recurringDonation.setField("npe03__Installment_Period__c", crmRecurringDonation.frequency.name());
     }
-    recurringDonation.setField("Npe03__Date_Established__c", Utils.toCalendar(crmRecurringDonation.subscriptionStartDate, env.getConfig().timezoneId));
-    recurringDonation.setField("Npe03__Next_Payment_Date__c", Utils.toCalendar(crmRecurringDonation.subscriptionNextDate, env.getConfig().timezoneId));
-    recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(crmRecurringDonation).map(SObject::getId).orElse(null));
+    recurringDonation.setField("npe03__Date_Established__c", Utils.toCalendar(crmRecurringDonation.subscriptionStartDate, env.getConfig().timezoneId));
+    recurringDonation.setField("npe03__Next_Payment_Date__c", Utils.toCalendar(crmRecurringDonation.subscriptionNextDate, env.getConfig().timezoneId));
+    recurringDonation.setField("npe03__Recurring_Donation_Campaign__c", campaign.map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
     recurringDonation.setField("Name", crmRecurringDonation.contact.getFullName() + " Recurring Donation");
@@ -737,9 +737,9 @@ public class SfdcCrmService implements CrmService {
       // forcing us to use the contact. But, since we don't know at this point if this is a business gift, we
       // unfortunately need to assume the existence of a contactId means we should use it.
       if (!Strings.isNullOrEmpty(crmRecurringDonation.contact.id)) {
-        recurringDonation.setField("Npe03__Contact__c", crmRecurringDonation.contact.id);
+        recurringDonation.setField("npe03__Contact__c", crmRecurringDonation.contact.id);
       } else {
-        recurringDonation.setField("Npe03__Organization__c", crmRecurringDonation.account.id);
+        recurringDonation.setField("npe03__Organization__c", crmRecurringDonation.account.id);
       }
 
       recurringDonation.setField("npsp__RecurringType__c", "Open");
@@ -748,7 +748,7 @@ public class SfdcCrmService implements CrmService {
     } else {
       // Legacy behavior was to always use the Account, regardless if it was a business or household. Stick with that
       // by default -- we have some orgs that depend on it.
-      recurringDonation.setField("Npe03__Organization__c", crmRecurringDonation.account.id);
+      recurringDonation.setField("npe03__Organization__c", crmRecurringDonation.account.id);
     }
 
     for (String fieldName : crmRecurringDonation.crmRawFieldsToSet.keySet()) {
@@ -758,9 +758,9 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
-    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    SObject toUpdate = new SObject("npe03__Recurring_Donation__c");
     toUpdate.setId(crmRecurringDonation.id);
-    toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
+    toUpdate.setField("npe03__Open_Ended_Status__c", "Closed");
     setRecurringDonationFieldsForClose(toUpdate, crmRecurringDonation);
     sfdcClient.update(toUpdate);
   }
@@ -841,20 +841,20 @@ public class SfdcCrmService implements CrmService {
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
 
-    SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
+    SObject toUpdate = new SObject("npe03__Recurring_Donation__c");
     toUpdate.setId(crmRecurringDonation.id);
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
-      toUpdate.setField("Npe03__Amount__c", crmRecurringDonation.amount);
-      env.logJobInfo("Updating Npe03__Amount__c to {}...", crmRecurringDonation.amount);
+      toUpdate.setField("npe03__Amount__c", crmRecurringDonation.amount);
+      env.logJobInfo("Updating npe03__Amount__c to {}...", crmRecurringDonation.amount);
     }
     if (manageDonationEvent.getNextPaymentDate() != null) {
-      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
-      env.logJobInfo("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
+      toUpdate.setField("npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
+      env.logJobInfo("Updating npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
     }
 
     if (manageDonationEvent.getPauseDonation() == true) {
-      toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
-      toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
+      toUpdate.setField("npe03__Open_Ended_Status__c", "Closed");
+      toUpdate.setFieldsToNull(new String[] {"npe03__Next_Payment_Date__c"});
 
       if (manageDonationEvent.getPauseDonationUntilDate() == null) {
         env.logJobInfo("pausing {} indefinitely...", crmRecurringDonation.id);
@@ -865,14 +865,14 @@ public class SfdcCrmService implements CrmService {
     }
 
     if (manageDonationEvent.getResumeDonation() == true) {
-      toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
+      toUpdate.setField("npe03__Open_Ended_Status__c", "Open");
 
       if (manageDonationEvent.getResumeDonationOnDate() == null) {
         env.logJobInfo("resuming {} immediately...", crmRecurringDonation.id);
-        toUpdate.setField("Npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
+        toUpdate.setField("npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
       } else {
         env.logJobInfo("resuming {} on {}...", crmRecurringDonation.id, manageDonationEvent.getResumeDonationOnDate().getTime());
-        toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
+        toUpdate.setField("npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
       }
       setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
     }
@@ -1312,6 +1312,8 @@ public class SfdcCrmService implements CrmService {
               // If the SFDC record has no address or phone at all, allow the by-name match. It might seem like this
               // somewhat defeats the purpose, but we're running into situations where basic records were originally
               // created with extremely bare info.
+              // TODO: REMOVE THIS! For CLHS, caused common names with no contact info to be matched when it was the
+              //  wrong person.
               if (c.getField("MailingStreet") == null && c.getChild("Account").getField("BillingStreet") == null
                   && c.getChild("Account").getField("ShippingStreet") == null
                   && c.getField("Phone") == null && c.getField("HomePhone") == null && c.getField("MobilePhone") == null) {
@@ -1452,19 +1454,19 @@ public class SfdcCrmService implements CrmService {
         // TODO: duplicates setRecurringDonationFields
         if (env.getConfig().salesforce.enhancedRecurringDonations) {
           if (nonBatchContactIds.get(i) != null) {
-            recurringDonation.setField("Npe03__Contact__c", nonBatchContactIds.get(i));
+            recurringDonation.setField("npe03__Contact__c", nonBatchContactIds.get(i));
           } else {
-            recurringDonation.setField("Npe03__Organization__c", nonBatchAccountIds.get(i));
+            recurringDonation.setField("npe03__Organization__c", nonBatchAccountIds.get(i));
           }
         } else {
-          recurringDonation.setField("Npe03__Organization__c", nonBatchAccountIds.get(i));
+          recurringDonation.setField("npe03__Organization__c", nonBatchAccountIds.get(i));
         }
 
         // TODO: Add a RD Campaign Name column as well?
         if (!Strings.isNullOrEmpty(importEvent.recurringDonationCampaignId)) {
-          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", importEvent.recurringDonationCampaignId);
+          recurringDonation.setField("npe03__Recurring_Donation_Campaign__c", importEvent.recurringDonationCampaignId);
         } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT))) {
-          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", campaignNameToId.get(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT)));
+          recurringDonation.setField("npe03__Recurring_Donation_Campaign__c", campaignNameToId.get(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT)));
         }
 
         if (!Strings.isNullOrEmpty(importEvent.recurringDonationId)) {
@@ -1922,16 +1924,16 @@ public class SfdcCrmService implements CrmService {
   protected void setBulkImportRecurringDonationFields(SObject recurringDonation, SObject existingRecurringDonation, CrmImportEvent importEvent)
       throws ConnectionException, InterruptedException {
     if (importEvent.recurringDonationAmount != null) {
-      recurringDonation.setField("Npe03__Amount__c", importEvent.recurringDonationAmount.doubleValue());
+      recurringDonation.setField("npe03__Amount__c", importEvent.recurringDonationAmount.doubleValue());
     }
-    recurringDonation.setField("Npe03__Open_Ended_Status__c", importEvent.recurringDonationStatus);
-    recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
+    recurringDonation.setField("npe03__Open_Ended_Status__c", importEvent.recurringDonationStatus);
+    recurringDonation.setField("npe03__Schedule_Type__c", "Multiply By");
     CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(importEvent.recurringDonationInterval);
     if (frequency != null) {
-      recurringDonation.setField("Npe03__Installment_Period__c", frequency.name());
+      recurringDonation.setField("npe03__Installment_Period__c", frequency.name());
     }
-    recurringDonation.setField("Npe03__Date_Established__c", importEvent.recurringDonationStartDate);
-    recurringDonation.setField("Npe03__Next_Payment_Date__c", importEvent.recurringDonationNextPaymentDate);
+    recurringDonation.setField("npe03__Date_Established__c", importEvent.recurringDonationStartDate);
+    recurringDonation.setField("npe03__Next_Payment_Date__c", importEvent.recurringDonationNextPaymentDate);
 
     if (env.getConfig().salesforce.enhancedRecurringDonations) {
       recurringDonation.setField("npsp__RecurringType__c", "Open");
@@ -2449,7 +2451,7 @@ public class SfdcCrmService implements CrmService {
         //  a profile update for every client.
         null, // getZonedDateFromDateString(getStringField(sObject, "npsp__EndDate__c"), env.getConfig().timezoneId),
         getZonedDateFromDateString(getStringField(sObject, "npe03__Next_Payment_Date__c"), env.getConfig().timezoneId),
-        getZonedDateFromDateString(getStringField(sObject, "Npe03__Date_Established__c"), env.getConfig().timezoneId),
+        getZonedDateFromDateString(getStringField(sObject, "npe03__Date_Established__c"), env.getConfig().timezoneId),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/npe03__Recurring_Donation__c/" + sObject.getId() + "/view"
     );
