@@ -1309,17 +1309,6 @@ public class SfdcCrmService implements CrmService {
           && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))) {
         List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
             .filter(c -> {
-              // If the SFDC record has no address or phone at all, allow the by-name match. It might seem like this
-              // somewhat defeats the purpose, but we're running into situations where basic records were originally
-              // created with extremely bare info.
-              // TODO: REMOVE THIS! For CLHS, caused common names with no contact info to be matched when it was the
-              //  wrong person.
-              if (c.getField("MailingStreet") == null && c.getChild("Account").getField("BillingStreet") == null
-                  && c.getChild("Account").getField("ShippingStreet") == null
-                  && c.getField("Phone") == null && c.getField("HomePhone") == null && c.getField("MobilePhone") == null) {
-                return true;
-              }
-
               // To make matching simpler, since home phone on one side could = mobile phone on the other side
               // and billing address on one side could match the mailing address on the other side, we cram
               // all options from each side into a list. Then, simply look for an intersection of both lists as a match.

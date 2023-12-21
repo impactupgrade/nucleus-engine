@@ -182,6 +182,8 @@ public class FactsController {
               }
               Integer householdId = _householdId.get();
 
+              // TODO: Was this the primary issue with the sync? Does a Family not actually have its own notion of
+              //  address and we were incorrectly using the first parent?
               if (address != null && isParent(parent)) {
                 familyIdToAddressStreet.put(householdId, address.address1);
               }
