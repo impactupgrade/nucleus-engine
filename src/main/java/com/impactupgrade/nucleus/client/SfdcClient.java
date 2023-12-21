@@ -115,7 +115,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       //  returns a query error if you try to query them but no record types exist for that object.
       ACCOUNT_FIELDS += ", RecordTypeId, RecordType.Id, RecordType.Name, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c, npo02__FirstCloseDate__c";
       // TODO: Same point about NPSP.
-      CONTACT_FIELDS += ", Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, account.npo02__LargestAmount__c, account.npo02__OppsClosedThisYear__c, account.npo02__OppAmountThisYear__c, npe01__Home_Address__c, npe01__workphone__c, npe01__preferredphone__c";
+      CONTACT_FIELDS += ", Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, account.npo02__LargestAmount__c, account.npo02__OppsClosedThisYear__c, account.npo02__OppAmountThisYear__c, npe01__Home_Address__c, npe01__WorkPhone__c, npe01__PreferredPhone__c, npe01__HomeEmail__c, npe01__WorkEmail__c, npe01__AlternateEmail__c, npe01__Preferred_Email__c";
       DONATION_FIELDS += ", npe03__Recurring_Donation__c, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name";
       RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npe03__Contact__r.Phone, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name, OwnerId, Owner.Id, Owner.IsActive";
     }
@@ -691,7 +691,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getContactsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
-    return getBulkResults(emails, "Email", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+    return getBulkResults(emails, List.of("Email", "npe01__HomeEmail__c", "npe01__WorkEmail__c", "npe01__AlternateEmail__c"), "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -914,40 +914,52 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return Joiner.on(", ").join(fieldsDeduped);
   }
 
-  protected List<SObject> getBulkResults(List<String> conditions, String conditionFieldName, String objectType,
+  protected List<SObject> getBulkResults(List<String> values, String conditionFieldName, String objectType,
+      String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(values, List.of(conditionFieldName), objectType, fields, _customFields, extraFields);
+  }
+
+  protected List<SObject> getBulkResults(List<String> values, List<String> conditionFieldNames, String objectType,
       String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
 
-    conditions = conditions.stream().filter(c -> !Strings.isNullOrEmpty(c)).toList();
+    values = values.stream().filter(v -> !Strings.isNullOrEmpty(v)).toList();
 
-    if (conditions.isEmpty()) {
+    if (values.isEmpty()) {
       return List.of();
     }
 
     List<String> page;
     List<String> more;
-    int size = conditions.size();
+    int size = values.size();
     // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
     if (size > MAX_ID_QUERY_LIST_SIZE) {
-      page = conditions.subList(0, MAX_ID_QUERY_LIST_SIZE);
-      more = conditions.subList(MAX_ID_QUERY_LIST_SIZE, size);
+      page = values.subList(0, MAX_ID_QUERY_LIST_SIZE);
+      more = values.subList(MAX_ID_QUERY_LIST_SIZE, size);
     } else {
-      page = conditions;
+      page = values;
       more = Collections.emptyList();
     }
 
     // the provided Set might be immutable
     Set<String> customFields = new HashSet<>(_customFields);
     // sometimes searching using external ref IDs or another unique fields -- make sure results include it
-    if (!"id".equalsIgnoreCase(conditionFieldName) && !"email".equalsIgnoreCase(conditionFieldName)) {
-      customFields.add(conditionFieldName);
+    for (String conditionFieldName : conditionFieldNames) {
+      if (!"id".equalsIgnoreCase(conditionFieldName) && !"email".equalsIgnoreCase(conditionFieldName)) {
+        customFields.add(conditionFieldName);
+      }
     }
 
-    String conditionsJoin = page.stream().map(condition -> "'" + condition.replaceAll("'", "\\\\'") + "'").collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(fields, customFields, extraFields) + " from " + objectType + " where " + conditionFieldName + " in (" + conditionsJoin + ")";
+    String valuesJoin = page.stream().map(condition -> "'" + condition.replaceAll("'", "\\\\'") + "'").collect(Collectors.joining(","));
+    List<String> conditions = new ArrayList<>();
+    for (String conditionFieldName : conditionFieldNames) {
+      conditions.add(conditionFieldName + " in (" + valuesJoin + ")");
+    }
+    String conditionsJoin = String.join(" OR ", conditions);
+    String query = "select " + getFieldsList(fields, customFields, extraFields) + " from " + objectType + " where " + conditionsJoin;
     List<SObject> results = queryListAutoPaged(query);
 
     if (!more.isEmpty()) {
-      results.addAll(getBulkResults(more, conditionFieldName, objectType, fields, customFields, extraFields));
+      results.addAll(getBulkResults(more, conditionFieldNames, objectType, fields, customFields, extraFields));
     }
 
     return results;

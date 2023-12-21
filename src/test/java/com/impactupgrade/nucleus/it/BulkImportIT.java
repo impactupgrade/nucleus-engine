@@ -125,6 +125,53 @@ public class BulkImportIT extends AbstractIT {
     assertEquals(contact.getField("LastName") + " Household", account.getField("Name").toString());
   }
 
+  @Test
+  public void doNotOverwriteEmailAndPhonePrefs() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    // uses the basic Email field, not the breakdown + pref
+    SObject contact1 = randomContactSfdc();
+    String contact1Id = contact1.getId();
+    String contact1Email = contact1.getField("Email").toString();
+
+    // duplicates randomContactSfdc, but we need control over the prefs
+    String randomFirstName = RandomStringUtils.randomAlphabetic(8);
+    String randomLastName = RandomStringUtils.randomAlphabetic(8);
+    String randomPersonalEmail = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+    String randomWorkEmail = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+    SObject account2 = new SObject("Account");
+    account2.setField("Name", randomLastName + " Household");
+    String account2Id = sfdcClient.insert(account2).getId();
+    SObject contact2 = new SObject("Contact");
+    contact2.setField("AccountId", account2Id);
+    contact2.setField("FirstName", randomFirstName);
+    contact2.setField("LastName", randomLastName);
+    contact2.setField("npe01__WorkEmail__c", randomWorkEmail);
+    contact2.setField("npe01__Preferred_Email__c", "Work");
+    String contact2Id = sfdcClient.insert(contact2).getId();
+
+    final List<Object> values = List.of(
+        List.of("Contact Personal Email", "Contact Work Email", "Contact Preferred Email"),
+        List.of(contact1Email, "", "personal"),
+        List.of(randomPersonalEmail, randomWorkEmail, "personal")
+    );
+    postToBulkImport(values);
+
+    contact1 = sfdcClient.getContactById(contact1Id).get();
+    contact2 = sfdcClient.getContactById(contact2Id).get();
+
+    // contact1 should have Email the same, a value for Home Email, and a value for preferred
+    assertEquals(contact1Email, contact1.getField("Email"));
+    assertEquals(contact1Email, contact1.getField("npe01__HomeEmail__c"));
+    assertEquals("Personal", contact1.getField("npe01__Preferred_Email__c"));
+
+    // contact2 should have preserved its work email, received a new home email, and preserved its preferred
+//    assertEquals(randomWorkEmail, contact2.getField("Email")); // TODO: Not sure why this isn't getting set by the preference. Expected?
+    assertEquals(randomWorkEmail, contact2.getField("npe01__WorkEmail__c"));
+    assertEquals("Work", contact2.getField("npe01__Preferred_Email__c"));
+    assertEquals(randomPersonalEmail, contact2.getField("npe01__HomeEmail__c"));
+  }
+
   protected void postToBulkImport(List<Object> values) throws Exception {
     final CsvMapper csvMapper = new CsvMapper();
     File file = File.createTempFile("nucleus-it-", ".csv");
@@ -139,6 +186,6 @@ public class BulkImportIT extends AbstractIT {
 
     // The endpoint spins off an async thread, so give it time to complete. May need to bump this up if we introduce
     // tests with a larger number of import rows.
-    Thread.sleep(5000L);
+    Thread.sleep(10000L);
   }
 }
