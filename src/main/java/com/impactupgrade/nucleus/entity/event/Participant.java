@@ -27,5 +27,6 @@ public class Participant {
   @JoinColumn(name = "event_id", nullable = false)
   public Event event;
 
-  public ZonedDateTime datetime;
+  @Column(name = "created_datetime")
+  public ZonedDateTime createdDateTime;
 }
