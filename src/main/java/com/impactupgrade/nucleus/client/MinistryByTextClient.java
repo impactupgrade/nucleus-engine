@@ -10,14 +10,15 @@ import org.json.JSONObject;
 
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.isOk;
+import static com.impactupgrade.nucleus.util.HttpClient.patch;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-// TODO: To eventually become a spoke-phone-java-client open source lib?
 public class MinistryByTextClient extends OAuthClient {
 
   protected static String AUTH_ENDPOINT = "https://login.ministrybytext.com/connect/token";
@@ -54,6 +55,11 @@ public class MinistryByTextClient extends OAuthClient {
   public Subscriber upsertSubscriber(CrmContact crmContact, EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) {
     Subscriber subscriber = toMBTSubscriber(crmContact);
     return post(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
+  }
+
+  public void upsertNotificationSetting(NotificationSetting notificationSetting,
+      EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) throws IOException, InterruptedException {
+    patch(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", notificationSetting, APPLICATION_JSON, headers());
   }
 
   // Having to modify this due to MBT's limited API. There's no upsert concept, and we want to avoid having to retrieve
@@ -117,5 +123,18 @@ public class MinistryByTextClient extends OAuthClient {
   public static class SubscriberRelation {
     public String name;
     public String relationship;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class NotificationSetting {
+    public Boolean callbackUrlEnabled;
+    public Boolean statusUrlEnabled;
+    public List<CallbackSetting> callbackUrlSettings = new ArrayList<>();
+    public List<CallbackSetting> statusUrlSettings = new ArrayList<>();
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CallbackSetting {
+    public String callBackUrl;
   }
 }

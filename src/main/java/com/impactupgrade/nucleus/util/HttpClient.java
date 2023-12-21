@@ -4,6 +4,8 @@
 
 package com.impactupgrade.nucleus.util;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,6 +19,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
 
 public class HttpClient {
@@ -101,6 +107,27 @@ public class HttpClient {
       log.error("PUT failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
     }
     return null;
+  }
+
+  // TODO: Switched to using JDK's HttpClient -- having issues with Jersey, PATCH fixes, and Java 16 now preventing reflection on private modules.
+  //  Update this lib-wide, but isolating here for the moment.
+  public static void patch(String url, Object entity, String mediaType, HeaderBuilder headerBuilder) throws IOException, InterruptedException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    String json = objectMapper.writeValueAsString(entity);
+
+    HttpRequest.Builder builder = HttpRequest.newBuilder()
+        .uri(URI.create(url))
+        .header("Content-Type", mediaType)
+        .method("PATCH", HttpRequest.BodyPublishers.ofString(json));
+    for (String key : headerBuilder.headers.keySet()) {
+      builder.header(key, headerBuilder.headers.getFirst(key).toString());
+    }
+    HttpRequest request = builder.build();
+    HttpResponse<String> response = java.net.http.HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() >= 300) {
+      log.error("PATCH failed: url={} code={} message={}", url, response.statusCode(), response.body());
+    }
   }
 
   public static void delete(String url, HeaderBuilder headerBuilder) {

@@ -24,14 +24,14 @@ import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityTy
  * To receive webhooks from MBT as messages are sent/received.
  */
 @Path("/mbt")
-public class MBTController {
+public class MinistryByTextController {
 
   private static final String DATE_FORMAT = "yyyy-MM-dd";
   private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"; 
 
   protected final EnvironmentFactory envFactory;
 
-  public MBTController(EnvironmentFactory envFactory) {
+  public MinistryByTextController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
   }
 

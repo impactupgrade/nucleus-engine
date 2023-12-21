@@ -255,6 +255,7 @@ public class Environment {
 
   public DonorWranglerClient donorwranglerClient() { return new DonorWranglerClient(this); }
   public FactsClient factsClient() { return new FactsClient(this); }
+  public PaypalClient paypalClient() { return new PaypalClient(this); }
   public RaiselyClient raiselyClient() { return new RaiselyClient(this); }
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password, boolean isSandbox) { return new SfdcClient(this, username, password, isSandbox); }
@@ -263,7 +264,6 @@ public class Environment {
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
   public VirtuousClient virtuousClient() { return new VirtuousClient(this); }
-  public PaypalClient paypalClient() { return new PaypalClient(this); }
 
   // job logging services
 

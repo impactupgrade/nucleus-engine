@@ -13,7 +13,7 @@ import com.impactupgrade.nucleus.controller.EmailController;
 import com.impactupgrade.nucleus.controller.EventsController;
 import com.impactupgrade.nucleus.controller.FactsController;
 import com.impactupgrade.nucleus.controller.JobController;
-import com.impactupgrade.nucleus.controller.MBTController;
+import com.impactupgrade.nucleus.controller.MinistryByTextController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
 import com.impactupgrade.nucleus.controller.PaypalController;
@@ -98,7 +98,7 @@ public class App {
     apiConfig.register(factsController());
     apiConfig.register(jobController());
     apiConfig.register(mailchimpController());
-    apiConfig.register(mbtController());
+    apiConfig.register(ministrybytextController());
     apiConfig.register(paymentGatewayController());
     apiConfig.register(sfdcController());
     apiConfig.register(scheduledJobController());
@@ -151,24 +151,25 @@ public class App {
   public void registerServlets(ServletContextHandler context) throws Exception {}
 
   // Allow orgs to override specific controllers.
+  protected AccountingController accountingController() { return new AccountingController(envFactory); }
   protected BackupController backupController() { return new BackupController(envFactory); }
   protected CommunicationController communicationController() { return new CommunicationController(envFactory); }
   protected CrmController crmController() { return new CrmController(envFactory); }
   protected DonationFormController donationFormController() { return new DonationFormController(envFactory); }
   protected EmailController emailController() { return new EmailController(envFactory); }
-  protected FactsController factsController() { return new FactsController(envFactory); }
   protected EventsController eventsController() { return new EventsController(envFactory); }
+  protected FactsController factsController() { return new FactsController(envFactory); }
+  protected JobController jobController() { return new JobController(envFactory); }
+  protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
+  protected MinistryByTextController ministrybytextController() { return new MinistryByTextController(envFactory); }
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory); }
-  protected SfdcController sfdcController() { return new SfdcController(envFactory); }
-  protected StripeController stripeController() { return new StripeController(envFactory); }
   protected PaypalController paypalController() { return new PaypalController(envFactory); }
+  protected SfdcController sfdcController() { return new SfdcController(envFactory); }
+  protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
+  protected StripeController stripeController() { return new StripeController(envFactory); }
   protected TwilioController twilioController() { return new TwilioController(envFactory); }
   protected TwilioFrontlineController twilioFrontlineController() { return new TwilioFrontlineController(envFactory); }
-  protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
-  protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
-  protected AccountingController accountingController() { return new AccountingController(envFactory); }
-  protected JobController jobController() { return new JobController(envFactory); }
-  protected MBTController mbtController() { return new MBTController(envFactory); }
+
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
   }
