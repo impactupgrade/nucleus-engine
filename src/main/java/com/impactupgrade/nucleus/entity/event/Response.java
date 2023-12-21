@@ -28,5 +28,6 @@ public class Response {
   @Column(name = "free_response")
   public String freeResponse;
 
-  public ZonedDateTime datetime;
+  @Column(name = "created_datetime")
+  public ZonedDateTime createdDateTime;
 }
