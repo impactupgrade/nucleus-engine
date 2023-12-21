@@ -1079,11 +1079,13 @@ public class SfdcCrmService implements CrmService {
         .flatMap(Collection::stream)
         .filter(email -> !Strings.isNullOrEmpty(email)).distinct().toList();
     Multimap<String, SObject> existingContactsByEmail = ArrayListMultimap.create();
-    if (contactEmails.size() > 0) {
+    if (!contactEmails.isEmpty()) {
       // Normalize the case!
       sfdcClient.getContactsByEmails(contactEmails, contactCustomFields)
         .forEach(c -> {
-            existingContactsByEmail.put(c.getField("Email").toString().toLowerCase(Locale.ROOT), c);
+            if (!Strings.isNullOrEmpty((String) c.getField("Email"))) {
+              existingContactsByEmail.put(c.getField("Email").toString().toLowerCase(Locale.ROOT), c);
+            }
             if (!Strings.isNullOrEmpty((String) c.getField("npe01__HomeEmail__c"))) {
               existingContactsByEmail.put(c.getField("npe01__HomeEmail__c").toString().toLowerCase(Locale.ROOT), c);
             }
@@ -1353,7 +1355,6 @@ public class SfdcCrmService implements CrmService {
           // the contact.account child relationship will not yet exist in the existingContactsByEmail map
           contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
         }
-
       }
       // If we have a first and last name, try searching for an existing contact by name.
       // Only do this if we can match against street address or phone number as well. Simply by-name is too risky.
@@ -1771,28 +1772,27 @@ public class SfdcCrmService implements CrmService {
     contact.setField("MobilePhone", importEvent.contactMobilePhone);
     if (env.getConfig().salesforce.npsp) {
       contact.setField("npe01__WorkPhone__c", importEvent.contactWorkPhone);
-
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail) && !"na".equalsIgnoreCase(importEvent.contactPersonalEmail) && !"n/a".equalsIgnoreCase(importEvent.contactPersonalEmail)) {
+    if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail) && !"na".equalsIgnoreCase(importEvent.contactPersonalEmail) && !"n/a".equalsIgnoreCase(importEvent.contactPersonalEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String email = importEvent.contactPersonalEmail.split("[,;\\s]+")[0];
       contact.setField("npe01__HomeEmail__c", email);
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactWorkEmail) && !"na".equalsIgnoreCase(importEvent.contactWorkEmail) && !"n/a".equalsIgnoreCase(importEvent.contactWorkEmail)) {
+    if (!Strings.isNullOrEmpty(importEvent.contactWorkEmail) && !"na".equalsIgnoreCase(importEvent.contactWorkEmail) && !"n/a".equalsIgnoreCase(importEvent.contactWorkEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String workEmail = importEvent.contactWorkEmail.split("[,;\\s]+")[0];
       contact.setField("npe01__WorkEmail__c", workEmail);
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactOtherEmail) && !"na".equalsIgnoreCase(importEvent.contactOtherEmail) && !"n/a".equalsIgnoreCase(importEvent.contactOtherEmail)) {
+    if (!Strings.isNullOrEmpty(importEvent.contactOtherEmail) && !"na".equalsIgnoreCase(importEvent.contactOtherEmail) && !"n/a".equalsIgnoreCase(importEvent.contactOtherEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String otherEmail = importEvent.contactOtherEmail.split("[,;\\s]+")[0];
       contact.setField("npe01__AlternateEmail__c", otherEmail);
     }
 
-    if (existingContact == null || existingContact.getField("npe01__PreferredPhone__c") == null) {
+    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
       String customFieldValue = switch (importEvent.contactPhonePreference) {
         case HOME -> "Home";
         case MOBILE -> "Mobile";
@@ -1819,7 +1819,7 @@ public class SfdcCrmService implements CrmService {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
 
-    if (existingContact != null || existingContact.getField("npe01__Preferred_Email__c") == null) {
+    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
       String customFieldValue = switch (importEvent.contactEmailPreference) {
         case PERSONAL -> "Personal";
         case WORK -> "Work";
