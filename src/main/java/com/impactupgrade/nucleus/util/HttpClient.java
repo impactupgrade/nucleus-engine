@@ -45,7 +45,7 @@ public class HttpClient {
     } else if (response.getStatus() == 404 ){
       log.info("GET not found: url={}", url);
     } else {
-      log.error("GET failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      log.warn("GET failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
     }
     return null;
   }
@@ -59,7 +59,7 @@ public class HttpClient {
     } else if (response.getStatus() == 404 ){
       log.info("GET not found: url={}", url);
     } else {
-      log.error("GET failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      log.warn("GET failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
     }
     return null;
   }
@@ -78,7 +78,7 @@ public class HttpClient {
         return response.readEntity(clazz);
       }
     } else {
-      log.error("POST failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      log.warn("POST failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
     }
     return null;
   }
@@ -104,7 +104,7 @@ public class HttpClient {
         return response.readEntity(clazz);
       }
     } else {
-      log.error("PUT failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      log.warn("PUT failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
     }
     return null;
   }
@@ -126,7 +126,7 @@ public class HttpClient {
     HttpRequest request = builder.build();
     HttpResponse<String> response = java.net.http.HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
     if (response.statusCode() >= 300) {
-      log.error("PATCH failed: url={} code={} message={}", url, response.statusCode(), response.body());
+      log.warn("PATCH failed: url={} code={} message={}", url, response.statusCode(), response.body());
     }
   }
 
@@ -136,7 +136,7 @@ public class HttpClient {
     MultivaluedMap<String, Object> headers = headerBuilder == null ? new MultivaluedHashMap<>() : headerBuilder.headers;
     Response response = webTarget.request().headers(headers).delete();
     if (!isOk(response)) {
-      log.error("DELETE failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      log.warn("DELETE failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
     }
   }
 
