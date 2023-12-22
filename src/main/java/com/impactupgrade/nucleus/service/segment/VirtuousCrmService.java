@@ -867,10 +867,15 @@ public class VirtuousCrmService implements CrmService {
     Optional<CrmContact> contact = getContactById(recurringDonation.contact.id);
     contact.ifPresent(c -> recurringGift.contactId = asContact(c).id);
     recurringGift.amount = recurringDonation.amount;
-    recurringGift.frequency = recurringDonation.frequency.toString();
+    if (recurringDonation.frequency == CrmRecurringDonation.Frequency.YEARLY) {
+      recurringGift.frequency = "ANNUALLY";
+    } else if (recurringDonation.frequency == CrmRecurringDonation.Frequency.BIANNUALLY) {
+      recurringGift.frequency = "BIENNUALLY";
+    } else {
+      recurringGift.frequency = recurringDonation.frequency.toString();
+    }
     recurringGift.startDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(recurringDonation.subscriptionStartDate);
     recurringGift.nextExpectedPaymentDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(recurringDonation.subscriptionStartDate);
-    recurringGift.frequency = recurringDonation.frequency.name();
     recurringGift.automatedPayments = true;
     recurringGift.trackPayments = true;
     recurringGift.isPrivate = false;
