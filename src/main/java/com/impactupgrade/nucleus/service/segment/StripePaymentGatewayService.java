@@ -224,12 +224,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     Charge charge = stripeClient.getCharge(id);
 
     if (charge == null) {
-      env.logJobInfo("Failed to verify and replay charge, no charge with the ID: {} found", id);
       return;
     }
-    if (charge.getStatus().equalsIgnoreCase("succeeded")
-        || charge.getPaymentIntentObject() != null && charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
-      env.logJobInfo("Charge {} succeeded", id);
+    if (!charge.getStatus().equalsIgnoreCase("succeeded")
+        || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
       return;
     }
 
