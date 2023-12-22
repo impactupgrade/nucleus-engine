@@ -72,9 +72,12 @@ public class DonorWranglerClient {
     String responseString = getResponseString(response);
     env.logJobInfo("Donor Wrangler contactSearch response: {}", responseString);
     JSONObject jsonObject = new JSONObject(responseString);
-    JSONArray jsonArray = jsonObject.getJSONArray("results");
+    JSONArray jsonArray = null;
+    if (jsonObject.has("results")) {
+      jsonArray = jsonObject.getJSONArray("results");
+    }
 
-    if (jsonArray.isEmpty()) {
+    if (jsonArray == null || jsonArray.isEmpty()) {
       return Optional.empty();
     } else {
       if (jsonArray.length() > 1) {
