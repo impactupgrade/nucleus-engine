@@ -336,7 +336,7 @@ public class StripeClient {
         .addExpand("data.source.customer")
         .addExpand("data.source.payment_intent")
         .build();
-    return BalanceTransaction.list(params).autoPagingIterable();
+    return BalanceTransaction.list(params, requestOptions).autoPagingIterable();
   }
 
   /**
