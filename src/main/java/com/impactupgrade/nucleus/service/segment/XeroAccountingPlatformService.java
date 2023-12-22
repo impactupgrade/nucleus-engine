@@ -175,7 +175,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     if (crmContact.crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContactForName(contact.getName()).map(c -> {
-                            if (c.getAccountNumber().equals(supporterId)) {
+                            // A few contacts have been entered manually without an Account Number being set.
+                            // If that's the case, assume it's the correct person, without checking the supporterId.
+                            if (Strings.isNullOrEmpty(c.getAccountNumber()) || c.getAccountNumber().equals(supporterId)) {
                                 return c.getContactID().toString();
                             } else {
                                 // Send notification if name already exists for different supporter id (account number)
