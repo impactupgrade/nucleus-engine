@@ -731,6 +731,18 @@ public class SfdcCrmService implements CrmService {
     return sfdcClient.insert(recurringDonation).getId();
   }
 
+
+  @Override
+  public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+    SObject opportunity = (SObject) recurringDonation.crmRawObject;
+    SObject opportunityUpdate = new SObject("Opportunity");
+    opportunityUpdate.setId(opportunity.getId());
+    // TODO: update everything or only subset of fields?
+    setRecurringDonationFields(opportunity, getCampaignOrDefault(recurringDonation), recurringDonation);
+
+    sfdcClient.update(opportunityUpdate);
+  }
+
   /**
    * Set any necessary fields on an RD before it's inserted.
    */

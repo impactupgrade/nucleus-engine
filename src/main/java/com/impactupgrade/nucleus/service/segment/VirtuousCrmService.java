@@ -381,6 +381,13 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+    VirtuousClient.RecurringGift recurringGift = asRecurringGift(recurringDonation);
+    recurringGift.id = Integer.parseInt(recurringDonation.id);
+    virtuousClient.updateRecurringGift(recurringGift);
+  }
+
+  @Override
   public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     virtuousClient.cancelRecurringGift(Integer.parseInt(crmRecurringDonation.id));
   }

@@ -148,8 +148,9 @@ public class DonationService {
       String recurringDonationId = crmService.insertRecurringDonation(paymentGatewayEvent.getCrmRecurringDonation());
       paymentGatewayEvent.setCrmRecurringDonationId(recurringDonationId);
     } else {
-      env.logJobInfo("found an existing CRM recurring donation using subscription {}",
+      env.logJobInfo("found an existing CRM recurring donation using subscription {}; updating it...",
           paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
+      crmService.updateRecurringDonation(paymentGatewayEvent.getCrmRecurringDonation());
     }
   }
 

@@ -57,6 +57,7 @@ import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.io.File;
@@ -612,6 +613,16 @@ public class HubSpotCrmService implements CrmService {
     } else {
       return null;
     }
+  }
+
+  @Override
+  public void updateRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
+    Deal deal = (Deal) recurringDonation.crmRawObject;
+    DealProperties dealProperties = deal.getProperties();
+    // TODO: update everything or only subset of fields?
+    setRecurringDonationFields(dealProperties, recurringDonation);
+
+    hsClient.deal().update(deal.getId(), dealProperties);
   }
 
   protected void setRecurringDonationFields(DealProperties deal, CrmRecurringDonation crmRecurringDonation) throws Exception {
