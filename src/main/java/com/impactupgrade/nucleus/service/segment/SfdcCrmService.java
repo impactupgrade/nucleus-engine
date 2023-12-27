@@ -109,11 +109,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountByCustomerId(customerId));
-  }
-
-  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     return toCrmContact(sfdcClient.getContactById(id));
   }

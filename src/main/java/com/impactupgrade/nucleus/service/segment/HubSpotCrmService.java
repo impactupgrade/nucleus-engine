@@ -44,6 +44,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -53,7 +54,6 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -76,7 +76,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -130,30 +129,6 @@ public class HubSpotCrmService implements CrmService {
     Company company = hsClient.company().read(id, companyFields);
     CrmAccount crmAccount = toCrmAccount(company);
     return Optional.of(crmAccount);
-  }
-
-  @Override
-  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId)) {
-      return Optional.empty();
-    }
-
-    // TODO: This is a little nuts -- have to do 3 different queries. But unlike SFDC, we're not storing the customerId
-    //  on the company (should we even be doing that there?).
-
-    Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, "EQ", customerId);
-    List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
-    DealResults dealResults = hsClient.deal().search(filterGroups, dealFields);
-
-    if (Objects.isNull(dealResults) || dealResults.getTotal() == 0) {
-      return Optional.empty();
-    }
-    AssociationSearchResults associations = hsClient.association().search("deal", dealResults.getResults().get(0).getId(), "company");
-    if (Objects.isNull(associations) || associations.getResults().size() == 0 || associations.getResults().get(0).getTo().size() == 0) {
-      return Optional.empty();
-    }
-
-    return getAccountById(associations.getResults().get(0).getTo().get(0).getId());
   }
 
   @Override

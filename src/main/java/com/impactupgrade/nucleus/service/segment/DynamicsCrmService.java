@@ -201,15 +201,6 @@ public class DynamicsCrmService implements BasicCrmService {
         .collect(Collectors.toList());
   }
 
-  @Override
-  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    if (Strings.isNullOrEmpty(customerId) || Strings.isNullOrEmpty(env.getConfig().dynamicsPlatform.fieldDefinitions.paymentGatewayCustomerId)) {
-      return null;
-    }
-    DynamicsCrmClient.Account account = dynamicsCrmClient.getAccountsByCustomerId(customerId);
-    return Optional.ofNullable(toCrmAccount(account));
-  }
-
   //TODO: convert crmAccount to Account
   @Override
   public String insertAccount(CrmAccount crmAccount) throws Exception {

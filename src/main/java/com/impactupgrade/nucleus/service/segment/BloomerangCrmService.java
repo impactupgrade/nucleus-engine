@@ -389,11 +389,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
   public String insertAccount(CrmAccount crmAccount) throws Exception {
     // For now, holding back on households. The odd part is Bloomerang only does this for true households, while
     // businesses are instead treated as a *constituent*.

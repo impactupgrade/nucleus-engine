@@ -48,7 +48,6 @@ public interface CrmService extends SegmentService {
   }
   // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
-  Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception;
   List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
@@ -86,6 +85,7 @@ public interface CrmService extends SegmentService {
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
+
   String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
 
   // transaction id, secondary id, refund id, etc.
@@ -99,39 +99,15 @@ public interface CrmService extends SegmentService {
 
     return Optional.of(crmDonations.get(0));
   }
-
   // helper method
   default Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
     return getDonationByTransactionIds(List.of(transactionId), null, null);
   }
-
   // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
   // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
   // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
   List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception;
-
-  // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
-  // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
-  // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
-  // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
-//  default List<CrmDonation> getDonations(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
-//    // use a set to prevent duplicates
-//    Set<String> transactionIds = new HashSet<>();
-//
-//    for (PaymentGatewayEvent paymentGatewayEvent : paymentGatewayEvents) {
-//      // SOME orgs create separate Opportunities for refunds, then use the Refund IDs in the standard Charge ID field.
-//      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getRefundId())) {
-//        transactionIds.add(paymentGatewayEvent.getRefundId());
-//      }
-//      transactionIds.add(paymentGatewayEvent.getTransactionId());
-//      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getTransactionSecondaryId())) {
-//        transactionIds.add(paymentGatewayEvent.getTransactionSecondaryId());
-//      }
-//    }
-//
-//    return getDonationsByTransactionIds(transactionIds.stream().toList());
-//  }
   String insertDonation(CrmDonation crmDonation) throws Exception;
   void updateDonation(CrmDonation crmDonation) throws Exception;
   void refundDonation(CrmDonation crmDonation) throws Exception;
@@ -213,17 +189,20 @@ public interface CrmService extends SegmentService {
   // BULK UTILS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // TODO
   void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // PORTAL FIELD UTILS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   Map<String, String> getContactLists() throws Exception;
   Map<String, String> getFieldOptions(String object) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   String insertActivity(CrmActivity crmActivity) throws Exception;
   String updateActivity(CrmActivity crmActivity) throws Exception;
   Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception;

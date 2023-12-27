@@ -71,11 +71,6 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountByCustomerId(String customerId) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
   public String insertAccount(CrmAccount crmAccount) throws Exception {
     return null;
   }
