@@ -49,7 +49,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public static final String AUTH_URL_SANDBOX = "https://test.salesforce.com/services/Soap/u/55.0/";
 
   // SOQL has a 100k char limit for queries, so we're arbitrarily defining the page sizes...
-  protected static final int MAX_ID_QUERY_LIST_SIZE = 1000;
+  protected static final int MAX_ID_QUERY_LIST_SIZE = 500;
 
   protected static final String AUTH_URL;
   static {
