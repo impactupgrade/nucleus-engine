@@ -130,7 +130,7 @@ public class VirtuousCrmService implements CrmService {
       env.logJobInfo("Creating contact method...");
       VirtuousClient.ContactMethod createdContactMethod = virtuousClient.createContactMethod(contactMethod);
       if (createdContactMethod == null) {
-        env.logJobError("Failed to create contact method {}/{}!", contactMethod.id, contactMethod.type);
+        env.logJobWarn("Failed to create contact method {}/{}!", contactMethod.id, contactMethod.type);
         return;
       }
       env.logJobInfo("Contact method created.");
@@ -140,7 +140,7 @@ public class VirtuousCrmService implements CrmService {
     for (VirtuousClient.ContactMethod contactMethod : contactMethodsToUpdate) {
       env.logJobInfo("Updating contact method...");
       if (virtuousClient.updateContactMethod(contactMethod) == null) {
-        env.logJobError("Failed to update contact method {}/{}!", contactMethod.id, contactMethod.type);
+        env.logJobWarn("Failed to update contact method {}/{}!", contactMethod.id, contactMethod.type);
         return;
       }
       env.logJobInfo("Contact method updated.");
