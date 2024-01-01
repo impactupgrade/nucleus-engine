@@ -54,6 +54,8 @@ public class ContactService {
       } else {
         env.logJobInfo("event included CRM contact {}, but the contact didn't exist; trying through the contact email...",
             paymentGatewayEvent.getCrmContact().id);
+        // IMPORTANT: If this was the case, clear out the existingAccount and use the one discovered by the proceeding contact search!
+        existingAccount = Optional.empty();
       }
     }
 

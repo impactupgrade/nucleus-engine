@@ -21,6 +21,7 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.impactupgrade.nucleus.util.Utils.now;
@@ -145,6 +146,63 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(customer.getName().split(" ")[1], contact.getField("LastName"));
     // should be the existing CRM field, not the Stripe customer
     assertEquals(existingContact.getField("Email"), contact.getField("Email"));
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(customer.getName());
+  }
+
+  /**
+   * Some clients store explicit sf_account and sf_contact identifiers in Stripe customer metadata.
+   * At times, the sf_contact may not exist by ID in SFDC, usually due to merges. Ensure we fall back to email searches.
+   */
+  @Test
+  public void customerMetadataAimedAtMissingContact() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    Customer customer = StripeUtil.createCustomer(env);
+
+    String firstName = customer.getName().split(" ")[0];
+    String lastName = customer.getName().split(" ")[1];
+
+    // precreate a contact that has the same name and email
+    SObject existingAccount = new SObject("Account");
+    existingAccount.setField("Name", customer.getName());
+    // same address
+    String existingAccountId = sfdcClient.insert(existingAccount).getId();
+    SObject existingContact = new SObject("Contact");
+    existingContact.setField("AccountId", existingAccountId);
+    // same name
+    existingContact.setField("FirstName", firstName);
+    existingContact.setField("LastName", lastName);
+    // same email
+    existingContact.setField("Email", customer.getEmail());
+    String existingContactId = sfdcClient.insert(existingContact).getId();
+
+    // update the Customer with metadata pointing to missing records
+    Map<String, String> customerMetadata = Map.of("sf_account", existingAccountId, "sf_contact", "0035YABCDEFGHIJKLM");
+    env.stripeClient().updateCustomer(customer, customerMetadata);
+
+    Charge charge = StripeUtil.createCharge(customer, env);
+    String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
+
+    // play as a Stripe webhook
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // verify ContactService -> SfdcCrmService
+    List<SObject> contacts = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).getResults();
+    // this would be 2 if the by-email match didn't work
+    assertEquals(1, contacts.size());
+    SObject contact = contacts.get(0);
+    String accountId = contact.getField("AccountId").toString();
+    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    assertTrue(accountO.isPresent());
+    assertEquals(existingAccountId, accountId);
+    SObject account = accountO.get();
+    assertEquals(customer.getName(), account.getField("Name"));
+    assertEquals(customer.getName().split(" ")[0], contact.getField("FirstName"));
+    assertEquals(customer.getName().split(" ")[1], contact.getField("LastName"));
+    assertEquals(customer.getEmail(), contact.getField("Email"));
 
     // only delete if the test passed -- keep failures in SFDC for analysis
     clearSfdc(customer.getName());
