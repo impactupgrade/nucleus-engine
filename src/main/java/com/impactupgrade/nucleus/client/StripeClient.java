@@ -765,8 +765,7 @@ public class StripeClient {
   public InvoiceCreateParams.Builder defaultInvoiceBuilder(Customer customer) {
     return InvoiceCreateParams.builder()
         .setCustomer(customer.getId())
-        .setCollectionMethod(InvoiceCreateParams.CollectionMethod.SEND_INVOICE)
-        .setDaysUntilDue(30L);
+        .setCollectionMethod(InvoiceCreateParams.CollectionMethod.SEND_INVOICE);
   }
 
   public InvoiceItemCreateParams.Builder defaultInvoiceItemBuilder(Customer customer, Price price, String itemDescription) {
@@ -778,13 +777,21 @@ public class StripeClient {
 
   public Invoice createAndSendInvoice(InvoiceCreateParams.Builder invoiceBuilder,
       InvoiceItemCreateParams.Builder invoiceItemBuilder) throws StripeException {
-    Invoice invoice = Invoice.create(invoiceBuilder.build(), requestOptions);
+    // TODO: Stripe docs show creating the invoice first, then creating the items, and then sending the invoice.
+    //  However, doing so gives an invoice_no_customer_line_items error. But if we create the items first, the invoice
+    //  automatically picks them up from the customer. So this is working, but I'd rather try to explicitly control
+    //  the items instead of accidentally picking something else up...
+
     InvoiceItemCreateParams invoiceItemParams = invoiceItemBuilder
-        .setInvoice(invoice.getId())
+//        .setInvoice(invoice.getId())
         .build();
     InvoiceItem.create(invoiceItemParams, requestOptions);
+
+    Invoice invoice = Invoice.create(invoiceBuilder.build(), requestOptions);
+
     InvoiceSendInvoiceParams params = InvoiceSendInvoiceParams.builder().build();
-    invoice.sendInvoice(params, requestOptions);
+    invoice = invoice.sendInvoice(params, requestOptions);
+
     return invoice;
   }
 
