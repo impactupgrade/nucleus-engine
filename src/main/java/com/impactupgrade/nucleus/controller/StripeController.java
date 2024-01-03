@@ -116,7 +116,7 @@ public class StripeController {
   public void processEvent(String eventType, StripeObject stripeObject, Environment env) throws Exception {
     StripePaymentGatewayService stripePaymentGatewayService = (StripePaymentGatewayService) env.paymentGatewayService("stripe");
     if (stripePaymentGatewayService.filter(stripeObject)) {
-      env.logJobInfo("Skipping stripe object...");
+      env.logJobInfo("Skipping Stripe object due to filteringExpressions...");
       return;
     }
 

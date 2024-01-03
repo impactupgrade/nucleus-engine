@@ -142,6 +142,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
             || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
           continue;
         }
+        if (filter(charge)) {
+          env.logJobInfo("Skipping Stripe object due to filteringExpressions...");
+          continue;
+        }
 
         count++;
 
@@ -185,43 +189,6 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     return missingDonations;
   }
 
-//  @Override
-//  public void verifyCharge(String id) throws Exception {
-//
-//    Charge charge = stripeClient.getCharge(id);
-//    SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-//
-//    if (!charge.getStatus().equalsIgnoreCase("succeeded")
-//        || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
-//      env.logJobInfo("Charge {} succeeded", id);
-//    }
-//
-//
-//    try {
-//      String paymentIntentId = charge.getPaymentIntent();
-//      String chargeId = charge.getId();
-//      String transactionId = chargeId;
-//      Optional<CrmDonation> donation = Optional.empty();
-//      if (!Strings.isNullOrEmpty(paymentIntentId)) {
-//        donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
-//        transactionId = paymentIntentId;
-//      }
-//      if (donation.isEmpty()) {
-//        donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
-//      }
-//
-//      if (donation.isEmpty()) {
-//        env.logJobInfo("verify-charge: MISSING," + transactionId + "," + SDF.format(charge.getCreated() * 1000));
-//      } else if (donation.get().status != CrmDonation.Status.SUCCESSFUL) {
-//        env.logJobInfo("verify-charge: WRONG-STATE," + transactionId + "," + SDF.format(charge.getCreated() * 1000) + "," + donation.get().status);
-//      }
-//
-//    } catch (Exception e) {
-//      env.logJobError("charge verify failed", e);
-//    }
-//  }
-
-
   @Override
   public void verifyAndReplayCharge(String id) throws Exception {
     Charge charge = stripeClient.getCharge(id);
@@ -231,6 +198,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     }
     if (!charge.getStatus().equalsIgnoreCase("succeeded")
         || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
+      return;
+    }
+    if (filter(charge)) {
+      env.logJobInfo("Skipping Stripe object due to filteringExpressions...");
       return;
     }
 
@@ -252,32 +223,6 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
     }
   }
 
-
-  // TODO: Once the above is returning results, use this. But for now, keeping the original one...
-//  @Override
-//  public void verifyAndReplayCharges(Date startDate, Date endDate) {
-//    try {
-//      SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-//
-//      List<PaymentGatewayEvent> missingDonations = verifyCharges(startDate, endDate);
-//
-//      int count = 0;
-//      for (PaymentGatewayEvent missingDonation : missingDonations) {
-//        count++;
-//
-//        try {
-//          env.logJobInfo("(" + count + ") REPLAYING: " + missingDonation.getTransactionId());
-//          env.contactService().processDonor(missingDonation);
-//          env.donationService().createDonation(missingDonation);
-//        } catch (Exception e) {
-//          env.logJobError("charge replay failed", e);
-//        }
-//      }
-//    } catch (Exception e) {
-//      env.logJobError("charge replays failed", e);
-//    }
-//  }
-
   @Override
   public void verifyAndReplayCharges(Date startDate, Date endDate) {
     try {
@@ -297,6 +242,10 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         if (!charge.getStatus().equalsIgnoreCase("succeeded")
             || charge.getPaymentIntentObject() != null && !charge.getPaymentIntentObject().getStatus().equalsIgnoreCase("succeeded")) {
           continue;
+        }
+        if (filter(charge)) {
+          env.logJobInfo("Skipping Stripe object due to filteringExpressions...");
+          return;
         }
 
         try {
