@@ -376,6 +376,33 @@ public class CrmController {
     return Response.status(200).build();
   }
 
+  @Path("/bulk-import/classy")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response bulkImportClassy(
+          @FormDataParam("file") InputStream inputStream,
+          @FormDataParam("file") FormDataContentDisposition fileDisposition,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
+    List<CrmImportEvent> importEvents = CrmImportEvent.fromClassy(data);
+
+    Runnable thread = () -> {
+      try {
+        env.primaryCrmService().processBulkImport(importEvents);
+      } catch (Exception e) {
+        env.logJobError("bulkImport failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
+  }
+
   @Path("/contact-form")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)

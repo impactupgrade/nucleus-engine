@@ -650,6 +650,64 @@ public class CrmImportEvent {
     }
   }
 
+  public static List<CrmImportEvent> fromClassy(List<Map<String, String>> data) {
+    return data.stream().map(CrmImportEvent::fromClassy).filter(Objects::nonNull).collect(Collectors.toList());
+  }
+
+  public static CrmImportEvent fromClassy(Map<String, String> _data) {
+    // Be case-insensitive, for sources that aren't always consistent.
+    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
+
+    CrmImportEvent importEvent = new CrmImportEvent();
+    importEvent.raw = data;
+
+    // Account
+    importEvent.account.name = data.get("Organization Name"); // ?
+
+    // Contact
+    importEvent.contactPersonalEmail = data.get("Donor Email");
+    importEvent.contactFirstName = data.get("Supporter First Name");
+    importEvent.contactLastName = data.get("Supporter Last Name");
+    importEvent.contactMobilePhone = data.get("Donor Phone Number");
+    importEvent.contactOptInEmail = Boolean.TRUE.toString().equalsIgnoreCase(data.get("Email Opt In")); // ?
+
+    // Address
+    importEvent.contactMailingStreet = data.get("Billing Address");
+    importEvent.contactMailingCity = data.get("Billing City");
+    importEvent.contactMailingState = data.get("Billing State");
+    importEvent.contactMailingZip = data.get("Billing Postal Code");
+    importEvent.contactMailingCountry = data.get("Billing Country");
+
+    if (!Strings.isNullOrEmpty(data.get("Campaign ID"))) {
+      importEvent.contactCampaignIds.add(data.get("Campaign ID"));
+    }
+    if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
+      importEvent.contactCampaignNames.add(data.get("Campaign Name"));
+      importEvent.campaignName = data.get("Campaign Name");
+    }
+    if (!Strings.isNullOrEmpty(data.get("Internal Campaign Name"))) {
+      importEvent.contactCampaignNames.add(data.get("Internal Campaign Name"));
+
+    }
+
+    // Opportunity
+    importEvent.opportunityAmount = BigDecimal.valueOf(Double.valueOf(data.get("Charged Intended Donation Amount")));
+    importEvent.opportunityName = "Classy " + data.get("Transaction Type") + " " + data.get("Transaction ID");
+
+    try {
+      importEvent.opportunityDate = Calendar.getInstance();
+      importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.get("Transaction Date")));
+    } catch (ParseException e) {
+      throw new RuntimeException("failed to parse date", e);
+    }
+    importEvent.opportunitySource = data.get("Payment Source");
+    importEvent.opportunityDescription = data.get("Transaction Type") + " for Designation Program " + data.get("Program Designation ID");
+    importEvent.opportunityCampaignId = data.get("Campaign ID");
+    importEvent.opportunityCampaignName = data.get("Campaign Name");
+
+    return importEvent;
+  }
+
   public List<String> getAccountColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Account")).toList();
   }
