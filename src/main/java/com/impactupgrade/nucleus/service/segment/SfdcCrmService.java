@@ -1018,6 +1018,9 @@ public class SfdcCrmService implements CrmService {
     // This entire method uses bulk queries and bulk inserts wherever possible!
     // We make multiple passes, focusing on one object at a time in order to use the bulk API.
 
+    // TODO: Instead of passing around this gigantic set of keys, maps, etc. to all the sub methods,
+    //  create a BulkImportCoreContext class to house all the variables, then pass that instance around instead.
+
     String[] accountCustomFields = importEvents.stream().flatMap(e -> e.getAccountCustomFieldNames().stream()).distinct().toArray(String[]::new);
     String[] contactCustomFields = importEvents.stream().flatMap(e -> e.getContactCustomFieldNames().stream()).distinct().toArray(String[]::new);
     String[] recurringDonationCustomFields = importEvents.stream().flatMap(e -> e.getRecurringDonationCustomFieldNames().stream()).distinct().toArray(String[]::new);
@@ -1263,32 +1266,14 @@ public class SfdcCrmService implements CrmService {
 
       // If we're in the second pass, we already know we need to insert the contact.
       if (secondPass) {
-        if (account == null) {
-          account = insertBulkImportAccount(importEvent.account, importEvent.raw,
-              accountExtRefFieldName, existingAccountsByExtRef, "Account", hasAccountColumns);
-        }
+        account = upsertExistingAccountByName(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns);
 
         contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
             existingContactsByEmail, existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode);
       }
       // If we're in account-only mode (we have no contact info to match against):
       else if (hasAccountColumns && (!hasContactColumns || !hasContactLookups) && !Strings.isNullOrEmpty(importEvent.account.name)) {
-        SObject existingAccount;
-
-        if (!Strings.isNullOrEmpty(importEvent.account.id)) {
-          existingAccount = existingAccountsById.get(importEvent.account.id);
-        } else if (accountExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(accountExtRefKey.get()))) {
-          existingAccount = existingAccountsByExtRef.get(importEvent.raw.get(accountExtRefKey.get()));
-        } else {
-          existingAccount = existingAccountsByName.get(importEvent.account.name.toLowerCase(Locale.ROOT)).stream().findFirst().orElse(null);
-        }
-
-        if (existingAccount == null) {
-          account = insertBulkImportAccount(importEvent.account, importEvent.raw, accountExtRefFieldName, existingAccountsByExtRef, "Account", hasAccountColumns);
-          existingAccountsByName.put(importEvent.account.name.toLowerCase(Locale.ROOT), account);
-        } else {
-          account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", true);
-        }
+        account = upsertExistingAccountByName(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns);
       }
       // If the explicit Contact ID was given and the contact actually exists, update.
       else if (!Strings.isNullOrEmpty(importEvent.contactId) && existingContactsById.containsKey(importEvent.contactId)) {
@@ -1323,33 +1308,20 @@ public class SfdcCrmService implements CrmService {
         contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
       // Else if a contact already exists with the given email address, update.
-      else if (importEvent.hasEmail()) {
-
-        List<String> emails = importEvent.getAllContactEmails().stream()
-                        .filter(email -> !Strings.isNullOrEmpty(email))
-                        .map(email -> email.toLowerCase(Locale.ROOT))
-                        .filter(existingContactsByEmail::containsKey)
-                        .toList();
-
-        Optional<SObject> existingContactO = emails.stream()
-                .map(email -> existingContactsByEmail.get(email))
-                .flatMap(Collection::stream)
-                .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate"))));
-
-        if (existingContactO.isPresent()) {
-          SObject existingContact = existingContactO.get();
-          if (account == null) {
-            String accountId = (String) existingContact.getField("AccountId");
-            if (!Strings.isNullOrEmpty(accountId)) {
-              SObject existingAccount = (SObject) existingContact.getChild("Account");
-              account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns);
-            }
+      else if (importEvent.hasEmail() && findExistingContactByEmail(importEvent, existingContactsByEmail).isPresent()) {
+        // TODO: do this once further up?
+        SObject existingContact = findExistingContactByEmail(importEvent, existingContactsByEmail).get();
+        if (account == null) {
+          String accountId = (String) existingContact.getField("AccountId");
+          if (!Strings.isNullOrEmpty(accountId)) {
+            SObject existingAccount = (SObject) existingContact.getChild("Account");
+            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns);
           }
-
-          // use accountId, not account.id -- if the contact was recently imported by this current process,
-          // the contact.account child relationship will not yet exist in the existingContactsByEmail map
-          contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
         }
+
+        // use accountId, not account.id -- if the contact was recently imported by this current process,
+        // the contact.account child relationship will not yet exist in the existingContactsByEmail map
+        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
       }
       // If we have a first and last name, try searching for an existing contact by name.
       // Only do this if we can match against street address or phone number as well. Simply by-name is too risky.
@@ -1595,6 +1567,47 @@ public class SfdcCrmService implements CrmService {
     env.logJobInfo("bulk import complete");
   }
 
+  protected SObject upsertExistingAccountByName(
+      CrmImportEvent importEvent,
+      Map<String, SObject> existingAccountsById,
+      Multimap<String, SObject> existingAccountsByName,
+      Optional<String> accountExtRefKey,
+      Optional<String> accountExtRefFieldName,
+      Map<String, SObject> existingAccountsByExtRef,
+      boolean hasAccountColumns
+  ) throws ExecutionException, InterruptedException {
+    SObject account = null;
+    if (!Strings.isNullOrEmpty(importEvent.account.id)) {
+      account = existingAccountsById.get(importEvent.account.id);
+    }
+    if (account == null && (accountExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(accountExtRefKey.get())))) {
+      account = existingAccountsByExtRef.get(importEvent.raw.get(accountExtRefKey.get()));
+    }
+    if (account == null && !Strings.isNullOrEmpty(importEvent.account.name)) {
+      account = existingAccountsByName.get(importEvent.account.name.toLowerCase(Locale.ROOT)).stream().findFirst().orElse(null);
+    }
+
+    if (account == null) {
+      account = insertBulkImportAccount(importEvent.account, importEvent.raw, existingAccountsByName, accountExtRefFieldName, existingAccountsByExtRef, "Account", hasAccountColumns);
+    } else {
+      account = updateBulkImportAccount(account, importEvent.account, importEvent.raw, "Account", true);
+    }
+
+    return account;
+  }
+
+  protected Optional<SObject> findExistingContactByEmail(CrmImportEvent importEvent, Multimap<String, SObject> existingContactsByEmail) {
+    List<String> emails = importEvent.getAllContactEmails().stream()
+        .filter(email -> !Strings.isNullOrEmpty(email))
+        .map(email -> email.toLowerCase(Locale.ROOT))
+        .filter(existingContactsByEmail::containsKey)
+        .toList();
+    return emails.stream()
+        .map(email -> existingContactsByEmail.get(email))
+        .flatMap(Collection::stream)
+        .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate"))));
+  }
+
   protected SObject updateBulkImportAccount(SObject existingAccount, CrmAccount crmAccount, Map<String, String> raw,
       String columnPrefix, boolean hasAccountColumns) throws InterruptedException, ExecutionException {
     // TODO: Odd situation. When insertBulkImportContact creates a contact, it's also creating an Account, sets the
@@ -1623,6 +1636,7 @@ public class SfdcCrmService implements CrmService {
   protected SObject insertBulkImportAccount(
       CrmAccount crmAccount,
       Map<String, String> raw,
+      Multimap<String, SObject> existingAccountsByName,
       Optional<String> accountExtRefFieldName,
       Map<String, SObject> existingAccountsByExtRef,
       String columnPrefix,
@@ -1642,6 +1656,9 @@ public class SfdcCrmService implements CrmService {
     String accountId = sfdcClient.insert(account).getId();
     account.setId(accountId);
 
+    if (!Strings.isNullOrEmpty(crmAccount.name)) {
+      existingAccountsByName.put(crmAccount.name.toLowerCase(Locale.ROOT), account);
+    }
     if (accountExtRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) account.getField(accountExtRefFieldName.get()))) {
       existingAccountsByExtRef.put((String) account.getField(accountExtRefFieldName.get()), account);
     }
@@ -1918,7 +1935,7 @@ public class SfdcCrmService implements CrmService {
           // TODO: This was mainly due to CLHS' original FACTS migration that created isolated households or, worse,
           //  combined grandparents into the student's household. Raiser's Edge has the correct relationships and
           //  households, so we're using this to override the past.
-          org = insertBulkImportAccount(crmOrg, importEvent.raw, orgExtRefFieldName, existingAccountsByExtRef, "Organization " + finalJ, true);
+          org = insertBulkImportAccount(crmOrg, importEvent.raw, existingAccountsByName, orgExtRefFieldName, existingAccountsByExtRef, "Organization " + finalJ, true);
         }
       } else {
         SObject existingOrg = existingAccountsByName.get(crmOrg.name.toLowerCase(Locale.ROOT)).stream().findFirst().orElse(null);
@@ -1928,7 +1945,7 @@ public class SfdcCrmService implements CrmService {
             crmOrg.recordTypeName = "Organization";
           }
 
-          org = insertBulkImportAccount(crmOrg, importEvent.raw, orgExtRefFieldName, existingAccountsByExtRef, "Organization " + finalJ, true);
+          org = insertBulkImportAccount(crmOrg, importEvent.raw, existingAccountsByName, orgExtRefFieldName, existingAccountsByExtRef, "Organization " + finalJ, true);
           existingAccountsByName.put(crmOrg.name.toLowerCase(Locale.ROOT), org);
         } else {
           org = updateBulkImportAccount(existingOrg, crmOrg, importEvent.raw, "Organization " + finalJ, true);

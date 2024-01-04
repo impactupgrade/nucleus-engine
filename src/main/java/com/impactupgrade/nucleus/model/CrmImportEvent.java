@@ -42,7 +42,7 @@ public class CrmImportEvent {
 
     public static ContactEmailPreference fromName(String name) {
       if (Strings.isNullOrEmpty(name)) {
-        return null;
+        return PERSONAL;
       }
 
       if (PERSONAL.name.equals(name.toLowerCase(Locale.ROOT))) {

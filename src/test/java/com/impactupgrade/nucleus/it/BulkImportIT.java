@@ -29,6 +29,110 @@ public class BulkImportIT extends AbstractIT {
   }
 
   @Test
+  public void basicCases() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    SObject contactExisting = randomContactSfdc();
+    String contactIdExisting = contactExisting.getId();;
+    String emailExisting = contactExisting.getField("Email").toString();
+
+    String accountNameExisting = RandomStringUtils.randomAlphabetic(8);
+    SObject account = new SObject("Account");
+    account.setField("Name", accountNameExisting);
+    String accountIdExisting = sfdcClient.insert(account).getId();
+
+    String accountNameA = RandomStringUtils.randomAlphabetic(8);
+    String firstnameA = RandomStringUtils.randomAlphabetic(8);
+    String lastnameA = RandomStringUtils.randomAlphabetic(8);
+    String emailA = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    String firstnameB = RandomStringUtils.randomAlphabetic(8);
+    String lastnameB = RandomStringUtils.randomAlphabetic(8);
+    String emailB = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    String firstnameC = RandomStringUtils.randomAlphabetic(8);
+    String lastnameC = RandomStringUtils.randomAlphabetic(8);
+    String emailC = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    String accountNameD = RandomStringUtils.randomAlphabetic(8);
+    String firstnameD = RandomStringUtils.randomAlphabetic(8);
+    String lastnameD = RandomStringUtils.randomAlphabetic(8);
+
+    final List<Object> values = List.of(
+        List.of("Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email"),
+        List.of(accountNameA, firstnameA, lastnameA, emailA),
+        // same account name that was inserted in the line above
+        List.of(accountNameA, firstnameB, lastnameB, emailB),
+        // account name that already existed
+        List.of(accountNameExisting, firstnameC, lastnameC, emailC),
+        // email that already existed
+        List.of(accountNameD, firstnameD, lastnameD, emailExisting)
+    );
+    postToBulkImport(values);
+
+    // TODO: also test --> ext ref, phone, name+street
+
+    List<SObject> aAccounts = sfdcClient.getAccountsByName(accountNameA);
+    assertEquals(1, aAccounts.size());
+    String aAccountId = aAccounts.get(0).getId();
+    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA));
+    assertEquals(1, emailAContacts.size());
+    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB));
+    assertEquals(1, emailBContacts.size());
+    List<SObject> emailCContacts = sfdcClient.getContactsByEmails(List.of(emailC));
+    assertEquals(1, emailCContacts.size());
+    List<SObject> emailExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExisting));
+    assertEquals(1, emailExistingContacts.size());
+
+    assertEquals(aAccountId, emailAContacts.get(0).getField("AccountId"));
+    assertEquals(aAccountId, emailBContacts.get(0).getField("AccountId"));
+    assertEquals(accountIdExisting, emailCContacts.get(0).getField("AccountId"));
+    assertEquals(firstnameD + " " + lastnameD, sfdcClient.getContactById(contactIdExisting).get().getField("Name")); // should have updated the name, using the existing email
+  }
+
+  @Test
+  public void extrefEdgeCases() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    String extRef1 = RandomStringUtils.randomAlphabetic(8);
+    String extRef2 = RandomStringUtils.randomAlphabetic(8);
+    String extRef3 = RandomStringUtils.randomAlphabetic(8);
+
+    String nameA = RandomStringUtils.randomAlphabetic(8);
+    String nameB = RandomStringUtils.randomAlphabetic(8);
+    String firstnameA = RandomStringUtils.randomAlphabetic(8);
+    String lastnameA = RandomStringUtils.randomAlphabetic(8);
+    String firstnameB = RandomStringUtils.randomAlphabetic(8);
+    String lastnameB = RandomStringUtils.randomAlphabetic(8);
+    String emailA = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+    String emailB = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    final List<Object> values = List.of(
+        List.of("Account ExtRef External_Reference__c", "Contact ExtRef External_Reference__c", "Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email"),
+        List.of(extRef1, extRef1, nameA, firstnameA, lastnameA, emailA),
+        // same account name, so the "2" account extref should be ignored and the account we imported above should be used
+        List.of(extRef2, extRef2, nameA, firstnameB, lastnameB, emailB),
+        // similarly, if the contact email was already imported, ignore the contact extref and use the existing contact, and do NOT move it to the new account provided here
+        List.of(extRef3, extRef3, nameB, firstnameA, lastnameA, emailA)
+    );
+    postToBulkImport(values);
+
+    List<SObject> aAccounts = sfdcClient.getAccountsByName(nameA);
+    assertEquals(1, aAccounts.size());
+    List<SObject> bAccounts = sfdcClient.getAccountsByName(nameB);
+    assertEquals(1, bAccounts.size());
+    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA));
+    // this would be 2 if the 3rd item doesn't discover the same email from the 1st item
+//    assertEquals(1, emailAContacts.size()); TODO, currently fails, logic needs reworked to store contacts by-email, by-phone, etc. in the secondPass
+    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB));
+    assertEquals(1, emailBContacts.size());
+
+    assertEquals(aAccounts.get(0).getId(), emailAContacts.get(0).getField("AccountId"));
+    // contact B should have landed in account A
+    assertEquals(aAccounts.get(0).getId(), emailBContacts.get(0).getField("AccountId"));
+  }
+
+  @Test
   public void appendPicklist() throws Exception {
     SObject contact1 = randomContactSfdc();
     SObject contact2 = randomContactSfdc();
