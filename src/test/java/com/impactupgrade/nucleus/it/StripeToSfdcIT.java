@@ -37,7 +37,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Charge charge = StripeUtil.createCharge(customer, env);
@@ -210,7 +210,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
   @Test
   public void coreSubscription() throws Exception {
-    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
@@ -322,7 +322,7 @@ public class StripeToSfdcIT extends AbstractIT {
     existingContact.setField("Email", customer.getEmail());
     String existingContactId = sfdcClient.insert(existingContact).getId();
 
-    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
     Charge charge = StripeUtil.createCharge(customer, env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
@@ -390,7 +390,7 @@ public class StripeToSfdcIT extends AbstractIT {
     existingContact.setField("MobilePhone", "260-987-6543");
     String existingContactId = sfdcClient.insert(existingContact).getId();
 
-    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
     Charge charge = StripeUtil.createCharge(customer, env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());

@@ -124,10 +124,10 @@ public class Utils {
     if (!Strings.isNullOrEmpty(date)) {
       LocalDate localDate;
       try {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-M-d");
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         localDate = LocalDate.parse(date, dtf);
       } catch (DateTimeParseException e) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("M/d/yyyy");
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         localDate = LocalDate.parse(date, dtf);
       }
       return localDate.atStartOfDay(ZoneId.of(timezoneId));

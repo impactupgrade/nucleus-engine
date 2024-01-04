@@ -38,7 +38,7 @@ public class StripeToVirtuousIT extends AbstractIT {
 
   @Test
   public void testOneTime() throws Exception {
-    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Charge charge = StripeUtil.createCharge(customer, env);
@@ -79,7 +79,7 @@ public class StripeToVirtuousIT extends AbstractIT {
 
   @Test
   public void testSubscription() throws Exception {
-    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
     Customer customer = StripeUtil.createCustomer(env);
     Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);

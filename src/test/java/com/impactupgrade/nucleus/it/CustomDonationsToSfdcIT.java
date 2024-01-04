@@ -36,7 +36,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
 
   @Test
   public void coreOneTime() throws Exception {
-    String nowDate = DateTimeFormatter.ofPattern("yyyy-M-d").format(now("UTC"));
+    String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
     String randomFirstName = RandomStringUtils.randomAlphabetic(8);
     String randomLastName = RandomStringUtils.randomAlphabetic(8);
