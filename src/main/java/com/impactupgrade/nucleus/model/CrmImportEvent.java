@@ -72,7 +72,8 @@ public class CrmImportEvent {
 
     public static ContactPhonePreference fromName(String name) {
       if (Strings.isNullOrEmpty(name)) {
-        return null;
+        // default to personal
+        return MOBILE;
       }
 
       if (HOME.name.equals(name.toLowerCase(Locale.ROOT))) {
