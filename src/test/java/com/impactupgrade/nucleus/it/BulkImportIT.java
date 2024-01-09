@@ -29,12 +29,8 @@ public class BulkImportIT extends AbstractIT {
   }
 
   @Test
-  public void basicCases() throws Exception {
+  public void existingRecords() throws Exception {
     SfdcClient sfdcClient = env.sfdcClient();
-
-    SObject contactExisting = randomContactSfdc();
-    String contactIdExisting = contactExisting.getId();;
-    String emailExisting = contactExisting.getField("Email").toString();
 
     String accountNameExisting = RandomStringUtils.randomAlphabetic(8);
     SObject account = new SObject("Account");
@@ -54,23 +50,35 @@ public class BulkImportIT extends AbstractIT {
     String lastnameC = RandomStringUtils.randomAlphabetic(8);
     String emailC = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
 
+    SObject contactExistingD = randomContactSfdc();
+    String contactIdExistingD = contactExistingD.getId();
+    String emailExistingD = contactExistingD.getField("Email").toString();
     String accountNameD = RandomStringUtils.randomAlphabetic(8);
     String firstnameD = RandomStringUtils.randomAlphabetic(8);
     String lastnameD = RandomStringUtils.randomAlphabetic(8);
 
+    SObject contactExistingE = randomContactSfdc();
+    String contactIdExistingE = contactExistingE.getId();
+    String firstNameExistingE = contactExistingE.getField("FirstName").toString();
+    String lastNameExistingE = contactExistingE.getField("LastName").toString();
+    String emailExistingE = contactExistingE.getField("Email").toString();
+    String extRefE = RandomStringUtils.randomAlphabetic(8);
+
     final List<Object> values = List.of(
-        List.of("Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email"),
-        List.of(accountNameA, firstnameA, lastnameA, emailA),
+        List.of("Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email", "Contact Custom External_Reference__c"),
+        List.of(accountNameA, firstnameA, lastnameA, emailA, ""),
         // same account name that was inserted in the line above
-        List.of(accountNameA, firstnameB, lastnameB, emailB),
+        List.of(accountNameA, firstnameB, lastnameB, emailB, ""),
         // account name that already existed
-        List.of(accountNameExisting, firstnameC, lastnameC, emailC),
+        List.of(accountNameExisting, firstnameC, lastnameC, emailC, ""),
         // email that already existed
-        List.of(accountNameD, firstnameD, lastnameD, emailExisting)
+        List.of(accountNameD, firstnameD, lastnameD, emailExistingD, ""),
+        // email that already existed, ignore the extref
+        List.of("", firstNameExistingE, lastNameExistingE, emailExistingE, extRefE)
     );
     postToBulkImport(values);
 
-    // TODO: also test --> ext ref, phone, name+street
+    // TODO: also test --> phone, name+street
 
     List<SObject> aAccounts = sfdcClient.getAccountsByName(accountNameA);
     assertEquals(1, aAccounts.size());
@@ -81,13 +89,16 @@ public class BulkImportIT extends AbstractIT {
     assertEquals(1, emailBContacts.size());
     List<SObject> emailCContacts = sfdcClient.getContactsByEmails(List.of(emailC));
     assertEquals(1, emailCContacts.size());
-    List<SObject> emailExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExisting));
-    assertEquals(1, emailExistingContacts.size());
+    List<SObject> emailDExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingD));
+    assertEquals(1, emailDExistingContacts.size());
+    List<SObject> emailEExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingE));
+    assertEquals(1, emailEExistingContacts.size());
 
     assertEquals(aAccountId, emailAContacts.get(0).getField("AccountId"));
     assertEquals(aAccountId, emailBContacts.get(0).getField("AccountId"));
     assertEquals(accountIdExisting, emailCContacts.get(0).getField("AccountId"));
-    assertEquals(firstnameD + " " + lastnameD, sfdcClient.getContactById(contactIdExisting).get().getField("Name")); // should have updated the name, using the existing email
+    assertEquals(firstnameD + " " + lastnameD, sfdcClient.getContactById(contactIdExistingD).get().getField("Name")); // should have updated the name, using the existing email
+    assertEquals(extRefE, sfdcClient.getContactById(contactIdExistingE).get().getField("External_Reference__c")); // should have updated the extref, using the existing email
   }
 
   @Test
