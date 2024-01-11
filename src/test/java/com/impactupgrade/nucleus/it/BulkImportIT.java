@@ -188,6 +188,30 @@ public class BulkImportIT extends AbstractIT {
   }
 
   @Test
+  public void appendText() throws Exception {
+    SObject contact1 = randomContactSfdc();
+    SObject contact2 = randomContactSfdc();
+
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    contact2.setField("Description", "Existing Description");
+    sfdcClient.update(contact2);
+
+    final List<Object> values = List.of(
+        List.of("Contact ID", "Contact Custom Append Description"),
+        List.of(contact1.getId(), "New Description"),
+        List.of(contact2.getId(), "New Description")
+    );
+    postToBulkImport(values);
+
+    contact1 = sfdcClient.getContactById(contact1.getId(), "Description").get();
+    contact2 = sfdcClient.getContactById(contact2.getId(), "Description").get();
+
+    assertEquals("New Description", contact1.getField("Description").toString());
+    assertEquals("Existing Description;New Description", contact2.getField("Description").toString());
+  }
+
+  @Test
   public void doNotOverwriteHouseholdName() throws Exception {
     SObject contact = randomContactSfdc();
 

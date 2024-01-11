@@ -2090,14 +2090,16 @@ public class SfdcCrmService implements CrmService {
       if (key.startsWith("Append")) {
         // appending to a multiselect picklist
         key = key.replace("Append", "").trim();
-        setMultiselectPicklistValue(key, entry.getValue(), sObject, existingSObject);
+        appendCustomValue(key, entry.getValue(), sObject, existingSObject);
       } else {
         setCustomBulkValue(key, entry.getValue(), sObject);
       }
     });
   }
 
-  protected void setMultiselectPicklistValue(String key, String value, SObject sObject, SObject existingSObject) {
+  // TODO: A bit of a hack, but we're using ; as a separator. That allows us to append to multiselect picklists.
+  //  It also works for other fields, like Description text boxes. Only downside: the ; looks a little odd.
+  protected void appendCustomValue(String key, String value, SObject sObject, SObject existingSObject) {
     if (existingSObject != null) {
       String existingValue = (String) existingSObject.getField(key);
       if (!Strings.isNullOrEmpty(existingValue)) {
