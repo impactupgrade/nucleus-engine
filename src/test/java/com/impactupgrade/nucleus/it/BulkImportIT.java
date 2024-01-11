@@ -15,6 +15,8 @@ import java.io.File;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 // TODO: This test relies on some picklists existing in our dev edition of SFDC. Make it more resilient to auto create
 //  those fields if they don't already exist!
@@ -209,6 +211,30 @@ public class BulkImportIT extends AbstractIT {
 
     assertEquals("New Description", contact1.getField("Description").toString());
     assertEquals("Existing Description;New Description", contact2.getField("Description").toString());
+  }
+
+  @Test
+  public void clearOutValues() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    SObject contact1 = randomContactSfdc();
+    contact1.setField("Phone", "1234567890");
+    sfdcClient.update(contact1);
+
+    // just in case, let's make sure email is actually set first
+    contact1 = sfdcClient.getContactById(contact1.getId()).get();
+    assertNotNull(contact1.getField("Email"));
+    assertNotNull(contact1.getField("Phone"));
+
+    final List<Object> values = List.of(
+        List.of("Contact ID", "Contact Email", "Contact Phone"),
+        List.of(contact1.getId(), "CLEAR IT", "CLEAR IT")
+    );
+    postToBulkImport(values);
+
+    contact1 = sfdcClient.getContactById(contact1.getId()).get();
+    assertNull(contact1.getField("Email"));
+    assertNull(contact1.getField("Phone"));
   }
 
   @Test

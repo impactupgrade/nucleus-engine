@@ -104,6 +104,7 @@ public class CrmImportEvent {
   public String campaignId;
 
   // Can also be used for update retrieval, as well as inserts.
+  public String contactEmail;
   public String contactPersonalEmail;
   public String contactWorkEmail;
   public String contactOtherEmail;
@@ -126,6 +127,7 @@ public class CrmImportEvent {
   public String contactFirstName;
   public String contactLastName;
 
+  public String contactPhone;
   public String contactHomePhone;
   public String contactMobilePhone;
   public String contactWorkPhone;
@@ -212,7 +214,15 @@ public class CrmImportEvent {
     importEvent.recurringDonationId = data.get("Recurring Donation ID");
     importEvent.campaignId = data.get("Campaign ID");
 
-    if (data.get("Contact Personal Email") != null && data.get("Contact Personal Email").contains("@")) {
+    if (data.get("Contact Email") != null) {
+      importEvent.contactEmail = data.get("Contact Email");
+      // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
+      // For now, ensure we follow suit.
+      importEvent.contactEmail = importEvent.contactEmail.toLowerCase(Locale.ROOT);
+      importEvent.contactEmail = Utils.noWhitespace(importEvent.contactEmail);
+    }
+
+    if (data.get("Contact Personal Email") != null) {
       importEvent.contactPersonalEmail = data.get("Contact Personal Email");
       // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
       // For now, ensure we follow suit.
@@ -220,7 +230,7 @@ public class CrmImportEvent {
       importEvent.contactPersonalEmail = Utils.noWhitespace(importEvent.contactPersonalEmail);
     }
 
-    if (data.get("Contact Work Email") != null && data.get("Contact Work Email").contains("@")) {
+    if (data.get("Contact Work Email") != null) {
       importEvent.contactWorkEmail = data.get("Contact Work Email");
       // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
       // For now, ensure we follow suit.
@@ -228,7 +238,7 @@ public class CrmImportEvent {
       importEvent.contactWorkEmail = Utils.noWhitespace(importEvent.contactWorkEmail);
     }
 
-    if (data.get("Contact Other Email") != null && data.get("Contact Other Email").contains("@")) {
+    if (data.get("Contact Other Email") != null) {
       importEvent.contactOtherEmail = data.get("Contact Other Email");
       // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
       // For now, ensure we follow suit.
@@ -381,6 +391,7 @@ public class CrmImportEvent {
     }
 
     importEvent.contactDescription = data.get("Contact Description");
+    importEvent.contactPhone = data.get("Contact Phone");
     importEvent.contactHomePhone = data.get("Contact Home Phone");
     importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
     importEvent.contactWorkPhone = data.get("Contact Work Phone");
@@ -649,12 +660,13 @@ public class CrmImportEvent {
         .map(k -> k.replace("Campaign Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getAllContactEmails() {
-    return Stream.of(contactPersonalEmail, contactWorkEmail, contactOtherEmail)
+    return Stream.of(contactEmail, contactPersonalEmail, contactWorkEmail, contactOtherEmail)
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
   }
   public boolean hasEmail() {
-    return !Strings.isNullOrEmpty(contactPersonalEmail)
+    return !Strings.isNullOrEmpty(contactEmail)
+            || !Strings.isNullOrEmpty(contactPersonalEmail)
             || !Strings.isNullOrEmpty(contactWorkEmail)
             || !Strings.isNullOrEmpty(contactOtherEmail);
   }

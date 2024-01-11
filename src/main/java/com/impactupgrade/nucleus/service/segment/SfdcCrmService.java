@@ -1353,7 +1353,8 @@ public class SfdcCrmService implements CrmService {
                   alphanumericOnly(importEvent.account.mailingAddress.street),
                   alphanumericOnly(importEvent.originalStreet),
                   numericOnly(importEvent.contactHomePhone),
-                  numericOnly(importEvent.contactMobilePhone)
+                  numericOnly(importEvent.contactMobilePhone),
+                  numericOnly(importEvent.contactPhone)
               ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
 
               List<String> list2 = Stream.of(
@@ -1726,6 +1727,7 @@ public class SfdcCrmService implements CrmService {
       // TODO: We need to prevent contacts that appear on multiple rows (especially for opportunity imports) from being
       //  created over and over. Incorporate id and extref too? What about common first/last names? Allow
       //  that since duplicates within the SAME SHEET are likely the same person?
+      // TODO: Minimally need to check the other email fields.
       String key = null;
       if (!Strings.isNullOrEmpty((String) contact.getField("Email"))) {
         key = (String) contact.getField("Email");
@@ -1773,35 +1775,42 @@ public class SfdcCrmService implements CrmService {
       contact.setField("RecordTypeId", recordTypeNameToIdCache.get(importEvent.contactRecordTypeName));
     }
 
-    contact.setField("Salutation", importEvent.contactSalutation);
-    contact.setField("Description", importEvent.contactDescription);
-    contact.setField("MailingStreet", importEvent.contactMailingStreet);
-    contact.setField("MailingCity", importEvent.contactMailingCity);
-    contact.setField("MailingState", importEvent.contactMailingState);
-    contact.setField("MailingPostalCode", importEvent.contactMailingZip);
-    contact.setField("MailingCountry", importEvent.contactMailingCountry);
-    contact.setField("HomePhone", importEvent.contactHomePhone);
-    contact.setField("MobilePhone", importEvent.contactMobilePhone);
+    setCustomBulkValue(contact, "Salutation", importEvent.contactSalutation);
+    setCustomBulkValue(contact, "Description", importEvent.contactDescription);
+    setCustomBulkValue(contact, "MailingStreet", importEvent.contactMailingStreet);
+    setCustomBulkValue(contact, "MailingCity", importEvent.contactMailingCity);
+    setCustomBulkValue(contact, "MailingState", importEvent.contactMailingState);
+    setCustomBulkValue(contact, "MailingPostalCode", importEvent.contactMailingZip);
+    setCustomBulkValue(contact, "MailingCountry", importEvent.contactMailingCountry);
+    setCustomBulkValue(contact, "HomePhone", importEvent.contactHomePhone);
+    setCustomBulkValue(contact, "MobilePhone", importEvent.contactMobilePhone);
+    setCustomBulkValue(contact, "Phone", importEvent.contactPhone);
     if (env.getConfig().salesforce.npsp) {
-      contact.setField("npe01__WorkPhone__c", importEvent.contactWorkPhone);
+      setCustomBulkValue(contact, "npe01__WorkPhone__c", importEvent.contactWorkPhone);
+    }
+
+    if (!Strings.isNullOrEmpty(importEvent.contactEmail) && !"na".equalsIgnoreCase(importEvent.contactEmail) && !"n/a".equalsIgnoreCase(importEvent.contactEmail)) {
+      // Some sources provide comma separated lists. Simply use the first one.
+      String email = importEvent.contactEmail.split("[,;\\s]+")[0];
+      setCustomBulkValue(contact, "Email", email);
     }
 
     if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail) && !"na".equalsIgnoreCase(importEvent.contactPersonalEmail) && !"n/a".equalsIgnoreCase(importEvent.contactPersonalEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String email = importEvent.contactPersonalEmail.split("[,;\\s]+")[0];
-      contact.setField("npe01__HomeEmail__c", email);
+      setCustomBulkValue(contact, "npe01__HomeEmail__c", email);
     }
 
     if (!Strings.isNullOrEmpty(importEvent.contactWorkEmail) && !"na".equalsIgnoreCase(importEvent.contactWorkEmail) && !"n/a".equalsIgnoreCase(importEvent.contactWorkEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String workEmail = importEvent.contactWorkEmail.split("[,;\\s]+")[0];
-      contact.setField("npe01__WorkEmail__c", workEmail);
+      setCustomBulkValue(contact, "npe01__WorkEmail__c", workEmail);
     }
 
     if (!Strings.isNullOrEmpty(importEvent.contactOtherEmail) && !"na".equalsIgnoreCase(importEvent.contactOtherEmail) && !"n/a".equalsIgnoreCase(importEvent.contactOtherEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String otherEmail = importEvent.contactOtherEmail.split("[,;\\s]+")[0];
-      contact.setField("npe01__AlternateEmail__c", otherEmail);
+      setCustomBulkValue(contact, "npe01__AlternateEmail__c", otherEmail);
     }
 
     if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
@@ -1811,24 +1820,24 @@ public class SfdcCrmService implements CrmService {
         case WORK -> "Work";
         case OTHER -> "Other";
       };
-      contact.setField("npe01__PreferredPhone__c", customFieldValue);
+      setCustomBulkValue(contact, "npe01__PreferredPhone__c", customFieldValue);
     }
 
     if (importEvent.contactOptInEmail != null && importEvent.contactOptInEmail) {
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
     }
     if (importEvent.contactOptOutEmail != null && importEvent.contactOptOutEmail) {
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
     }
     if (importEvent.contactOptInSms != null && importEvent.contactOptInSms) {
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, false);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, false);
     }
     if (importEvent.contactOptOutSms != null && importEvent.contactOptOutSms) {
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
+      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
 
     if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
@@ -1837,10 +1846,10 @@ public class SfdcCrmService implements CrmService {
         case WORK -> "Work";
         case OTHER -> "Alternate";
       };
-      contact.setField("npe01__Preferred_Email__c", customFieldValue);
+      setCustomBulkValue(contact, "npe01__Preferred_Email__c", customFieldValue);
     }
 
-    contact.setField("OwnerId", importEvent.contactOwnerId);
+    setCustomBulkValue(contact, "OwnerId", importEvent.contactOwnerId);
 
     setBulkImportCustomFields(contact, existingContact, "Contact", importEvent.raw);
   }
@@ -1864,22 +1873,22 @@ public class SfdcCrmService implements CrmService {
       }
     }
 
-    setField(account, "BillingStreet", crmAccount.billingAddress.street);
-    setField(account, "BillingCity", crmAccount.billingAddress.city);
-    setField(account, "BillingState", crmAccount.billingAddress.state);
-    setField(account, "BillingPostalCode", crmAccount.billingAddress.postalCode);
-    setField(account, "BillingCountry", crmAccount.billingAddress.country);
-    setField(account, "ShippingStreet", crmAccount.mailingAddress.street);
-    setField(account, "ShippingCity", crmAccount.mailingAddress.city);
-    setField(account, "ShippingState", crmAccount.mailingAddress.state);
-    setField(account, "ShippingPostalCode", crmAccount.mailingAddress.postalCode);
-    setField(account, "ShippingCountry", crmAccount.mailingAddress.country);
+    setCustomBulkValue(account, "BillingStreet", crmAccount.billingAddress.street);
+    setCustomBulkValue(account, "BillingCity", crmAccount.billingAddress.city);
+    setCustomBulkValue(account, "BillingState", crmAccount.billingAddress.state);
+    setCustomBulkValue(account, "BillingPostalCode", crmAccount.billingAddress.postalCode);
+    setCustomBulkValue(account, "BillingCountry", crmAccount.billingAddress.country);
+    setCustomBulkValue(account, "ShippingStreet", crmAccount.mailingAddress.street);
+    setCustomBulkValue(account, "ShippingCity", crmAccount.mailingAddress.city);
+    setCustomBulkValue(account, "ShippingState", crmAccount.mailingAddress.state);
+    setCustomBulkValue(account, "ShippingPostalCode", crmAccount.mailingAddress.postalCode);
+    setCustomBulkValue(account, "ShippingCountry", crmAccount.mailingAddress.country);
 
-    account.setField("Description", crmAccount.description);
-    account.setField("OwnerId", crmAccount.ownerId);
-    account.setField("Phone", crmAccount.phone);
-    account.setField("Type", crmAccount.type);
-    account.setField("Website", crmAccount.website);
+    setCustomBulkValue(account, "Description", crmAccount.description);
+    setCustomBulkValue(account, "OwnerId", crmAccount.ownerId);
+    setCustomBulkValue(account, "Phone", crmAccount.phone);
+    setCustomBulkValue(account, "Type", crmAccount.type);
+    setCustomBulkValue(account, "Website", crmAccount.website);
 
     setBulkImportCustomFields(account, existingAccount, columnPrefix, raw);
   }
@@ -2092,7 +2101,7 @@ public class SfdcCrmService implements CrmService {
         key = key.replace("Append", "").trim();
         appendCustomValue(key, entry.getValue(), sObject, existingSObject);
       } else {
-        setCustomBulkValue(key, entry.getValue(), sObject);
+        setCustomBulkValue(sObject, key, entry.getValue());
       }
     });
   }
@@ -2158,32 +2167,36 @@ public class SfdcCrmService implements CrmService {
 
   // TODO: This is going to be a pain in the butt, but we'll try to dynamically support different data types for custom
   //  fields in bulk imports/updates, without requiring the data type to be provided. This is going to be brittle...
-  protected void setCustomBulkValue(String key, String value, SObject sObject) {
+  protected void setCustomBulkValue(SObject sObject, String key, Object value) {
+    if (Strings.isNullOrEmpty(key) || value == null || Strings.isNullOrEmpty(value.toString())) {
+      return;
+    }
+
     Calendar c = null;
     try {
       if (key.contains("dd/mm/yyyy")) {
         c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(value));
+        c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(value.toString()));
         key = key.replace("dd/mm/yyyy", "");
       } else if (key.contains("dd-mm-yyyy")) {
         c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(value));
+        c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(value.toString()));
         key = key.replace("dd-mm-yyyy", "");
       } else if (key.contains("mm/dd/yyyy")) {
         c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(value));
+        c.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(value.toString()));
         key = key.replace("mm/dd/yyyy", "");
       } else if (key.contains("mm/dd/yy")) {
         c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM/dd/yy").parse(value));
+        c.setTime(new SimpleDateFormat("MM/dd/yy").parse(value.toString()));
         key = key.replace("mm/dd/yy", "");
       } else if (key.contains("mm-dd-yyyy")) {
         c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(value));
+        c.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(value.toString()));
         key = key.replace("mm-dd-yyyy", "");
       } else if (key.contains("yyyy-mm-dd")) {
         c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(value));
+        c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(value.toString()));
         key = key.replace("yyyy-mm-dd", "");
       }
     } catch (ParseException e) {
@@ -2196,16 +2209,24 @@ public class SfdcCrmService implements CrmService {
       sObject.setField(key, c);
     }
     // TODO: yes/no -> bool is causing trouble for picklist/text imports that include those values
-    else if ("true".equalsIgnoreCase(value)/* || "yes".equalsIgnoreCase(value)*/) {
+    else if ("true".equalsIgnoreCase(value.toString())/* || "yes".equalsIgnoreCase(value)*/) {
       sObject.setField(key, true);
-    } else if ("false".equalsIgnoreCase(value)/* || "no".equalsIgnoreCase(value)*/) {
+    } else if ("false".equalsIgnoreCase(value.toString())/* || "no".equalsIgnoreCase(value)*/) {
       sObject.setField(key, false);
     }
     // But this seems safe?
-    else if ("x".equalsIgnoreCase(value)) {
+    else if ("x".equalsIgnoreCase(value.toString())) {
       sObject.setField(key, true);
-    }
-    else {
+    } else if ("CLEAR IT".equalsIgnoreCase(value.toString()) || "CLEARIT".equalsIgnoreCase(value.toString())) {
+      String[] fieldsToNull = sObject.getFieldsToNull();
+      if (fieldsToNull == null) {
+        fieldsToNull = new String[1];
+      } else {
+        fieldsToNull = Arrays.copyOf(fieldsToNull, fieldsToNull.length + 1);
+      }
+      fieldsToNull[fieldsToNull.length - 1] = key;
+      sObject.setFieldsToNull(fieldsToNull);
+    } else {
       sObject.setField(key, value);
     }
   }
