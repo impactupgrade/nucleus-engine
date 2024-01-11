@@ -697,7 +697,7 @@ public class HubSpotCrmService implements CrmService {
 
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
-    ContactArray contactArray = HubSpotClientFactory.v1Client(env).contactList().getContactsInList(Long.parseLong(listId), env.getConfig().hubspot.customQueryFields.contact);
+    ContactArray contactArray = HubSpotClientFactory.v1Client(env).contactList().getContactsInList(Long.parseLong(listId), contactFields);
     return toCrmContact(contactArray);
   }
 
@@ -979,7 +979,7 @@ public class HubSpotCrmService implements CrmService {
     }
 
     List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
-    List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, getCustomFieldNames());
+    List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, contactFields);
     return results.stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
@@ -1006,7 +1006,7 @@ public class HubSpotCrmService implements CrmService {
     }
 
     List<FilterGroup> filterGroups = List.of(new FilterGroup(filters1), new FilterGroup(filters2));
-    List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, getCustomFieldNames());
+    List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, contactFields);
     return results.stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
@@ -1068,7 +1068,7 @@ public class HubSpotCrmService implements CrmService {
     filters.add(new Filter("dealstage", "EQ", env.getConfig().hubspot.donationPipeline.successStageId));
 
     List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
-    List<Deal> results = hsClient.deal().searchAutoPaging(filterGroups, getCustomFieldNames());
+    List<Deal> results = hsClient.deal().searchAutoPaging(filterGroups, dealFields);
     return results.stream().map(d -> d.getProperties().getAmount()).reduce(0.0, Double::sum);
   }
 
