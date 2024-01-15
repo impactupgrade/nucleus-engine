@@ -66,8 +66,18 @@ public class BulkImportIT extends AbstractIT {
     String emailExistingE = contactExistingE.getField("Email").toString();
     String extRefE = RandomStringUtils.randomAlphabetic(8);
 
+    SObject contactExistingF = randomContactSfdc();
+    String contactIdExistingF = contactExistingF.getId();
+    String firstNameExistingF = contactExistingF.getField("FirstName").toString();
+    String lastNameExistingF = contactExistingF.getField("LastName").toString();
+    String emailExistingF = contactExistingF.getField("Email").toString();
+    String extRefExistingF = RandomStringUtils.randomAlphabetic(8);
+    contactExistingF.setField("External_Reference__c", extRefExistingF);
+    sfdcClient.update(contactExistingF);
+    String extRefF = RandomStringUtils.randomAlphabetic(8);
+
     final List<Object> values = List.of(
-        List.of("Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email", "Contact Custom External_Reference__c"),
+        List.of("Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email", "Contact ExtRef External_Reference__c"),
         List.of(accountNameA, firstnameA, lastnameA, emailA, ""),
         // same account name that was inserted in the line above
         List.of(accountNameA, firstnameB, lastnameB, emailB, ""),
@@ -75,8 +85,10 @@ public class BulkImportIT extends AbstractIT {
         List.of(accountNameExisting, firstnameC, lastnameC, emailC, ""),
         // email that already existed
         List.of(accountNameD, firstnameD, lastnameD, emailExistingD, ""),
-        // email that already existed, ignore the extref
-        List.of("", firstNameExistingE, lastNameExistingE, emailExistingE, extRefE)
+        // email that already existed without an extref, ignore the extref for fetching but the extref should be updated on the record
+        List.of("", firstNameExistingE, lastNameExistingE, emailExistingE, extRefE),
+        // email that already existed WITH an extref, ignore the extref for fetching and the new extref should NOT override the existing one
+        List.of("", firstNameExistingF, lastNameExistingF, emailExistingF, extRefF)
     );
     postToBulkImport(values);
 
@@ -95,12 +107,15 @@ public class BulkImportIT extends AbstractIT {
     assertEquals(1, emailDExistingContacts.size());
     List<SObject> emailEExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingE));
     assertEquals(1, emailEExistingContacts.size());
+    List<SObject> emailFExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingF));
+    assertEquals(1, emailFExistingContacts.size());
 
     assertEquals(aAccountId, emailAContacts.get(0).getField("AccountId"));
     assertEquals(aAccountId, emailBContacts.get(0).getField("AccountId"));
     assertEquals(accountIdExisting, emailCContacts.get(0).getField("AccountId"));
     assertEquals(firstnameD + " " + lastnameD, sfdcClient.getContactById(contactIdExistingD).get().getField("Name")); // should have updated the name, using the existing email
     assertEquals(extRefE, sfdcClient.getContactById(contactIdExistingE).get().getField("External_Reference__c")); // should have updated the extref, using the existing email
+    assertEquals(extRefExistingF, sfdcClient.getContactById(contactIdExistingF).get().getField("External_Reference__c")); // should NOT have updated the extref, using the existing email
   }
 
   @Test
@@ -220,21 +235,45 @@ public class BulkImportIT extends AbstractIT {
     SObject contact1 = randomContactSfdc();
     contact1.setField("Phone", "1234567890");
     sfdcClient.update(contact1);
+    SObject contact2 = randomContactSfdc();
+    contact2.setField("Phone", "0987654321");
+    sfdcClient.update(contact2);
 
     // just in case, let's make sure email is actually set first
     contact1 = sfdcClient.getContactById(contact1.getId()).get();
     assertNotNull(contact1.getField("Email"));
     assertNotNull(contact1.getField("Phone"));
+    contact2 = sfdcClient.getContactById(contact2.getId()).get();
+    assertNotNull(contact2.getField("Email"));
+    assertNotNull(contact2.getField("Phone"));
+
+    String firstname3 = RandomStringUtils.randomAlphabetic(8);
+    String lastname3 = RandomStringUtils.randomAlphabetic(8);
+    String firstname4 = RandomStringUtils.randomAlphabetic(8);
+    String lastname4 = RandomStringUtils.randomAlphabetic(8);
 
     final List<Object> values = List.of(
-        List.of("Contact ID", "Contact Email", "Contact Phone"),
-        List.of(contact1.getId(), "CLEAR IT", "CLEAR IT")
+        List.of("Contact ID", "Contact First Name", "Contact Last Name", "Contact Email", "Contact Phone"),
+        List.of(contact1.getId(), contact1.getField("FirstName").toString(), contact1.getField("LastName").toString(), "CLEAR IT", "CLEAR IT"),
+        List.of(contact2.getId(), contact2.getField("FirstName").toString(), contact2.getField("LastName").toString(), "CLEAR IT", "CLEAR IT"),
+        // bit of an edge case, but what happens if we insert with CLEAR IT in multiple rows? shouldn't be treated as an email in existing-contacts-by-email lists
+        List.of("", firstname3, lastname3, "CLEAR IT", "CLEAR IT"),
+        List.of("", firstname4, lastname4, "CLEAR IT", "CLEAR IT")
     );
     postToBulkImport(values);
 
     contact1 = sfdcClient.getContactById(contact1.getId()).get();
     assertNull(contact1.getField("Email"));
     assertNull(contact1.getField("Phone"));
+    contact2 = sfdcClient.getContactById(contact2.getId()).get();
+    assertNull(contact2.getField("Email"));
+    assertNull(contact2.getField("Phone"));
+    SObject contact3 = sfdcClient.getContactsByNames(List.of(firstname3 + " " + lastname3)).get(0);
+    assertNull(contact3.getField("Email"));
+    assertNull(contact3.getField("Phone"));
+    SObject contact4 = sfdcClient.getContactsByNames(List.of(firstname4 + " " + lastname4)).get(0);
+    assertNull(contact4.getField("Email"));
+    assertNull(contact4.getField("Phone"));
   }
 
   @Test

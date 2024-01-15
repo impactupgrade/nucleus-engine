@@ -991,18 +991,6 @@ public class SfdcCrmService implements CrmService {
       return;
     }
 
-    // For any ExtRef columns, ensure we also have the same column names as Custom values -- important so that they get
-    // retrieved and set correctly.
-    for (CrmImportEvent importEvent : importEvents) {
-      Map<String, String> toAdd = new HashMap<>();
-      for (Map.Entry<String, String> entry : importEvent.raw.entrySet()) {
-        if (entry.getKey().contains("ExtRef")) {
-          toAdd.put(entry.getKey().replaceFirst("ExtRef", "Custom"), entry.getValue());
-        }
-      }
-      importEvent.raw.putAll(toAdd);
-    }
-
     boolean campaignMode = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
         .anyMatch(entry -> entry.getKey().startsWith("Campaign") && !Strings.isNullOrEmpty(entry.getValue()));
     if (campaignMode) {
@@ -2091,16 +2079,22 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected void setBulkImportCustomFields(SObject sObject, SObject existingSObject, String columnPrefix, Map<String, String> raw) {
-    String prefix = columnPrefix + " Custom ";
-
-    raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(prefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {
-      String key = entry.getKey().replace(prefix, "");
-
+    String customPrefix = columnPrefix + " Custom ";
+    raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(customPrefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {
+      String key = entry.getKey().replace(customPrefix, "");
       if (key.startsWith("Append")) {
         // appending to a multiselect picklist
         key = key.replace("Append", "").trim();
         appendCustomValue(key, entry.getValue(), sObject, existingSObject);
       } else {
+        setCustomBulkValue(sObject, key, entry.getValue());
+      }
+    });
+
+    String extrefPrefix = columnPrefix + " ExtRef ";
+    raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(extrefPrefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {
+      String key = entry.getKey().replace(extrefPrefix, "");
+      if (existingSObject == null || Strings.isNullOrEmpty((String) existingSObject.getField(key))) {
         setCustomBulkValue(sObject, key, entry.getValue());
       }
     });
