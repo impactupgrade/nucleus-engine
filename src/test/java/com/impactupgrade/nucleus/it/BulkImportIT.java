@@ -119,6 +119,49 @@ public class BulkImportIT extends AbstractIT {
   }
 
   @Test
+  public void multipleMatchesByName() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    String firstname = RandomStringUtils.randomAlphabetic(8);
+    String lastname = RandomStringUtils.randomAlphabetic(8);
+    String street = "13022 Redding Drive";
+    String city = "Fort Wayne";
+    String state = "IN";
+    String zip = "46814";
+
+    SObject contact1 = new SObject("Contact");
+    contact1.setField("FirstName", firstname);
+    contact1.setField("LastName", lastname);
+    contact1.setField("MailingStreet", street);
+    contact1.setField("MailingCity", city);
+    contact1.setField("MailingState", state);
+    contact1.setField("MailingPostalCode", zip);
+    contact1.setId(sfdcClient.insert(contact1).getId());
+
+    SObject contact2 = new SObject("Contact");
+    contact2.setField("FirstName", firstname);
+    contact2.setField("LastName", lastname);
+    contact2.setField("MailingStreet", street);
+    contact2.setField("MailingCity", city);
+    contact2.setField("MailingState", state);
+    contact2.setField("MailingPostalCode", zip);
+    contact2.setId(sfdcClient.insert(contact2).getId());
+
+    final List<Object> values = List.of(
+        List.of("Contact First Name", "Contact Last Name", "Contact Mailing Street", "Contact Mailing City", "Contact Mailing State", "Contact Mailing Postal Code", "Contact Description"),
+        List.of(firstname, lastname, street, city, state, zip, "test")
+    );
+    postToBulkImport(values);
+
+    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, Description FROM Contact WHERE Name='" + firstname + " " + lastname + "'");
+    assertEquals(2, contacts.size());
+
+    // ensure the oldest contact received the update
+    assertEquals("test", contacts.get(0).getField("Description"));
+    assertNull(contacts.get(1).getField("Description"));
+  }
+
+  @Test
   public void extrefEdgeCases() throws Exception {
     SfdcClient sfdcClient = env.sfdcClient();
 

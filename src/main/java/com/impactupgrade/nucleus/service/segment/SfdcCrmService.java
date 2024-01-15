@@ -1356,15 +1356,12 @@ public class SfdcCrmService implements CrmService {
 
               list1.retainAll(list2);
               return !list1.isEmpty();
-            }).toList();
+            }).sorted(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString((String) c.getField("CreatedDate")))).toList();
 
-        int contactsSize = existingContacts.size();
-        env.logJobInfo("number of contacts for name {} {}: {}", importEvent.contactFirstName, importEvent.contactLastName, contactsSize);
-
-        if (contactsSize > 1) {
-          // To be safe, let's skip this row for now and deal with it manually...
-          env.logJobWarn("skipping contact in row {} due to multiple contacts found by-name", i + 2);
-        } else if (contactsSize == 1) {
+        if (existingContacts.isEmpty()) {
+          importEvent.secondPass = true;
+          continue;
+        } else {
           SObject existingContact = existingContacts.get(0);
 
           if (account == null) {
@@ -1376,9 +1373,6 @@ public class SfdcCrmService implements CrmService {
           }
 
           contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts);
-        } else {
-          importEvent.secondPass = true;
-          continue;
         }
       }
       // Otherwise, abandon all hope and insert, but only if we at least have a field to use as a lookup.
@@ -1594,7 +1588,7 @@ public class SfdcCrmService implements CrmService {
     return emails.stream()
         .map(email -> existingContactsByEmail.get(email))
         .flatMap(Collection::stream)
-        .min(Comparator.comparing(c -> ((String) c.getField("CreatedDate"))));
+        .min(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString((String) c.getField("CreatedDate"))));
   }
 
   protected SObject updateBulkImportAccount(SObject existingAccount, CrmAccount crmAccount, Map<String, String> raw,
