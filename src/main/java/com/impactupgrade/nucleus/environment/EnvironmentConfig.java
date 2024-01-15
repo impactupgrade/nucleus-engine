@@ -148,12 +148,12 @@ public class EnvironmentConfig implements Serializable {
     public String subdomain = "";
   }
 
+  public DynamicsPlatform dynamicsPlatform = new DynamicsPlatform();
   public static class DynamicsPlatform extends Platform {
     public String tenantId = "";
     public String resourceUrl = "";
     public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
   }
-  public DynamicsPlatform dynamicsPlatform = new DynamicsPlatform();
 
   public Hubspot hubspot = new Hubspot();
   public static class Hubspot extends Platform {
@@ -266,10 +266,10 @@ public class EnvironmentConfig implements Serializable {
   // FUNDRAISING
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  public Raisely raisely = new Raisely();
   public static class Raisely extends Platform {
     public String stripeAppId = "";
   }
-  public Raisely raisely = new Raisely();
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ACCOUNTING
@@ -352,6 +352,9 @@ public class EnvironmentConfig implements Serializable {
     // Sync emergency contacts, in addition to parents/grandparents?
     public boolean syncEmergency = false;
   }
+
+  public EventBrite eventBrite = new EventBrite();
+  public static class EventBrite extends Platform {}
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // FORMS
