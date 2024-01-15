@@ -674,33 +674,33 @@ public class CrmImportEvent {
 
   // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
   private static Calendar getDate(Map<String, String> data, String columnName) {
-    Calendar c = null;
+    String key = null;
+
+    if (data.containsKey(columnName + " dd/mm/yyyy")) {
+      key = columnName + " dd/mm/yyyy";
+    } else if (data.containsKey(columnName + " dd-mm-yyyy")) {
+      key = columnName + " dd-mm-yyyy";
+    } else if (data.containsKey(columnName + " mm/dd/yyyy")) {
+      key = columnName + " mm/dd/yyyy";
+    } else if (data.containsKey(columnName + " mm/dd/yy")) {
+      key = columnName + " mm/dd/yy";
+    } else if (data.containsKey(columnName + " mm-dd-yyyy")) {
+      key = columnName + " mm-dd-yyyy";
+    } else if (data.containsKey(columnName + " yyyy-mm-dd")) {
+      key = columnName + " yyyy-mm-dd";
+    }
+
+    if (Strings.isNullOrEmpty(key) || Strings.isNullOrEmpty(data.get(key))) {
+      return null;
+    }
 
     try {
-      if (data.containsKey(columnName + " dd/mm/yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get(columnName + " dd/mm/yyyy")));
-      } else if (data.containsKey(columnName + " dd-mm-yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(data.get(columnName + " dd-mm-yyyy")));
-      } else if (data.containsKey(columnName + " mm/dd/yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM/dd/yyyy").parse(data.get(columnName + " mm/dd/yyyy")));
-      } else if (data.containsKey(columnName + " mm/dd/yy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM/dd/yy").parse(data.get(columnName + " mm/dd/yy")));
-      } else if (data.containsKey(columnName + " mm-dd-yyyy")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("MM-dd-yyyy").parse(data.get(columnName + " mm-dd-yyyy")));
-      } else if (data.containsKey(columnName + " yyyy-mm-dd")) {
-        c = Calendar.getInstance();
-        c.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get(columnName + " yyyy-mm-dd")));
-      }
+      Calendar c = Calendar.getInstance();
+      c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get(key)));
+      return c;
     } catch (ParseException e) {
       throw new RuntimeException("failed to parse date", e);
     }
-
-    return c;
   }
   private String removeDateSelectors(String s) {
     return s.replace("dd/mm/yyyy", "").replace("dd-mm-yyyy", "").replace("mm/dd/yyyy", "").replace("mm/dd/yy", "")
