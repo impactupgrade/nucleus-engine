@@ -55,7 +55,7 @@ public class PaypalController {
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
         .create();
     Event event = gson.fromJson(json, Event.class);
-    
+
     if (TestUtil.SKIP_NEW_THREADS) {
       processEvent(event, env);
     } else {
@@ -78,20 +78,20 @@ public class PaypalController {
 
     return Response.status(200).build();
   }
-  
+
   private void validateWebhookRequest(HttpServletRequest request, String requestBody, Environment env) throws Exception {
     APIContext apiContext = new APIContext(
         env.getConfig().paypal.clientId, 
         env.getConfig().paypal.clientSecret, 
         env.getConfig().paypal.mode);
     apiContext.addConfiguration(Constants.PAYPAL_WEBHOOK_ID, env.getConfig().paypal.webhookId);
-    
+
     boolean validEvent = Event.validateReceivedEvent(apiContext, getHeadersInfo(request), requestBody);
     if (!validEvent) {
       throw new IllegalArgumentException("Invalid webhook event!");
     }
   }
-  
+
   private Map<String, String> getHeadersInfo(HttpServletRequest request) {
     Map<String, String> map = new HashMap<>();
     Enumeration headerNames = request.getHeaderNames();
@@ -109,28 +109,52 @@ public class PaypalController {
         PaypalClient.Capture capture = getCapture(event);
 
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(capture, env);
+        String eventType = event.getEventType();
+        env.logJobInfo("Got event type: '" + eventType + "'");
+        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
+
         // must first process the account/contact so they're available for the enricher
-        env.contactService().processDonor(paymentGatewayEvent);
+        env.logJobInfo("Processing donor for '" + eventType + "' event...");
+        //env.contactService().processDonor(paymentGatewayEvent);
+        env.logJobInfo("Donor processed for '" + eventType + "' event...");
 
         enrich(paymentGatewayEvent, env);
 
-        env.donationService().processDonation(paymentGatewayEvent);
-        env.accountingService().processTransaction(paymentGatewayEvent);
+        env.logJobInfo("Creating donation for '" + eventType + "' event...");
+        //env.donationService().createDonation(paymentGatewayEvent);
+        env.logJobInfo("Donation created for '" + eventType + "' event.");
+        env.logJobInfo("Processing transaction for '" + eventType + "' event...");
+        //env.accountingService().processTransaction(paymentGatewayEvent);
+        env.logJobInfo("Transaction processed for '" + eventType + "' event.");
       }
       case "PAYMENT.CAPTURE.DECLINED" -> {
         //A payment capture is declined.
         PaypalClient.Capture capture = getCapture(event);
 
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(capture, env);
-        env.contactService().processDonor(paymentGatewayEvent);
-        env.donationService().processDonation(paymentGatewayEvent);
+        String eventType = event.getEventType();
+        env.logJobInfo("Got event type: '" + eventType + "'");
+        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
+
+        env.logJobInfo("Processing donor for '" + eventType + "' event...");
+        //env.contactService().processDonor(paymentGatewayEvent);
+        env.logJobInfo("Donor processed for '" + eventType + "' event...");
+        env.logJobInfo("Creating donation for '" + eventType + "' event...");
+        //env.donationService().createDonation(paymentGatewayEvent);
+        env.logJobInfo("Donation created for '" + eventType + "' event.");
       }
       case "PAYMENT.CAPTURE.REFUNDED" -> {
         //A merchant refunds a payment capture.
         PaypalClient.Capture capture = getCapture(event);
 
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(capture, env);
-        env.donationService().refundDonation(paymentGatewayEvent);
+        String eventType = event.getEventType();
+        env.logJobInfo("Got event type: '" + eventType + "'");
+        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
+
+        env.logJobInfo("Refunding donation for '" + eventType + "' event...");
+        //env.donationService().refundDonation(paymentGatewayEvent);
+        env.logJobInfo("Donation refunded for '" + eventType + "' event.");
       }
       case "BILLING.SUBSCRIPTION.CREATED" -> {
         //A billing agreement is created.
@@ -139,13 +163,22 @@ public class PaypalController {
         PaypalClient.Subscription subscription = env.paypalClient().getSubscription(resourceId);
 
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(subscription, env);
+        String eventType = event.getEventType();
+        env.logJobInfo("Got event type: '" + eventType + "'");
+        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
 
-        env.contactService().processDonor(paymentGatewayEvent);
+        env.logJobInfo("Processing donor for '" + eventType + "' event...");
+        //env.contactService().processDonor(paymentGatewayEvent);
+        env.logJobInfo("Donor processed for '" + eventType + "' event...");
 
         enrich(paymentGatewayEvent, env);
 
-        env.donationService().processDonation(paymentGatewayEvent);
-        env.accountingService().processTransaction(paymentGatewayEvent);
+        env.logJobInfo("Creating donation for '" + eventType + "' event...");
+        //env.donationService().createDonation(paymentGatewayEvent);
+        env.logJobInfo("Donation created for '" + eventType + "' event.");
+        env.logJobInfo("Processing transaction for '" + eventType + "' event...");
+        //env.accountingService().processTransaction(paymentGatewayEvent);
+        env.logJobInfo("Transaction processed for '" + eventType + "' event.");
       }
       case "BILLING.SUBSCRIPTION.CANCELLED" -> {
         //A billing agreement is canceled.
@@ -154,11 +187,20 @@ public class PaypalController {
         PaypalClient.Subscription subscription = env.paypalClient().getSubscription(resourceId);
 
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(subscription, env);
+        String eventType = event.getEventType();
 
-        env.contactService().processDonor(paymentGatewayEvent);
+        env.logJobInfo("Got event type: '" + eventType + "'");
+        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
+
+        env.logJobInfo("Processing donor for '" + eventType + "' event...");
+        //env.contactService().processDonor(paymentGatewayEvent);
+        env.logJobInfo("Donor processed for '" + eventType + "' event...");
 
         enrich(paymentGatewayEvent, env);
-        env.donationService().closeRecurringDonation(paymentGatewayEvent);
+
+        env.logJobInfo("Closing recurring donation for '" + eventType + "' event...");
+        //env.donationService().closeRecurringDonation(paymentGatewayEvent);
+        env.logJobInfo("Recurring donation closed for '" + eventType + "' event.");
       }
       default -> env.logJobInfo("unhandled Paypal webhook event type: {}", event.getEventType());
     }
