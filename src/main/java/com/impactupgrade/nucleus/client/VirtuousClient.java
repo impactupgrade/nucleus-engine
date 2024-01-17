@@ -183,6 +183,14 @@ public class VirtuousClient extends OAuthClient {
     return response.contactIndividualShorts;
   }
 
+  public ContactIndividual updateContactIndividual(ContactIndividual contactIndividual) {
+    contactIndividual = put(VIRTUOUS_API_URL + "/ContactIndividual/" + contactIndividual.id, contactIndividual, APPLICATION_JSON, headers(), ContactIndividual.class);
+    if (contactIndividual != null) {
+      env.logJobInfo("Updated contactIndividual: {}", contactIndividual);
+    }
+    return contactIndividual;
+  }
+
   // Gift
   public Gift getGiftById(int Id) {
     String giftUrl = VIRTUOUS_API_URL + "/Gift/" + Id;
