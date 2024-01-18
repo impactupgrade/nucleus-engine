@@ -193,7 +193,20 @@
     },
     "donations:close-recurring-donation": {},
     "sms:inbound-default": {},
-    "xero:contact-name-exists": {}
+    "xero:contact-name-exists": {},
+    "stripe:update-source": {
+      "email": {
+        "from": "me",
+        "to": ["usa@destinyrescue.org"]
+      },
+      "sms": {
+        "from": "",
+        "to": []
+      },
+      "task": {
+        "assignTo": ""
+      }
+    }
   },
 
   "metadataKeys": {
