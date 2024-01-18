@@ -46,6 +46,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * This service acts as the central webhook endpoint for Stripe events, handling everything from
@@ -355,19 +356,29 @@ public class StripeController {
 
       for (Customer customer : customers) {
         PaymentSource newSource;
+        NotificationService.Notification notification;
         if (originalSource == null) {
           // new source for the first customer
           newSource = stripeClient.addCustomerSource(customer, stripeToken);
+          notification = new NotificationService.Notification(
+                  "Stripe: Payment Source",
+                  "New payment source added for customer " + customer.getEmail() + ""
+          );
           originalSource = newSource.getId();
         } else {
           // re-using source from the first customer
           newSource = stripeClient.createReusableCustomerSource(customer, originalSource);
+          notification = new NotificationService.Notification(
+                  "Stripe: Reusable Payment Source",
+                  "Reusable payment source added for customer " + customer.getEmail()
+          );
         }
 
         stripeClient.setCustomerDefaultSource(customer, newSource);
         env.logJobInfo("created new source {} for customer {}", customer.getId(), newSource.getId());
 
         List<Subscription> activeSubscriptions = env.stripeClient().getActiveSubscriptionsFromCustomer(customer.getId());
+        List<String> updatedSubscriptionsIds = new ArrayList<>();
         for (Subscription subscription: activeSubscriptions) {
           String subscriptionPaymentSourceId = subscription.getDefaultPaymentMethod();
           if (Strings.isNullOrEmpty(subscriptionPaymentSourceId)) {
@@ -382,9 +393,24 @@ public class StripeController {
           if (!newSource.getId().equalsIgnoreCase(subscriptionPaymentSourceId)) {
             stripeClient.updateSubscriptionDefaultSource(subscription, newSource);
             env.logJobInfo("updated payment method for subscription {}", subscription.getId());
+            updatedSubscriptionsIds.add(subscription.getId());
+
             stripeClient.removeCustomerSource(customer, subscriptionPaymentSourceId);
             env.logJobInfo("removed payment source {} from customer {}", subscriptionPaymentSourceId, customer.getId());
           }
+        }
+
+        if (!updatedSubscriptionsIds.isEmpty()) {
+          notification = new NotificationService.Notification(
+                  "Stripe: Subscription Payment Source update",
+                  "Default payment source updated for subscriptions: " +
+                          updatedSubscriptionsIds.stream().collect(Collectors.joining(",")) + ".");
+        }
+
+        try {
+          env.notificationService().sendNotification(notification, null, "stripe:update-source");
+        } catch (Exception e) {
+          env.logJobError("failed to send 'Update Source' notification for customer id/email {}/{}", customer.getId(), customer.getEmail());
         }
       }
       return Response.temporaryRedirect(URI.create(successUrl)).build();
