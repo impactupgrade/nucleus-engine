@@ -352,9 +352,4 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     @JsonProperty("message")
     public String messageBody;
   }
-
-  public static void main(String[] args) {
-    Integer i = null;
-    System.out.println(i + 1);
-  }
 }
