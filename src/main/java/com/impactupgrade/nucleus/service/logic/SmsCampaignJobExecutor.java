@@ -151,7 +151,11 @@ public class SmsCampaignJobExecutor implements JobExecutor {
         } else {
           Integer lastMessage = getJsonInt(jobProgress.payload, "lastMessage");
           env.logJobInfo("Last sent message id for contact {} is {}", targetId, lastMessage);
-          nextMessage = lastMessage + 1;
+          if (lastMessage == null) {
+            nextMessage = 1;
+          } else {
+            nextMessage = lastMessage + 1;
+          }
           env.logJobInfo("Next message id to send: {}", nextMessage);
         }
 
@@ -347,5 +351,10 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     public String attachmentUrl;
     @JsonProperty("message")
     public String messageBody;
+  }
+
+  public static void main(String[] args) {
+    Integer i = null;
+    System.out.println(i + 1);
   }
 }
