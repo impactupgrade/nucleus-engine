@@ -62,6 +62,10 @@ public class MinistryByTextClient extends OAuthClient {
     patch(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", notificationSetting, APPLICATION_JSON, headers());
   }
 
+  public NotificationSettingResponse getNotificationSetting(EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) throws IOException, InterruptedException {
+    return get(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", headers(), new GenericType<>() {});
+  }
+
   // Having to modify this due to MBT's limited API. There's no upsert concept, and we want to avoid having to retrieve
   // contacts on every sync. So simply swallow those errors.
   protected <S, T> T post(String url, S entity, String mediaType, HttpClient.HeaderBuilder headerBuilder, Class<T> clazz) {
@@ -130,11 +134,52 @@ public class MinistryByTextClient extends OAuthClient {
     public Boolean callbackUrlEnabled;
     public Boolean statusUrlEnabled;
     public List<CallbackSetting> callbackUrlSettings = new ArrayList<>();
-    public List<CallbackSetting> statusUrlSettings = new ArrayList<>();
+    public List<StatusSetting> statusUrlSettings = new ArrayList<>();
+
+    @Override
+    public String toString() {
+      return "NotificationSetting{" +
+          "callbackUrlEnabled=" + callbackUrlEnabled +
+          ", statusUrlEnabled=" + statusUrlEnabled +
+          ", callbackUrlSettings=" + callbackUrlSettings +
+          ", statusUrlSettings=" + statusUrlSettings +
+          '}';
+    }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CallbackSetting {
     public String callBackUrl;
+
+    @Override
+    public String toString() {
+      return "CallbackSetting{" +
+          "callBackUrl='" + callBackUrl + '\'' +
+          '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class StatusSetting {
+    public String statusUrl;
+
+    @Override
+    public String toString() {
+      return "StatusSetting{" +
+          "statusUrl='" + statusUrl + '\'' +
+          '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class NotificationSettingResponse {
+    public NotificationSetting data = new NotificationSetting();
+
+    @Override
+    public String toString() {
+      return "NotificationSettingResponse{" +
+          "data=" + data +
+          '}';
+    }
   }
 }
