@@ -54,7 +54,7 @@ public class EventBriteController {
         CrmContact existingContact = crmService.getContactsByEmails(List.of(crmContact.email))
                 .stream().findFirst().orElse(null);
         if (existingContact == null) {
-          // TODO: decide if should fail here bcz contact does not exist
+          // Unlikely that they wouldn't already exist, but keep this here as a sanity check.
           crmService.insertContact(crmContact);
         } else {
           crmContact.id = existingContact.id;
@@ -62,8 +62,20 @@ public class EventBriteController {
         }
       }
 
-      case "barcode.checked_in", "barcode.un_checked_in" -> {
-        //TODO:?
+      case "order.placed" -> {
+        EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
+        CrmDonation crmDonation = toCrmDonation(order);
+        CrmContact crmContact = null;
+
+        List<String> emails = order.attendees.stream().map(attendee -> attendee.profile.email).collect(Collectors.toList());
+        //TODO: order can have more than 1 attendee - how to map this case?
+        if (CollectionUtils.isNotEmpty(emails)) {
+          crmContact = env.primaryCrmService().getContactsByEmails(emails)
+              .stream().findFirst().orElse(null);
+        }
+
+        crmDonation.contact = crmContact;
+        env.primaryCrmService().insertDonation(crmDonation);
       }
 
       case "event.created", "event.updated" -> {
@@ -76,22 +88,6 @@ public class EventBriteController {
         //TODO:?
       }
 
-      case "order.placed" -> {
-        EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
-        CrmDonation crmDonation = toCrmDonation(order);
-        CrmContact crmContact = null;
-
-        List<String> emails = order.attendees.stream().map(attendee -> attendee.profile.email).collect(Collectors.toList());
-        //TODO: order can have more than 1 attendee - how to map this case?
-        if (CollectionUtils.isNotEmpty(emails)) {
-          crmContact = env.primaryCrmService().getContactsByEmails(emails)
-                  .stream().findFirst().orElse(null);
-        }
-
-        crmDonation.contact = crmContact;
-        env.primaryCrmService().insertDonation(crmDonation);
-      }
-
       case "order.refunded", "order.updated" -> {
         EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
         CrmDonation crmDonation = toCrmDonation(order);
@@ -101,18 +97,6 @@ public class EventBriteController {
           crmDonation.id = existingCrmDonation.get().id;
           env.primaryCrmService().updateDonation(crmDonation);
         }
-      }
-
-      case "organizer.updated" -> {
-        //TODO:?
-      }
-
-      case "ticket_class.created", "ticket_class.deleted", "ticket_class.updated" -> {
-        //TODO:?
-      }
-
-      case "venue.update" -> {
-        //TODO:?
       }
 
       default -> {

@@ -95,7 +95,7 @@ public class EventBriteClient {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Order {
     public String id;
-    public String created; //TODO: date format "2018-05-12T02:00:00Z",
+    public String created; // date format "2018-05-12T02:00:00Z",
     public String name;
     public String email;
     public String status;
