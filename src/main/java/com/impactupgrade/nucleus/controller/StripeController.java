@@ -135,7 +135,7 @@ public class StripeController {
 
           enrich(paymentGatewayEvent, env);
 
-          env.donationService().createDonation(paymentGatewayEvent);
+          env.donationService().processDonation(paymentGatewayEvent);
           env.accountingService().processTransaction(paymentGatewayEvent);
         }
       }
@@ -150,7 +150,7 @@ public class StripeController {
 
         enrich(paymentGatewayEvent, env);
 
-        env.donationService().createDonation(paymentGatewayEvent);
+        env.donationService().processDonation(paymentGatewayEvent);
         env.accountingService().processTransaction(paymentGatewayEvent);
       }
       case "charge.failed" -> {
@@ -163,7 +163,7 @@ public class StripeController {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
           paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_FAILURE);
           env.contactService().processDonor(paymentGatewayEvent);
-          env.donationService().createDonation(paymentGatewayEvent);
+          env.donationService().processDonation(paymentGatewayEvent);
         }
       }
       case "payment_intent.payment_failed" -> {
@@ -173,7 +173,7 @@ public class StripeController {
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
         paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_FAILURE);
         env.contactService().processDonor(paymentGatewayEvent);
-        env.donationService().createDonation(paymentGatewayEvent);
+        env.donationService().processDonation(paymentGatewayEvent);
       }
       case "charge.refunded" -> {
         // TODO: Not completely understanding this one just yet, but it appears a recent API change

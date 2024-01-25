@@ -68,7 +68,7 @@ public class StripeControllerMockTest extends AbstractMockTest {
     stripeController.processEvent("charge.succeeded", charge, env);
 
     ArgumentCaptor<PaymentGatewayEvent> argumentCaptor = ArgumentCaptor.forClass(PaymentGatewayEvent.class);
-    verify(donationServiceMock).createDonation(argumentCaptor.capture());
+    verify(donationServiceMock).processDonation(argumentCaptor.capture());
     PaymentGatewayEvent paymentGatewayEvent = argumentCaptor.getValue();
     assertEquals("campaign_1", paymentGatewayEvent.getCrmDonation().getMetadataValue(envConfig.metadataKeys.campaign));
   }

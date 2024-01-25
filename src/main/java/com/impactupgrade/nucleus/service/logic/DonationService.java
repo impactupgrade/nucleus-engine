@@ -29,62 +29,82 @@ public class DonationService {
     notificationservice = env.notificationService();
   }
 
-  public void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    // TODO: Hate this pattern. Refactor upstream and halt sooner?
+  public void processDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)
         && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
       env.logJobWarn("payment gateway event {} failed to process the donor; skipping donation processing", paymentGatewayEvent.getCrmDonation().transactionId);
       return;
     }
 
-    CrmDonation crmDonation = paymentGatewayEvent.getCrmDonation();
+    fetchAndSetDonation(paymentGatewayEvent);
 
-    if (crmDonation.isRecurring()) {
-      Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
-          crmDonation.recurringDonation.id,
-          crmDonation.recurringDonation.subscriptionId,
-          crmDonation.account.id,
-          crmDonation.contact.id
-      );
+    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().id)) {
+      if (paymentGatewayEvent.getCrmDonation().isRecurring()) {
+        fetchAndSetRecurringDonation(paymentGatewayEvent);
 
-      if (recurringDonation.isEmpty()) {
-        env.logJobInfo("unable to find CRM recurring donation using subscriptionId {}; creating it...",
-            crmDonation.recurringDonation.subscriptionId);
-        // NOTE: See the note on the customer.subscription.created event handling. We insert recurring donations
-        // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
-        // first donation do it in order to prevent timing issues.
-        crmDonation.recurringDonation.id = crmService.insertRecurringDonation(crmDonation.recurringDonation);
-      } else {
-        String recurringDonationId = recurringDonation.get().id;
-        env.logJobInfo("found CRM recurring donation {} using subscriptionId {}",
-            recurringDonationId, crmDonation.recurringDonation.subscriptionId);
-        crmDonation.recurringDonation.id = recurringDonationId;
+        if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().recurringDonation.id)) {
+          createRecurringDonation(paymentGatewayEvent);
+        }
       }
-    }
 
+      createDonation(paymentGatewayEvent);
+    }
+  }
+
+  protected void fetchAndSetRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    CrmDonation crmDonation = paymentGatewayEvent.getCrmDonation();
+    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonation(
+        crmDonation.recurringDonation.id,
+        crmDonation.recurringDonation.subscriptionId,
+        crmDonation.account.id,
+        crmDonation.contact.id
+    );
+    if (recurringDonation.isPresent()) {
+      String recurringDonationId = recurringDonation.get().id;
+      env.logJobInfo("found CRM recurring donation {} using subscriptionId {}",
+          recurringDonationId, crmDonation.recurringDonation.subscriptionId);
+      crmDonation.recurringDonation.id = recurringDonationId;
+    }
+  }
+
+  protected void createRecurringDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    CrmDonation crmDonation = paymentGatewayEvent.getCrmDonation();
+    env.logJobInfo("unable to find CRM recurring donation using subscriptionId {}; creating it...",
+        crmDonation.recurringDonation.subscriptionId);
+    // NOTE: See the note on the customer.subscription.created event handling. We insert recurring donations
+    // from subscription creation ONLY if it's in a trial period and starts in the future. Otherwise, let the
+    // first donation do it in order to prevent timing issues.
+    crmDonation.recurringDonation.id = crmService.insertRecurringDonation(crmDonation.recurringDonation);
+  }
+
+  protected void fetchAndSetDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     Optional<CrmDonation> existingDonation = crmService.getDonationByTransactionIds(
         paymentGatewayEvent.getCrmDonation().getTransactionIds(),
         paymentGatewayEvent.getCrmDonation().account.id,
         paymentGatewayEvent.getCrmDonation().contact.id
     );
-
     if (existingDonation.isPresent()) {
+      env.logJobInfo("found existing, posted CRM donation {} using transaction {}",
+          existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
       paymentGatewayEvent.getCrmDonation().id = existingDonation.get().id;
 
       if (paymentGatewayEvent.getCrmDonation().status != CrmDonation.Status.FAILED
           && existingDonation.get().status != CrmDonation.Status.SUCCESSFUL && existingDonation.get().status != CrmDonation.Status.REFUNDED) {
-        // allow updates to non-posted transactions occur, especially to catch cases where it initially failed is reattempted and succeeds
-        env.logJobInfo("found existing CRM donation {} using transaction {}, but in a non-final state; updating it with the reattempt...",
-            existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
-        crmService.updateDonation(paymentGatewayEvent.getCrmDonation());
-        return;
+        updateFailedDonationReattempt(paymentGatewayEvent, existingDonation.get());
       }
-
-      // posted donation already exists in the CRM with the transactionId - do not process the donation
-      env.logJobInfo("found existing, posted CRM donation {} using transaction {}; skipping creation...",
-          existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
-      return;
     }
+  }
+
+  protected void updateFailedDonationReattempt(PaymentGatewayEvent paymentGatewayEvent, CrmDonation existingDonation) throws Exception {
+    // allow updates to non-posted transactions occur, especially to catch cases where it initially failed is reattempted and succeeds
+    env.logJobInfo("found existing CRM donation {} using transaction {}, but in a non-final state; updating it with the reattempt...",
+        existingDonation.id, paymentGatewayEvent.getCrmDonation().transactionId);
+    crmService.updateDonation(paymentGatewayEvent.getCrmDonation());
+  }
+
+  protected void createDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    env.logJobInfo("unable to find CRM donation using transaction {}; creating it...",
+        paymentGatewayEvent.getCrmDonation().transactionId);
 
     paymentGatewayEvent.getCrmDonation().id = crmService.insertDonation(paymentGatewayEvent.getCrmDonation());
 

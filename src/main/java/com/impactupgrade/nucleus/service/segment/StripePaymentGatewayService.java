@@ -215,7 +215,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), true);
       }
       env.contactService().processDonor(paymentGatewayEvent);
-      env.donationService().createDonation(paymentGatewayEvent);
+      env.donationService().processDonation(paymentGatewayEvent);
       env.accountingService().processTransaction(paymentGatewayEvent);
 
     } catch (Exception e) {
@@ -269,7 +269,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
             paymentGatewayEvent = paymentIntentToPaymentGatewayEvent(charge.getPaymentIntentObject(), true);
           }
           env.contactService().processDonor(paymentGatewayEvent);
-          env.donationService().createDonation(paymentGatewayEvent);
+          env.donationService().processDonation(paymentGatewayEvent);
           env.accountingService().processTransaction(paymentGatewayEvent);
 //          }
         } catch (Exception e) {

@@ -114,7 +114,7 @@ public class PaypalController {
 
         enrich(paymentGatewayEvent, env);
 
-        env.donationService().createDonation(paymentGatewayEvent);
+        env.donationService().processDonation(paymentGatewayEvent);
         env.accountingService().processTransaction(paymentGatewayEvent);
       }
       case "PAYMENT.CAPTURE.DECLINED" -> {
@@ -123,7 +123,7 @@ public class PaypalController {
 
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(capture, env);
         env.contactService().processDonor(paymentGatewayEvent);
-        env.donationService().createDonation(paymentGatewayEvent);
+        env.donationService().processDonation(paymentGatewayEvent);
       }
       case "PAYMENT.CAPTURE.REFUNDED" -> {
         //A merchant refunds a payment capture.
@@ -144,7 +144,7 @@ public class PaypalController {
 
         enrich(paymentGatewayEvent, env);
 
-        env.donationService().createDonation(paymentGatewayEvent);
+        env.donationService().processDonation(paymentGatewayEvent);
         env.accountingService().processTransaction(paymentGatewayEvent);
       }
       case "BILLING.SUBSCRIPTION.CANCELLED" -> {

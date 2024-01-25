@@ -27,6 +27,13 @@ public class ContactService {
   }
 
   public void processDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    fetchAndSetDonorData(paymentGatewayEvent);
+    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id) && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+      createDonor(paymentGatewayEvent);
+    }
+  }
+
+  protected void fetchAndSetDonorData(PaymentGatewayEvent paymentGatewayEvent) throws Exception  {
     Optional<CrmAccount> existingAccount = Optional.empty();
     Optional<CrmContact> existingContact = Optional.empty();
 
@@ -106,10 +113,10 @@ public class ContactService {
 
       existingAccount.ifPresent(a -> paymentGatewayEvent.setCrmAccountId(a.id));
       existingContact.ifPresent(c -> paymentGatewayEvent.setCrmContactId(c.id));
-
-      return;
     }
+  }
 
+  protected void createDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
     env.logJobInfo("unable to find CRM records; creating a new account and contact");
 
     // create new Household Account
@@ -131,11 +138,9 @@ public class ContactService {
         paymentGatewayEvent.setCrmAccountId(null);
       }
     }
-
-    backfillMissingData(paymentGatewayEvent, existingAccount, existingContact);
   }
 
-  public void backfillMissingData(PaymentGatewayEvent paymentGatewayEvent,
+  protected void backfillMissingData(PaymentGatewayEvent paymentGatewayEvent,
       Optional<CrmAccount> existingAccount, Optional<CrmContact> existingContact) throws Exception {
     if (existingAccount.isPresent()) {
       if (Strings.isNullOrEmpty(existingAccount.get().billingAddress.street) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().billingAddress.street)) {
