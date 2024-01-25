@@ -511,14 +511,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public Collection<SObject> getEmailContacts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     String updatedSinceClause = "";
 
+    String ts = updatedSince == null ? "" : new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+
     if (updatedSince != null) {
-      updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+      updatedSinceClause = " and SystemModStamp >= " + ts;
     }
 
     List<SObject> contacts = queryEmailContacts(updatedSinceClause, filter, extraFields);
 
     if (updatedSince != null) {
-      updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
+      updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + ts + " OR Campaign.SystemModStamp >= " + ts + ")";
       contacts.addAll(queryEmailContacts(updatedSinceClause, filter, extraFields));
     }
 
