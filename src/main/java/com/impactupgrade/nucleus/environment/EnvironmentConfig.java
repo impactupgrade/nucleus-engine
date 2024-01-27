@@ -110,6 +110,8 @@ public class EnvironmentConfig implements Serializable {
     public String sisContactId = "";
     public String sisHouseholdId = "";
 
+    public String campaignExternalReference = "";
+
     // TODO: refactor all of the above into record-specific definitions (below)
 
     public ContactCRMFieldDefinitions contact = new ContactCRMFieldDefinitions();
