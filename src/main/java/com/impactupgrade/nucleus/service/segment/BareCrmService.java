@@ -178,6 +178,21 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
+  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
+
+  }
+
+  @Override
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
+  public void deleteCampaign(String campaignId) throws Exception {
+
+  }
+
+  @Override
   public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return Collections.emptyList();
   }

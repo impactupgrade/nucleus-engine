@@ -106,6 +106,16 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
+  default void updateCampaign(CrmCampaign crmCampaign) throws Exception {
+  }
+
+  default Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+    return Optional.empty();
+  }
+
+  default void deleteCampaign(String campaignId) throws Exception {
+  }
+
   default Optional<CrmUser> getUserById(String id) throws Exception {
     return Optional.empty();
   }

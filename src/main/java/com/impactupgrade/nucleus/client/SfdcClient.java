@@ -210,6 +210,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public List<SObject> getCampaignsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(names, "Name", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields);
   }
+  public Optional<SObject> getCampaignByExternalReference(String externalReference, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) +  " from campaign where " + env.getConfig().salesforce.fieldDefinitions.campaignExternalReference +  " = '" + externalReference.replaceAll("'", "\\\\'") + "'";
+    return querySingle(query);
+  }
 
   // See note on CrmService.getEmailCampaignsByContactIds. Retrieve in batches to preserve API limits!
   public List<SObject> getEmailCampaignsByContactIds(List<String> contactIds) throws ConnectionException, InterruptedException {

@@ -386,6 +386,21 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
+
+  }
+
+  @Override
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
+  public void deleteCampaign(String campaignId) throws Exception {
+
+  }
+
+  @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
     VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.crmRawObject;

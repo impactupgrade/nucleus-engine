@@ -789,8 +789,29 @@ public class SfdcCrmService implements CrmService {
   @Override
   public String insertCampaign(CrmCampaign crmCampaign) throws Exception {
     SObject campaign = new SObject("Campaign");
-    campaign.setField("Name", crmCampaign.name());
+    campaign.setField("Name", crmCampaign.name);
     return sfdcClient.insert(campaign).getId();
+  }
+
+  @Override
+  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
+    SObject campaign = new SObject("Campaign");
+    campaign.setId(crmCampaign.id);
+    campaign.setField("Name", crmCampaign.name);
+    campaign.setField(env.getConfig().salesforce.fieldDefinitions.campaignExternalReference, crmCampaign.externalReference);
+    sfdcClient.update(campaign);
+  }
+
+  @Override
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+    return toCrmCampaign(sfdcClient.getCampaignByExternalReference(externalReference));
+  }
+
+  @Override
+  public void deleteCampaign(String campaignId) throws Exception {
+    SObject campaign = new SObject("Campaign");
+    campaign.setId(campaignId);
+    sfdcClient.delete(campaign);
   }
 
   @Override
@@ -2270,7 +2291,8 @@ public class SfdcCrmService implements CrmService {
   protected CrmCampaign toCrmCampaign(SObject sObject) {
     return new CrmCampaign(
         sObject.getId(),
-        (String) sObject.getField("Name")
+        (String) sObject.getField("Name"),
+        (String) sObject.getField(env.getConfig().salesforce.fieldDefinitions.campaignExternalReference)
     );
   }
 

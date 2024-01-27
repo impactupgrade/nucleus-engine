@@ -541,6 +541,21 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
+
+  }
+
+  @Override
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+    return Optional.empty();
+  }
+
+  @Override
+  public void deleteCampaign(String campaignId) throws Exception {
+
+  }
+
+  @Override
   public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Collections.emptyMap();

@@ -54,6 +54,8 @@ public class EventBriteClient {
   public static class Attendee {
     public String id;
     public Profile profile;
+    @JsonProperty("event_id")
+    public String eventId;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

@@ -3,6 +3,7 @@ package com.impactupgrade.nucleus.controller;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.EventBriteClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
@@ -23,6 +24,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -45,57 +47,84 @@ public class EventBriteController {
     String eventType = request.getHeader("X-Eventbrite-Event");
     WebhookPayload webhookPayload = new ObjectMapper().readValue(json, WebhookPayload.class);
 
+    CrmService crmService = env.primaryCrmService();
+
     switch (eventType) {
       case "attendee.updated" -> {
         EventBriteClient.Attendee attendee = new EventBriteClient(env).getAttendee(webhookPayload.apiUrl);
-        CrmContact crmContact = toCrmContact(attendee);
 
-        CrmService crmService = env.primaryCrmService();
+        CrmContact crmContact = toCrmContact(attendee);
         CrmContact existingContact = crmService.getContactsByEmails(List.of(crmContact.email))
                 .stream().findFirst().orElse(null);
-        if (existingContact == null) {
-          // Unlikely that they wouldn't already exist, but keep this here as a sanity check.
-          crmService.insertContact(crmContact);
-        } else {
-          crmContact.id = existingContact.id;
-          crmService.updateContact(crmContact);
+        // Unlikely that they wouldn't already exist, but keep this here as a sanity check.
+        upsertCrmContact(crmContact, Optional.ofNullable(existingContact), crmService);
+
+        Optional<CrmCampaign> campaign = crmService.getCampaignByExternalReference(attendee.eventId);
+        if (campaign.isPresent()) {
+          crmService.addContactToCampaign(crmContact, campaign.get().id);
+        }
+      }
+
+      case "event.created", "event.updated", "event.published" -> {
+        EventBriteClient.Event event = new EventBriteClient(env).getEvent(webhookPayload.apiUrl);
+
+        CrmCampaign campaign = new CrmCampaign("", event.name.text, event.id);
+        Optional<CrmCampaign> existingCampaign = crmService.getCampaignByExternalReference(event.id);
+        upsertCrmCampaign(campaign, existingCampaign, crmService);
+      }
+      case "event.unpublished" -> {
+        EventBriteClient.Event event = new EventBriteClient(env).getEvent(webhookPayload.apiUrl);
+
+        Optional<CrmCampaign> existingСampaign = crmService.getCampaignByExternalReference(event.id);
+        if (existingСampaign.isPresent()) {
+          crmService.deleteCampaign(existingСampaign.get().id);
         }
       }
 
       case "order.placed" -> {
         EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
-        CrmDonation crmDonation = toCrmDonation(order);
-        CrmContact crmContact = null;
 
-        List<String> emails = order.attendees.stream().map(attendee -> attendee.profile.email).collect(Collectors.toList());
-        //TODO: order can have more than 1 attendee - how to map this case?
-        if (CollectionUtils.isNotEmpty(emails)) {
-          crmContact = env.primaryCrmService().getContactsByEmails(emails)
-              .stream().findFirst().orElse(null);
+        List<CrmContact> crmContacts = processOrderEvent(order, crmService);
+
+        if (order.costs.basePrice.value > 0.0) {
+          CrmDonation crmDonation = toCrmDonation(order);
+          // TODO: which attendee/contact to use for donation?
+          crmDonation.contact = crmContacts.stream().findFirst().get();
+
+          Optional<CrmCampaign> campaign = crmService.getCampaignByExternalReference(order.event.id);
+          if (campaign.isPresent()) {
+            crmDonation.campaignId = campaign.get().id;
+          }
+
+          crmService.insertDonation(crmDonation);
         }
-
-        crmDonation.contact = crmContact;
-        env.primaryCrmService().insertDonation(crmDonation);
       }
 
-      case "event.created", "event.updated" -> {
-        EventBriteClient.Event event = new EventBriteClient(env).getEvent(webhookPayload.apiUrl);
-        CrmCampaign campaign = new CrmCampaign(event.id, event.name.text);
-        //TODO: switch to upsert? find existing and update?
-        env.primaryCrmService().insertCampaign(campaign);
-      }
-      case "event.published", "event.unpublished" -> {
-        //TODO:?
-      }
-
-      case "order.refunded", "order.updated" -> {
+      case "order.refunded" -> {
         EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
-        CrmDonation crmDonation = toCrmDonation(order);
-        Optional<CrmDonation> existingCrmDonation = env.primaryCrmService().getDonationByTransactionId(order.id);
+
+        processOrderEvent(order, crmService);
+
+        Optional<CrmDonation> existingCrmDonation = crmService.getDonationByTransactionId(order.id);
         if (existingCrmDonation.isPresent()) {
+          CrmDonation crmDonation = existingCrmDonation.get();
+          crmDonation.status = CrmDonation.Status.FAILED;  // or REFUNDED?
+          crmService.updateDonation(crmDonation);
+        }
+      }
+
+      case "order.updated" -> {
+        EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
+
+        processOrderEvent(order, crmService);
+
+        Optional<CrmDonation> existingCrmDonation = crmService.getDonationByTransactionId(order.id);
+
+        if (existingCrmDonation.isPresent()) {
+          CrmDonation crmDonation = toCrmDonation(order);
           // TODO: update only specific fields to avoid "overwrite"?
           crmDonation.id = existingCrmDonation.get().id;
-          env.primaryCrmService().updateDonation(crmDonation);
+          crmService.updateDonation(crmDonation);
         }
       }
 
@@ -105,6 +134,61 @@ public class EventBriteController {
 
     }
     return Response.status(200).entity(json).build();
+  }
+
+  private void upsertCrmContacts(List<CrmContact> contacts, CrmService crmService) throws Exception {
+    List<String> emails = contacts.stream()
+            .map(crmContact -> crmContact.email)
+            .collect(Collectors.toList());
+    List<CrmContact> existingContacts = crmService.getContactsByEmails(emails);
+    Map<String, CrmContact> contactsByEmails = existingContacts.stream()
+            .collect(Collectors.toMap(crmContact -> crmContact.email, crmContact -> crmContact));
+
+    for (CrmContact crmContact : contacts) {
+      Optional<CrmContact> existingContact = Optional.ofNullable(contactsByEmails.get(crmContact.email));
+      upsertCrmContact(crmContact, existingContact, crmService);
+    }
+  }
+
+  private void addContactsToCampaign(List<CrmContact> contacts, String campaignExternalReference, CrmService crmService) throws Exception {
+    if (CollectionUtils.isEmpty(contacts) || Strings.isNullOrEmpty(campaignExternalReference)) {
+      return;
+    }
+    Optional<CrmCampaign> campaign = crmService.getCampaignByExternalReference(campaignExternalReference);
+    if (campaign.isPresent()) {
+      for (CrmContact contact : contacts) {
+        crmService.addContactToCampaign(contact, campaign.get().id);
+      }
+    }
+  }
+
+  private List<CrmContact> processOrderEvent(EventBriteClient.Order order, CrmService crmService) throws Exception {
+    List<CrmContact> crmContacts = order.attendees.stream()
+            .map(this::toCrmContact)
+            .collect(Collectors.toList());
+    upsertCrmContacts(crmContacts, crmService);
+    addContactsToCampaign(crmContacts, order.event.id, crmService);
+    return crmContacts;
+  }
+
+  private CrmContact upsertCrmContact(CrmContact contact, Optional<CrmContact> existingContact, CrmService crmService) throws Exception {
+    if (existingContact.isEmpty()) {
+      contact.id = crmService.insertContact(contact);
+    } else {
+      contact.id = existingContact.get().id;
+      crmService.updateContact(contact);
+    }
+    return contact;
+  }
+
+  private CrmCampaign upsertCrmCampaign(CrmCampaign campaign, Optional<CrmCampaign> existingCampaign, CrmService crmService) throws Exception {
+    if (existingCampaign.isEmpty()) {
+      campaign.id = crmService.insertCampaign(campaign);
+    } else {
+      campaign.id = existingCampaign.get().id;
+      crmService.updateCampaign(campaign);
+    }
+    return campaign;
   }
 
   private CrmContact toCrmContact(EventBriteClient.Attendee attendee) {
@@ -131,9 +215,8 @@ public class EventBriteController {
   private CrmDonation toCrmDonation(EventBriteClient.Order order) {
     CrmDonation crmDonation = new CrmDonation();
     crmDonation.transactionId = order.id;
-    crmDonation.secondaryId = order.event.id; // ?
     crmDonation.description = order.name + "/" + order.email;
-    crmDonation.gatewayName = "Event Brite";
+    crmDonation.gatewayName = "EventBrite";
     crmDonation.closeDate = ZonedDateTime.parse(order.created);
     if ("placed".equalsIgnoreCase(order.status)) {
       crmDonation.status = CrmDonation.Status.SUCCESSFUL;
