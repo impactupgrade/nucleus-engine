@@ -392,12 +392,16 @@ public class FactsClient {
   public static class PersonFamily {
     public Integer personId;
     public Integer familyId;
+    public Boolean financialResponsibility;
+    public Boolean factsCustomer;
 
     @Override
     public String toString() {
       return "PersonFamily{" +
           "personId=" + personId +
           ", familyId=" + familyId +
+          ", financialResponsibility=" + financialResponsibility +
+          ", factsCustomer=" + factsCustomer +
           '}';
     }
   }
