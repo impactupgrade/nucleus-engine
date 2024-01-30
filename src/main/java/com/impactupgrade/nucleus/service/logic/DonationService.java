@@ -87,6 +87,7 @@ public class DonationService {
       env.logJobInfo("found existing, posted CRM donation {} using transaction {}",
           existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
       paymentGatewayEvent.getCrmDonation().id = existingDonation.get().id;
+      paymentGatewayEvent.getCrmRecurringDonation().id = existingDonation.get().recurringDonation.id;
 
       if (paymentGatewayEvent.getCrmDonation().status != CrmDonation.Status.FAILED
           && existingDonation.get().status != CrmDonation.Status.SUCCESSFUL && existingDonation.get().status != CrmDonation.Status.REFUNDED) {

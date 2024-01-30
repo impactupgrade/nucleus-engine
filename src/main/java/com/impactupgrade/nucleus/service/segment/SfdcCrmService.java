@@ -2488,11 +2488,14 @@ public class SfdcCrmService implements CrmService {
     if (sObject.getChild("npsp__Primary_Contact__r") != null && sObject.getChild("npsp__Primary_Contact__r").hasChildren())
       contact = toCrmContact((SObject) sObject.getChild("npsp__Primary_Contact__r"));
 
+    CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
+    crmRecurringDonation.id = (String) sObject.getField("npe03__Recurring_Donation__c");
+
     return new CrmDonation(
         id,
         account,
         contact,
-        new CrmRecurringDonation(),
+        crmRecurringDonation,
         amount,
         null, // String customerId,
         null, // ZonedDateTime depositDate,
