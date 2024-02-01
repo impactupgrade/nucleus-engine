@@ -48,10 +48,11 @@ public class EventBriteController {
     WebhookPayload webhookPayload = new ObjectMapper().readValue(json, WebhookPayload.class);
 
     CrmService crmService = env.primaryCrmService();
+    EventBriteClient eventBriteClient = env.eventBriteClient();
 
     switch (eventType) {
       case "attendee.updated" -> {
-        EventBriteClient.Attendee attendee = new EventBriteClient(env).getAttendee(webhookPayload.apiUrl);
+        EventBriteClient.Attendee attendee = eventBriteClient.getAttendee(webhookPayload.apiUrl);
 
         CrmContact crmContact = toCrmContact(attendee);
         CrmContact existingContact = crmService.getContactsByEmails(List.of(crmContact.email))
@@ -66,14 +67,14 @@ public class EventBriteController {
       }
 
       case "event.created", "event.updated", "event.published" -> {
-        EventBriteClient.Event event = new EventBriteClient(env).getEvent(webhookPayload.apiUrl);
+        EventBriteClient.Event event = eventBriteClient.getEvent(webhookPayload.apiUrl);
 
         CrmCampaign campaign = new CrmCampaign("", event.name.text, event.id);
         Optional<CrmCampaign> existingCampaign = crmService.getCampaignByExternalReference(event.id);
         upsertCrmCampaign(campaign, existingCampaign, crmService);
       }
       case "event.unpublished" -> {
-        EventBriteClient.Event event = new EventBriteClient(env).getEvent(webhookPayload.apiUrl);
+        EventBriteClient.Event event = eventBriteClient.getEvent(webhookPayload.apiUrl);
 
         Optional<CrmCampaign> existingСampaign = crmService.getCampaignByExternalReference(event.id);
         if (existingСampaign.isPresent()) {
@@ -82,7 +83,7 @@ public class EventBriteController {
       }
 
       case "order.placed" -> {
-        EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
+        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl);
 
         List<CrmContact> crmContacts = processOrderEvent(order, crmService);
 
@@ -101,7 +102,7 @@ public class EventBriteController {
       }
 
       case "order.refunded" -> {
-        EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
+        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl);
 
         processOrderEvent(order, crmService);
 
@@ -114,7 +115,7 @@ public class EventBriteController {
       }
 
       case "order.updated" -> {
-        EventBriteClient.Order order = new EventBriteClient(env).getOrder(webhookPayload.apiUrl);
+        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl);
 
         processOrderEvent(order, crmService);
 
