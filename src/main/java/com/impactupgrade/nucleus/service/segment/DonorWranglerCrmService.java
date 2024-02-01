@@ -81,7 +81,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
       );
       return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
     } else {
-      throw new RuntimeException("not implemented");
+      return new PagedResults<>();
     }
   }
 
