@@ -83,16 +83,18 @@ public class EventBriteController {
       }
 
       case "order.placed" -> {
-        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl);
+        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl, "attendees");
 
         List<CrmContact> crmContacts = processOrderEvent(order, crmService);
 
+        // Use instead the display_price field (if the Ticket Class include_fee field is used) // ?
         if (order.costs.basePrice.value > 0.0) {
           CrmDonation crmDonation = toCrmDonation(order);
           // TODO: which attendee/contact to use for donation?
+          // TODO: 1 donation per 1 attendee?
           crmDonation.contact = crmContacts.stream().findFirst().get();
 
-          Optional<CrmCampaign> campaign = crmService.getCampaignByExternalReference(order.event.id);
+          Optional<CrmCampaign> campaign = crmService.getCampaignByExternalReference(order.eventId);
           if (campaign.isPresent()) {
             crmDonation.campaignId = campaign.get().id;
           }
@@ -102,7 +104,7 @@ public class EventBriteController {
       }
 
       case "order.refunded" -> {
-        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl);
+        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl, "attendees");
 
         processOrderEvent(order, crmService);
 
@@ -115,7 +117,7 @@ public class EventBriteController {
       }
 
       case "order.updated" -> {
-        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl);
+        EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl, "attendees");
 
         processOrderEvent(order, crmService);
 
@@ -168,7 +170,7 @@ public class EventBriteController {
             .map(this::toCrmContact)
             .collect(Collectors.toList());
     upsertCrmContacts(crmContacts, crmService);
-    addContactsToCampaign(crmContacts, order.event.id, crmService);
+    addContactsToCampaign(crmContacts, order.eventId, crmService);
     return crmContacts;
   }
 
@@ -220,9 +222,10 @@ public class EventBriteController {
     if ("placed".equalsIgnoreCase(order.status)) {
       crmDonation.status = CrmDonation.Status.SUCCESSFUL;
     } else if ("refunded".equalsIgnoreCase(order.status)) {
-      crmDonation.status = CrmDonation.Status.REFUNDED;
+      crmDonation.status = CrmDonation.Status.FAILED;
     }
     crmDonation.url = order.resourceUri;
+    crmDonation.amount = order.costs.basePrice.value;
     crmDonation.originalAmountInDollars = order.costs.basePrice.value / 100.0;
     crmDonation.originalCurrency = order.costs.basePrice.currency;
     //TODO: taxes?
