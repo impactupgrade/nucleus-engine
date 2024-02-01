@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class EventBriteClient {
 
@@ -26,8 +28,9 @@ public class EventBriteClient {
     return HttpClient.get(attendeeUrl, headers(), Attendee.class);
   }
 
-  public Order getOrder(String eventUrl) {
-    return HttpClient.get(eventUrl, headers(), Order.class);
+  public Order getOrder(String eventUrl, String... expansions) {
+    String expand = Arrays.stream(expansions).collect(Collectors.joining(","));
+    return HttpClient.get(eventUrl + "?expand=" + expand, headers(), Order.class);
   }
 
   private HttpClient.HeaderBuilder headers() {
@@ -40,7 +43,6 @@ public class EventBriteClient {
   public static class Event {
     public String id;
     public Description name;
-    public Description description;
     public String url;
   }
 
@@ -78,7 +80,6 @@ public class EventBriteClient {
     public Address ship;
     public Address work;
     public Address bill;
-
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -98,12 +99,18 @@ public class EventBriteClient {
   public static class Order {
     public String id;
     public String created; // date format "2018-05-12T02:00:00Z",
+    public String changed; // date format "2018-05-12T02:00:00Z",
     public String name;
+    public String firstName; // The ticket buyer’s first name
+    public String lastName;  // The ticket buyer’s last name
     public String email;
-    public String status;
     public Costs costs;
-    public Event event;
+    @JsonProperty("event_id")
+    public String eventId;
     public List<Attendee> attendees;
+    @JsonProperty("promo_code")
+    public String promoCode;
+    public String status;
     @JsonProperty("resource_uri")
     public String resourceUri;
   }
