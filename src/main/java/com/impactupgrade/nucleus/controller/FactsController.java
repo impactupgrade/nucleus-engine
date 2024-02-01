@@ -52,7 +52,7 @@ public class FactsController {
     EnvironmentConfig.CRMFieldDefinitions crmFieldDefinitions = env.primaryCrmService().getFieldDefinitions();
     EnvironmentConfig.Facts factsConfig = env.getConfig().facts;
 
-    FactsClient factsClient = new FactsClient(env);
+    FactsClient factsClient = env.factsClient();
 
     // TODO: FACTS appears to have parent employer data, but trying to find where to pull that from.
 
@@ -503,7 +503,7 @@ public class FactsController {
     EnvironmentConfig.CRMFieldDefinitions crmFieldDefinitions = env.primaryCrmService().getFieldDefinitions();
     EnvironmentConfig.Facts factsConfig = env.getConfig().facts;
 
-    FactsClient factsClient = new FactsClient(env);
+    FactsClient factsClient = env.factsClient();
 
     Runnable runnable = () -> {
       try {
