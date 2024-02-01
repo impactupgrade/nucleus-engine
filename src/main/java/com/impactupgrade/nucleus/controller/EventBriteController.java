@@ -76,9 +76,9 @@ public class EventBriteController {
       case "event.unpublished" -> {
         EventBriteClient.Event event = eventBriteClient.getEvent(webhookPayload.apiUrl);
 
-        Optional<CrmCampaign> existingСampaign = crmService.getCampaignByExternalReference(event.id);
-        if (existingСampaign.isPresent()) {
-          crmService.deleteCampaign(existingСampaign.get().id);
+        Optional<CrmCampaign> existingCampaign = crmService.getCampaignByExternalReference(event.id);
+        if (existingCampaign.isPresent()) {
+          crmService.deleteCampaign(existingCampaign.get().id);
         }
       }
 
@@ -109,7 +109,7 @@ public class EventBriteController {
         Optional<CrmDonation> existingCrmDonation = crmService.getDonationByTransactionId(order.id);
         if (existingCrmDonation.isPresent()) {
           CrmDonation crmDonation = existingCrmDonation.get();
-          crmDonation.status = CrmDonation.Status.FAILED;  // or REFUNDED?
+          crmDonation.status = CrmDonation.Status.FAILED;
           crmService.updateDonation(crmDonation);
         }
       }
@@ -172,24 +172,22 @@ public class EventBriteController {
     return crmContacts;
   }
 
-  private CrmContact upsertCrmContact(CrmContact contact, Optional<CrmContact> existingContact, CrmService crmService) throws Exception {
+  private void upsertCrmContact(CrmContact contact, Optional<CrmContact> existingContact, CrmService crmService) throws Exception {
     if (existingContact.isEmpty()) {
       contact.id = crmService.insertContact(contact);
     } else {
       contact.id = existingContact.get().id;
       crmService.updateContact(contact);
     }
-    return contact;
   }
 
-  private CrmCampaign upsertCrmCampaign(CrmCampaign campaign, Optional<CrmCampaign> existingCampaign, CrmService crmService) throws Exception {
+  private void upsertCrmCampaign(CrmCampaign campaign, Optional<CrmCampaign> existingCampaign, CrmService crmService) throws Exception {
     if (existingCampaign.isEmpty()) {
       campaign.id = crmService.insertCampaign(campaign);
     } else {
       campaign.id = existingCampaign.get().id;
       crmService.updateCampaign(campaign);
     }
-    return campaign;
   }
 
   private CrmContact toCrmContact(EventBriteClient.Attendee attendee) {
