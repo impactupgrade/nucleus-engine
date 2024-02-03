@@ -69,10 +69,11 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContact(
-      @QueryParam("keyword") String keywords,
-      @QueryParam("email") String email,
-      @QueryParam("phone") String phone,
-      @Context HttpServletRequest request
+          @QueryParam("keyword") String keywords,
+          @QueryParam("email") String email,
+          @QueryParam("phone") String phone,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -81,7 +82,7 @@ public class CrmController {
     email = noWhitespace(email);
     phone = trim(phone);
 
-    CrmService crmService = env.primaryCrmService();
+    CrmService crmService = getCrmService(env, crmType);
 
     Optional<CrmContact> contact = Optional.empty();
     if (!Strings.isNullOrEmpty(keywords)) {
@@ -111,40 +112,41 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response upsertContact(
-      @FormParam("account_owner_email") String accountOwnerEmail,
-      @FormParam("account_id") String accountId,
-      @FormParam("account_name") String accountName,
-      @FormParam("account_email") String accountEmail,
-      @FormParam("account_phone") String accountPhone,
-      @FormParam("account_website") String accountWebsite,
-      @FormParam("account_type") String accountType,
-      @FormParam("account_street") String accountStreet,
-      @FormParam("account_street_2") String accountStreet2,
-      @FormParam("account_city") String accountCity,
-      @FormParam("account_state") String accountState,
-      @FormParam("account_zip") String accountZip,
-      @FormParam("account_country") String accountCountry,
-      @FormParam("contact_owner_email") String contactOwnerEmail,
-      @FormParam("contact_first_name") String contactFirstName,
-      @FormParam("contact_last_name") String contactLastName,
-      @FormParam("contact_email") String contactEmail,
-      @FormParam("contact_phone_pref") String contactPhonePref,
-      @FormParam("contact_home_phone") String contactHomePhone,
-      @FormParam("contact_work_phone") String contactWorkPhone,
-      @FormParam("contact_mobile_phone") String contactMobilePhone,
-      @FormParam("contact_street") String contactStreet,
-      @FormParam("contact_street_2") String contactStreet2,
-      @FormParam("contact_city") String contactCity,
-      @FormParam("contact_state") String contactState,
-      @FormParam("contact_zip") String contactZip,
-      @FormParam("contact_country") String contactCountry,
-      @Context HttpServletRequest request
+          @FormParam("account_owner_email") String accountOwnerEmail,
+          @FormParam("account_id") String accountId,
+          @FormParam("account_name") String accountName,
+          @FormParam("account_email") String accountEmail,
+          @FormParam("account_phone") String accountPhone,
+          @FormParam("account_website") String accountWebsite,
+          @FormParam("account_type") String accountType,
+          @FormParam("account_street") String accountStreet,
+          @FormParam("account_street_2") String accountStreet2,
+          @FormParam("account_city") String accountCity,
+          @FormParam("account_state") String accountState,
+          @FormParam("account_zip") String accountZip,
+          @FormParam("account_country") String accountCountry,
+          @FormParam("contact_owner_email") String contactOwnerEmail,
+          @FormParam("contact_first_name") String contactFirstName,
+          @FormParam("contact_last_name") String contactLastName,
+          @FormParam("contact_email") String contactEmail,
+          @FormParam("contact_phone_pref") String contactPhonePref,
+          @FormParam("contact_home_phone") String contactHomePhone,
+          @FormParam("contact_work_phone") String contactWorkPhone,
+          @FormParam("contact_mobile_phone") String contactMobilePhone,
+          @FormParam("contact_street") String contactStreet,
+          @FormParam("contact_street_2") String contactStreet2,
+          @FormParam("contact_city") String contactCity,
+          @FormParam("contact_state") String contactState,
+          @FormParam("contact_zip") String contactZip,
+          @FormParam("contact_country") String contactCountry,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     try {
-      CrmService crmService = env.primaryCrmService();
+      CrmService crmService = getCrmService(env, crmType);
 
       // TODO: update support
 
@@ -175,7 +177,7 @@ public class CrmController {
 
       CrmContact newContact = new CrmContact();
 
-      if (crmService.getUserByEmail(contactOwnerEmail).isPresent()){
+      if (crmService.getUserByEmail(contactOwnerEmail).isPresent()) {
         newContact.ownerId = crmService.getUserByEmail(contactOwnerEmail).get().id();
       }
       newContact.firstName = contactFirstName;
@@ -187,7 +189,7 @@ public class CrmController {
       newContact.workPhone = contactWorkPhone;
       newContact.account.id = accountId;
       newContact.mailingAddress.street = contactStreet;
-      if (!Strings.isNullOrEmpty(contactStreet2)){
+      if (!Strings.isNullOrEmpty(contactStreet2)) {
         newContact.mailingAddress.street = newContact.mailingAddress.street + "," + contactStreet2;
       }
       newContact.mailingAddress.city = contactCity;
@@ -208,13 +210,14 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getAllAccounts(
-      @Context HttpServletRequest request
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
     try {
-      CrmService crmService = env.primaryCrmService();
+      CrmService crmService = getCrmService(env, crmType);
       AccountSearch accountSearch = new AccountSearch();
       accountSearch.basicSearch = true;
       List<CrmAccount> accounts = crmService.searchAccounts(accountSearch);
@@ -230,10 +233,11 @@ public class CrmController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImport(
-      @FormDataParam("file") InputStream inputStream,
-      @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @FormDataParam("nucleus-username") String nucleusUsername,
-      @Context HttpServletRequest request
+          @FormDataParam("file") InputStream inputStream,
+          @FormDataParam("file") FormDataContentDisposition fileDisposition,
+          @FormDataParam("nucleus-username") String nucleusUsername,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -270,9 +274,10 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImport(
-      @FormParam("google-sheet-url") String gsheetUrl,
-      @FormParam("nucleus-username") String nucleusUsername,
-      @Context HttpServletRequest request
+          @FormParam("google-sheet-url") String gsheetUrl,
+          @FormParam("nucleus-username") String nucleusUsername,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -281,12 +286,13 @@ public class CrmController {
 
     List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(data);
+    CrmService crmService = getCrmService(env, crmType);
 
     Runnable thread = () -> {
       try {
         String jobName = "Bulk Import: Google Sheet";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
-        env.primaryCrmService().processBulkImport(importEvents);
+        crmService.processBulkImport(importEvents);
         env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
         env.logJobError("bulkImport failed", e);
@@ -304,10 +310,11 @@ public class CrmController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImportFBFundraisers(
-      @FormDataParam("file") InputStream inputStream,
-      @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @FormDataParam("nucleus-username") String nucleusUsername,
-      @Context HttpServletRequest request
+          @FormDataParam("file") InputStream inputStream,
+          @FormDataParam("file") FormDataContentDisposition fileDisposition,
+          @FormDataParam("nucleus-username") String nucleusUsername,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -315,12 +322,13 @@ public class CrmController {
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
     List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
     List<CrmImportEvent> importEvents = CrmImportEvent.fromFBFundraiser(data);
+    CrmService crmService = getCrmService(env, crmType);
 
     Runnable thread = () -> {
       try {
         String jobName = "Bulk Import: Facebook";
         env.startJobLog(JobType.PORTAL_TASK, nucleusUsername, jobName, "Nucleus Portal");
-        env.primaryCrmService().processBulkImport(importEvents);
+        crmService.processBulkImport(importEvents);
         env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
         env.logJobError("bulkImport failed", e);
@@ -338,9 +346,10 @@ public class CrmController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response bulkImportGreaterGiving(
-      @FormDataParam("file") InputStream inputStream,
-      @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request
+          @FormDataParam("file") InputStream inputStream,
+          @FormDataParam("file") FormDataContentDisposition fileDisposition,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -352,9 +361,11 @@ public class CrmController {
 
     List<CrmImportEvent> importEvents = CrmImportEvent.fromGreaterGiving(data);
 
+    CrmService crmService = getCrmService(env, crmType);
+
     Runnable thread = () -> {
       try {
-        env.primaryCrmService().processBulkImport(importEvents);
+        crmService.processBulkImport(importEvents);
       } catch (Exception e) {
         env.logJobError("bulkImport failed", e);
       }
@@ -382,11 +393,11 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response searchRecurringDonations(
-      @FormParam("name") String name,
-      @FormParam("email") String email,
-      @FormParam("phone") String phone,
-      Form rawFormData,
-      @Context HttpServletRequest request
+          @FormParam("name") String name,
+          @FormParam("email") String email,
+          @FormParam("phone") String phone,
+          Form rawFormData,
+          @Context HttpServletRequest request
   ) throws Exception {
     // other env context might be passed in raw form data, so use this init method
     Environment env = envFactory.init(request, rawFormData.asMap());
@@ -397,9 +408,9 @@ public class CrmController {
     phone = trim(phone);
 
     List<CrmRecurringDonation> recurringDonations = env.donationsCrmService().searchAllRecurringDonations(
-        Optional.ofNullable(Strings.emptyToNull(name)),
-        Optional.ofNullable(Strings.emptyToNull(email)),
-        Optional.ofNullable(Strings.emptyToNull(phone))
+            Optional.ofNullable(Strings.emptyToNull(name)),
+            Optional.ofNullable(Strings.emptyToNull(email)),
+            Optional.ofNullable(Strings.emptyToNull(phone))
     );
     return Response.status(200).entity(recurringDonations).build();
   }
@@ -408,8 +419,8 @@ public class CrmController {
   @GET
   @Produces(MediaType.TEXT_PLAIN)
   public Response donationsTotal(
-      @QueryParam("filter") String filter,
-      @Context HttpServletRequest request
+          @QueryParam("filter") String filter,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     env.logJobInfo("Filter: {}", filter);
@@ -423,9 +434,10 @@ public class CrmController {
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Produces(MediaType.TEXT_PLAIN)
   public Response provisionFields(
-      @FormDataParam("file") InputStream inputStream,
-      @FormDataParam("file") FormDataContentDisposition fileDisposition,
-      @Context HttpServletRequest request
+          @FormDataParam("file") InputStream inputStream,
+          @FormDataParam("file") FormDataContentDisposition fileDisposition,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -434,21 +446,23 @@ public class CrmController {
 
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
     CSVParser csvParser = CSVParser.parse(
-        inputStream,
-        Charset.defaultCharset(),
-        CSVFormat.DEFAULT
-            .withFirstRecordAsHeader()
-            .withIgnoreHeaderCase()
-            .withTrim()
+            inputStream,
+            Charset.defaultCharset(),
+            CSVFormat.DEFAULT
+                    .withFirstRecordAsHeader()
+                    .withIgnoreHeaderCase()
+                    .withTrim()
     );
     for (CSVRecord csvRecord : csvParser) {
       Map<String, String> data = csvRecord.toMap();
       customFields.add(CrmCustomField.fromGeneric(data));
     }
 
+    CrmService crmService = getCrmService(env, crmType);
+
     Runnable thread = () -> {
       try {
-        env.primaryCrmService().insertCustomFields(customFields);
+        crmService.insertCustomFields(customFields);
       } catch (Exception e) {
         env.logJobError("provisionFields failed", e);
       }
@@ -463,8 +477,9 @@ public class CrmController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.TEXT_PLAIN)
   public Response provisionFields(
-      @FormParam("google-sheet-url") String gsheetUrl,
-      @Context HttpServletRequest request
+          @FormParam("google-sheet-url") String gsheetUrl,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -473,10 +488,11 @@ public class CrmController {
 
     List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
     List<CrmCustomField> customFields = CrmCustomField.fromGeneric(data);
+    CrmService crmService = getCrmService(env, crmType);
 
     Runnable thread = () -> {
       try {
-        env.primaryCrmService().insertCustomFields(customFields);
+        crmService.insertCustomFields(customFields);
       } catch (Exception e) {
         env.logJobError("provisionFields failed", e);
       }
@@ -490,11 +506,12 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContactLists(
+          @QueryParam("crmType") String crmType,
           @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
-    CrmService crmService = env.primaryCrmService();
+    CrmService crmService = getCrmService(env, crmType);
     Map<String, String> lists = crmService.getContactLists();
 
     return Response.status(200).entity(lists).build();
@@ -505,11 +522,12 @@ public class CrmController {
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContactFields(
           @QueryParam("type") String type,
+          @QueryParam("crmType") String crmType,
           @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
-    CrmService crmService = env.primaryCrmService();
+    CrmService crmService = getCrmService(env, crmType);
     String filter = "";
 
     if (Strings.isNullOrEmpty(type)) {
@@ -547,29 +565,30 @@ public class CrmController {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContactListMembers(
-      @QueryParam("listId") String listId,
-      @Context HttpServletRequest request
+          @QueryParam("listId") String listId,
+          @QueryParam("crmType") String crmType,
+          @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
-    CrmService crmService = env.primaryCrmService();
+    CrmService crmService = getCrmService(env, crmType);
     List<CrmContact> contacts = crmService.getContactsFromList(listId);
 
     return Response.status(200).entity(contacts).build();
   }
-  
+
   private List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
     String fileExtension = Utils.getFileExtension(fileDisposition.getFileName());
     List<Map<String, String>> data = new ArrayList<>();
 
     if ("csv".equals(fileExtension)) {
       CSVParser csvParser = CSVParser.parse(
-          inputStream,
-          Charset.defaultCharset(),
-          CSVFormat.DEFAULT
-              .withFirstRecordAsHeader()
-              .withIgnoreHeaderCase()
-              .withTrim()
+              inputStream,
+              Charset.defaultCharset(),
+              CSVFormat.DEFAULT
+                      .withFirstRecordAsHeader()
+                      .withIgnoreHeaderCase()
+                      .withTrim()
       );
       data = new ArrayList<>();
       for (CSVRecord csvRecord : csvParser) {
@@ -581,5 +600,16 @@ public class CrmController {
       throw new RuntimeException("Unsupported file extension: " + fileExtension);
     }
     return data;
+  }
+
+  private CrmService getCrmService(Environment env, String crmType) {
+    // default crm service
+    CrmService crmService = env.primaryCrmService();
+    if ("donations".equalsIgnoreCase(crmType)) {
+      crmService = env.donationsCrmService();
+    } else if ("messaging".equalsIgnoreCase(crmType)) {
+      crmService = env.messagingCrmService();
+    }
+    return crmService;
   }
 }
