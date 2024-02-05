@@ -19,9 +19,12 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.BufferedInputStream;
+import java.net.URL;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.Date;
@@ -83,24 +86,48 @@ public class SmsCampaignJobExecutor implements JobExecutor {
 
     env.logJobInfo("job {} is ready for the next message", job.id);
 
-    String contactListId = jobPayload.crmListId;
-    if (Strings.isNullOrEmpty(contactListId)) {
-      env.logJobWarn("Failed to get contact list id for job id {}! Skipping...", job.id);
+    List<CrmContact> crmContacts;
+    if (!Strings.isNullOrEmpty(jobPayload.xlsxFile)) {
+      env.logJobInfo("Retrieving contacts from XLSX file {}", jobPayload.xlsxFile);
+      try (BufferedInputStream is = new BufferedInputStream(new URL(jobPayload.xlsxFile).openStream())) {
+        List<Map<String, String>> data = Utils.getExcelData(is);
+        crmContacts = data.stream().map(d -> {
+          CrmContact crmContact = new CrmContact();
+          crmContact.mobilePhone = Utils.getPhoneFromMap(d);
+          return crmContact;
+        }).toList();
+      }
+    } else if (!Strings.isNullOrEmpty(jobPayload.csvFile)) {
+      env.logJobInfo("Retrieving contacts from CSV file {}", jobPayload.csvFile);
+      try (BufferedInputStream is = new BufferedInputStream(new URL(jobPayload.csvFile).openStream())) {
+        List<Map<String, String>> data = Utils.getCsvData(is);
+        crmContacts = data.stream().map(d -> {
+          CrmContact crmContact = new CrmContact();
+          crmContact.mobilePhone = Utils.getPhoneFromMap(d);
+          return crmContact;
+        }).toList();
+      }
+    } else if (!Strings.isNullOrEmpty(jobPayload.googleSheetUrl)) {
+      env.logJobInfo("Retrieving contacts from Google Sheet {}", jobPayload.googleSheetUrl);
+      crmContacts = env.crmService("googlesheet").getContactsFromList(jobPayload.googleSheetUrl);
+    } else if (!Strings.isNullOrEmpty(jobPayload.crmListId)) {
+      env.logJobInfo("Retrieving contacts using crmListId {}", jobPayload.crmListId);
+      crmContacts = crmService.getContactsFromList(jobPayload.crmListId);
+    } else {
+      env.logJobWarn("Failed to get contact list for job id {}! Skipping...", job.id);
       env.endJobLog(JobStatus.FAILED);
       return;
     }
-
-    env.logJobInfo("Retrieving contacts using contactListId {}", contactListId);
-
-    // get the list and dedup by phone number
-    Map<String, CrmContact> crmContacts = crmService.getContactsFromList(contactListId).stream()
-        .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
-        .collect(Collectors.toMap(CrmContact::phoneNumberForSMS, c -> c, (c1, c2) -> c1, LinkedHashMap::new));
     if (crmContacts.isEmpty()) {
       env.logJobInfo("No contacts returned for job id {}! Skipping...", job.id);
       env.endJobLog(JobStatus.DONE);
       return;
     }
+
+    // get the list and dedup by phone number
+    Map<String, CrmContact> crmContactsMap = crmContacts.stream()
+        .filter(c -> !Strings.isNullOrEmpty(c.phoneNumberForSMS()))
+        .collect(Collectors.toMap(CrmContact::phoneNumberForSMS, c -> c, (c1, c2) -> c1, LinkedHashMap::new));
 
     Map<String, JobProgress> progressesByContacts = job.jobProgresses.stream()
         .filter(jp -> !Strings.isNullOrEmpty(jp.targetId))
@@ -113,7 +140,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
             }
         ));
 
-    for (Map.Entry<String, CrmContact> entry : crmContacts.entrySet()) {
+    for (Map.Entry<String, CrmContact> entry : crmContactsMap.entrySet()) {
       String targetId = entry.getKey();
       CrmContact crmContact = entry.getValue();
 
@@ -321,6 +348,12 @@ public class SmsCampaignJobExecutor implements JobExecutor {
     public String campaignPhone;
     @JsonProperty("crm_list")
     public String crmListId;
+    @JsonProperty("csv_file")
+    public String csvFile;
+    @JsonProperty("xlsx_file")
+    public String xlsxFile;
+    @JsonProperty("google_sheet_url")
+    public String googleSheetUrl;
     public List<Language> languages;
     @JsonProperty("messages")
     public List<SequenceMessage> sequenceMessages;
