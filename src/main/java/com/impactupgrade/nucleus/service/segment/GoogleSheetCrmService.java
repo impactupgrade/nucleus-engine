@@ -1,6 +1,5 @@
 package com.impactupgrade.nucleus.service.segment;
 
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -10,6 +9,7 @@ import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import com.impactupgrade.nucleus.util.Utils;
 
 import java.util.Calendar;
 import java.util.Collections;
@@ -30,7 +30,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     @Override
     public boolean isConfigured(Environment env) {
         // TODO: For now, this service is purely on-demand, for tools like SMS Blast. In the future, it might need
-        //  to be env.json driven if it becomes more full featured.
+        //  to be env.json driven if it becomes more full featured, like a single sheet positioned as a writable CRM.
         return true;
     }
 
@@ -134,19 +134,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     protected CrmContact toCrmContact(Map<String, String> map) {
         CrmContact crmContact = new CrmContact();
 
-        // TODO: This is crazy. Object mapper framework with flexibility?
-        if (!Strings.isNullOrEmpty(map.get("Mobile Phone Number")))
-            crmContact.mobilePhone = map.get("Mobile Phone Number");
-        else if (!Strings.isNullOrEmpty(map.get("Mobile Phone")))
-            crmContact.mobilePhone = map.get("Mobile Phone");
-        else if (!Strings.isNullOrEmpty(map.get("Primary Phone Number")))
-            crmContact.mobilePhone = map.get("Primary Phone Number");
-        else if (!Strings.isNullOrEmpty(map.get("Primary Phone")))
-            crmContact.mobilePhone = map.get("Primary Phone");
-        else if (!Strings.isNullOrEmpty(map.get("Phone Number")))
-            crmContact.mobilePhone = map.get("Phone Number");
-        else if (!Strings.isNullOrEmpty(map.get("Phone")))
-            crmContact.mobilePhone = map.get("Phone");
+        crmContact.mobilePhone = Utils.getPhoneFromMap(map);
 
         crmContact.crmRawObject = map;
         crmContact.fieldFetcher = map::get;

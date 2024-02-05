@@ -306,4 +306,22 @@ public class Utils {
     }
     return hashMap;
   }
+  
+  public static String getPhoneFromMap(Map<String, String> map) {
+    // TODO: This is crazy. Object mapper framework with flexibility?
+    if (!Strings.isNullOrEmpty(map.get("Mobile Phone Number")))
+      return map.get("Mobile Phone Number");
+    else if (!Strings.isNullOrEmpty(map.get("Mobile Phone")))
+      return map.get("Mobile Phone");
+    else if (!Strings.isNullOrEmpty(map.get("Primary Phone Number")))
+      return map.get("Primary Phone Number");
+    else if (!Strings.isNullOrEmpty(map.get("Primary Phone")))
+      return map.get("Primary Phone");
+    else if (!Strings.isNullOrEmpty(map.get("Phone Number")))
+      return map.get("Phone Number");
+    else if (!Strings.isNullOrEmpty(map.get("Phone")))
+      return map.get("Phone");
+
+    return null;
+  }
 }
