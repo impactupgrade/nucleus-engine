@@ -291,11 +291,6 @@ public class EnvironmentConfig implements Serializable {
   public enum CommunicationListType {
     MARKETING, TRANSACTIONAL
   }
-  public static class CommunicationTagFilters implements Serializable {
-    public Integer majorDonorAmount = null;
-    public Integer recentDonorDays = null;
-    public Integer frequentDonorCount = null;
-  }
   public static class CommunicationList implements Serializable {
     public String id = "";
     public CommunicationListType type = CommunicationListType.MARKETING;
@@ -306,8 +301,7 @@ public class EnvironmentConfig implements Serializable {
   }
   public static class CommunicationPlatform extends Platform {
     public List<CommunicationList> lists = new ArrayList<>();
-    public CommunicationTagFilters tagFilters = new CommunicationTagFilters();
-    public Set<String> contactTagFilters = new HashSet<>();
+    public Set<String> tagsToPreserve = new HashSet<>();
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;

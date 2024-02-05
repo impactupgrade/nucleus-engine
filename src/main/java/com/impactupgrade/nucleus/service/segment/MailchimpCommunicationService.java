@@ -239,7 +239,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
             .filter(emailContact -> CollectionUtils.isNotEmpty(emailContact.inactiveTags()))
             .forEach(emailContact -> {
               emailContact.inactiveTags().removeAll(emailContact.activeTags());
-              emailContact.inactiveTags().removeAll(mailchimpConfig.contactTagFilters);
+              emailContact.inactiveTags().removeAll(mailchimpConfig.tagsToPreserve);
             });
     try {
       return mailchimpClient.updateContactTagsBatch(listId, emailContacts);

@@ -141,26 +141,8 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     // DONATION METRICS
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (crmContact.totalDonationAmount != null && communicationPlatform.tagFilters.majorDonorAmount != null
-        && crmContact.totalDonationAmount >= communicationPlatform.tagFilters.majorDonorAmount) {
-      tags.add("major_donor");
-    }
-
     if (crmContact.lastDonationDate != null) {
       tags.add("donor");
-
-      if (communicationPlatform.tagFilters.recentDonorDays != null) {
-        Calendar limit = Calendar.getInstance();
-        limit.add(Calendar.DAY_OF_MONTH, -communicationPlatform.tagFilters.recentDonorDays);
-        if (crmContact.lastDonationDate.after(limit)) {
-          tags.add("recent_donor");
-        }
-      }
-    }
-
-    if (crmContact.numDonations != null && communicationPlatform.tagFilters.frequentDonorCount != null
-        && crmContact.numDonations >= communicationPlatform.tagFilters.frequentDonorCount) {
-      tags.add("frequent_donor");
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
