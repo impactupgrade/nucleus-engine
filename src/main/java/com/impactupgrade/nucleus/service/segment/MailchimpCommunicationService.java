@@ -14,6 +14,7 @@ import org.apache.commons.collections.CollectionUtils;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -139,21 +140,32 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
       MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
       for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
-        syncUnsubscribes(mailchimpClient.getListMembers(communicationList.id, "unsubscribed", lastSync), c -> c.emailOptOut = true);
-        syncUnsubscribes(mailchimpClient.getListMembers(communicationList.id, "cleaned", lastSync), c -> c.emailBounced = true);
+        List<MemberInfo> unsubscribedMembers = mailchimpClient.getListMembers(communicationList.id, "unsubscribed", lastSync);
+        syncUnsubscribes(getEmails(unsubscribedMembers), c -> c.emailOptOut = true);
+
+        List<MemberInfo> cleanedMembers = mailchimpClient.getListMembers(communicationList.id, "cleaned", lastSync);
+        syncUnsubscribes(getEmails(cleanedMembers), c -> c.emailBounced = true);
       }
     }
   }
 
-  protected void syncUnsubscribes(List<MemberInfo> unsubscribes, Consumer<CrmContact> consumer) throws Exception {
-    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
-    CrmService crmService = env.primaryCrmService();
+  protected List<String> getEmails(List<MemberInfo> memberInfos) {
+    if (CollectionUtils.isEmpty(memberInfos)) {
+      return Collections.emptyList();
+    }
+    return memberInfos.stream().map(u -> u.email_address).filter(Objects::nonNull).map(String::toLowerCase).distinct().sorted().toList();
+  }
 
-    List<String> unsubscribeEmails = unsubscribes.stream().map(u -> u.email_address).filter(Objects::nonNull).distinct().sorted().toList();
+  protected void syncUnsubscribes(List<String> unsubscribeEmails, Consumer<CrmContact> contactConsumer) throws Exception {
     if (unsubscribeEmails.isEmpty()) {
       return;
     }
+    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
+    CrmService crmService = env.primaryCrmService();
     List<CrmContact> unsubscribeContacts = crmService.getContactsByEmails(unsubscribeEmails);
+    if (unsubscribeContacts.isEmpty()) {
+      return;
+    }
 
     int count = 0;
     int total = unsubscribeContacts.size();
@@ -161,7 +173,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, total);
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;
-      consumer.accept(updateContact);
+      contactConsumer.accept(updateContact);
       crmService.batchUpdateContact(updateContact);
     }
     crmService.batchFlush();
