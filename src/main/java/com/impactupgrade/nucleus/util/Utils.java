@@ -324,4 +324,23 @@ public class Utils {
 
     return null;
   }
+
+  public static String normalizeStreet(String street) {
+    if (Strings.isNullOrEmpty(street)) {
+      return "";
+    }
+
+    street = street.replace("Avenue", "Ave");
+    street = street.replace("Court", "Ct");
+    street = street.replace("Cove", "Cv");
+    street = street.replace("Drive", "Dr");
+    street = street.replace("Lane", "Ln");
+    street = street.replace("Place", "Pl");
+    street = street.replace("Ridge", "Rdg");
+    street = street.replace("Road", "Rd");
+    street = street.replace("Street", "St");
+    street = alphanumericOnly(street);
+
+    return street.toLowerCase(Locale.ROOT).trim();
+  }
 }
