@@ -348,6 +348,53 @@ public class EnvironmentConfig implements Serializable {
     public boolean recordOwnerFilter = true;
   }
 
+  public enum Operator {
+    //TODO: change values to EQ, NEQ etc to be more readable? (similar to FactsClient enum Operator?)
+    EQUAL_TO("=="),
+    NOT_EQUAL_TO("!="),
+    EQUALS_IGNORE_CASE("==*"),
+    NOT_EMPTY("!=''"); // ?
+
+    private static final Map<String, Operator> VALUES = new HashMap<>();
+
+    static {
+      for (Operator operator: values()) {
+        VALUES.put(operator.value, operator);
+      }
+    }
+
+    private final String value;
+    Operator(String value) {
+      this.value = value;
+    }
+    public String getValue() {
+      return this.value;
+    }
+
+    public static Operator fromValue(String value) {
+      return VALUES.get(value);
+    }
+  }
+
+  public static class CRMFieldCondition implements Serializable {
+    public String fieldName;
+    public String operator;
+    public String value;
+  }
+
+  public static class CRMFieldToTagMapping implements Serializable {
+    public List<CRMFieldCondition> conditions;
+    public String fieldName;
+    public boolean isSlug;
+    public String tagValue;
+  }
+
+  public static class CommunicationPlatformCRMFieldToTagConfiguration implements Serializable {
+    public List<CRMFieldToTagMapping> mappings = new ArrayList<>();
+  }
+
+  public CommunicationPlatformCRMFieldToTagConfiguration tagConfiguration = new CommunicationPlatformCRMFieldToTagConfiguration();
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // SIS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
