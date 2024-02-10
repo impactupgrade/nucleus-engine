@@ -10,7 +10,9 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -391,5 +393,36 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.interests = groupMap;
 
     return mcContact;
+  }
+
+  protected boolean evaluate(CrmContact crmContact, EnvironmentConfig.CRMFieldCondition crmFieldCondition) {
+    if (crmContact == null
+            || crmFieldCondition == null
+            || Strings.isNullOrEmpty(crmFieldCondition.fieldName)
+            || getCustomField(crmContact, crmFieldCondition.fieldName) == null
+            || EnvironmentConfig.Operator.fromValue(crmFieldCondition.operator) == null) {
+      return false;
+    }
+    EnvironmentConfig.Operator operator = EnvironmentConfig.Operator.fromValue(crmFieldCondition.operator);
+    String customFieldValue = getCustomField(crmContact, crmFieldCondition.fieldName);
+
+    return switch(operator) {
+      case EQUAL_TO ->  customFieldValue == crmFieldCondition.value;
+      case NOT_EQUAL_TO -> customFieldValue != crmFieldCondition.value;
+      case EQUALS_IGNORE_CASE -> customFieldValue.equalsIgnoreCase(crmFieldCondition.value);
+      case NOT_EMPTY -> StringUtils.isNotEmpty(customFieldValue);
+    };
+  }
+
+  //?
+  protected String getCustomField(CrmContact crmContact, String fieldName) {
+    return null;
+  }
+  protected String getTagValue(CrmContact crmContact, EnvironmentConfig.CRMFieldToTagMapping mapping) {
+    String tagValue = mapping.tagValue;
+    if (mapping.isSlug) {
+      tagValue = tagValue + Utils.toSlug(getCustomField(crmContact, mapping.fieldName));
+    }
+    return tagValue;
   }
 }
