@@ -66,7 +66,7 @@ public class EventBriteController {
         }
       }
 
-      case "event.created", "event.updated", "event.published" -> {
+      case /*"event.created", */"event.updated", "event.published" -> {
         EventBriteClient.Event event = eventBriteClient.getEvent(webhookPayload.apiUrl);
 
         CrmCampaign campaign = new CrmCampaign("", event.name.text, event.id);

@@ -349,8 +349,8 @@ public class EnvironmentConfig implements Serializable {
     public boolean syncEmergency = false;
   }
 
-  public EventBrite eventBrite = new EventBrite();
-  public static class EventBrite extends Platform {}
+  // secretKey = Eventbrite private token
+  public Platform eventBrite = new Platform();
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // FORMS
