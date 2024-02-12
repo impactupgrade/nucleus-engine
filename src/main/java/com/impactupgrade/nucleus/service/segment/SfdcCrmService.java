@@ -790,6 +790,7 @@ public class SfdcCrmService implements CrmService {
   public String insertCampaign(CrmCampaign crmCampaign) throws Exception {
     SObject campaign = new SObject("Campaign");
     campaign.setField("Name", crmCampaign.name);
+    setField(campaign, env.getConfig().salesforce.fieldDefinitions.campaignExternalReference, crmCampaign.externalReference);
     return sfdcClient.insert(campaign).getId();
   }
 
@@ -798,7 +799,7 @@ public class SfdcCrmService implements CrmService {
     SObject campaign = new SObject("Campaign");
     campaign.setId(crmCampaign.id);
     campaign.setField("Name", crmCampaign.name);
-    campaign.setField(env.getConfig().salesforce.fieldDefinitions.campaignExternalReference, crmCampaign.externalReference);
+    setField(campaign, env.getConfig().salesforce.fieldDefinitions.campaignExternalReference, crmCampaign.externalReference);
     sfdcClient.update(campaign);
   }
 

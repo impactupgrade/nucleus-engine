@@ -85,10 +85,6 @@ public class StripeController {
       return Response.status(500).build();
     }
 
-    // don't log the whole thing -- can be found in Stripe's dashboard -> Developers -> Webhooks
-    // log this within the new thread for traceability's sake
-    env.logJobInfo("received event {}: {}", event.getType(), event.getId());
-
     if (TestUtil.SKIP_NEW_THREADS) {
       processEvent(event.getType(), stripeObject, env);
     } else {
@@ -97,6 +93,8 @@ public class StripeController {
         try {
           String jobName = "Stripe Event";
           env.startJobLog(JobType.EVENT, "webhook", jobName, "Stripe");
+          // don't log the whole thing -- can be found in Stripe's dashboard -> Developers -> Webhooks
+          env.logJobInfo("received event {}: {}", event.getType(), event.getId());
           processEvent(event.getType(), stripeObject, env);
           env.endJobLog(JobStatus.DONE);
         } catch (Exception e) {
