@@ -91,16 +91,8 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     }
   }
 
-  //HELPERS
-  protected double calculateTotalAmount(List<RaiselyClient.DonationItem> items) {
-    double totalAmount = 0.0;
-    for (RaiselyClient.DonationItem item : items) {
-      totalAmount += item.amount / 100.0;
-    }
-    return totalAmount;
-  }
-
-  protected String parseDonationId(String description){
+  //TODO: move to utility class?
+  public String parseDonationId(String description){
     Pattern r = Pattern.compile("Donation \\((\\d+)\\).*");
     Matcher m = r.matcher(description);
     if (m.find()) {
@@ -110,4 +102,12 @@ public class RaiselyEnrichmentService implements EnrichmentService {
     }
   }
 
+  //HELPERS
+  protected double calculateTotalAmount(List<RaiselyClient.DonationItem> items) {
+    double totalAmount = 0.0;
+    for (RaiselyClient.DonationItem item : items) {
+      totalAmount += item.amount / 100.0;
+    }
+    return totalAmount;
+  }
 }

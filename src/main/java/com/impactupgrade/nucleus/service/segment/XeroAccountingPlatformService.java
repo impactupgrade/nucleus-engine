@@ -471,7 +471,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         invoice.setLineItems(getLineItems(transaction));
         invoice.setType(Invoice.TypeEnum.ACCREC); // Receive
 
-        invoice.setReference(transaction.paymentGatewayName + ":" + transaction.paymentGatewayTransactionId);
+        invoice.setReference(getReference(transaction));
         invoice.setStatus(Invoice.StatusEnum.AUTHORISED);
 
         return invoice;
@@ -498,6 +498,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
 
         return Collections.singletonList(lineItem);
+    }
+
+    protected String getReference(AccountingTransaction accountingTransaction) {
+        return accountingTransaction.paymentGatewayName + ":" + accountingTransaction.paymentGatewayTransactionId;
     }
 
     protected AccountingTransaction toAccountingTransaction(Invoice invoice) {
