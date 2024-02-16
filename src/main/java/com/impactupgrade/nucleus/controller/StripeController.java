@@ -389,7 +389,7 @@ public class StripeController {
       }
       return Response.temporaryRedirect(URI.create(successUrl)).build();
     } catch (StripeException e) {
-      env.logJobInfo("failed to update the source for {}", customerEmail, e);
+      env.logJobWarn("failed to update the source for {}", customerEmail, e);
       String error = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
       return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
     }

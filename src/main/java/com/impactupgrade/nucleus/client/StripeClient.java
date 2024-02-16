@@ -447,7 +447,7 @@ public class StripeClient {
         .setOriginalSource(originalSource)
         .setUsage(SourceCreateParams.Usage.REUSABLE)
         .build();
-    return Source.create(sourceCreateParams);
+    return Source.create(sourceCreateParams, requestOptions);
   }
 
   public void updateSubscriptionAmount(String subscriptionId, double dollarAmount) throws StripeException {
