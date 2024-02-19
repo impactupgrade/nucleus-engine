@@ -43,6 +43,10 @@ public interface BasicCrmService extends CrmService {
     return Collections.emptyList();
   }
 
+  default List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+    return Collections.emptyList();
+  }
+
   default List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
     return Collections.emptyList();
   }

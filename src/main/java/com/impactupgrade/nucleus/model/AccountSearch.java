@@ -8,8 +8,8 @@ public class AccountSearch extends AbstractSearch {
   // helpers
 
   public static AccountSearch byKeywords(String keywords) {
-    AccountSearch contactSearch = new AccountSearch();
-    contactSearch.keywords = keywords;
-    return contactSearch;
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.keywords = keywords;
+    return accountSearch;
   }
 }

@@ -141,10 +141,10 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
       for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
         List<MemberInfo> unsubscribedMembers = mailchimpClient.getListMembers(communicationList.id, "unsubscribed", lastSync);
-        syncUnsubscribes(getEmails(unsubscribedMembers), c -> c.emailOptOut = true);
+        syncUnsubscribed(getEmails(unsubscribedMembers));
 
         List<MemberInfo> cleanedMembers = mailchimpClient.getListMembers(communicationList.id, "cleaned", lastSync);
-        syncUnsubscribes(getEmails(cleanedMembers), c -> c.emailBounced = true);
+        syncCleaned(getEmails(cleanedMembers));
       }
     }
   }
@@ -156,20 +156,28 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     return memberInfos.stream().map(u -> u.email_address).filter(Objects::nonNull).map(String::toLowerCase).distinct().sorted().toList();
   }
 
-  protected void syncUnsubscribes(List<String> unsubscribeEmails, Consumer<CrmContact> contactConsumer) throws Exception {
-    if (unsubscribeEmails.isEmpty()) {
+  protected void syncUnsubscribed(List<String> unsubscribedEmails) throws Exception {
+    updateContactsByEmails(unsubscribedEmails, c -> c.emailOptOut = true);
+  }
+
+  protected void syncCleaned(List<String> cleanedEmails) throws Exception {
+    updateContactsByEmails(cleanedEmails, c -> c.emailBounced = true);
+  }
+
+  protected void updateContactsByEmails(List<String> emails, Consumer<CrmContact> contactConsumer) throws Exception {
+    if (emails.isEmpty()) {
       return;
     }
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
-    List<CrmContact> unsubscribeContacts = crmService.getContactsByEmails(unsubscribeEmails);
-    if (unsubscribeContacts.isEmpty()) {
+    List<CrmContact> contacts = crmService.getContactsByEmails(emails);
+    if (contacts.isEmpty()) {
       return;
     }
 
     int count = 0;
-    int total = unsubscribeContacts.size();
-    for (CrmContact crmContact : unsubscribeContacts) {
+    int total = contacts.size();
+    for (CrmContact crmContact : contacts) {
       env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, total);
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;

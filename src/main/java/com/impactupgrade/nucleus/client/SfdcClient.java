@@ -146,6 +146,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(names, "Name", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
   }
 
+  public List<SObject> getAccountsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
+    //TODO: check if email custom field is defined in config?
+    return this.getBulkResults(emails, List.of("Email__c"), "Account", this.ACCOUNT_FIELDS, this.env.getConfig().salesforce.customQueryFields.account, extraFields);
+  }
+
   public List<SObject> searchAccounts(AccountSearch accountSearch, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<String> clauses = new ArrayList<>();
