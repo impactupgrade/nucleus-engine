@@ -72,6 +72,11 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
   public String insertAccount(CrmAccount crmAccount) throws Exception {
     return null;
   }

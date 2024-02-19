@@ -133,6 +133,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     Contact contact = hsClient.contact().read(id, contactFields);
     CrmContact crmContact = toCrmContact(contact);
