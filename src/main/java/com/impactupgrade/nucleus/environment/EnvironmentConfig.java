@@ -349,7 +349,6 @@ public class EnvironmentConfig implements Serializable {
   }
 
   public enum Operator {
-    //TODO: change values to EQ, NEQ etc to be more readable? (similar to FactsClient enum Operator?)
     EQUAL_TO("=="),
     NOT_EQUAL_TO("!="),
     EQUALS_IGNORE_CASE("==*"),
@@ -376,24 +375,24 @@ public class EnvironmentConfig implements Serializable {
     }
   }
 
-  public static class CRMFieldCondition implements Serializable {
-    public String fieldName;
+  public static class CrmFieldToEmailField implements Serializable {
     public String operator;
     public String value;
   }
 
-  public static class CRMFieldToTagMapping implements Serializable {
-    public List<CRMFieldCondition> conditions;
-    public String fieldName;
-    public boolean isSlug;
+  public static class CrmFieldToEmailTag implements Serializable {
+    public String customFieldName;
+    //TODO: use single item instead of list if we don't need logical "and" for +1 conditions?
+    public List<CrmFieldToEmailField> crmFieldToEmailFieldConditions;
     public String tagValue;
+    public boolean isSlug;
   }
 
   public static class CommunicationPlatformCRMFieldToTagConfiguration implements Serializable {
-    public List<CRMFieldToTagMapping> mappings = new ArrayList<>();
+    public List<CrmFieldToEmailTag> crmFieldToEmailTags = new ArrayList<>();
   }
 
-  public CommunicationPlatformCRMFieldToTagConfiguration tagConfiguration = new CommunicationPlatformCRMFieldToTagConfiguration();
+  public CommunicationPlatformCRMFieldToTagConfiguration emailTagsConfiguration = new CommunicationPlatformCRMFieldToTagConfiguration();
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // SIS
