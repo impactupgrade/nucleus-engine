@@ -3,8 +3,8 @@ package com.impactupgrade.nucleus.service.segment;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -102,7 +102,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public Map<String, String> getContactLists() throws Exception {
+    public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
         return Collections.emptyMap();
     }
 

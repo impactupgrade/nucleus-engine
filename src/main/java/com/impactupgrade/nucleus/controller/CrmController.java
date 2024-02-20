@@ -16,6 +16,7 @@ import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -507,12 +508,21 @@ public class CrmController {
   @Produces(MediaType.APPLICATION_JSON)
   public Response getContactLists(
           @QueryParam("crmType") String crmType,
+          @QueryParam("listType") String _listType,
           @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
+
+    CrmContactListType listType;
+    if (Strings.isNullOrEmpty(_listType)) {
+      listType = CrmContactListType.ALL;
+    } else {
+      listType = CrmContactListType.valueOf(_listType.trim().toUpperCase(Locale.ROOT));
+    }
+
     CrmService crmService = getCrmService(env, crmType);
-    Map<String, String> lists = crmService.getContactLists();
+    Map<String, String> lists = crmService.getContactLists(listType);
 
     return Response.status(200).entity(lists).build();
   }

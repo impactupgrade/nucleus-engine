@@ -8,6 +8,7 @@ import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -172,7 +173,7 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
-  public Map<String, String> getContactLists() throws Exception {
+  public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
     return null;
   }
 

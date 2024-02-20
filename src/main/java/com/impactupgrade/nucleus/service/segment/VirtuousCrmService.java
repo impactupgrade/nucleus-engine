@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
@@ -532,7 +533,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, String> getContactLists() throws Exception {
+  public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
     return Collections.emptyMap();
   }
 
