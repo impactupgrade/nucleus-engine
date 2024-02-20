@@ -191,7 +191,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   public List<SObject> getCampaigns(String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) + " from campaign";
+    String query = "SELECT " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) + " FROM Campaign ORDER BY Name ASC";
     return queryListAutoPaged(query);
   }
 
