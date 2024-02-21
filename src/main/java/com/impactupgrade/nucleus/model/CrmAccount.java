@@ -11,6 +11,8 @@ public class CrmAccount extends CrmRecord {
   public CrmAddress billingAddress = new CrmAddress();
   public String description;
   public String email;
+  public Boolean emailOptOut;
+  public Boolean emailBounced;
   public CrmAddress mailingAddress = new CrmAddress();
   public String name;
   public String ownerId;
