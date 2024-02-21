@@ -416,6 +416,12 @@ public class SfdcCrmService implements CrmService {
     if (crmAccount.recordType != null && accountTypeToRecordTypeIds.containsKey(crmAccount.recordType)) {
       account.setField("RecordTypeId", accountTypeToRecordTypeIds.get(crmAccount.recordType));
     }
+    if (crmAccount.emailOptOut != null && crmAccount.emailOptOut) {
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut, true);
+    }
+    if (crmAccount.emailBounced != null && crmAccount.emailBounced) {
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailBounced, true);
+    }
 
     for (String fieldName : crmAccount.crmRawFieldsToSet.keySet()) {
       account.setField(fieldName, crmAccount.crmRawFieldsToSet.get(fieldName));
