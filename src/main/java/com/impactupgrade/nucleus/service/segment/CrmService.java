@@ -147,6 +147,10 @@ public interface CrmService extends SegmentService {
   // BATCH OPERATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  default void batchUpdateAccount(CrmAccount crmAccount) throws Exception {
+    // default to simply updating one-by-one for CRMs that don't support batching
+    updateAccount(crmAccount);
+  }
   default void batchUpdateContact(CrmContact crmContact) throws Exception {
     // default to simply updating one-by-one for CRMs that don't support batching
     updateContact(crmContact);

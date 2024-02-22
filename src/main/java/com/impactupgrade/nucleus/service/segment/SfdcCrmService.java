@@ -167,6 +167,14 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public void batchUpdateAccount(CrmAccount crmAccount) throws Exception {
+    SObject account = new SObject("Account");
+    account.setId(crmAccount.id);
+    setAccountFields(account, crmAccount);
+    sfdcClient.batchUpdate(account);
+  }
+
+  @Override
   public void deleteAccount(String accountId) throws Exception {
     SObject account = new SObject("Account");
     account.setId(accountId);

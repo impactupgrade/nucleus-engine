@@ -10,19 +10,16 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.sforce.soap.partner.sobject.SObject;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -192,8 +189,9 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       CrmAccount updateAccount = new CrmAccount();
       updateAccount.id = account.id;
       accountConsumer.accept(updateAccount);
-      crmService.updateAccount(updateAccount);
+      crmService.batchUpdateAccount(updateAccount);
     }
+    crmService.batchFlush();
   }
 
   @Override
