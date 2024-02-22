@@ -925,8 +925,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
 
     values = values.stream().filter(v -> !Strings.isNullOrEmpty(v)).toList();
+    conditionFieldNames = conditionFieldNames.stream().filter(f -> !Strings.isNullOrEmpty(f)).toList();
 
-    if (values.isEmpty()) {
+    if (values.isEmpty() || conditionFieldNames.isEmpty()) {
       return List.of();
     }
 
