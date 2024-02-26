@@ -133,6 +133,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
   // Separate method, allowing orgs to add in (or completely override) the defaults.
   // NOTE: Only use alphanumeric and _ chars! Some providers, like SendGrid, are using custom fields for
   //  tags and have limitations on field names.
+  // IMPORTANT: At the moment, any new tag added here must be added to EnvironmentConfig.CommunicationPlatform.controlledTags!
   protected Set<String> buildContactTags(CrmContact crmContact, List<String> contactCampaignNames,
       EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
     Set<String> tags = new HashSet<>();
@@ -144,14 +145,6 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     if (crmContact.lastDonationDate != null) {
       tags.add("donor");
     }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // DEMOGRAPHIC INFO
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // TODO: Would be great to have age, but the field (or "birthdate") tends to be custom within SFDC.
-//      char contactAgeGroup = Integer.toString(primaryCrmService.getAge(contact)).charAt(0);
-//      addTagToContact(listId, contact, "Age: " + contactAgeGroup + "0 - " + contactAgeGroup + "9");
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // INTERNAL INFO
