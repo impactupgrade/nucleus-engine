@@ -97,7 +97,6 @@ public class MailchimpClient {
           upsertMemberMethod.mapping.putAll(contact.mapping);
           upsertMemberMethod.merge_fields.mapping.putAll(contact.merge_fields.mapping);
           upsertMemberMethod.interests.mapping.putAll(contact.interests.mapping);
-          upsertMemberMethod.tags = contact.tags;
           return upsertMemberMethod;
         })
         .collect(Collectors.toList());

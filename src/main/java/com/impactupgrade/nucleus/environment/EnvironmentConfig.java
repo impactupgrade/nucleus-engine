@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -304,7 +305,12 @@ public class EnvironmentConfig implements Serializable {
   }
   public static class CommunicationPlatform extends Platform {
     public List<CommunicationList> lists = new ArrayList<>();
-    public Set<String> tagsToPreserve = new HashSet<>();
+    // The set of tags that this instance of Nucleus controls, which defines which tags we're allowed to remove from
+    // the contact once the conditions are no longer met. This ensures any of the client's manually-defined tags
+    // are preserved.
+    // TODO: Until we introduce something like PIKL, there's not a great way to define this in environment-default.json
+    //  since it needs to happen within the list of individual instances.
+    public Set<String> controlledTags = new HashSet<>(Arrays.asList("donor", "owner_", "campaign_", "account_type_"));
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;

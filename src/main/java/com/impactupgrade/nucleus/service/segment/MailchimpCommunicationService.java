@@ -262,12 +262,25 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   protected String updateTagsBatch(String listId, List<MailchimpClient.EmailContact> emailContacts,
       MailchimpClient mailchimpClient, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
 
+    // filter down the tags-to-remove to only the ones we actually have control over
     emailContacts.stream()
             .filter(emailContact -> CollectionUtils.isNotEmpty(emailContact.inactiveTags()))
             .forEach(emailContact -> {
               emailContact.inactiveTags().removeAll(emailContact.activeTags());
-              emailContact.inactiveTags().removeAll(mailchimpConfig.tagsToPreserve);
+              emailContact.inactiveTags().removeIf(t -> {
+                boolean controlled = false;
+                for (String controlledTag : mailchimpConfig.controlledTags) {
+                  if (t.contains(controlledTag)) {
+                    controlled = true;
+                    break;
+                  }
+                }
+                // backwards -- we're taking the whole list of tags we could potentially remove, seeing if any of them
+                // match our controlledList, and removing any that are NOT controlled by Nucleus
+                return !controlled;
+              });
             });
+
     try {
       return mailchimpClient.updateContactTagsBatch(listId, emailContacts);
     } catch (Exception e) {
