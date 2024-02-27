@@ -969,6 +969,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return sfdcClient.getEmailAccounts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmAccount).collect(Collectors.toList());
+  }
+
+  @Override
   public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return sfdcClient.getSmsContacts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
   }

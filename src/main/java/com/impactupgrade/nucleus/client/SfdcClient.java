@@ -535,6 +535,20 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return contacts;
   }
 
+  public Collection<SObject> getEmailAccounts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = " and SystemModStamp >= " + (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")).format(updatedSince.getTime());
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where Email__c!='' and RecordType.Name!='Household Account' and (Email_Opt_In__c=true or HasOptedOutOfEmail_Marketing__c=true or Hard_Bounce__c=true)" + updatedSinceClause + filter;
+    return queryListAutoPaged(query);
+  }
+
   protected List<SObject> queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " and " + filter;

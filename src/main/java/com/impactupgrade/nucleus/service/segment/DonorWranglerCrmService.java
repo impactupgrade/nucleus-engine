@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -135,6 +136,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   @Override
   public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     // TODO: lastUpdate field now available
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return Collections.emptyList();
   }
 

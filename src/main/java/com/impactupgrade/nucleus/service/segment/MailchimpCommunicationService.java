@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.impactupgrade.nucleus.client.MailchimpClient.FIRST_NAME;
 import static com.impactupgrade.nucleus.client.MailchimpClient.LAST_NAME;
@@ -52,9 +53,42 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         mergeFieldsNameToTag.clear();
 
         List<CrmContact> crmContacts = getEmailContacts(lastSync, communicationList);
-        syncContacts(crmContacts, mailchimpConfig, communicationList);
+
+        Set<String> seenEmails = crmContacts.stream().map(c -> c.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+        List<CrmContact> fauxContacts = env.primaryCrmService().getEmailAccounts(lastSync, communicationList).stream()
+                .filter(account -> !seenEmails.contains(account.email.toLowerCase(Locale.ROOT)))
+                .map(this::asCrmContact)
+                .toList();
+        List<CrmContact> contacts = Stream.concat(crmContacts.stream(), fauxContacts.stream()).toList();
+
+        syncContacts(contacts, mailchimpConfig, communicationList);
       }
     }
+  }
+
+  protected CrmContact asCrmContact(CrmAccount crmAccount) {
+    CrmContact crmContact = new CrmContact();
+    crmContact.account = crmAccount;
+    crmContact.crmRawObject = crmAccount.crmRawObject;
+    crmContact.email = crmAccount.email;
+    crmContact.emailBounced = crmAccount.emailBounced;
+    //TODO: crmContact.emailOptIn = ; ?
+    crmContact.emailOptOut = crmAccount.emailOptOut;
+    crmContact.firstName = crmAccount.name;
+    crmContact.mailingAddress = crmAccount.mailingAddress;
+    if (crmContact.mailingAddress == null || Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
+      crmContact.mailingAddress = crmAccount.billingAddress;
+    }
+    // TODO
+//    crmContact.firstDonationDate = ;
+//    crmContact.lastDonationDate = ;
+//    crmContact.largestDonationAmount = ;
+//    crmContact.totalDonationAmount = ;
+//    crmContact.numDonations = ;
+//    crmContact.totalDonationAmountYtd = ;
+//    crmContact.numDonationsYtd = ;
+//    crmContact.ownerName = ;
+    return crmContact;
   }
 
   protected void syncContacts(List<CrmContact> crmContacts, EnvironmentConfig.Mailchimp mailchimpConfig,

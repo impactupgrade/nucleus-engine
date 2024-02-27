@@ -170,6 +170,7 @@ public interface CrmService extends SegmentService {
   // COMMUNICATION SYNC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
+  List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
