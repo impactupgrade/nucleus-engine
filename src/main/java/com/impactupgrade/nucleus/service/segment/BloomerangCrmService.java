@@ -375,6 +375,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
   public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return Collections.emptyList();
   }

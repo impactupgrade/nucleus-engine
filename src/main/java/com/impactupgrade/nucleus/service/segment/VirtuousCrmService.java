@@ -493,6 +493,11 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
   public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<VirtuousClient.Contact> contacts = virtuousClient.getContactsModifiedAfter(updatedSince);
     if (CollectionUtils.isEmpty(contacts)) {
