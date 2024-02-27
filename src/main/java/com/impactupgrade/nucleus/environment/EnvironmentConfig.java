@@ -310,7 +310,8 @@ public class EnvironmentConfig implements Serializable {
     // are preserved.
     // TODO: Until we introduce something like PIKL, there's not a great way to define this in environment-default.json
     //  since it needs to happen within the list of individual instances.
-    public Set<String> controlledTags = new HashSet<>(Arrays.asList("donor", "owner_", "campaign_", "account_type_"));
+    public Set<String> defaultControlledTags = new HashSet<>(Arrays.asList("donor", "owner_", "campaign_", "account_type_"));
+    public Set<String> customControlledTags = new HashSet<>();
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;

@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.impactupgrade.nucleus.client.MailchimpClient.FIRST_NAME;
 import static com.impactupgrade.nucleus.client.MailchimpClient.LAST_NAME;
@@ -268,8 +269,11 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
             .forEach(emailContact -> {
               emailContact.inactiveTags().removeAll(emailContact.activeTags());
               emailContact.inactiveTags().removeIf(t -> {
+                List<String> controlledTags = Stream.concat(
+                    mailchimpConfig.defaultControlledTags.stream(), mailchimpConfig.customControlledTags.stream()
+                ).toList();
                 boolean controlled = false;
-                for (String controlledTag : mailchimpConfig.controlledTags) {
+                for (String controlledTag : controlledTags) {
                   if (t.contains(controlledTag)) {
                     controlled = true;
                     break;
