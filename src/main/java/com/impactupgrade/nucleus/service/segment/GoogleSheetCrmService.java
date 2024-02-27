@@ -3,6 +3,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -113,7 +114,12 @@ public class GoogleSheetCrmService implements BasicCrmService {
 
     @Override
     public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-        return null;
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+        return Collections.emptyList();
     }
 
     @Override

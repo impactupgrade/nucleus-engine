@@ -1005,6 +1005,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return Collections.emptyList();
+  }
+
+  @Override
   public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<Filter> filters1 = new ArrayList<>();
     List<Filter> filters2 = new ArrayList<>();

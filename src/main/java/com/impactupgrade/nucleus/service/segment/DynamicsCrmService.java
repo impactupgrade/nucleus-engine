@@ -154,7 +154,12 @@ public class DynamicsCrmService implements BasicCrmService {
 
   @Override
   public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return null;
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return Collections.emptyList();
   }
 
   @Override
