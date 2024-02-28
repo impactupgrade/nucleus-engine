@@ -33,6 +33,7 @@ import com.stripe.model.RefundCollection;
 import com.stripe.model.Source;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
+import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.BalanceTransactionListParams;
 import com.stripe.param.ChargeCreateParams;
@@ -60,6 +61,7 @@ import com.stripe.param.SubscriptionCancelParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionListParams;
 import com.stripe.param.SubscriptionUpdateParams;
+import com.stripe.param.checkout.SessionCreateParams;
 import com.stripe.param.common.EmptyParam;
 
 import java.text.DecimalFormat;
@@ -793,6 +795,34 @@ public class StripeClient {
     invoice = invoice.sendInvoice(params, requestOptions);
 
     return invoice;
+  }
+
+  public Session createCheckoutSession(long totalAmount, String productName, String successUrl, String cancelUrl) throws StripeException {
+    SessionCreateParams params = SessionCreateParams.builder()
+//        .setUiMode(SessionCreateParams.UiMode.EMBEDDED)
+        .setMode(SessionCreateParams.Mode.PAYMENT)
+        .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}")
+        .setCancelUrl(cancelUrl)
+        .setAutomaticTax(
+            SessionCreateParams.AutomaticTax.builder()
+                .setEnabled(true)
+                .build()
+        ).addLineItem(
+            SessionCreateParams.LineItem.builder()
+                .setQuantity(1L)
+                .setPriceData(
+                    SessionCreateParams.LineItem.PriceData.builder()
+                        .setProductData(
+                            SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                .setName(productName)
+                                .build()
+                        ).setCurrency("usd")
+                        .setUnitAmount(totalAmount)
+                        .build()
+                )
+                .build())
+        .build();
+    return Session.create(params, requestOptions);
   }
 
   private abstract class Retriever<T> {

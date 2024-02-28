@@ -30,6 +30,7 @@ import com.stripe.model.Payout;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.Subscription;
+import com.stripe.model.checkout.Session;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -44,7 +45,9 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -392,6 +395,35 @@ public class StripeController {
       env.logJobWarn("failed to update the source for {}", customerEmail, e);
       String error = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
       return Response.temporaryRedirect(URI.create(failUrl + "?error=" + error)).build();
+    }
+  }
+
+  @Path("/checkout-session")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response checkoutSession(
+      @FormParam(value = "totalAmount") Long totalAmount,
+      @FormParam(value = "productName") String productName,
+      @FormParam(value = "successUrl") String successUrl,
+      @FormParam(value = "cancelUrl") String cancelUrl,
+      @Context HttpServletRequest request
+  ) {
+    Environment env = envFactory.init(request);
+    StripeClient stripeClient = env.stripeClient();
+
+    env.logJobInfo("checkoutSession: totalAmount={} productName={} successUrl={} cancelUrl={}", totalAmount, productName, successUrl, cancelUrl);
+
+    Map<String, String> responseMap = new HashMap<>();
+    try {
+      Session session = stripeClient.createCheckoutSession(totalAmount, productName, successUrl, cancelUrl);
+      responseMap.put("clientSecret", session.getRawJsonObject().getAsJsonPrimitive("client_secret").getAsString());
+      return Response.ok(responseMap).build();
+    } catch (StripeException e) {
+      env.logJobWarn("failed to create the checkout session", e);
+      String error = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+      responseMap.put("error", error);
+      return Response.serverError().entity(responseMap).build();
     }
   }
 }
