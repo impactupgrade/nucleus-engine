@@ -403,7 +403,7 @@ public class StripeController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response checkoutSession(
-      @FormParam(value = "totalAmount") Long totalAmount,
+      @FormParam(value = "totalAmount") Double totalAmount,
       @FormParam(value = "productName") String productName,
       @FormParam(value = "successUrl") String successUrl,
       @FormParam(value = "cancelUrl") String cancelUrl,
@@ -416,7 +416,7 @@ public class StripeController {
 
     Map<String, String> responseMap = new HashMap<>();
     try {
-      Session session = stripeClient.createCheckoutSession(totalAmount, productName, successUrl, cancelUrl);
+      Session session = stripeClient.createCheckoutSession((long) (totalAmount * 100), productName, successUrl, cancelUrl);
       responseMap.put("clientSecret", session.getRawJsonObject().getAsJsonPrimitive("client_secret").getAsString());
       return Response.ok(responseMap).build();
     } catch (StripeException e) {
