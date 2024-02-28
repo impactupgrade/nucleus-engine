@@ -92,7 +92,11 @@ public class RaiselyEnrichmentService implements EnrichmentService {
   }
 
   //TODO: move to utility class?
-  public String parseDonationId(String description){
+  public String parseDonationId(String description) {
+    if (Strings.isNullOrEmpty(description)) {
+      return null;
+    }
+
     Pattern r = Pattern.compile("Donation \\((\\d+)\\).*");
     Matcher m = r.matcher(description);
     if (m.find()) {
