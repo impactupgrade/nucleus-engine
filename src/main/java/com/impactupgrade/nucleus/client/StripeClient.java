@@ -805,7 +805,7 @@ public class StripeClient {
         .setCancelUrl(cancelUrl)
         .setAutomaticTax(
             SessionCreateParams.AutomaticTax.builder()
-                .setEnabled(true)
+                .setEnabled(false) // TODO: will likely need to be configurable in the future, at least for commercial uses
                 .build()
         ).addLineItem(
             SessionCreateParams.LineItem.builder()
