@@ -68,10 +68,10 @@ public class MinistryByTextController {
   /**
    * The Message Status webhook is triggered as a message sent from an Account progresses to a Subscriber.
    */
-  @Path("/sms/status")
+  @Path("/outbound/sms/status")
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
-  public Response smsStatusWebhook(
+  public Response outboundSmsWebhook(
       MessageStatusWebhookData messageStatusWebhookData,
       @Context HttpServletRequest request
   ) throws Exception {
