@@ -150,11 +150,13 @@ public class MinistryByTextClient extends OAuthClient {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CallbackSetting {
     public String callBackUrl;
+    public String authenticationType;
 
     @Override
     public String toString() {
       return "CallbackSetting{" +
           "callBackUrl='" + callBackUrl + '\'' +
+          ", authenticationType='" + authenticationType + '\'' +
           '}';
     }
   }
@@ -162,11 +164,13 @@ public class MinistryByTextClient extends OAuthClient {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class StatusSetting {
     public String statusUrl;
+    public String authenticationType;
 
     @Override
     public String toString() {
       return "StatusSetting{" +
           "statusUrl='" + statusUrl + '\'' +
+          ", authenticationType='" + authenticationType + '\'' +
           '}';
     }
   }
