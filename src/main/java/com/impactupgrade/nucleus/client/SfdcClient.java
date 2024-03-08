@@ -537,20 +537,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return contacts;
   }
 
-  public Collection<SObject> getEmailAccounts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
-    String updatedSinceClause = "";
-    if (updatedSince != null) {
-      updatedSinceClause = " and SystemModStamp >= " + (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")).format(updatedSince.getTime());
-    }
-
-    if (!Strings.isNullOrEmpty(filter)) {
-      filter = " and " + filter;
-    }
-
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where Email__c!='' and RecordType.Name!='Household Account' and (Email_Opt_In__c=true or HasOptedOutOfEmail_Marketing__c=true or Hard_Bounce__c=true)" + updatedSinceClause + filter;
-    return queryListAutoPaged(query);
-  }
-
   protected List<SObject> queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " and " + filter;
@@ -576,7 +562,45 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     // IMPORTANT: Order by CreatedDate ASC, ensuring this is FIFO for contacts sharing the same email address.
     // The oldest record is typically the truth.
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email != null" + updatedSinceClause + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
+    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email!=''" + updatedSinceClause + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
+    return queryListAutoPaged(query);
+  }
+
+  public Collection<SObject> getEmailAccounts(Calendar updatedSince, String filter, String... extraFields)
+      throws ConnectionException, InterruptedException {
+    String emailField = env.getConfig().salesforce.fieldDefinitions.accountEmail;
+    if (Strings.isNullOrEmpty(emailField)) {
+      return Collections.emptyList();
+    }
+
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = " and SystemModStamp >= " + (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")).format(updatedSince.getTime());
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " and " + filter;
+    }
+
+    // If env.json defines an emailOptIn, automatically factor that into the query.
+    // IMPORTANT: If env.json defines emailOptOut/emailBounced, also include those contacts in this query! This might seem backwards,
+    // but we need them in the results so that we can archive them in Mailchimp.
+    List<String> clauses = new ArrayList<>();
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn)) {
+      clauses.add(env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn + "=TRUE");
+
+      // ONLY ADD THESE IF WE'RE INCLUDING THE ABOVE OPT-IN FILTER! Otherwise, some orgs only have opt-out defined,
+      // and we'd effectively be syncing ONLY unsubscribes.
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut + "=TRUE");
+      }
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailBounced)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.accountEmailBounced + "=TRUE");
+      }
+    }
+    String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
+
+    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where " + emailField + "!=''" + updatedSinceClause + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
     return queryListAutoPaged(query);
   }
 
