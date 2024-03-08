@@ -1,11 +1,14 @@
 package com.impactupgrade.nucleus.controller;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.util.Utils;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -15,8 +18,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
-import java.util.Map;
+import java.util.Optional;
 
 import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityType.SMS;
 
@@ -27,7 +31,6 @@ import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityTy
 public class MinistryByTextController {
 
   private static final String DATE_FORMAT = "yyyy-MM-dd";
-  private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"; 
 
   protected final EnvironmentFactory envFactory;
 
@@ -47,18 +50,22 @@ public class MinistryByTextController {
   ) throws Exception {
     Environment env = envFactory.init(request);
 
+    if (!"messagereceived".equalsIgnoreCase(inboundMessageWebhookData.type)) {
+      return Response.ok().build();
+    }
+
     String jobName = "SMS Inbound";
     env.startJobLog(JobType.EVENT, null, jobName, "MBT");
 
-    // Using combination of subscriber number and today's date 
-    // as a conversation id 
-    // to group all user's messages for current day
+    // Using combination of subscriber number and today's date as a conversation id to group all user's messages for current day
+    String date = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(Utils.now(env.getConfig().timezoneId));
     String conversationId = inboundMessageWebhookData.subscriberNo  + "::" + new SimpleDateFormat(DATE_FORMAT).format(new Date());
-    env.activityService().upsertActivity(
+    env.activityService().upsertActivityFromPhoneNumber(
+        inboundMessageWebhookData.subscriberNo,
         SMS,
-        conversationId, // TODO: use customParams to contain conversation id?
-        inboundMessageWebhookData.externalReferenceId,
-        inboundMessageWebhookData.message); 
+        conversationId,
+        inboundMessageWebhookData.message
+    );
 
     env.endJobLog(JobStatus.DONE);
 
@@ -77,18 +84,27 @@ public class MinistryByTextController {
   ) throws Exception {
     Environment env = envFactory.init(request);
 
+    if (!"Delivered".equalsIgnoreCase(messageStatusWebhookData.statusCodeDescription)) {
+      return Response.ok().build();
+    }
+
     String jobName = "SMS Status";
     env.startJobLog(JobType.EVENT, null, jobName, "MBT");
 
-    // Using combination of msisdn and today's date 
-    // as a conversation id 
-    // to group all user's messages' statuses for current day
-    String conversationId = messageStatusWebhookData.msisdn  + "::" + new SimpleDateFormat(DATE_FORMAT).format(new Date());
-    env.activityService().upsertActivity(
-        SMS,
-        conversationId, // TODO: use customParams to contain conversation id?
-        messageStatusWebhookData.messageId,
-        messageStatusWebhookData.message);
+    Optional<CrmContact> crmContact = env.primaryCrmService()
+        .searchContacts(ContactSearch.byPhone(messageStatusWebhookData.subscriberNo)).getSingleResult();
+    if (crmContact.isPresent()) {
+      // Using combination of msisdn and today's date as a conversation id to group all user's messages' statuses for current day
+      String conversationId = messageStatusWebhookData.subscriberNo + "::" + new SimpleDateFormat(DATE_FORMAT).format(new Date());
+      env.activityService().upsertActivityFromPhoneNumber(
+          messageStatusWebhookData.subscriberNo,
+          SMS,
+          conversationId,
+          messageStatusWebhookData.message
+      );
+    } else {
+      env.logJobWarn("no CRM contact found for phone number: {}", messageStatusWebhookData.subscriberNo);
+    }
 
     env.endJobLog(JobStatus.DONE);
 
@@ -97,35 +113,21 @@ public class MinistryByTextController {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static final class InboundMessageWebhookData {
-    public String externalReferenceId;
+    @JsonProperty("Type")
     public String type;
+    @JsonProperty("Message")
     public String message;
+    @JsonProperty("SubscriberNo")
     public String subscriberNo;
-    public String groupName;
-    public String groupId;
-    public String communicationCode;
-    public String messageType;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATE_TIME_FORMAT)
-    public Date receivedTime;
-    // Every message received sends the data shown in sample to the target URL. 
-    // The customParams parameters may be specified and will be implemented by MBT.
-    public Map<String, String> customParams;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static final class MessageStatusWebhookData {
-    public String accountId;
-    public String message;
-    public String msisdn;
-    public String groupName;
-    public String groupId;
-    public String communicationCode;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATE_TIME_FORMAT)
-    public Date deliveredTime;
-    public Map<String, String> properties;
-    public String statusCode;
+    @JsonProperty("StatusCodeDescription")
     public String statusCodeDescription;
-    public String messageId;
-    public String referenceId;
+    @JsonProperty("Message")
+    public String message;
+    @JsonProperty("SubscriberNo")
+    public String subscriberNo;
   }
 }

@@ -324,11 +324,12 @@ public class TwilioController {
 
     switch (eventType) {
       case "onMessageAdded":
-        env.activityService().upsertActivity(
+        env.activityService().upsertActivityFromPhoneNumber(
+            author, // TODO: Won't this fail to find a record if the author was the organization's number, not the outside recipient?
             SMS, 
             conversationSid, 
-            messageSid, 
-            body);
+            body
+        );
         env.endJobLog(DONE);
         return Response.ok().build();
       default:

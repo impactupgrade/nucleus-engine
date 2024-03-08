@@ -95,10 +95,10 @@ public class MailchimpController {
       // as a conversation id 
       Date sentAt = Date.from(Instant.ofEpochSecond(event.message.timestamp));
       String conversationId = event.message.sender + "::" + event.message.email + "::" + new SimpleDateFormat(DATE_FORMAT).format(sentAt);
-      env.activityService().upsertActivity(
+      env.activityService().upsertActivityFromEmail(
+          event.message.email,
           EMAIL,
           conversationId,
-          event.message.id,
           event.message.subject); // using subject instead of message body (body n\a in the webhook's payload)
     } else {
       env.logJobInfo("skipping event type {}...", event.eventType);

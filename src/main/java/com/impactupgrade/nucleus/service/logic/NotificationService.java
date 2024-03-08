@@ -94,9 +94,18 @@ public class NotificationService {
     env.logJobInfo("attaching a Task CRM notification to {} and assigning to {}", targetId, assignTo);
 
     crmService.insertActivity(new CrmActivity(
-        targetId, assignTo,
-        notification.taskSubject, notification.taskBody,
-        CrmActivity.Type.TASK, CrmActivity.Status.TO_DO, CrmActivity.Priority.MEDIUM, dueDate
+        null,
+        targetId,
+        assignTo,
+        notification.taskSubject,
+        notification.taskBody,
+        CrmActivity.Type.TASK,
+        CrmActivity.Status.TO_DO,
+        CrmActivity.Priority.MEDIUM,
+        dueDate,
+        null,
+        null,
+        null
     ));
   }
 

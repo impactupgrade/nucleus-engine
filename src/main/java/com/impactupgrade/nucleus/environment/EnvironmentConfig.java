@@ -231,6 +231,7 @@ public class EnvironmentConfig implements Serializable {
     public Set<String> lead = new HashSet<>();
     public Set<String> donation = new HashSet<>();
     public Set<String> recurringDonation = new HashSet<>();
+    public Set<String> task = new HashSet<>();
     public Set<String> user = new HashSet<>();
   }
 

@@ -71,6 +71,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   protected String RECURRINGDONATION_FIELDS;
   protected String USER_FIELDS;
   protected String REPORT_FIELDS;
+  protected String TASK_FIELDS;
 
   public SfdcClient(Environment env) {
     this(
@@ -107,6 +108,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId, Owner.Id, Owner.IsActive";
     USER_FIELDS = "id, name, firstName, lastName, email, phone";
     REPORT_FIELDS = "Id, Name";
+    TASK_FIELDS = "Id, WhoId, OwnerId, Subject, description, status, priority, activityDate";
 
     if (npsp) {
       // TODO: Record Types are not NPSP specific, but we have yet to see them in a commercial context. IE, NPSP always
@@ -887,10 +889,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
-  protected static final String TASK_FIELDS = "Id, WhoId, OwnerId, Subject, description, status, priority, activityDate";
-
-  public Optional<SObject> getActivityByExternalReference(String externalReference) throws ConnectionException, InterruptedException {
-    String query = "select " + TASK_FIELDS + " from task where " + env.getConfig().salesforce.fieldDefinitions.activityExternalReference + " = '" + externalReference + "'";
+  public Optional<SObject> getActivityByExternalReference(String externalReference, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(TASK_FIELDS, env.getConfig().salesforce.customQueryFields.task, extraFields) + " from task where " + env.getConfig().salesforce.fieldDefinitions.activityExternalReference + " = '" + externalReference + "'";
     return querySingle(query);
   }
 
