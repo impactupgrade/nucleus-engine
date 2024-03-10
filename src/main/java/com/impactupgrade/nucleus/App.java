@@ -14,15 +14,14 @@ import com.impactupgrade.nucleus.controller.EventBriteController;
 import com.impactupgrade.nucleus.controller.EventsController;
 import com.impactupgrade.nucleus.controller.FactsController;
 import com.impactupgrade.nucleus.controller.JobController;
-import com.impactupgrade.nucleus.controller.MinistryByTextController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
+import com.impactupgrade.nucleus.controller.MinistryByTextController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
 import com.impactupgrade.nucleus.controller.PaypalController;
 import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
 import com.impactupgrade.nucleus.controller.TwilioController;
-import com.impactupgrade.nucleus.controller.TwilioFrontlineController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
 import org.apache.cxf.Bus;
@@ -107,7 +106,6 @@ public class App {
     apiConfig.register(stripeController());
     apiConfig.register(paypalController());
     apiConfig.register(twilioController());
-    apiConfig.register(twilioFrontlineController());
 
     // Controllers that require DB connectivity -- prevent JDBC/Hikari connection errors.
     if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
@@ -171,7 +169,6 @@ public class App {
   protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
   protected StripeController stripeController() { return new StripeController(envFactory); }
   protected TwilioController twilioController() { return new TwilioController(envFactory); }
-  protected TwilioFrontlineController twilioFrontlineController() { return new TwilioFrontlineController(envFactory); }
 
   public EnvironmentFactory getEnvironmentFactory() {
     return envFactory;
