@@ -513,12 +513,12 @@ public class BloomerangCrmService implements CrmService {
       // TODO: RecurringDonationNextInstallmentDate
     }
 
-    if (manageDonationEvent.getPauseDonation() == true) {
+    if (manageDonationEvent.getPauseDonation()) {
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
         rd.recurringDonationStatus = "Closed";
         rd.recurringDonationEndDate = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
       });
-    } else if (manageDonationEvent.getResumeDonation() == true) {
+    } else if (manageDonationEvent.getResumeDonation()) {
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
         rd.recurringDonationStatus = "Active";
         rd.recurringDonationEndDate = "";

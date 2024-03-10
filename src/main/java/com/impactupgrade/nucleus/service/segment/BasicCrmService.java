@@ -137,7 +137,7 @@ public interface BasicCrmService extends CrmService {
   }
 
   default Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
-    return null;
+    return Optional.empty();
   }
 
   default String insertNote(CrmNote crmNote) throws Exception {

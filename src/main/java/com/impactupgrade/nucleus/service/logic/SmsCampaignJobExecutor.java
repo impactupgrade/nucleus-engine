@@ -258,7 +258,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
           .filter(l -> l.isDefault)
           .findFirst()
           .map(l -> l.code)
-          .orElse(null);;
+          .orElse(null);
     }
 
     if (Strings.isNullOrEmpty(defaultLanguage)) {
@@ -337,7 +337,7 @@ public class SmsCampaignJobExecutor implements JobExecutor {
       case WEEKLY -> calendar.add(Calendar.WEEK_OF_YEAR, interval);
       case MONTHLY -> calendar.add(Calendar.MONTH, interval);
       default -> throw new RuntimeException("unexpected frequency: " + frequency);
-    };
+    }
     return calendar.getTime().toInstant();
   }
 

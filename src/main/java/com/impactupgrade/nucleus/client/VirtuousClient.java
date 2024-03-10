@@ -795,7 +795,7 @@ public class VirtuousClient extends OAuthClient {
       @JsonProperty("Call")
       CALL,
       @JsonProperty("Meeting")
-      MEETING;
+      MEETING
     }
   }
 

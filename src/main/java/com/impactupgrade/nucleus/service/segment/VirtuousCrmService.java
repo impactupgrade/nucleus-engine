@@ -420,11 +420,11 @@ public class VirtuousCrmService implements CrmService {
       recurringGift.nextExpectedPaymentDate = new SimpleDateFormat("yyyy-MM-dd").format(manageDonationEvent.getNextPaymentDate().getTime());
     }
 
-    if (manageDonationEvent.getPauseDonation() == true) {
+    if (manageDonationEvent.getPauseDonation()) {
       // TODO
     }
 
-    if (manageDonationEvent.getResumeDonation() == true) {
+    if (manageDonationEvent.getResumeDonation()) {
       // TODO
     }
 

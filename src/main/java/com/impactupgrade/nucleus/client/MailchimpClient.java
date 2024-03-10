@@ -305,7 +305,7 @@ public class MailchimpClient {
     return description;
   }
 
-  public record EmailContact(String email, Set<String> activeTags, Set<String> inactiveTags) {};
+  public record EmailContact(String email, Set<String> activeTags, Set<String> inactiveTags) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static final class BatchOperation {

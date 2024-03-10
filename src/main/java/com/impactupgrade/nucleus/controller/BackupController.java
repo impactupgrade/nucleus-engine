@@ -99,7 +99,7 @@ public class BackupController {
 
               final B2UploadListener uploadListener = (progress) -> {
                 final double percent = (100. * (progress.getBytesSoFar() / (double) progress.getLength()));
-                env.logJobInfo(String.format("upload progress: %3.2f, %s", percent, progress.toString()));
+                env.logJobInfo(String.format("upload progress: %3.2f, %s", percent, progress));
               };
 
               B2UploadFileRequest uploadRequest = B2UploadFileRequest

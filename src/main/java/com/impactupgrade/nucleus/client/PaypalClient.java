@@ -26,7 +26,7 @@ public class PaypalClient {
         env.getConfig().paypal.clientId,
         env.getConfig().paypal.clientSecret, 
         env.getConfig().paypal.mode);
-    this.apiUrl = env.getConfig().paypal.mode == "sandbox" ? PAYPAL_SANDBOX_API_URL : PAYPAL_API_URL;
+    this.apiUrl = "sandbox".equalsIgnoreCase(env.getConfig().paypal.mode) ? PAYPAL_SANDBOX_API_URL : PAYPAL_API_URL;
   }
 
   public Subscription getSubscription(String id) throws Exception {

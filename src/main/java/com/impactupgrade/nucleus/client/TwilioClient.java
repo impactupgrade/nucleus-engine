@@ -8,7 +8,6 @@ import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.rest.api.v2010.account.MessageCreator;
 import com.twilio.rest.conversations.v1.Conversation;
 import com.twilio.rest.conversations.v1.conversation.Participant;
-import com.twilio.rest.frontlineapi.v1.User;
 import com.twilio.type.PhoneNumber;
 
 import java.util.ArrayList;
@@ -131,14 +130,5 @@ public class TwilioClient {
 
   public void deleteConversation(String conversationSid) {
     Conversation.deleter(conversationSid).delete(restClient);
-  }
-
-  public User getFrontlineUserByIdentity(String identity) {
-    // TODO: Frontline API currently has no fetch-by-identity -- supposedly the Conversations API is the only one that
-    //  supports it. But then we still need to hit the Frontline API to get the worker state.
-    com.twilio.rest.conversations.v1.User conversationUser = com.twilio.rest.conversations.v1.User.fetcher(identity).fetch(restClient);
-    User frontlineUser = User.fetcher(conversationUser.getSid()).fetch(restClient);
-    env.logJobInfo(frontlineUser.toString());
-    return frontlineUser;
   }
 }

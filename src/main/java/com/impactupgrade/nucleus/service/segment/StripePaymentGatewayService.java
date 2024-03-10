@@ -316,11 +316,11 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       stripeClient.updateSubscriptionDate(crmRecurringDonation.subscriptionId, manageDonationEvent.getNextPaymentDate());
     }
 
-    if (manageDonationEvent.getPauseDonation() == true) {
+    if (manageDonationEvent.getPauseDonation()) {
       stripeClient.pauseSubscription(crmRecurringDonation.subscriptionId, manageDonationEvent.getPauseDonationUntilDate());
     }
 
-    if (manageDonationEvent.getResumeDonation() == true) {
+    if (manageDonationEvent.getResumeDonation()) {
       stripeClient.resumeSubscription(crmRecurringDonation.subscriptionId, manageDonationEvent.getResumeDonationOnDate());
     }
 

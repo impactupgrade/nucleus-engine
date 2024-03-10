@@ -32,11 +32,11 @@ public class RaisersEdgeToSalesforce {
   private static final Logger log = LogManager.getLogger(RaisersEdgeToSalesforce.class);
 
   // TODO: pull to config
-  private static String HOUSEHOLD_RECORD_TYPE_ID = "0128V000001h1ZtQAI";
-  private static String ORGANIZATION_RECORD_TYPE_ID = "0128V000001h1ZuQAI";
-  private static String DONATION_RECORD_TYPE_ID = "0128V000001h1ZvQAI";
-  private static String GIFTINKIND_RECORD_TYPE_ID = "0128V000001h1a1QAA";
-  private static String MATCHINGGIFT_RECORD_TYPE_ID = "0128V000001h1a2QAA";
+  private static final String HOUSEHOLD_RECORD_TYPE_ID = "0128V000001h1ZtQAI";
+  private static final String ORGANIZATION_RECORD_TYPE_ID = "0128V000001h1ZuQAI";
+  private static final String DONATION_RECORD_TYPE_ID = "0128V000001h1ZvQAI";
+  private static final String GIFTINKIND_RECORD_TYPE_ID = "0128V000001h1a1QAA";
+  private static final String MATCHINGGIFT_RECORD_TYPE_ID = "0128V000001h1a2QAA";
 
   public static void main(String[] args) throws Exception {
     Environment env = new Environment() {

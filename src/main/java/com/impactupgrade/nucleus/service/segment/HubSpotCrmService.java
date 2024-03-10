@@ -669,7 +669,7 @@ public class HubSpotCrmService implements CrmService {
       // TODO
     }
 
-    if (manageDonationEvent.getPauseDonation() == true) {
+    if (manageDonationEvent.getPauseDonation()) {
       dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
       // TODO: Close reason?
 
@@ -681,7 +681,7 @@ public class HubSpotCrmService implements CrmService {
       setRecurringDonationFieldsForPause(dealProperties, manageDonationEvent);
     }
 
-    if (manageDonationEvent.getResumeDonation() == true) {
+    if (manageDonationEvent.getResumeDonation()) {
       // TODO: Likely a new Deal with type/dates set appropriately
     }
 

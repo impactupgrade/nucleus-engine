@@ -191,7 +191,7 @@ public class DonorWranglerClient {
     return donationId + "";
   }
 
-  public static record DwDonor(
+  public record DwDonor(
     String id,
     String firstName,
     String lastName,
@@ -219,7 +219,7 @@ public class DonorWranglerClient {
     }
   }
 
-  public static record DwDonation(
+  public record DwDonation(
       String id,
       String giftAmount,
       String fund,

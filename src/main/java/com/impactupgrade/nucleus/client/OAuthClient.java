@@ -173,7 +173,7 @@ public abstract class OAuthClient extends DBConfiguredClient {
     }
   }
 
-  public final class UsernamePasswordOAuthContext extends OAuthContext {
+  public static final class UsernamePasswordOAuthContext extends OAuthContext {
 
     private final String username;
     private final String password;

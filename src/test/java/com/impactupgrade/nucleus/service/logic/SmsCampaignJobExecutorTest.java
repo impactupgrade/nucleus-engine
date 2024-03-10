@@ -702,7 +702,7 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
     job.status = JobStatus.ACTIVE;
     job.scheduleFrequency = JobFrequency.DAILY;
     job.scheduleInterval = 1;
-    job.scheduleStart = Instant.now();;
+    job.scheduleStart = Instant.now();
     job.sequenceOrder = JobSequenceOrder.BEGINNING;
     job.jobProgresses = List.of();
     job.payload = MAPPER.readTree("""

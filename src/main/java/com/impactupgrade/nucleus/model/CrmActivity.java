@@ -59,14 +59,14 @@ public class CrmActivity extends CrmRecord {
   public enum Status {
     TO_DO,
     IN_PROGRESS,
-    DONE;
+    DONE
   }
 
   public enum Priority {
     LOW,
     MEDIUM,
     HIGH,
-    CRITICAL;
+    CRITICAL
   }
 
 }

@@ -251,7 +251,7 @@ public class SfdcController {
                 "RFM Recency Rating",
                 "RFM Frequency Rating",
                 "RFM Monetary Rating"
-            ));
+            ))
         ) {
           int counter = 1; // let the loop start with 2 to account for the CSV header
           for (CSVRecord csvRecord : csvParser) {

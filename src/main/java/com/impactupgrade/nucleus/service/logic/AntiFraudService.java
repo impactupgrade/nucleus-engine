@@ -51,7 +51,7 @@ public class AntiFraudService {
 
     try {
       JSONObject jsonObject = getRecaptchaResponse(recaptchaToken, siteSecret);
-      boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
+      boolean success = jsonObject.has("success") && jsonObject.getBoolean("success");
       env.logJobInfo("recaptcha: {}", jsonObject);
       return success;
     } catch (Exception e) {
@@ -85,7 +85,7 @@ public class AntiFraudService {
     try {
       JSONObject jsonObject = getRecaptchaResponse(recaptchaToken, siteSecret);
 
-      boolean success = jsonObject.has("success") ? jsonObject.getBoolean("success") : false;
+      boolean success = jsonObject.has("success") && jsonObject.getBoolean("success");
       double score = jsonObject.has("score") ? jsonObject.getDouble("score") : 0.0;
       String hostname = jsonObject.has("hostname") ? jsonObject.getString("hostname") : "";
 
@@ -133,7 +133,7 @@ public class AntiFraudService {
   private StringBuilder addParam(
       StringBuilder postData, String param, String value)
       throws UnsupportedEncodingException {
-    if (postData.length() != 0) {
+    if (!postData.isEmpty()) {
       postData.append("&");
     }
     return postData.append(

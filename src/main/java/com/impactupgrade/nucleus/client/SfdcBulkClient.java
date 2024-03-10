@@ -143,7 +143,7 @@ public class SfdcBulkClient {
   public void uploadWindfallFile(InputStream contactFileInputStream) throws AsyncApiException, ConnectionException, IOException {
     try (
         InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("sfdc/windfall_spec.csv");
+            .getResourceAsStream("sfdc/windfall_spec.csv")
     ) {
       BulkConnection bulkConn = bulkConn();
 

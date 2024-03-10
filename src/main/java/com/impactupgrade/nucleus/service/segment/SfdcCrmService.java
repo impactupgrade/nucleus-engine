@@ -532,7 +532,7 @@ public class SfdcCrmService implements CrmService {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
 
-    if (crmContact.notes != null && crmContact.notes != "") {
+    if (!Strings.isNullOrEmpty(crmContact.notes)) {
       contact.setField("Description", crmContact.notes);
     }
 
@@ -919,7 +919,7 @@ public class SfdcCrmService implements CrmService {
       env.logJobInfo("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
     }
 
-    if (manageDonationEvent.getPauseDonation() == true) {
+    if (manageDonationEvent.getPauseDonation()) {
       toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
       toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
 
@@ -931,7 +931,7 @@ public class SfdcCrmService implements CrmService {
       setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
     }
 
-    if (manageDonationEvent.getResumeDonation() == true) {
+    if (manageDonationEvent.getResumeDonation()) {
       toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
 
       if (manageDonationEvent.getResumeDonationOnDate() == null) {
@@ -1072,7 +1072,7 @@ public class SfdcCrmService implements CrmService {
     List<String> accountIds = importEvents.stream().map(e -> e.account.id)
         .filter(accountId -> !Strings.isNullOrEmpty(accountId)).distinct().toList();
     Map<String, SObject> existingAccountsById = new HashMap<>();
-    if (accountIds.size() > 0) {
+    if (!accountIds.isEmpty()) {
       sfdcClient.getAccountsByIds(accountIds, accountCustomFields).forEach(c -> {
         // cache both the 15 and 18 char versions, so the sheet can use either
         existingAccountsById.put(c.getId(), c);
@@ -1086,7 +1086,7 @@ public class SfdcCrmService implements CrmService {
     Map<String, SObject> existingAccountsByExtRef = new HashMap<>();
     if (accountExtRefKey.isPresent()) {
       List<String> accountExtRefIds = importEvents.stream().map(e -> e.raw.get(accountExtRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
-      if (accountExtRefIds.size() > 0) {
+      if (!accountExtRefIds.isEmpty()) {
         // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
         sfdcClient.getAccountsByUniqueField(accountExtRefFieldName.get(), accountExtRefIds, accountCustomFields)
             .forEach(c -> existingAccountsByExtRef.put(c.getField(accountExtRefFieldName.get()).toString(), c));
@@ -1098,7 +1098,7 @@ public class SfdcCrmService implements CrmService {
     importEvents.stream().flatMap(e -> e.contactOrganizations.stream()).map(o -> o.name)
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().forEach(accountNames::add);
     Multimap<String, SObject> existingAccountsByName = ArrayListMultimap.create();
-    if (accountNames.size() > 0) {
+    if (!accountNames.isEmpty()) {
       // Normalize the case!
       sfdcClient.getAccountsByNames(accountNames, accountCustomFields)
           .forEach(c -> existingAccountsByName.put(c.getField("Name").toString().toLowerCase(Locale.ROOT), c));
@@ -1107,7 +1107,7 @@ public class SfdcCrmService implements CrmService {
     List<String> contactIds = importEvents.stream().map(e -> e.contactId)
         .filter(contactId -> !Strings.isNullOrEmpty(contactId)).distinct().toList();
     Map<String, SObject> existingContactsById = new HashMap<>();
-    if (contactIds.size() > 0) {
+    if (!contactIds.isEmpty()) {
       sfdcClient.getContactsByIds(contactIds, contactCustomFields).forEach(c -> {
         // cache both the 15 and 18 char versions, so the sheet can use either
         existingContactsById.put(c.getId(), c);
@@ -1143,7 +1143,7 @@ public class SfdcCrmService implements CrmService {
     List<String> contactNames = importEvents.stream().map(e -> e.contactFirstName + " " + e.contactLastName)
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().toList();
     Multimap<String, SObject> existingContactsByName = ArrayListMultimap.create();
-    if (contactNames.size() > 0) {
+    if (!contactNames.isEmpty()) {
       // Normalize the case!
       sfdcClient.getContactsByNames(contactNames, contactCustomFields)
           .forEach(c -> existingContactsByName.put(c.getField("Name").toString().toLowerCase(Locale.ROOT), c));
@@ -1156,7 +1156,7 @@ public class SfdcCrmService implements CrmService {
     if (contactExtRefKey.isPresent()) {
       List<String> contactExtRefIds = importEvents.stream().map(e -> e.raw.get(contactExtRefKey.get()))
           .filter(s -> !Strings.isNullOrEmpty(s)).distinct().toList();
-      if (contactExtRefIds.size() > 0) {
+      if (!contactExtRefIds.isEmpty()) {
         // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
         sfdcClient.getContactsByUniqueField(contactExtRefFieldName.get(), contactExtRefIds, contactCustomFields)
             .forEach(c -> existingContactsByExtRef.put(c.getField(contactExtRefFieldName.get()).toString(), c));
@@ -1167,7 +1167,7 @@ public class SfdcCrmService implements CrmService {
         .flatMap(e -> Stream.concat(e.contactCampaignNames.stream(), Stream.of(e.opportunityCampaignName)))
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().collect(Collectors.toList());
     Map<String, String> campaignNameToId = Collections.emptyMap();
-    if (campaignNames.size() > 0) {
+    if (!campaignNames.isEmpty()) {
       // Normalize the case!
       campaignNameToId = sfdcClient.getCampaignsByNames(campaignNames).stream()
           .collect(Collectors.toMap(c -> c.getField("Name").toString().toLowerCase(Locale.ROOT), SObject::getId));
@@ -1176,7 +1176,7 @@ public class SfdcCrmService implements CrmService {
     List<String> recurringDonationIds = importEvents.stream().map(e -> e.recurringDonationId)
         .filter(recurringDonationId -> !Strings.isNullOrEmpty(recurringDonationId)).distinct().toList();
     Map<String, SObject> existingRecurringDonationById = new HashMap<>();
-    if (recurringDonationIds.size() > 0) {
+    if (!recurringDonationIds.isEmpty()) {
       sfdcClient.getRecurringDonationsByIds(recurringDonationIds, recurringDonationCustomFields).forEach(c -> {
         // cache both the 15 and 18 char versions, so the sheet can use either
         existingRecurringDonationById.put(c.getId(), c);
@@ -1187,7 +1187,7 @@ public class SfdcCrmService implements CrmService {
     List<String> opportunityIds = importEvents.stream().map(e -> e.opportunityId)
         .filter(opportunityId -> !Strings.isNullOrEmpty(opportunityId)).distinct().toList();
     Map<String, SObject> existingOpportunitiesById = new HashMap<>();
-    if (opportunityIds.size() > 0) {
+    if (!opportunityIds.isEmpty()) {
       sfdcClient.getDonationsByIds(opportunityIds, opportunityCustomFields).forEach(c -> {
         // cache both the 15 and 18 char versions, so the sheet can use either
         existingOpportunitiesById.put(c.getId(), c);
@@ -1201,7 +1201,7 @@ public class SfdcCrmService implements CrmService {
     if (opportunityExtRefKey.isPresent()) {
       List<String> opportunityExtRefIds = importEvents.stream().map(e -> e.raw.get(opportunityExtRefKey.get()))
           .filter(s -> !Strings.isNullOrEmpty(s)).distinct().toList();
-      if (opportunityExtRefIds.size() > 0) {
+      if (!opportunityExtRefIds.isEmpty()) {
         String fieldName = opportunityExtRefKey.get().replace("Opportunity ExtRef ", "");
         sfdcClient.getDonationsByUniqueField(fieldName, opportunityExtRefIds, opportunityCustomFields)
             .forEach(c -> existingOpportunitiesByExtRefId.put((String) c.getField(fieldName), c));
@@ -1238,7 +1238,7 @@ public class SfdcCrmService implements CrmService {
         .anyMatch(entry -> entry.getKey().startsWith("Account") && !Strings.isNullOrEmpty(entry.getValue()));
     boolean hasContactColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
         .anyMatch(entry -> entry.getKey().startsWith("Contact") && !Strings.isNullOrEmpty(entry.getValue()));
-    boolean hasContactOrgColumns = importEvents.stream().anyMatch(e -> e.contactOrganizations.size() > 0);
+    boolean hasContactOrgColumns = importEvents.stream().anyMatch(e -> !e.contactOrganizations.isEmpty());
 
     boolean hasOppLookups = importEvents.stream().anyMatch(e -> e.opportunityDate != null || e.opportunityId != null);
     boolean hasRdLookups = importEvents.stream().anyMatch(e -> e.recurringDonationAmount != null || e.recurringDonationId != null);
@@ -1746,10 +1746,7 @@ public class SfdcCrmService implements CrmService {
       fullName = importEvent.contactFirstName + " " + importEvent.contactLastName;
     }
 
-    boolean isAnonymous = false;
-    if ("Anonymous".equalsIgnoreCase((String) contact.getField("LastName"))) {
-      isAnonymous = true;
-    }
+    boolean isAnonymous = "Anonymous".equalsIgnoreCase((String) contact.getField("LastName"));
 
     setBulkImportContactFields(contact, null, importEvent);
 
@@ -2174,7 +2171,7 @@ public class SfdcCrmService implements CrmService {
     List<String> campaignIds = importEvents.stream().map(e -> e.campaignId)
         .filter(campaignId -> !Strings.isNullOrEmpty(campaignId)).distinct().toList();
     Map<String, SObject> existingCampaignById = new HashMap<>();
-    if (campaignIds.size() > 0) {
+    if (!campaignIds.isEmpty()) {
       sfdcClient.getCampaignsByIds(campaignIds, campaignCustomFields).forEach(c -> existingCampaignById.put(c.getId(), c));
     }
 
