@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.impactupgrade.nucleus.util.Utils.normalizeStreet;
+
 // TODO: Shift to using the Bloomerang API, instead of exports.
 // TODO: Rework this to use Bulk Upsert, like the Raiser's Edge migration.
 // TODO: Currently doing inserts only, no updates.
@@ -39,7 +41,7 @@ public class BloomerangToSalesforce {
         envConfig.salesforce.sandbox = false;
         envConfig.salesforce.url = "communityone.my.salesforce.com";
         envConfig.salesforce.username = "team+c1@impactupgrade.com";
-        envConfig.salesforce.password = "hmn0YMZ@huj*bth!dvulmszN6oFKlUXoZ3VZg8TMlyb";
+        envConfig.salesforce.password = "a7Ty*wsaz8n9ETdLcNixtqtdI0WozJNIZIKlUhNuJ";
         envConfig.salesforce.enhancedRecurringDonations = true;
         return envConfig;
       }
@@ -58,15 +60,15 @@ public class BloomerangToSalesforce {
     SfdcClient sfdcClient = new SfdcClient(env);
 
     // TODO: Bloomerang exports a ZIP with a few dozen CSV files. We should accept that ZIP and expand it on our own.
-    String addressFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Addresses.csv";
-    String constituentFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Constituents.csv";
-    String donationFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Donations.csv";
-    String emailFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Emails.csv";
-    String householdFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Households.csv";
-    String phoneFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Phones.csv";
-    String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/RecurringDonations.csv";
-    String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/RecurringDonationPayments.csv";
-    String transactionFile = "/home/brmeyer/Downloads/DataExport-2023-03-14/Transactions.csv";
+    String addressFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/Addresses.csv";
+    String constituentFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/Constituents.csv";
+    String donationFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/Donations.csv";
+    String emailFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/Emails.csv";
+    String householdFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/Households.csv";
+    String phoneFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/Phones.csv";
+    String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/RecurringDonations.csv";
+    String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/RecurringDonationPayments.csv";
+    String transactionFile = "/home/brmeyer/Downloads/DataExport-2024-03-11/Transactions.csv";
 
     // TODO: pull to config
     String HOUSEHOLD_RECORD_TYPE_ID = "0128c000001xDX2AAM";
@@ -115,7 +117,7 @@ public class BloomerangToSalesforce {
     // Then finally, grab what already exists in SFDC so we can skip them.
 
     Map<String, SObject> accountsByBloomerangIds = new HashMap<>();
-    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c, RecordTypeId FROM Account WHERE Bloomerang_ID__c!=''");
+    List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c, RecordTypeId, Name, BillingStreet FROM Account WHERE Bloomerang_ID__c!=''");
     for (SObject account : accounts) {
       accountsByBloomerangIds.put((String) account.getField("Bloomerang_ID__c"), account);
       boolean isBusiness = account.getField("RecordTypeId").equals(ORGANIZATION_RECORD_TYPE_ID);
@@ -123,7 +125,7 @@ public class BloomerangToSalesforce {
     }
 
     Map<String, SObject> contactsByBloomerangIds = new HashMap<>();
-    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Bloomerang_ID__c FROM Contact WHERE Bloomerang_ID__c!=''");
+    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Bloomerang_ID__c, Name, Account.BillingStreet FROM Contact WHERE Bloomerang_ID__c!=''");
     for (SObject contact : contacts) {
       contactsByBloomerangIds.put((String) contact.getField("Bloomerang_ID__c"), contact);
       constituentIdToAccountId.put((String) contact.getField("Bloomerang_ID__c"), contact.getField("AccountId").toString());
@@ -167,22 +169,25 @@ public class BloomerangToSalesforce {
       sfdcAccount.setField("npo02__Informal_Greeting__c", householdRow.get("InformalName"));
       sfdcAccount.setField("Recognition_Name__c", householdRow.get("RecognitionName"));
 
-      sfdcClient.batchInsert(sfdcAccount);
+//      sfdcClient.batchInsert(sfdcAccount);
+      System.out.println("HOUSEHOLD INSERT: " + householdRow.get("FullName"));
     }
 
     SFDCPartnerAPIClient.BatchResults results = sfdcClient.batchFlush();
-    // Run through the loop again and gather the results.
-    for (int i = 0; i < householdRows.size(); i++) {
-      // TODO: Wouldn't this make some of the Bulk Upsert logic simpler in SfdcCrmService?
-      SaveResult result = results.batchInsertResults().get(i);
-      if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
-        Map<String, String> householdRow = householdRows.get(i);
-        String sfdcAccountId = result.getId();
+    if (!results.batchInsertResults().isEmpty()) {
+      // Run through the loop again and gather the results.
+      for (int i = 0; i < householdRows.size(); i++) {
+        // TODO: Wouldn't this make some of the Bulk Upsert logic simpler in SfdcCrmService?
+        SaveResult result = results.batchInsertResults().get(i);
+        if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
+          Map<String, String> householdRow = householdRows.get(i);
+          String sfdcAccountId = result.getId();
 
-        constituentIdToAccountId.put(householdRow.get("Head"), sfdcAccountId);
-        if (!Strings.isNullOrEmpty(householdRow.get("Members"))) {
-          // TODO: I'm assuming | is the separator, like other fields, but C1 doesn't actually have any member cells with more than one additional person.
-          Arrays.stream(householdRow.get("Members").split("\\|")).forEach(m -> constituentIdToAccountId.put(m, sfdcAccountId));
+          constituentIdToAccountId.put(householdRow.get("Head"), sfdcAccountId);
+          if (!Strings.isNullOrEmpty(householdRow.get("Members"))) {
+            // TODO: I'm assuming | is the separator, like other fields, but C1 doesn't actually have any member cells with more than one additional person.
+            Arrays.stream(householdRow.get("Members").split("\\|")).forEach(m -> constituentIdToAccountId.put(m, sfdcAccountId));
+          }
         }
       }
     }
@@ -192,7 +197,29 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> constituentRows;
     try (InputStream is = new FileInputStream(constituentFile)) {
       constituentRows = Utils.getCsvData(is);
-      constituentRows = constituentRows.stream().filter(r -> !contactsByBloomerangIds.containsKey(r.get("AccountNumber"))).toList();
+      constituentRows = constituentRows.stream().filter(r -> {
+        if (contactsByBloomerangIds.containsKey(r.get("AccountNumber"))) {
+          SObject sfdcContact = contactsByBloomerangIds.get(r.get("AccountNumber"));
+          System.out.println("CONSTITUENT UPDATE: " + sfdcContact.getField("Name"));
+          String sfdcStreet = normalizeStreet((String) sfdcContact.getChild("Account").getField("BillingStreet"));
+          String bloomStreet = null;
+          for (Map<String, String> addressRow : addressRowsByAccountNumber.get(r.get("AccountNumber"))) {
+            if ("Home".equalsIgnoreCase(addressRow.get("TypeName"))) {
+              if ("True".equalsIgnoreCase(addressRow.get("IsPrimary"))) {
+                bloomStreet = normalizeStreet(addressRow.get("Street"));
+              }
+            } else if ("Work".equalsIgnoreCase(addressRow.get("TypeName"))) {
+              if ("True".equalsIgnoreCase(addressRow.get("IsPrimary"))) {
+                bloomStreet = normalizeStreet(addressRow.get("Street"));
+              }
+            }
+          }
+          if (!Strings.isNullOrEmpty(sfdcStreet) && !Strings.isNullOrEmpty(bloomStreet) && !sfdcStreet.equalsIgnoreCase(bloomStreet)) {
+            System.out.println("    ADDRESS UPDATE: " + sfdcStreet + " -->> " + bloomStreet);
+          }
+        }
+        return !contactsByBloomerangIds.containsKey(r.get("AccountNumber"));
+      }).toList();
     }
 
     List<Map<String, String>> constituentRowsFiltered = new ArrayList<>();
@@ -265,19 +292,22 @@ public class BloomerangToSalesforce {
           }
         }
 
-        sfdcClient.batchInsert(sfdcAccount);
+//        sfdcClient.batchInsert(sfdcAccount);
+        System.out.println("CONSTITUENT ACCOUNT INSERT: " + constituentRow.get("FullName"));
       }
     }
 
     results = sfdcClient.batchFlush();
-    // Run through the loop again and gather the results.
-    for (int i = 0; i < constituentRowsFiltered.size(); i++) {
-      Map<String, String> constituentRow = constituentRowsFiltered.get(i);
-      SaveResult result = results.batchInsertResults().get(i);
-      if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
-        String sfdcAccountId = result.getId();
+    if (!results.batchInsertResults().isEmpty()) {
+      // Run through the loop again and gather the results.
+      for (int i = 0; i < constituentRowsFiltered.size(); i++) {
+        Map<String, String> constituentRow = constituentRowsFiltered.get(i);
+        SaveResult result = results.batchInsertResults().get(i);
+        if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
+          String sfdcAccountId = result.getId();
 
-        constituentIdToAccountId.put(constituentRow.get("AccountNumber"), sfdcAccountId);
+          constituentIdToAccountId.put(constituentRow.get("AccountNumber"), sfdcAccountId);
+        }
       }
     }
 
@@ -365,19 +395,22 @@ public class BloomerangToSalesforce {
           }
         }
 
-        sfdcClient.batchInsert(sfdcContact);
+//        sfdcClient.batchInsert(sfdcContact);
+        System.out.println("CONSTITUENT CONTACT INSERT: " + constituentRow.get("First") + " " + constituentRow.get("Last"));
       }
     }
 
     results = sfdcClient.batchFlush();
-    // Run through the loop again and gather the results.
-    for (int i = 0; i < constituentRowsFiltered.size(); i++) {
-      SaveResult result = results.batchInsertResults().get(i);
-      if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
-        Map<String, String> constituentRow = constituentRowsFiltered.get(i);
-        String sfdcContactId = result.getId();
+    if (!results.batchInsertResults().isEmpty()) {
+      // Run through the loop again and gather the results.
+      for (int i = 0; i < constituentRowsFiltered.size(); i++) {
+        SaveResult result = results.batchInsertResults().get(i);
+        if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
+          Map<String, String> constituentRow = constituentRowsFiltered.get(i);
+          String sfdcContactId = result.getId();
 
-        constituentIdToContactId.put(constituentRow.get("AccountNumber"), sfdcContactId);
+          constituentIdToContactId.put(constituentRow.get("AccountNumber"), sfdcContactId);
+        }
       }
     }
 //
