@@ -22,8 +22,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import static com.impactupgrade.nucleus.util.Utils.normalizeStreet;
 
@@ -125,9 +128,15 @@ public class BloomerangToSalesforce {
     }
 
     Map<String, SObject> contactsByBloomerangIds = new HashMap<>();
-    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Bloomerang_ID__c, Name, Account.BillingStreet FROM Contact WHERE Bloomerang_ID__c!=''");
+    Map<String, SObject> contactsByNames = new HashMap<>();
+    Map<String, SObject> contactsByEmails = new HashMap<>();
+    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Bloomerang_ID__c, FirstName, LastName, Email, Account.BillingStreet FROM Contact WHERE Bloomerang_ID__c!=''");
     for (SObject contact : contacts) {
       contactsByBloomerangIds.put((String) contact.getField("Bloomerang_ID__c"), contact);
+      contactsByNames.put((contact.getField("FirstName") + " " + contact.getField("LastName")).toLowerCase(Locale.ROOT), contact);
+      if (!Strings.isNullOrEmpty((String) contact.getField("Email"))) {
+        contactsByEmails.put(contact.getField("Email").toString().toLowerCase(Locale.ROOT), contact);
+      }
       constituentIdToAccountId.put((String) contact.getField("Bloomerang_ID__c"), contact.getField("AccountId").toString());
       constituentIdToContactId.put((String) contact.getField("Bloomerang_ID__c"), contact.getId());
     }
@@ -200,7 +209,7 @@ public class BloomerangToSalesforce {
       constituentRows = constituentRows.stream().filter(r -> {
         if (contactsByBloomerangIds.containsKey(r.get("AccountNumber"))) {
           SObject sfdcContact = contactsByBloomerangIds.get(r.get("AccountNumber"));
-          System.out.println("CONSTITUENT UPDATE: " + sfdcContact.getField("Name"));
+          System.out.println("CONSTITUENT UPDATE: " + sfdcContact.getField("FirstName") + " " + sfdcContact.getField("LastName"));
           String sfdcStreet = normalizeStreet((String) sfdcContact.getChild("Account").getField("BillingStreet"));
           String bloomStreet = null;
           for (Map<String, String> addressRow : addressRowsByAccountNumber.get(r.get("AccountNumber"))) {
@@ -362,14 +371,17 @@ public class BloomerangToSalesforce {
         Custom: Board Care & Cultivation
         */
 
+        Set<String> emails = new HashSet<>();
         for (Map<String, String> emailRow : emailRowsByAccountNumber.get(accountNumber)) {
           if ("Home".equalsIgnoreCase(emailRow.get("TypeName"))) {
             sfdcContact.setField("npe01__HomeEmail__c", emailRow.get("Value"));
+            emails.add(emailRow.get("Value").toLowerCase(Locale.ROOT));
             if ("True".equalsIgnoreCase(emailRow.get("IsPrimary"))) {
               sfdcContact.setField("npe01__Preferred_Email__c", "Personal");
             }
           } else if ("Work".equalsIgnoreCase(emailRow.get("TypeName"))) {
             sfdcContact.setField("npe01__WorkEmail__c", emailRow.get("Value"));
+            emails.add(emailRow.get("Value").toLowerCase(Locale.ROOT));
             if ("True".equalsIgnoreCase(emailRow.get("IsPrimary"))) {
               sfdcContact.setField("npe01__Preferred_Email__c", "Work");
             }
@@ -396,7 +408,18 @@ public class BloomerangToSalesforce {
         }
 
 //        sfdcClient.batchInsert(sfdcContact);
-        System.out.println("CONSTITUENT CONTACT INSERT: " + constituentRow.get("First") + " " + constituentRow.get("Last"));
+        System.out.println("CONSTITUENT CONTACT INSERT: " + sfdcContact.getField("FirstName") + " " + sfdcContact.getField("LastName"));
+
+        if (contactsByNames.containsKey((sfdcContact.getField("FirstName") + " " + sfdcContact.getField("LastName")).toLowerCase(Locale.ROOT))) {
+          System.out.println("    NAME ALREADY EXISTS IN SFDC");
+        }
+        for (String email : emails) {
+          if (!Strings.isNullOrEmpty(email)) {
+            if (contactsByEmails.containsKey(email.toLowerCase(Locale.ROOT))) {
+              System.out.println("    EMAIL ALREADY EXISTS IN SFDC");
+            }
+          }
+        }
       }
     }
 
