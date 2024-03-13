@@ -113,7 +113,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         Map<String, Object> customFieldMap = getCustomFields(communicationList.id, crmContact, mailchimpClient, mailchimpConfig);
         contactsCustomFields.put(crmContact.email, customFieldMap);
       }
-      Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts);
+      Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts, communicationList);
       Map<String, Set<String>> tags = mailchimpClient.getContactsTags(listMembers);
       Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
 

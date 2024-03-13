@@ -1,5 +1,6 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
@@ -144,7 +145,8 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
+  default Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return null;
   }
 

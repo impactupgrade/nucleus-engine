@@ -222,7 +222,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   // See note on CrmService.getEmailCampaignsByContactIds. Retrieve in batches to preserve API limits!
-  public List<SObject> getEmailCampaignsByContactIds(List<String> contactIds) throws ConnectionException, InterruptedException {
+  public List<SObject> getEmailCampaignsByContactIds(List<String> contactIds, String filter) throws ConnectionException, InterruptedException {
     // TODO: Note the use of CampaignMember -- currently need the name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
 
     List<String> page;
@@ -237,14 +237,16 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String contactIdsJoin = page.stream().map(contactId -> "'" + contactId + "'").collect(Collectors.joining(","));
-    String query = "select ContactId, Campaign.Name from CampaignMember where ContactId in (" + contactIdsJoin + ") and Campaign.IsActive=true";
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailCampaignInclusion)) {
-      query += " AND Campaign." + env.getConfig().salesforce.fieldDefinitions.emailCampaignInclusion + "=TRUE";
+    String query = "SELECT ContactId, Campaign.Name FROM CampaignMember WHERE ContactId IN (" + contactIdsJoin + ")";
+    if (!Strings.isNullOrEmpty(filter)) {
+      query += " AND " + filter;
+    } else {
+      query += " AND Campaign.IsActive=TRUE";
     }
     List<SObject> results = queryListAutoPaged(query);
 
     if (!more.isEmpty()) {
-      results.addAll(getEmailCampaignsByContactIds(more));
+      results.addAll(getEmailCampaignsByContactIds(more, filter));
     }
 
     return results;
@@ -539,7 +541,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected List<SObject> queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
-      filter = " and " + filter;
+      filter = " AND " + filter;
     }
 
     // If env.json defines an emailOptIn, automatically factor that into the query.
@@ -579,7 +581,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     if (!Strings.isNullOrEmpty(filter)) {
-      filter = " and " + filter;
+      filter = " AND " + filter;
     }
 
     // If env.json defines an emailOptIn, automatically factor that into the query.
@@ -638,7 +640,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected List<SObject> querySmsContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
-      filter = " and " + filter;
+      filter = " AND " + filter;
     }
 
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where (Phone != '' OR MobilePhone != '')" + updatedSinceClause + filter;
@@ -747,7 +749,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     if (!Strings.isNullOrEmpty(filter)) {
-      filter = " and " + filter;
+      filter = " AND " + filter;
     }
 
     String query = "select " + getFieldsList(LEAD_FIELDS, env.getConfig().salesforce.customQueryFields.lead, extraFields) +  " from lead where Email != null" + updatedSinceClause + filter;

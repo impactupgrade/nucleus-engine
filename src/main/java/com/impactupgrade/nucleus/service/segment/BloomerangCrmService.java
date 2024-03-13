@@ -567,7 +567,8 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
+  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Collections.emptyMap();
   }

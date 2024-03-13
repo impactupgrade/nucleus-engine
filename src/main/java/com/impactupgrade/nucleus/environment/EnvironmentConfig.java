@@ -98,7 +98,6 @@ public class EnvironmentConfig implements Serializable {
     public String emailOptOut = "";
     public String emailBounced = "";
     public String emailGroups = "";
-    public String emailCampaignInclusion = "";
 
     public String accountEmailOptIn = "";
     public String accountEmailOptOut = "";
@@ -304,6 +303,7 @@ public class EnvironmentConfig implements Serializable {
     public String crmFilter = "";
     public String crmLeadFilter = "";
     public String crmAccountFilter = "";
+    public String crmCampaignMemberFilter = "";
   }
   public static class CommunicationPlatform extends Platform {
     public List<CommunicationList> lists = new ArrayList<>();

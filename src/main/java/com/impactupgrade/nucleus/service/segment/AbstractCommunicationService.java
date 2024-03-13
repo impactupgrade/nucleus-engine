@@ -30,12 +30,13 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     //  SendGridEmailService, even when no CrmService is identified.
   }
 
-  protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts) throws Exception {
+  protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<String> crmContactIds = crmContacts.stream().map(c -> c.id).filter(Objects::nonNull).collect(Collectors.toList());
     if (crmContactIds.isEmpty()) {
       return Collections.emptyMap();
     }
-    return env.primaryCrmService().getContactCampaignsByContactIds(crmContactIds);
+    return env.primaryCrmService().getContactCampaignsByContactIds(crmContactIds, communicationList);
   }
 
   protected List<CrmContact> getEmailContacts(Calendar lastSync, EnvironmentConfig.CommunicationList communicationList) throws Exception {

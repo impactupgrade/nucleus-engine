@@ -1069,7 +1069,8 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
+  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     // TODO
     return Collections.emptyMap();
   }

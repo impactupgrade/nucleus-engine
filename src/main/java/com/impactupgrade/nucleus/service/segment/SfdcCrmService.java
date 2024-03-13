@@ -874,10 +874,13 @@ public class SfdcCrmService implements CrmService {
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
     // likely not relevant in SFDC
   }
-  
-  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds) throws Exception {
+
+  @Override
+  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     Map<String, List<String>> contactCampaigns = new HashMap<>();
-    List<SObject> campaignMembers = sfdcClient.getEmailCampaignsByContactIds(contactIds);
+    List<SObject> campaignMembers = sfdcClient.getEmailCampaignsByContactIds(
+        contactIds, communicationList.crmCampaignMemberFilter);
     for (SObject campaignMember : campaignMembers) {
       String contactId = (String) campaignMember.getField("ContactId");
       String campaignName = (String) campaignMember.getChild("Campaign").getField("Name");
