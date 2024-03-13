@@ -118,7 +118,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
 
       // run the actual contact upserts
-      List<MemberInfo> upsertMemberInfos = toMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
+      List<MemberInfo> upsertMemberInfos = toMcMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
       String upsertBatchId = mailchimpClient.upsertContactsBatch(communicationList.id, upsertMemberInfos);
       mailchimpClient.runBatchOperations(mailchimpConfig, upsertBatchId, 0);
 
@@ -239,9 +239,43 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
         Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
         if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().email)) {
-          syncContacts(List.of(crmContact.get()), mailchimpConfig, communicationList);
+          upsertContact(mailchimpConfig, communicationList, crmContact.get());
         }
       }
+    }
+  }
+
+  // Originally, we simply called syncContacts() and made use of existing functions. But that unfortunately
+  //  does things like download ALL contacts from the audiences. Instead, we copy and paste the process here,
+  //  stripping out the full sync and only pushing in the contact's new tags. We skip removing old tags --
+  //  instead, let the nightly job do that for everybody. This process is typically only needed when something
+  //  needs added, like a campaign tag to kick off a Journey in MC itself.
+  protected void upsertContact(EnvironmentConfig.Mailchimp mailchimpConfig,
+      EnvironmentConfig.CommunicationList communicationList, CrmContact crmContact) throws Exception {
+    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
+
+    // transactional is always subscribed
+    if (communicationList.type != EnvironmentConfig.CommunicationListType.TRANSACTIONAL && !crmContact.canReceiveEmail()) {
+      return;
+    }
+
+    try {
+      Map<String, Object> customFields = getCustomFields(communicationList.id, crmContact, mailchimpClient, mailchimpConfig);
+      // Don't need the extra Map layer, but keeping it for now to reuse existing code.
+      Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(List.of(crmContact), communicationList);
+      Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig);
+
+      // run the actual contact upserts
+      MemberInfo upsertMemberInfo = toMcMemberInfo(crmContact, customFields, communicationList.groups);
+      mailchimpClient.upsertContact(communicationList.id, upsertMemberInfo);
+
+      // update all contacts' tags
+      MailchimpClient.EmailContact emailContact = new MailchimpClient.EmailContact(crmContact.email, tags, Set.of());
+      mailchimpClient.updateContactTags(communicationList.id, emailContact);
+    } catch (MailchimpException e) {
+      env.logJobWarn("Mailchimp upsertContact failed: {}", mailchimpClient.exceptionToString(e));
+    } catch (Exception e) {
+      env.logJobWarn("Mailchimp upsertContact failed", e);
     }
   }
 
@@ -326,7 +360,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected List<MemberInfo> toMemberInfos(EnvironmentConfig.CommunicationList communicationList, List<CrmContact> crmContacts,
+  protected List<MemberInfo> toMcMemberInfos(EnvironmentConfig.CommunicationList communicationList, List<CrmContact> crmContacts,
       Map<String, Map<String, Object>> customFieldsMap) {
     return crmContacts.stream()
         .map(crmContact -> toMcMemberInfo(crmContact, customFieldsMap.get(crmContact.email), communicationList.groups))

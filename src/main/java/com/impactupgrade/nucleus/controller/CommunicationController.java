@@ -141,7 +141,7 @@ public class CommunicationController {
         for (CommunicationService communicationService : env.allCommunicationServices()) {
           try {
             communicationService.upsertContact(contactId);
-            env.logJobInfo("{}: upsert contact done", communicationService.name());
+            env.logJobInfo("{}: upsert contact done ({})", communicationService.name(), contactId);
           } catch (Exception e) {
             env.logJobError("contact upsert failed for contact: {} platform: {}", contactId, communicationService.name(), e);
             env.logJobError(e.getMessage());
@@ -149,7 +149,7 @@ public class CommunicationController {
         }
         env.endJobLog(JobStatus.DONE);
       } catch (Exception e) {
-        env.logJobError("communication upsert contact failed", e);
+        env.logJobError("communication upsert contact failed ({})", contactId, e);
         env.logJobError(e.getMessage());
         env.endJobLog(JobStatus.FAILED);
       }

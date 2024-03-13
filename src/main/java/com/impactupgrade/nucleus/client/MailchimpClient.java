@@ -154,39 +154,45 @@ public class MailchimpClient {
     return tagsMap;
   }
 
+  public void updateContactTags(String listId, EmailContact emailContact) throws IOException, MailchimpException {
+    EditMemberMethod.AddorRemoveTag editMemberMethod = addOrRemoveTag(listId, emailContact);
+    client.execute(editMemberMethod);
+  }
+
   public String updateContactTagsBatch(String listId, List<EmailContact> emailContacts) throws IOException, MailchimpException {
-    List<EditMemberMethod.AddorRemoveTag> editMemberMethods =
-        emailContacts.stream()
-            .map(emailContact -> {
-              Set<String> active = emailContact.activeTags;
-              Set<String> inactive = emailContact.inactiveTags;
-              ArrayList<MailchimpObject> tags = new ArrayList<>();
-              if (CollectionUtils.isNotEmpty(active)) {
-                for (String activeTag : active) {
-                  MailchimpObject tag = new MailchimpObject();
-                  tag.mapping.put(TAG_STATUS, TAG_ACTIVE);
-                  tag.mapping.put(TAG_NAME, activeTag);
-                  tags.add(tag);
-                }
-              }
-              if (CollectionUtils.isNotEmpty(inactive)) {
-                for (String inactiveTag : inactive) {
-                  MailchimpObject tag = new MailchimpObject();
-                  tag.mapping.put(TAG_STATUS, TAG_INACTIVE);
-                  tag.mapping.put(TAG_NAME, inactiveTag);
-                  tags.add(tag);
-                }
-              }
-
-              EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, emailContact.email);
-              editMemberMethod.tags = tags;
-
-              return editMemberMethod;
-            }).collect(Collectors.toList());
+    List<EditMemberMethod.AddorRemoveTag> editMemberMethods = emailContacts.stream()
+        .map(emailContact -> addOrRemoveTag(listId, emailContact)).collect(Collectors.toList());
 
     StartBatchMethod startBatchMethod = new StartBatchMethod(editMemberMethods);
     BatchStatus batchStatus = client.execute(startBatchMethod);
     return batchStatus.id;
+  }
+
+  protected EditMemberMethod.AddorRemoveTag addOrRemoveTag(String listId, EmailContact emailContact) {
+    Set<String> active = emailContact.activeTags;
+    Set<String> inactive = emailContact.inactiveTags;
+    ArrayList<MailchimpObject> tags = new ArrayList<>();
+    if (CollectionUtils.isNotEmpty(active)) {
+      for (String activeTag : active) {
+        MailchimpObject tag = new MailchimpObject();
+        tag.mapping.put(TAG_STATUS, TAG_ACTIVE);
+        tag.mapping.put(TAG_NAME, activeTag);
+        tags.add(tag);
+      }
+    }
+    if (CollectionUtils.isNotEmpty(inactive)) {
+      for (String inactiveTag : inactive) {
+        MailchimpObject tag = new MailchimpObject();
+        tag.mapping.put(TAG_STATUS, TAG_INACTIVE);
+        tag.mapping.put(TAG_NAME, inactiveTag);
+        tags.add(tag);
+      }
+    }
+
+    EditMemberMethod.AddorRemoveTag editMemberMethod = new EditMemberMethod.AddorRemoveTag(listId, emailContact.email);
+    editMemberMethod.tags = tags;
+
+    return editMemberMethod;
   }
 
   public void runBatchOperations(EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
