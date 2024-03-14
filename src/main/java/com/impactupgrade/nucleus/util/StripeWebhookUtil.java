@@ -26,11 +26,11 @@ public class StripeWebhookUtil {
 
   private static final Logger log = LogManager.getLogger(StripeWebhookUtil.class.getName());
 
-  public void setupWebhook(Environment env, String hostname) {
+  public static void setupWebhook(Environment env, String hostname) {
     setupWebhook(env, hostname, "");
   }
 
-  public void setupWebhook(Environment env, String hostname, String nucleusApiKey) {
+  public static void setupWebhook(Environment env, String hostname, String nucleusApiKey) {
     try {
       StripeClient stripeClient = new StripeClient(env);
 

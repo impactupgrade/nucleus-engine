@@ -12,7 +12,7 @@ public class CrmSetupUtils {
 
   private static final Logger log = LogManager.getLogger(CrmSetupUtils.class.getName());
 
-  public void setupSfdcCustomFields(Environment env) {
+  public static void setupSfdcCustomFields(Environment env) {
     SfdcMetadataClient sfdcMetadataClient = new SfdcMetadataClient(env);
 
     try {
