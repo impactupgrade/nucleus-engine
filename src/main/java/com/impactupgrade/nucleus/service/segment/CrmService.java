@@ -31,6 +31,12 @@ import java.util.Optional;
 
 public interface CrmService extends SegmentService {
 
+  // NOTE: Methods often receive a whole list of lookups that we're about to process to this all at once. We then let
+  // the implementations decide how to implement them in the most performant way. Some APIs may solely allow retrieval
+  // one at a time. Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to
+  // retrieve large batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in
+  // play...
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // GENERAL PURPOSE
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +68,6 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
-  Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception;
   default List<CrmContact> getContactsByEmails(List<String> emails, String... extraFields) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
@@ -82,25 +87,8 @@ public interface CrmService extends SegmentService {
   String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
 
   // transaction id, secondary id, refund id, etc.
-  // default impl doesn't need accountId and contactId, so simply make use of getDonationsByTransactionIds
-  default Optional<CrmDonation> getDonationByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception {
-    List<CrmDonation> crmDonations = getDonationsByTransactionIds(transactionIds);
-
-    if (crmDonations == null || crmDonations.isEmpty()) {
-      return Optional.empty();
-    }
-
-    return Optional.of(crmDonations.get(0));
-  }
-  // helper method
-  default Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-    return getDonationByTransactionIds(List.of(transactionId), null, null);
-  }
-  // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
-  // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
-  // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
-  // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
-  List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception;
+  // we also need account/contact since some CRMs will not allow transaction retrieval without providing the constituent
+  List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception;
   String insertDonation(CrmDonation crmDonation) throws Exception;
   void updateDonation(CrmDonation crmDonation) throws Exception;
   void refundDonation(CrmDonation crmDonation) throws Exception;
@@ -163,6 +151,7 @@ public interface CrmService extends SegmentService {
   List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
+  Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception;
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.

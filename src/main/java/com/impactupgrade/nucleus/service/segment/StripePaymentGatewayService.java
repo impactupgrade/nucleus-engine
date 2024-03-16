@@ -155,11 +155,13 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           String transactionId = chargeId;
           Optional<CrmDonation> donation = Optional.empty();
           if (!Strings.isNullOrEmpty(paymentIntentId)) {
-            donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
+            // TODO: should we attempt to look up the accountId/contactId from the CustomerId?
+            donation = env.donationsCrmService().getDonationsByTransactionIds(List.of(paymentIntentId), null, null).stream().findFirst();
             transactionId = paymentIntentId;
           }
           if (donation.isEmpty()) {
-            donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
+            // TODO: should we attempt to look up the accountId/contactId from the CustomerId?
+            donation = env.donationsCrmService().getDonationsByTransactionIds(List.of(chargeId), null, null).stream().findFirst();
           }
 
           if (donation.isEmpty()) {

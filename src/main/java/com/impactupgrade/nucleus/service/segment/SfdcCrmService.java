@@ -177,8 +177,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
-    return toCrmDonation(sfdcClient.getDonationsByTransactionIds(transactionIds));
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationsByTransactionIds(transactionIds, extraFields));
   }
 
   @Override

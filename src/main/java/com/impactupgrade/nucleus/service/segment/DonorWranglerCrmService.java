@@ -92,7 +92,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
     // TODO: Josh?
     return Collections.emptyList();
   }
