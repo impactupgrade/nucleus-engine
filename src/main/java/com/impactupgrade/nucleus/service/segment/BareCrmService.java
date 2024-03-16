@@ -240,11 +240,6 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmUser> getUserById(String id) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
   public Optional<CrmUser> getUserByEmail(String email) throws Exception {
     return Optional.empty();
   }

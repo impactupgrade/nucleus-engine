@@ -77,6 +77,7 @@ public interface CrmService extends SegmentService {
     return contacts;
   }
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception;
+  Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
@@ -141,6 +142,7 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMUNICATION SYNC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
@@ -156,8 +158,8 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   List<CrmUser> getUsers() throws Exception;
-  Optional<CrmUser> getUserById(String id) throws Exception;
   Optional<CrmUser> getUserByEmail(String email) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -177,13 +179,6 @@ public interface CrmService extends SegmentService {
   void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // PORTAL FIELD UTILS
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
-  Map<String, String> getFieldOptions(String object) throws Exception;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -192,8 +187,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception;
   String insertNote(CrmNote crmNote) throws Exception;
 
-  List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
-
+  Map<String, String> getFieldOptions(String object) throws Exception;
   EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();
-
+  List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
 }

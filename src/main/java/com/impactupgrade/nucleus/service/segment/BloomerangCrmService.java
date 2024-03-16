@@ -558,12 +558,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmUser> getUserById(String id) throws Exception {
-    // Unlikely to be relevant for Bloomerang.
-    return Optional.empty();
-  }
-
-  @Override
   public Optional<CrmUser> getUserByEmail(String email) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Optional.empty();

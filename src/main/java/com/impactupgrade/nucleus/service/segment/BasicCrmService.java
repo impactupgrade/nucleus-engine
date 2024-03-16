@@ -122,10 +122,6 @@ public interface BasicCrmService extends CrmService {
   default void deleteCampaign(String campaignId) throws Exception {
   }
 
-  default Optional<CrmUser> getUserById(String id) throws Exception {
-    return Optional.empty();
-  }
-
   default Optional<CrmUser> getUserByEmail(String email) throws Exception {
     return Optional.empty();
   }

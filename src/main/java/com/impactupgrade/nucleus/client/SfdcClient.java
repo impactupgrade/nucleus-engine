@@ -914,11 +914,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getUserById(String userId, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user, extraFields) +  " from user where id = '" + userId + "'";
-    return querySingle(query);
-  }
-
   public Optional<SObject> getUserByEmail(String email, String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user, extraFields) +  " from user where isActive = true and email = '" + email + "'";
     return querySingle(query);
