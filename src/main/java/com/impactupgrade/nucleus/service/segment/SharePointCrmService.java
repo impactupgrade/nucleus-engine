@@ -140,12 +140,12 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmAccount> getAccountById(String id) throws Exception {
+    public Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
         return Optional.empty();
     }
 
     @Override
-    public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+    public List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
         return Collections.emptyList();
     }
 
@@ -176,7 +176,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+    public List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception {
         return Collections.emptyList();
     }
 

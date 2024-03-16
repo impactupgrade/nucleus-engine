@@ -126,14 +126,14 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
+  public Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
     Company company = hsClient.company().read(id, companyFields);
     CrmAccount crmAccount = toCrmAccount(company);
     return Optional.of(crmAccount);
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  public List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
@@ -173,7 +173,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) {
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) {
     // TODO
     return Collections.emptyList();
   }

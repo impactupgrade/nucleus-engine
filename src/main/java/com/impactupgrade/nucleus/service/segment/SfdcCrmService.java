@@ -100,18 +100,18 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountById(id));
+  public Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountById(id, extraFields));
   }
 
   @Override
-  public List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountsByIds(ids));
+  public List<CrmAccount> getAccountsByIds(List<String> ids, String... extraFields) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountsByIds(ids, extraFields));
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountsByEmails(emails));
+  public List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountsByEmails(emails, extraFields));
   }
 
   @Override
@@ -147,8 +147,8 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   // currentPageToken assumed to be the offset index
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws InterruptedException, ConnectionException {
-    return toCrmAccount(sfdcClient.searchAccounts(accountSearch));
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws InterruptedException, ConnectionException {
+    return toCrmAccount(sfdcClient.searchAccounts(accountSearch, extraFields));
   }
 
   @Override

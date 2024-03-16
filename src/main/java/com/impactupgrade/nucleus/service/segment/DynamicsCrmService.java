@@ -194,13 +194,13 @@ public class DynamicsCrmService implements BasicCrmService {
 
   // Account
   @Override
-  public Optional<CrmAccount> getAccountById(String id) {
+  public Optional<CrmAccount> getAccountById(String id, String... extraFields) {
     DynamicsCrmClient.Account account = dynamicsCrmClient.getAccountById(id);
     return Optional.ofNullable(toCrmAccount(account));
   }
 
   @Override
-  public List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+  public List<CrmAccount> getAccountsByIds(List<String> ids, String... extraFields) throws Exception {
     List<DynamicsCrmClient.Account> accounts = dynamicsCrmClient.getAccountsByIds(ids);
     return accounts.stream()
         .map(account -> toCrmAccount(account))

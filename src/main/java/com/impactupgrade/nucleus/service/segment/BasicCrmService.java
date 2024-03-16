@@ -36,19 +36,19 @@ import java.util.Optional;
  */
 public interface BasicCrmService extends CrmService {
 
-  default Optional<CrmAccount> getAccountById(String id) throws Exception {
+  default Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
-  default List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+  default List<CrmAccount> getAccountsByIds(List<String> ids, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
-  default List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  default List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
-  default List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+  default List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
