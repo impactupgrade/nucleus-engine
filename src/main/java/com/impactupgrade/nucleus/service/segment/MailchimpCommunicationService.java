@@ -69,7 +69,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   protected CrmContact asCrmContact(CrmAccount crmAccount) {
     CrmContact crmContact = new CrmContact();
     crmContact.account = crmAccount;
-    crmContact.crmRawObject = crmAccount.crmRawObject;
+    crmContact.rawObject = crmAccount.rawObject;
     crmContact.email = crmAccount.email;
     crmContact.emailBounced = crmAccount.emailBounced;
     crmContact.emailOptIn = crmAccount.emailOptIn;

@@ -441,11 +441,11 @@ public class HubSpotCrmService implements CrmService {
       }
     }
 
-    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmSource, crmContact.getMetadataValue("utm_source"), contact.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmCampaign, crmContact.getMetadataValue("utm_campaign"), contact.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmMedium, crmContact.getMetadataValue("utm_medium"), contact.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmTerm, crmContact.getMetadataValue("utm_term"), contact.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmContent, crmContact.getMetadataValue("utm_content"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmSource, crmContact.getRawData("utm_source"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmCampaign, crmContact.getRawData("utm_campaign"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmMedium, crmContact.getRawData("utm_medium"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmTerm, crmContact.getRawData("utm_term"), contact.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.contact.utmContent, crmContact.getRawData("utm_content"), contact.getOtherProperties());
 
     for (String fieldName : crmContact.crmRawFieldsToSet.keySet()) {
       setProperty(fieldName, crmContact.crmRawFieldsToSet.get(fieldName), contact.getOtherProperties());
@@ -503,7 +503,7 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, crmDonation.gatewayName, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayTransactionId, crmDonation.transactionId, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, crmDonation.customerId, deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmDonation.getRawData(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
     // Do NOT set subscriptionId! In getRecurringDonation, we search by that and expect only the RD to be returned.
 
     deal.setAmount(crmDonation.amount);
@@ -514,11 +514,11 @@ public class HubSpotCrmService implements CrmService {
       setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayAmountExchangeRate, crmDonation.exchangeRate, deal.getOtherProperties());
     }
 
-    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmSource, crmDonation.getMetadataValue("utm_source"), deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmCampaign, crmDonation.getMetadataValue("utm_campaign"), deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmMedium, crmDonation.getMetadataValue("utm_medium"), deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmTerm, crmDonation.getMetadataValue("utm_term"), deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmContent, crmDonation.getMetadataValue("utm_content"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmSource, crmDonation.getRawData("utm_source"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmCampaign, crmDonation.getRawData("utm_campaign"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmMedium, crmDonation.getRawData("utm_medium"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmTerm, crmDonation.getRawData("utm_term"), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.donation.utmContent, crmDonation.getRawData("utm_content"), deal.getOtherProperties());
   }
 
   @Override
@@ -539,7 +539,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
     for (CrmDonation crmDonation : crmDonations) {
-      Deal deal = (Deal) crmDonation.crmRawObject;
+      Deal deal = (Deal) crmDonation.rawObject;
 
       // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
       if (!Strings.isNullOrEmpty(crmDonation.refundId)) {
@@ -607,7 +607,7 @@ public class HubSpotCrmService implements CrmService {
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayName, crmRecurringDonation.gatewayName, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, crmRecurringDonation.subscriptionId, deal.getOtherProperties());
     setProperty(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, crmRecurringDonation.customerId, deal.getOtherProperties());
-    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
+    setProperty(env.getConfig().hubspot.fieldDefinitions.fund, crmRecurringDonation.getRawData(env.getConfig().metadataKeys.fund), deal.getOtherProperties());
 
     setProperty(env.getConfig().hubspot.fieldDefinitions.recurringDonationFrequency, crmRecurringDonation.frequency.name().toLowerCase(Locale.ROOT), deal.getOtherProperties());
 

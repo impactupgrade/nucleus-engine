@@ -142,7 +142,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
 
         crmContact.mobilePhone = Utils.getPhoneFromMap(map);
 
-        crmContact.crmRawObject = map;
+        crmContact.rawObject = map;
         crmContact.fieldFetcher = map::get;
         return crmContact;
     }

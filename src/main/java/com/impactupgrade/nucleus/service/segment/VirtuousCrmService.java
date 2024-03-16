@@ -333,7 +333,7 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
     for (CrmDonation crmDonation : crmDonations) {
-      VirtuousClient.Gift gift = (VirtuousClient.Gift) crmDonation.crmRawObject;
+      VirtuousClient.Gift gift = (VirtuousClient.Gift) crmDonation.rawObject;
 
       // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
       if (!Strings.isNullOrEmpty(crmDonation.refundId)) {
@@ -409,7 +409,7 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
-    VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.crmRawObject;
+    VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.rawObject;
 
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
       recurringGift.amount = crmRecurringDonation.amount;
@@ -682,7 +682,7 @@ public class VirtuousCrmService implements CrmService {
     //  public List<String> emailGroups;
     //  public String contactLanguage;
 
-    crmContact.crmRawObject = contact;
+    crmContact.rawObject = contact;
 
     return crmContact;
   }
@@ -814,7 +814,7 @@ public class VirtuousCrmService implements CrmService {
     crmDonation.status = CrmDonation.Status.SUCCESSFUL;
     crmDonation.closeDate = getDateTime(gift.giftDate);
     crmDonation.crmUrl = gift.giftUrl;
-    crmDonation.crmRawObject = gift;
+    crmDonation.rawObject = gift;
     return crmDonation;
   }
 
@@ -834,7 +834,7 @@ public class VirtuousCrmService implements CrmService {
     gift.isTaxDeductible = true;
 
     // assumed to be the unique code that the UI gives for a *segment*
-    String segmentCode = crmDonation.getMetadataValue(env.getConfig().metadataKeys.campaign);
+    String segmentCode = crmDonation.getRawData(env.getConfig().metadataKeys.campaign);
     if (!Strings.isNullOrEmpty(segmentCode)) {
       VirtuousClient.Segment segment = virtuousClient.getSegmentByCode(segmentCode);
       if (segment != null) {

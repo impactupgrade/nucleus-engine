@@ -109,7 +109,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
 
       payoutToPaymentGatewayEvents(payout).forEach(e -> {
-        String fund = e.getCrmDonation().getMetadataValue(env.getConfig().metadataKeys.fund);
+        String fund = e.getCrmDonation().getRawData(env.getConfig().metadataKeys.fund);
         deposit.addTransaction(e.getCrmDonation(), fund);
       });
 

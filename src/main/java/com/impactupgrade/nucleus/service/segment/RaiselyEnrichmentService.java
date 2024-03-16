@@ -70,17 +70,17 @@ public class RaiselyEnrichmentService implements EnrichmentService {
         //  for one or the other?
 
         // TODO: Total hack. These contain raw CRM objects, which often are not serializable. Back them up, then restore.
-        Object crmAccountRawObject = crmDonation.account.crmRawObject;
-        Object crmContactRawObject = crmDonation.contact.crmRawObject;
-        crmDonation.account.crmRawObject = null;
-        crmDonation.contact.crmRawObject = null;
+        Object crmAccountRawObject = crmDonation.account.rawObject;
+        Object crmContactRawObject = crmDonation.contact.rawObject;
+        crmDonation.account.rawObject = null;
+        crmDonation.contact.rawObject = null;
 
         CrmDonation clonedCrmDonation = SerializationUtils.clone(crmDonation);
 
-        crmDonation.account.crmRawObject = crmAccountRawObject;
-        crmDonation.contact.crmRawObject = crmContactRawObject;
-        clonedCrmDonation.account.crmRawObject = crmAccountRawObject;
-        clonedCrmDonation.contact.crmRawObject = crmContactRawObject;
+        crmDonation.account.rawObject = crmAccountRawObject;
+        crmDonation.contact.rawObject = crmContactRawObject;
+        clonedCrmDonation.account.rawObject = crmAccountRawObject;
+        clonedCrmDonation.contact.rawObject = crmContactRawObject;
 
         clonedCrmDonation.transactionType = EnvironmentConfig.TransactionType.DONATION;
         clonedCrmDonation.amount = donationAmount;

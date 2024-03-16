@@ -489,7 +489,7 @@ public class SharePointCrmService implements CrmService {
         crmContact.lastName = map.get("Last Name");
         crmContact.mobilePhone = map.get(phoneColumn);
         crmContact.ownerId = map.get(ownerColumn);
-        crmContact.crmRawObject = map;
+        crmContact.rawObject = map;
         crmContact.fieldFetcher = map::get;
         return crmContact;
     }

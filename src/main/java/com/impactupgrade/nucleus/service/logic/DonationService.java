@@ -236,7 +236,7 @@ public class DonationService {
       );
       if (donation.isPresent()) {
         e.getCrmDonation().id = donation.get().id;
-        e.getCrmDonation().crmRawObject = donation.get().crmRawObject;
+        e.getCrmDonation().rawObject = donation.get().rawObject;
         crmDonations.add(e.getCrmDonation());
       } else {
         env.logJobWarn("unable to find SFDC opportunity using transaction {}", e.getCrmDonation().transactionId);
