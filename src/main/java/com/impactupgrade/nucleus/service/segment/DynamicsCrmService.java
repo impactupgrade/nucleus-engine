@@ -42,24 +42,18 @@ public class DynamicsCrmService implements BasicCrmService {
 
   // Contact
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     DynamicsCrmClient.Contact contact = dynamicsCrmClient.getContactById(id);
     return Optional.ofNullable(toCrmContact(contact));
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     return getContactById(id); //TODO: filter?
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    DynamicsCrmClient.Contact contact = dynamicsCrmClient.getContactByEmail(email); //TODO: filter?
-    return Optional.ofNullable(toCrmContact(contact));
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception {
     // TODO: by name and by keywords
     DynamicsCrmClient.Contact contact;
     if (!Strings.isNullOrEmpty(contactSearch.email)) {

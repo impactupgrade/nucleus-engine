@@ -138,26 +138,20 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     Contact contact = hsClient.contact().read(id, contactFields);
     CrmContact crmContact = toCrmContact(contact);
     return Optional.of(crmContact);
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     //TODO Not currently implemented
     return Optional.empty();
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    //TODO Not currently implemented
-    return Optional.empty();
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
     //  combining clauses, owner, by-namd, keyword search, pagination, etc.
 
@@ -702,7 +696,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+  public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     ContactArray contactArray = HubSpotClientFactory.v1Client(env).contactList().getContactsInList(Long.parseLong(listId), contactFields);
     return toCrmContact(contactArray);
   }

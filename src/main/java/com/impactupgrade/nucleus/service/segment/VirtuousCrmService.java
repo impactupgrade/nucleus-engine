@@ -92,7 +92,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     int contactId;
     try {
       contactId = Integer.parseInt(id);
@@ -105,13 +105,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     // TODO
     return Optional.empty();
   }
@@ -172,7 +166,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+  public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     return null;
   }
 
@@ -237,7 +231,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) {
     List<VirtuousClient.QueryCondition> conditions = new ArrayList<>();
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       conditions.add(queryCondition("Email Address", "Is", contactSearch.email));

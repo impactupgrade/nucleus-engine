@@ -150,7 +150,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmContact> getContactById(String id) throws Exception {
+    public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
         String idColumn = env.getConfig().sharePoint.idColumn;
 
         // Ignore the origin here and flatten the map.
@@ -164,14 +164,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+    public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
         //Not currently implemented
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-        //TODO Not currently implemented
         return Optional.empty();
     }
 
@@ -181,7 +175,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
         String emailColumn = sharepoint.emailColumn;
         String phoneColumn = sharepoint.phoneColumn;
@@ -300,7 +294,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
         // listId is assumed to be the file/path of a one-off sheet
         return downloadCsvData(listId).stream().map(this::toCrmContact).collect(Collectors.toList());
     }

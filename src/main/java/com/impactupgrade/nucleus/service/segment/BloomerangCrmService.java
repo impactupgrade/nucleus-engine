@@ -78,20 +78,14 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     Constituent constituent = get(BLOOMERANG_URL + "constituent/" + id, headers(), Constituent.class);
     return Optional.of(toCrmContact(constituent));
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     //Not currently implemented
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    //TODO Not currently implemented
     return Optional.empty();
   }
 
@@ -102,7 +96,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) {
     Set<String> keywords = new HashSet<>();
 
     String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
@@ -437,7 +431,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+  public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     // SMS mass blast
     return Collections.emptyList();
   }

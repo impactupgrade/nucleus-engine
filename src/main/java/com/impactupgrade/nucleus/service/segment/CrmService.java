@@ -53,33 +53,29 @@ public interface CrmService extends SegmentService {
   //  to be a full-blown cascade-delete, much like what we do in IT cleanup.
   void deleteAccount(String accountId) throws Exception;
 
-  Optional<CrmContact> getContactById(String id) throws Exception;
-  Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception;
-  Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception;
-  default List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
+  Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception;
+  default List<CrmContact> getContactsByIds(List<String> ids, String... extraFields) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String id : ids) {
-      Optional<CrmContact> contact = getContactById(id);
+      Optional<CrmContact> contact = getContactById(id, extraFields);
       contact.ifPresent(contacts::add);
     }
     return contacts;
   }
-  default List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
+  Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception;
+  default List<CrmContact> getContactsByEmails(List<String> emails, String... extraFields) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
-      Optional<CrmContact> contact = searchContacts(ContactSearch.byEmail(email)).getSingleResult();
+      Optional<CrmContact> contact = searchContacts(ContactSearch.byEmail(email), extraFields).getSingleResult();
       contact.ifPresent(contacts::add);
     }
     return contacts;
   }
-  PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
+  PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
-  // TODO: Business Donations coming soon.
-//  boolean hasSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
-//  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
-  List<CrmContact> getContactsFromList(String listId) throws Exception;
+  List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
 

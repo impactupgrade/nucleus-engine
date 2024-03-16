@@ -93,7 +93,7 @@ public interface BasicCrmService extends CrmService {
   default void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
   }
 
-  default List<CrmContact> getContactsFromList(String listId) throws Exception {
+  default List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     return null;
   }
 

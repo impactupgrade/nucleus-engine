@@ -115,34 +115,29 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
-    return toCrmContact(sfdcClient.getContactById(id));
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
+    return toCrmContact(sfdcClient.getContactById(id, extraFields));
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
-    return toCrmContact(sfdcClient.getFilteredContactById(id, filter));
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
+    return toCrmContact(sfdcClient.getFilteredContactById(id, filter, extraFields));
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    return toCrmContact(sfdcClient.getFilteredContactByEmail(email, filter));
+  public List<CrmContact> getContactsByIds(List<String> ids, String... extraFields) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByIds(ids, extraFields));
   }
 
   @Override
-  public List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByIds(ids));
-  }
-
-  @Override
-  public List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByEmails(emails));
+  public List<CrmContact> getContactsByEmails(List<String> emails, String... extraFields) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByEmails(emails, extraFields));
   }
 
   @Override
   // currentPageToken assumed to be the offset index
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws InterruptedException, ConnectionException {
-    return toCrmContact(sfdcClient.searchContacts(contactSearch));
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws InterruptedException, ConnectionException {
+    return toCrmContact(sfdcClient.searchContacts(contactSearch, extraFields));
   }
 
   @Override
@@ -854,18 +849,19 @@ public class SfdcCrmService implements CrmService {
    * - Opportunity Name (explicit match)
    */
   @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+  public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     List<SObject> sObjects;
     // 701 is the Campaign ID prefix
     if (listId.startsWith("701")) {
-      sObjects = sfdcClient.getContactsByCampaignId(listId);
+      sObjects = sfdcClient.getContactsByCampaignId(listId, extraFields);
       // 00O - Report ID prefix
     } else if (listId.startsWith("00O")) {
+      // no need for extraFields here, since we're simply grabbing what the report has in it
       sObjects = sfdcClient.getContactsByReportId(listId);
     }
     // otherwise, assume it's an explicit Opportunity name
     else {
-      sObjects = sfdcClient.getContactsByOpportunityName(listId);
+      sObjects = sfdcClient.getContactsByOpportunityName(listId, extraFields);
     }
     return toCrmContact(sObjects);
   }
