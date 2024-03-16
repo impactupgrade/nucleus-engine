@@ -182,41 +182,40 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
-    List<String> clauses = searchRecurringDonations(name, email, phone);
+  public List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws InterruptedException, ConnectionException {
+    List<String> clauses = searchRecurringDonations(contactSearch);
 
-    return sfdcClient.searchRecurringDonations(clauses)
+    return sfdcClient.searchRecurringDonations(clauses, extraFields)
             .stream()
             .map(this::toCrmRecurringDonation)
             .collect(Collectors.toList());
   }
 
-  protected List<String> searchRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone){
+  protected List<String> searchRecurringDonations(ContactSearch contactSearch) {
     List<String> clauses = new ArrayList<>();
 
-    if (name.isPresent()) {
-      String[] nameParts = name.get().trim().split("\\s+");
-
-      for (String part : nameParts) {
-        part = part.replaceAll("'", "\\\\'");
+    if (!contactSearch.keywords.isEmpty()) {
+      for (String keyword : contactSearch.keywords) {
+        keyword = keyword.replaceAll("'", "\\\\'");
         List<String> nameClauses = new ArrayList<>();
-        nameClauses.add("npe03__Organization__r.name LIKE '%" + part + "%'");
-        nameClauses.add("npe03__Contact__r.name LIKE '%" + part + "%'");
+        nameClauses.add("npe03__Organization__r.name LIKE '%" + keyword + "%'");
+        nameClauses.add("npe03__Contact__r.name LIKE '%" + keyword + "%'");
         clauses.add(String.join(" OR ", nameClauses));
       }
     }
 
-    if (email.isPresent()) {
+    if (!Strings.isNullOrEmpty(contactSearch.email)) {
+      String email = contactSearch.email;
       List<String> emailClauses = new ArrayList<>();
-      emailClauses.add("npe03__Contact__r.npe01__HomeEmail__c LIKE '%" + email.get() + "%'");
-      emailClauses.add("npe03__Contact__r.npe01__WorkEmail__c LIKE '%" + email.get() + "%'");
-      emailClauses.add("npe03__Contact__r.npe01__AlternateEmail__c LIKE '%" + email.get() + "%'");
-      emailClauses.add("npe03__Contact__r.email LIKE '%" + email.get() + "%'");
+      emailClauses.add("npe03__Contact__r.npe01__HomeEmail__c LIKE '%" + email + "%'");
+      emailClauses.add("npe03__Contact__r.npe01__WorkEmail__c LIKE '%" + email + "%'");
+      emailClauses.add("npe03__Contact__r.npe01__AlternateEmail__c LIKE '%" + email + "%'");
+      emailClauses.add("npe03__Contact__r.email LIKE '%" + email + "%'");
       clauses.add(String.join(" OR ", emailClauses));
     }
 
-    if (phone.isPresent()) {
-      String phoneClean = phone.get().replaceAll("\\D+", "");
+    if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+      String phoneClean = contactSearch.phone.replaceAll("\\D+", "");
       phoneClean = phoneClean.replaceAll("", "%");
       if (!phoneClean.isEmpty()) {
         List<String> phoneClauses = new ArrayList<>();
@@ -375,13 +374,13 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
-    return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId));
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId, extraFields));
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(id));
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(id, extraFields));
   }
 
   @Override

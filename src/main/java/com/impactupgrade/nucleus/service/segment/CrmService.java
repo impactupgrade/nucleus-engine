@@ -96,22 +96,22 @@ public interface CrmService extends SegmentService {
 
   // Some CRMs do not have full-blown notions of RDs, so no RD ID. Searching by the payment gateway's
   // subscription is at times the only option.
-  default Optional<CrmRecurringDonation> getRecurringDonation(String id, String subscriptionId, String accountId, String contactId) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonation(String id, String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
     Optional<CrmRecurringDonation> crmRecurringDonation = Optional.empty();
 
     if (!Strings.isNullOrEmpty(id)) {
-      crmRecurringDonation = getRecurringDonationById(id);
+      crmRecurringDonation = getRecurringDonationById(id, extraFields);
     }
 
     if (crmRecurringDonation.isEmpty() && !Strings.isNullOrEmpty(subscriptionId)) {
-      crmRecurringDonation = getRecurringDonationBySubscriptionId(subscriptionId, accountId, contactId);
+      crmRecurringDonation = getRecurringDonationBySubscriptionId(subscriptionId, accountId, contactId, extraFields);
     }
 
     return crmRecurringDonation;
   }
-  Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
-  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception;
-  List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
+  Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception;
+  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception;
+  List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 //  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
   // Provide the full CRM model in case additional context is needed (close reasons, etc.)

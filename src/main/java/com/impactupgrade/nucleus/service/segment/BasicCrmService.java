@@ -2,7 +2,9 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
@@ -11,7 +13,6 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 
@@ -62,7 +63,7 @@ public interface BasicCrmService extends CrmService {
   default void deleteAccount(String accountId) throws Exception {
   }
 
-  default List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+  default List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception {
     return null;
   }
 
@@ -70,11 +71,11 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 

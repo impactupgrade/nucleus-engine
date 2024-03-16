@@ -315,12 +315,12 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+    public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
         return Optional.empty();
     }
 
     @Override
-    public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+    public List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception {
         return null;
     }
     @Override
@@ -354,7 +354,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+    public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
         return Optional.empty();
     }
 

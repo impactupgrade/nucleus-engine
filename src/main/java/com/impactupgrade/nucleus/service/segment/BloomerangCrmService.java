@@ -441,7 +441,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
     return getDonations(
         contactId,
         List.of("RecurringDonation"),
@@ -451,11 +451,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception{
-    ContactSearch contactSearch = new ContactSearch();
-    contactSearch.email = email.orElse(null);
-    contactSearch.phone = phone.orElse(null);
-    contactSearch.keywords = name.map(Set::of).orElse(null);
+  public List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception{
     // TODO: page them?
     PagedResults<CrmContact> contacts = searchContacts(contactSearch);
 
@@ -479,7 +475,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
     Donation recurringDonation = getDonation(id);
     return Optional.ofNullable(toCrmRecurringDonation(recurringDonation));
   }

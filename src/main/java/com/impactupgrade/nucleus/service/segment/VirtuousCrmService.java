@@ -426,13 +426,13 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
     VirtuousClient.RecurringGift recurringGift = virtuousClient.getRecurringGiftById(Integer.parseInt(id));
     return Optional.ofNullable(asCrmRecurringDonation(recurringGift));
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
     VirtuousClient.RecurringGifts recurringGifts = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(contactId));
     Optional<VirtuousClient.RecurringGift> recurringGift = recurringGifts.list.stream()
         .filter(rg -> subscriptionId.equalsIgnoreCase(rg.paymentGatewaySubscriptionId(env)))
@@ -441,11 +441,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
-    ContactSearch contactSearch = new ContactSearch();
-    name.ifPresent(s -> contactSearch.keywords = Set.of(s));
-    email.ifPresent(s -> contactSearch.email = s);
-    phone.ifPresent(s -> contactSearch.phone = s);
+  public List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception {
     PagedResults<CrmContact> crmContacts = searchContacts(contactSearch);
 
     List<CrmRecurringDonation> results = new ArrayList<>();

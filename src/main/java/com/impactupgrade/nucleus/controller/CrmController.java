@@ -408,11 +408,11 @@ public class CrmController {
     email = noWhitespace(email);
     phone = trim(phone);
 
-    List<CrmRecurringDonation> recurringDonations = env.donationsCrmService().searchAllRecurringDonations(
-            Optional.ofNullable(Strings.emptyToNull(name)),
-            Optional.ofNullable(Strings.emptyToNull(email)),
-            Optional.ofNullable(Strings.emptyToNull(phone))
-    );
+    ContactSearch contactSearch = new ContactSearch();
+    contactSearch.addKeywords(name);
+    contactSearch.email = email;
+    contactSearch.phone = phone;
+    List<CrmRecurringDonation> recurringDonations = env.donationsCrmService().searchAllRecurringDonations(contactSearch);
     return Response.status(200).entity(recurringDonations).build();
   }
 
