@@ -4,8 +4,8 @@
   "crmPrimary": "hubspot",
 
   "hubspot": {
-    "secretKey": "pat-na1-9a1c6e19-536f-4376-b66b-bf2696aa8b09",
-    "portalId": "21069334",
+    "secretKey": "pat-na1-a612a4e1-82a6-40b6-abc0-6b7902f5ebd3",
+    "portalId": "45533894",
 
     "donationPipeline": {
       "id": "default",
