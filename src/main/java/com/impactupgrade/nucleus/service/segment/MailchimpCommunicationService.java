@@ -207,7 +207,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;
       contactConsumer.accept(updateContact);
-      crmService.batchUpdateContact(updateContact);
+      crmService.batchUpdate(updateContact);
     }
     crmService.batchFlush();
   }
@@ -223,7 +223,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       CrmAccount updateAccount = new CrmAccount();
       updateAccount.id = account.id;
       accountConsumer.accept(updateAccount);
-      crmService.batchUpdateAccount(updateAccount);
+      crmService.batchUpdate(updateAccount);
     }
     crmService.batchFlush();
   }

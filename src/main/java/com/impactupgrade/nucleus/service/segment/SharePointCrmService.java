@@ -379,7 +379,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+    public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
         return Optional.empty();
     }
 

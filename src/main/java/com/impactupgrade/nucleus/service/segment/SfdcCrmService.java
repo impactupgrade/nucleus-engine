@@ -162,7 +162,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void batchUpdateAccount(CrmAccount crmAccount) throws Exception {
+  public void batchUpdate(CrmAccount crmAccount) throws Exception {
     SObject account = new SObject("Account");
     account.setId(crmAccount.id);
     setAccountFields(account, crmAccount);
@@ -450,7 +450,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void batchUpdateContact(CrmContact crmContact) throws Exception {
+  public void batchUpdate(CrmContact crmContact) throws Exception {
     SObject contact = new SObject("Contact");
     contact.setId(crmContact.id);
     setContactFields(contact, crmContact);
@@ -822,8 +822,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
-    return toCrmCampaign(sfdcClient.getCampaignByExternalReference(externalReference));
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
+    return toCrmCampaign(sfdcClient.getCampaignByExternalReference(externalReference, extraFields));
   }
 
   @Override

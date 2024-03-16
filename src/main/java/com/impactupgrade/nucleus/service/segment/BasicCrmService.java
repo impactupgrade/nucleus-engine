@@ -115,7 +115,7 @@ public interface BasicCrmService extends CrmService {
   default void updateCampaign(CrmCampaign crmCampaign) throws Exception {
   }
 
-  default Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+  default Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
