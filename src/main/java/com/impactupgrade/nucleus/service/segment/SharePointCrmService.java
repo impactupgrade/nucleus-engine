@@ -21,7 +21,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.Utils;
 import com.microsoft.graph.models.Site;
@@ -359,7 +359,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
 
     }
 

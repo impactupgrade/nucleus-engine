@@ -8,7 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -205,23 +205,23 @@ public class DonationService {
     }
   }
 
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonationById(manageDonationEvent.getCrmRecurringDonation().id);
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonationById(updateRecurringDonationEvent.getCrmRecurringDonation().id);
 
     if (recurringDonation.isEmpty()) {
-      env.logJobWarn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getCrmRecurringDonation().id);
+      env.logJobWarn("unable to find CRM recurring donation using recurringDonationId {}", updateRecurringDonationEvent.getCrmRecurringDonation().id);
       return;
     }
 
     PaymentGatewayService paymentGatewayService = env.paymentGatewayService(recurringDonation.get().gatewayName);
 
-    manageDonationEvent.getCrmRecurringDonation().subscriptionId = recurringDonation.get().subscriptionId;
-    if (manageDonationEvent.getCancelDonation()) {
-      crmService.closeRecurringDonation(manageDonationEvent.getCrmRecurringDonation());
+    updateRecurringDonationEvent.getCrmRecurringDonation().subscriptionId = recurringDonation.get().subscriptionId;
+    if (updateRecurringDonationEvent.getCancelDonation()) {
+      crmService.closeRecurringDonation(updateRecurringDonationEvent.getCrmRecurringDonation());
       paymentGatewayService.closeSubscription(recurringDonation.get().subscriptionId);
     } else {
-      crmService.updateRecurringDonation(manageDonationEvent);
-      paymentGatewayService.updateSubscription(manageDonationEvent);
+      crmService.updateRecurringDonation(updateRecurringDonationEvent);
+      paymentGatewayService.updateSubscription(updateRecurringDonationEvent);
     }
   }
 

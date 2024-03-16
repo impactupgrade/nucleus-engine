@@ -56,7 +56,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -650,32 +650,32 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
     DealProperties dealProperties = new DealProperties();
 
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
 
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
       dealProperties.setAmount(crmRecurringDonation.amount);
       env.logJobInfo("Updating amount to {}...", crmRecurringDonation.amount);
     }
-    if (manageDonationEvent.getNextPaymentDate() != null) {
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
       // TODO
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
+    if (updateRecurringDonationEvent.getPauseDonation()) {
       dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
       // TODO: Close reason?
 
-      if (manageDonationEvent.getPauseDonationUntilDate() == null) {
+      if (updateRecurringDonationEvent.getPauseDonationUntilDate() == null) {
         env.logJobInfo("pausing {} indefinitely...", crmRecurringDonation.id);
       } else {
-        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
+        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, updateRecurringDonationEvent.getPauseDonationUntilDate().getTime());
       }
-      setRecurringDonationFieldsForPause(dealProperties, manageDonationEvent);
+      setRecurringDonationFieldsForPause(dealProperties, updateRecurringDonationEvent);
     }
 
-    if (manageDonationEvent.getResumeDonation()) {
+    if (updateRecurringDonationEvent.getResumeDonation()) {
       // TODO: Likely a new Deal with type/dates set appropriately
     }
 
@@ -684,7 +684,7 @@ public class HubSpotCrmService implements CrmService {
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to pause
   protected void setRecurringDonationFieldsForPause(DealProperties deal,
-      ManageDonationEvent manageDonationEvent) throws Exception {
+      UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   @Override

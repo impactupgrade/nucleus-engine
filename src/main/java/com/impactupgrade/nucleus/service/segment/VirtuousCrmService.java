@@ -19,7 +19,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -401,8 +401,8 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
     VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.rawObject;
 
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
@@ -410,15 +410,15 @@ public class VirtuousCrmService implements CrmService {
       env.logJobInfo("Updating amount to {}...", crmRecurringDonation.amount);
     }
 
-    if (manageDonationEvent.getNextPaymentDate() != null) {
-      recurringGift.nextExpectedPaymentDate = new SimpleDateFormat("yyyy-MM-dd").format(manageDonationEvent.getNextPaymentDate().getTime());
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
+      recurringGift.nextExpectedPaymentDate = new SimpleDateFormat("yyyy-MM-dd").format(updateRecurringDonationEvent.getNextPaymentDate().getTime());
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
+    if (updateRecurringDonationEvent.getPauseDonation()) {
       // TODO
     }
 
-    if (manageDonationEvent.getResumeDonation()) {
+    if (updateRecurringDonationEvent.getResumeDonation()) {
       // TODO
     }
 

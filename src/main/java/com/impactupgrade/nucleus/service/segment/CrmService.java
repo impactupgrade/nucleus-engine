@@ -20,8 +20,8 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -113,7 +113,7 @@ public interface CrmService extends SegmentService {
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception;
   List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
-//  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
+  void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception;
   // Provide the full CRM model in case additional context is needed (close reasons, etc.)
   void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 
@@ -137,13 +137,6 @@ public interface CrmService extends SegmentService {
   default void batchFlush() throws Exception {
     // default to no-op
   }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // RECURRING DONATION MANAGEMENT EVENTS
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // TODO
-  void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMUNICATION SYNC
