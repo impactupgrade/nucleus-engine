@@ -41,29 +41,24 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public Optional<CrmContact> getContactById(String id) throws Exception {
+    public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
         return Optional.empty();
     }
 
     @Override
-    public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+    public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
         return Optional.empty();
     }
 
     @Override
-    public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-        return Optional.empty();
-    }
-
-    @Override
-    public List<CrmContact> getContactsFromList(String listId) throws Exception {
+    public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
         // listId is assumed to be the full URL of a GSheet
         return GoogleSheetsUtil.getSheetData(listId).stream()
             .map(this::toCrmContact).collect(Collectors.toList());
     }
 
     @Override
-    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception {
         return null;
     }
 
@@ -78,7 +73,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+    public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
         return Collections.emptyList();
     }
 

@@ -380,7 +380,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.merge_fields = new MailchimpObject();
     mcContact.merge_fields.mapping.put(FIRST_NAME, crmContact.firstName);
     mcContact.merge_fields.mapping.put(LAST_NAME, crmContact.lastName);
-    mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
+    mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.phone());
     mcContact.merge_fields.mapping.putAll(customFields);
     mcContact.status = SUBSCRIBED;
 

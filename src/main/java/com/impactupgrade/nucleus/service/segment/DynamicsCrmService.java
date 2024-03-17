@@ -42,24 +42,18 @@ public class DynamicsCrmService implements BasicCrmService {
 
   // Contact
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     DynamicsCrmClient.Contact contact = dynamicsCrmClient.getContactById(id);
     return Optional.ofNullable(toCrmContact(contact));
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     return getContactById(id); //TODO: filter?
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    DynamicsCrmClient.Contact contact = dynamicsCrmClient.getContactByEmail(email); //TODO: filter?
-    return Optional.ofNullable(toCrmContact(contact));
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception {
     // TODO: by name and by keywords
     DynamicsCrmClient.Contact contact;
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
@@ -85,7 +79,7 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
     if (Strings.isNullOrEmpty(env.getConfig().dynamicsPlatform.fieldDefinitions.paymentGatewayTransactionId)) {
       return Collections.emptyList();
     }
@@ -194,13 +188,13 @@ public class DynamicsCrmService implements BasicCrmService {
 
   // Account
   @Override
-  public Optional<CrmAccount> getAccountById(String id) {
+  public Optional<CrmAccount> getAccountById(String id, String... extraFields) {
     DynamicsCrmClient.Account account = dynamicsCrmClient.getAccountById(id);
     return Optional.ofNullable(toCrmAccount(account));
   }
 
   @Override
-  public List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+  public List<CrmAccount> getAccountsByIds(List<String> ids, String... extraFields) throws Exception {
     List<DynamicsCrmClient.Account> accounts = dynamicsCrmClient.getAccountsByIds(ids);
     return accounts.stream()
         .map(account -> toCrmAccount(account))

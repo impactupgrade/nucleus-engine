@@ -99,8 +99,8 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("donorInfo[city]", Strings.nullToEmpty(crmContact.mailingAddress.city)));
     params.add(new BasicNameValuePair("donorInfo[state]", Strings.nullToEmpty(crmContact.mailingAddress.state)));
     params.add(new BasicNameValuePair("donorInfo[zip]", Strings.nullToEmpty(crmContact.mailingAddress.postalCode)));
-    params.add(new BasicNameValuePair("donorInfo[email]", Strings.nullToEmpty(crmContact.email)));
-    params.add(new BasicNameValuePair("donorInfo[phone]", Strings.nullToEmpty(crmContact.mobilePhone)));
+    params.add(new BasicNameValuePair("donorInfo[email]", Strings.nullToEmpty(crmContact.email())));
+    params.add(new BasicNameValuePair("donorInfo[phone]", Strings.nullToEmpty(crmContact.phone())));
     params.add(new BasicNameValuePair("donorInfo[first]", crmContact.firstName));
     params.add(new BasicNameValuePair("donorInfo[last]", crmContact.lastName));
     params.add(new BasicNameValuePair("donorInfo[display]", crmContact.getFullName()));
@@ -165,13 +165,13 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("donationInfo[referenceNum]", crmDonation.transactionId));
 
     // if DS provided a configurable key/value, use them -- otherwise, default to General
-    String subselectionValue = crmDonation.getMetadataValue("Subselection Value");
+    String subselectionValue = crmDonation.getRawData("Subselection Value");
     if (!Strings.isNullOrEmpty(subselectionValue) && !"general".equalsIgnoreCase(subselectionValue)) {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", paymentGatewayEvent.getMetadataValue("Subselection Key")));
-      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", Strings.nullToEmpty(crmDonation.getMetadataValue("Subselection Value"))));
-    } else if (crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund) != null) {
+      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", Strings.nullToEmpty(crmDonation.getRawData("Subselection Value"))));
+    } else if (crmDonation.getRawData(env.getConfig().metadataKeys.fund) != null) {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", "Fund"));
-      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund)));
+      params.add(new BasicNameValuePair("donationInfo[directedPurpose]", crmDonation.getRawData(env.getConfig().metadataKeys.fund)));
     } else {
 //      params.add(new BasicNameValuePair("donationInfo[fund]", "General"));
     }

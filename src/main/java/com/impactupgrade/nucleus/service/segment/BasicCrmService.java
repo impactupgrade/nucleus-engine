@@ -2,18 +2,18 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 
 import java.util.Collections;
 import java.util.List;
@@ -36,19 +36,19 @@ import java.util.Optional;
  */
 public interface BasicCrmService extends CrmService {
 
-  default Optional<CrmAccount> getAccountById(String id) throws Exception {
+  default Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
-  default List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+  default List<CrmAccount> getAccountsByIds(List<String> ids, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
-  default List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  default List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
-  default List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+  default List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
@@ -62,7 +62,7 @@ public interface BasicCrmService extends CrmService {
   default void deleteAccount(String accountId) throws Exception {
   }
 
-  default List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+  default List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception {
     return null;
   }
 
@@ -70,18 +70,18 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   default void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
   }
 
-  default void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  default void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   default void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
@@ -93,7 +93,7 @@ public interface BasicCrmService extends CrmService {
   default void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
   }
 
-  default List<CrmContact> getContactsFromList(String listId) throws Exception {
+  default List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     return null;
   }
 
@@ -114,15 +114,11 @@ public interface BasicCrmService extends CrmService {
   default void updateCampaign(CrmCampaign crmCampaign) throws Exception {
   }
 
-  default Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+  default Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   default void deleteCampaign(String campaignId) throws Exception {
-  }
-
-  default Optional<CrmUser> getUserById(String id) throws Exception {
-    return Optional.empty();
   }
 
   default Optional<CrmUser> getUserByEmail(String email) throws Exception {
@@ -152,8 +148,5 @@ public interface BasicCrmService extends CrmService {
 
   default List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields) {
     return null;
-  }
-
-  default void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
   }
 }

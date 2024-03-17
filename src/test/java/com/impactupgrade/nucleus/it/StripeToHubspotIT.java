@@ -180,7 +180,8 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(0, hsClient.company().searchByName(customer.getName().split(" ")[1], Collections.emptyList()).getTotal());
 
     // and ensure the rest of the process halted
-    Optional<CrmDonation> donationO = hsCrmService.getDonationByTransactionId(charge.getId());
+    Optional<CrmDonation> donationO = hsCrmService.getDonationsByTransactionIds(List.of(charge.getId()), null, null)
+        .stream().findFirst();
     assertFalse(donationO.isPresent());
 
     // only delete if the test passed -- keep failures in SFDC for analysis

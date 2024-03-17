@@ -60,12 +60,12 @@ public class PaymentGatewayEvent implements Serializable {
 
   public void initStripe(Charge stripeCharge, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    crmDonation.metadata.putAll(stripeCharge.getMetadata());
+    crmDonation.rawData.putAll(stripeCharge.getMetadata());
     // for fundraising platforms that do not use Subscriptions (like FRU), the recurring donation metadata is on the charge
-    crmRecurringDonation.metadata.putAll(stripeCharge.getMetadata());
+    crmRecurringDonation.rawData.putAll(stripeCharge.getMetadata());
     // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
-    crmAccount.metadata.putAll(stripeCharge.getMetadata());
-    crmContact.metadata.putAll(stripeCharge.getMetadata());
+    crmAccount.rawData.putAll(stripeCharge.getMetadata());
+    crmContact.rawData.putAll(stripeCharge.getMetadata());
 
     crmDonation.gatewayName = "Stripe";
     crmDonation.application = stripeCharge.getApplication();
@@ -138,12 +138,12 @@ public class PaymentGatewayEvent implements Serializable {
 
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
       Optional<Invoice> stripeInvoice, Optional<BalanceTransaction> stripeBalanceTransaction) {
-    crmDonation.metadata.putAll(stripePaymentIntent.getMetadata());
+    crmDonation.rawData.putAll(stripePaymentIntent.getMetadata());
     // for fundraising platforms that do not use Subscriptions (like FRU), the recurring donation metadata is on the charge
-    crmRecurringDonation.metadata.putAll(stripePaymentIntent.getMetadata());
+    crmRecurringDonation.rawData.putAll(stripePaymentIntent.getMetadata());
     // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
-    crmAccount.metadata.putAll(stripePaymentIntent.getMetadata());
-    crmContact.metadata.putAll(stripePaymentIntent.getMetadata());
+    crmAccount.rawData.putAll(stripePaymentIntent.getMetadata());
+    crmContact.rawData.putAll(stripePaymentIntent.getMetadata());
 
     crmDonation.gatewayName = "Stripe";
     crmDonation.application = stripePaymentIntent.getApplication();
@@ -252,8 +252,8 @@ public class PaymentGatewayEvent implements Serializable {
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
-      crmAccount.metadata.putAll(stripeCustomer.getMetadata());
-      crmContact.metadata.putAll(stripeCustomer.getMetadata());
+      crmAccount.rawData.putAll(stripeCustomer.getMetadata());
+      crmContact.rawData.putAll(stripeCustomer.getMetadata());
 
       crmDonation.customerId = stripeCustomer.getId();
       crmRecurringDonation.customerId = stripeCustomer.getId();
@@ -264,14 +264,14 @@ public class PaymentGatewayEvent implements Serializable {
 
     // backfill with metadata if needed
     if (Strings.isNullOrEmpty(crmContact.email)) {
-      crmContact.email = crmContact.metadata.entrySet().stream().filter(e -> {
+      crmContact.email = crmContact.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("email"));
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
-    if (Strings.isNullOrEmpty(crmContact.mobilePhone)) {
+    if (Strings.isNullOrEmpty(crmContact.phone())) {
       // TODO: Do we need to break this down into the different phone numbers?
-      crmContact.mobilePhone = crmContact.metadata.entrySet().stream().filter(e -> {
+      crmContact.mobilePhone = crmContact.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("phone"));
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
@@ -289,14 +289,14 @@ public class PaymentGatewayEvent implements Serializable {
     crmAccount.name = stripeCustomer.map(Customer::getName).orElse(null);
     // If that didn't work, look in the metadata. We've seen variations of "customer" or "full" name used.
     if (Strings.isNullOrEmpty(crmAccount.name)) {
-      crmAccount.name = crmAccount.metadata.entrySet().stream().filter(e -> {
+      crmAccount.name = crmAccount.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
     // If that still didn't work, look in the backup metadata (typically a charge or subscription).
     if (Strings.isNullOrEmpty(crmAccount.name)) {
-      crmAccount.name = crmAccount.metadata.entrySet().stream().filter(e -> {
+      crmAccount.name = crmAccount.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return (key.contains("customer") || key.contains("full")) && key.contains("name");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
@@ -316,24 +316,24 @@ public class PaymentGatewayEvent implements Serializable {
 
     // Now do first name, again using metadata. Don't do "contains 'first' and contains 'name'", since that would also
     // pick up, as an example, Raisely's use of fundraiser_first_name. Instead, use regex that's a little more explicit.
-    crmContact.firstName = crmContact.metadata.entrySet().stream().filter(e -> {
+    crmContact.firstName = crmContact.rawData.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.matches("(?i)first.*name");
     }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.firstName)) {
-      crmContact.firstName = crmContact.metadata.entrySet().stream().filter(e -> {
+      crmContact.firstName = crmContact.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.matches("(?i)first.*name");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
 
     // And now the last name.
-    crmContact.lastName = crmContact.metadata.entrySet().stream().filter(e -> {
+    crmContact.lastName = crmContact.rawData.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.matches("(?i)last.*name");
     }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     if (Strings.isNullOrEmpty(crmContact.lastName)) {
-      crmContact.lastName = crmContact.metadata.entrySet().stream().filter(e -> {
+      crmContact.lastName = crmContact.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.matches("(?i)last.*name");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
@@ -408,23 +408,23 @@ public class PaymentGatewayEvent implements Serializable {
     // If the customer and sources didn't have the full address, try metadata from both.
     if (Strings.isNullOrEmpty(crmAddress.street)) {
       // TODO: The stream and filter are getting repetitive (see initStripeCustomerName as well). DRY it up
-      crmAddress.street = crmAccount.metadata.entrySet().stream().filter(e -> {
+      crmAddress.street = crmAccount.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("street") || key.contains("address");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
-      crmAddress.city = crmAccount.metadata.entrySet().stream().filter(e -> {
+      crmAddress.city = crmAccount.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("city");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
-      crmAddress.state = crmAccount.metadata.entrySet().stream().filter(e -> {
+      crmAddress.state = crmAccount.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("state");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
-      crmAddress.postalCode = crmAccount.metadata.entrySet().stream().filter(e -> {
+      crmAddress.postalCode = crmAccount.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("postal") || key.contains("zip");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
-      crmAddress.country = crmAccount.metadata.entrySet().stream().filter(e -> {
+      crmAddress.country = crmAccount.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
         return key.contains("country");
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
@@ -436,11 +436,11 @@ public class PaymentGatewayEvent implements Serializable {
 
   // Keep stripeCustomer, even though we don't use it here -- needed in subclasses.
   protected void initStripeSubscription(Subscription stripeSubscription, Customer stripeCustomer) {
-    crmRecurringDonation.metadata.putAll(stripeSubscription.getMetadata());
+    crmRecurringDonation.rawData.putAll(stripeSubscription.getMetadata());
     // some fundraising platforms put most of the donor metadata on the charge/subscription, so include them here
-    crmAccount.metadata.putAll(stripeSubscription.getMetadata());
-    crmContact.metadata.putAll(stripeSubscription.getMetadata());
-    crmDonation.metadata.putAll(stripeSubscription.getMetadata());
+    crmAccount.rawData.putAll(stripeSubscription.getMetadata());
+    crmContact.rawData.putAll(stripeSubscription.getMetadata());
+    crmDonation.rawData.putAll(stripeSubscription.getMetadata());
 
     crmRecurringDonation.gatewayName = "Stripe";
 
@@ -544,10 +544,10 @@ public class PaymentGatewayEvent implements Serializable {
   public Map<String, String> getAllMetadata() {
     Map<String, String> metadata = new CaseInsensitiveMap<>();
     // order matters -- let the donations overwrite the customer defaults
-    metadata.putAll(crmAccount.metadata);
-    metadata.putAll(crmContact.metadata);
-    metadata.putAll(crmRecurringDonation.metadata);
-    metadata.putAll(crmDonation.metadata);
+    metadata.putAll(crmAccount.rawData);
+    metadata.putAll(crmContact.rawData);
+    metadata.putAll(crmRecurringDonation.rawData);
+    metadata.putAll(crmDonation.rawData);
     return metadata;
   }
 
@@ -560,7 +560,7 @@ public class PaymentGatewayEvent implements Serializable {
         .map(k -> k.toLowerCase(Locale.ROOT)).toList();
 
     // In order!
-    return Stream.of(crmDonation.metadata, crmRecurringDonation.metadata, crmContact.metadata, crmAccount.metadata)
+    return Stream.of(crmDonation.rawData, crmRecurringDonation.rawData, crmContact.rawData, crmAccount.rawData)
         .flatMap(map -> map.entrySet().stream())
         .filter(e -> filteredKeys.contains(e.getKey().toLowerCase(Locale.ROOT)))
         .map(Map.Entry::getValue)
@@ -632,7 +632,7 @@ public class PaymentGatewayEvent implements Serializable {
         ", firstName='" + crmContact.firstName + '\'' +
         ", lastName='" + crmContact.lastName + '\'' +
         ", email='" + crmContact.email + '\'' +
-        ", mobilePhone='" + crmContact.mobilePhone + '\'' +
+        ", phone='" + crmContact.phone() + '\'' +
 
         ", street='" + crmAccount.billingAddress.street + '\'' +
         ", city='" + crmAccount.billingAddress.city + '\'' +

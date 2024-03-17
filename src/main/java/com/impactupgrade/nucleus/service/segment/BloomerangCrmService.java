@@ -23,13 +23,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
 
@@ -78,31 +77,25 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     Constituent constituent = get(BLOOMERANG_URL + "constituent/" + id, headers(), Constituent.class);
     return Optional.of(toCrmContact(constituent));
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     //Not currently implemented
     return Optional.empty();
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    //TODO Not currently implemented
-    return Optional.empty();
-  }
-
-  @Override
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) {
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) {
     // TODO
     return Collections.emptyList();
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) {
     Set<String> keywords = new HashSet<>();
 
     String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
@@ -172,19 +165,13 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmDonation> getDonationByTransactionIds(List<String> transactionIds, String accountId, String contactId) {
-    return getDonation(
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) {
+    return getDonations(
         contactId,
         List.of("Donation", "RecurringDonationPayment"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId,
         transactionIds
-    ).map(this::toCrmDonation);
-  }
-
-  // Not able to retrieve donations purely by transactionIds -- must have the Constituent.
-  @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
-    return Collections.emptyList();
+    ).stream().map(this::toCrmDonation).toList();
   }
 
   @Override
@@ -205,9 +192,9 @@ public class BloomerangCrmService implements CrmService {
       constituent.primaryEmail = constituentEmail;
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
+    if (!Strings.isNullOrEmpty(crmContact.phone())) {
       final Phone constituentPhone = new Phone();
-      constituentPhone.number = crmContact.phoneNumberForSMS();
+      constituentPhone.number = crmContact.phone();
       constituent.primaryPhone = constituentPhone;
     }
 
@@ -255,8 +242,8 @@ public class BloomerangCrmService implements CrmService {
     designation.amount = donation.amount;
 
     // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
-    if (!Strings.isNullOrEmpty(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund))) {
-      designation.fundId = Integer.parseInt(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
+    if (!Strings.isNullOrEmpty(crmDonation.getRawData(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(crmDonation.getRawData(env.getConfig().metadataKeys.fund));
     } else {
       designation.fundId = env.getConfig().bloomerang.defaultFundId;
     }
@@ -299,8 +286,8 @@ public class BloomerangCrmService implements CrmService {
     Designation designation = new Designation();
     designation.amount = donation.amount;
     // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
-    if (!Strings.isNullOrEmpty(crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund))) {
-      designation.fundId = Integer.parseInt(crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
+    if (!Strings.isNullOrEmpty(crmRecurringDonation.getRawData(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(crmRecurringDonation.getRawData(env.getConfig().metadataKeys.fund));
     } else {
       designation.fundId = env.getConfig().bloomerang.defaultFundId;
     }
@@ -345,11 +332,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    throw new RuntimeException("not implemented");
-  }
-
-  @Override
   public List<CrmUser> getUsers() throws Exception {
     return Collections.emptyList();
   }
@@ -390,12 +372,12 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
+  public Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  public List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
@@ -437,7 +419,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+  public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     // SMS mass blast
     return Collections.emptyList();
   }
@@ -453,21 +435,17 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
-    return getDonation(
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
+    return getDonations(
         contactId,
         List.of("RecurringDonation"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId,
         List.of(subscriptionId)
-    ).map(this::toCrmRecurringDonation);
+    ).stream().map(this::toCrmRecurringDonation).findFirst();
   }
 
   @Override
-  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception{
-    ContactSearch contactSearch = new ContactSearch();
-    contactSearch.email = email.orElse(null);
-    contactSearch.phone = phone.orElse(null);
-    contactSearch.keywords = name.map(Set::of).orElse(null);
+  public List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception{
     // TODO: page them?
     PagedResults<CrmContact> contacts = searchContacts(contactSearch);
 
@@ -491,14 +469,14 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
     Donation recurringDonation = getDonation(id);
     return Optional.ofNullable(toCrmRecurringDonation(recurringDonation));
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
     // TODO: We need a refactor. Upstream (DonationService), we're already retrieving this once to confirm the RD's
     //  existence. But here we need it again in order to get the designations. Can we trust crmRecurringDonation.raw?
     Donation recurringDonation = getDonation(crmRecurringDonation.id);
@@ -509,16 +487,16 @@ public class BloomerangCrmService implements CrmService {
           .forEach(rd -> rd.amount = crmRecurringDonation.amount);
       env.logJobInfo("Updating amount to {}...", crmRecurringDonation.amount);
     }
-    if (manageDonationEvent.getNextPaymentDate() != null) {
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
       // TODO: RecurringDonationNextInstallmentDate
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
+    if (updateRecurringDonationEvent.getPauseDonation()) {
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
         rd.recurringDonationStatus = "Closed";
         rd.recurringDonationEndDate = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
       });
-    } else if (manageDonationEvent.getResumeDonation()) {
+    } else if (updateRecurringDonationEvent.getResumeDonation()) {
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
         rd.recurringDonationStatus = "Active";
         rd.recurringDonationEndDate = "";
@@ -557,7 +535,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
@@ -571,12 +549,6 @@ public class BloomerangCrmService implements CrmService {
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Collections.emptyMap();
-  }
-
-  @Override
-  public Optional<CrmUser> getUserById(String id) throws Exception {
-    // Unlikely to be relevant for Bloomerang.
-    return Optional.empty();
   }
 
   @Override
@@ -611,33 +583,25 @@ public class BloomerangCrmService implements CrmService {
     return null;
   }
 
-  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
-      String customFieldKey, String customFieldValue) {
-    return getDonation(constituentId, donationTypes, customFieldKey, List.of(customFieldValue));
-  }
-
-  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
+  protected List<Donation> getDonations(String constituentId, List<String> donationTypes,
       String customFieldKey, List<String> _customFieldValues) {
     if (Strings.isNullOrEmpty(customFieldKey)) {
-      return Optional.empty();
+      return List.of();
     }
 
     List<String> customFieldValues = _customFieldValues.stream().filter(v -> !Strings.isNullOrEmpty(v)).collect(Collectors.toList());
     if (customFieldValues.isEmpty()) {
-      return Optional.empty();
+      return List.of();
     }
 
     for (String donationType : donationTypes) {
-      Optional<Donation> donation = getDonations(constituentId, donationType).stream().filter(d -> {
+      return getDonations(constituentId, donationType).stream().filter(d -> {
         String customFieldValue = getCustomFieldValue(d, customFieldKey);
         return customFieldValues.contains(customFieldValue);
-      }).findFirst();
-      if (donation.isPresent()) {
-        return donation;
-      }
+      }).toList();
     }
 
-    return Optional.empty();
+    return List.of();
   }
 
   // type: Donation, Pledge, PledgePayment, RecurringDonation, RecurringDonationPayment

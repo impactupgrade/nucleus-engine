@@ -123,7 +123,9 @@ public class EventBriteController {
       case "order.refunded" -> {
         EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl, "attendees");
 
-        Optional<CrmDonation> existingCrmDonation = crmService.getDonationByTransactionId(order.id);
+        // TODO: Should we attempt to get accountId/contactId? Does the webhook give us the contact or email?
+        Optional<CrmDonation> existingCrmDonation = crmService.getDonationsByTransactionIds(List.of(order.id), null, null)
+            .stream().findFirst();
         if (existingCrmDonation.isPresent()) {
           CrmDonation crmDonation = existingCrmDonation.get();
           crmDonation.status = CrmDonation.Status.FAILED;
@@ -134,8 +136,9 @@ public class EventBriteController {
       case "order.updated" -> {
         EventBriteClient.Order order = eventBriteClient.getOrder(webhookPayload.apiUrl, "attendees");
 
-        Optional<CrmDonation> existingCrmDonation = crmService.getDonationByTransactionId(order.id);
-
+        // TODO: Should we attempt to get accountId/contactId? Does the webhook give us the contact or email?
+        Optional<CrmDonation> existingCrmDonation = crmService.getDonationsByTransactionIds(List.of(order.id), null, null)
+            .stream().findFirst();
         if (existingCrmDonation.isPresent()) {
           CrmDonation crmDonation = toCrmDonation(order);
           // TODO: update only specific fields to avoid "overwrite"?

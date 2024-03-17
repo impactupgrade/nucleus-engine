@@ -49,26 +49,20 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     return toCrmContact(
         dwClient.contactSearch("id", id)
     );
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     //Not currently implemented
     return Optional.empty();
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    //Not currently implemented
-    return Optional.empty();
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
     //  combining clauses, owner, keyword search, pagination, etc.
 
@@ -98,7 +92,7 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
     // TODO: Josh?
     return Collections.emptyList();
   }

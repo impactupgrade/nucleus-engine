@@ -30,8 +30,8 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
       for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
         List<CrmContact> crmContacts = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
         for (CrmContact crmContact : crmContacts) {
-          if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
-            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phoneNumberForSMS(), communicationList.id);
+          if (!Strings.isNullOrEmpty(crmContact.phone())) {
+            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phone(), communicationList.id);
             constantContactClient.upsertContact(crmContact, communicationList.id);
           }
         }
@@ -54,8 +54,8 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
       for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
         Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
 
-        if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().phoneNumberForSMS())) {
-          env.logJobInfo("upserting contact {} {} on list {}", crmContact.get().id, crmContact.get().phoneNumberForSMS(), communicationList.id);
+        if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().phone())) {
+          env.logJobInfo("upserting contact {} {} on list {}", crmContact.get().id, crmContact.get().phone(), communicationList.id);
           constantContactClient.upsertContact(crmContact.get(), communicationList.id);
         }
       }

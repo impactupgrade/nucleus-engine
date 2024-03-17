@@ -14,13 +14,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -67,12 +66,12 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
+  public Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  public List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
@@ -92,7 +91,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     int contactId;
     try {
       contactId = Integer.parseInt(id);
@@ -105,13 +104,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     // TODO
     return Optional.empty();
   }
@@ -172,7 +165,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+  public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     return null;
   }
 
@@ -232,12 +225,12 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) {
     List<VirtuousClient.QueryCondition> conditions = new ArrayList<>();
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       conditions.add(queryCondition("Email Address", "Is", contactSearch.email));
@@ -276,7 +269,7 @@ public class VirtuousCrmService implements CrmService {
 
   // Donations
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
     // TODO: possible to query for the whole list at once?
     // TODO: For now, safe to assume Stripe here, but might need an interface change...
     List<CrmDonation> donations = new ArrayList<>();
@@ -397,7 +390,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
@@ -407,8 +400,8 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
     VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.crmRawObject;
 
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
@@ -416,15 +409,15 @@ public class VirtuousCrmService implements CrmService {
       env.logJobInfo("Updating amount to {}...", crmRecurringDonation.amount);
     }
 
-    if (manageDonationEvent.getNextPaymentDate() != null) {
-      recurringGift.nextExpectedPaymentDate = new SimpleDateFormat("yyyy-MM-dd").format(manageDonationEvent.getNextPaymentDate().getTime());
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
+      recurringGift.nextExpectedPaymentDate = new SimpleDateFormat("yyyy-MM-dd").format(updateRecurringDonationEvent.getNextPaymentDate().getTime());
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
+    if (updateRecurringDonationEvent.getPauseDonation()) {
       // TODO
     }
 
-    if (manageDonationEvent.getResumeDonation()) {
+    if (updateRecurringDonationEvent.getResumeDonation()) {
       // TODO
     }
 
@@ -432,13 +425,13 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
     VirtuousClient.RecurringGift recurringGift = virtuousClient.getRecurringGiftById(Integer.parseInt(id));
     return Optional.ofNullable(asCrmRecurringDonation(recurringGift));
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
     VirtuousClient.RecurringGifts recurringGifts = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(contactId));
     Optional<VirtuousClient.RecurringGift> recurringGift = recurringGifts.list.stream()
         .filter(rg -> subscriptionId.equalsIgnoreCase(rg.paymentGatewaySubscriptionId(env)))
@@ -447,11 +440,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
-    ContactSearch contactSearch = new ContactSearch();
-    name.ifPresent(s -> contactSearch.keywords = Set.of(s));
-    email.ifPresent(s -> contactSearch.email = s);
-    phone.ifPresent(s -> contactSearch.phone = s);
+  public List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception {
     PagedResults<CrmContact> crmContacts = searchContacts(contactSearch);
 
     List<CrmRecurringDonation> results = new ArrayList<>();
@@ -531,11 +520,6 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public List<CrmUser> getUsers() throws Exception {
     return Collections.emptyList();
-  }
-
-  @Override
-  public Optional<CrmUser> getUserById(String id) throws Exception {
-    return Optional.empty();
   }
 
   @Override
@@ -624,11 +608,6 @@ public class VirtuousCrmService implements CrmService {
     return campaignGifts.stream()
         .mapToDouble(gift -> Double.parseDouble(gift.amount.replace("$", "").replace(",", "")))
         .sum();
-  }
-
-  @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    // TODO
   }
 
   @Override
@@ -834,7 +813,7 @@ public class VirtuousCrmService implements CrmService {
     gift.isTaxDeductible = true;
 
     // assumed to be the unique code that the UI gives for a *segment*
-    String segmentCode = crmDonation.getMetadataValue(env.getConfig().metadataKeys.campaign);
+    String segmentCode = crmDonation.getRawData(env.getConfig().metadataKeys.campaign);
     if (!Strings.isNullOrEmpty(segmentCode)) {
       VirtuousClient.Segment segment = virtuousClient.getSegmentByCode(segmentCode);
       if (segment != null) {

@@ -11,13 +11,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 
 import java.util.Calendar;
 import java.util.Collections;
@@ -35,37 +34,32 @@ import java.util.Optional;
 public class BareCrmService implements CrmService {
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
+  public Optional<CrmAccount> getAccountById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  public List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
+  public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
+  public Optional<CrmContact> getFilteredContactById(String id, String filter, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception {
     return new PagedResults<>(Collections.emptyList(), 0, "");
   }
 
   @Override
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+  public List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
@@ -105,7 +99,7 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsFromList(String listId) throws Exception {
+  public List<CrmContact> getContactsFromList(String listId, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
@@ -120,17 +114,17 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   @Override
-  public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
+  public List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception {
     return Collections.emptyList();
   }
   @Override
@@ -164,12 +158,12 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
 
   }
 
@@ -189,7 +183,7 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
+  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
     return Optional.empty();
   }
 
@@ -237,16 +231,6 @@ public class BareCrmService implements CrmService {
   @Override
   public double getDonationsTotal(String filter) throws Exception {
     return 0.0;
-  }
-
-  @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-
-  }
-
-  @Override
-  public Optional<CrmUser> getUserById(String id) throws Exception {
-    return Optional.empty();
   }
 
   @Override

@@ -12,7 +12,7 @@ import java.text.ParseException;
 import java.time.ZoneId;
 import java.util.Calendar;
 
-public class ManageDonationEvent {
+public class UpdateRecurringDonationEvent {
 
   protected final Environment env;
 
@@ -26,11 +26,11 @@ public class ManageDonationEvent {
   protected Boolean cancelDonation;
   protected String stripeToken;
 
-  public ManageDonationEvent(Environment env) {
+  public UpdateRecurringDonationEvent(Environment env) {
     this.env = env;
   }
 
-  public ManageDonationEvent(ManageDonationFormData formData, Environment env) throws ParseException {
+  public UpdateRecurringDonationEvent(ManageDonationFormData formData, Environment env) throws ParseException {
     this.env = env;
 
     crmRecurringDonation.id = formData.recurringDonationId;

@@ -8,7 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -78,11 +78,11 @@ public class DonationService {
   }
 
   protected void fetchAndSetDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmDonation> existingDonation = crmService.getDonationByTransactionIds(
+    Optional<CrmDonation> existingDonation = crmService.getDonationsByTransactionIds(
         paymentGatewayEvent.getCrmDonation().getTransactionIds(),
         paymentGatewayEvent.getCrmDonation().account.id,
         paymentGatewayEvent.getCrmDonation().contact.id
-    );
+    ).stream().findFirst();
     if (existingDonation.isPresent()) {
       env.logJobInfo("found existing, posted CRM donation {} using transaction {}",
           existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
@@ -131,13 +131,12 @@ public class DonationService {
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmDonation> donation = crmService.getDonationByTransactionIds(
+    Optional<CrmDonation> donation = crmService.getDonationsByTransactionIds(
         paymentGatewayEvent.getCrmDonation().getTransactionIds(),
         paymentGatewayEvent.getCrmAccount().id,
         paymentGatewayEvent.getCrmContact().id
-    );
+    ).stream().findFirst();
 
-    // make sure that a donation was found and that only 1 donation was found
     if (donation.isPresent()) {
       paymentGatewayEvent.getCrmDonation().id = donation.get().id;
 
@@ -206,34 +205,34 @@ public class DonationService {
     }
   }
 
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonationById(manageDonationEvent.getCrmRecurringDonation().id);
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    Optional<CrmRecurringDonation> recurringDonation = crmService.getRecurringDonationById(updateRecurringDonationEvent.getCrmRecurringDonation().id);
 
     if (recurringDonation.isEmpty()) {
-      env.logJobWarn("unable to find CRM recurring donation using recurringDonationId {}", manageDonationEvent.getCrmRecurringDonation().id);
+      env.logJobWarn("unable to find CRM recurring donation using recurringDonationId {}", updateRecurringDonationEvent.getCrmRecurringDonation().id);
       return;
     }
 
     PaymentGatewayService paymentGatewayService = env.paymentGatewayService(recurringDonation.get().gatewayName);
 
-    manageDonationEvent.getCrmRecurringDonation().subscriptionId = recurringDonation.get().subscriptionId;
-    if (manageDonationEvent.getCancelDonation()) {
-      crmService.closeRecurringDonation(manageDonationEvent.getCrmRecurringDonation());
+    updateRecurringDonationEvent.getCrmRecurringDonation().subscriptionId = recurringDonation.get().subscriptionId;
+    if (updateRecurringDonationEvent.getCancelDonation()) {
+      crmService.closeRecurringDonation(updateRecurringDonationEvent.getCrmRecurringDonation());
       paymentGatewayService.closeSubscription(recurringDonation.get().subscriptionId);
     } else {
-      crmService.updateRecurringDonation(manageDonationEvent);
-      paymentGatewayService.updateSubscription(manageDonationEvent);
+      crmService.updateRecurringDonation(updateRecurringDonationEvent);
+      paymentGatewayService.updateSubscription(updateRecurringDonationEvent);
     }
   }
 
   public void processDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
     List<CrmDonation> crmDonations = new ArrayList<>();
     for (PaymentGatewayEvent e : paymentGatewayEvents) {
-      Optional<CrmDonation> donation = crmService.getDonationByTransactionIds(
+      Optional<CrmDonation> donation = crmService.getDonationsByTransactionIds(
           e.getCrmDonation().getTransactionIds(),
           e.getCrmAccount().id,
           e.getCrmContact().id
-      );
+      ).stream().findFirst();
       if (donation.isPresent()) {
         e.getCrmDonation().id = donation.get().id;
         e.getCrmDonation().crmRawObject = donation.get().crmRawObject;
