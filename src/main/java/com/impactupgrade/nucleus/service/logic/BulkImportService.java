@@ -7,6 +7,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
@@ -14,7 +15,6 @@ import com.impactupgrade.nucleus.model.CrmRecord;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.Utils;
-import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -51,6 +51,9 @@ public class BulkImportService {
   public BulkImportService(Environment env) {
     this.env = env;
   }
+
+  // TODO: To make things easier, we assume CrmDonation throughout, even though some may simply be CrmOpportunity.
+  //  Since CrmDonation extends CrmOpportunity, we can get away with it, but that model feels like it needs a refactor.
 
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     processBulkImport(importEvents, null);
@@ -211,7 +214,7 @@ public class BulkImportService {
 
     List<String> opportunityIds = importEvents.stream().map(e -> e.opportunityId)
         .filter(opportunityId -> !Strings.isNullOrEmpty(opportunityId)).distinct().toList();
-    Map<String, CrmOpportunity> existingOpportunitiesById = new HashMap<>();
+    Map<String, CrmDonation> existingOpportunitiesById = new HashMap<>();
     if (!opportunityIds.isEmpty()) {
       crmService.getDonationsByIds(opportunityIds, opportunityCustomFields).forEach(c -> {
         // cache both the 15 and 18 char versions, so the sheet can use either
@@ -222,7 +225,7 @@ public class BulkImportService {
 
     Optional<String> opportunityExtRefKey = importEvents.get(0).raw.keySet().stream()
         .filter(k -> k.startsWith("Opportunity ExtRef ")).findFirst();
-    Map<String, CrmOpportunity> existingOpportunitiesByExtRefId = new HashMap<>();
+    Map<String, CrmDonation> existingOpportunitiesByExtRefId = new HashMap<>();
     if (opportunityExtRefKey.isPresent()) {
       List<String> opportunityExtRefIds = importEvents.stream().map(e -> e.raw.get(opportunityExtRefKey.get()))
           .filter(s -> !Strings.isNullOrEmpty(s)).distinct().toList();
@@ -588,7 +591,7 @@ public class BulkImportService {
 
         env.logJobInfo("import processing opportunities on row {} of {}", i + 2, eventsSize + 1);
 
-        CrmOpportunity opportunity = new CrmOpportunity();
+        CrmDonation opportunity = new CrmDonation();
 
         opportunity.account.id = nonBatchAccountIds.get(i);
         if (!Strings.isNullOrEmpty(nonBatchContactIds.get(i))) {
@@ -609,7 +612,7 @@ public class BulkImportService {
             crmService.batchUpdateOpportunity(opportunity);
           }
         } else if (opportunityExtRefKey.isPresent() && existingOpportunitiesByExtRefId.containsKey(importEvent.raw.get(opportunityExtRefKey.get()))) {
-          CrmOpportunity existingOpportunity = existingOpportunitiesByExtRefId.get(importEvent.raw.get(opportunityExtRefKey.get()));
+          CrmDonation existingOpportunity = existingOpportunitiesByExtRefId.get(importEvent.raw.get(opportunityExtRefKey.get()));
 
           opportunity.id = existingOpportunity.id;
           setBulkImportOpportunityFields(opportunity, existingOpportunity, importEvent);
@@ -1127,12 +1130,12 @@ public class BulkImportService {
       recurringDonation.setField("npsp__Day_of_Month__c", importEvent.recurringDonationStartDate.get(Calendar.DAY_OF_MONTH) + "");
     }
 
-    recurringDonation.setField("OwnerId", importEvent.recurringDonationOwnerId);
+    recurringDonation.ownerId = importEvent.recurringDonationOwnerId;
 
     setBulkImportCustomFields(recurringDonation, existingRecurringDonation, "Recurring Donation", importEvent.raw);
   }
 
-  protected void setBulkImportOpportunityFields(CrmOpportunity opportunity, CrmOpportunity existingOpportunity, CrmImportEvent importEvent)
+  protected void setBulkImportOpportunityFields(CrmDonation opportunity, CrmDonation existingOpportunity, CrmImportEvent importEvent)
       throws ExecutionException {
     if (!Strings.isNullOrEmpty(importEvent.opportunityRecordTypeId)) {
       opportunity.recordTypeId = importEvent.opportunityRecordTypeId;
@@ -1148,16 +1151,16 @@ public class BulkImportService {
     }
     opportunity.description = importEvent.opportunityDescription;
     if (importEvent.opportunityAmount != null) {
-      opportunity.setField("Amount", importEvent.opportunityAmount.doubleValue());
+      opportunity.amount = importEvent.opportunityAmount.doubleValue();
     }
     if (!Strings.isNullOrEmpty(importEvent.opportunityStageName)) {
-      opportunity.setField("StageName", importEvent.opportunityStageName);
+      opportunity.status = importEvent.opportunityStageName;
     } else {
-      opportunity.setField("StageName", "Closed Won");
+      opportunity.status = CrmDonation.Status.SUCCESSFUL;
     }
-    opportunity.setField("CloseDate", importEvent.opportunityDate);
+    opportunity.closeDate = importEvent.opportunityDate;
 
-    opportunity.setField("OwnerId", importEvent.opportunityOwnerId);
+    opportunity.ownerId = importEvent.opportunityOwnerId;
 
     setBulkImportCustomFields(opportunity, existingOpportunity, "Opportunity", importEvent.raw);
   }
