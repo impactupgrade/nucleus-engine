@@ -97,19 +97,6 @@ public class CrmImportEvent {
   //  case sensitive
   public Map<String, String> raw = new HashMap<>();
 
-  // For updates only, used for retrieval.
-  public String contactId;
-  public String opportunityId;
-  public String recurringDonationId;
-  public String campaignId;
-
-  // Can also be used for update retrieval, as well as inserts.
-  public String contactEmail;
-  public String contactPersonalEmail;
-  public String contactWorkEmail;
-  public String contactOtherEmail;
-  public ContactEmailPreference contactEmailPreference = ContactEmailPreference.PERSONAL;
-
   // could be a contact's household, could be an organization itself -- both are assumed to be the primary account
   public CrmAccount account = new CrmAccount();
   public List<String> accountCampaignIds = new ArrayList<>();
@@ -119,58 +106,20 @@ public class CrmImportEvent {
   public List<CrmAccount> contactOrganizations = new ArrayList<>();
   public List<String> contactOrganizationRoles = new ArrayList<>();
 
-  // TODO: replace the rest with CrmContact, CrmOpportunity/CrmDonation, and CrmRecurringDonation
-
+  public CrmContact contact = new CrmContact();
   public List<String> contactCampaignIds = new ArrayList<>();
   public List<String> contactCampaignNames = new ArrayList<>();
-  public String contactDescription;
-  public String contactFirstName;
-  public String contactLastName;
-
-  public String contactPhone;
-  public String contactHomePhone;
-  public String contactMobilePhone;
-  public String contactWorkPhone;
-  public String contactOtherPhone;
-  public ContactPhonePreference contactPhonePreference = ContactPhonePreference.MOBILE;
-
-  public String contactMailingStreet;
-  public String contactMailingCity;
-  public String contactMailingState;
-  public String contactMailingZip;
-  public String contactMailingCountry;
   public String contactNote;
-  public Boolean contactOptInEmail;
-  public Boolean contactOptOutEmail;
-  public Boolean contactOptInSms;
-  public Boolean contactOptOutSms;
-  public String contactOwnerId;
-  public String contactRecordTypeId;
-  public String contactRecordTypeName;
-  public String contactSalutation;
 
-  public BigDecimal opportunityAmount;
+  // TODO: To make things easier, we assume CrmDonation throughout, even though some may simply be CrmOpportunity.
+  //  Since CrmDonation extends CrmOpportunity, we can get away with it, but that model feels like it needs a refactor.
+  public CrmDonation opportunity;
   public String opportunityCampaignId;
   public String opportunityCampaignName;
-  public Calendar opportunityDate;
-  public String opportunityDescription;
-  public String opportunityName;
-  public String opportunityOwnerId;
-  public String opportunityRecordTypeId;
-  public String opportunityRecordTypeName;
-  public String opportunitySource;
-  public String opportunityStageName;
-  public String opportunityTerminal;
 
-  public BigDecimal recurringDonationAmount;
+  public CrmRecurringDonation recurringDonation;
   public String recurringDonationCampaignId;
   public String recurringDonationCampaignName;
-  public String recurringDonationInterval;
-  public String recurringDonationName;
-  public Calendar recurringDonationNextPaymentDate;
-  public String recurringDonationOwnerId;
-  public Calendar recurringDonationStartDate;
-  public String recurringDonationStatus;
 
   // If the sheet is updating addresses, but all we have is names and no ids/extrefs/emails, we still need
   // the original addresses for existing matches. But all we really use for that is the street.
@@ -183,11 +132,6 @@ public class CrmImportEvent {
 
   // used during processing
   public boolean secondPass = false;
-
-  public String contactFullName() {
-    // trim in case one side or the other is blank
-    return (contactFirstName + " " + contactLastName).trim();
-  }
 
   public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data) {
     return data.stream()
@@ -209,45 +153,45 @@ public class CrmImportEvent {
     importEvent.raw = data;
 
     importEvent.account.id = data.get("Account ID");
-    importEvent.contactId = data.get("Contact ID");
-    importEvent.opportunityId = data.get("Opportunity ID");
-    importEvent.recurringDonationId = data.get("Recurring Donation ID");
-    importEvent.campaignId = data.get("Campaign ID");
+    importEvent.contact.id = data.get("Contact ID");
+    importEvent.opportunity.id = data.get("Opportunity ID");
+    importEvent.recurringDonation.id = data.get("Recurring Donation ID");
+    importEvent.campaign.id = data.get("Campaign ID");
 
     if (data.get("Contact Email") != null) {
-      importEvent.contactEmail = data.get("Contact Email");
+      importEvent.contact.homeEmail = data.get("Contact Email");
       // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
       // For now, ensure we follow suit.
-      importEvent.contactEmail = importEvent.contactEmail.toLowerCase(Locale.ROOT);
-      importEvent.contactEmail = Utils.noWhitespace(importEvent.contactEmail);
+      importEvent.contact.homeEmail = importEvent.contact.homeEmail.toLowerCase(Locale.ROOT);
+      importEvent.contact.homeEmail = Utils.noWhitespace(importEvent.contact.homeEmail);
     }
 
     if (data.get("Contact Personal Email") != null) {
-      importEvent.contactPersonalEmail = data.get("Contact Personal Email");
+      importEvent.contact.homeEmail = data.get("Contact Personal Email");
       // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
       // For now, ensure we follow suit.
-      importEvent.contactPersonalEmail = importEvent.contactPersonalEmail.toLowerCase(Locale.ROOT);
-      importEvent.contactPersonalEmail = Utils.noWhitespace(importEvent.contactPersonalEmail);
+      importEvent.contact.homeEmail = importEvent.contact.homeEmail.toLowerCase(Locale.ROOT);
+      importEvent.contact.homeEmail = Utils.noWhitespace(importEvent.contact.homeEmail);
     }
 
     if (data.get("Contact Work Email") != null) {
-      importEvent.contactWorkEmail = data.get("Contact Work Email");
+      importEvent.contact.workEmail = data.get("Contact Work Email");
       // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
       // For now, ensure we follow suit.
-      importEvent.contactWorkEmail = importEvent.contactWorkEmail.toLowerCase(Locale.ROOT);
-      importEvent.contactWorkEmail = Utils.noWhitespace(importEvent.contactWorkEmail);
+      importEvent.contact.workEmail = importEvent.contact.workEmail.toLowerCase(Locale.ROOT);
+      importEvent.contact.workEmail = Utils.noWhitespace(importEvent.contact.workEmail);
     }
 
     if (data.get("Contact Other Email") != null) {
-      importEvent.contactOtherEmail = data.get("Contact Other Email");
+      importEvent.contact.otherEmail = data.get("Contact Other Email");
       // SFDC "where in ()" queries appear to be case-sensitive, and SFDC lower cases all emails internally.
       // For now, ensure we follow suit.
-      importEvent.contactOtherEmail = importEvent.contactOtherEmail.toLowerCase(Locale.ROOT);
-      importEvent.contactOtherEmail = Utils.noWhitespace(importEvent.contactOtherEmail);
+      importEvent.contact.otherEmail = importEvent.contact.otherEmail.toLowerCase(Locale.ROOT);
+      importEvent.contact.otherEmail = Utils.noWhitespace(importEvent.contact.otherEmail);
     }
 
     if (data.get("Contact Preferred Email") != null) {
-      importEvent.contactEmailPreference = ContactEmailPreference.fromName(data.get("Contact Preferred Email"));
+      importEvent.contact.preferredEmail = ContactEmailPreference.fromName(data.get("Contact Preferred Email"));
     }
 
     importEvent.account.billingAddress.street = data.get("Account Billing Street");
@@ -358,13 +302,13 @@ public class CrmImportEvent {
       }
     }
 
-    importEvent.contactSalutation = data.get("Contact Salutation");
-    importEvent.contactFirstName = data.get("Contact First Name");
-    importEvent.contactLastName = data.get("Contact Last Name");
-    if (Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(data.get("Contact Full Name"))) {
+    importEvent.contact.salutation = data.get("Contact Salutation"); // TODO: add to CrmServices' handling
+    importEvent.contact.firstName = data.get("Contact First Name");
+    importEvent.contact.lastName = data.get("Contact Last Name");
+    if (Strings.isNullOrEmpty(importEvent.contact.firstName) && !Strings.isNullOrEmpty(data.get("Contact Full Name"))) {
       String[] split = fullNameToFirstLast(data.get("Contact Full Name"));
-      importEvent.contactFirstName = split[0];
-      importEvent.contactLastName = split[1];
+      importEvent.contact.firstName = split[0];
+      importEvent.contact.lastName = split[1];
     }
 
     // 3 ways campaigns can be provided, using column headers:
@@ -390,59 +334,61 @@ public class CrmImportEvent {
       }
     }
 
-    importEvent.contactDescription = data.get("Contact Description");
-    importEvent.contactPhone = data.get("Contact Phone");
-    importEvent.contactHomePhone = data.get("Contact Home Phone");
-    importEvent.contactMobilePhone = data.get("Contact Mobile Phone");
-    importEvent.contactWorkPhone = data.get("Contact Work Phone");
-    importEvent.contactPhonePreference = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
-    importEvent.contactMailingStreet = data.get("Contact Mailing Street");
+    importEvent.contact.description = data.get("Contact Description");
+    importEvent.contact.mobilePhone = data.get("Contact Mobile Phone");
+    if (Strings.isNullOrEmpty(importEvent.contact.mobilePhone) && data.containsKey("Contact Phone")) {
+      importEvent.contact.mobilePhone = data.get("Contact Phone");
+    }
+    importEvent.contact.homePhone = data.get("Contact Home Phone");
+    importEvent.contact.workPhone = data.get("Contact Work Phone");
+    importEvent.contact.preferredPhone = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
+    importEvent.contact.mailingAddress.street = data.get("Contact Mailing Street");
     if (!Strings.isNullOrEmpty(data.get("Contact Mailing Street 2"))) {
-      importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Street 2");
+      importEvent.contact.mailingAddress.street += ", " + data.get("Contact Mailing Street 2");
     }
     // Also check Address (vs Street) -- happens often.
-    if (Strings.isNullOrEmpty(importEvent.contactMailingStreet)) {
-      importEvent.contactMailingStreet = data.get("Contact Mailing Address");
+    if (Strings.isNullOrEmpty(importEvent.contact.mailingAddress.street)) {
+      importEvent.contact.mailingAddress.street = data.get("Contact Mailing Address");
       if (!Strings.isNullOrEmpty(data.get("Contact Mailing Address 2"))) {
-        importEvent.contactMailingStreet += ", " + data.get("Contact Mailing Address 2");
+        importEvent.contact.mailingAddress.street += ", " + data.get("Contact Mailing Address 2");
       }
     }
-    importEvent.contactMailingCity = data.get("Contact Mailing City");
-    importEvent.contactMailingState = data.get("Contact Mailing State");
-    importEvent.contactMailingZip = data.get("Contact Mailing Postal Code");
-    importEvent.contactMailingCountry = data.get("Contact Mailing Country");
+    importEvent.contact.mailingAddress.city = data.get("Contact Mailing City");
+    importEvent.contact.mailingAddress.state = data.get("Contact Mailing State");
+    importEvent.contact.mailingAddress.postalCode = data.get("Contact Mailing Postal Code");
+    importEvent.contact.mailingAddress.country = data.get("Contact Mailing Country");
     importEvent.contactNote = data.get("Contact Note");
-    importEvent.contactOptInEmail = checkboxToBool(data.get("Contact Email Opt In"));
-    importEvent.contactOptOutEmail = "no".equalsIgnoreCase(data.get("Contact Email Opt In")) || "false".equalsIgnoreCase(data.get("Contact Email Opt In")) || "0".equalsIgnoreCase(data.get("Contact Email Opt In"));
-    importEvent.contactOptInSms = checkboxToBool(data.get("Contact SMS Opt In"));
-    importEvent.contactOptOutSms = "no".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "false".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "0".equalsIgnoreCase(data.get("Contact SMS Opt In"));
-    importEvent.contactOwnerId = data.get("Contact Owner ID");
-    importEvent.contactRecordTypeId = data.get("Contact Record Type ID");
-    importEvent.contactRecordTypeName = data.get("Contact Record Type Name");
+    importEvent.contact.emailOptIn = checkboxToBool(data.get("Contact Email Opt In"));
+    importEvent.contact.emailOptOut = "no".equalsIgnoreCase(data.get("Contact Email Opt In")) || "false".equalsIgnoreCase(data.get("Contact Email Opt In")) || "0".equalsIgnoreCase(data.get("Contact Email Opt In"));
+    importEvent.contact.smsOptIn = checkboxToBool(data.get("Contact SMS Opt In"));
+    importEvent.contact.smsOptOut = "no".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "false".equalsIgnoreCase(data.get("Contact SMS Opt In")) || "0".equalsIgnoreCase(data.get("Contact SMS Opt In"));
+    importEvent.contact.ownerId = data.get("Contact Owner ID");
+    importEvent.contact.recordTypeId = data.get("Contact Record Type ID");
+    importEvent.contact.recordTypeName = data.get("Contact Record Type Name");
 
-    importEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
+    importEvent.opportunity.amount = getAmount(data, "Opportunity Amount");
     importEvent.opportunityCampaignId = data.get("Opportunity Campaign ID");
     importEvent.opportunityCampaignName = data.get("Opportunity Campaign Name");
-    importEvent.opportunityDate = getDate(data, "Opportunity Date");
-    importEvent.opportunityDescription = data.get("Opportunity Description");
-    importEvent.opportunityName = data.get("Opportunity Name");
-    importEvent.opportunityOwnerId = data.get("Opportunity Owner ID");
-    importEvent.opportunityRecordTypeId = data.get("Opportunity Record Type ID");
-    importEvent.opportunityRecordTypeName = data.get("Opportunity Record Type Name");
-    importEvent.opportunityStageName = data.get("Opportunity Stage Name");
-    if (Strings.isNullOrEmpty(importEvent.opportunityStageName)) {
-      importEvent.opportunityStageName = data.get("Opportunity Stage");
+    importEvent.opportunity.closeDate = getDate(data, "Opportunity Date");
+    importEvent.opportunity.description = data.get("Opportunity Description");
+    importEvent.opportunity.name = data.get("Opportunity Name");
+    importEvent.opportunity.ownerId = data.get("Opportunity Owner ID");
+    importEvent.opportunity.recordTypeId = data.get("Opportunity Record Type ID");
+    importEvent.opportunity.recordTypeName = data.get("Opportunity Record Type Name");
+    importEvent.opportunity.status = data.get("Opportunity Stage Name");
+    if (Strings.isNullOrEmpty(importEvent.opportunity.status)) {
+      importEvent.opportunity.status = data.get("Opportunity Stage");
     }
 
-    importEvent.recurringDonationAmount = getAmount(data, "Recurring Donation Amount");
+    importEvent.recurringDonation.amount = getAmount(data, "Recurring Donation Amount");
     importEvent.recurringDonationCampaignId = data.get("Recurring Donation Campaign ID");
     importEvent.recurringDonationCampaignName = data.get("Recurring Donation Campaign Name");
-    importEvent.recurringDonationInterval = data.get("Recurring Donation Interval");
-    importEvent.recurringDonationName = data.get("Recurring Donation Name");
-    importEvent.recurringDonationNextPaymentDate = getDate(data, "Recurring Donation Next Payment Date");
-    importEvent.recurringDonationOwnerId = data.get("Recurring Donation Owner Name");
-    importEvent.recurringDonationStartDate = getDate(data, "Recurring Donation Start Date");
-    importEvent.recurringDonationStatus = data.get("Recurring Donation Status");
+    importEvent.recurringDonation.frequency = data.get("Recurring Donation Interval");
+    importEvent.recurringDonation.name = data.get("Recurring Donation Name");
+    importEvent.recurringDonation.subscriptionNextDate = getDate(data, "Recurring Donation Next Payment Date");
+    importEvent.recurringDonation.ownerId = data.get("Recurring Donation Owner Name");
+    importEvent.recurringDonation.subscriptionStartDate = getDate(data, "Recurring Donation Start Date");
+    importEvent.recurringDonation.status = data.get("Recurring Donation Status");
 
     importEvent.originalStreet = data.get("Original Street");
 
@@ -470,31 +416,31 @@ public class CrmImportEvent {
 //    importEvent. = data.get("Donation Amount");
 //    importEvent. = data.get("FB Fee");
 //    importEvent. = getAmount(data, "Net Payout Amount");
-      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
+      importEvent.opportunity.amount = getAmount(data, "Donation Amount");
 
 //      TODO: support for different currencies will likely be needed in the future
 //      importEvent. = data.get("Payout Currency");
 //      importEvent. = data.get("Sender Currency");
       if (data.get("Fundraiser Type").contains("Fundraiser")) {
-        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Title");
+        importEvent.opportunity.name = "Facebook Fundraiser: " + data.get("Fundraiser Title");
       } else if (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) {
-        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Title") + " (" + data.get("Fundraiser Type") + ")";
+        importEvent.opportunity.name = "Facebook Fundraiser: " + data.get("Fundraiser Title") + " (" + data.get("Fundraiser Type") + ")";
       } else {
-        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Type");
+        importEvent.opportunity.name = "Facebook Fundraiser: " + data.get("Fundraiser Type");
       }
       try {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Charge Date")));
+        importEvent.opportunity.closeDate = Calendar.getInstance();
+        importEvent.opportunity.closeDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Charge Date")));
       } catch (ParseException e) {
         throw new RuntimeException("failed to parse date", e);
       }
 
-      importEvent.contactFirstName = Utils.nameToTitleCase(data.get("First Name"));
-      importEvent.contactLastName = Utils.nameToTitleCase(data.get("Last Name"));
-      importEvent.contactPersonalEmail = data.get("Email Address");
-      importEvent.opportunitySource = (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) ? data.get("Fundraiser Title") : data.get("Fundraiser Type");
-      importEvent.opportunityTerminal = data.get("Payment Processor");
-      importEvent.opportunityStageName = "Posted";
+      importEvent.contact.firstName = Utils.nameToTitleCase(data.get("First Name"));
+      importEvent.contact.lastName = Utils.nameToTitleCase(data.get("Last Name"));
+      importEvent.contact.homeEmail = data.get("Email Address");
+      importEvent.opportunity.source = (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) ? data.get("Fundraiser Title") : data.get("Fundraiser Type");
+      importEvent.opportunity.terminal = data.get("Payment Processor");
+      importEvent.opportunity.status = "Posted";
 
       if (data.containsKey("CRM Campaign ID")) {
         importEvent.opportunityCampaignId = data.get("CRM Campaign ID");
@@ -510,7 +456,7 @@ public class CrmImportEvent {
       description.add("Permalink: " + data.get("Permalink"));
       description.add("Payment ID: " + data.get("Payment ID"));
       description.add("Source Name: " + data.get("Source Name"));
-      importEvent.opportunityDescription = Joiner.on("\n").join(description);
+      importEvent.opportunity.description = Joiner.on("\n").join(description);
 
       return importEvent;
     } else {
@@ -578,35 +524,34 @@ public class CrmImportEvent {
       importEvent.account.billingAddress.postalCode = data.get("Home Zip/Postal Code");
       importEvent.account.billingAddress.country = data.get("Home Country");
 
-      importEvent.contactFirstName = data.get("Contact1 First Name");
-      importEvent.contactLastName = data.get("Contact1 Last Name");
-      importEvent.contactPersonalEmail = data.get("Contact1 Personal Email");
-      importEvent.contactWorkEmail = data.get("Contact1 Work Email");
-      importEvent.contactOtherEmail = data.get("Contact1 Other Email");
-      importEvent.contactMobilePhone = data.get("Contact1 Mobile Phone");
-      importEvent.contactHomePhone = data.get("Contact1 Home Phone");
-      importEvent.contactWorkPhone = data.get("Contact1 Work Phone");
-      importEvent.contactOtherPhone = data.get("Contact1 Other Phone");
-      importEvent.contactPhonePreference = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
+      importEvent.contact.firstName = data.get("Contact1 First Name");
+      importEvent.contact.lastName = data.get("Contact1 Last Name");
+      importEvent.contact.homeEmail = data.get("Contact1 Personal Email");
+      importEvent.contact.workEmail = data.get("Contact1 Work Email");
+      importEvent.contact.otherEmail = data.get("Contact1 Other Email");
+      importEvent.contact.mobilePhone = data.get("Contact1 Mobile Phone");
+      importEvent.contact.homePhone = data.get("Contact1 Home Phone");
+      importEvent.contact.workPhone = data.get("Contact1 Work Phone");
+      importEvent.contact.preferredPhone = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
       if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
         importEvent.contactCampaignNames.add(data.get("Campaign Name"));
       }
 
-      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
+      importEvent.opportunity.amount = getAmount(data, "Donation Amount");
       if (!Strings.isNullOrEmpty(data.get("Donation Name"))) {
-        importEvent.opportunityName = data.get("Donation Name");
+        importEvent.opportunity.name = data.get("Donation Name");
       } else {
-        importEvent.opportunityName = "Greater Giving: " + data.get("Donation Type");
+        importEvent.opportunity.name = "Greater Giving: " + data.get("Donation Type");
       }
       try {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Donation Date")));
+        importEvent.opportunity.closeDate = Calendar.getInstance();
+        importEvent.opportunity.closeDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Donation Date")));
       } catch (ParseException e) {
         throw new RuntimeException("failed to parse date", e);
       }
-      importEvent.opportunitySource = data.get("Donation Type");
-      importEvent.opportunityStageName = data.get("Donation Stage");
-      importEvent.opportunityDescription = data.get("Donation Description");
+      importEvent.opportunity.source = data.get("Donation Type");
+      importEvent.opportunity.status = data.get("Donation Stage");
+      importEvent.opportunity.description = data.get("Donation Description");
       importEvent.opportunityCampaignName = data.get("Campaign Name");
 
       return importEvent;
@@ -660,15 +605,12 @@ public class CrmImportEvent {
         .map(k -> k.replace("Campaign Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getAllContactEmails() {
-    return Stream.of(contactEmail, contactPersonalEmail, contactWorkEmail, contactOtherEmail)
+    return Stream.of(contact.homeEmail, contact.workEmail, contact.otherEmail)
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
   }
   public boolean hasEmail() {
-    return !Strings.isNullOrEmpty(contactEmail)
-            || !Strings.isNullOrEmpty(contactPersonalEmail)
-            || !Strings.isNullOrEmpty(contactWorkEmail)
-            || !Strings.isNullOrEmpty(contactOtherEmail);
+    return !Strings.isNullOrEmpty(contact.email());
   }
 
 

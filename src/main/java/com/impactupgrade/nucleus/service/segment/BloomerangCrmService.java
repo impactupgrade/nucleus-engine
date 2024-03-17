@@ -192,9 +192,9 @@ public class BloomerangCrmService implements CrmService {
       constituent.primaryEmail = constituentEmail;
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
+    if (!Strings.isNullOrEmpty(crmContact.phone())) {
       final Phone constituentPhone = new Phone();
-      constituentPhone.number = crmContact.phoneNumberForSMS();
+      constituentPhone.number = crmContact.phone();
       constituent.primaryPhone = constituentPhone;
     }
 

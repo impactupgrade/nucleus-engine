@@ -269,7 +269,7 @@ public class PaymentGatewayEvent implements Serializable {
         return (key.contains("email"));
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
-    if (Strings.isNullOrEmpty(crmContact.mobilePhone)) {
+    if (Strings.isNullOrEmpty(crmContact.phone())) {
       // TODO: Do we need to break this down into the different phone numbers?
       crmContact.mobilePhone = crmContact.rawData.entrySet().stream().filter(e -> {
         String key = e.getKey().toLowerCase(Locale.ROOT);
@@ -632,7 +632,7 @@ public class PaymentGatewayEvent implements Serializable {
         ", firstName='" + crmContact.firstName + '\'' +
         ", lastName='" + crmContact.lastName + '\'' +
         ", email='" + crmContact.email + '\'' +
-        ", mobilePhone='" + crmContact.mobilePhone + '\'' +
+        ", phone='" + crmContact.phone() + '\'' +
 
         ", street='" + crmAccount.billingAddress.street + '\'' +
         ", city='" + crmAccount.billingAddress.city + '\'' +

@@ -62,6 +62,14 @@ public class SfdcCrmService implements CrmService {
 
   // Simply scoped to the service/environment/request, since it's more of a per-flow optimization (primarily for Bulk Upsert).
   protected LoadingCache<String, String> recordTypeNameToIdCache;
+  TODO anywhere recordid is set, also check CrmRecord.recordTypeName;
+  /*
+  if (!Strings.isNullOrEmpty(crmAccount.recordTypeId)) {
+      account.recordTypeId = crmAccount.recordTypeId;
+    } else if (!Strings.isNullOrEmpty(crmAccount.recordTypeName)) {
+      account.recordTypeId = recordTypeNameToIdCache.get(crmAccount.recordTypeName);
+    }
+   */
 
   @Override
   public String name() { return "salesforce"; }
@@ -455,6 +463,7 @@ public class SfdcCrmService implements CrmService {
     account.setField("ShippingCountry", crmAccount.mailingAddress.country);
     account.setField("Type", crmAccount.type);
     account.setField("Website", crmAccount.website);
+    account.setField("OwnerId", crmAccount.ownerId);
 
     Map<EnvironmentConfig.AccountType, String> accountTypeToRecordTypeIds = env.getConfig().salesforce.accountTypeToRecordTypeIds;
     if (crmAccount.recordType != null && accountTypeToRecordTypeIds.containsKey(crmAccount.recordType)) {
@@ -546,12 +555,25 @@ public class SfdcCrmService implements CrmService {
     contact.setField("AccountId", crmContact.account.id);
     contact.setField("FirstName", crmContact.firstName);
     contact.setField("LastName", crmContact.lastName);
+    contact.setField("Salutation", crmContact.salutation);
     contact.setField("Email", crmContact.email);
     contact.setField("MobilePhone", crmContact.mobilePhone);
-    if (env.getConfig().salesforce.npsp && crmContact.preferredPhone != null) {
-      contact.setField("Npe01__PreferredPhone__c", crmContact.preferredPhone.toString());
+    contact.setField("HomePhone", crmContact.homePhone);
+    if (env.getConfig().salesforce.npsp) {
+      contact.setField("npe01__WorkPhone__c", crmContact.workPhone);
+      if (crmContact.preferredPhone != null) {
+        contact.setField("Npe01__PreferredPhone__c", crmContact.preferredPhone.toString());
+      }
     }
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contactLanguage, crmContact.language);
+    contact.setField("Description", crmContact.description);
+    contact.setField("OwnerId", crmContact.ownerId);
+
+    contact.setField("MailingStreet", crmContact.mailingAddress.street);
+    contact.setField("MailingCity", crmContact.mailingAddress.city);
+    contact.setField("MailingState", crmContact.mailingAddress.state);
+    contact.setField("MailingPostalCode", crmContact.mailingAddress.postalCode);
+    contact.setField("MailingCountry", crmContact.mailingAddress.country);
 
     if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
@@ -574,17 +596,11 @@ public class SfdcCrmService implements CrmService {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.notes)) {
-      contact.setField("Description", crmContact.notes);
-    }
-
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmSource, crmContact.getRawData("utm_source"));
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmCampaign, crmContact.getRawData("utm_campaign"));
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmMedium, crmContact.getRawData("utm_medium"));
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmTerm, crmContact.getRawData("utm_term"));
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmContent, crmContact.getRawData("utm_content"));
-
-    // TODO: Avoiding setting the mailing address of a Contact, instead allowing the Account to handle it. But should we?
 
     for (String fieldName : crmContact.crmRawFieldsToSet.keySet()) {
       contact.setField(fieldName, crmContact.crmRawFieldsToSet.get(fieldName));
@@ -682,9 +698,16 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("CampaignId", campaign.map(SObject::getId).orElse(null));
     opportunity.setField("CloseDate", Utils.toCalendar(crmDonation.closeDate, env.getConfig().timezoneId));
     opportunity.setField("Description", crmDonation.description);
+    opportunity.setField("OwnerId", crmDonation.ownerId);
 
     // purely a default, but we generally expect this to be overridden
-    opportunity.setField("Name", crmDonation.contact.getFullName() + " Donation");
+    if (!Strings.isNullOrEmpty(crmDonation.name)) {
+      // 120 is typically the max length
+      int length = Math.min(crmDonation.name.length(), 120);
+      opportunity.setField("Name", crmDonation.name.substring(0, length));
+    } else {
+      opportunity.setField("Name", crmDonation.contact.getFullName() + " Donation");
+    }
 
     setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmSource, crmDonation.getRawData("utm_source"));
     setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmCampaign, crmDonation.getRawData("utm_campaign"));
@@ -814,7 +837,11 @@ public class SfdcCrmService implements CrmService {
     }
 
     recurringDonation.setField("Npe03__Amount__c", crmRecurringDonation.amount);
-    recurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
+    if (!Strings.isNullOrEmpty(crmRecurringDonation.status)) {
+      recurringDonation.setField("Npe03__Open_Ended_Status__c", crmRecurringDonation.status);
+    } else {
+      recurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
+    }
     recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
     if (crmRecurringDonation.frequency != null) {
       recurringDonation.setField("Npe03__Installment_Period__c", crmRecurringDonation.frequency.name());
@@ -822,6 +849,7 @@ public class SfdcCrmService implements CrmService {
     recurringDonation.setField("Npe03__Date_Established__c", Utils.toCalendar(crmRecurringDonation.subscriptionStartDate, env.getConfig().timezoneId));
     recurringDonation.setField("Npe03__Next_Payment_Date__c", Utils.toCalendar(crmRecurringDonation.subscriptionNextDate, env.getConfig().timezoneId));
     recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(crmRecurringDonation).map(SObject::getId).orElse(null));
+    recurringDonation.setField("OwnerId", crmRecurringDonation.ownerId);
 
     // Purely a default, but we expect this to be generally overridden.
     recurringDonation.setField("Name", crmRecurringDonation.contact.getFullName() + " Recurring Donation");
@@ -1360,6 +1388,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Owner.Id"),
         ownerName,
         preferredPhone,
+        (String) sObject.getField("Salutation"),
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptIn),
         getBooleanField(sObject, env.getConfig().salesforce.fieldDefinitions.smsOptOut),
         (String) sObject.getField("Title"),

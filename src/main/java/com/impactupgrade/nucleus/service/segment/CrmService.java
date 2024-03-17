@@ -138,7 +138,7 @@ public interface CrmService extends SegmentService {
   default List<CrmDonation> getDonationsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
     List<CrmDonation> donations = new ArrayList<>();
     for (String customFieldValue : customFieldValues) {
-      Optional<CrmDonation> donation = getDonationByCustomField(customField, customFieldValue, extraFields);
+      Optional<CrmDonation> donation = getDonationByUniqueField(customField, customFieldValue, extraFields);
       donation.ifPresent(donations::add);
     }
     return donations;

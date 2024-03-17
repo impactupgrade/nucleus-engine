@@ -14,11 +14,39 @@ import java.util.function.Function;
 
 public class CrmContact extends CrmRecord {
 
+  public enum PreferredEmail {
+    HOME(List.of("home", "household")),
+    WORK(List.of("work")),
+    OTHER(List.of("other"));
+
+    private final List<String> names;
+
+    PreferredEmail(List<String> names) {
+      this.names = names;
+    }
+
+    public static PreferredEmail fromName(String name) {
+      if (Strings.isNullOrEmpty(name)) {
+        return null;
+      }
+
+      if (HOME.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return HOME;
+      } else if (WORK.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return WORK;
+      } else if (OTHER.names.contains(name.toLowerCase(Locale.ROOT))) {
+        return OTHER;
+      } else {
+        // default to home
+        return HOME;
+      }
+    }
+  }
+
   public enum PreferredPhone {
     HOME(List.of("home", "household")),
     MOBILE(List.of("mobile")),
-    WORK(List.of("work")),
-    OTHER(List.of("other"));
+    WORK(List.of("work"));
 
     private final List<String> names;
 
@@ -35,8 +63,6 @@ public class CrmContact extends CrmRecord {
         return HOME;
       } else if (WORK.names.contains(name.toLowerCase(Locale.ROOT))) {
         return WORK;
-      } else if (OTHER.names.contains(name.toLowerCase(Locale.ROOT))) {
-        return OTHER;
       } else {
         // default to mobile
         return MOBILE;
@@ -47,13 +73,14 @@ public class CrmContact extends CrmRecord {
   public CrmAccount account = new CrmAccount();
 
   public String description;
-  public String email;
+//  public String email; // TODO: search for uses and replace
   public List<String> emailGroups = new ArrayList<>();
   public Boolean emailOptIn;
   public Boolean emailOptOut;
   public Boolean emailBounced;
   public Calendar firstDonationDate;
   public String firstName;
+  public String homeEmail;
   public String homePhone;
   public String language;
   public Double largestDonationAmount;
@@ -64,14 +91,18 @@ public class CrmContact extends CrmRecord {
   public String notes;
   public Integer numDonations;
   public Integer numDonationsYtd;
+  public String otherEmail;
   public String ownerId;
   public String ownerName;
+  public PreferredEmail preferredEmail = PreferredEmail.HOME;
   public PreferredPhone preferredPhone = PreferredPhone.MOBILE;
+  public String salutation;
   public Boolean smsOptIn;
   public Boolean smsOptOut;
   public String title;
   public Double totalDonationAmount;
   public Double totalDonationAmountYtd;
+  public String workEmail;
   public String workPhone;
 
   protected String fullNameOverride;
@@ -107,6 +138,7 @@ public class CrmContact extends CrmRecord {
       String ownerId,
       String ownerName,
       PreferredPhone preferredPhone,
+      String salutation,
       Boolean smsOptIn,
       Boolean smsOptOut,
       String title,
@@ -141,6 +173,7 @@ public class CrmContact extends CrmRecord {
     this.ownerId = ownerId;
     this.ownerName = ownerName;
     if (preferredPhone != null) this.preferredPhone = preferredPhone;
+    this.salutation = salutation;
     this.smsOptIn = smsOptIn;
     this.smsOptOut = smsOptOut;
     this.title = title;
@@ -180,6 +213,46 @@ public class CrmContact extends CrmRecord {
     }
 
     return firstName + " " + lastName;
+  }
+
+  public String email() {
+    String email = switch (preferredEmail) {
+      case WORK -> workEmail;
+      case OTHER -> otherEmail;
+      default -> homeEmail;
+    };
+
+    if (Strings.isNullOrEmpty(email)) {
+      email = homeEmail;
+    }
+    if (Strings.isNullOrEmpty(email)) {
+      email = workEmail;
+    }
+    if (Strings.isNullOrEmpty(email)) {
+      email = otherEmail;
+    }
+
+    return email;
+  }
+
+  public String phone() {
+    String phone = switch (preferredPhone) {
+      case WORK -> workPhone;
+      case HOME -> homePhone;
+      default -> mobilePhone;
+    };
+
+    if (Strings.isNullOrEmpty(phone)) {
+      phone = mobilePhone;
+    }
+    if (Strings.isNullOrEmpty(phone)) {
+      phone = homePhone;
+    }
+    if (Strings.isNullOrEmpty(phone)) {
+      phone = workPhone;
+    }
+
+    return phone;
   }
 
   public String phoneNumberForSMS() {

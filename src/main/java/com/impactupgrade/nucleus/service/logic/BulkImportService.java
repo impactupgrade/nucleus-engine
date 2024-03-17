@@ -130,7 +130,7 @@ public class BulkImportService {
           .forEach(c -> existingAccountsByName.put(c.name.toLowerCase(Locale.ROOT), c));
     }
 
-    List<String> contactIds = importEvents.stream().map(e -> e.contactId)
+    List<String> contactIds = importEvents.stream().map(e -> e.contact.id)
         .filter(contactId -> !Strings.isNullOrEmpty(contactId)).distinct().toList();
     Map<String, CrmContact> existingContactsById = new HashMap<>();
     if (!contactIds.isEmpty()) {
@@ -150,25 +150,22 @@ public class BulkImportService {
       // Normalize the case!
       crmService.getContactsByEmails(contactEmails, contactCustomFields)
           .forEach(c -> {
-                if (!Strings.isNullOrEmpty(c.email)) {
-                  existingContactsByEmail.put(c.email.toLowerCase(Locale.ROOT), c);
+                if (!Strings.isNullOrEmpty(c.homeEmail)) {
+                  existingContactsByEmail.put(c.homeEmail.toLowerCase(Locale.ROOT), c);
                 }
-                if (!Strings.isNullOrEmpty(c.getField("npe01__HomeEmail__c"))) {
-                  existingContactsByEmail.put(c.getField("npe01__HomeEmail__c").toString().toLowerCase(Locale.ROOT), c);
+                if (!Strings.isNullOrEmpty(c.workEmail)) {
+                  existingContactsByEmail.put(c.workEmail.toLowerCase(Locale.ROOT), c);
                 }
-                if (!Strings.isNullOrEmpty(c.getField("npe01__WorkEmail__c"))) {
-                  existingContactsByEmail.put(c.getField("npe01__WorkEmail__c").toString().toLowerCase(Locale.ROOT), c);
-                }
-                if (!Strings.isNullOrEmpty(c.getField("npe01__AlternateEmail__c"))) {
-                  existingContactsByEmail.put(c.getField("npe01__AlternateEmail__c").toString().toLowerCase(Locale.ROOT), c);
+                if (!Strings.isNullOrEmpty(c.otherEmail)) {
+                  existingContactsByEmail.put(c.otherEmail.toLowerCase(Locale.ROOT), c);
                 }
               }
           );
     }
 
     List<Pair<String, String>> contactNames = importEvents.stream()
-        .filter(e -> !Strings.isNullOrEmpty(e.contactFirstName) || !Strings.isNullOrEmpty(e.contactLastName))
-        .map(e -> Pair.of(e.contactFirstName, e.contactLastName))
+        .filter(e -> !Strings.isNullOrEmpty(e.contact.firstName) || !Strings.isNullOrEmpty(e.contact.lastName))
+        .map(e -> Pair.of(e.contact.firstName, e.contact.lastName))
         .toList();
     Multimap<String, CrmContact> existingContactsByName = ArrayListMultimap.create();
     if (!contactNames.isEmpty()) {
@@ -201,7 +198,7 @@ public class BulkImportService {
           .collect(Collectors.toMap(c -> c.name.toLowerCase(Locale.ROOT), SObject::getId));
     }
 
-    List<String> recurringDonationIds = importEvents.stream().map(e -> e.recurringDonationId)
+    List<String> recurringDonationIds = importEvents.stream().map(e -> e.recurringDonation.id)
         .filter(recurringDonationId -> !Strings.isNullOrEmpty(recurringDonationId)).distinct().toList();
     Map<String, CrmRecurringDonation> existingRecurringDonationById = new HashMap<>();
     if (!recurringDonationIds.isEmpty()) {
@@ -212,7 +209,7 @@ public class BulkImportService {
       });
     }
 
-    List<String> opportunityIds = importEvents.stream().map(e -> e.opportunityId)
+    List<String> opportunityIds = importEvents.stream().map(e -> e.opportunity.id)
         .filter(opportunityId -> !Strings.isNullOrEmpty(opportunityId)).distinct().toList();
     Map<String, CrmDonation> existingOpportunitiesById = new HashMap<>();
     if (!opportunityIds.isEmpty()) {
@@ -268,8 +265,8 @@ public class BulkImportService {
         .anyMatch(entry -> entry.getKey().startsWith("Contact") && !Strings.isNullOrEmpty(entry.getValue()));
     boolean hasContactOrgColumns = importEvents.stream().anyMatch(e -> !e.contactOrganizations.isEmpty());
 
-    boolean hasOppLookups = importEvents.stream().anyMatch(e -> e.opportunityDate != null || e.opportunityId != null);
-    boolean hasRdLookups = importEvents.stream().anyMatch(e -> e.recurringDonationAmount != null || e.recurringDonationId != null);
+    boolean hasOppLookups = importEvents.stream().anyMatch(e -> e.opportunity.closeDate != null || e.opportunity.id != null);
+    boolean hasRdLookups = importEvents.stream().anyMatch(e -> e.recurringDonation.amount != null || e.recurringDonation.id != null);
     boolean hasCampaignLookups = importEvents.stream().anyMatch(e ->
         !e.contactCampaignIds.isEmpty() || !e.contactCampaignNames.isEmpty() || !e.accountCampaignIds.isEmpty() || !e.accountCampaignNames.isEmpty());
 
@@ -316,9 +313,9 @@ public class BulkImportService {
       // in with rows that have contacts. The column headers exist, but if there are no values, we assume
       // account-only import for that individual row. Not an all-or-nothing situation.
       boolean hasContactExtRef = contactExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(contactExtRefKey.get()));
-      boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contactId)
+      boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contact.id)
           || importEvent.hasEmail()
-          || !Strings.isNullOrEmpty(importEvent.contactLastName) || hasContactExtRef;
+          || !Strings.isNullOrEmpty(importEvent.contact.lastName) || hasContactExtRef;
 
       CrmAccount account = null;
       CrmContact contact = null;
@@ -326,8 +323,8 @@ public class BulkImportService {
       // A few situations have come up where there were not cleanly-split first vs. last name columns, but instead a
       // "salutation" (firstname) and then a full name. Allow users to provide the former as the firstname
       // and the latter as the "lastname", but clean it up. This must happen before the first names are split up, below!
-      if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
-          && importEvent.contactLastName.contains(importEvent.contactFirstName)) {
+      if (!Strings.isNullOrEmpty(importEvent.contact.firstName) && !Strings.isNullOrEmpty(importEvent.contact.lastName)
+          && importEvent.contact.lastName.contains(importEvent.contact.firstName)) {
         // TODO: The above may still be important, but this introduces bugs. Examples: Anonymous as the first and last
         //  name (last name will be stripped to empty string), real last names that contain a first name (Brett Bretterson), etc.
 //        importEvent.contactLastName = importEvent.contactLastName.replace(importEvent.contactFirstName, "").trim();
@@ -340,7 +337,7 @@ public class BulkImportService {
         account = upsertExistingAccountByName(importEvent, existingAccountsById, existingAccountsByName,
             accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns, crmService);
 
-        contact = insertBulkImportContact(importEvent, account, batchInsertContacts, existingContactsByEmail,
+        contact = insertBulkImportContact(importEvent.contact, account, importEvent.raw, batchInsertContacts, existingContactsByEmail,
             existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode, crmService);
       }
       // If we're in account-only mode (we have no contact info to match against):
@@ -349,21 +346,21 @@ public class BulkImportService {
             accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns, crmService);
       }
       // If the explicit Contact ID was given and the contact actually exists, update.
-      else if (!Strings.isNullOrEmpty(importEvent.contactId) && existingContactsById.containsKey(importEvent.contactId)) {
-        CrmContact existingContact = existingContactsById.get(importEvent.contactId);
+      else if (!Strings.isNullOrEmpty(importEvent.contact.id) && existingContactsById.containsKey(importEvent.contact.id)) {
+        CrmContact existingContact = existingContactsById.get(importEvent.contact.id);
 
         if (account == null) {
           String accountId = existingContact.account.id;
           if (!Strings.isNullOrEmpty(accountId)) {
             CrmAccount existingAccount = existingContact.account;
-            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
+            account = updateBulkImportAccount(importEvent.account, existingAccount, importEvent.raw, "Account",
                 hasAccountColumns, crmService);
           }
         }
 
         // use accountId, not account.id -- if the contact was recently imported by this current process,
         // the contact.account child relationship will not yet exist in the existingContactsById map
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, crmService);
+        contact = updateBulkImportContact(importEvent.contact, existingContact, account, importEvent.raw, batchUpdateContacts, crmService);
       }
       // Similarly, if we have an external ref ID, check that next.
       else if (contactExtRefKey.isPresent() && existingContactsByExtRef.containsKey(importEvent.raw.get(contactExtRefKey.get()))) {
@@ -373,14 +370,14 @@ public class BulkImportService {
           String accountId = existingContact.account.id;
           if (!Strings.isNullOrEmpty(accountId)) {
             CrmAccount existingAccount = existingContact.account;
-            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
+            account = updateBulkImportAccount(importEvent.account, existingAccount, importEvent.raw, "Account",
                 hasAccountColumns, crmService);
           }
         }
 
         // use accountId, not account.id -- if the contact was recently imported by this current process,
         // the contact.account child relationship will not yet exist in the existingContactsByExtRefId map
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, crmService);
+        contact = updateBulkImportContact(importEvent.contact, existingContact, account, importEvent.raw, batchUpdateContacts, crmService);
       }
       // Else if a contact already exists with the given email address, update.
       else if (importEvent.hasEmail() && findExistingContactByEmail(importEvent, existingContactsByEmail).isPresent()) {
@@ -390,22 +387,22 @@ public class BulkImportService {
           String accountId = existingContact.account.id;
           if (!Strings.isNullOrEmpty(accountId)) {
             CrmAccount existingAccount = existingContact.account;
-            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
+            account = updateBulkImportAccount(importEvent.account, existingAccount, importEvent.raw, "Account",
                 hasAccountColumns, crmService);
           }
         }
 
         // use accountId, not account.id -- if the contact was recently imported by this current process,
         // the contact.account child relationship will not yet exist in the existingContactsByEmail map
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, crmService);
+        contact = updateBulkImportContact(importEvent.contact, existingContact, account, importEvent.raw, batchUpdateContacts, crmService);
       }
       // If we have a first and last name, try searching for an existing contact by name.
       // Only do this if we can match against street address or phone number as well. Simply by-name is too risky.
       // Better to allow duplicates than to overwrite records.
       // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
-      else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
-          && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))) {
-        List<CrmContact> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
+      else if (!Strings.isNullOrEmpty(importEvent.contact.firstName) && !Strings.isNullOrEmpty(importEvent.contact.lastName)
+          && existingContactsByName.containsKey(importEvent.contact.firstName.toLowerCase(Locale.ROOT) + " " + importEvent.contact.lastName.toLowerCase(Locale.ROOT))) {
+        List<CrmContact> existingContacts = existingContactsByName.get(importEvent.contact.firstName.toLowerCase(Locale.ROOT) + " " + importEvent.contact.lastName.toLowerCase()).stream()
             .filter(c -> {
               // If the SFDC record has no address or phone at all, allow the by-name match. It might seem like this
               // somewhat defeats the purpose, but we're running into situations where basic records were originally
@@ -424,13 +421,13 @@ public class BulkImportService {
               // ex: 123 Main St. != 123 Main St --> 123MainSt == 123MainSt
 
               List<String> list1 = Stream.of(
-                  alphanumericOnly(importEvent.contactMailingStreet),
+                  alphanumericOnly(importEvent.contact.mailingAddress.street),
                   alphanumericOnly(importEvent.account.billingAddress.street),
                   alphanumericOnly(importEvent.account.mailingAddress.street),
                   alphanumericOnly(importEvent.originalStreet),
-                  numericOnly(importEvent.contactHomePhone),
-                  numericOnly(importEvent.contactMobilePhone),
-                  numericOnly(importEvent.contactPhone)
+                  numericOnly(importEvent.contact.homePhone),
+                  numericOnly(importEvent.contact.mobilePhone),
+                  numericOnly(importEvent.contact.workPhone)
               ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
 
               List<String> list2 = Stream.of(
@@ -456,12 +453,12 @@ public class BulkImportService {
             String accountId = existingContact.account.id;
             if (!Strings.isNullOrEmpty(accountId)) {
               CrmAccount existingAccount = existingContact.account;
-              account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
+              account = updateBulkImportAccount(importEvent.account, existingAccount, importEvent.raw, "Account",
                   hasAccountColumns, crmService);
             }
           }
 
-          contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, crmService);
+          contact = updateBulkImportContact(importEvent.contact, existingContact, account, importEvent.raw, batchUpdateContacts, crmService);
         }
       }
       // Otherwise, abandon all hope and insert, but only if we at least have a field to use as a lookup.
@@ -557,16 +554,16 @@ public class BulkImportService {
 
         // TODO: Add a RD Campaign Name column as well?
         if (!Strings.isNullOrEmpty(importEvent.recurringDonationCampaignId)) {
-          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", importEvent.recurringDonationCampaignId);
+          recurringDonation.campaignId = importEvent.recurringDonationCampaignId;
         } else if (!Strings.isNullOrEmpty(importEvent.opportunityCampaignName) && campaignNameToId.containsKey(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT))) {
-          recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", campaignNameToId.get(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT)));
+          recurringDonation.campaignId = campaignNameToId.get(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT));
         }
 
-        if (!Strings.isNullOrEmpty(importEvent.recurringDonationId)) {
-          recurringDonation.id = importEvent.recurringDonationId;
-          setBulkImportRecurringDonationFields(recurringDonation, existingRecurringDonationById.get(importEvent.recurringDonationId), importEvent);
-          if (!batchUpdateRecurringDonations.contains(importEvent.recurringDonationId)) {
-            batchUpdateRecurringDonations.add(importEvent.recurringDonationId);
+        if (!Strings.isNullOrEmpty(importEvent.recurringDonation.id)) {
+          recurringDonation.id = importEvent.recurringDonation.id;
+          setBulkImportRecurringDonationFields(recurringDonation, existingRecurringDonationById.get(importEvent.recurringDonation.id), importEvent.raw);
+          if (!batchUpdateRecurringDonations.contains(importEvent.recurringDonation.id)) {
+            batchUpdateRecurringDonations.add(importEvent.recurringDonation.id);
             crmService.batchUpdateRecurringDonation(recurringDonation);
           }
         } else {
@@ -575,7 +572,7 @@ public class BulkImportService {
             continue;
           }
 
-          setBulkImportRecurringDonationFields(recurringDonation, null, importEvent);
+          setBulkImportRecurringDonationFields(recurringDonation, null, importEvent.raw);
           crmService.batchInsertRecurringDonation(recurringDonation);
         }
 
@@ -604,9 +601,9 @@ public class BulkImportService {
           opportunity.campaignId = campaignNameToId.get(importEvent.opportunityCampaignName.toLowerCase(Locale.ROOT));
         }
 
-        if (!Strings.isNullOrEmpty(importEvent.opportunityId)) {
-          opportunity.id = importEvent.opportunityId;
-          setBulkImportOpportunityFields(opportunity, existingOpportunitiesById.get(opportunity.id), importEvent);
+        if (!Strings.isNullOrEmpty(importEvent.opportunity.id)) {
+          opportunity.id = importEvent.opportunity.id;
+          setBulkImportOpportunityFields(opportunity, existingOpportunitiesById.get(opportunity.id), importEvent.raw);
           if (!batchUpdateOpportunities.contains(opportunity.id)) {
             batchUpdateOpportunities.add(opportunity.id);
             crmService.batchUpdateOpportunity(opportunity);
@@ -615,7 +612,7 @@ public class BulkImportService {
           CrmDonation existingOpportunity = existingOpportunitiesByExtRefId.get(importEvent.raw.get(opportunityExtRefKey.get()));
 
           opportunity.id = existingOpportunity.id;
-          setBulkImportOpportunityFields(opportunity, existingOpportunity, importEvent);
+          setBulkImportOpportunityFields(opportunity, existingOpportunity, importEvent.raw);
           if (!batchUpdateOpportunities.contains(opportunity.id)) {
             batchUpdateOpportunities.add(opportunity.id);
             crmService.batchUpdateOpportunity(opportunity);
@@ -627,7 +624,7 @@ public class BulkImportService {
             continue;
           }
 
-          setBulkImportOpportunityFields(opportunity, null, importEvent);
+          setBulkImportOpportunityFields(opportunity, null, importEvent.raw);
 
           crmService.batchInsertOpportunity(opportunity);
         }
@@ -665,13 +662,13 @@ public class BulkImportService {
       account = insertBulkImportAccount(importEvent.account, importEvent.raw, existingAccountsByName,
           accountExtRefFieldName, existingAccountsByExtRef, "Account", hasAccountColumns, crmService);
     } else {
-      account = updateBulkImportAccount(account, importEvent.account, importEvent.raw, "Account", true, crmService);
+      account = updateBulkImportAccount(importEvent.account, account, importEvent.raw, "Account", true, crmService);
     }
 
     return account;
   }
 
-  protected CrmAccount updateBulkImportAccount(CrmAccount existingAccount, CrmAccount crmAccount, Map<String, String> raw,
+  protected CrmAccount updateBulkImportAccount(CrmAccount account, CrmAccount existingAccount, Map<String, String> raw,
       String columnPrefix, boolean hasAccountColumns, CrmService crmService) throws Exception {
     // TODO: Odd situation. When insertBulkImportContact creates a contact, it's also creating an Account, sets the
     //  AccountId on the Contact and then adds the Contact to existingContactsByEmail so we can reuse it. But when
@@ -686,10 +683,9 @@ public class BulkImportService {
       return existingAccount;
     }
 
-    CrmAccount account = new CrmAccount();
     account.id = existingAccount.id;
 
-    setBulkImportAccountFields(account, existingAccount, crmAccount, columnPrefix, raw);
+    setBulkImportAccountFields(account, existingAccount, raw, columnPrefix);
 
     crmService.batchUpdateAccount(account);
 
@@ -697,7 +693,7 @@ public class BulkImportService {
   }
 
   protected CrmAccount insertBulkImportAccount(
-      CrmAccount crmAccount,
+      CrmAccount account,
       Map<String, String> raw,
       Multimap<String, CrmAccount> existingAccountsByName,
       Optional<String> accountExtRefFieldName,
@@ -713,15 +709,13 @@ public class BulkImportService {
       return null;
     }
 
-    CrmAccount account = new CrmAccount();
-
-    setBulkImportAccountFields(account, null, crmAccount, columnPrefix, raw);
+    setBulkImportAccountFields(account, null, raw, columnPrefix);
 
     String accountId = crmService.insertAccount(account);
     account.id = accountId;
 
-    if (!Strings.isNullOrEmpty(crmAccount.name)) {
-      existingAccountsByName.put(crmAccount.name.toLowerCase(Locale.ROOT), account);
+    if (!Strings.isNullOrEmpty(account.name)) {
+      existingAccountsByName.put(account.name.toLowerCase(Locale.ROOT), account);
     }
     if (accountExtRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) account.fieldFetcher.apply(accountExtRefFieldName.get()))) {
       existingAccountsByExtRef.put((String) account.fieldFetcher.apply(accountExtRefFieldName.get()), account);
@@ -730,41 +724,16 @@ public class BulkImportService {
     return account;
   }
 
-  protected void setBulkImportAccountFields(CrmAccount account, CrmAccount existingAccount, CrmAccount crmAccount,
-      String columnPrefix, Map<String, String> raw) {
-    if (!Strings.isNullOrEmpty(crmAccount.recordTypeId)) {
-      account.recordTypeId = crmAccount.recordTypeId;
-    } else if (!Strings.isNullOrEmpty(crmAccount.recordTypeName)) {
-      account.recordTypeId = recordTypeNameToIdCache.get(crmAccount.recordTypeName);
-    }
-
+  protected void setBulkImportAccountFields(CrmAccount account, CrmAccount existingAccount, Map<String, String> raw,
+      String columnPrefix) {
     // IMPORTANT: Only do this if this is an insert, IE existingAccount == null. Setting an explicit name on an
     // UPDATE will auto set npo02__SYSTEM_CUSTOM_NAMING__c='NAME', which effectively disabled NPSP's naming rules.
     if (existingAccount == null) {
-      if (Strings.isNullOrEmpty(crmAccount.name)) {
+      if (Strings.isNullOrEmpty(account.name)) {
         // Likely a household and likely to be overwritten by NPSP's household naming rules.
         account.name = "Household";
-      } else {
-        account.name = crmAccount.name;
       }
     }
-
-    setCustomBulkValue(account, "BillingStreet", crmAccount.billingAddress.street);
-    setCustomBulkValue(account, "BillingCity", crmAccount.billingAddress.city);
-    setCustomBulkValue(account, "BillingState", crmAccount.billingAddress.state);
-    setCustomBulkValue(account, "BillingPostalCode", crmAccount.billingAddress.postalCode);
-    setCustomBulkValue(account, "BillingCountry", crmAccount.billingAddress.country);
-    setCustomBulkValue(account, "ShippingStreet", crmAccount.mailingAddress.street);
-    setCustomBulkValue(account, "ShippingCity", crmAccount.mailingAddress.city);
-    setCustomBulkValue(account, "ShippingState", crmAccount.mailingAddress.state);
-    setCustomBulkValue(account, "ShippingPostalCode", crmAccount.mailingAddress.postalCode);
-    setCustomBulkValue(account, "ShippingCountry", crmAccount.mailingAddress.country);
-
-    setCustomBulkValue(account, "Description", crmAccount.description);
-    setCustomBulkValue(account, "OwnerId", crmAccount.ownerId);
-    setCustomBulkValue(account, "Phone", crmAccount.phone);
-    setCustomBulkValue(account, "Type", crmAccount.type);
-    setCustomBulkValue(account, "Website", crmAccount.website);
 
     setBulkImportCustomFields(account, existingAccount, columnPrefix, raw);
   }
@@ -781,18 +750,14 @@ public class BulkImportService {
         .min(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString(c.getField("CreatedDate"))));
   }
 
-  protected CrmContact updateBulkImportContact(CrmContact existingContact, CrmAccount account, CrmImportEvent importEvent,
-      List<String> bulkUpdateContacts, CrmService crmService) throws Exception {
-    CrmContact contact = new CrmContact();
+  protected CrmContact updateBulkImportContact(CrmContact contact, CrmContact existingContact, CrmAccount account,
+      Map<String, String> raw, List<String> bulkUpdateContacts, CrmService crmService) throws Exception {
     contact.id = existingContact.id;
     if (account != null) {
       contact.account.id = account.id;
     }
 
-    contact.firstName = importEvent.contactFirstName;
-    contact.lastName = importEvent.contactLastName;
-
-    setBulkImportContactFields(contact, existingContact, importEvent);
+    setBulkImportContactFields(contact, existingContact, raw);
     if (!bulkUpdateContacts.contains(existingContact.id)) {
       bulkUpdateContacts.add(existingContact.id);
       crmService.batchUpdateContact(contact);
@@ -802,8 +767,9 @@ public class BulkImportService {
   }
 
   protected CrmContact insertBulkImportContact(
-      CrmImportEvent importEvent,
+      CrmContact contact,
       CrmAccount account,
+      Map<String, String> raw,
       List<String> bulkInsertContacts,
       Multimap<String, CrmContact> existingContactsByEmail,
       Multimap<String, CrmContact> existingContactsByName,
@@ -812,21 +778,15 @@ public class BulkImportService {
       boolean nonBatchMode,
       CrmService crmService
   ) throws Exception {
-    CrmContact contact = new CrmContact();
-
     String fullName = null;
     // last name is required
-    if (Strings.isNullOrEmpty(importEvent.contactLastName)) {
+    if (Strings.isNullOrEmpty(contact.lastName)) {
       contact.lastName = "Anonymous";
-    } else {
-      contact.firstName = importEvent.contactFirstName;
-      contact.lastName = importEvent.contactLastName;
-      fullName = importEvent.contactFirstName + " " + importEvent.contactLastName;
     }
 
     boolean isAnonymous = "Anonymous".equalsIgnoreCase(contact.lastName);
 
-    setBulkImportContactFields(contact, null, importEvent);
+    setBulkImportContactFields(contact, null, raw);
 
     if (account != null) {
       contact.account.id = account.id;
@@ -856,17 +816,14 @@ public class BulkImportService {
     }
 
     // Since we hold maps in memory and don't requery them. Add entries as we go to prevent duplicate inserts.
-    if (!Strings.isNullOrEmpty(contact.email)) {
-      existingContactsByEmail.put(contact.email.toLowerCase(Locale.ROOT), contact);
+    if (!Strings.isNullOrEmpty(contact.homeEmail)) {
+      existingContactsByEmail.put(contact.homeEmail.toLowerCase(Locale.ROOT), contact);
     }
-    if (!Strings.isNullOrEmpty(contact.getField("npe01__HomeEmail__c"))) {
-      existingContactsByEmail.put(contact.getField("npe01__HomeEmail__c").toString().toLowerCase(Locale.ROOT), contact);
+    if (!Strings.isNullOrEmpty(contact.workEmail)) {
+      existingContactsByEmail.put(contact.workEmail.toLowerCase(Locale.ROOT), contact);
     }
-    if (!Strings.isNullOrEmpty(contact.getField("npe01__WorkEmail__c"))) {
-      existingContactsByEmail.put(contact.getField("npe01__WorkEmail__c").toString().toLowerCase(Locale.ROOT), contact);
-    }
-    if (!Strings.isNullOrEmpty(contact.getField("npe01__AlternateEmail__c"))) {
-      existingContactsByEmail.put(contact.getField("npe01__AlternateEmail__c").toString().toLowerCase(Locale.ROOT), contact);
+    if (!Strings.isNullOrEmpty(contact.otherEmail)) {
+      existingContactsByEmail.put(contact.otherEmail.toLowerCase(Locale.ROOT), contact);
     }
 
     if (!isAnonymous && !Strings.isNullOrEmpty(fullName)) {
@@ -879,90 +836,29 @@ public class BulkImportService {
     return contact;
   }
 
-  protected void setBulkImportContactFields(CrmContact contact, CrmContact existingContact, CrmImportEvent importEvent) {
-    if (!Strings.isNullOrEmpty(importEvent.contactRecordTypeId)) {
-      contact.recordTypeId = importEvent.contactRecordTypeId;
-    } else if (!Strings.isNullOrEmpty(importEvent.contactRecordTypeName)) {
-      contact.recordTypeId = recordTypeNameToIdCache.get(importEvent.contactRecordTypeName);
-    }
-
-    setCustomBulkValue(contact, "Salutation", importEvent.contactSalutation);
-    setCustomBulkValue(contact, "Description", importEvent.contactDescription);
-    setCustomBulkValue(contact, "MailingStreet", importEvent.contactMailingStreet);
-    setCustomBulkValue(contact, "MailingCity", importEvent.contactMailingCity);
-    setCustomBulkValue(contact, "MailingState", importEvent.contactMailingState);
-    setCustomBulkValue(contact, "MailingPostalCode", importEvent.contactMailingZip);
-    setCustomBulkValue(contact, "MailingCountry", importEvent.contactMailingCountry);
-    setCustomBulkValue(contact, "HomePhone", importEvent.contactHomePhone);
-    setCustomBulkValue(contact, "MobilePhone", importEvent.contactMobilePhone);
-    setCustomBulkValue(contact, "Phone", importEvent.contactPhone);
-    if (env.getConfig().salesforce.npsp) {
-      setCustomBulkValue(contact, "npe01__WorkPhone__c", importEvent.contactWorkPhone);
-    }
-
-    if (!Strings.isNullOrEmpty(importEvent.contactEmail) && !"na".equalsIgnoreCase(importEvent.contactEmail) && !"n/a".equalsIgnoreCase(importEvent.contactEmail)) {
+  protected void setBulkImportContactFields(CrmContact contact, CrmContact existingContact, Map<String, String> raw) {
+    if (Strings.isNullOrEmpty(contact.homeEmail) || "na".equalsIgnoreCase(contact.homeEmail) || "n/a".equalsIgnoreCase(contact.homeEmail)) {
+      contact.homeEmail = null;
+    } else {
       // Some sources provide comma separated lists. Simply use the first one.
-      String email = importEvent.contactEmail.split("[,;\\s]+")[0];
-      setCustomBulkValue(contact, "Email", email);
+      contact.homeEmail = contact.homeEmail.split("[,;\\s]+")[0];
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail) && !"na".equalsIgnoreCase(importEvent.contactPersonalEmail) && !"n/a".equalsIgnoreCase(importEvent.contactPersonalEmail) && env.getConfig().salesforce.npsp) {
+    if (Strings.isNullOrEmpty(contact.workEmail) || "na".equalsIgnoreCase(contact.workEmail) || "n/a".equalsIgnoreCase(contact.workEmail)) {
+      contact.workEmail = null;
+    } else {
       // Some sources provide comma separated lists. Simply use the first one.
-      String email = importEvent.contactPersonalEmail.split("[,;\\s]+")[0];
-      setCustomBulkValue(contact, "npe01__HomeEmail__c", email);
+      contact.workEmail = contact.workEmail.split("[,;\\s]+")[0];
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactWorkEmail) && !"na".equalsIgnoreCase(importEvent.contactWorkEmail) && !"n/a".equalsIgnoreCase(importEvent.contactWorkEmail) && env.getConfig().salesforce.npsp) {
+    if (Strings.isNullOrEmpty(contact.otherEmail) || "na".equalsIgnoreCase(contact.otherEmail) || "n/a".equalsIgnoreCase(contact.otherEmail)) {
+      contact.otherEmail = null;
+    } else {
       // Some sources provide comma separated lists. Simply use the first one.
-      String workEmail = importEvent.contactWorkEmail.split("[,;\\s]+")[0];
-      setCustomBulkValue(contact, "npe01__WorkEmail__c", workEmail);
+      contact.otherEmail = contact.otherEmail.split("[,;\\s]+")[0];
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactOtherEmail) && !"na".equalsIgnoreCase(importEvent.contactOtherEmail) && !"n/a".equalsIgnoreCase(importEvent.contactOtherEmail) && env.getConfig().salesforce.npsp) {
-      // Some sources provide comma separated lists. Simply use the first one.
-      String otherEmail = importEvent.contactOtherEmail.split("[,;\\s]+")[0];
-      setCustomBulkValue(contact, "npe01__AlternateEmail__c", otherEmail);
-    }
-
-    if ((existingContact == null || Strings.isNullOrEmpty(existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
-      String customFieldValue = switch (importEvent.contactPhonePreference) {
-        case HOME -> "Home";
-        case MOBILE -> "Mobile";
-        case WORK -> "Work";
-        case OTHER -> "Other";
-      };
-      setCustomBulkValue(contact, "npe01__PreferredPhone__c", customFieldValue);
-    }
-
-    if (importEvent.contactOptInEmail != null && importEvent.contactOptInEmail) {
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
-    }
-    if (importEvent.contactOptOutEmail != null && importEvent.contactOptOutEmail) {
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
-    }
-    if (importEvent.contactOptInSms != null && importEvent.contactOptInSms) {
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, false);
-    }
-    if (importEvent.contactOptOutSms != null && importEvent.contactOptOutSms) {
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
-      setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
-    }
-
-    if ((existingContact == null || Strings.isNullOrEmpty(existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
-      String customFieldValue = switch (importEvent.contactEmailPreference) {
-        case PERSONAL -> "Personal";
-        case WORK -> "Work";
-        case OTHER -> "Alternate";
-      };
-      setCustomBulkValue(contact, "npe01__Preferred_Email__c", customFieldValue);
-    }
-
-    setCustomBulkValue(contact, "OwnerId", importEvent.contactOwnerId);
-
-    setBulkImportCustomFields(contact, existingContact, "Contact", importEvent.raw);
+    setBulkImportCustomFields(contact, existingContact, "Contact", raw);
   }
 
   // TODO: This mostly duplicates the primary import's accounts by-id, by-extref, and by-name. DRY it up?
@@ -993,7 +889,7 @@ public class BulkImportService {
           org = new CrmAccount();
           org.id = existingOrg.id;
 
-          setBulkImportAccountFields(org, existingOrg, crmOrg, "Organization " + finalJ, importEvent.raw);
+          setBulkImportAccountFields(org, existingOrg, crmOrg, importEvent.raw, "Organization " + finalJ);
           crmService.batchUpdateAccount(org);
         }
       } else if (orgExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(orgExtRefKey.get()))) {
@@ -1003,7 +899,7 @@ public class BulkImportService {
           org = new CrmAccount();
           org.id = existingOrg.id;
 
-          setBulkImportAccountFields(org, existingOrg, crmOrg, "Organization " + finalJ, importEvent.raw);
+          setBulkImportAccountFields(org, existingOrg, crmOrg, importEvent.raw, "Organization " + finalJ);
           crmService.batchUpdateAccount(org);
         } else {
           if (Strings.isNullOrEmpty(crmOrg.recordTypeId) && Strings.isNullOrEmpty(crmOrg.recordTypeName)) {
@@ -1032,7 +928,7 @@ public class BulkImportService {
               existingAccountsByExtRef, "Organization " + finalJ, true, crmService);
           existingAccountsByName.put(crmOrg.name.toLowerCase(Locale.ROOT), org);
         } else {
-          org = updateBulkImportAccount(existingOrg, crmOrg, importEvent.raw, "Organization " + finalJ, true, crmService);
+          org = updateBulkImportAccount(crmOrg, existingOrg, importEvent.raw, "Organization " + finalJ, true, crmService);
         }
       }
 
@@ -1111,58 +1007,17 @@ public class BulkImportService {
   }
 
   protected void setBulkImportRecurringDonationFields(CrmRecurringDonation recurringDonation,
-      CrmRecurringDonation existingRecurringDonation, CrmImportEvent importEvent) {
-    if (importEvent.recurringDonationAmount != null) {
-      recurringDonation.amount = importEvent.recurringDonationAmount.doubleValue();
-    }
-    recurringDonation.status = importEvent.recurringDonationStatus;
-    recurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
-    CrmRecurringDonation.Frequency frequency = CrmRecurringDonation.Frequency.fromName(importEvent.recurringDonationInterval);
-    if (frequency != null) {
-      recurringDonation.frequency = frequency.name();
-    }
-    recurringDonation.setField("Npe03__Date_Established__c", importEvent.recurringDonationStartDate);
-    recurringDonation.setField("Npe03__Next_Payment_Date__c", importEvent.recurringDonationNextPaymentDate);
+      CrmRecurringDonation existingRecurringDonation, Map<String, String> raw) {
+    // reserving in case we need to set more in the future
 
-    if (env.getConfig().salesforce.enhancedRecurringDonations) {
-      recurringDonation.setField("npsp__RecurringType__c", "Open");
-      // It's a picklist, so it has to be a string and not numeric :(
-      recurringDonation.setField("npsp__Day_of_Month__c", importEvent.recurringDonationStartDate.get(Calendar.DAY_OF_MONTH) + "");
-    }
-
-    recurringDonation.ownerId = importEvent.recurringDonationOwnerId;
-
-    setBulkImportCustomFields(recurringDonation, existingRecurringDonation, "Recurring Donation", importEvent.raw);
+    setBulkImportCustomFields(recurringDonation, existingRecurringDonation, "Recurring Donation", raw);
   }
 
-  protected void setBulkImportOpportunityFields(CrmDonation opportunity, CrmDonation existingOpportunity, CrmImportEvent importEvent)
+  protected void setBulkImportOpportunityFields(CrmDonation opportunity, CrmDonation existingOpportunity, Map<String, String> raw)
       throws ExecutionException {
-    if (!Strings.isNullOrEmpty(importEvent.opportunityRecordTypeId)) {
-      opportunity.recordTypeId = importEvent.opportunityRecordTypeId;
-    } else if (!Strings.isNullOrEmpty(importEvent.opportunityRecordTypeName)) {
-      opportunity.recordTypeId = recordTypeNameToIdCache.get(importEvent.opportunityRecordTypeName);
-    }
-    if (!Strings.isNullOrEmpty(importEvent.opportunityName)) {
-      // 120 is typically the max length
-      int length = Math.min(importEvent.opportunityName.length(), 120);
-      opportunity.name = importEvent.opportunityName.substring(0, length);
-    } else if (existingOpportunity == null || Strings.isNullOrEmpty(existingOpportunity.name)) {
-      opportunity.name = importEvent.contactFullName() + " Donation";
-    }
-    opportunity.description = importEvent.opportunityDescription;
-    if (importEvent.opportunityAmount != null) {
-      opportunity.amount = importEvent.opportunityAmount.doubleValue();
-    }
-    if (!Strings.isNullOrEmpty(importEvent.opportunityStageName)) {
-      opportunity.status = importEvent.opportunityStageName;
-    } else {
-      opportunity.status = CrmDonation.Status.SUCCESSFUL;
-    }
-    opportunity.closeDate = importEvent.opportunityDate;
+    // reserving in case we need to set more in the future
 
-    opportunity.ownerId = importEvent.opportunityOwnerId;
-
-    setBulkImportCustomFields(opportunity, existingOpportunity, "Opportunity", importEvent.raw);
+    setBulkImportCustomFields(opportunity, existingOpportunity, "Opportunity", raw);
   }
 
   protected void setBulkImportCustomFields(CrmRecord record, CrmRecord existingRecord, String columnPrefix, Map<String, String> raw) {
@@ -1203,7 +1058,7 @@ public class BulkImportService {
         }
       }
     }
-    record.setField(key, value);
+    record.crmRawFieldsToSet.put(key, value);
   }
 
   protected void processBulkImportCampaignRecords(List<CrmImportEvent> importEvents, CrmService crmService) throws Exception {

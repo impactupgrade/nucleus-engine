@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
@@ -221,7 +222,7 @@ public class CrmController {
       CrmService crmService = env.crmService(crmType);
       AccountSearch accountSearch = new AccountSearch();
       accountSearch.basicSearch = true;
-      List<CrmAccount> accounts = crmService.searchAccounts(accountSearch);
+      PagedResults<CrmAccount> accounts = crmService.searchAccounts(accountSearch);
       return Response.ok().entity(accounts).build();
     } catch (Exception e) {
       env.logJobError("failed to get accounts", e);
