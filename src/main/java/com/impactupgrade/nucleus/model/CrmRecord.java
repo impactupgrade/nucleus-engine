@@ -13,11 +13,13 @@ import java.util.Set;
 public class CrmRecord implements Serializable {
 
   public String id;
+  public String recordTypeId;
+  public String recordTypeName;
 
   @JsonIgnore
   protected Map<String, String> rawData = new CaseInsensitiveMap<>(); // Keep this protected -- ensure it always stays a CaseInsensitiveMap.
   @JsonIgnore
-  public Object rawObject;
+  public Object crmRawObject;
   @JsonIgnore
   public Map<String, String> crmRawFieldsToSet = new HashMap<>();
   @JsonIgnore
@@ -32,10 +34,16 @@ public class CrmRecord implements Serializable {
     this.id = id;
   }
 
-  public CrmRecord(String id, Object rawObject, String crmUrl) {
-    this.id = id;
-    this.rawObject = rawObject;
+  public CrmRecord(String id, Object crmRawObject, String crmUrl) {
+    this(id);
+    this.crmRawObject = crmRawObject;
     this.crmUrl = crmUrl;
+  }
+
+  public CrmRecord(String id, String recordTypeId, String recordTypeName, Object crmRawObject, String crmUrl) {
+    this(id, crmRawObject, crmUrl);
+    this.recordTypeId = recordTypeId;
+    this.recordTypeName = recordTypeName;
   }
 
   public void addRawData(String key, String value) {

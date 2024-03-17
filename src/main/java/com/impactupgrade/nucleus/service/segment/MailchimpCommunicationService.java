@@ -69,7 +69,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   protected CrmContact asCrmContact(CrmAccount crmAccount) {
     CrmContact crmContact = new CrmContact();
     crmContact.account = crmAccount;
-    crmContact.rawObject = crmAccount.rawObject;
+    crmContact.crmRawObject = crmAccount.crmRawObject;
     crmContact.email = crmAccount.email;
     crmContact.emailBounced = crmAccount.emailBounced;
     crmContact.emailOptIn = crmAccount.emailOptIn;
@@ -207,7 +207,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       CrmContact updateContact = new CrmContact();
       updateContact.id = crmContact.id;
       contactConsumer.accept(updateContact);
-      crmService.batchUpdate(updateContact);
+      crmService.batchUpdateContact(updateContact);
     }
     crmService.batchFlush();
   }
@@ -223,7 +223,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       CrmAccount updateAccount = new CrmAccount();
       updateAccount.id = account.id;
       accountConsumer.accept(updateAccount);
-      crmService.batchUpdate(updateAccount);
+      crmService.batchUpdateAccount(updateAccount);
     }
     crmService.batchFlush();
   }

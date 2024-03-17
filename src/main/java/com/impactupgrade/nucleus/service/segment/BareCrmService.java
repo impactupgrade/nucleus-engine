@@ -11,13 +11,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 
 import java.util.Calendar;
 import java.util.Collections;
@@ -232,11 +231,6 @@ public class BareCrmService implements CrmService {
   @Override
   public double getDonationsTotal(String filter) throws Exception {
     return 0.0;
-  }
-
-  @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-
   }
 
   @Override

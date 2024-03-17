@@ -9,7 +9,6 @@ import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
@@ -149,8 +148,5 @@ public interface BasicCrmService extends CrmService {
 
   default List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields) {
     return null;
-  }
-
-  default void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
   }
 }

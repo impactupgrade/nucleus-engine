@@ -82,9 +82,9 @@ public class MergeSfdcDuplicateContacts {
             || !Strings.isNullOrEmpty(contact.account.billingAddress.street)
             || !Strings.isNullOrEmpty(contact.account.mailingAddress.street)) {
           if (primary == null) {
-            primary = (SObject) contact.rawObject;
+            primary = (SObject) contact.crmRawObject;
           } else {
-            secondary.add((SObject) contact.rawObject);
+            secondary.add((SObject) contact.crmRawObject);
           }
 
           if (!Strings.isNullOrEmpty(contact.mailingAddress.street)) {
@@ -97,7 +97,7 @@ public class MergeSfdcDuplicateContacts {
             addresses.add(contact.account.mailingAddress.street);
           }
         } else {
-          secondary.add((SObject) contact.rawObject);
+          secondary.add((SObject) contact.crmRawObject);
         }
 
         names.add(contact.firstName + " " + contact.lastName);

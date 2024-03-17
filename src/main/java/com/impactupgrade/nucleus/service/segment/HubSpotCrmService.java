@@ -51,13 +51,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.io.File;
@@ -528,7 +527,7 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
     for (CrmDonation crmDonation : crmDonations) {
-      Deal deal = (Deal) crmDonation.rawObject;
+      Deal deal = (Deal) crmDonation.crmRawObject;
 
       // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
       if (!Strings.isNullOrEmpty(crmDonation.refundId)) {
@@ -741,8 +740,8 @@ public class HubSpotCrmService implements CrmService {
 
   // TODO: imports are being reworked in a different PR, so purely commenting these out for now
 
-  @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
+//  @Override
+//  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
 //    String contactKeyPrefix = "contact_";
 //    String dealKeyPrefix = "deal_";
 //
@@ -750,7 +749,7 @@ public class HubSpotCrmService implements CrmService {
 //    importRecords(listOfMap, "contact-deal-bulk-import", contactKeyPrefix, dealKeyPrefix);
 //
 //    env.logJobInfo("bulk insert complete");
-  }
+//  }
 
 //  @Override
 //  public void processBulkUpdate(List<CrmUpdateEvent> updateEvents) throws Exception {

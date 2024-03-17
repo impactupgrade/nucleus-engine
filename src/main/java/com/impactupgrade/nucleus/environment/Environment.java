@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ActivityService;
+import com.impactupgrade.nucleus.service.logic.BulkImportService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
@@ -144,6 +145,7 @@ public class Environment {
   // logic services
 
   public ActivityService activityService() { return new ActivityService(this); }
+  public BulkImportService bulkImportService() { return new BulkImportService(this); }
   public DonationService donationService() { return new DonationService(this); }
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
@@ -154,10 +156,14 @@ public class Environment {
   // segment services
 
   public CrmService crmService(final String name) {
-    if (Strings.isNullOrEmpty(name)) {
-      return primaryCrmService();
-    } else {
+    if ("donations".equalsIgnoreCase(name)) {
+      return donationsCrmService();
+    } else if ("messaging".equalsIgnoreCase(name)) {
+      return messagingCrmService();
+    } else if (!Strings.isNullOrEmpty(name)) {
       return segmentService(name, CrmService.class);
+    } else {
+      return primaryCrmService();
     }
   }
 
