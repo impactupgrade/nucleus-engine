@@ -147,16 +147,16 @@ public class BulkImportService {
       // Normalize the case!
       crmService.getContactsByEmails(contactEmails, contactCustomFields)
           .forEach(c -> {
-                if (!Strings.isNullOrEmpty((String) c.email)) {
+                if (!Strings.isNullOrEmpty(c.email)) {
                   existingContactsByEmail.put(c.email.toLowerCase(Locale.ROOT), c);
                 }
-                if (!Strings.isNullOrEmpty((String) c.getField("npe01__HomeEmail__c"))) {
+                if (!Strings.isNullOrEmpty(c.getField("npe01__HomeEmail__c"))) {
                   existingContactsByEmail.put(c.getField("npe01__HomeEmail__c").toString().toLowerCase(Locale.ROOT), c);
                 }
-                if (!Strings.isNullOrEmpty((String) c.getField("npe01__WorkEmail__c"))) {
+                if (!Strings.isNullOrEmpty(c.getField("npe01__WorkEmail__c"))) {
                   existingContactsByEmail.put(c.getField("npe01__WorkEmail__c").toString().toLowerCase(Locale.ROOT), c);
                 }
-                if (!Strings.isNullOrEmpty((String) c.getField("npe01__AlternateEmail__c"))) {
+                if (!Strings.isNullOrEmpty(c.getField("npe01__AlternateEmail__c"))) {
                   existingContactsByEmail.put(c.getField("npe01__AlternateEmail__c").toString().toLowerCase(Locale.ROOT), c);
                 }
               }
@@ -229,7 +229,7 @@ public class BulkImportService {
       if (!opportunityExtRefIds.isEmpty()) {
         String fieldName = opportunityExtRefKey.get().replace("Opportunity ExtRef ", "");
         crmService.getDonationsByUniqueField(fieldName, opportunityExtRefIds, opportunityCustomFields)
-            .forEach(c -> existingOpportunitiesByExtRefId.put((String) c.getField(fieldName), c));
+            .forEach(c -> existingOpportunitiesByExtRefId.put(c.getField(fieldName), c));
       }
     }
 
@@ -237,16 +237,16 @@ public class BulkImportService {
     if (env.getConfig().salesforce.npsp) {
       List<SObject> relationships = crmService.queryListAutoPaged("SELECT npe5__Contact__c, npe5__Organization__c FROM npe5__Affiliation__c WHERE npe5__Contact__c!='' AND npe5__Organization__c!=''");
       for (SObject relationship : relationships) {
-        String from = (String) relationship.getField("npe5__Contact__c");
-        String to = (String) relationship.getField("npe5__Organization__c");
+        String from = relationship.getField("npe5__Contact__c");
+        String to = relationship.getField("npe5__Organization__c");
         seenRelationships.add(from + "::" + to);
         seenRelationships.add(to + "::" + from);
       }
     } else {
       List<SObject> relationships = crmService.queryListAutoPaged("SELECT ContactId, AccountId FROM AccountContactRelation WHERE ContactId!='' AND AccountId!=''");
       for (SObject relationship : relationships) {
-        String from = (String) relationship.getField("ContactId");
-        String to = (String) relationship.account.id;
+        String from = relationship.getField("ContactId");
+        String to = relationship.account.id;
         seenRelationships.add(from + "::" + to);
         seenRelationships.add(to + "::" + from);
       }
@@ -350,7 +350,7 @@ public class BulkImportService {
         CrmContact existingContact = existingContactsById.get(importEvent.contactId);
 
         if (account == null) {
-          String accountId = (String) existingContact.account.id;
+          String accountId = existingContact.account.id;
           if (!Strings.isNullOrEmpty(accountId)) {
             CrmAccount existingAccount = existingContact.account;
             account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
@@ -367,7 +367,7 @@ public class BulkImportService {
         CrmContact existingContact = existingContactsByExtRef.get(importEvent.raw.get(contactExtRefKey.get()));
 
         if (account == null) {
-          String accountId = (String) existingContact.account.id;
+          String accountId = existingContact.account.id;
           if (!Strings.isNullOrEmpty(accountId)) {
             CrmAccount existingAccount = existingContact.account;
             account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
@@ -384,7 +384,7 @@ public class BulkImportService {
         // TODO: do this once further up?
         CrmContact existingContact = findExistingContactByEmail(importEvent, existingContactsByEmail).get();
         if (account == null) {
-          String accountId = (String) existingContact.account.id;
+          String accountId = existingContact.account.id;
           if (!Strings.isNullOrEmpty(accountId)) {
             CrmAccount existingAccount = existingContact.account;
             account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
@@ -431,17 +431,17 @@ public class BulkImportService {
               ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
 
               List<String> list2 = Stream.of(
-                  alphanumericOnly((String) c.mailingAddress.street),
-                  alphanumericOnly((String) c.account.billingAddress.street),
-                  alphanumericOnly((String) c.account.mailingAddress.street),
-                  numericOnly((String) c.homePhone),
-                  numericOnly((String) c.mobilePhone),
-                  numericOnly((String) c.workPhone)
+                  alphanumericOnly(c.mailingAddress.street),
+                  alphanumericOnly(c.account.billingAddress.street),
+                  alphanumericOnly(c.account.mailingAddress.street),
+                  numericOnly(c.homePhone),
+                  numericOnly(c.mobilePhone),
+                  numericOnly(c.workPhone)
               ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
 
               list1.retainAll(list2);
               return !list1.isEmpty();
-            }).sorted(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString((String) c.getField("CreatedDate")))).toList();
+            }).sorted(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString(c.getField("CreatedDate")))).toList();
 
         if (existingContacts.isEmpty()) {
           importEvent.secondPass = true;
@@ -450,7 +450,7 @@ public class BulkImportService {
           CrmContact existingContact = existingContacts.get(0);
 
           if (account == null) {
-            String accountId = (String) existingContact.account.id;
+            String accountId = existingContact.account.id;
             if (!Strings.isNullOrEmpty(accountId)) {
               CrmAccount existingAccount = existingContact.account;
               account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account",
@@ -720,8 +720,8 @@ public class BulkImportService {
     if (!Strings.isNullOrEmpty(crmAccount.name)) {
       existingAccountsByName.put(crmAccount.name.toLowerCase(Locale.ROOT), account);
     }
-    if (accountExtRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) account.getField(accountExtRefFieldName.get()))) {
-      existingAccountsByExtRef.put((String) account.getField(accountExtRefFieldName.get()), account);
+    if (accountExtRefFieldName.isPresent() && !Strings.isNullOrEmpty(account.getField(accountExtRefFieldName.get()))) {
+      existingAccountsByExtRef.put(account.getField(accountExtRefFieldName.get()), account);
     }
 
     return account;
@@ -775,7 +775,7 @@ public class BulkImportService {
     return emails.stream()
         .map(email -> existingContactsByEmail.get(email))
         .flatMap(Collection::stream)
-        .min(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString((String) c.getField("CreatedDate"))));
+        .min(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString(c.getField("CreatedDate"))));
   }
 
   protected CrmContact updateBulkImportContact(CrmContact existingContact, CrmAccount account, CrmImportEvent importEvent,
@@ -838,8 +838,8 @@ public class BulkImportService {
       //  that since duplicates within the SAME SHEET are likely the same person?
       // TODO: Minimally need to check the other email fields.
       String key = null;
-      if (!Strings.isNullOrEmpty((String) contact.email)) {
-        key = (String) contact.email;
+      if (!Strings.isNullOrEmpty(contact.email)) {
+        key = contact.email;
       } else if (!isAnonymous) {
         key = contact.firstName + " " + contact.lastName;
       }
@@ -853,24 +853,24 @@ public class BulkImportService {
     }
 
     // Since we hold maps in memory and don't requery them. Add entries as we go to prevent duplicate inserts.
-    if (!Strings.isNullOrEmpty((String) contact.email)) {
+    if (!Strings.isNullOrEmpty(contact.email)) {
       existingContactsByEmail.put(contact.email.toLowerCase(Locale.ROOT), contact);
     }
-    if (!Strings.isNullOrEmpty((String) contact.getField("npe01__HomeEmail__c"))) {
+    if (!Strings.isNullOrEmpty(contact.getField("npe01__HomeEmail__c"))) {
       existingContactsByEmail.put(contact.getField("npe01__HomeEmail__c").toString().toLowerCase(Locale.ROOT), contact);
     }
-    if (!Strings.isNullOrEmpty((String) contact.getField("npe01__WorkEmail__c"))) {
+    if (!Strings.isNullOrEmpty(contact.getField("npe01__WorkEmail__c"))) {
       existingContactsByEmail.put(contact.getField("npe01__WorkEmail__c").toString().toLowerCase(Locale.ROOT), contact);
     }
-    if (!Strings.isNullOrEmpty((String) contact.getField("npe01__AlternateEmail__c"))) {
+    if (!Strings.isNullOrEmpty(contact.getField("npe01__AlternateEmail__c"))) {
       existingContactsByEmail.put(contact.getField("npe01__AlternateEmail__c").toString().toLowerCase(Locale.ROOT), contact);
     }
 
     if (!isAnonymous && !Strings.isNullOrEmpty(fullName)) {
       existingContactsByName.put(fullName.toLowerCase(Locale.ROOT), contact);
     }
-    if (contactExtRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) contact.getField(contactExtRefFieldName.get()))) {
-      existingContactsByExtRef.put((String) contact.getField(contactExtRefFieldName.get()), contact);
+    if (contactExtRefFieldName.isPresent() && !Strings.isNullOrEmpty(contact.getField(contactExtRefFieldName.get()))) {
+      existingContactsByExtRef.put(contact.getField(contactExtRefFieldName.get()), contact);
     }
 
     return contact;
@@ -921,7 +921,7 @@ public class BulkImportService {
       setCustomBulkValue(contact, "npe01__AlternateEmail__c", otherEmail);
     }
 
-    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
+    if ((existingContact == null || Strings.isNullOrEmpty(existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
       String customFieldValue = switch (importEvent.contactPhonePreference) {
         case HOME -> "Home";
         case MOBILE -> "Mobile";
@@ -948,7 +948,7 @@ public class BulkImportService {
       setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
     }
 
-    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
+    if ((existingContact == null || Strings.isNullOrEmpty(existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
       String customFieldValue = switch (importEvent.contactEmailPreference) {
         case PERSONAL -> "Personal";
         case WORK -> "Work";
@@ -1054,7 +1054,7 @@ public class BulkImportService {
         // - C has an AccountId and it's already set to O1. Update the AccountContactRelation to set the role, if it's not already set.
         // - C has an AccountId and it's a different Org. Leave AccountId alone and create the new AccountContactRelation.
 
-        if (Strings.isNullOrEmpty((String) contact.account.id)) {
+        if (Strings.isNullOrEmpty(contact.account.id)) {
           // Private contact. Set AccountId and update the relation's role.
 
           CrmContact contactUpdate = new CrmContact();
@@ -1080,7 +1080,7 @@ public class BulkImportService {
           if (!Strings.isNullOrEmpty(role)) {
             Optional<SObject> relation = crmService.querySingle("SELECT Id, Role__c FROM AccountContactRelation WHERE ContactId='" + contact.id + "' AND AccountId='" + org.id + "'");
             if (relation.isPresent()) {
-              if (Strings.isNullOrEmpty((String) relation.get().getField("Role__c"))) {
+              if (Strings.isNullOrEmpty(relation.get().getField("Role__c"))) {
                 SObject relationUpdate = new SObject("AccountContactRelation");
                 relationUpdate.id = relation.get().id;
                 // TODO: The default Roles field is a multiselect picklist. We nearly ALWAYS create this custom, free-text
@@ -1143,7 +1143,7 @@ public class BulkImportService {
       // 120 is typically the max length
       int length = Math.min(importEvent.opportunityName.length(), 120);
       opportunity.name = importEvent.opportunityName.substring(0, length);
-    } else if (existingOpportunity == null || Strings.isNullOrEmpty((String) existingOpportunity.name)) {
+    } else if (existingOpportunity == null || Strings.isNullOrEmpty(existingOpportunity.name)) {
       opportunity.name = importEvent.contactFullName() + " Donation";
     }
     opportunity.description = importEvent.opportunityDescription;
@@ -1178,7 +1178,7 @@ public class BulkImportService {
     String extrefPrefix = columnPrefix + " ExtRef ";
     raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(extrefPrefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {
       String key = entry.getKey().replace(extrefPrefix, "");
-      if (existingRecord == null || Strings.isNullOrEmpty((String) existingRecord.getField(key))) {
+      if (existingRecord == null || Strings.isNullOrEmpty(existingRecord.getField(key))) {
         setCustomBulkValue(record, key, entry.getValue());
       }
     });
@@ -1188,7 +1188,7 @@ public class BulkImportService {
   //  It also works for other fields, like Description text boxes. Only downside: the ; looks a little odd.
   protected void appendCustomValue(String key, String value, CrmRecord record, CrmRecord existingRecord) {
     if (existingRecord != null) {
-      String existingValue = (String) existingRecord.getField(key);
+      String existingValue = existingRecord.getField(key);
       if (!Strings.isNullOrEmpty(existingValue)) {
         if (existingValue.contains(value)) {
           // existing values already include the new value, so set the existing value verbatim so that we don't
@@ -1284,17 +1284,17 @@ public class BulkImportService {
     key = key.trim();
 
     if (c != null) {
-      record.setField(key, c);
+      record.crmRawFieldsToSet.put(key, c);
     }
     // TODO: yes/no -> bool is causing trouble for picklist/text imports that include those values
     else if ("true".equalsIgnoreCase(value.toString())/* || "yes".equalsIgnoreCase(value)*/) {
-      record.setField(key, true);
+      record.crmRawFieldsToSet.put(key, true);
     } else if ("false".equalsIgnoreCase(value.toString())/* || "no".equalsIgnoreCase(value)*/) {
-      record.setField(key, false);
+      record.crmRawFieldsToSet.put(key, false);
     }
     // But this seems safe?
     else if ("x".equalsIgnoreCase(value.toString())) {
-      record.setField(key, true);
+      record.crmRawFieldsToSet.put(key, true);
     } else if ("CLEAR IT".equalsIgnoreCase(value.toString()) || "CLEARIT".equalsIgnoreCase(value.toString())) {
       String[] fieldsToNull = record.getFieldsToNull();
       if (fieldsToNull == null) {
@@ -1305,7 +1305,7 @@ public class BulkImportService {
       fieldsToNull[fieldsToNull.length - 1] = key;
       record.setFieldsToNull(fieldsToNull);
     } else {
-      record.setField(key, value);
+      record.crmRawFieldsToSet.put(key, value);
     }
   }
 }

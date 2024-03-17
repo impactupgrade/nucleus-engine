@@ -51,7 +51,24 @@ public interface CrmService extends SegmentService {
     return accounts;
   }
   List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception;
-  List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception;
+  Optional<CrmAccount> getAccountByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception;
+  default List<CrmAccount> getAccountsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    List<CrmAccount> accounts = new ArrayList<>();
+    for (String customFieldValue : customFieldValues) {
+      Optional<CrmAccount> account = getAccountByUniqueField(customField, customFieldValue, extraFields);
+      account.ifPresent(accounts::add);
+    }
+    return accounts;
+  }
+  default List<CrmAccount> getAccountsByNames(List<String> names, String... extraFields) throws Exception {
+    List<CrmAccount> accounts = new ArrayList<>();
+    for (String name : names) {
+      Optional<CrmAccount> account = searchAccounts(AccountSearch.byKeywords(name), extraFields).getSingleResult();
+      account.ifPresent(accounts::add);
+    }
+    return accounts;
+  }
+  PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
   void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception;
@@ -84,6 +101,15 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
+  Optional<CrmContact> getContactByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception;
+  default List<CrmContact> getContactsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    List<CrmContact> contacts = new ArrayList<>();
+    for (String customFieldValue : customFieldValues) {
+      Optional<CrmContact> contact = getContactByUniqueField(customField, customFieldValue, extraFields);
+      contact.ifPresent(contacts::add);
+    }
+    return contacts;
+  }
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception;
   Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
@@ -96,9 +122,27 @@ public interface CrmService extends SegmentService {
   void updateOpportunity(CrmOpportunity crmOpportunity) throws Exception;
   String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
 
+  Optional<CrmDonation> getDonationById(String id, String... extraFields) throws Exception;
+  default List<CrmDonation> getDonationsByIds(List<String> ids, String... extraFields) throws Exception {
+    List<CrmDonation> donations = new ArrayList<>();
+    for (String id : ids) {
+      Optional<CrmDonation> donation = getDonationById(id, extraFields);
+      donation.ifPresent(donations::add);
+    }
+    return donations;
+  }
   // transaction id, secondary id, refund id, etc.
   // we also need account/contact since some CRMs will not allow transaction retrieval without providing the constituent
   List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception;
+  Optional<CrmDonation> getDonationByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception;
+  default List<CrmDonation> getDonationsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    List<CrmDonation> donations = new ArrayList<>();
+    for (String customFieldValue : customFieldValues) {
+      Optional<CrmDonation> donation = getDonationByCustomField(customField, customFieldValue, extraFields);
+      donation.ifPresent(donations::add);
+    }
+    return donations;
+  }
   String insertDonation(CrmDonation crmDonation) throws Exception;
   void updateDonation(CrmDonation crmDonation) throws Exception;
   void refundDonation(CrmDonation crmDonation) throws Exception;
@@ -120,6 +164,14 @@ public interface CrmService extends SegmentService {
     return crmRecurringDonation;
   }
   Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception;
+  default List<CrmRecurringDonation> getRecurringDonationsByIds(List<String> ids, String... extraFields) throws Exception {
+    List<CrmRecurringDonation> rds = new ArrayList<>();
+    for (String id : ids) {
+      Optional<CrmRecurringDonation> rd = getRecurringDonationById(id, extraFields);
+      rd.ifPresent(rds::add);
+    }
+    return rds;
+  }
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception;
   List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
@@ -127,9 +179,18 @@ public interface CrmService extends SegmentService {
   // Provide the full CRM model in case additional context is needed (close reasons, etc.)
   void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 
+  Optional<CrmCampaign> getCampaignByName(String name, String... extraFields) throws Exception;
+  default List<CrmCampaign> getCampaignsByNames(List<String> names, String... extraFields) throws Exception {
+    List<CrmCampaign> campaigns = new ArrayList<>();
+    for (String name : names) {
+      Optional<CrmCampaign> campaign = getCampaignByName(name, extraFields);
+      campaign.ifPresent(campaigns::add);
+    }
+    return campaigns;
+  }
+  Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception;
   String insertCampaign(CrmCampaign crmCampaign) throws Exception;
   void updateCampaign(CrmCampaign crmCampaign) throws Exception;
-  Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception;
   void deleteCampaign(String campaignId) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

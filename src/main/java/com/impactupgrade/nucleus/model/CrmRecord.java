@@ -21,7 +21,7 @@ public class CrmRecord implements Serializable {
   @JsonIgnore
   public Object crmRawObject;
   @JsonIgnore
-  public Map<String, String> crmRawFieldsToSet = new HashMap<>();
+  public Map<String, Object> crmRawFieldsToSet = new HashMap<>();
   @JsonIgnore
   public String crmUrl;
 

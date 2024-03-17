@@ -103,6 +103,16 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmAccount> getAccountByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountByUniqueField(customField, customFieldValue, extraFields));
+  }
+
+  @Override
+  public List<CrmAccount> getAccountsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountsByUniqueField(customField, customFieldValues, extraFields));
+  }
+
+  @Override
   public Optional<CrmContact> getContactById(String id, String... extraFields) throws Exception {
     return toCrmContact(sfdcClient.getContactById(id, extraFields));
   }
@@ -128,6 +138,16 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmContact> getContactByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception {
+    return toCrmContact(sfdcClient.getContactByUniqueField(customField, customFieldValue, extraFields));
+  }
+
+  @Override
+  public List<CrmContact> getContactsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByUniqueField(customField, customFieldValues, extraFields));
+  }
+
+  @Override
   // currentPageToken assumed to be the offset index
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws InterruptedException, ConnectionException {
     return toCrmContact(sfdcClient.searchContacts(contactSearch, extraFields));
@@ -135,7 +155,7 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   // currentPageToken assumed to be the offset index
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws InterruptedException, ConnectionException {
+  public PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws InterruptedException, ConnectionException {
     return toCrmAccount(sfdcClient.searchAccounts(accountSearch, extraFields));
   }
 
@@ -177,8 +197,28 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmDonation> getDonationById(String id, String... extraFields) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationById(id, extraFields));
+  }
+
+  @Override
+  public List<CrmDonation> getDonationsByIds(List<String> ids, String... extraFields) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationsByIds(ids, extraFields));
+  }
+
+  @Override
   public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception {
     return toCrmDonation(sfdcClient.getDonationsByTransactionIds(transactionIds, extraFields));
+  }
+
+  @Override
+  public Optional<CrmDonation> getDonationByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationByUniqueField(customField, customFieldValue, extraFields));
+  }
+
+  @Override
+  public List<CrmDonation> getDonationsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationsByUniqueField(customField, customFieldValues, extraFields));
   }
 
   @Override
@@ -370,13 +410,18 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
-    return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId, extraFields));
+  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(id, extraFields));
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception {
-    return toCrmRecurringDonation(sfdcClient.getRecurringDonationById(id, extraFields));
+  public List<CrmRecurringDonation> getRecurringDonationsByIds(List<String> ids, String... extraFields) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationsByIds(ids, extraFields));
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception {
+    return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId, extraFields));
   }
 
   @Override
@@ -849,6 +894,16 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Optional<CrmCampaign> getCampaignByName(String name, String... extraFields) throws Exception {
+    return toCrmCampaign(sfdcClient.getCampaignByName(name, extraFields));
+  }
+
+  @Override
+  public List<CrmCampaign> getCampaignsByNames(List<String> names, String... extraFields) throws Exception {
+    return toCrmCampaign(sfdcClient.getCampaignsByNames(names, extraFields));
+  }
+
+  @Override
   public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception {
     return toCrmCampaign(sfdcClient.getCampaignByExternalReference(externalReference, extraFields));
   }
@@ -1146,6 +1201,10 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmCampaign> toCrmCampaign(Optional<SObject> sObject) {
     return sObject.map(this::toCrmCampaign);
+  }
+
+  protected List<CrmCampaign> toCrmCampaign(List<SObject> sObjects) {
+    return sObjects.stream().map(this::toCrmCampaign).collect(Collectors.toList());
   }
 
   // TODO: starting to feel like we need an object mapper lib...
@@ -1449,6 +1508,10 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmRecurringDonation> toCrmRecurringDonation(Optional<SObject> sObject) {
     return sObject.map(this::toCrmRecurringDonation);
+  }
+
+  protected List<CrmRecurringDonation> toCrmRecurringDonation(List<SObject> sObjects) {
+    return sObjects.stream().map(this::toCrmRecurringDonation).collect(Collectors.toList());
   }
 
   protected CrmActivity toCrmActivity(SObject sObject) {
