@@ -195,7 +195,7 @@ public class BulkImportService {
     if (!campaignNames.isEmpty()) {
       // Normalize the case!
       campaignNameToId = crmService.getCampaignsByNames(campaignNames).stream()
-          .collect(Collectors.toMap(c -> c.name.toLowerCase(Locale.ROOT), SObject::getId));
+          .collect(Collectors.toMap(c -> c.name.toLowerCase(Locale.ROOT), c -> c.id));
     }
 
     List<String> recurringDonationIds = importEvents.stream().map(e -> e.recurringDonation.id)
@@ -470,18 +470,18 @@ public class BulkImportService {
       if (account != null) {
         for (String campaignId : importEvent.accountCampaignIds) {
           if (!Strings.isNullOrEmpty(campaignId)) {
-            crmService.addAccountToCampaign(account.id, campaignId, true);
+            crmService.batchAddAccountToCampaign(account, campaignId);
           }
         }
 
         for (String campaignName : importEvent.accountCampaignNames) {
           if (!Strings.isNullOrEmpty(campaignName)) {
             if (campaignNameToId.containsKey(campaignName.toLowerCase(Locale.ROOT))) {
-              crmService.addAccountToCampaign(account.id, campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)), true);
+              crmService.batchAddAccountToCampaign(account, campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)));
             } else {
               String campaignId = crmService.insertCampaign(new CrmCampaign(null, campaignName));
               campaignNameToId.put(campaignId, campaignName);
-              crmService.addAccountToCampaign(account.id, campaignId, true);
+              crmService.batchAddAccountToCampaign(account, campaignId);
             }
           }
         }
@@ -495,18 +495,18 @@ public class BulkImportService {
       if (contact != null) {
         for (String campaignId : importEvent.contactCampaignIds) {
           if (!Strings.isNullOrEmpty(campaignId)) {
-            crmService.addContactToCampaign(contact.id, campaignId, true);
+            crmService.batchAddContactToCampaign(contact, campaignId);
           }
         }
 
         for (String campaignName : importEvent.contactCampaignNames) {
           if (!Strings.isNullOrEmpty(campaignName)) {
             if (campaignNameToId.containsKey(campaignName.toLowerCase(Locale.ROOT))) {
-              crmService.addContactToCampaign(contact.id, campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)), true);
+              crmService.batchAddContactToCampaign(contact, campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)));
             } else {
               String campaignId = crmService.insertCampaign(new CrmCampaign(null, campaignName));
               campaignNameToId.put(campaignId, campaignName);
-              crmService.addContactToCampaign(contact.id, campaignId, true);
+              crmService.batchAddContactToCampaign(contact, campaignId);
             }
           }
         }

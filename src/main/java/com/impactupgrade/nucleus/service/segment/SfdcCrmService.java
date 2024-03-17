@@ -524,6 +524,11 @@ public class SfdcCrmService implements CrmService {
     addAccountToCampaign(crmAccount.id, campaignId, false);
   }
 
+  @Override
+  public void batchAddAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
+    addAccountToCampaign(crmAccount.id, campaignId, true);
+  }
+
   protected void addAccountToCampaign(String accountId, String campaignId, boolean batch) throws Exception {
     SObject campaignMember = new SObject("CampaignMember");
     campaignMember.setField("AccountId", accountId);
@@ -538,6 +543,11 @@ public class SfdcCrmService implements CrmService {
   @Override
   public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
     addContactToCampaign(crmContact.id, campaignId, false);
+  }
+
+  @Override
+  public void batchAddContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    addContactToCampaign(crmContact.id, campaignId, true);
   }
 
   protected void addContactToCampaign(String contactId, String campaignId, boolean batch) throws Exception {

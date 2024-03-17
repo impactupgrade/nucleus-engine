@@ -230,6 +230,12 @@ public interface CrmService extends SegmentService {
   default void batchUpdateCampaign(CrmCampaign crmCampaign) throws Exception {
     updateCampaign(crmCampaign);
   }
+  default void batchAddAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
+    addAccountToCampaign(crmAccount, campaignId);
+  }
+  default void batchAddContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    addContactToCampaign(crmContact, campaignId);
+  }
   default void batchFlush() throws Exception {
     // default to no-op
   }
