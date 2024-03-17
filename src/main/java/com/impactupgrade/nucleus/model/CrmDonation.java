@@ -94,10 +94,11 @@ public class CrmDonation extends CrmOpportunity {
       String name,
       String ownerId,
       String recordTypeId,
+      String recordTypeName,
       Object crmRawObject,
       String crmUrl
   ) {
-    super(id, account, contact, campaignId, closeDate, description, name, ownerId, recordTypeId, crmRawObject, crmUrl);
+    super(id, account, contact, campaignId, closeDate, description, name, ownerId, recordTypeId, recordTypeName, crmRawObject, crmUrl);
     this.amount = amount;
     this.customerId = customerId;
     this.depositDate = depositDate;

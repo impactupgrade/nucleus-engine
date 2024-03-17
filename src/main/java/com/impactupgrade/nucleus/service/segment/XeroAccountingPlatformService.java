@@ -165,14 +165,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             for (Element element : e.getElements()) {
                 if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    if (crmContact.rawObject instanceof SObject sObject) {
+                    if (crmContact.crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContactForAccountNumber(supporterId).map(c -> c.getContactID().toString()).orElse(null);
                     }
                 }
                 if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("contact name must be unique across all active contacts"))) {
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    if (crmContact.rawObject instanceof SObject sObject) {
+                    if (crmContact.crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContactForName(contact.getName()).map(c -> {
                             // A few contacts have been entered manually without an Account Number being set.
@@ -442,7 +442,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
         // TODO: make this part not-sfdc specific?
         // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
-        if (crmContact.rawObject instanceof SObject sObject) {
+        if (crmContact.crmRawObject instanceof SObject sObject) {
             String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
             contact.setAccountNumber(supporterId);
         }

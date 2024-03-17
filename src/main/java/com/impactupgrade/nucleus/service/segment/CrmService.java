@@ -15,13 +15,13 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -51,7 +51,24 @@ public interface CrmService extends SegmentService {
     return accounts;
   }
   List<CrmAccount> getAccountsByEmails(List<String> emails, String... extraFields) throws Exception;
-  List<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception;
+  Optional<CrmAccount> getAccountByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception;
+  default List<CrmAccount> getAccountsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    List<CrmAccount> accounts = new ArrayList<>();
+    for (String customFieldValue : customFieldValues) {
+      Optional<CrmAccount> account = getAccountByUniqueField(customField, customFieldValue, extraFields);
+      account.ifPresent(accounts::add);
+    }
+    return accounts;
+  }
+  default List<CrmAccount> getAccountsByNames(List<String> names, String... extraFields) throws Exception {
+    List<CrmAccount> accounts = new ArrayList<>();
+    for (String name : names) {
+      Optional<CrmAccount> account = searchAccounts(AccountSearch.byKeywords(name), extraFields).getSingleResult();
+      account.ifPresent(accounts::add);
+    }
+    return accounts;
+  }
+  PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch, String... extraFields) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
   void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception;
@@ -76,6 +93,23 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
+  default List<CrmContact> getContactsByNames(List<Pair<String, String>> names, String... extraFields) throws Exception {
+    List<CrmContact> contacts = new ArrayList<>();
+    for (Pair<String, String> name : names) {
+      Optional<CrmContact> contact = searchContacts(ContactSearch.byName(name.getLeft(), name.getRight()), extraFields).getSingleResult();
+      contact.ifPresent(contacts::add);
+    }
+    return contacts;
+  }
+  Optional<CrmContact> getContactByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception;
+  default List<CrmContact> getContactsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    List<CrmContact> contacts = new ArrayList<>();
+    for (String customFieldValue : customFieldValues) {
+      Optional<CrmContact> contact = getContactByUniqueField(customField, customFieldValue, extraFields);
+      contact.ifPresent(contacts::add);
+    }
+    return contacts;
+  }
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, String... extraFields) throws Exception;
   Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
@@ -85,11 +119,30 @@ public interface CrmService extends SegmentService {
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;
 
+  void updateOpportunity(CrmOpportunity crmOpportunity) throws Exception;
   String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
 
+  Optional<CrmDonation> getDonationById(String id, String... extraFields) throws Exception;
+  default List<CrmDonation> getDonationsByIds(List<String> ids, String... extraFields) throws Exception {
+    List<CrmDonation> donations = new ArrayList<>();
+    for (String id : ids) {
+      Optional<CrmDonation> donation = getDonationById(id, extraFields);
+      donation.ifPresent(donations::add);
+    }
+    return donations;
+  }
   // transaction id, secondary id, refund id, etc.
   // we also need account/contact since some CRMs will not allow transaction retrieval without providing the constituent
   List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId, String... extraFields) throws Exception;
+  Optional<CrmDonation> getDonationByUniqueField(String customField, String customFieldValue, String... extraFields) throws Exception;
+  default List<CrmDonation> getDonationsByUniqueField(String customField, List<String> customFieldValues, String... extraFields) throws Exception {
+    List<CrmDonation> donations = new ArrayList<>();
+    for (String customFieldValue : customFieldValues) {
+      Optional<CrmDonation> donation = getDonationByUniqueField(customField, customFieldValue, extraFields);
+      donation.ifPresent(donations::add);
+    }
+    return donations;
+  }
   String insertDonation(CrmDonation crmDonation) throws Exception;
   void updateDonation(CrmDonation crmDonation) throws Exception;
   void refundDonation(CrmDonation crmDonation) throws Exception;
@@ -111,6 +164,14 @@ public interface CrmService extends SegmentService {
     return crmRecurringDonation;
   }
   Optional<CrmRecurringDonation> getRecurringDonationById(String id, String... extraFields) throws Exception;
+  default List<CrmRecurringDonation> getRecurringDonationsByIds(List<String> ids, String... extraFields) throws Exception {
+    List<CrmRecurringDonation> rds = new ArrayList<>();
+    for (String id : ids) {
+      Optional<CrmRecurringDonation> rd = getRecurringDonationById(id, extraFields);
+      rd.ifPresent(rds::add);
+    }
+    return rds;
+  }
   Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId, String... extraFields) throws Exception;
   List<CrmRecurringDonation> searchAllRecurringDonations(ContactSearch contactSearch, String... extraFields) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
@@ -118,22 +179,62 @@ public interface CrmService extends SegmentService {
   // Provide the full CRM model in case additional context is needed (close reasons, etc.)
   void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 
+  Optional<CrmCampaign> getCampaignByName(String name, String... extraFields) throws Exception;
+  default List<CrmCampaign> getCampaignsByNames(List<String> names, String... extraFields) throws Exception {
+    List<CrmCampaign> campaigns = new ArrayList<>();
+    for (String name : names) {
+      Optional<CrmCampaign> campaign = getCampaignByName(name, extraFields);
+      campaign.ifPresent(campaigns::add);
+    }
+    return campaigns;
+  }
+  Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception;
   String insertCampaign(CrmCampaign crmCampaign) throws Exception;
   void updateCampaign(CrmCampaign crmCampaign) throws Exception;
-  Optional<CrmCampaign> getCampaignByExternalReference(String externalReference, String... extraFields) throws Exception;
   void deleteCampaign(String campaignId) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // BATCH OPERATIONS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  default void batchUpdate(CrmAccount crmAccount) throws Exception {
-    // default to simply updating one-by-one for CRMs that don't support batching
+  // default to simply updating one-by-one for CRMs that don't support batching
+
+  default void batchInsertAccount(CrmAccount crmAccount) throws Exception {
+    insertAccount(crmAccount);
+  }
+  default void batchUpdateAccount(CrmAccount crmAccount) throws Exception {
     updateAccount(crmAccount);
   }
-  default void batchUpdate(CrmContact crmContact) throws Exception {
-    // default to simply updating one-by-one for CRMs that don't support batching
+  default void batchInsertContact(CrmContact crmContact) throws Exception {
     updateContact(crmContact);
+  }
+  default void batchUpdateContact(CrmContact crmContact) throws Exception {
+    updateContact(crmContact);
+  }
+  default void batchInsertOpportunity(CrmOpportunity crmOpportunity) throws Exception {
+    insertOpportunity(crmOpportunity);
+  }
+  default void batchUpdateOpportunity(CrmOpportunity crmOpportunity) throws Exception {
+    updateOpportunity(crmOpportunity);
+  }
+  default void batchInsertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+    insertRecurringDonation(crmRecurringDonation);
+  }
+  // TODO: How to handle when update() requires UpdateRecurringDonationEvent?
+//  default void batchUpdateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+//    updateRecurringDonation(crmRecurringDonation);
+//  }
+  default void batchInsertCampaign(CrmCampaign crmCampaign) throws Exception {
+    insertCampaign(crmCampaign);
+  }
+  default void batchUpdateCampaign(CrmCampaign crmCampaign) throws Exception {
+    updateCampaign(crmCampaign);
+  }
+  default void batchAddAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
+    addAccountToCampaign(crmAccount, campaignId);
+  }
+  default void batchAddContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+    addContactToCampaign(crmContact, campaignId);
   }
   default void batchFlush() throws Exception {
     // default to no-op
@@ -170,13 +271,6 @@ public interface CrmService extends SegmentService {
   // campaign bar. IMPORTANT: Each CRM service is expected to implement this in the most performant way possible. As an
   // example, SFDC has a sum() function, but HubSpot does not.
   double getDonationsTotal(String filter) throws Exception;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // BULK UTILS
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // TODO
-  void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // MISC

@@ -9,19 +9,27 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public class CrmRecord implements Serializable {
 
   public String id;
+  public String recordTypeId;
+  public String recordTypeName;
 
   @JsonIgnore
   protected Map<String, String> rawData = new CaseInsensitiveMap<>(); // Keep this protected -- ensure it always stays a CaseInsensitiveMap.
   @JsonIgnore
-  public Object rawObject;
+  public Object crmRawObject;
   @JsonIgnore
-  public Map<String, String> crmRawFieldsToSet = new HashMap<>();
+  public Map<String, Object> crmRawFieldsToSet = new HashMap<>();
   @JsonIgnore
   public String crmUrl;
+
+  // Using FP, allow this object to retrieve fields from its rawObject. Calls to the constructor provide a
+  // CRM-specific function.
+  @JsonIgnore
+  public Function<String, Object> fieldFetcher;
 
   public CrmRecord() {
 
@@ -32,10 +40,24 @@ public class CrmRecord implements Serializable {
     this.id = id;
   }
 
-  public CrmRecord(String id, Object rawObject, String crmUrl) {
-    this.id = id;
-    this.rawObject = rawObject;
+  public CrmRecord(String id, Object crmRawObject, String crmUrl, Function<String, Object> fieldFetcher) {
+    this(id);
+    this.crmRawObject = crmRawObject;
     this.crmUrl = crmUrl;
+    this.fieldFetcher = fieldFetcher;
+  }
+
+  public CrmRecord(
+      String id,
+      String recordTypeId,
+      String recordTypeName,
+      Object crmRawObject,
+      String crmUrl,
+      Function<String, Object> fieldFetcher
+  ) {
+    this(id, crmRawObject, crmUrl, fieldFetcher);
+    this.recordTypeId = recordTypeId;
+    this.recordTypeName = recordTypeName;
   }
 
   public void addRawData(String key, String value) {

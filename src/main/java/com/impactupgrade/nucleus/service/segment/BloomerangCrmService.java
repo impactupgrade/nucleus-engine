@@ -23,13 +23,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
 
@@ -193,9 +192,9 @@ public class BloomerangCrmService implements CrmService {
       constituent.primaryEmail = constituentEmail;
     }
 
-    if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
+    if (!Strings.isNullOrEmpty(crmContact.phone())) {
       final Phone constituentPhone = new Phone();
-      constituentPhone.number = crmContact.phoneNumberForSMS();
+      constituentPhone.number = crmContact.phone();
       constituent.primaryPhone = constituentPhone;
     }
 
@@ -330,11 +329,6 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public void refundDonation(CrmDonation crmDonation) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
-  }
-
-  @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    throw new RuntimeException("not implemented");
   }
 
   @Override

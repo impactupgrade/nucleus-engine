@@ -16,13 +16,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.util.Utils;
 import com.microsoft.graph.models.Site;
 import org.apache.commons.collections.CollectionUtils;
@@ -429,11 +428,6 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-
-    }
-
-    @Override
     public Optional<CrmUser> getUserByEmail(String email) throws Exception {
         return Optional.empty();
     }
@@ -478,7 +472,7 @@ public class SharePointCrmService implements CrmService {
         crmContact.lastName = map.get("Last Name");
         crmContact.mobilePhone = map.get(phoneColumn);
         crmContact.ownerId = map.get(ownerColumn);
-        crmContact.rawObject = map;
+        crmContact.crmRawObject = map;
         crmContact.fieldFetcher = map::get;
         return crmContact;
     }

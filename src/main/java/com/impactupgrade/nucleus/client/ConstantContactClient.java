@@ -81,8 +81,8 @@ public class ConstantContactClient extends OAuthClient {
     Contact contact = new Contact();
     contact.firstname = crmContact.firstName;
     contact.lastname = crmContact.lastName;
-    contact.emailAddress = crmContact.email;
-    contact.phoneNumber = crmContact.phoneNumberForSMS();
+    contact.emailAddress = crmContact.email();
+    contact.phoneNumber = crmContact.phone();
     contact.streetAddress = toAddress(crmContact.mailingAddress);
 
     if (crmContact.account != null) {

@@ -14,13 +14,12 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -327,7 +326,7 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
     for (CrmDonation crmDonation : crmDonations) {
-      VirtuousClient.Gift gift = (VirtuousClient.Gift) crmDonation.rawObject;
+      VirtuousClient.Gift gift = (VirtuousClient.Gift) crmDonation.crmRawObject;
 
       // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
       if (!Strings.isNullOrEmpty(crmDonation.refundId)) {
@@ -403,7 +402,7 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
-    VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.rawObject;
+    VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.crmRawObject;
 
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
       recurringGift.amount = crmRecurringDonation.amount;
@@ -612,11 +611,6 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
-    // TODO
-  }
-
-  @Override
   public EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions() {
     return null;
   }
@@ -667,7 +661,7 @@ public class VirtuousCrmService implements CrmService {
     //  public List<String> emailGroups;
     //  public String contactLanguage;
 
-    crmContact.rawObject = contact;
+    crmContact.crmRawObject = contact;
 
     return crmContact;
   }
@@ -799,7 +793,7 @@ public class VirtuousCrmService implements CrmService {
     crmDonation.status = CrmDonation.Status.SUCCESSFUL;
     crmDonation.closeDate = getDateTime(gift.giftDate);
     crmDonation.crmUrl = gift.giftUrl;
-    crmDonation.rawObject = gift;
+    crmDonation.crmRawObject = gift;
     return crmDonation;
   }
 

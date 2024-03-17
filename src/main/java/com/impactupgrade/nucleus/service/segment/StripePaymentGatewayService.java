@@ -86,7 +86,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           e.getCrmDonation().feeInDollars,
           e.getCrmContact().firstName + " " + e.getCrmContact().lastName,
           e.getCrmContact().email,
-          e.getCrmContact().mobilePhone,
+          e.getCrmContact().phone(),
           e.getCrmContact().mailingAddress.toString(),
           "Stripe",
           charge.getId(),

@@ -239,13 +239,13 @@ public class FactsController {
           secondPass = studentImports;
         }
         List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(firstPass);
-        env.primaryCrmService().processBulkImport(importEvents);
+        env.bulkImportService().processBulkImport(importEvents);
         importEvents = CrmImportEvent.fromGeneric(secondPass);
-        env.primaryCrmService().processBulkImport(importEvents);
+        env.bulkImportService().processBulkImport(importEvents);
 
         if (factsConfig.syncEmergency) {
           importEvents = CrmImportEvent.fromGeneric(emergencyContactImports);
-          env.primaryCrmService().processBulkImport(importEvents);
+          env.bulkImportService().processBulkImport(importEvents);
         }
 
         // TODO: need genericized for non-SFDC environments
@@ -519,7 +519,7 @@ public class FactsController {
         }
 
         List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(staffImports);
-        env.primaryCrmService().processBulkImport(importEvents);
+        env.bulkImportService().processBulkImport(importEvents);
 
         log.info("DONE");
       } catch (Exception e) {

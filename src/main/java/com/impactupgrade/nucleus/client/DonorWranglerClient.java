@@ -99,8 +99,8 @@ public class DonorWranglerClient {
     params.add(new BasicNameValuePair("donorInfo[city]", Strings.nullToEmpty(crmContact.mailingAddress.city)));
     params.add(new BasicNameValuePair("donorInfo[state]", Strings.nullToEmpty(crmContact.mailingAddress.state)));
     params.add(new BasicNameValuePair("donorInfo[zip]", Strings.nullToEmpty(crmContact.mailingAddress.postalCode)));
-    params.add(new BasicNameValuePair("donorInfo[email]", Strings.nullToEmpty(crmContact.email)));
-    params.add(new BasicNameValuePair("donorInfo[phone]", Strings.nullToEmpty(crmContact.mobilePhone)));
+    params.add(new BasicNameValuePair("donorInfo[email]", Strings.nullToEmpty(crmContact.email())));
+    params.add(new BasicNameValuePair("donorInfo[phone]", Strings.nullToEmpty(crmContact.phone())));
     params.add(new BasicNameValuePair("donorInfo[first]", crmContact.firstName));
     params.add(new BasicNameValuePair("donorInfo[last]", crmContact.lastName));
     params.add(new BasicNameValuePair("donorInfo[display]", crmContact.getFullName()));

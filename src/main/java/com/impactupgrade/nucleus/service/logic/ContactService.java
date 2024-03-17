@@ -73,8 +73,8 @@ public class ContactService {
       if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)) {
         existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
       }
-      if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())) {
-        existingContact = crmService.searchContacts(ContactSearch.byPhone(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())).getSingleResult();
+      if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phone())) {
+        existingContact = crmService.searchContacts(ContactSearch.byPhone(paymentGatewayEvent.getCrmContact().phone())).getSingleResult();
       }
       if (existingContact.isEmpty()
           && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().firstName) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().lastName)) {
@@ -168,7 +168,7 @@ public class ContactService {
         crmService.updateContact(existingContact.get());
       }
 
-      if (Strings.isNullOrEmpty(existingContact.get().mobilePhone) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().mobilePhone)) {
+      if (Strings.isNullOrEmpty(existingContact.get().phone()) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().mobilePhone)) {
         env.logJobInfo("existing CRM contact does not have a mobilePhone, but the new payment did -- overwriting it");
         existingContact.get().mobilePhone = paymentGatewayEvent.getCrmContact().mobilePhone;
         crmService.updateContact(existingContact.get());

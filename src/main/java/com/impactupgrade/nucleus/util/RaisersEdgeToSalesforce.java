@@ -172,9 +172,9 @@ public class RaisersEdgeToSalesforce {
 //    // Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
 //    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
 //    List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(primaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
+//    env.bulkImportService().processBulkImport(importEvents);
 //    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
+//    env.bulkImportService().processBulkImport(importEvents);
 //
 //    primaryRows.clear();
 //    secondaryRows.clear();
@@ -220,9 +220,9 @@ public class RaisersEdgeToSalesforce {
 //    // TODO: Added benefit of this approach: if the secondary contact already exists (from one of the other imports,
 //    //  FACTS, HubSpot, etc), we're ensuring that BB's primary contact is getting a household with the BB ID set.
 //    importEvents = CrmImportEvent.fromGeneric(primaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
+//    env.bulkImportService().processBulkImport(importEvents);
 //    importEvents = CrmImportEvent.fromGeneric(secondaryRows);
-//    env.primaryCrmService().processBulkImport(importEvents);
+//    env.bulkImportService().processBulkImport(importEvents);
 //
 //    primaryRows.clear();
 //    secondaryRows.clear();
