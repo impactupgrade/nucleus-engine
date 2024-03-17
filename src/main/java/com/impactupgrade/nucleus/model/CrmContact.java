@@ -4,7 +4,6 @@
 
 package com.impactupgrade.nucleus.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Strings;
 
 import java.util.ArrayList;
@@ -77,11 +76,6 @@ public class CrmContact extends CrmRecord {
 
   protected String fullNameOverride;
 
-  // Using FP, allow this object to retrieve fields from its rawObject. Calls to the constructor provide a
-  // CRM-specific function.
-  @JsonIgnore
-  public Function<String, Object> fieldFetcher;
-
   public CrmContact() {}
 
   // A few cases where we only care about existence and require only the id.
@@ -123,7 +117,7 @@ public class CrmContact extends CrmRecord {
       String crmUrl,
       Function<String, Object> fieldFetcher
   ) {
-    super(id, crmRawObject, crmUrl);
+    super(id, crmRawObject, crmUrl, fieldFetcher);
 
     if (account != null) this.account = account;
 

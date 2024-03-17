@@ -112,7 +112,7 @@ public class BulkImportService {
       if (!accountExtRefIds.isEmpty()) {
         // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
         crmService.getAccountsByUniqueField(accountExtRefFieldName.get(), accountExtRefIds, accountCustomFields)
-            .forEach(c -> existingAccountsByExtRef.put(c.getField(accountExtRefFieldName.get()).toString(), c));
+            .forEach(c -> existingAccountsByExtRef.put(c.fieldFetcher.apply(accountExtRefFieldName.get()).toString(), c));
       }
     }
 
@@ -184,7 +184,7 @@ public class BulkImportService {
       if (!contactExtRefIds.isEmpty()) {
         // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
         crmService.getContactsByUniqueField(contactExtRefFieldName.get(), contactExtRefIds, contactCustomFields)
-            .forEach(c -> existingContactsByExtRef.put(c.getField(contactExtRefFieldName.get()).toString(), c));
+            .forEach(c -> existingContactsByExtRef.put(c.fieldFetcher.apply(contactExtRefFieldName.get()).toString(), c));
       }
     }
 
@@ -229,7 +229,7 @@ public class BulkImportService {
       if (!opportunityExtRefIds.isEmpty()) {
         String fieldName = opportunityExtRefKey.get().replace("Opportunity ExtRef ", "");
         crmService.getDonationsByUniqueField(fieldName, opportunityExtRefIds, opportunityCustomFields)
-            .forEach(c -> existingOpportunitiesByExtRefId.put(c.getField(fieldName), c));
+            .forEach(c -> existingOpportunitiesByExtRefId.put(c.fieldFetcher.apply(fieldName).toString(), c));
       }
     }
 
@@ -720,8 +720,8 @@ public class BulkImportService {
     if (!Strings.isNullOrEmpty(crmAccount.name)) {
       existingAccountsByName.put(crmAccount.name.toLowerCase(Locale.ROOT), account);
     }
-    if (accountExtRefFieldName.isPresent() && !Strings.isNullOrEmpty(account.getField(accountExtRefFieldName.get()))) {
-      existingAccountsByExtRef.put(account.getField(accountExtRefFieldName.get()), account);
+    if (accountExtRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) account.fieldFetcher.apply(accountExtRefFieldName.get()))) {
+      existingAccountsByExtRef.put((String) account.fieldFetcher.apply(accountExtRefFieldName.get()), account);
     }
 
     return account;
@@ -869,8 +869,8 @@ public class BulkImportService {
     if (!isAnonymous && !Strings.isNullOrEmpty(fullName)) {
       existingContactsByName.put(fullName.toLowerCase(Locale.ROOT), contact);
     }
-    if (contactExtRefFieldName.isPresent() && !Strings.isNullOrEmpty(contact.getField(contactExtRefFieldName.get()))) {
-      existingContactsByExtRef.put(contact.getField(contactExtRefFieldName.get()), contact);
+    if (contactExtRefFieldName.isPresent() && !Strings.isNullOrEmpty((String) contact.fieldFetcher.apply(contactExtRefFieldName.get()))) {
+      existingContactsByExtRef.put((String) contact.fieldFetcher.apply(contactExtRefFieldName.get()), contact);
     }
 
     return contact;
@@ -1178,7 +1178,7 @@ public class BulkImportService {
     String extrefPrefix = columnPrefix + " ExtRef ";
     raw.entrySet().stream().filter(entry -> entry.getKey().startsWith(extrefPrefix) && !Strings.isNullOrEmpty(entry.getValue())).forEach(entry -> {
       String key = entry.getKey().replace(extrefPrefix, "");
-      if (existingRecord == null || Strings.isNullOrEmpty(existingRecord.getField(key))) {
+      if (existingRecord == null || Strings.isNullOrEmpty((String) existingRecord.fieldFetcher.apply(key))) {
         setCustomBulkValue(record, key, entry.getValue());
       }
     });
@@ -1188,7 +1188,7 @@ public class BulkImportService {
   //  It also works for other fields, like Description text boxes. Only downside: the ; looks a little odd.
   protected void appendCustomValue(String key, String value, CrmRecord record, CrmRecord existingRecord) {
     if (existingRecord != null) {
-      String existingValue = existingRecord.getField(key);
+      String existingValue = (String) existingRecord.fieldFetcher.apply(key);
       if (!Strings.isNullOrEmpty(existingValue)) {
         if (existingValue.contains(value)) {
           // existing values already include the new value, so set the existing value verbatim so that we don't
