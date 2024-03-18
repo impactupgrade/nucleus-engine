@@ -375,21 +375,27 @@ public class EnvironmentConfig implements Serializable {
     }
   }
 
-  public static class CrmFieldToEmailField implements Serializable {
+  public static class CrmFieldToEmailTagCondition implements Serializable {
     public String operator;
     public String value;
   }
 
   public static class CrmFieldToEmailTag implements Serializable {
-    public String customFieldName;
-    //TODO: use single item instead of list if we don't need logical "and" for +1 conditions?
-    public List<CrmFieldToEmailField> crmFieldToEmailFieldConditions;
-    public String tagValue;
-    public boolean isSlug;
+    public String crmFieldName;
+    //TODO: use single item instead of list if we don't need logical "and" for >1 conditions?
+    public List<CrmFieldToEmailTagCondition> crmFieldToEmailTagConditions;
+    public String tagName;
+    public boolean isAppend;
+  }
+
+  public static class CrmFieldToEmailField implements Serializable {
+    public String crmFieldName;
+    public String emailFieldName;
   }
 
   public static class CommunicationPlatformCRMFieldToTagConfiguration implements Serializable {
     public List<CrmFieldToEmailTag> crmFieldToEmailTags = new ArrayList<>();
+    public List<CrmFieldToEmailField> crmFieldToEmailFields = new ArrayList<>();
   }
 
   public CommunicationPlatformCRMFieldToTagConfiguration emailTagsConfiguration = new CommunicationPlatformCRMFieldToTagConfiguration();
