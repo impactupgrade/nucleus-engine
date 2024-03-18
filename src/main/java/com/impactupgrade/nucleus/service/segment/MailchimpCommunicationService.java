@@ -12,7 +12,6 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -22,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -395,42 +395,39 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     return mcContact;
   }
 
-  protected String getCustomField(CrmContact crmContact, String fieldName) {
-    return null;
-  }
-
   protected Set<String> buildTags(CrmContact crmContact, List<EnvironmentConfig.CrmFieldToEmailTag> mappings) {
     return mappings.stream()
-            .map(mapping -> getTagValue(crmContact, mapping))
+            .map(mapping -> getTagName(crmContact, mapping))
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
   }
 
-  protected String getTagValue(CrmContact crmContact, EnvironmentConfig.CrmFieldToEmailTag mapping) {
-    String customFieldValue = getCustomField(crmContact, mapping.customFieldName);
-    if (mapping.crmFieldToEmailFieldConditions.stream().allMatch(condition -> evaluate(customFieldValue, condition))) {
-      String tagValue = mapping.tagValue;
-      if (mapping.isSlug) {
-        tagValue = tagValue + Utils.toSlug(customFieldValue);
+  protected String getTagName(CrmContact crmContact, EnvironmentConfig.CrmFieldToEmailTag mapping) {
+    Object value = crmContact.fieldFetcher != null ? crmContact.fieldFetcher.apply(mapping.crmFieldName) : null;
+    String valueString = value == null ? "" : value.toString();
+    if (mapping.crmFieldToEmailTagConditions.stream().allMatch(condition -> evaluate(valueString, condition))) {
+      String tagName = mapping.tagName;
+      if (mapping.isAppend) {
+        tagName = tagName + Utils.toSlug(valueString);
       }
-      return tagValue;
+      return tagName;
     } else {
       return null;
     }
   }
 
-  protected boolean evaluate(String customFieldValue, EnvironmentConfig.CrmFieldToEmailField crmFieldToEmailField) {
-    if (Strings.isNullOrEmpty(customFieldValue)
-            || crmFieldToEmailField == null
-            || EnvironmentConfig.Operator.fromValue(crmFieldToEmailField.operator) == null) {
+  protected boolean evaluate(String crmFieldValue, EnvironmentConfig.CrmFieldToEmailTagCondition crmFieldToEmailTagCondition) {
+    if (Strings.isNullOrEmpty(crmFieldValue)
+            || crmFieldToEmailTagCondition == null
+            || EnvironmentConfig.Operator.fromValue(crmFieldToEmailTagCondition.operator) == null) {
       return false;
     }
-    EnvironmentConfig.Operator operator = EnvironmentConfig.Operator.fromValue(crmFieldToEmailField.operator);
+    EnvironmentConfig.Operator operator = EnvironmentConfig.Operator.fromValue(crmFieldToEmailTagCondition.operator);
     return switch(operator) {
-      case NOT_EMPTY -> StringUtils.isNotEmpty(customFieldValue);
-      case EQUAL_TO ->  customFieldValue == crmFieldToEmailField.value;
-      case NOT_EQUAL_TO -> customFieldValue != crmFieldToEmailField.value;
-      case EQUALS_IGNORE_CASE -> customFieldValue.equalsIgnoreCase(crmFieldToEmailField.value);
+      case NOT_EMPTY -> Strings.isNullOrEmpty(crmFieldValue);
+      case EQUAL_TO ->  crmFieldValue.equals(crmFieldToEmailTagCondition.value);
+      case NOT_EQUAL_TO -> !crmFieldValue.equals(crmFieldToEmailTagCondition.value);
+      case EQUALS_IGNORE_CASE -> crmFieldValue.equalsIgnoreCase(crmFieldToEmailTagCondition.value);
     };
   }
 }
