@@ -430,7 +430,7 @@ public class StripeClient {
       PaymentSource paymentSource = customer.getSources().retrieve(paymentSourceId, requestOptions);
       if (paymentSource instanceof Card) {
         // TODO: Assumes cards only (same as for add customer source)
-        ((Card) paymentSource).delete();
+        ((Card) paymentSource).delete(requestOptions);
       }
     } catch (InvalidRequestException e) {
       // fall-through -- SDK currently throws this if the plan does *not* exist
