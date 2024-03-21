@@ -686,10 +686,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
-      clauses.add("FirstName = '" + contactSearch.firstName + "'");
+      String escapedName = contactSearch.firstName.replaceAll("'", "\\\\'");
+      clauses.add("FirstName = '" + escapedName + "'");
     }
     if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
-      clauses.add("LastName = '" + contactSearch.lastName + "'");
+      String escapedName = contactSearch.lastName.replaceAll("'", "\\\\'");
+      clauses.add("LastName = '" + escapedName + "'");
     }
 
     if (!Strings.isNullOrEmpty(contactSearch.accountId)) {
@@ -703,6 +705,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (!contactSearch.keywords.isEmpty()) {
       for (String keyword : contactSearch.keywords) {
         keyword = keyword.trim();
+        keyword = keyword.replaceAll("'", "\\\\'");
         // TODO: Finding a few clients with no homephone, so taking that out for now.
         clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR MailingStreet LIKE '%" + keyword + "%' OR MailingCity LIKE '%" + keyword + "%' OR MailingState LIKE '%" + keyword + "%' OR MailingPostalCode LIKE '%" + keyword + "%' OR Account.ShippingStreet LIKE '%" + keyword + "%' OR Account.ShippingCity LIKE '%" + keyword + "%' OR Account.ShippingState LIKE '%" + keyword + "%' OR Account.ShippingPostalCode LIKE '%" + keyword + "%' OR Account.BillingStreet LIKE '%" + keyword + "%' OR Account.BillingCity LIKE '%" + keyword + "%' OR Account.BillingState LIKE '%" + keyword + "%' OR Account.BillingPostalCode LIKE '%" + keyword + "%')");
       }
