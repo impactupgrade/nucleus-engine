@@ -4,20 +4,40 @@
 
 package com.impactupgrade.nucleus.model;
 
-public class CrmCampaign {
+import java.time.ZonedDateTime;
 
-  public CrmCampaign(String id, String name, String externalReference) {
-    this.id = id;
-    this.name = name;
-    this.externalReference = externalReference;
-  }
+public class CrmCampaign extends CrmRecord {
 
-  public CrmCampaign(String id, String name) {
-    this(id, name, null);
-  }
-
-  public String id;
   public String name;
   public String externalReference;
+  public ZonedDateTime startDate;
+  public ZonedDateTime endDate;
+  public String recordTypeId;
+  public String recordTypeName;
 
+  public CrmCampaign(String id, String name) {
+    this.id = id;
+    this.name = name;
+  }
+
+  public CrmCampaign(
+      String id,
+      String name,
+      String externalReference,
+      ZonedDateTime startDate,
+      ZonedDateTime endDate,
+      String recordTypeId,
+      String recordTypeName,
+      Object crmRawObject,
+      String crmUrl
+  ) {
+    super(id, crmRawObject, crmUrl);
+
+    this.name = name;
+    this.externalReference = externalReference;
+    this.startDate = startDate;
+    this.endDate = endDate;
+    this.recordTypeId = recordTypeId;
+    this.recordTypeName = recordTypeName;
+  }
 }

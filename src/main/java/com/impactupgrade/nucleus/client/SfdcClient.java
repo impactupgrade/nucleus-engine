@@ -102,7 +102,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     boolean npsp = env.getConfig().salesforce.npsp;
 
     ACCOUNT_FIELDS = "id, OwnerId, Owner.Id, Owner.IsActive, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, ShippingStreet, ShippingCity, ShippingPostalCode, ShippingState, ShippingCountry";
-    CAMPAIGN_FIELDS = "id, name, parentid, ownerid, owner.id, owner.isactive";
+    CAMPAIGN_FIELDS = "id, name, parentid, ownerid, owner.id, owner.isactive, StartDate, EndDate, RecordTypeId, RecordType.Id, RecordType.Name";
     CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, Owner.IsActive, FirstName, LastName, Title, Account.Id, Account.Name, Account.BillingStreet, Account.BillingCity, Account.BillingPostalCode, Account.BillingState, Account.BillingCountry, Account.ShippingStreet, Account.ShippingCity, Account.ShippingPostalCode, Account.ShippingState, Account.ShippingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, HomePhone, MobilePhone, Phone";
     LEAD_FIELDS = "Id, FirstName, LastName, Email, OwnerId, Owner.Id, Owner.Name, Owner.IsActive";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId, Owner.Id, Owner.IsActive";
@@ -995,10 +995,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String valuesJoin = page.stream().map(condition -> "'" + condition.replaceAll("'", "\\\\'") + "'").collect(Collectors.joining(","));
     List<String> conditions = new ArrayList<>();
     for (String conditionFieldName : conditionFieldNames) {
-      conditions.add(conditionFieldName + " in (" + valuesJoin + ")");
+      conditions.add(conditionFieldName + " IN (" + valuesJoin + ")");
     }
     String conditionsJoin = String.join(" OR ", conditions);
-    String query = "select " + getFieldsList(fields, customFields, extraFields) + " from " + objectType + " where " + conditionsJoin;
+    String query = "SELECT " + getFieldsList(fields, customFields, extraFields) + " FROM " + objectType + " WHERE " + conditionsJoin + " ORDER BY CreatedDate ASC";
     List<SObject> results = queryListAutoPaged(query);
 
     if (!more.isEmpty()) {

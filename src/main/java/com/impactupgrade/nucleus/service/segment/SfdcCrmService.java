@@ -637,7 +637,11 @@ public class SfdcCrmService implements CrmService {
     }
 
     opportunity.setField("Amount", crmDonation.amount);
-    opportunity.setField("CampaignId", campaign.map(SObject::getId).orElse(null));
+    if (!Strings.isNullOrEmpty(crmDonation.campaignId)) {
+      opportunity.setField("CampaignId", crmDonation.campaignId);
+    } else {
+      opportunity.setField("CampaignId", campaign.map(SObject::getId).orElse(null));
+    }
     opportunity.setField("CloseDate", Utils.toCalendar(crmDonation.closeDate, env.getConfig().timezoneId));
     opportunity.setField("Description", crmDonation.description);
 
@@ -813,8 +817,7 @@ public class SfdcCrmService implements CrmService {
   @Override
   public String insertCampaign(CrmCampaign crmCampaign) throws Exception {
     SObject campaign = new SObject("Campaign");
-    campaign.setField("Name", crmCampaign.name);
-    setField(campaign, env.getConfig().salesforce.fieldDefinitions.campaignExternalReference, crmCampaign.externalReference);
+    setCampaignFields(campaign, crmCampaign);
     return sfdcClient.insert(campaign).getId();
   }
 
@@ -822,9 +825,21 @@ public class SfdcCrmService implements CrmService {
   public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
     SObject campaign = new SObject("Campaign");
     campaign.setId(crmCampaign.id);
+    setCampaignFields(campaign, crmCampaign);
+    sfdcClient.update(campaign);
+  }
+
+  protected void setCampaignFields(SObject campaign, CrmCampaign crmCampaign) throws Exception {
     campaign.setField("Name", crmCampaign.name);
     setField(campaign, env.getConfig().salesforce.fieldDefinitions.campaignExternalReference, crmCampaign.externalReference);
-    sfdcClient.update(campaign);
+    campaign.setField("StartDate", Utils.toCalendar(crmCampaign.startDate, env.getConfig().timezoneId));
+    campaign.setField("EndDate", Utils.toCalendar(crmCampaign.endDate, env.getConfig().timezoneId));
+
+    if (!Strings.isNullOrEmpty(crmCampaign.recordTypeId)) {
+      campaign.setField("RecordTypeId", crmCampaign.recordTypeId);
+    } else if (!Strings.isNullOrEmpty(crmCampaign.recordTypeName)) {
+      campaign.setField("RecordTypeId", recordTypeNameToIdCache.get(crmCampaign.recordTypeName));
+    }
   }
 
   @Override
@@ -2323,10 +2338,19 @@ public class SfdcCrmService implements CrmService {
   }
 
   protected CrmCampaign toCrmCampaign(SObject sObject) {
+    ZonedDateTime startDate = Utils.getZonedDateTimeFromDateTimeString((String) sObject.getField("StartDate"));
+    ZonedDateTime endDate = Utils.getZonedDateTimeFromDateTimeString((String) sObject.getField("EndDate"));
+
     return new CrmCampaign(
         sObject.getId(),
         (String) sObject.getField("Name"),
-        (String) sObject.getField(env.getConfig().salesforce.fieldDefinitions.campaignExternalReference)
+        (String) sObject.getField(env.getConfig().salesforce.fieldDefinitions.campaignExternalReference),
+        startDate,
+        endDate,
+        (String) sObject.getField("RecordTypeId"),
+        (String) sObject.getChild("RecordType").getField("Name"),
+        sObject,
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Campaign/" + sObject.getId() + "/view"
     );
   }
 

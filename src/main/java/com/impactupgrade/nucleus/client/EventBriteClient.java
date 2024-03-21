@@ -42,14 +42,20 @@ public class EventBriteClient {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Event {
     public String id;
-    public Description name;
+    public TextHtml name;
     public String url;
+    public DateTime start;
+    public DateTime end;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class Description {
+  public static class TextHtml {
     public String text;
-    public String html;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class DateTime {
+    public String utc; // date format "2018-05-12T02:00:00Z",
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -79,7 +85,6 @@ public class EventBriteClient {
     public Address home;
     public Address ship;
     public Address work;
-    public Address bill;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -146,15 +151,13 @@ public class EventBriteClient {
     @JsonProperty("has_gts_tax")
     public Boolean hasGtsTax;
     @JsonProperty("tax_name")
-    public String taxtName;
+    public String taxName;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Cost {
     public String currency;
     public Double value;
-    @JsonProperty("major_value")
-    public String majorValue;
     public String display;
   }
 
