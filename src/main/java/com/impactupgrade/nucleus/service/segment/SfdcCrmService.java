@@ -1327,14 +1327,19 @@ public class SfdcCrmService implements CrmService {
 
       // If we're in the second pass, we already know we need to insert the contact.
       if (secondPass) {
-        account = upsertExistingAccountByName(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns);
+        account = upsertAccount(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns);
 
         contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
             existingContactsByEmail, existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode);
       }
-      // If we're in account-only mode (we have no contact info to match against):
-      else if (hasAccountColumns && (!hasContactColumns || !hasContactLookups) && !Strings.isNullOrEmpty(importEvent.account.name)) {
-        account = upsertExistingAccountByName(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns);
+      // If we're in account-only mode (we have no contact info to match against) and we have a way to look up the accounts:
+      else if (
+          hasAccountColumns
+          && (!hasContactColumns || !hasContactLookups)
+          && (!Strings.isNullOrEmpty(importEvent.account.id) || !Strings.isNullOrEmpty(importEvent.account.name)
+              || accountExtRefKey.isPresent() && existingAccountsByExtRef.containsKey(importEvent.raw.get(accountExtRefKey.get())))
+      ) {
+        account = upsertAccount(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns);
       }
       // If the explicit Contact ID was given and the contact actually exists, update.
       else if (!Strings.isNullOrEmpty(importEvent.contactId) && existingContactsById.containsKey(importEvent.contactId)) {
@@ -1623,7 +1628,7 @@ public class SfdcCrmService implements CrmService {
     env.logJobInfo("bulk import complete");
   }
 
-  protected SObject upsertExistingAccountByName(
+  protected SObject upsertAccount(
       CrmImportEvent importEvent,
       Map<String, SObject> existingAccountsById,
       Multimap<String, SObject> existingAccountsByName,
