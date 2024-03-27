@@ -840,6 +840,10 @@ public class SfdcCrmService implements CrmService {
     } else if (!Strings.isNullOrEmpty(crmCampaign.recordTypeName)) {
       campaign.setField("RecordTypeId", recordTypeNameToIdCache.get(crmCampaign.recordTypeName));
     }
+
+    for (String fieldName : crmCampaign.crmRawFieldsToSet.keySet()) {
+      campaign.setField(fieldName, crmCampaign.crmRawFieldsToSet.get(fieldName));
+    }
   }
 
   @Override
