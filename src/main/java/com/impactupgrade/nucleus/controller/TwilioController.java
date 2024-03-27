@@ -86,7 +86,7 @@ public class TwilioController {
       @FormParam("OpportunityNotes") String opportunityNotes,
       @FormParam("nucleus-username") String nucleusUsername,
       @Context HttpServletRequest request,
-      MultivaluedMap<String, String> customResponses
+      MultivaluedMap<String, Object> customResponses
   ) throws Exception {
     Environment env = envFactory.init(request);
     List<String> params = Arrays.asList("From", "FirstName", "LastName", "FullName", "Email", "EmailOptIn", "SmsOptIn", "Language", "ListId", "HubSpotListId", "CampaignId", "OpportunityName", "OpportunityRecordTypeId", "OpportunityOwnerId", "OpportunityNotes", "nucleus-username");

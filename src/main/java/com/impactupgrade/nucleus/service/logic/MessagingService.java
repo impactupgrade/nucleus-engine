@@ -108,7 +108,7 @@ public class MessagingService {
       String language,
       String campaignId,
       String listId,
-      Map<String, String> customResponses
+      Map<String, Object> customResponses
   ) throws Exception {
     // They'll send "no", etc. for email if they don't want to opt-in. Simply look for @, to be flexible.
     if (email != null && !email.contains("@")) {

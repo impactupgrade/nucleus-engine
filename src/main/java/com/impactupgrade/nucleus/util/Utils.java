@@ -299,8 +299,8 @@ public class Utils {
     return extension;
   }
 
-  public static Map<String, String> toMap(MultivaluedMap<String, String> multiMap) {
-    Map<String, String> hashMap = new HashMap<>();
+  public static Map<String, Object> toMap(MultivaluedMap<String, Object> multiMap) {
+    Map<String, Object> hashMap = new HashMap<>();
     for (String key : multiMap.keySet()) {
       hashMap.put(key, multiMap.getFirst(key));
     }
