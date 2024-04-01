@@ -791,6 +791,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
+  public List<SObject> getDonationsUpdatedSince(Calendar updatedSince, String... extraFields) throws ConnectionException, InterruptedException {
+    String ts = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    //TODO: 1 or 2?
+
+    // 1 return getBulkResults(List.of(ts), "CloseDate", "Opportunity", DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields);
+
+    // 2
+    String updatedSinceClause = " SystemModStamp >= " + ts;
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + updatedSinceClause;
+    return queryList(query);
+  }
+
   // For processes like payout handling, we need to retrieve a lot of donations at once. Retrieve in batches to preserve API limits!
   public List<SObject> getDonationsByTransactionIds(List<String> transactionIds, String... extraFields) throws ConnectionException, InterruptedException {
     List<String> page;

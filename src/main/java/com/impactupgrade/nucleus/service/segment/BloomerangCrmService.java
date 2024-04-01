@@ -181,6 +181,11 @@ public class BloomerangCrmService implements CrmService {
     ).map(this::toCrmDonation);
   }
 
+  @Override
+  public List<CrmDonation> getDonationsUpdatedSince(Calendar updatedSince) throws Exception {
+    return null;
+  }
+
   // Not able to retrieve donations purely by transactionIds -- must have the Constituent.
   @Override
   public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {

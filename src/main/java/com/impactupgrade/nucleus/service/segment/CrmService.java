@@ -22,6 +22,7 @@ import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.sforce.ws.ConnectionException;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -105,6 +106,7 @@ public interface CrmService extends SegmentService {
   default Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
     return getDonationByTransactionIds(List.of(transactionId), null, null);
   }
+  List<CrmDonation> getDonationsUpdatedSince(Calendar updatedSince) throws Exception;
   // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
   // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large

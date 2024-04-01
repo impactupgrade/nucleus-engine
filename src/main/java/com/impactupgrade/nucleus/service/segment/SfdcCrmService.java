@@ -930,6 +930,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonationsUpdatedSince(Calendar updatedSince) throws Exception {
+    return sfdcClient.getDonationsUpdatedSince(updatedSince).stream().map(this::toCrmDonation).collect(Collectors.toList());
+  }
+
+  @Override
   public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
 

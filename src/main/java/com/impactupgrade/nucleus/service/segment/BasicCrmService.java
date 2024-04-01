@@ -19,6 +19,7 @@ import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.ManageDonationEvent;
 
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +87,10 @@ public interface BasicCrmService extends CrmService {
   }
 
   default void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  }
+
+  default List<CrmDonation> getDonationsUpdatedSince(Calendar updatedSince) throws Exception {
+    return Collections.emptyList();
   }
 
   default void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {

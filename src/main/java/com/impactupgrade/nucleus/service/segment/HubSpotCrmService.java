@@ -731,6 +731,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonationsUpdatedSince(Calendar updatedSince) throws Exception {
+    return null;
+  }
+
+  @Override
   public String insertCampaign(CrmCampaign crmCampaign) throws Exception {
     return null;
   }

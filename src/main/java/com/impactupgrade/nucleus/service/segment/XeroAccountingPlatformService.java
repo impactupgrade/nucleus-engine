@@ -19,6 +19,7 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -40,8 +41,11 @@ import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService {
 
@@ -329,44 +333,50 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 //        }
 //        return LocalDateTime.ofEpochSecond(date.toInstant().getEpochSecond(), 0, ZoneOffset.UTC);
 //    }
-//
-//    @Override
-//    public Map<String, String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
-//        if (CollectionUtils.isEmpty(crmContacts)) {
-//            return Collections.emptyMap();
-//        }
-//        Contacts contacts = new Contacts();
-//        contacts.setContacts(crmContacts.stream()
-//                .map(crmContact -> toContact(crmContact))
-//                .collect(Collectors.toList()));
-//        try {
-//            return xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS).getContacts().stream()
-//                .collect(Collectors.toMap(
-//                        // account number is set as the crm contact id
-//                        Contact::getAccountNumber, contact -> contact.getContactID().toString()));
-//        } catch (Exception e) {
-//            env.logJobError("Failed to upsert contacts! {}", getExceptionDetails(e));
-//            return Collections.emptyMap();
-//        }
-//    }
-//
-//    @Override
-//    public void createTransactions(List<AccountingTransaction> transactions) throws Exception {
-//        env.logJobInfo("Input transactions: {}", transactions.size());
-//
-//        Invoices invoices = new Invoices().invoices(transactions.stream().map(this::toInvoice).collect(Collectors.toList()));
-//        env.logJobInfo("Invoices to create: {}", invoices.getInvoices().size());
-//
-//        try {
-//            Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
-//            List<Invoice> createdItems = createdInvoices.getInvoices();
-//
-//            env.logJobInfo("Invoices created: {}", createdItems.size());
-//        } catch (Exception e) {
-//            env.logJobError("Failed to create invoices! {}", getExceptionDetails(e));
-//            throw e;
-//        }
-//    }
+
+    @Override
+    public List<AccountingContact> updateOrCreateContacts(List<CrmContact> crmContacts) {
+        Contacts contacts = new Contacts();
+        contacts.setContacts(crmContacts.stream()
+                .map(crmContact -> toContact(crmContact))
+                .collect(Collectors.toList()));
+        try {
+            List<Contact> upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS).getContacts();
+            Map<String, Contact> upsertedContactsByName = upsertedContacts.stream()
+                    .collect(Collectors.toMap(Contact::getName, Function.identity()));
+
+            return crmContacts.stream()
+                    .map(crmContact -> {
+                        String fullName = crmContact.getFullName();
+                        Contact contact = upsertedContactsByName.get(fullName);
+                        return new AccountingContact(crmContact.id, contact.getContactID().toString(), fullName);
+                    })
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            env.logJobError("Failed to upsert contacts! {}", getExceptionDetails(e));
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
+    public List<String> createTransactions(List<AccountingTransaction> accountingTransactions) throws Exception {
+        Invoices invoices = new Invoices().invoices(accountingTransactions.stream().map(this::toInvoice).collect(Collectors.toList()));
+        env.logJobInfo("Invoices to create: {}", invoices.getInvoices().size());
+
+        try {
+            Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
+            List<Invoice> createdItems = createdInvoices.getInvoices();
+
+            env.logJobInfo("Invoices created: {}", createdItems.size());
+            return createdInvoices.getInvoices().stream()
+                    .map(invoice -> invoice.getInvoiceID().toString())
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            env.logJobError("Failed to create invoices! {}", getExceptionDetails(e));
+            throw e;
+        }
+    }
 
     protected String getAccessToken() throws Exception {
         DecodedJWT jwt = null;
@@ -469,7 +479,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         invoice.setDate(threetenLocalDate);
         invoice.setDueDate(threetenLocalDate);
         Contact contact = new Contact();
-        contact.setContactID(UUID.fromString(transaction.contactId));
+        contact.setContactID(UUID.fromString(transaction.accountingContact.contactId));
         invoice.setContact(contact);
 
         invoice.setLineItems(getLineItems(transaction));

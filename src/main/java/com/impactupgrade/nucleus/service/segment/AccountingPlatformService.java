@@ -4,10 +4,12 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AccountingPlatformService extends SegmentService {
@@ -17,6 +19,10 @@ public interface AccountingPlatformService extends SegmentService {
     String updateOrCreateContact(CrmContact crmContact) throws Exception;
 
     String createTransaction(AccountingTransaction accountingTransaction) throws Exception;
+
+    List<AccountingContact> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception;
+
+    List<String> createTransactions(List<AccountingTransaction> accountingTransactions) throws Exception;
 
 //    List<AccountingTransaction> getTransactions(Date startDate) throws Exception;
 //

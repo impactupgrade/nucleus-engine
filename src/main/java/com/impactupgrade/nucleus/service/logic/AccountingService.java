@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -16,8 +17,15 @@ import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class AccountingService {
 
@@ -54,6 +62,12 @@ public class AccountingService {
         }
     }
 
+    //TODO: change to "from-to"?
+    public void syncTransactions(Calendar fromDate) throws Exception {
+        List<CrmDonation> crmDonations = env.donationsCrmService().getDonationsUpdatedSince(fromDate);
+        upsertDonations(crmDonations);
+    }
+
     protected void processTransaction(CrmDonation crmDonation) throws Exception {
         CrmContact crmContact = getDonationContact(crmDonation);
         if (crmContact == null) {
@@ -80,13 +94,7 @@ public class AccountingService {
             CrmAccount crmAccount = env.donationsCrmService().getAccountById(crmDonation.account.id).orElse(null);
             // create a faux contact for org type account
             if (crmAccount != null && crmAccount.recordType == EnvironmentConfig.AccountType.ORGANIZATION) {
-                crmContact = new CrmContact();
-                crmContact.id = crmAccount.id;
-                String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);
-                crmContact.firstName = firstLastName[0];
-                crmContact.lastName = firstLastName[1];
-                crmContact.mailingAddress = crmAccount.billingAddress;
-                crmContact.crmRawObject = crmAccount.crmRawObject;
+                crmContact = asCrmContact(crmAccount);
             }
         }
         if (crmContact == null) {
@@ -95,6 +103,79 @@ public class AccountingService {
                 crmContact = env.donationsCrmService().getContactById(crmDonation.contact.id).orElse(null);
             }
         }
+        return crmContact;
+    }
+
+    protected void upsertDonations(List<CrmDonation> crmDonations) throws Exception {
+        List<CrmDonation> allDonations = new ArrayList<>();
+        allDonations.addAll(crmDonations);
+        allDonations.addAll(crmDonations.stream()
+                .map(crmDonation -> crmDonation.children)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList()));
+        env.logJobInfo("Input crm donations (with child donations): {}", crmDonations.size());
+
+        List<CrmContact> contacts = getDonationsContacts(crmDonations);
+        List<AccountingContact> accountingContacts = _accountingPlatformService.get().updateOrCreateContacts(contacts);
+        Map<String, AccountingContact> accountingContactsByCrmContactId = accountingContacts.stream()
+                .collect(Collectors.toMap(
+                        accountingContact -> accountingContact.crmContactId, Function.identity()));
+
+        List<AccountingTransaction> accountingTransactions = crmDonations.stream()
+                .map(crmDonation -> {
+                    String crmContactId = crmDonation.account.id;
+                    if (Strings.isNullOrEmpty(crmContactId)) {
+                        crmContactId = crmDonation.contact.id;
+                    }
+                    AccountingContact accountingContact = accountingContactsByCrmContactId.get(crmContactId);
+                    if (accountingContact == null) {
+                        // Should be unreachable
+                        env.logJobError("Failed to get accounting contact for donation/contact: {}/{}", crmDonation.id, crmContactId);
+                        return null;
+                    } else {
+                        return toAccountingTransaction(crmDonation, accountingContact.contactId, crmContactId);
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        List<String> transactionIds = _accountingPlatformService.get().createTransactions(accountingTransactions);
+        env.logJobInfo("Created transactions: {}", transactionIds);
+    }
+
+    private List<CrmContact> getDonationsContacts(List<CrmDonation> crmDonations) throws Exception {
+        List<String> accountIds = new ArrayList<>();
+        List<String> contactIds = new ArrayList<>();
+
+        crmDonations.forEach(crmDonation -> {
+            if (!StringUtils.isEmpty(crmDonation.account.id)) {
+                accountIds.add(crmDonation.account.id);
+            } else if (!StringUtils.isEmpty(crmDonation.contact.id)) {
+                contactIds.add(crmDonation.contact.id);
+            }
+        });
+
+        List<CrmContact> contacts = new ArrayList<>();
+        // resolve from accounts first
+        List<CrmContact> accountContacts = env.donationsCrmService().getAccountsByIds(accountIds).stream()
+                .filter(crmAccount -> crmAccount.recordType == EnvironmentConfig.AccountType.ORGANIZATION)
+                .map(this::asCrmContact)
+                .collect(Collectors.toList());
+        contacts.addAll(accountContacts);
+        // add common contacts
+        contacts.addAll(env.donationsCrmService().getContactsByIds(contactIds));
+
+        return contacts;
+    }
+
+    private CrmContact asCrmContact(CrmAccount crmAccount) {
+        CrmContact crmContact = new CrmContact();
+        crmContact.id = crmAccount.id;
+        String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);
+        crmContact.firstName = firstLastName[0];
+        crmContact.lastName = firstLastName[1];
+        crmContact.mailingAddress = crmAccount.billingAddress;
+        crmContact.crmRawObject = crmAccount.crmRawObject;
         return crmContact;
     }
 
