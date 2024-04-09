@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.environment;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -296,6 +297,7 @@ public class EnvironmentConfig implements Serializable {
   public enum CommunicationListType {
     MARKETING, TRANSACTIONAL
   }
+
   public static class CommunicationList implements Serializable {
     public String id = "";
     public CommunicationListType type = CommunicationListType.MARKETING;
@@ -305,8 +307,28 @@ public class EnvironmentConfig implements Serializable {
     public String crmAccountFilter = "";
     public String crmCampaignMemberFilter = "";
   }
+
+  public static class CrmFieldToCommunicationField implements Serializable {
+    public String crmFieldName;
+    public String communicationFieldName;
+  }
+
+  public static class CrmFieldToCommunicationTagCondition implements Serializable {
+    public Operator operator;
+    public String value;
+  }
+
+  public static class CrmFieldToCommunicationTag implements Serializable {
+    public String crmFieldName;
+    // conjunction
+    public List<CrmFieldToCommunicationTagCondition> crmConditions;
+    public String communicationTagName;
+    public boolean isAppend;
+  }
+
   public static class CommunicationPlatform extends Platform {
     public List<CommunicationList> lists = new ArrayList<>();
+
     // The set of tags that this instance of Nucleus controls, which defines which tags we're allowed to remove from
     // the contact once the conditions are no longer met. This ensures any of the client's manually-defined tags
     // are preserved.
@@ -314,6 +336,10 @@ public class EnvironmentConfig implements Serializable {
     //  since it needs to happen within the list of individual instances.
     public Set<String> defaultControlledTags = new HashSet<>(Arrays.asList("donor", "owner_", "campaign_", "account_type_"));
     public Set<String> customControlledTags = new HashSet<>();
+
+    public List<CrmFieldToCommunicationField> crmFieldToCommunicationFields = new ArrayList<>();
+    public List<CrmFieldToCommunicationTag> crmFieldToCommunicationTags = new ArrayList<>();
+
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;
@@ -347,58 +373,6 @@ public class EnvironmentConfig implements Serializable {
     public String senderPn;
     public boolean recordOwnerFilter = true;
   }
-
-  public enum Operator {
-    EQUAL_TO("=="),
-    NOT_EQUAL_TO("!="),
-    EQUALS_IGNORE_CASE("==*"),
-    NOT_EMPTY("!=''"); // ?
-
-    private static final Map<String, Operator> VALUES = new HashMap<>();
-
-    static {
-      for (Operator operator: values()) {
-        VALUES.put(operator.value, operator);
-      }
-    }
-
-    private final String value;
-    Operator(String value) {
-      this.value = value;
-    }
-    public String getValue() {
-      return this.value;
-    }
-
-    public static Operator fromValue(String value) {
-      return VALUES.get(value);
-    }
-  }
-
-  public static class CrmFieldToEmailTagCondition implements Serializable {
-    public String operator;
-    public String value;
-  }
-
-  public static class CrmFieldToEmailTag implements Serializable {
-    public String crmFieldName;
-    //TODO: use single item instead of list if we don't need logical "and" for >1 conditions?
-    public List<CrmFieldToEmailTagCondition> crmFieldToEmailTagConditions;
-    public String tagName;
-    public boolean isAppend;
-  }
-
-  public static class CrmFieldToEmailField implements Serializable {
-    public String crmFieldName;
-    public String emailFieldName;
-  }
-
-  public static class CommunicationPlatformCRMFieldToTagConfiguration implements Serializable {
-    public List<CrmFieldToEmailTag> crmFieldToEmailTags = new ArrayList<>();
-    public List<CrmFieldToEmailField> crmFieldToEmailFields = new ArrayList<>();
-  }
-
-  public CommunicationPlatformCRMFieldToTagConfiguration emailTagsConfiguration = new CommunicationPlatformCRMFieldToTagConfiguration();
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // SIS
@@ -503,6 +477,23 @@ public class EnvironmentConfig implements Serializable {
     public String accessToken = "";
     public Long expiresAt = 0L;
     public String refreshToken = "";
+  }
+
+  public enum Operator {
+    EQUAL_TO("=="),
+    NOT_EQUAL_TO("!="),
+    NOT_EMPTY("!=''");
+
+    private final String value;
+
+    Operator(String value) {
+      this.value = value;
+    }
+
+    @JsonValue
+    public String getValue() {
+      return value;
+    }
   }
 
   public static class Expression implements Serializable {

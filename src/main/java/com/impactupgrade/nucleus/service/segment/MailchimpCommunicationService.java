@@ -395,18 +395,18 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     return mcContact;
   }
 
-  protected Set<String> buildTags(CrmContact crmContact, List<EnvironmentConfig.CrmFieldToEmailTag> mappings) {
+  protected Set<String> buildTags(CrmContact crmContact, List<EnvironmentConfig.CrmFieldToCommunicationTag> mappings) {
     return mappings.stream()
             .map(mapping -> getTagName(crmContact, mapping))
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
   }
 
-  protected String getTagName(CrmContact crmContact, EnvironmentConfig.CrmFieldToEmailTag mapping) {
+  protected String getTagName(CrmContact crmContact, EnvironmentConfig.CrmFieldToCommunicationTag mapping) {
     Object value = crmContact.fieldFetcher != null ? crmContact.fieldFetcher.apply(mapping.crmFieldName) : null;
     String valueString = value == null ? "" : value.toString();
-    if (mapping.crmFieldToEmailTagConditions.stream().allMatch(condition -> evaluate(valueString, condition))) {
-      String tagName = mapping.tagName;
+    if (mapping.crmConditions.stream().allMatch(condition -> evaluate(valueString, condition))) {
+      String tagName = mapping.communicationTagName;
       if (mapping.isAppend) {
         tagName = tagName + Utils.toSlug(valueString);
       }
@@ -416,18 +416,16 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected boolean evaluate(String crmFieldValue, EnvironmentConfig.CrmFieldToEmailTagCondition crmFieldToEmailTagCondition) {
+  protected boolean evaluate(String crmFieldValue, EnvironmentConfig.CrmFieldToCommunicationTagCondition crmFieldToCommunicationTagCondition) {
     if (Strings.isNullOrEmpty(crmFieldValue)
-            || crmFieldToEmailTagCondition == null
-            || EnvironmentConfig.Operator.fromValue(crmFieldToEmailTagCondition.operator) == null) {
+            || crmFieldToCommunicationTagCondition == null
+            || crmFieldToCommunicationTagCondition.operator == null) {
       return false;
     }
-    EnvironmentConfig.Operator operator = EnvironmentConfig.Operator.fromValue(crmFieldToEmailTagCondition.operator);
-    return switch(operator) {
+    return switch(crmFieldToCommunicationTagCondition.operator) {
       case NOT_EMPTY -> Strings.isNullOrEmpty(crmFieldValue);
-      case EQUAL_TO ->  crmFieldValue.equals(crmFieldToEmailTagCondition.value);
-      case NOT_EQUAL_TO -> !crmFieldValue.equals(crmFieldToEmailTagCondition.value);
-      case EQUALS_IGNORE_CASE -> crmFieldValue.equalsIgnoreCase(crmFieldToEmailTagCondition.value);
+      case EQUAL_TO ->  crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
+      case NOT_EQUAL_TO -> !crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
     };
   }
 }
