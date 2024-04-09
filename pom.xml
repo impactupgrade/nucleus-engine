@@ -60,6 +60,12 @@
       <artifactId>rest-api-sdk</artifactId>
       <version>1.14.0</version>
     </dependency>
+    <!-- TODO: Release and deploy me! -->
+    <dependency>
+      <groupId>com.impactupgrade.integration</groupId>
+      <artifactId>bloomerang-java-client</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 
   <build>
