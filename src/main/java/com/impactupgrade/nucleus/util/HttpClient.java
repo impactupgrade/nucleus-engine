@@ -42,7 +42,7 @@ public class HttpClient {
       if (clazz != null) {
         return response.readEntity(clazz);
       }
-    } else if (response.getStatus() == 404 ){
+    } else if (response.getStatus() == 404) {
       log.info("GET not found: url={}", url);
     } else {
       log.warn("GET failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
