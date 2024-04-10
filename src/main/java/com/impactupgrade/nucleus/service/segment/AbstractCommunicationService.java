@@ -6,9 +6,11 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.util.Utils;
 
+import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -98,7 +100,21 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       customFields.add(new CustomField("number_of_donations_ytd", CustomFieldType.NUMBER, crmContact.numDonationsYtd));
     }
 
+    customFields.addAll(communicationPlatform.crmFieldToCommunicationFields.stream()
+            .map(mapping -> getCustomField(crmContact, mapping))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet()));
+
     return customFields;
+  }
+
+  protected CustomField getCustomField(CrmContact crmContact, EnvironmentConfig.CrmFieldToCommunicationField mapping) {
+    Object value = crmContact.fieldFetcher != null ? crmContact.fieldFetcher.apply(mapping.crmFieldName) : null;
+    if (value != null) {
+      return new CustomField(mapping.communicationFieldName, getCustomFieldType(value), value);
+    } else {
+      return null;
+    }
   }
 
   protected enum CustomFieldType {
@@ -113,6 +129,24 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       this.type = type;
       this.value = value;
     }
+  }
+
+  //TODO: explicitly define in env config?
+  protected CustomFieldType getCustomFieldType(Object value) {
+    if (value == null) {
+      return null;
+    }
+    CustomFieldType customFieldType;
+    if (value instanceof Number) {
+      customFieldType = CustomFieldType.NUMBER;
+    } else if (value instanceof Boolean) {
+      customFieldType = CustomFieldType.BOOLEAN;
+    } else if (value instanceof Date || value instanceof Calendar || value instanceof Temporal) {
+      customFieldType = CustomFieldType.DATE;
+    } else {
+      customFieldType = CustomFieldType.STRING;
+    }
+    return customFieldType;
   }
 
   protected final Set<String> getContactTagsCleaned(CrmContact crmContact, List<String> contactCampaignNames,
@@ -165,7 +199,39 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       tags.add("account_type_" + Utils.toSlug(crmContact.account.recordTypeName));
     }
 
+    tags.addAll(communicationPlatform.crmFieldToCommunicationTags.stream()
+            .map(mapping -> getTagName(crmContact, mapping))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet()));
+
     return tags;
+  }
+
+  protected String getTagName(CrmContact crmContact, EnvironmentConfig.CrmFieldToCommunicationTag mapping) {
+    Object value = crmContact.fieldFetcher != null ? crmContact.fieldFetcher.apply(mapping.crmFieldName) : null;
+    String valueString = value == null ? "" : value.toString();
+    if (mapping.crmConditions.stream().allMatch(condition -> evaluate(valueString, condition))) {
+      String tagName = mapping.communicationTagName;
+      if (mapping.isAppend) {
+        tagName = tagName + Utils.toSlug(valueString);
+      }
+      return tagName;
+    } else {
+      return null;
+    }
+  }
+
+  protected boolean evaluate(String crmFieldValue, EnvironmentConfig.CrmFieldToCommunicationTagCondition crmFieldToCommunicationTagCondition) {
+    if (Strings.isNullOrEmpty(crmFieldValue)
+            || crmFieldToCommunicationTagCondition == null
+            || crmFieldToCommunicationTagCondition.operator == null) {
+      return false;
+    }
+    return switch(crmFieldToCommunicationTagCondition.operator) {
+      case NOT_EMPTY -> Strings.isNullOrEmpty(crmFieldValue);
+      case EQUAL_TO ->  crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
+      case NOT_EQUAL_TO -> !crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
+    };
   }
 
   /**

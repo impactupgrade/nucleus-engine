@@ -10,7 +10,6 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.util.Utils;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
@@ -21,7 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -393,39 +391,5 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.interests = groupMap;
 
     return mcContact;
-  }
-
-  protected Set<String> buildTags(CrmContact crmContact, List<EnvironmentConfig.CrmFieldToCommunicationTag> mappings) {
-    return mappings.stream()
-            .map(mapping -> getTagName(crmContact, mapping))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
-  }
-
-  protected String getTagName(CrmContact crmContact, EnvironmentConfig.CrmFieldToCommunicationTag mapping) {
-    Object value = crmContact.fieldFetcher != null ? crmContact.fieldFetcher.apply(mapping.crmFieldName) : null;
-    String valueString = value == null ? "" : value.toString();
-    if (mapping.crmConditions.stream().allMatch(condition -> evaluate(valueString, condition))) {
-      String tagName = mapping.communicationTagName;
-      if (mapping.isAppend) {
-        tagName = tagName + Utils.toSlug(valueString);
-      }
-      return tagName;
-    } else {
-      return null;
-    }
-  }
-
-  protected boolean evaluate(String crmFieldValue, EnvironmentConfig.CrmFieldToCommunicationTagCondition crmFieldToCommunicationTagCondition) {
-    if (Strings.isNullOrEmpty(crmFieldValue)
-            || crmFieldToCommunicationTagCondition == null
-            || crmFieldToCommunicationTagCondition.operator == null) {
-      return false;
-    }
-    return switch(crmFieldToCommunicationTagCondition.operator) {
-      case NOT_EMPTY -> Strings.isNullOrEmpty(crmFieldValue);
-      case EQUAL_TO ->  crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
-      case NOT_EQUAL_TO -> !crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
-    };
   }
 }
