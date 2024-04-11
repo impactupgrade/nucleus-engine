@@ -11,7 +11,6 @@ import com.impactupgrade.nucleus.controller.CrmController;
 import com.impactupgrade.nucleus.controller.DonationFormController;
 import com.impactupgrade.nucleus.controller.EmailController;
 import com.impactupgrade.nucleus.controller.EventBriteController;
-import com.impactupgrade.nucleus.controller.EventsController;
 import com.impactupgrade.nucleus.controller.FactsController;
 import com.impactupgrade.nucleus.controller.JobController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
@@ -107,11 +106,6 @@ public class App {
     apiConfig.register(paypalController());
     apiConfig.register(twilioController());
 
-    // Controllers that require DB connectivity -- prevent JDBC/Hikari connection errors.
-    if ("true".equalsIgnoreCase(System.getenv("DATABASE_CONNECTED"))) {
-      apiConfig.register(eventsController());
-    }
-
     registerAPIControllers(apiConfig);
 
     context.addServlet(new ServletHolder(new ServletContainer(apiConfig)), "/api/*");
@@ -157,7 +151,6 @@ public class App {
   protected CrmController crmController() { return new CrmController(envFactory); }
   protected DonationFormController donationFormController() { return new DonationFormController(envFactory); }
   protected EmailController emailController() { return new EmailController(envFactory); }
-  protected EventsController eventsController() { return new EventsController(envFactory); }
   protected EventBriteController eventBriteController() { return new EventBriteController(envFactory); }
   protected FactsController factsController() { return new FactsController(envFactory); }
   protected JobController jobController() { return new JobController(envFactory); }

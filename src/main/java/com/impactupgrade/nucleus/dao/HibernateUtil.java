@@ -3,12 +3,6 @@ package com.impactupgrade.nucleus.dao;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobProgress;
 import com.impactupgrade.nucleus.entity.Organization;
-import com.impactupgrade.nucleus.entity.event.Event;
-import com.impactupgrade.nucleus.entity.event.Interaction;
-import com.impactupgrade.nucleus.entity.event.InteractionOption;
-import com.impactupgrade.nucleus.entity.event.Participant;
-import com.impactupgrade.nucleus.entity.event.Response;
-import com.impactupgrade.nucleus.entity.event.ResponseOption;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
@@ -29,14 +23,6 @@ public class HibernateUtil {
       configuration.addAnnotatedClass(Job.class);
       configuration.addAnnotatedClass(JobProgress.class);
       configuration.addAnnotatedClass(Organization.class);
-
-      // events
-      configuration.addAnnotatedClass(Event.class);
-      configuration.addAnnotatedClass(Interaction.class);
-      configuration.addAnnotatedClass(InteractionOption.class);
-      configuration.addAnnotatedClass(Participant.class);
-      configuration.addAnnotatedClass(Response.class);
-      configuration.addAnnotatedClass(ResponseOption.class);
 
       return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
     } catch (Throwable e) {
