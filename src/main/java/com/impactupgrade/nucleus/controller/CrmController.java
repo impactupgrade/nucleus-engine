@@ -11,6 +11,7 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.mapper.CrmImportEventGenericMapper;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
@@ -585,6 +586,31 @@ public class CrmController {
     List<CrmContact> contacts = crmService.getContactsFromList(listId);
 
     return Response.status(200).entity(contacts).build();
+  }
+
+  @Path("/form/webhook")
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response fromWebhook(
+          @FormDataParam("form-data") Map<String, String> formData,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    CrmImportEvent importEvent = new CrmImportEventGenericMapper().fromMyCustomForm(formData);
+
+    Runnable thread = () -> {
+      try {
+        env.primaryCrmService().processBulkImport(List.of(importEvent));
+      } catch (Exception e) {
+        env.logJobError("bulkImport failed", e);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.status(200).build();
   }
 
   private List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
