@@ -3,11 +3,7 @@ package com.impactupgrade.nucleus.controller;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 
@@ -23,8 +19,8 @@ public class EmailController {
 
   @GET
   @Path("/sync/daily")
-  public Response syncDaily(@Context HttpServletRequest request) throws Exception {
-    return new CommunicationController(envFactory).syncDaily(request);
+  public Response syncDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
+    return new CommunicationController(envFactory).syncDaily(syncDays, request);
   }
 
   @GET
