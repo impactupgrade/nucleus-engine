@@ -13,10 +13,12 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // TODO: This test relies on some picklists existing in our dev edition of SFDC. Make it more resilient to auto create
 //  those fields if they don't already exist!
@@ -418,6 +420,40 @@ public class BulkImportIT extends AbstractIT {
     assertEquals("Work", contact2.getField("npe01__Preferred_Email__c"));
     assertEquals(randomPersonalEmail, contact2.getField("npe01__HomeEmail__c"));
   }
+
+  @Test
+  public void contactCampaignMembership() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    SObject campaign = new SObject("Campaign");
+    campaign.setField("Name", RandomStringUtils.randomAlphabetic(8));
+    String campaignId = sfdcClient.insert(campaign).getId();
+
+    SObject newContact = new SObject("Contact");
+    newContact.setField("FirstName", RandomStringUtils.randomAlphabetic(8));
+    newContact.setField("LastName", RandomStringUtils.randomAlphabetic(8));
+    newContact.setField("Email", RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com");
+    String newContactId = sfdcClient.insert(newContact).getId();
+
+    SObject existingContact = randomContactSfdc();
+
+    final List<Object> values = List.of(
+        List.of("Contact First Name", "Contact Last Name", "Contact Email", "Contact Campaign ID", "Contact Campaign Status"),
+        List.of(newContact.getField("FirstName"), newContact.getField("LastName"), newContact.getField("Email"), campaignId, ""),
+        List.of(existingContact.getField("FirstName"), existingContact.getField("LastName"), existingContact.getField("Email"), campaignId, "Responded")
+    );
+    postToBulkImport(values);
+
+    Optional<SObject> newContactCampaignMember = sfdcClient.querySingle("SELECT Status FROM CampaignMember WHERE CampaignId = '" + campaignId + "' AND ContactId = '" + newContactId + "'");
+    Optional<SObject> existingContactCampaignMember = sfdcClient.querySingle("SELECT Status FROM CampaignMember WHERE CampaignId = '" + campaignId + "' AND ContactId = '" + existingContact.getId() + "'");
+
+    assertTrue(newContactCampaignMember.isPresent());
+    assertEquals("Sent", newContactCampaignMember.get().getField("Status"));
+    assertTrue(existingContactCampaignMember.isPresent());
+    assertEquals("Responded", existingContactCampaignMember.get().getField("Status"));
+  }
+
+  // TODO: contact campaign membership, multiple campaigns at once
 
   protected void postToBulkImport(List<Object> values) throws Exception {
     final CsvMapper csvMapper = new CsvMapper();
