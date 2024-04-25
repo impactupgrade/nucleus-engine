@@ -1,4 +1,4 @@
-package com.impactupgrade.nucleus;
+package com.impactupgrade.nucleus.it.util;
 
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
