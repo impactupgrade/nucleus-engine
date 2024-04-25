@@ -236,7 +236,7 @@ public class EventBriteController {
   // allows organizations to override this and add custom logic
   protected void addContactToCampaign(CrmContact contact, CrmCampaign campaign, CrmService crmService, Environment env)
       throws Exception {
-    crmService.addContactToCampaign(contact, campaign.id);
+    crmService.addContactToCampaign(contact, campaign.id, null);
   }
 
   protected CrmContact toCrmContact(EventBriteClient.Attendee attendee) {

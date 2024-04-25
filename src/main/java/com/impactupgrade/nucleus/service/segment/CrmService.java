@@ -53,7 +53,7 @@ public interface CrmService extends SegmentService {
   List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
-  void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception;
+  void addAccountToCampaign(CrmAccount crmAccount, String campaignId, String status) throws Exception;
   // TODO: For now, need this to clean up orphaned accounts (see ContactService). But could eventually expand it
   //  to be a full-blown cascade-delete, much like what we do in IT cleanup.
   void deleteAccount(String accountId) throws Exception;
@@ -83,7 +83,7 @@ public interface CrmService extends SegmentService {
   // TODO: Business Donations coming soon.
 //  boolean hasSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
 //  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
-  void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception;
+  void addContactToCampaign(CrmContact crmContact, String campaignId, String status) throws Exception;
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
   void removeContactFromList(CrmContact crmContact, String listId) throws Exception;

@@ -91,6 +91,12 @@ public class CrmImportEvent {
     }
   }
 
+  public static class CampaignMembership {
+    public String campaignId;
+    public String campaignName;
+    public String status;
+  }
+
   // TODO: It originally made sense to use CaseInsensitiveMap here. But, we run into issues since most
   //  impls of CaseInsensitiveMap automatically lowercase all keys and values. That wrecks havoc for CRMs like SFDC,
   //  where the API is unfortunately case sensitive. For now, keep the originals and require column heads to be
@@ -112,8 +118,7 @@ public class CrmImportEvent {
 
   // could be a contact's household, could be an organization itself -- both are assumed to be the primary account
   public CrmAccount account = new CrmAccount();
-  public List<String> accountCampaignIds = new ArrayList<>();
-  public List<String> accountCampaignNames = new ArrayList<>();
+  public List<CampaignMembership> accountCampaigns = new ArrayList<>();
   public String accountNote;
   // organization affiliations
   public List<CrmAccount> contactOrganizations = new ArrayList<>();
@@ -121,8 +126,7 @@ public class CrmImportEvent {
 
   // TODO: replace the rest with CrmContact, CrmOpportunity/CrmDonation, and CrmRecurringDonation
 
-  public List<String> contactCampaignIds = new ArrayList<>();
-  public List<String> contactCampaignNames = new ArrayList<>();
+  public List<CampaignMembership> contactCampaigns = new ArrayList<>();
   public String contactDescription;
   public String contactFirstName;
   public String contactLastName;
@@ -289,15 +293,32 @@ public class CrmImportEvent {
     importEvent.account.website = data.get("Account Website");
 
     // 3 ways campaigns can be provided, using column headers:
-    // 1: Account Campaign n ID
-    // 2: Account Campaign n Name
+    // 1: Account Campaign n ID (or a single Account Campaign ID)
+    // 2: Account Campaign n Name (or a single Account Campaign Name)
     // 3: Account Campaign [Some Name] -> boolean (true, yes, 1) values
+    // 4: Campaign Name
     // #3 is helpful in many cases where we're migrating tags/fields with boolean values to campaign membership
+    // #4 assumes we're both upserting the campaign itself AND that any account/contact on the row should be a member
+    if (!Strings.isNullOrEmpty(data.get("Account Campaign ID"))) {
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignId = data.get("Account Campaign ID");
+      campaignMembership.status = data.get("Account Campaign Status");
+      importEvent.accountCampaigns.add(campaignMembership);
+    }
+    if (!Strings.isNullOrEmpty(data.get("Account Campaign Name"))) {
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignName = data.get("Account Campaign Name");
+      campaignMembership.status = data.get("Account Campaign Status");
+      importEvent.accountCampaigns.add(campaignMembership);
+    }
     for (int i = 1; i <= 5; i++) {
       String columnPrefix = "Account Campaign " + i;
       if (data.keySet().stream().anyMatch(k -> k.startsWith(columnPrefix))) {
-        importEvent.accountCampaignIds.add(data.get(columnPrefix + " ID"));
-        importEvent.accountCampaignNames.add(data.get(columnPrefix + " Name"));
+        CampaignMembership campaignMembership = new CampaignMembership();
+        campaignMembership.campaignId = data.get(columnPrefix + " ID");
+        campaignMembership.campaignName = data.get(columnPrefix + " Name");
+        campaignMembership.status = data.get(columnPrefix + " Status");
+        importEvent.accountCampaigns.add(campaignMembership);
       }
     }
     for (String columnName : importEvent.getAccountCampaignColumnNames()) {
@@ -305,10 +326,18 @@ public class CrmImportEvent {
         String s = data.get(columnName);
         boolean value = Utils.checkboxToBool(s);
         if (value) {
-          String campaignName = columnName.replace("Account Campaign Name ", "");
-          importEvent.accountCampaignNames.add(campaignName);
+          CampaignMembership campaignMembership = new CampaignMembership();
+          campaignMembership.campaignName = columnName.replace("Account Campaign Name ", "");
+          // TODO: we assume boolean values, but we could technically support using campaign member statuses as well
+          importEvent.accountCampaigns.add(campaignMembership);
         }
       }
+    }
+    if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignName = data.get("Campaign Name");
+      campaignMembership.status = data.get("Account Campaign Status");
+      importEvent.accountCampaigns.add(campaignMembership);
     }
 
     for (int i = 1; i <= 5; i++) {
@@ -368,15 +397,32 @@ public class CrmImportEvent {
     }
 
     // 3 ways campaigns can be provided, using column headers:
-    // 1: Contact Campaign n ID
-    // 2: Contact Campaign n Name
+    // 1: Contact Campaign n ID (or a single Contact Campaign ID)
+    // 2: Contact Campaign n Name (or a single Contact Campaign Name)
     // 3: Contact Campaign [Some Name] -> boolean (true, yes, 1) values
+    // 4: Campaign Name
     // #3 is helpful in many cases where we're migrating tags/fields with boolean values to campaign membership
+    // #4 assumes we're both upserting the campaign itself AND that any account/contact on the row should be a member
+    if (!Strings.isNullOrEmpty(data.get("Contact Campaign ID"))) {
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignId = data.get("Contact Campaign ID");
+      campaignMembership.status = data.get("Contact Campaign Status");
+      importEvent.contactCampaigns.add(campaignMembership);
+    }
+    if (!Strings.isNullOrEmpty(data.get("Contact Campaign Name"))) {
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignName = data.get("Contact Campaign Name");
+      campaignMembership.status = data.get("Contact Campaign Status");
+      importEvent.contactCampaigns.add(campaignMembership);
+    }
     for (int i = 1; i <= 5; i++) {
       String columnPrefix = "Contact Campaign " + i;
       if (data.keySet().stream().anyMatch(k -> k.startsWith(columnPrefix))) {
-        importEvent.contactCampaignIds.add(data.get(columnPrefix + " ID"));
-        importEvent.contactCampaignNames.add(data.get(columnPrefix + " Name"));
+        CampaignMembership campaignMembership = new CampaignMembership();
+        campaignMembership.campaignId = data.get(columnPrefix + " ID");
+        campaignMembership.campaignName = data.get(columnPrefix + " Name");
+        campaignMembership.status = data.get(columnPrefix + " Status");
+        importEvent.contactCampaigns.add(campaignMembership);
       }
     }
     for (String columnName : importEvent.getContactCampaignColumnNames()) {
@@ -384,10 +430,18 @@ public class CrmImportEvent {
         String s = data.get(columnName);
         boolean value = Utils.checkboxToBool(s);
         if (value) {
-          String campaignName = columnName.replace("Contact Campaign Name ", "");
-          importEvent.contactCampaignNames.add(campaignName);
+          CampaignMembership campaignMembership = new CampaignMembership();
+          campaignMembership.campaignName = columnName.replace("Contact Campaign Name ", "");
+          // TODO: we assume boolean values, but we could technically support using campaign member statuses as well
+          importEvent.contactCampaigns.add(campaignMembership);
         }
       }
+    }
+    if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignName = data.get("Campaign Name");
+      campaignMembership.status = data.get("Contact Campaign Status");
+      importEvent.contactCampaigns.add(campaignMembership);
     }
 
     importEvent.contactDescription = data.get("Contact Description");
@@ -440,7 +494,7 @@ public class CrmImportEvent {
     importEvent.recurringDonationInterval = data.get("Recurring Donation Interval");
     importEvent.recurringDonationName = data.get("Recurring Donation Name");
     importEvent.recurringDonationNextPaymentDate = getDate(data, "Recurring Donation Next Payment Date");
-    importEvent.recurringDonationOwnerId = data.get("Recurring Donation Owner Name");
+    importEvent.recurringDonationOwnerId = data.get("Recurring Donation Owner ID");
     importEvent.recurringDonationStartDate = getDate(data, "Recurring Donation Start Date");
     importEvent.recurringDonationStatus = data.get("Recurring Donation Status");
 
@@ -588,9 +642,6 @@ public class CrmImportEvent {
       importEvent.contactWorkPhone = data.get("Contact1 Work Phone");
       importEvent.contactOtherPhone = data.get("Contact1 Other Phone");
       importEvent.contactPhonePreference = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
-      if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
-        importEvent.contactCampaignNames.add(data.get("Campaign Name"));
-      }
 
       importEvent.opportunityAmount = getAmount(data, "Donation Amount");
       if (!Strings.isNullOrEmpty(data.get("Donation Name"))) {

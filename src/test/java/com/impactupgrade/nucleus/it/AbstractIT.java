@@ -143,9 +143,7 @@ public abstract class AbstractIT extends JerseyTest {
   }
 
   protected SObject randomContactSfdc() throws Exception {
-    String randomFirstName = RandomStringUtils.randomAlphabetic(8);
     String randomLastName = RandomStringUtils.randomAlphabetic(8);
-    String randomEmail = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
 
     SfdcClient sfdcClient = env.sfdcClient();
 
@@ -155,9 +153,9 @@ public abstract class AbstractIT extends JerseyTest {
 
     SObject contact = new SObject("Contact");
     contact.setField("AccountId", accountId);
-    contact.setField("FirstName", randomFirstName);
+    contact.setField("FirstName", RandomStringUtils.randomAlphabetic(8));
     contact.setField("LastName", randomLastName);
-    contact.setField("Email", randomEmail);
+    contact.setField("Email", RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com");
     String contactId = sfdcClient.insert(contact).getId();
     contact.setId(contactId);
 

@@ -87,10 +87,10 @@ public interface BasicCrmService extends CrmService {
   default void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
   }
 
-  default void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
+  default void addAccountToCampaign(CrmAccount crmAccount, String campaignId, String status) throws Exception {
   }
 
-  default void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+  default void addContactToCampaign(CrmContact crmContact, String campaignId, String status) throws Exception {
   }
 
   default List<CrmContact> getContactsFromList(String listId) throws Exception {

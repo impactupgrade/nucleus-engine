@@ -200,7 +200,7 @@ public class MessagingService {
     }
 
     if (!Strings.isNullOrEmpty(campaignId)) {
-      crmService.addContactToCampaign(crmContact, campaignId);
+      crmService.addContactToCampaign(crmContact, campaignId, null);
     }
 
     if (!Strings.isNullOrEmpty(listId)) {

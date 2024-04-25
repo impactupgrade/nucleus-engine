@@ -95,12 +95,12 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
+  public void addAccountToCampaign(CrmAccount crmAccount, String campaignId, String status) throws Exception {
 
   }
 
   @Override
-  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
+  public void addContactToCampaign(CrmContact crmContact, String campaignId, String status) throws Exception {
 
   }
 

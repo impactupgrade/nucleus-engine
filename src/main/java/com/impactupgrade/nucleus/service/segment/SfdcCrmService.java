@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -469,14 +470,15 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void addAccountToCampaign(CrmAccount crmAccount, String campaignId) throws Exception {
-    addAccountToCampaign(crmAccount.id, campaignId, false);
+  public void addAccountToCampaign(CrmAccount crmAccount, String campaignId, String status) throws Exception {
+    addAccountToCampaign(crmAccount.id, campaignId, status, false);
   }
 
-  protected void addAccountToCampaign(String accountId, String campaignId, boolean batch) throws Exception {
+  protected void addAccountToCampaign(String accountId, String campaignId, String status, boolean batch) throws Exception {
     SObject campaignMember = new SObject("CampaignMember");
     campaignMember.setField("AccountId", accountId);
     campaignMember.setField("CampaignId", campaignId);
+    campaignMember.setField("Status", status);
     if (batch) {
       sfdcClient.batchInsert(campaignMember);
     } else {
@@ -485,14 +487,15 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void addContactToCampaign(CrmContact crmContact, String campaignId) throws Exception {
-    addContactToCampaign(crmContact.id, campaignId, false);
+  public void addContactToCampaign(CrmContact crmContact, String campaignId, String status) throws Exception {
+    addContactToCampaign(crmContact.id, campaignId, status, false);
   }
 
-  protected void addContactToCampaign(String contactId, String campaignId, boolean batch) throws Exception {
+  protected void addContactToCampaign(String contactId, String campaignId, String status, boolean batch) throws Exception {
     SObject campaignMember = new SObject("CampaignMember");
     campaignMember.setField("ContactId", contactId);
     campaignMember.setField("CampaignId", campaignId);
+    campaignMember.setField("Status", status);
     if (batch) {
       sfdcClient.batchInsert(campaignMember);
     } else {
@@ -1059,14 +1062,16 @@ public class SfdcCrmService implements CrmService {
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     // MODES:
-    // - Core Records: Accounts + Contacts + Recurring Donations + Opportunities
     // - Campaigns
+    // - Core Records: Accounts + Contacts + Recurring Donations + Opportunities
     // - TODO: Other types of records?
 
     if (importEvents.isEmpty()) {
       env.logJobWarn("no importEvents to import; exiting...");
       return;
     }
+
+    // NOTE: Important to do campaigns first! Accounts/Contacts/Opps/RDs in the "core records" may need to utilize the campaigns.
 
     boolean campaignMode = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
         .anyMatch(entry -> entry.getKey().startsWith("Campaign") && !Strings.isNullOrEmpty(entry.getValue()));
@@ -1186,7 +1191,12 @@ public class SfdcCrmService implements CrmService {
     }
 
     List<String> campaignNames = importEvents.stream()
-        .flatMap(e -> Stream.concat(e.contactCampaignNames.stream(), Stream.of(e.opportunityCampaignName)))
+        .flatMap(e -> Stream.of(
+            e.accountCampaigns.stream().map(c -> c.campaignName),
+            e.contactCampaigns.stream().map(c -> c.campaignName),
+            Stream.of(e.opportunityCampaignName)
+        ))
+        .flatMap(Function.identity()) // concatenates the streams
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().collect(Collectors.toList());
     Map<String, String> campaignNameToId = Collections.emptyMap();
     if (!campaignNames.isEmpty()) {
@@ -1265,7 +1275,7 @@ public class SfdcCrmService implements CrmService {
     boolean hasOppLookups = importEvents.stream().anyMatch(e -> e.opportunityDate != null || e.opportunityId != null);
     boolean hasRdLookups = importEvents.stream().anyMatch(e -> e.recurringDonationAmount != null || e.recurringDonationId != null);
     boolean hasCampaignLookups = importEvents.stream().anyMatch(e ->
-        !e.contactCampaignIds.isEmpty() || !e.contactCampaignNames.isEmpty() || !e.accountCampaignIds.isEmpty() || !e.accountCampaignNames.isEmpty());
+        !e.contactCampaigns.isEmpty() || !e.accountCampaigns.isEmpty());
 
     // For the following contexts, we unfortunately can't use batch inserts/updates of accounts/contacts.
     // Opportunity/RD inserts, 1..n Organization affiliations, Campaign updates
@@ -1464,20 +1474,17 @@ public class SfdcCrmService implements CrmService {
       }
 
       if (account != null) {
-        for (String campaignId : importEvent.accountCampaignIds) {
-          if (!Strings.isNullOrEmpty(campaignId)) {
-            addAccountToCampaign(account.getId(), campaignId, true);
+        for (CrmImportEvent.CampaignMembership campaignMembership : importEvent.accountCampaigns) {
+          if (!Strings.isNullOrEmpty(campaignMembership.campaignId)) {
+            addAccountToCampaign(account.getId(), campaignMembership.campaignId, campaignMembership.status, true);
           }
-        }
-
-        for (String campaignName : importEvent.accountCampaignNames) {
-          if (!Strings.isNullOrEmpty(campaignName)) {
-            if (campaignNameToId.containsKey(campaignName.toLowerCase(Locale.ROOT))) {
-              addAccountToCampaign(account.getId(), campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)), true);
+          if (!Strings.isNullOrEmpty(campaignMembership.campaignName)) {
+            if (campaignNameToId.containsKey(campaignMembership.campaignName.toLowerCase(Locale.ROOT))) {
+              addAccountToCampaign(account.getId(), campaignNameToId.get(campaignMembership.campaignName.toLowerCase(Locale.ROOT)), campaignMembership.status, true);
             } else {
-              String campaignId = insertCampaign(new CrmCampaign(null, campaignName));
-              campaignNameToId.put(campaignId, campaignName);
-              addAccountToCampaign(account.getId(), campaignId, true);
+              String campaignId = insertCampaign(new CrmCampaign(null, campaignMembership.campaignName));
+              campaignNameToId.put(campaignId, campaignMembership.campaignName);
+              addAccountToCampaign(account.getId(), campaignId, campaignMembership.status, true);
             }
           }
         }
@@ -1489,20 +1496,17 @@ public class SfdcCrmService implements CrmService {
       }
 
       if (contact != null) {
-        for (String campaignId : importEvent.contactCampaignIds) {
-          if (!Strings.isNullOrEmpty(campaignId)) {
-            addContactToCampaign(contact.getId(), campaignId, true);
+        for (CrmImportEvent.CampaignMembership campaignMembership : importEvent.contactCampaigns) {
+          if (!Strings.isNullOrEmpty(campaignMembership.campaignId)) {
+            addContactToCampaign(contact.getId(), campaignMembership.campaignId, campaignMembership.status, true);
           }
-        }
-
-        for (String campaignName : importEvent.contactCampaignNames) {
-          if (!Strings.isNullOrEmpty(campaignName)) {
-            if (campaignNameToId.containsKey(campaignName.toLowerCase(Locale.ROOT))) {
-              addContactToCampaign(contact.getId(), campaignNameToId.get(campaignName.toLowerCase(Locale.ROOT)), true);
+          if (!Strings.isNullOrEmpty(campaignMembership.campaignName)) {
+            if (campaignNameToId.containsKey(campaignMembership.campaignName.toLowerCase(Locale.ROOT))) {
+              addContactToCampaign(contact.getId(), campaignNameToId.get(campaignMembership.campaignName.toLowerCase(Locale.ROOT)), campaignMembership.status, true);
             } else {
-              String campaignId = insertCampaign(new CrmCampaign(null, campaignName));
-              campaignNameToId.put(campaignId, campaignName);
-              addContactToCampaign(contact.getId(), campaignId, true);
+              String campaignId = insertCampaign(new CrmCampaign(null, campaignMembership.campaignName));
+              campaignNameToId.put(campaignId, campaignMembership.campaignName);
+              addContactToCampaign(contact.getId(), campaignId, campaignMembership.status, true);
             }
           }
         }
@@ -1843,11 +1847,22 @@ public class SfdcCrmService implements CrmService {
     setCustomBulkValue(contact, "MailingState", importEvent.contactMailingState);
     setCustomBulkValue(contact, "MailingPostalCode", importEvent.contactMailingZip);
     setCustomBulkValue(contact, "MailingCountry", importEvent.contactMailingCountry);
+
     setCustomBulkValue(contact, "HomePhone", importEvent.contactHomePhone);
     setCustomBulkValue(contact, "MobilePhone", importEvent.contactMobilePhone);
     setCustomBulkValue(contact, "Phone", importEvent.contactPhone);
     if (env.getConfig().salesforce.npsp) {
       setCustomBulkValue(contact, "npe01__WorkPhone__c", importEvent.contactWorkPhone);
+    }
+
+    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
+      String customFieldValue = switch (importEvent.contactPhonePreference) {
+        case HOME -> "Home";
+        case MOBILE -> "Mobile";
+        case WORK -> "Work";
+        case OTHER -> "Other";
+      };
+      setCustomBulkValue(contact, "npe01__PreferredPhone__c", customFieldValue);
     }
 
     if (!Strings.isNullOrEmpty(importEvent.contactEmail) && !"na".equalsIgnoreCase(importEvent.contactEmail) && !"n/a".equalsIgnoreCase(importEvent.contactEmail)) {
@@ -1874,14 +1889,13 @@ public class SfdcCrmService implements CrmService {
       setCustomBulkValue(contact, "npe01__AlternateEmail__c", otherEmail);
     }
 
-    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
-      String customFieldValue = switch (importEvent.contactPhonePreference) {
-        case HOME -> "Home";
-        case MOBILE -> "Mobile";
+    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
+      String customFieldValue = switch (importEvent.contactEmailPreference) {
+        case PERSONAL -> "Personal";
         case WORK -> "Work";
-        case OTHER -> "Other";
+        case OTHER -> "Alternate";
       };
-      setCustomBulkValue(contact, "npe01__PreferredPhone__c", customFieldValue);
+      setCustomBulkValue(contact, "npe01__Preferred_Email__c", customFieldValue);
     }
 
     if (importEvent.contactOptInEmail != null && importEvent.contactOptInEmail) {
@@ -1899,15 +1913,6 @@ public class SfdcCrmService implements CrmService {
     if (importEvent.contactOptOutSms != null && importEvent.contactOptOutSms) {
       setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
       setCustomBulkValue(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
-    }
-
-    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
-      String customFieldValue = switch (importEvent.contactEmailPreference) {
-        case PERSONAL -> "Personal";
-        case WORK -> "Work";
-        case OTHER -> "Alternate";
-      };
-      setCustomBulkValue(contact, "npe01__Preferred_Email__c", customFieldValue);
     }
 
     setCustomBulkValue(contact, "OwnerId", importEvent.contactOwnerId);
