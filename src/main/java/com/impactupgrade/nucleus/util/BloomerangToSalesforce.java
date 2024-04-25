@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 // TODO: Shift to using the Bloomerang API, instead of exports.
 // TODO: Rework this to use Bulk Upsert, like the Raiser's Edge migration.
@@ -110,23 +111,20 @@ public class BloomerangToSalesforce {
       }
     }
 
-    // We also need Maps to keep track of what we've inserted/updated, needed as references later on.
+    Map<String, String> constituentIdToBloomerangHousehold = new HashMap<>();
     Map<String, String> constituentIdToAccountId = new HashMap<>();
     Map<String, String> constituentIdToContactId = new HashMap<>();
     Map<String, Boolean> constituentIdToIsBusiness = new HashMap<>();
-    Map<String, String> referenceDesignationNumberToRdId = new HashMap<>();
+    Map<String, String> designationNumberToRdId = new HashMap<>();
+    Map<String, String> transactionNumberToOppId = new HashMap<>();
 
-    // Then finally, grab what already exists in SFDC so we can know to update them.
-
-    Map<String, SObject> existingAccountsByBloomerangIds = new HashMap<>();
     List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c, RecordTypeId, Name, BillingStreet FROM Account WHERE Bloomerang_ID__c!=''");
     for (SObject account : accounts) {
-      existingAccountsByBloomerangIds.put((String) account.getField("Bloomerang_ID__c"), account);
+      constituentIdToAccountId.put((String) account.getField("Bloomerang_ID__c"), account.getId());
       boolean isBusiness = account.getField("RecordTypeId").equals(ORGANIZATION_RECORD_TYPE_ID);
       constituentIdToIsBusiness.put((String) account.getField("Bloomerang_ID__c"), isBusiness);
     }
 
-    Map<String, SObject> existingContactsByBloomerangIds = new HashMap<>();
     // TODO: Opting to avoid these for now. Bloomerang has
     //  separate constituents for the same person donating through their household AND a business, sharing the same
     //  email address, and in some cases they had already been merged in SFDC (single contact, one household, plus an Organization affiliation).
@@ -135,8 +133,6 @@ public class BloomerangToSalesforce {
 //    Map<String, List<SObject>> existingContactsByEmails = new HashMap<>();
     List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, Bloomerang_ID__c, FirstName, LastName, Email, Account.Name, Account.BillingStreet FROM Contact WHERE Bloomerang_ID__c!=''");
     for (SObject contact : contacts) {
-      existingContactsByBloomerangIds.put((String) contact.getField("Bloomerang_ID__c"), contact);
-
 //      String nameKey = (contact.getField("FirstName") + " " + contact.getField("LastName")).toLowerCase(Locale.ROOT);
 //      if (!existingContactsByNames.containsKey(nameKey)) {
 //        existingContactsByNames.put(nameKey, new ArrayList<>());
@@ -150,22 +146,22 @@ public class BloomerangToSalesforce {
 //        }
 //        existingContactsByEmails.get(emailKey).add(contact);
 //      }
-      constituentIdToAccountId.put((String) contact.getField("Bloomerang_ID__c"), contact.getField("AccountId").toString());
       constituentIdToContactId.put((String) contact.getField("Bloomerang_ID__c"), contact.getId());
+      constituentIdToAccountId.put((String) contact.getField("Bloomerang_ID__c"), (String) contact.getField("AccountId"));
     }
 
-    Map<String, SObject> rdsByBloomerangIds = new HashMap<>();
     List<SObject> rds = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c FROM Npe03__Recurring_Donation__c WHERE Bloomerang_ID__c!=''");
     for (SObject rd : rds) {
-      rdsByBloomerangIds.put((String) rd.getField("Bloomerang_ID__c"), rd);
-      referenceDesignationNumberToRdId.put((String) rd.getField("Bloomerang_ID__c"), rd.getId());
+      designationNumberToRdId.put((String) rd.getField("Bloomerang_ID__c"), rd.getId());
     }
 
-    Map<String, SObject> opportunitiesByBloomerangIds = new HashMap<>();
     List<SObject> opportunities = sfdcClient.queryListAutoPaged("SELECT Id, Bloomerang_ID__c FROM Opportunity WHERE Bloomerang_ID__c!=''");
     for (SObject opportunity : opportunities) {
-      opportunitiesByBloomerangIds.put((String) opportunity.getField("Bloomerang_ID__c"), opportunity);
+      transactionNumberToOppId.put((String) opportunity.getField("Bloomerang_ID__c"), opportunity.getId());
     }
+
+    Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
+        .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId(), (c1, c2) -> c1));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ACCOUNT
@@ -185,23 +181,29 @@ public class BloomerangToSalesforce {
       String accountNumber = householdRow.get("AccountNumber");
 
       SObject sfdcAccount = new SObject("Account");
+      sfdcAccount.setField("Name", householdRow.get("FullName"));
+      sfdcAccount.setField("npo02__Formal_Greeting__c", householdRow.get("FormalName"));
+      sfdcAccount.setField("npo02__Informal_Greeting__c", householdRow.get("InformalName"));
       sfdcAccount.setField("Recognition_Name__c", householdRow.get("RecognitionName"));
 
-      if (existingAccountsByBloomerangIds.containsKey(accountNumber)) {
-        sfdcAccount.setId(existingAccountsByBloomerangIds.get(accountNumber).getId());
+      if (constituentIdToAccountId.containsKey(accountNumber)) {
+        sfdcAccount.setId(constituentIdToAccountId.get(accountNumber));
 
-//        sfdcClient.batchUpdate(sfdcAccount);
+        sfdcClient.batchUpdate(sfdcAccount);
         System.out.println("HOUSEHOLD UPDATE: " + householdRow.get("FullName"));
+
+        constituentIdToBloomerangHousehold.put(householdRow.get("Head"), sfdcAccount.getId());
+        if (!Strings.isNullOrEmpty(householdRow.get("Members"))) {
+          // TODO: I'm assuming | is the separator, like other fields, but C1 doesn't actually have any member cells with more than one additional person.
+          Arrays.stream(householdRow.get("Members").split("\\|")).forEach(m -> constituentIdToBloomerangHousehold.put(m, sfdcAccount.getId()));
+        }
       } else {
         sfdcAccount.setField("Bloomerang_ID__c", accountNumber);
         sfdcAccount.setField("RecordTypeId", HOUSEHOLD_RECORD_TYPE_ID);
-        sfdcAccount.setField("Name", householdRow.get("FullName"));
-        sfdcAccount.setField("npo02__Formal_Greeting__c", householdRow.get("FormalName"));
-        sfdcAccount.setField("npo02__Informal_Greeting__c", householdRow.get("InformalName"));
 
         householdRowsToBeInserted.add(householdRow);
 
-//        sfdcClient.batchInsert(sfdcAccount);
+        sfdcClient.batchInsert(sfdcAccount);
         System.out.println("HOUSEHOLD INSERT: " + householdRow.get("FullName"));
       }
     }
@@ -216,10 +218,10 @@ public class BloomerangToSalesforce {
           Map<String, String> householdRow = householdRowsToBeInserted.get(i);
           String sfdcAccountId = result.getId();
 
-          constituentIdToAccountId.put(householdRow.get("Head"), sfdcAccountId);
+          constituentIdToBloomerangHousehold.put(householdRow.get("Head"), sfdcAccountId);
           if (!Strings.isNullOrEmpty(householdRow.get("Members"))) {
             // TODO: I'm assuming | is the separator, like other fields, but C1 doesn't actually have any member cells with more than one additional person.
-            Arrays.stream(householdRow.get("Members").split("\\|")).forEach(m -> constituentIdToAccountId.put(m, sfdcAccountId));
+            Arrays.stream(householdRow.get("Members").split("\\|")).forEach(m -> constituentIdToBloomerangHousehold.put(m, sfdcAccountId));
           }
         }
       }
@@ -240,17 +242,20 @@ public class BloomerangToSalesforce {
       boolean isBusiness = "Organization".equalsIgnoreCase(constituentRow.get("Type"));
       constituentIdToIsBusiness.put(accountNumber, isBusiness);
 
-      if (constituentIdToAccountId.containsKey(accountNumber)) {
+      if (constituentIdToBloomerangHousehold.containsKey(accountNumber)) {
         // already have the household
       } else {
         SObject sfdcAccount = new SObject("Account");
 
+        sfdcAccount.setField("Name", constituentRow.get("FullName"));
+        sfdcAccount.setField("npo02__Formal_Greeting__c", constituentRow.get("FormalName"));
+        sfdcAccount.setField("npo02__Informal_Greeting__c", constituentRow.get("InformalName"));
         sfdcAccount.setField("Envelope_Name__c", constituentRow.get("EnvelopeName"));
         sfdcAccount.setField("Recognition_Name__c", constituentRow.get("RecognitionName"));
         sfdcAccount.setField("Website", constituentRow.get("Website"));
         sfdcAccount.setField("Type", constituentRow.get("Type"));
-        // TODO: Do we need Owner IDs? Names in spreadsheet, IDs IN SF
-        // sfdcAccount.setField("OwnerId", constituentRow.get("Custom: Staff Care & Cultivation"));
+        String services = constituentRow.get("Custom: Business Type / Service Offered");
+        sfdcAccount.setField("Services_Offered__c", services == null ? null : services.replaceAll("\\|", ";"));
 
         for (Map<String, String> addressRow : addressRowsByAccountNumber.get(accountNumber)) {
           if ("Home".equalsIgnoreCase(addressRow.get("TypeName"))) {
@@ -290,10 +295,10 @@ public class BloomerangToSalesforce {
           }
         }
 
-        if (existingAccountsByBloomerangIds.containsKey(accountNumber)) {
-          sfdcAccount.setId(existingAccountsByBloomerangIds.get(accountNumber).getId());
+        if (constituentIdToAccountId.containsKey(accountNumber)) {
+          sfdcAccount.setId(constituentIdToAccountId.get(accountNumber));
 
-//          sfdcClient.batchUpdate(sfdcAccount);
+          sfdcClient.batchUpdate(sfdcAccount);
           System.out.println("CONSTITUENT ACCOUNT UPDATE: " + constituentRow.get("FullName"));
         } else {
           if (isBusiness) {
@@ -302,13 +307,10 @@ public class BloomerangToSalesforce {
             sfdcAccount.setField("RecordTypeId", HOUSEHOLD_RECORD_TYPE_ID);
           }
           sfdcAccount.setField("Bloomerang_ID__c", accountNumber);
-          sfdcAccount.setField("Name", constituentRow.get("FullName"));
-          sfdcAccount.setField("npo02__Formal_Greeting__c", constituentRow.get("FormalName"));
-          sfdcAccount.setField("npo02__Informal_Greeting__c", constituentRow.get("InformalName"));
 
           constituentRowsToBeInserted.add(constituentRow);
 
-//          sfdcClient.batchInsert(sfdcAccount);
+          sfdcClient.batchInsert(sfdcAccount);
           System.out.println("CONSTITUENT ACCOUNT INSERT: " + constituentRow.get("FullName"));
         }
       }
@@ -364,13 +366,16 @@ public class BloomerangToSalesforce {
         } else {
           sfdcContact.setField("Email_Opt_In__c", true);
         }
+        sfdcContact.setField("Birth_Year__c", constituentRow.get("Custom: Birth Year"));
+        sfdcContact.setField("Board_Care_Cultivation__c", constituentRow.get("Custom: Board Care & Cultivation"));
         sfdcContact.setField("Church_Affiliation__c", constituentRow.get("Custom: Church Affiliation"));
 
-        // TODO: remaining contact fields
-        /*
-        Custom: Organization Name - 17 records with values
-        Custom: Board Care & Cultivation
-        */
+        if (!Strings.isNullOrEmpty(constituentRow.get("Custom: Individuals"))) {
+          String codes = Arrays.stream(constituentRow.get("Custom: Individuals").split("\\|"))
+              .filter(c -> !c.contains("Donor-Tier") && !c.contains("Volunteer") && !c.contains("Coach"))
+              .collect(Collectors.joining(";"));
+          sfdcContact.setField("Constituent_Code__c", codes);
+        }
 
         Set<String> emails = new HashSet<>();
         for (Map<String, String> emailRow : emailRowsByAccountNumber.get(accountNumber)) {
@@ -421,10 +426,10 @@ public class BloomerangToSalesforce {
 //          existingContactsByName.addAll(existingContactsByNames.get(nameKey));
 //        }
 
-        if (existingContactsByBloomerangIds.containsKey(accountNumber)) {
-          sfdcContact.setId(existingContactsByBloomerangIds.get(accountNumber).getId());
+        if (constituentIdToContactId.containsKey(accountNumber)) {
+          sfdcContact.setId(constituentIdToContactId.get(accountNumber));
 
-//          sfdcClient.batchUpdate(sfdcContact);
+          sfdcClient.batchUpdate(sfdcContact);
           System.out.println("CONSTITUENT CONTACT UPDATE: " + constituentRow.get("First") + " " + constituentRow.get("Last"));
 //        } else if (!existingContactsByEmail.isEmpty()) {
 //          if (existingContactsByEmail.size() > 1) {
@@ -477,8 +482,6 @@ public class BloomerangToSalesforce {
       }
     }
 
-    // TODO: Attachments, notes, and relationships not added
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // RECURRING DONATION
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -491,7 +494,7 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> recurringDonationRows;
     try (InputStream is = new FileInputStream(recurringDonationFile)) {
       recurringDonationRows = Utils.getCsvData(is);
-      recurringDonationRows = recurringDonationRows.stream().filter(r -> !rdsByBloomerangIds.containsKey(r.get("DesignationNumber"))).toList();
+      recurringDonationRows = recurringDonationRows.stream().filter(r -> !designationNumberToRdId.containsKey(r.get("DesignationNumber"))).toList();
     }
 
     for (Map<String, String> recurringDonationRow : recurringDonationRows) {
@@ -504,23 +507,23 @@ public class BloomerangToSalesforce {
       if (!Strings.isNullOrEmpty(recurringDonationRow.get("StartDate"))) {
         Date d = new SimpleDateFormat("MM/dd/yyyy").parse(recurringDonationRow.get("StartDate"));
         sfdcRecurringDonation.setField("npe03__Date_Established__c", d);
+        sfdcRecurringDonation.setField("npsp__StartDate__c", d);
       }
-      // TODO: *might* need to set Npe03__Next_Payment_Date__c so that pledge generation does the right thing, but it should also be self-correcting as new donations come in
       sfdcRecurringDonation.setField("npsp__InstallmentFrequency__c", 1);
-      // TODO
-//      sfdcRecurringDonation.setField("npe03__Recurring_Donation_Campaign__c", recurringDonationRow.get("CampaignName"));
-      // TODO: to eventually be replaced with campaigns
       sfdcRecurringDonation.setField("Fund__c", recurringDonationRow.get("FundName"));
-      sfdcRecurringDonation.setField("Appeal__c", recurringDonationRow.get("AppealName"));
       sfdcRecurringDonation.setField("npe03__Installment_Period__c", recurringDonationRow.get("Frequency"));
       sfdcRecurringDonation.setField("Npe03__Schedule_Type__c", "Multiply By");
+      sfdcRecurringDonation.setField("Description__c", recurringDonationRow.get("Note"));
+      sfdcRecurringDonation.setField("Payment_Gateway_Name__c", recurringDonationRow.get("Custom: Payment Gateway Name"));
+      sfdcRecurringDonation.setField("Payment_Gateway_Customer_ID__c", recurringDonationRow.get("Custom: Payment Gateway Customer ID"));
+      sfdcRecurringDonation.setField("Payment_Gateway_Subscription_ID__c", recurringDonationRow.get("Custom: Payment Gateway Subscription ID"));
 
       if (!Strings.isNullOrEmpty(recurringDonationRow.get("EndDate"))) {
         Date d = new SimpleDateFormat("MM/dd/yyyy").parse(recurringDonationRow.get("EndDate"));
         sfdcRecurringDonation.setField("npsp__EndDate__c", d);
-        sfdcRecurringDonation.setField("Npe03__Open_Ended_Status__c", "Closed");
+        sfdcRecurringDonation.setField("npsp__Status__c", "Closed");
       } else {
-        sfdcRecurringDonation.setField("Npe03__Open_Ended_Status__c", "Open");
+        sfdcRecurringDonation.setField("npsp__Status__c", "Active");
       }
 
       if (env.getConfig().salesforce.enhancedRecurringDonations) {
@@ -542,6 +545,27 @@ public class BloomerangToSalesforce {
         sfdcRecurringDonation.setField("Npe03__Organization__c", constituentIdToAccountId.get(accountNumber));
       }
 
+      String campaignId = null;
+      String campaign = recurringDonationRow.get("CampaignName");
+      if (!Strings.isNullOrEmpty(campaign) && !campaignNameToId.containsKey(campaign)) {
+        SObject sObject = new SObject("Campaign");
+        sObject.setField("Name", campaign);
+        String id = sfdcClient.insert(sObject).getId();
+        campaignNameToId.put(campaign, id);
+        campaignId = id;
+      }
+      String appeal = recurringDonationRow.get("AppealName");
+      if (!Strings.isNullOrEmpty(appeal) && !campaignNameToId.containsKey(appeal)) {
+        SObject sObject = new SObject("Campaign");
+        sObject.setField("Name", appeal);
+        sObject.setField("ParentId", campaignNameToId.get(campaign));
+        String id = sfdcClient.insert(sObject).getId();
+        campaignNameToId.put(appeal, id);
+        campaignId = id;
+      }
+      sfdcRecurringDonation.setField("npe03__Recurring_Donation_Campaign__c", campaignId);
+
+
       sfdcClient.batchInsert(sfdcRecurringDonation);
     }
 
@@ -553,7 +577,7 @@ public class BloomerangToSalesforce {
         Map<String, String> recurringDonationRow = recurringDonationRows.get(i);
         String sfdcRdId = result.getId();
 
-        referenceDesignationNumberToRdId.put(recurringDonationRow.get("DesignationNumber"), sfdcRdId);
+        designationNumberToRdId.put(recurringDonationRow.get("DesignationNumber"), sfdcRdId);
       }
     }
 
@@ -566,12 +590,12 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> donationRows;
     try (InputStream is = new FileInputStream(donationFile)) {
       donationRows = Utils.getCsvData(is);
-      donationRows = donationRows.stream().filter(r -> !opportunitiesByBloomerangIds.containsKey(r.get("TransactionNumber"))).toList();
+      donationRows = donationRows.stream().filter(r -> !transactionNumberToOppId.containsKey(r.get("TransactionNumber"))).toList();
     }
 
     for (Map<String, String> donationRow : donationRows) {
       createOpportunity(donationRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
-          constituentIdToContactId, referenceDesignationNumberToRdId, sfdcClient);
+          constituentIdToContactId, designationNumberToRdId, campaignNameToId, sfdcClient);
     }
 
     //Then loop over all Recurring Donation Payments, combine them with the Transactions data, and insert Opportunities in SFDC (tied to the recurring donation ID)
@@ -579,12 +603,12 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> recurringDonationPaymentRows;
     try (InputStream is = new FileInputStream(recurringDonationPaymentFile)) {
       recurringDonationPaymentRows = Utils.getCsvData(is);
-      recurringDonationPaymentRows = recurringDonationPaymentRows.stream().filter(r -> !opportunitiesByBloomerangIds.containsKey(r.get("TransactionNumber"))).toList();
+      recurringDonationPaymentRows = recurringDonationPaymentRows.stream().filter(r -> !transactionNumberToOppId.containsKey(r.get("TransactionNumber"))).toList();
     }
 
     for (Map<String, String> recurringDonationPaymentsRow : recurringDonationPaymentRows) {
       createOpportunity(recurringDonationPaymentsRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
-          constituentIdToContactId, referenceDesignationNumberToRdId, sfdcClient);
+          constituentIdToContactId, designationNumberToRdId, campaignNameToId, sfdcClient);
     }
 
     sfdcClient.batchFlush();
@@ -598,6 +622,7 @@ public class BloomerangToSalesforce {
       Map<String, String> constituentIdToAccountId,
       Map<String, String> constituentIdToContactId,
       Map<String, String> referenceDesignationNumberToRdId,
+      Map<String, String> campaignNameToId,
       SfdcClient sfdcClient
   ) throws InterruptedException, ParseException {
     SObject sfdcOpportunity = new SObject("Opportunity");
@@ -625,13 +650,12 @@ public class BloomerangToSalesforce {
     sfdcOpportunity.setField("In_Kind_Market_Value__c", transactionRow.get("InKindMarketValue"));
     sfdcOpportunity.setField("npsp__In_Kind_Type__c", transactionRow.get("InKindType"));
     sfdcOpportunity.setField("Payment_Gateway_Name__c", transactionRow.get("Method"));
-
-    // TODO: to eventually be replaced with campaigns
     sfdcOpportunity.setField("Fund__c", donationRow.get("FundName"));
-    sfdcOpportunity.setField("Appeal__c", donationRow.get("AppealName"));
-
     // We have not yet seen Bloomerang with a notion of "failed attempt" transactions
     sfdcOpportunity.setField("StageName", "Closed Won");
+    sfdcOpportunity.setField("Payment_Gateway_Name__c", transactionRow.get("Custom: Payment Gateway Name"));
+    sfdcOpportunity.setField("Payment_Gateway_Customer_ID__c", transactionRow.get("Custom: Payment Gateway Customer ID"));
+    sfdcOpportunity.setField("Payment_Gateway_Transaction_ID__c", transactionRow.get("Custom: Payment Gateway Transaction ID"));
 
     sfdcOpportunity.setField("AccountId", constituentIdToAccountId.get(accountNumber));
     sfdcOpportunity.setField("ContactId", constituentIdToContactId.get(accountNumber));
@@ -653,6 +677,26 @@ public class BloomerangToSalesforce {
     } else {
       sfdcOpportunity.setField("Name", donationType + " " + donationDate);
     }
+
+    String campaignId = null;
+    String campaign = donationRow.get("CampaignName");
+    if (!Strings.isNullOrEmpty(campaign) && !campaignNameToId.containsKey(campaign)) {
+      SObject sObject = new SObject("Campaign");
+      sObject.setField("Name", campaign);
+      String id = sfdcClient.insert(sObject).getId();
+      campaignNameToId.put(campaign, id);
+      campaignId = id;
+    }
+    String appeal = donationRow.get("AppealName");
+    if (!Strings.isNullOrEmpty(appeal) && !campaignNameToId.containsKey(appeal)) {
+      SObject sObject = new SObject("Campaign");
+      sObject.setField("Name", appeal);
+      sObject.setField("ParentId", campaignNameToId.get(campaign));
+      String id = sfdcClient.insert(sObject).getId();
+      campaignNameToId.put(appeal, id);
+      campaignId = id;
+    }
+    sfdcOpportunity.setField("CampaignId", campaignId);
 
     // TODO: This is resulting in many locked-entity retries, likely due to opportunities being grouped together
     //  by constituent.
