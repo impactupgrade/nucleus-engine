@@ -296,9 +296,7 @@ public class CrmImportEvent {
     // 1: Account Campaign n ID (or a single Account Campaign ID)
     // 2: Account Campaign n Name (or a single Account Campaign Name)
     // 3: Account Campaign [Some Name] -> boolean (true, yes, 1) values
-    // 4: Campaign Name
     // #3 is helpful in many cases where we're migrating tags/fields with boolean values to campaign membership
-    // #4 assumes we're both upserting the campaign itself AND that any account/contact on the row should be a member
     if (!Strings.isNullOrEmpty(data.get("Account Campaign ID"))) {
       CampaignMembership campaignMembership = new CampaignMembership();
       campaignMembership.campaignId = data.get("Account Campaign ID");
@@ -332,12 +330,6 @@ public class CrmImportEvent {
           importEvent.accountCampaigns.add(campaignMembership);
         }
       }
-    }
-    if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
-      CampaignMembership campaignMembership = new CampaignMembership();
-      campaignMembership.campaignName = data.get("Campaign Name");
-      campaignMembership.status = data.get("Account Campaign Status");
-      importEvent.accountCampaigns.add(campaignMembership);
     }
 
     for (int i = 1; i <= 5; i++) {
@@ -400,9 +392,7 @@ public class CrmImportEvent {
     // 1: Contact Campaign n ID (or a single Contact Campaign ID)
     // 2: Contact Campaign n Name (or a single Contact Campaign Name)
     // 3: Contact Campaign [Some Name] -> boolean (true, yes, 1) values
-    // 4: Campaign Name
     // #3 is helpful in many cases where we're migrating tags/fields with boolean values to campaign membership
-    // #4 assumes we're both upserting the campaign itself AND that any account/contact on the row should be a member
     if (!Strings.isNullOrEmpty(data.get("Contact Campaign ID"))) {
       CampaignMembership campaignMembership = new CampaignMembership();
       campaignMembership.campaignId = data.get("Contact Campaign ID");
@@ -436,12 +426,6 @@ public class CrmImportEvent {
           importEvent.contactCampaigns.add(campaignMembership);
         }
       }
-    }
-    if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
-      CampaignMembership campaignMembership = new CampaignMembership();
-      campaignMembership.campaignName = data.get("Campaign Name");
-      campaignMembership.status = data.get("Contact Campaign Status");
-      importEvent.contactCampaigns.add(campaignMembership);
     }
 
     importEvent.contactDescription = data.get("Contact Description");
