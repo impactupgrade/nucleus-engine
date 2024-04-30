@@ -679,15 +679,20 @@ public class CrmImportEvent {
     importEvent.contactMailingCountry = data.get("Billing Country");
 
     if (!Strings.isNullOrEmpty(data.get("Campaign ID"))) {
-      importEvent.contactCampaignIds.add(data.get("Campaign ID"));
+      CampaignMembership campaignMembership = new CampaignMembership();
+      // TODO: more likely to be an extref?
+      campaignMembership.campaignId = data.get("Campaign ID");
+      importEvent.contactCampaigns.add(campaignMembership);
     }
     if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
-      importEvent.contactCampaignNames.add(data.get("Campaign Name"));
-      importEvent.campaignName = data.get("Campaign Name");
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignName = data.get("Campaign Name");
+      importEvent.contactCampaigns.add(campaignMembership);
     }
     if (!Strings.isNullOrEmpty(data.get("Internal Campaign Name"))) {
-      importEvent.contactCampaignNames.add(data.get("Internal Campaign Name"));
-
+      CampaignMembership campaignMembership = new CampaignMembership();
+      campaignMembership.campaignName = data.get("Internal Campaign Name");
+      importEvent.contactCampaigns.add(campaignMembership);
     }
 
     // Opportunity
