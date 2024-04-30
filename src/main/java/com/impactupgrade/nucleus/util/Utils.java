@@ -255,10 +255,15 @@ public class Utils {
         } else {
           switch (cell.getCellType()) {
             case NUMERIC, FORMULA -> {
-              if (DateUtil.isCellDateFormatted(cell)) {
-                rowData.put(headerData.get(i), new SimpleDateFormat("yyyy-MM-dd").format(cell.getDateCellValue()));
-              } else {
-                rowData.put(headerData.get(i), formatDouble(cell.getNumericCellValue()));
+              try {
+                if (DateUtil.isCellDateFormatted(cell)) {
+                  rowData.put(headerData.get(i), new SimpleDateFormat("yyyy-MM-dd").format(cell.getDateCellValue()));
+                } else {
+                  rowData.put(headerData.get(i), formatDouble(cell.getNumericCellValue()));
+                }
+              } catch (Exception e) {
+                // Seeing odd issues where the cell type is date/numeric, but it complains about having only string values.
+                rowData.put(headerData.get(i), cell.getStringCellValue().trim());
               }
             }
             case BOOLEAN -> rowData.put(headerData.get(i), cell.getBooleanCellValue() + "");
