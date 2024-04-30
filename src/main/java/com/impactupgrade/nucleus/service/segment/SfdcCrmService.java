@@ -1875,25 +1875,25 @@ public class SfdcCrmService implements CrmService {
       setCustomBulkValue(contact, "npe01__PreferredPhone__c", customFieldValue);
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactEmail) && importEvent.contactEmail.contains("@")) {
+    if (!Strings.isNullOrEmpty(importEvent.contactEmail)) {
       // Some sources provide comma separated lists. Simply use the first one.
       String email = importEvent.contactEmail.split("[,;\\s]+")[0];
       setCustomBulkValue(contact, "Email", email);
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail) && importEvent.contactPersonalEmail.contains("@") && env.getConfig().salesforce.npsp) {
+    if (!Strings.isNullOrEmpty(importEvent.contactPersonalEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String email = importEvent.contactPersonalEmail.split("[,;\\s]+")[0];
       setCustomBulkValue(contact, "npe01__HomeEmail__c", email);
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactWorkEmail) && importEvent.contactWorkEmail.contains("@") && env.getConfig().salesforce.npsp) {
+    if (!Strings.isNullOrEmpty(importEvent.contactWorkEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String workEmail = importEvent.contactWorkEmail.split("[,;\\s]+")[0];
       setCustomBulkValue(contact, "npe01__WorkEmail__c", workEmail);
     }
 
-    if (!Strings.isNullOrEmpty(importEvent.contactOtherEmail) && importEvent.contactOtherEmail.contains("@") && env.getConfig().salesforce.npsp) {
+    if (!Strings.isNullOrEmpty(importEvent.contactOtherEmail) && env.getConfig().salesforce.npsp) {
       // Some sources provide comma separated lists. Simply use the first one.
       String otherEmail = importEvent.contactOtherEmail.split("[,;\\s]+")[0];
       setCustomBulkValue(contact, "npe01__AlternateEmail__c", otherEmail);
