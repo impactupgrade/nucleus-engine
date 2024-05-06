@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 3River Development LLC, DBA Impact Upgrade. All rights reserved.
+ */
+
 package com.impactupgrade.nucleus.it;
 
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;

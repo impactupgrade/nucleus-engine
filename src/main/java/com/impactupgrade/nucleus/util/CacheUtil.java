@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 3River Development LLC, DBA Impact Upgrade. All rights reserved.
+ */
+
 package com.impactupgrade.nucleus.util;
 
 import com.google.common.cache.Cache;
