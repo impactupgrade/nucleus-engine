@@ -42,9 +42,9 @@ public class BloomerangToSalesforce {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.crmPrimary = "salesforce";
         envConfig.salesforce.sandbox = false;
-        envConfig.salesforce.url = "communityone.my.salesforce.com";
-        envConfig.salesforce.username = "team+c1@impactupgrade.com";
-        envConfig.salesforce.password = "a7Ty*wsaz8n9ETdLcNixtqtdI0WozJNIZIKlUhNuJ";
+        envConfig.salesforce.url = "TODO";
+        envConfig.salesforce.username = "TODO";
+        envConfig.salesforce.password = "TODO";
         envConfig.salesforce.enhancedRecurringDonations = true;
         return envConfig;
       }

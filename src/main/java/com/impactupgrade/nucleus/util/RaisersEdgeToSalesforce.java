@@ -45,9 +45,9 @@ public class RaisersEdgeToSalesforce {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.crmPrimary = "salesforce";
         envConfig.salesforce.sandbox = false;
-        envConfig.salesforce.url = "concordialutheranhs.my.salesforce.com";
-        envConfig.salesforce.username = "team+clhs@impactupgrade.com";
-        envConfig.salesforce.password = "fZfy3hBEdYcwgbuCUdjQbz40Ui2KP8KalwXR51OYl9Vu";
+        envConfig.salesforce.url = "TODO";
+        envConfig.salesforce.username = "TODO";
+        envConfig.salesforce.password = "TODO";
         envConfig.salesforce.enhancedRecurringDonations = true;
         return envConfig;
       }
@@ -55,7 +55,7 @@ public class RaisersEdgeToSalesforce {
 
 //    provisionFields(env);
 //    deleteFields(env);
-    migrate(env);
+//    migrate(env);
   }
 
   private static void provisionFields(Environment env) throws Exception {
