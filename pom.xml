@@ -17,12 +17,19 @@
   <artifactId>nucleus-engine</artifactId>
   <version>4.0.0-SNAPSHOT</version>
 
-  <name>Nonprofit Nucleus: Engine</name>
+  <name>Impact Nucleus: Engine</name>
   <description>TODO</description>
-  <url>https://www.impactupgrade.com/nonprofit-nucleus</url>
+  <url>https://impactnucleus.com</url>
   <scm>
     <url>https://github.com/impactupgrade/nucleus-engine</url>
   </scm>
+  <licenses>
+    <license>
+      <name>PolyForm Noncommercial License 1.0.0</name>
+      <url>https://polyformproject.org/licenses/noncommercial/1.0.0/</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
   <organization>
     <name>Impact Upgrade</name>
     <url>https://www.impactupgrade.com</url>
@@ -35,32 +42,6 @@
       <organizationUrl>https://www.impactupgrade.com</organizationUrl>
     </developer>
   </developers>
-
-  <dependencies>
-    <dependency>
-      <groupId>com.vladmihalcea</groupId>
-      <artifactId>hibernate-types-55</artifactId>
-      <version>2.14.0</version>
-    </dependency>
-    <dependency>
-      <!-- Include the sdk as a dependency -->
-      <groupId>com.microsoft.graph</groupId>
-      <artifactId>microsoft-graph</artifactId>
-      <version>5.27.0</version>
-    </dependency>
-    <dependency>
-      <!-- This dependency is only needed if you are using the TokenCrendentialAuthProvider -->
-      <groupId>com.azure</groupId>
-      <artifactId>azure-identity</artifactId>
-      <version>1.2.5</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/com.paypal.sdk/rest-api-sdk -->
-    <dependency>
-      <groupId>com.paypal.sdk</groupId>
-      <artifactId>rest-api-sdk</artifactId>
-      <version>1.14.0</version>
-    </dependency>
-  </dependencies>
 
   <build>
     <plugins>
@@ -78,13 +59,6 @@
   </build>
 
   <repositories>
-    <repository>
-      <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/*</url>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
     <!-- allow sonatype snapshots, primarily for open source SDKs from Impact Upgrade -->
     <repository>
       <id>oss.sonatype.org-snapshot</id>
@@ -98,14 +72,79 @@
     </repository>
   </repositories>
 
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>ossrh</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>true</autoReleaseAfterClose>
+            </configuration>
+            <dependencies>
+              <!-- TODO: remove after OSSRH-66257 and NEXUS-26993 are fixed -->
+              <dependency>
+                <groupId>com.thoughtworks.xstream</groupId>
+                <artifactId>xstream</artifactId>
+                <version>1.4.15</version>
+              </dependency>
+            </dependencies>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
   <distributionManagement>
     <snapshotRepository>
-      <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
     <repository>
-      <id>github</id>
-      <url>https://maven.pkg.github.com/impactupgrade/nucleus-engine</url>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
   </distributionManagement>
 </project>
