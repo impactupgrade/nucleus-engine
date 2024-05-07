@@ -200,12 +200,7 @@ public class TwilioController {
           CrmContact crmContact = new CrmContact();
           crmContact.mobilePhone = mobilePhone;
           env.messagingService().sendMessage(message, null, crmContact, twilioNumber);
-
-          MessagingResponse response = new MessagingResponse.Builder().build();
-          return Response.ok().entity(response.toXml()).build();
-        }
-
-        if (env.notificationService().notificationConfigured("sms:inbound-default")) {
+        } else if (env.notificationService().notificationConfigured("sms:inbound-default")) {
           String subject = "Text Message Received";
           String message = "Text message received from " + from + " :: " + body;
           NotificationService.Notification notification = new NotificationService.Notification(subject, message);
@@ -214,12 +209,7 @@ public class TwilioController {
           String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
 
           env.notificationService().sendNotification(notification, targetId, "sms:inbound-default");
-
-          MessagingResponse response = new MessagingResponse.Builder().build();
-          return Response.ok().entity(response.toXml()).build();
-        }
-
-        if (!Strings.isNullOrEmpty(env.getConfig().twilio.defaultResponse)) {
+        } else if (!Strings.isNullOrEmpty(env.getConfig().twilio.defaultResponse)) {
           env.logJobInfo("responding with: {}", env.getConfig().twilio.defaultResponse);
 
           responseBody = new Body.Builder(env.getConfig().twilio.defaultResponse).build();
@@ -229,8 +219,11 @@ public class TwilioController {
 
     env.endJobLog(DONE);
 
-    MessagingResponse response = new MessagingResponse.Builder().message(new Message.Builder().body(responseBody).build()).build();
-    return Response.ok().entity(response.toXml()).build();
+    MessagingResponse.Builder responseBuilder = new MessagingResponse.Builder();
+    if (responseBody != null) {
+      responseBuilder.message(new Message.Builder().body(responseBody).build());
+    }
+    return Response.ok().entity(responseBuilder.build().toXml()).build();
   }
 
   /**
