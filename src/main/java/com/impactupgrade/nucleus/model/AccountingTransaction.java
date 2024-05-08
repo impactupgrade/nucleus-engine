@@ -14,7 +14,7 @@ import java.time.ZonedDateTime;
  */
 public class AccountingTransaction {
 
-  public AccountingContact accountingContact;
+  public AccountingCustomer accountingCustomer;
 
   public Double amountInDollars;
   public ZonedDateTime date;
@@ -35,7 +35,7 @@ public class AccountingTransaction {
       String paymentGatewayTransactionId,
       Boolean recurring
   ) {
-    this.accountingContact = new AccountingContact(contactId, crmContactId, null);
+    this.accountingCustomer = new AccountingCustomer(contactId, crmContactId, null);
 
     this.amountInDollars = amountInDollars;
     this.date = date;

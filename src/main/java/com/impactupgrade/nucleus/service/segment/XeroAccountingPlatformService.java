@@ -19,7 +19,7 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.AccountingContact;
+import com.impactupgrade.nucleus.model.AccountingCustomer;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -335,7 +335,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 //    }
 
     @Override
-    public List<AccountingContact> updateOrCreateContacts(List<CrmContact> crmContacts) {
+    public List<AccountingCustomer> updateOrCreateContacts(List<CrmContact> crmContacts) {
         Contacts contacts = new Contacts();
         contacts.setContacts(crmContacts.stream()
                 .map(crmContact -> toContact(crmContact))
@@ -349,7 +349,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     .map(crmContact -> {
                         String fullName = crmContact.getFullName();
                         Contact contact = upsertedContactsByName.get(fullName);
-                        return new AccountingContact(crmContact.id, contact.getContactID().toString(), fullName);
+                        return new AccountingCustomer(crmContact.id, contact.getContactID().toString(), fullName);
                     })
                     .collect(Collectors.toList());
 
@@ -479,7 +479,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         invoice.setDate(threetenLocalDate);
         invoice.setDueDate(threetenLocalDate);
         Contact contact = new Contact();
-        contact.setContactID(UUID.fromString(transaction.accountingContact.contactId));
+        contact.setContactID(UUID.fromString(transaction.accountingCustomer.contactId));
         invoice.setContact(contact);
 
         invoice.setLineItems(getLineItems(transaction));

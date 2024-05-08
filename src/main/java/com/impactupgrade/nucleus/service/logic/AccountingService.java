@@ -7,7 +7,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.AccountingContact;
+import com.impactupgrade.nucleus.model.AccountingCustomer;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -62,7 +62,6 @@ public class AccountingService {
         }
     }
 
-    //TODO: change to "from-to"?
     public void syncTransactions(Calendar fromDate) throws Exception {
         List<CrmDonation> crmDonations = env.donationsCrmService().getDonationsUpdatedSince(fromDate);
         upsertDonations(crmDonations);
@@ -116,10 +115,10 @@ public class AccountingService {
         env.logJobInfo("Input crm donations (with child donations): {}", crmDonations.size());
 
         List<CrmContact> contacts = getDonationsContacts(crmDonations);
-        List<AccountingContact> accountingContacts = _accountingPlatformService.get().updateOrCreateContacts(contacts);
-        Map<String, AccountingContact> accountingContactsByCrmContactId = accountingContacts.stream()
+        List<AccountingCustomer> accountingCustomers = _accountingPlatformService.get().updateOrCreateContacts(contacts);
+        Map<String, AccountingCustomer> accountingContactsByCrmContactId = accountingCustomers.stream()
                 .collect(Collectors.toMap(
-                        accountingContact -> accountingContact.crmContactId, Function.identity()));
+                        accountingCustomer -> accountingCustomer.crmContactId, Function.identity()));
 
         List<AccountingTransaction> accountingTransactions = crmDonations.stream()
                 .map(crmDonation -> {
@@ -127,13 +126,13 @@ public class AccountingService {
                     if (Strings.isNullOrEmpty(crmContactId)) {
                         crmContactId = crmDonation.contact.id;
                     }
-                    AccountingContact accountingContact = accountingContactsByCrmContactId.get(crmContactId);
-                    if (accountingContact == null) {
+                    AccountingCustomer accountingCustomer = accountingContactsByCrmContactId.get(crmContactId);
+                    if (accountingCustomer == null) {
                         // Should be unreachable
                         env.logJobError("Failed to get accounting contact for donation/contact: {}/{}", crmDonation.id, crmContactId);
                         return null;
                     } else {
-                        return toAccountingTransaction(crmDonation, accountingContact.contactId, crmContactId);
+                        return toAccountingTransaction(crmDonation, accountingCustomer.contactId, crmContactId);
                     }
                 })
                 .filter(Objects::nonNull)
