@@ -2595,6 +2595,14 @@ public class SfdcCrmService implements CrmService {
     CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
     crmRecurringDonation.id = (String) sObject.getField("npe03__Recurring_Donation__c");
 
+    EnvironmentConfig.TransactionType transactionType = EnvironmentConfig.TransactionType.DONATION;
+    for (Map.Entry<EnvironmentConfig.TransactionType, String> entry : env.getConfig().salesforce.transactionTypeToRecordTypeIds.entrySet()) {
+      if (sObject.getField("RecordTypeId").toString().equalsIgnoreCase(entry.getValue())) {
+        transactionType = entry.getKey();
+        break;
+      }
+    }
+
     return new CrmDonation(
         id,
         account,
@@ -2606,7 +2614,7 @@ public class SfdcCrmService implements CrmService {
         null, // String depositId,
         null, // String depositTransactionId,
         paymentGatewayName,
-        null, // EnvironmentConfig.PaymentEventType paymentEventType,
+        transactionType,
         null, // String paymentMethod,
         null, // String refundId,
         null, // ZonedDateTime refundDate,

@@ -87,6 +87,15 @@ public class DonationService {
       env.logJobInfo("found existing, posted CRM donation {} using transaction {}",
           existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
       paymentGatewayEvent.getCrmDonation().id = existingDonation.get().id;
+      // TODO: Ugh, I don't like this precedent. We need a better way to merge together the 1) CRM data we already have
+      //  with 2) data that only Stripe has. As an example, if this donation already exists in the CRM but not in
+      //  Accounting, the AccountingService needs to know what type of transaction this was. But since that's CRM
+      //  vendor specific, it needs to come from the CrmService.
+      //  We can't simply swap the paymentGatewayEvent's CrmDonation for the existingDonation, since PaymentGatewayEvent
+      //  has other Stripe data that we do not currently store in the CRM.
+      //  Maybe the answer is we first need Contact/Donation Service to look for existing records and set them on
+      //  the event, and AFTER that happens, then call paymentGatewayEvent.initStripe to fill in the rest.
+      paymentGatewayEvent.getCrmDonation().transactionType = existingDonation.get().transactionType;
       if (existingDonation.get().recurringDonation != null) {
         paymentGatewayEvent.getCrmRecurringDonation().id = existingDonation.get().recurringDonation.id;
       }
