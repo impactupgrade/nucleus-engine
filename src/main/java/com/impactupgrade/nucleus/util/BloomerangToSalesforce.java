@@ -20,15 +20,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 // TODO: Shift to using the Bloomerang API, instead of exports.
@@ -345,15 +337,12 @@ public class BloomerangToSalesforce {
       if (!Strings.isNullOrEmpty(constituentRow.get("Last"))) {
         SObject sfdcContact = new SObject("Contact");
 
-        sfdcContact.setField("FirstName", constituentRow.get("First"));
-        sfdcContact.setField("LastName", constituentRow.get("Last"));
         sfdcContact.setField("Title", constituentRow.get("JobTitle"));
         if (!Strings.isNullOrEmpty(constituentRow.get("Birthdate"))) {
           Date d = new SimpleDateFormat("MM/dd/yyyy").parse(constituentRow.get("Birthdate"));
           sfdcContact.setField("Birthdate", d);
         }
         sfdcContact.setField("Gender__c", constituentRow.get("Gender"));
-        sfdcContact.setField("Middle_Name__c", constituentRow.get("Middle"));
         sfdcContact.setField("Prefix__c", constituentRow.get("Prefix"));
         sfdcContact.setField("Preferred_Communication_Channel__c", constituentRow.get("CommunicationChannelPreferred"));
         // TODO: should we simply skip Inactive?
@@ -459,6 +448,10 @@ public class BloomerangToSalesforce {
           // TODO: business contact household + affiliation with business?
           sfdcContact.setField("AccountId", constituentIdToAccountId.get(accountNumber));
           sfdcContact.setField("Bloomerang_ID__c", accountNumber);
+
+          sfdcContact.setField("FirstName", constituentRow.get("First"));
+          sfdcContact.setField("LastName", constituentRow.get("Last"));
+          sfdcContact.setField("Middle_Name__c", constituentRow.get("Middle"));
 
           constituentRowsToBeInserted.add(constituentRow);
 
@@ -590,12 +583,11 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> donationRows;
     try (InputStream is = new FileInputStream(donationFile)) {
       donationRows = Utils.getCsvData(is);
-      donationRows = donationRows.stream().filter(r -> !transactionNumberToOppId.containsKey(r.get("TransactionNumber"))).toList();
     }
 
     for (Map<String, String> donationRow : donationRows) {
-      createOpportunity(donationRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
-          constituentIdToContactId, designationNumberToRdId, campaignNameToId, sfdcClient);
+      processOpportunity(donationRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
+          constituentIdToContactId, designationNumberToRdId, transactionNumberToOppId, campaignNameToId, sfdcClient);
     }
 
     //Then loop over all Recurring Donation Payments, combine them with the Transactions data, and insert Opportunities in SFDC (tied to the recurring donation ID)
@@ -603,12 +595,11 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> recurringDonationPaymentRows;
     try (InputStream is = new FileInputStream(recurringDonationPaymentFile)) {
       recurringDonationPaymentRows = Utils.getCsvData(is);
-      recurringDonationPaymentRows = recurringDonationPaymentRows.stream().filter(r -> !transactionNumberToOppId.containsKey(r.get("TransactionNumber"))).toList();
     }
 
     for (Map<String, String> recurringDonationPaymentsRow : recurringDonationPaymentRows) {
-      createOpportunity(recurringDonationPaymentsRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
-          constituentIdToContactId, designationNumberToRdId, campaignNameToId, sfdcClient);
+      processOpportunity(recurringDonationPaymentsRow, transactionRowsByTransactionNumber, constituentIdToAccountId,
+          constituentIdToContactId, designationNumberToRdId, transactionNumberToOppId, campaignNameToId, sfdcClient);
     }
 
     sfdcClient.batchFlush();
@@ -616,17 +607,16 @@ public class BloomerangToSalesforce {
     // TODO: Pledges and PledgePayments could be combined into single Opportunities, but there's only a handful from 2014/2015
   }
 
-  private void createOpportunity(
+  private void processOpportunity(
       Map<String, String> donationRow,
       HashMap<String, Map<String, String>> transactionRowsByTransactionNumber,
       Map<String, String> constituentIdToAccountId,
       Map<String, String> constituentIdToContactId,
       Map<String, String> referenceDesignationNumberToRdId,
+      Map<String, String> transactionNumberToOppId,
       Map<String, String> campaignNameToId,
       SfdcClient sfdcClient
   ) throws InterruptedException, ParseException {
-    SObject sfdcOpportunity = new SObject("Opportunity");
-
     String transactionNumber = donationRow.get("TransactionNumber");
     Map<String, String> transactionRow = transactionRowsByTransactionNumber.get(transactionNumber);
 
@@ -634,13 +624,11 @@ public class BloomerangToSalesforce {
       return; // TODO: Some oddness in the sheets. Search "Grant 2017-CCL-011b" for an ex.
     }
 
-    String accountNumber = transactionRow.get("AccountNumber");
-
+    SObject sfdcOpportunity = new SObject("Opportunity");
     sfdcOpportunity.setField("npsp__Acknowledgment_Status__c", donationRow.get("AcknowledgementStatus"));
     sfdcOpportunity.setField("Amount", donationRow.get("Amount"));
     sfdcOpportunity.setField("Non_Deductible__c", donationRow.get("NonDeductable"));
     sfdcOpportunity.setField("Description", donationRow.get("Note"));
-    sfdcOpportunity.setField("Bloomerang_ID__c", transactionNumber);
     sfdcOpportunity.setField("npsp__Honoree_Name__c", donationRow.get("TributeName"));
     sfdcOpportunity.setField("npsp__Tribute_Type__c", donationRow.get("TributeType"));
     Date d = new SimpleDateFormat("MM/dd/yyyy").parse(transactionRow.get("Date"));
@@ -657,50 +645,66 @@ public class BloomerangToSalesforce {
     sfdcOpportunity.setField("Payment_Gateway_Customer_ID__c", transactionRow.get("Custom: Payment Gateway Customer ID"));
     sfdcOpportunity.setField("Payment_Gateway_Transaction_ID__c", transactionRow.get("Custom: Payment Gateway Transaction ID"));
 
-    sfdcOpportunity.setField("AccountId", constituentIdToAccountId.get(accountNumber));
-    sfdcOpportunity.setField("ContactId", constituentIdToContactId.get(accountNumber));
-
-    String referenceDesignationNumber = donationRow.get("ReferenceDesignationNumber");
-    if (!Strings.isNullOrEmpty(referenceDesignationNumber)) {
-      sfdcOpportunity.setField("Npe03__Recurring_Donation__c", referenceDesignationNumberToRdId.get(referenceDesignationNumber));
-    }
-
-    String donationType;
-    if (!Strings.isNullOrEmpty(referenceDesignationNumber)) {
-      donationType = "Recurring Donation";
-    } else {
-      donationType = "Donation";
-    }
-    String donationDate = transactionRow.get("Date").split(" ")[0];
-    if (!Strings.isNullOrEmpty(donationRow.get("FundName"))) {
-      sfdcOpportunity.setField("Name", donationType + " " + donationDate + " " + donationRow.get("FundName"));
-    } else {
-      sfdcOpportunity.setField("Name", donationType + " " + donationDate);
-    }
-
     String campaignId = null;
     String campaign = donationRow.get("CampaignName");
-    if (!Strings.isNullOrEmpty(campaign) && !campaignNameToId.containsKey(campaign)) {
-      SObject sObject = new SObject("Campaign");
-      sObject.setField("Name", campaign);
-      String id = sfdcClient.insert(sObject).getId();
-      campaignNameToId.put(campaign, id);
-      campaignId = id;
+    if (!Strings.isNullOrEmpty(campaign)) {
+      if (!campaignNameToId.containsKey(campaign)) {
+        SObject sObject = new SObject("Campaign");
+        sObject.setField("Name", campaign);
+        String id = sfdcClient.insert(sObject).getId();
+        campaignNameToId.put(campaign, id);
+        campaignId = id;
+      } else {
+        campaignId = campaignNameToId.get(campaign);
+      }
     }
     String appeal = donationRow.get("AppealName");
-    if (!Strings.isNullOrEmpty(appeal) && !campaignNameToId.containsKey(appeal)) {
-      SObject sObject = new SObject("Campaign");
-      sObject.setField("Name", appeal);
-      sObject.setField("ParentId", campaignNameToId.get(campaign));
-      String id = sfdcClient.insert(sObject).getId();
-      campaignNameToId.put(appeal, id);
-      campaignId = id;
+    if (!Strings.isNullOrEmpty(appeal)) {
+      if (!campaignNameToId.containsKey(appeal)) {
+        SObject sObject = new SObject("Campaign");
+        sObject.setField("Name", appeal);
+        sObject.setField("ParentId", campaignNameToId.get(campaign));
+        String id = sfdcClient.insert(sObject).getId();
+        campaignNameToId.put(appeal, id);
+        campaignId = id;
+      } else {
+        campaignId = campaignNameToId.get(appeal);
+      }
     }
     sfdcOpportunity.setField("CampaignId", campaignId);
 
-    // TODO: This is resulting in many locked-entity retries, likely due to opportunities being grouped together
-    //  by constituent.
+    if (transactionNumberToOppId.containsKey(transactionNumber)) {
+      sfdcOpportunity.setId(transactionNumberToOppId.get(transactionNumber));
+      sfdcClient.batchUpdate(sfdcOpportunity);
+    } else {
+      String accountNumber = transactionRow.get("AccountNumber");
+
+      sfdcOpportunity.setField("Bloomerang_ID__c", transactionNumber);
+      sfdcOpportunity.setField("AccountId", constituentIdToAccountId.get(accountNumber));
+      sfdcOpportunity.setField("ContactId", constituentIdToContactId.get(accountNumber));
+
+      String referenceDesignationNumber = donationRow.get("ReferenceDesignationNumber");
+      if (!Strings.isNullOrEmpty(referenceDesignationNumber)) {
+        sfdcOpportunity.setField("Npe03__Recurring_Donation__c", referenceDesignationNumberToRdId.get(referenceDesignationNumber));
+      }
+
+      String donationType;
+      if (!Strings.isNullOrEmpty(referenceDesignationNumber)) {
+        donationType = "Recurring Donation";
+      } else {
+        donationType = "Donation";
+      }
+      String donationDate = transactionRow.get("Date").split(" ")[0];
+      if (!Strings.isNullOrEmpty(donationRow.get("FundName"))) {
+        sfdcOpportunity.setField("Name", donationType + " " + donationDate + " " + donationRow.get("FundName"));
+      } else {
+        sfdcOpportunity.setField("Name", donationType + " " + donationDate);
+      }
+
+      // TODO: This is resulting in many locked-entity retries, likely due to opportunities being grouped together
+      //  by constituent.
 //    sfdcClient.batchInsert(sfdcOpportunity);
-    sfdcClient.insert(sfdcOpportunity);
+//      sfdcClient.insert(sfdcOpportunity);
+    }
   }
 }
