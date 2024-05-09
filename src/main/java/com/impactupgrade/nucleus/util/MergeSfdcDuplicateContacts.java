@@ -32,9 +32,9 @@ public class MergeSfdcDuplicateContacts {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.crmPrimary = "salesforce";
         envConfig.salesforce.sandbox = false;
-        envConfig.salesforce.url = "smithacademyforexcellencesafe.my.salesforce.com";
-        envConfig.salesforce.username = "team+safe1@impactupgrade.com";
-        envConfig.salesforce.password = "cyp3qve9ETJ.rhy*pwcDfff0d0hfJ3baG5vSivdJoNov";
+        envConfig.salesforce.url = "TODO";
+        envConfig.salesforce.username = "TODO";
+        envConfig.salesforce.password = "TODO";
         envConfig.salesforce.npsp = true;
         envConfig.salesforce.enhancedRecurringDonations = true;
         return envConfig;
