@@ -38,6 +38,7 @@ public class BloomerangToSalesforce {
         envConfig.salesforce.username = "TODO";
         envConfig.salesforce.password = "TODO";
         envConfig.salesforce.enhancedRecurringDonations = true;
+        envConfig.salesforce.npsp = true;
         return envConfig;
       }
     };
