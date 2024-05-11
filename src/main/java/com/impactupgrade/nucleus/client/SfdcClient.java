@@ -919,6 +919,15 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // ACTIVITIES
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public Optional<SObject> getActivityByExternalReference(String externalReference, String... extraFields) throws ConnectionException, InterruptedException {
+    String query = "select " + getFieldsList(TASK_FIELDS, env.getConfig().salesforce.customQueryFields.task, extraFields) + " from task where " + env.getConfig().salesforce.fieldDefinitions.activityExternalReference + " = '" + externalReference + "'";
+    return querySingle(query);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -929,11 +938,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public Optional<SObject> getUserByEmail(String email, String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(USER_FIELDS, env.getConfig().salesforce.customQueryFields.user, extraFields) +  " from user where isActive = true and email = '" + email + "'";
-    return querySingle(query);
-  }
-
-  public Optional<SObject> getActivityByExternalReference(String externalReference, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(TASK_FIELDS, env.getConfig().salesforce.customQueryFields.task, extraFields) + " from task where " + env.getConfig().salesforce.fieldDefinitions.activityExternalReference + " = '" + externalReference + "'";
     return querySingle(query);
   }
 

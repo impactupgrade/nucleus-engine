@@ -31,12 +31,21 @@ public class BloomerangToSalesforce {
     Environment env = new Environment() {
       @Override
       public EnvironmentConfig getConfig() {
+//        EnvironmentConfig envConfig = new EnvironmentConfig();
+//        envConfig.crmPrimary = "salesforce";
+//        envConfig.salesforce.sandbox = false;
+//        envConfig.salesforce.url = "TODO";
+//        envConfig.salesforce.username = "TODO";
+//        envConfig.salesforce.password = "TODO";
+//        envConfig.salesforce.enhancedRecurringDonations = true;
+//        envConfig.salesforce.npsp = true;
+//        return envConfig;
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.crmPrimary = "salesforce";
         envConfig.salesforce.sandbox = false;
-        envConfig.salesforce.url = "TODO";
-        envConfig.salesforce.username = "TODO";
-        envConfig.salesforce.password = "TODO";
+        envConfig.salesforce.url = "communityone.my.salesforce.com";
+        envConfig.salesforce.username = "team+c1@impactupgrade.com";
+        envConfig.salesforce.password = "ap8MwXPb7ZW4bfHHHeguKlt3lOgaaKFbm0ht5nwrwovwz";
         envConfig.salesforce.enhancedRecurringDonations = true;
         envConfig.salesforce.npsp = true;
         return envConfig;
@@ -61,6 +70,7 @@ public class BloomerangToSalesforce {
     String donationFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Donations.csv";
     String emailFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Emails.csv";
     String householdFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Households.csv";
+    String interactionFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Interactions.csv";
     String phoneFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Phones.csv";
     String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/RecurringDonations.csv";
     String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/RecurringDonationPayments.csv";
@@ -155,6 +165,9 @@ public class BloomerangToSalesforce {
 
     Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
         .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId(), (c1, c2) -> c1));
+
+    Map<String, String> extrefToTaskId = sfdcClient.queryListAutoPaged("SELECT Id, CallObject FROM Task WHERE CallObject!=''").stream()
+        .collect(Collectors.toMap(c -> (String) c.getField("CallObject"), c -> c.getId(), (c1, c2) -> c1));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ACCOUNT
@@ -606,6 +619,57 @@ public class BloomerangToSalesforce {
     sfdcClient.batchFlush();
 
     // TODO: Pledges and PledgePayments could be combined into single Opportunities, but there's only a handful from 2014/2015
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // ACTIVITIES
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    List<Map<String, String>> interactionRows;
+    try (InputStream is = new FileInputStream(interactionFile)) {
+      interactionRows = Utils.getCsvData(is);
+    }
+
+    for (Map<String, String> interactionRow : interactionRows) {
+      String contactId = constituentIdToContactId.get(interactionRow.get("AccountNumber"));
+      String accountId = constituentIdToAccountId.get(interactionRow.get("AccountNumber"));
+      if (Strings.isNullOrEmpty(contactId) && Strings.isNullOrEmpty(accountId)) {
+        continue;
+      }
+
+      String type = interactionRow.get("Channel");
+      if (type.equalsIgnoreCase("Phone")) {
+        type = "Call";
+      } else {
+        type = "Other";
+      }
+
+      String subject = interactionRow.get("Subject");
+      String description = interactionRow.get("Channel") + ", " + interactionRow.get("Purpose") + ", " + interactionRow.get("CreatedName") + "\n\n" + interactionRow.get("Note");
+
+      SObject task = new SObject("Task");
+
+      task.setField("Type", type);
+      // HACK! Need somewhere to store this, but can't add custom fields.
+      task.setField("CallObject", interactionRow.get("Id"));
+      task.setField("Subject", subject);
+      task.setField("Description", description);
+      if (!Strings.isNullOrEmpty(contactId)) {
+        task.setField("WhoId", contactId);
+      } else {
+        task.setField("WhatId", accountId);
+      }
+      task.setField("Status", "Completed");
+      task.setField("ActivityDate", new SimpleDateFormat("MM/dd/yyyy").parse(interactionRow.get("Date")));
+
+      if (extrefToTaskId.containsKey(interactionRow.get("Id"))) {
+        task.setId(extrefToTaskId.get(interactionRow.get("Id")));
+        sfdcClient.batchUpdate(task);
+      } else {
+        sfdcClient.batchInsert(task);
+      }
+    }
+
+    sfdcClient.batchFlush();
   }
 
   private void processOpportunity(
@@ -705,7 +769,7 @@ public class BloomerangToSalesforce {
       // TODO: This is resulting in many locked-entity retries, likely due to opportunities being grouped together
       //  by constituent.
 //    sfdcClient.batchInsert(sfdcOpportunity);
-//      sfdcClient.insert(sfdcOpportunity);
+      sfdcClient.insert(sfdcOpportunity);
     }
   }
 }
