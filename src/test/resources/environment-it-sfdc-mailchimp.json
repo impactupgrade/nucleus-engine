@@ -1,0 +1,41 @@
+{
+  "apiKey": "abc123",
+
+  "crmPrimary": "salesforce",
+
+  "salesforce": {
+    "username": "brett@impactupgrade.com",
+    "password": "4mJA6UrqffKZEP35cWnrqxGmeZJGCi2IFHM2P5ag",
+
+    "fieldDefinitions": {
+      "emailOptOut": "HasOptedOutOfEmail",
+      "emailBounced": "",
+      "paymentGatewayName": "Payment_Gateway_Name__c",
+      "paymentGatewayTransactionId": "Payment_Gateway_Transaction_Id__c",
+      "paymentGatewayCustomerId": "Payment_Gateway_Customer_Id__c",
+      "paymentGatewaySubscriptionId": "Payment_Gateway_Subscription_Id__c"
+    },
+    "customQueryFields": {
+      "account": ["External_Reference__c"],
+      "campaign": [],
+      "contact": ["External_Reference__c", "HasOptedOutOfEmail"],
+      "donation": ["Payment_Gateway_Name__c", "Payment_Gateway_Transaction_Id__c", "Payment_Gateway_Customer_Id__c"],
+      "recurringDonation": ["Payment_Gateway_Name__c", "Payment_Gateway_Subscription_Id__c", "Payment_Gateway_Customer_Id__c"],
+      "user": []
+    }
+  },
+
+  "mailchimp": [
+    {
+      "secretKey": "secret-key-here",
+      "lists": [
+        {
+          "id": "list-id-here",
+          "type": "MARKETING",
+          "groups": {},
+          "crmFilter": ""
+        }
+      ]
+    }
+  ]
+}
