@@ -115,9 +115,17 @@ public class MailchimpClient {
   }
 
   public List<MemberInfo> getListMembers(String listId, String status, Calendar sinceLastChanged) throws IOException, MailchimpException {
+    return getListMembers(listId, status, null, sinceLastChanged);
+  }
+
+  public List<MemberInfo> getListMembers(String listId, String status, String fields, Calendar sinceLastChanged) throws IOException, MailchimpException {
     GetMembersMethod getMembersMethod = new GetMembersMethod(listId);
     getMembersMethod.status = status;
-    getMembersMethod.fields = "members.email_address,members.tags,total_items"; // HUGE performance improvement -- limit to only what we need
+    if (!Strings.isNullOrEmpty(fields)) {
+      getMembersMethod.fields = fields;
+    } else {
+      getMembersMethod.fields = "members.email_address,members.tags,total_items"; // HUGE performance improvement -- limit to only what we need
+    }
     getMembersMethod.count = 1000; // subjective, but this is timing out periodically -- may need to dial it back further
     env.logJobInfo("retrieving list {} contacts", listId);
     if (sinceLastChanged != null) {

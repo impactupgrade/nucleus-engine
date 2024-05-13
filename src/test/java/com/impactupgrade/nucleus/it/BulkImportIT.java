@@ -496,20 +496,4 @@ public class BulkImportIT extends AbstractIT {
 
   // TODO: contact campaign membership, multiple campaigns at once
 
-  protected void postToBulkImport(List<Object> values) throws Exception {
-    final CsvMapper csvMapper = new CsvMapper();
-    File file = File.createTempFile("nucleus-it-", ".csv");
-    csvMapper.writeValue(file, values);
-
-    final FileDataBodyPart filePart = new FileDataBodyPart("file", file);
-    FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
-    final FormDataMultiPart multiPart = (FormDataMultiPart) formDataMultiPart.bodyPart(filePart);
-    Response response = target("/api/crm/bulk-import/file").request().header("Nucleus-Api-Key", "abc123")
-        .post(Entity.entity(multiPart, multiPart.getMediaType()));
-    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-
-    // The endpoint spins off an async thread, so give it time to complete. May need to bump this up if we introduce
-    // tests with a larger number of import rows.
-    Thread.sleep(10000L);
-  }
 }

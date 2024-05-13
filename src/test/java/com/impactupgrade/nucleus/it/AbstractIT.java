@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.it;
 
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.hubspot.AssociationSearchResult;
 import com.impactupgrade.integration.hubspot.AssociationSearchResults;
@@ -24,7 +25,9 @@ import com.impactupgrade.nucleus.util.TestUtil;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
+import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
@@ -34,7 +37,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Application;
+import javax.ws.rs.core.Response;
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -59,6 +65,7 @@ public abstract class AbstractIT extends JerseyTest {
   protected static final EnvironmentFactory envFactoryHubspotStripe = new EnvironmentFactory("environment-it-hubspot-stripe.json");
   protected static final EnvironmentFactory envFactorySfdcStripe = new EnvironmentFactory("environment-it-sfdc-stripe.json");
   protected static final EnvironmentFactory envFactoryVirtuousStripe = new EnvironmentFactory("environment-it-virtuous-stripe.json");
+  protected static final EnvironmentFactory envFactorySfdcMailchimp = new EnvironmentFactory("environment-it-sfdc-mailchimp.json");
 
   protected final App app;
   protected final Environment env;
@@ -217,5 +224,22 @@ public abstract class AbstractIT extends JerseyTest {
 
     // ensure we're actually clean
     assertEquals(0, crmService.searchContacts(ContactSearch.byKeywords("Tester")).getResults().size());
+  }
+
+  protected void postToBulkImport(List<Object> values) throws Exception {
+    final CsvMapper csvMapper = new CsvMapper();
+    File file = File.createTempFile("nucleus-it-", ".csv");
+    csvMapper.writeValue(file, values);
+
+    final FileDataBodyPart filePart = new FileDataBodyPart("file", file);
+    FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
+    final FormDataMultiPart multiPart = (FormDataMultiPart) formDataMultiPart.bodyPart(filePart);
+    Response response = target("/api/crm/bulk-import/file").request().header("Nucleus-Api-Key", "abc123")
+            .post(Entity.entity(multiPart, multiPart.getMediaType()));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    // The endpoint spins off an async thread, so give it time to complete. May need to bump this up if we introduce
+    // tests with a larger number of import rows.
+    Thread.sleep(10000L);
   }
 }
