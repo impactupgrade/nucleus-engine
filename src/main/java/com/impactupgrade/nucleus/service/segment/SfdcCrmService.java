@@ -34,6 +34,7 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.CacheUtil;
 import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.metadata.FieldType;
+import com.sforce.soap.partner.QueryResult;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
@@ -148,7 +149,9 @@ public class SfdcCrmService implements CrmService {
   @Override
   // currentPageToken assumed to be the offset index
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws InterruptedException, ConnectionException {
-    return toCrmContact(sfdcClient.searchContacts(contactSearch));
+    List<SObject> results = sfdcClient.searchContacts(contactSearch);
+    PagedResults<SObject> pagedResults = PagedResults.pagedResultsFromCurrentOffset(results, contactSearch);
+    return toCrmContact(pagedResults);
   }
 
   @Override
@@ -258,7 +261,19 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public Optional<CrmUser> getUserByEmail(String email) throws Exception {
-    return toCrmUser (sfdcClient.getUserByEmail(email));
+    return toCrmUser(sfdcClient.getUserByEmail(email));
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+    QueryResult queryResult = sfdcClient.queryMore(queryLocator);
+    return toCrmContactPage(queryResult);
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
+    QueryResult queryResult = sfdcClient.queryMore(queryLocator);
+    return toCrmAccountPage(queryResult);
   }
 
   @Override
@@ -1005,22 +1020,31 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    List<CrmContact> contacts = sfdcClient.getEmailContacts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
+  public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList)
+      throws Exception {
+    List<QueryResult> queryResults = sfdcClient.getEmailContacts(updatedSince, communicationList.crmFilter);
+
+    // Why not a getEmailLeads method? Because Leads are super unique to SFDC, so we don't want to add another
+    // SFDC-specific method to CrmService. Additionally, the fields we care about in Lead are named identically as the
+    // ones in Contact, so it fits cleanly into the CrmContact model.
     if (!Strings.isNullOrEmpty(communicationList.crmLeadFilter)) {
-      contacts.addAll(sfdcClient.getEmailLeads(updatedSince, communicationList.crmLeadFilter).stream().map(this::toCrmContact).toList());
+      queryResults.add(sfdcClient.getEmailLeads(updatedSince, communicationList.crmLeadFilter));
     }
-    return contacts;
+
+    return toCrmContactPages(queryResults);
   }
 
   @Override
-  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return sfdcClient.getEmailAccounts(updatedSince, communicationList.crmAccountFilter).stream().map(this::toCrmAccount).collect(Collectors.toList());
+  public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    QueryResult queryResult = sfdcClient.getEmailAccounts(updatedSince, communicationList.crmAccountFilter);
+    return toCrmAccountPages(List.of(queryResult));
   }
 
   @Override
-  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return sfdcClient.getSmsContacts(updatedSince, communicationList.crmFilter).stream().map(this::toCrmContact).collect(Collectors.toList());
+  public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    List<QueryResult> queryResults = sfdcClient.getSmsContacts(updatedSince, communicationList.crmFilter);
+    return toCrmContactPages(queryResults);
   }
 
   @Override
@@ -2456,9 +2480,13 @@ public class SfdcCrmService implements CrmService {
     return sObjects.stream().map(this::toCrmAccount).collect(Collectors.toList());
   }
 
-  protected PagedResults<CrmAccount> toCrmAccount(PagedResults<SObject> sObjects) {
-    return new PagedResults<>(sObjects.getResults().stream().map(this::toCrmAccount).collect(Collectors.toList()),
-        sObjects.getPageSize(), sObjects.getNextPageToken());
+  protected PagedResults<CrmAccount> toCrmAccount(PagedResults<SObject> pagedResults) {
+    PagedResults<CrmAccount> newPagedResults = new PagedResults<>();
+    for (PagedResults.ResultSet<SObject> resultSet : pagedResults.getResultSets()) {
+      List<CrmAccount> crmAccounts = resultSet.getRecords().stream().map(this::toCrmAccount).collect(Collectors.toList());
+      newPagedResults.addResultSet(new PagedResults.ResultSet<>(crmAccounts, resultSet.getNextPageToken()));
+    }
+    return newPagedResults;
   }
 
   protected CrmContact toCrmContact(SObject sObject) {
@@ -2571,9 +2599,13 @@ public class SfdcCrmService implements CrmService {
     return sObjects.stream().map(this::toCrmContact).collect(Collectors.toList());
   }
 
-  protected PagedResults<CrmContact> toCrmContact(PagedResults<SObject> sObjects) {
-    return new PagedResults<>(sObjects.getResults().stream().map(this::toCrmContact).collect(Collectors.toList()),
-        sObjects.getPageSize(), sObjects.getNextPageToken());
+  protected PagedResults<CrmContact> toCrmContact(PagedResults<SObject> pagedResults) {
+    PagedResults<CrmContact> newPagedResults = new PagedResults<>();
+    for (PagedResults.ResultSet<SObject> resultSet : pagedResults.getResultSets()) {
+      List<CrmContact> crmContacts = resultSet.getRecords().stream().map(this::toCrmContact).collect(Collectors.toList());
+      newPagedResults.addResultSet(new PagedResults.ResultSet<>(crmContacts, resultSet.getNextPageToken()));
+    }
+    return newPagedResults;
   }
 
   protected CrmDonation toCrmDonation(SObject sObject) {
@@ -2754,5 +2786,31 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmUser> toCrmUser(Optional<SObject> sObject) {
     return sObject.map(this::toCrmUser);
+  }
+
+  protected PagedResults<CrmAccount> toCrmAccountPages(List<QueryResult> queryResults) {
+    PagedResults<CrmAccount> pagedResults = new PagedResults<>();
+    for (QueryResult queryResult : queryResults) {
+      pagedResults.addResultSet(toCrmAccountPage(queryResult));
+    }
+    return pagedResults;
+  }
+
+  protected PagedResults.ResultSet<CrmAccount> toCrmAccountPage(QueryResult queryResult) {
+    List<CrmAccount> crmAccounts = Arrays.stream(queryResult.getRecords()).map(this::toCrmAccount).toList();
+    return PagedResults.ResultSet.resultSetFromCurrentOffset(crmAccounts, queryResult.getQueryLocator());
+  }
+
+  protected PagedResults<CrmContact> toCrmContactPages(List<QueryResult> queryResults) {
+    PagedResults<CrmContact> pagedResults = new PagedResults<>();
+    for (QueryResult queryResult : queryResults) {
+      pagedResults.addResultSet(toCrmContactPage(queryResult));
+    }
+    return pagedResults;
+  }
+
+  protected PagedResults.ResultSet<CrmContact> toCrmContactPage(QueryResult queryResult) {
+    List<CrmContact> crmContacts = Arrays.stream(queryResult.getRecords()).map(this::toCrmContact).toList();
+    return PagedResults.ResultSet.resultSetFromCurrentOffset(crmContacts, queryResult.getQueryLocator());
   }
 }

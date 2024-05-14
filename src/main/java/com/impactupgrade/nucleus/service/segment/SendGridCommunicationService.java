@@ -56,7 +56,8 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
 
       for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
         // TODO: SG has a max of 30k per call, so we may need to break this down for some customers.
-        List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
+        List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList)
+            .getResultSets().stream().flatMap(rs -> rs.getRecords().stream()).toList();
         Map<String, List<String>> contactCampaignNames = getContactCampaignNames(crmContacts, communicationList);
 
         env.logJobInfo("upserting {} contacts to list {}", crmContacts.size(), communicationList.id);

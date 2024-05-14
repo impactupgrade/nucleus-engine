@@ -87,7 +87,8 @@ public class PaypalController {
     APIContext apiContext = new APIContext(
         env.getConfig().paypal.clientId, 
         env.getConfig().paypal.clientSecret, 
-        env.getConfig().paypal.mode);
+        env.getConfig().paypal.mode
+    );
     apiContext.addConfiguration(Constants.PAYPAL_WEBHOOK_ID, env.getConfig().paypal.webhookId);
 
     boolean validEvent = Event.validateReceivedEvent(apiContext, getHeadersInfo(request), requestBody);

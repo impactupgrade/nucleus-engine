@@ -163,10 +163,10 @@ public class HubSpotCrmService implements CrmService {
 
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       List<CrmContact> contacts = toCrmContact(hsClient.contact().searchByEmail(contactSearch.email, contactFields).getResults());
-      return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
+      return PagedResults.pagedResultsFromCurrentOffset(contacts, contactSearch);
     } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
       List<CrmContact> contacts =  toCrmContact(hsClient.contact().searchByPhone(contactSearch.phone, contactFields).getResults());
-      return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
+      return PagedResults.pagedResultsFromCurrentOffset(contacts, contactSearch);
     } else {
       return new PagedResults<>();
     }
@@ -226,6 +226,16 @@ public class HubSpotCrmService implements CrmService {
   public Optional<CrmUser> getUserByEmail(String id) throws Exception {
     // TODO: will need to add User support to HS lib, if even possible
     return Optional.empty();
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
+    return null;
   }
 
   @Override
@@ -986,7 +996,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+  public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<Filter> filters = new ArrayList<>();
     filters.add(new Filter("email", "HAS_PROPERTY", null));
     if (updatedSince != null) {
@@ -1004,17 +1014,19 @@ public class HubSpotCrmService implements CrmService {
     }
 
     List<FilterGroup> filterGroups = List.of(new FilterGroup(filters));
+    // TODO: We could introduce true pagination in the future, but for now, this isn't as heavy of a lift as SFDC is.
     List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, contactFields);
-    return results.stream().map(this::toCrmContact).collect(Collectors.toList());
+    List<CrmContact> crmContacts = results.stream().map(this::toCrmContact).collect(Collectors.toList());
+    return PagedResults.unpagedResults(crmContacts);
   }
 
   @Override
-  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+  public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<Filter> filters1 = new ArrayList<>();
     List<Filter> filters2 = new ArrayList<>();
     filters1.add(new Filter("phone", "HAS_PROPERTY", null));
@@ -1036,8 +1048,10 @@ public class HubSpotCrmService implements CrmService {
     }
 
     List<FilterGroup> filterGroups = List.of(new FilterGroup(filters1), new FilterGroup(filters2));
+    // TODO: We could introduce true pagination in the future, but for now, this isn't as heavy of a lift as SFDC is.
     List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, contactFields);
-    return results.stream().map(this::toCrmContact).collect(Collectors.toList());
+    List<CrmContact> crmContacts = results.stream().map(this::toCrmContact).collect(Collectors.toList());
+    return PagedResults.unpagedResults(crmContacts);
   }
 
   @Override

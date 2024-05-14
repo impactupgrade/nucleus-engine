@@ -65,7 +65,7 @@ public class BareCrmService implements CrmService {
 
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
-    return new PagedResults<>(Collections.emptyList(), 0, "");
+    return new PagedResults<>();
   }
 
   @Override
@@ -208,18 +208,18 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
@@ -261,6 +261,16 @@ public class BareCrmService implements CrmService {
   @Override
   public Optional<CrmUser> getUserByEmail(String email) throws Exception {
     return Optional.empty();
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
+    return null;
   }
 
   @Override

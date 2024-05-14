@@ -140,7 +140,7 @@ public class BloomerangCrmService implements CrmService {
 //      env.logJobError("search failed", e);
     }
     if (constituentSearchResults == null) {
-      return PagedResults.getPagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
+      return PagedResults.pagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
     }
 
     for (Constituent constituent : constituentSearchResults.results) {
@@ -168,7 +168,7 @@ public class BloomerangCrmService implements CrmService {
         .collect(Collectors.toList());
 
     List<CrmContact> crmContacts = toCrmContact(constituents);
-    return PagedResults.getPagedResultsFromCurrentOffset(crmContacts, contactSearch);
+    return PagedResults.pagedResultsFromCurrentOffset(crmContacts, contactSearch);
   }
 
   @Override
@@ -376,18 +376,18 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
@@ -480,19 +480,21 @@ public class BloomerangCrmService implements CrmService {
     contactSearch.phone = phone.orElse(null);
     contactSearch.keywords = name.map(Set::of).orElse(null);
     // TODO: page them?
-    PagedResults<CrmContact> contacts = searchContacts(contactSearch);
+    PagedResults<CrmContact> pagedResults = searchContacts(contactSearch);
 
     List<CrmRecurringDonation> rds = new ArrayList<>();
-    for (CrmContact contact : contacts.getResults()) {
-      rds.addAll(
-              get(
-                      BLOOMERANG_URL + "transactions?type=RecurringDonation&accountId=" + contact.id + "&orderBy=Date&orderDirection=Desc",
-                      headers(),
-                      DonationResults.class
-              ).results.stream()
-                      .map(rd -> toCrmRecurringDonation(rd, contact))
-                      .collect(Collectors.toList())
-      );
+    for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
+      for (CrmContact contact : resultSet.getRecords()) {
+        rds.addAll(
+            get(
+                BLOOMERANG_URL + "transactions?type=RecurringDonation&accountId=" + contact.id + "&orderBy=Date&orderDirection=Desc",
+                headers(),
+                DonationResults.class
+            ).results.stream()
+                .map(rd -> toCrmRecurringDonation(rd, contact))
+                .collect(Collectors.toList())
+        );
+      }
     }
     return rds;
   }
@@ -594,6 +596,16 @@ public class BloomerangCrmService implements CrmService {
   public Optional<CrmUser> getUserByEmail(String email) throws Exception {
     // Unlikely to be relevant for Bloomerang.
     return Optional.empty();
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
+    return null;
   }
 
   @Override

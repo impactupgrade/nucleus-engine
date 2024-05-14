@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class CrmRecord implements Serializable {
+public abstract class CrmRecord implements Serializable {
 
   public String id;
 

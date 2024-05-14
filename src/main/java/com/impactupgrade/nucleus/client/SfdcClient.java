@@ -13,8 +13,8 @@ import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
+import com.sforce.soap.partner.QueryResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.jruby.embed.LocalContextScope;
@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.HttpClient.post;
@@ -521,26 +520,26 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryListAutoPaged(query);
   }
 
-  public Collection<SObject> getEmailContacts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  public List<QueryResult> getEmailContacts(Calendar updatedSince, String filter, String... extraFields)
+      throws ConnectionException, InterruptedException {
+    List<QueryResult> queryResults = new ArrayList<>();
+
     String updatedSinceClause = "";
-
     String ts = updatedSince == null ? "" : new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
-
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + ts;
     }
-
-    List<SObject> contacts = queryEmailContacts(updatedSinceClause, filter, extraFields);
+    queryResults.add(queryEmailContacts(updatedSinceClause, filter, extraFields));
 
     if (updatedSince != null) {
       updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + ts + " OR Campaign.SystemModStamp >= " + ts + ")";
-      contacts.addAll(queryEmailContacts(updatedSinceClause, filter, extraFields));
+      queryResults.add(queryEmailContacts(updatedSinceClause, filter, extraFields));
     }
 
-    return contacts;
+    return queryResults;
   }
 
-  protected List<SObject> queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  protected QueryResult queryEmailContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " AND " + filter;
     }
@@ -567,14 +566,14 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     // IMPORTANT: Order by CreatedDate ASC, ensuring this is FIFO for contacts sharing the same email address.
     // The oldest record is typically the truth.
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where Email!=''" + updatedSinceClause + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
-    return queryListAutoPaged(query);
+    return query(query);
   }
 
-  public Collection<SObject> getEmailAccounts(Calendar updatedSince, String filter, String... extraFields)
+  public QueryResult getEmailAccounts(Calendar updatedSince, String filter, String... extraFields)
       throws ConnectionException, InterruptedException {
     String emailField = env.getConfig().salesforce.fieldDefinitions.accountEmail;
     if (Strings.isNullOrEmpty(emailField)) {
-      return Collections.emptyList();
+      return new QueryResult();
     }
 
     String updatedSinceClause = "";
@@ -606,51 +605,38 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
 
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where " + emailField + "!=''" + updatedSinceClause + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
-    return queryListAutoPaged(query);
+    return query(query);
   }
 
-  public Collection<SObject> getSmsContacts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
-    String updatedSinceClause = "";
+  public List<QueryResult> getSmsContacts(Calendar updatedSince, String filter, String... extraFields)
+      throws ConnectionException, InterruptedException {
+    List<QueryResult> queryResults = new ArrayList<>();
 
+    String updatedSinceClause = "";
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    List<SObject> contacts = querySmsContacts(updatedSinceClause, filter, extraFields);
+    queryResults.add(querySmsContacts(updatedSinceClause, filter, extraFields));
 
     if (updatedSince != null) {
       updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
+      queryResults.add(querySmsContacts(updatedSinceClause, filter, extraFields));
     }
-    contacts.addAll(querySmsContacts(updatedSinceClause, filter, extraFields));
 
-    // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
-    Map<String, SObject> uniqueContacts = contacts.stream().collect(Collectors.toMap(
-        so -> {
-          String phone = (String) so.getField("MobilePhone");
-          if (Strings.isNullOrEmpty(phone)) {
-            phone = (String) so.getField("HomePhone");
-          }
-          if (Strings.isNullOrEmpty(phone)) {
-            phone = (String) so.getField("Phone");
-          }
-          return phone.replaceAll("[\\D]", "");
-        },
-        Function.identity(),
-        // FIFO
-        (so1, so2) -> so1
-    ));
-    return uniqueContacts.values();
+    return queryResults;
   }
 
-  protected List<SObject> querySmsContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  protected QueryResult querySmsContacts(String updatedSinceClause, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     if (!Strings.isNullOrEmpty(filter)) {
       filter = " AND " + filter;
     }
 
+    // TODO: HomePhone?
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where (Phone != '' OR MobilePhone != '')" + updatedSinceClause + filter;
-    return queryListAutoPaged(query);
+    return query(query);
   }
 
-  public PagedResults<SObject> searchContacts(ContactSearch contactSearch, String... extraFields)
+  public List<SObject> searchContacts(ContactSearch contactSearch, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<String> clauses = new ArrayList<>();
 
@@ -736,8 +722,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       query += " OFFSET " + offset;
     }
 
-    List<SObject> results = queryList(query);
-    return PagedResults.getPagedResultsFromCurrentOffset(results, contactSearch);
+    return queryList(query);
   }
 
   public List<SObject> getContactsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
@@ -752,7 +737,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // LEADS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Collection<SObject> getEmailLeads(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
+  public QueryResult getEmailLeads(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     String updatedSinceClause = "";
     if (updatedSince != null) {
       updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
@@ -763,16 +748,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String query = "select " + getFieldsList(LEAD_FIELDS, env.getConfig().salesforce.customQueryFields.lead, extraFields) +  " from lead where Email != null" + updatedSinceClause + filter;
-    List<SObject> leads = queryListAutoPaged(query);
-
-    // SOQL has no DISTINCT clause, and GROUP BY has tons of caveats, so we're filtering out duplicates in-mem.
-    Map<String, SObject> uniqueLeads = leads.stream().collect(Collectors.toMap(
-        so -> so.getField("Email").toString(),
-        Function.identity(),
-        // FIFO
-        (so1, so2) -> so1
-    ));
-    return uniqueLeads.values();
+    return query(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -787,7 +763,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public List<SObject> getDonationsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(ids, "Id", "Opportunity", DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields);
   }
-
 
   public List<SObject> getDonationsByUniqueField(String fieldName, List<String> values, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(values, fieldName, "Opportunity", DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields);

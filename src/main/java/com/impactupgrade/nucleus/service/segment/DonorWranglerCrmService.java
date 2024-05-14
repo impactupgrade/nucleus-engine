@@ -76,12 +76,12 @@ public class DonorWranglerCrmService implements BasicCrmService {
       Optional<CrmContact> crmContact = toCrmContact(
           dwClient.getContactByEmail(contactSearch.email)
       );
-      return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
+      return PagedResults.pagedResultsFromCurrentOffset(crmContact, contactSearch);
     } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
       Optional<CrmContact> crmContact = toCrmContact(
           dwClient.contactSearch("phone", contactSearch.phone)
       );
-      return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
+      return PagedResults.pagedResultsFromCurrentOffset(crmContact, contactSearch);
     } else {
       return new PagedResults<>();
     }
@@ -129,6 +129,16 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
   public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
     return Collections.emptyMap();
   }
@@ -139,20 +149,18 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    // TODO: lastUpdate field now available
-    return Collections.emptyList();
+  public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    // TODO: lastUpdate field now available
-    return Collections.emptyList();
+  public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override

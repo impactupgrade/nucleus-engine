@@ -9,10 +9,12 @@ import com.impactupgrade.nucleus.client.MinistryByTextClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.Calendar;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 public class MinistryByTextCommunicationService extends AbstractCommunicationService {
 
@@ -39,12 +41,17 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
       MinistryByTextClient mbtClient = new MinistryByTextClient(mbtConfig, env);
 
       for (EnvironmentConfig.CommunicationList communicationList : mbtConfig.lists) {
-        List<CrmContact> crmContacts = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
+        Set<String> seenPhones = new HashSet<>();
 
-        for (CrmContact crmContact : crmContacts) {
-          if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
-            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phoneNumberForSMS(), communicationList.id);
-            mbtClient.upsertSubscriber(crmContact, mbtConfig, communicationList);
+        PagedResults<CrmContact> pagedResults = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
+        for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
+          for (CrmContact crmContact : resultSet.getRecords()) {
+            String smsPn = crmContact.phoneNumberForSMS();
+            if (!Strings.isNullOrEmpty(smsPn) && !seenPhones.contains(smsPn)) {
+              env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phoneNumberForSMS(), communicationList.id);
+              mbtClient.upsertSubscriber(crmContact, mbtConfig, communicationList);
+              seenPhones.add(smsPn);
+            }
           }
         }
       }

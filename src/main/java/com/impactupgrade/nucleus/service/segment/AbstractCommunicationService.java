@@ -17,11 +17,9 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class AbstractCommunicationService implements CommunicationService {
@@ -43,18 +41,6 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       return Collections.emptyMap();
     }
     return env.primaryCrmService().getContactCampaignsByContactIds(crmContactIds, communicationList);
-  }
-
-  protected List<CrmContact> getEmailContacts(Calendar lastSync, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
-
-    Map<String, CrmContact> uniqueContacts = crmContacts.stream().collect(Collectors.toMap(
-        so -> so.email.toLowerCase(Locale.ROOT),
-        Function.identity(),
-        // IMPORTANT: FIFO. If contacts share an email address, the oldest record is typically the truth.
-        (so1, so2) -> so1
-    ));
-    return new ArrayList<>(uniqueContacts.values());
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,

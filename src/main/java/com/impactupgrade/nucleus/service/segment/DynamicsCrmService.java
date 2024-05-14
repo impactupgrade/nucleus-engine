@@ -68,10 +68,10 @@ public class DynamicsCrmService implements BasicCrmService {
     DynamicsCrmClient.Contact contact;
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       contact = dynamicsCrmClient.getContactByEmail(contactSearch.email);
-      return PagedResults.getPagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
+      return PagedResults.pagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
     } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
       contact = dynamicsCrmClient.getContactByPhoneNumber(contactSearch.phone);
-      return PagedResults.getPagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
+      return PagedResults.pagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
     } else {
       return new PagedResults<>();
     }
@@ -162,22 +162,32 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return null;
+  public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
   public List<CrmUser> getUsers() throws Exception {
+    return null;
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
     return null;
   }
 
