@@ -9,11 +9,13 @@ import com.impactupgrade.nucleus.client.ConstantContactClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.Calendar;
-import java.util.List;
 import java.util.Optional;
 
+// TODO: NEEDS FULLY UPDATED WITH EVERYTHING NEW IN THE MAILCHIMP SERVICE! Likely implies genericizing some of the MC
+//  logic and pulling it upstream to AbstractCommunicationService.
 public class ConstantContactCommunicationService extends AbstractCommunicationService {
 
   @Override
@@ -32,10 +34,10 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
       ConstantContactClient constantContactClient = new ConstantContactClient(communicationPlatform, env);
 
       for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
-        List<CrmContact> crmContacts = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
-        for (CrmContact crmContact : crmContacts) {
-          if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
-            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phoneNumberForSMS(), communicationList.id);
+        PagedResults<CrmContact> pagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
+        for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
+          for (CrmContact crmContact : resultSet.getRecords()) {
+            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.email, communicationList.id);
             constantContactClient.upsertContact(crmContact, communicationList.id);
           }
         }

@@ -264,7 +264,7 @@ public class VirtuousCrmService implements CrmService {
 
     VirtuousClient.Query query = contactQuery(conditions);
     List<CrmContact> contacts = virtuousClient.queryContacts(query).stream().map(this::asCrmContact).collect(Collectors.toList());
-    return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
+    return PagedResults.pagedResultsFromCurrentOffset(contacts, contactSearch);
   }
 
   private VirtuousClient.Query contactQuery(List<VirtuousClient.QueryCondition> queryConditions) {
@@ -467,15 +467,17 @@ public class VirtuousCrmService implements CrmService {
     name.ifPresent(s -> contactSearch.keywords = Set.of(s));
     email.ifPresent(s -> contactSearch.email = s);
     phone.ifPresent(s -> contactSearch.phone = s);
-    PagedResults<CrmContact> crmContacts = searchContacts(contactSearch);
+    PagedResults<CrmContact> pagedResults = searchContacts(contactSearch);
 
     List<CrmRecurringDonation> results = new ArrayList<>();
 
     // TODO: Auto-page? Or stick to the first page out of performance concerns?
-    for (CrmContact crmContact : crmContacts.getResults()) {
-      VirtuousClient.RecurringGifts recurringGifts = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(crmContact.id));
-      for (VirtuousClient.RecurringGift recurringGift : recurringGifts.list) {
-        results.add(asCrmRecurringDonation(recurringGift));
+    for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
+      for (CrmContact crmContact : resultSet.getRecords()) {
+        VirtuousClient.RecurringGifts recurringGifts = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(crmContact.id));
+        for (VirtuousClient.RecurringGift recurringGift : recurringGifts.list) {
+          results.add(asCrmRecurringDonation(recurringGift));
+        }
       }
     }
 
@@ -483,16 +485,16 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+  public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<VirtuousClient.Contact> contacts = virtuousClient.getContactsModifiedAfter(updatedSince);
     if (CollectionUtils.isEmpty(contacts)) {
-      return Collections.emptyList();
+      return new PagedResults<>();
     }
 
     if (!Strings.isNullOrEmpty(communicationList.crmFilter)) {
       List<VirtuousClient.ContactIndividualShort> contactIndividuals = virtuousClient.getContactIndividuals(communicationList.crmFilter);
       if (CollectionUtils.isEmpty(contactIndividuals)) {
-        return Collections.emptyList();
+        return new PagedResults<>();
       }
       Set<Integer> ids = contactIndividuals.stream()
           .map(contactIndividualShort -> contactIndividualShort.id)
@@ -502,27 +504,28 @@ public class VirtuousCrmService implements CrmService {
           .collect(Collectors.toList());
     }
 
-    return contacts.stream()
-        .map(this::asCrmContact)
-        .collect(Collectors.toList());
+    // TODO: We could introduce true pagination in the future, but for now, this isn't as heavy of a lift as SFDC is.
+    List<CrmContact> results = contacts.stream().map(this::asCrmContact).collect(Collectors.toList());
+    PagedResults.ResultSet<CrmContact> resultSet = new PagedResults.ResultSet<>(results, null);
+    return new PagedResults<>(resultSet);
   }
 
   @Override
-  public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
-  public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+  public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<VirtuousClient.Contact> contacts = virtuousClient.getContactsModifiedAfter(updatedSince);
     if (CollectionUtils.isEmpty(contacts)) {
-      return Collections.emptyList();
+      return new PagedResults<>();
     }
 
     if (!Strings.isNullOrEmpty(communicationList.crmFilter)) {
       List<VirtuousClient.ContactIndividualShort> contactIndividuals = virtuousClient.getContactIndividuals(communicationList.crmFilter);
       if (CollectionUtils.isEmpty(contactIndividuals)) {
-        return Collections.emptyList();
+        return new PagedResults<>();
       }
       Set<Integer> ids = contactIndividuals.stream()
           .map(contactIndividualShort -> contactIndividualShort.id)
@@ -532,9 +535,10 @@ public class VirtuousCrmService implements CrmService {
           .collect(Collectors.toList());
     }
 
-    return contacts.stream()
-        .map(this::asCrmContact)
-        .collect(Collectors.toList());
+    // TODO: We could introduce true pagination in the future, but for now, this isn't as heavy of a lift as SFDC is.
+    List<CrmContact> results = contacts.stream().map(this::asCrmContact).collect(Collectors.toList());
+    PagedResults.ResultSet<CrmContact> resultSet = new PagedResults.ResultSet<>(results, null);
+    return new PagedResults<>(resultSet);
   }
 
   @Override
@@ -556,6 +560,16 @@ public class VirtuousCrmService implements CrmService {
   @Override
   public Optional<CrmUser> getUserByEmail(String email) throws Exception {
     return Optional.empty();
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
+  public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
+    return null;
   }
 
   @Override

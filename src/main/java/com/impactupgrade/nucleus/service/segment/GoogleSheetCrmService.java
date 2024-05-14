@@ -112,6 +112,16 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
+    public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
+        return null;
+    }
+
+    @Override
+    public PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception {
+        return null;
+    }
+
+    @Override
     public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
         return Collections.emptyMap();
     }
@@ -122,18 +132,18 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-        return Collections.emptyList();
+    public PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+        return new PagedResults<>();
     }
 
     @Override
-    public List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-        return Collections.emptyList();
+    public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+        return new PagedResults<>();
     }
 
     @Override
-    public List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
-        return null;
+    public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+        return new PagedResults<>();
     }
 
     @Override

@@ -72,16 +72,16 @@ public interface CrmService extends SegmentService {
   default List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
-      Optional<CrmContact> contact = searchContacts(ContactSearch.byEmail(email)).getSingleResult();
-      contact.ifPresent(contacts::add);
+      searchContacts(ContactSearch.byEmail(email)).getResultSets().stream()
+          .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
     }
     return contacts;
   }
   default List<CrmContact> getContactsByPhones(List<String> phones) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String phone : phones) {
-      Optional<CrmContact> contact = searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
-      contact.ifPresent(contacts::add);
+      searchContacts(ContactSearch.byPhone(phone)).getResultSets().stream()
+          .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
     }
     return contacts;
   }
@@ -185,9 +185,11 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMUNICATION SYNC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  List<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
-  List<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
-  List<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
+
+  // Must use PagedResults due to syncs sometimes being massive and requiring a large amount of memory.
+  PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
+  PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
+  PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
@@ -199,9 +201,17 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // USERS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   List<CrmUser> getUsers() throws Exception;
   Optional<CrmUser> getUserById(String id) throws Exception;
   Optional<CrmUser> getUserByEmail(String email) throws Exception;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // PAGINATION
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception;
+  PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // STATS
@@ -220,7 +230,7 @@ public interface CrmService extends SegmentService {
   void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // PORTAL FIELD UTILS
+  // PORTAL UTILS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   Map<String, String> getContactLists(CrmContactListType listType) throws Exception;

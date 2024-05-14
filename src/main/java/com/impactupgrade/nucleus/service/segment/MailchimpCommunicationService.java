@@ -14,6 +14,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
@@ -56,16 +57,41 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         // clear the cache, since fields differ between audiences
         mergeFieldsNameToTag.clear();
 
-        List<CrmContact> crmContacts = getEmailContacts(lastSync, communicationList);
+        MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
+        List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
+        Set<String> seenEmails = new HashSet<>();
 
-        Set<String> seenEmails = crmContacts.stream().map(c -> c.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-        List<CrmContact> fauxContacts = env.primaryCrmService().getEmailAccounts(lastSync, communicationList).stream()
-                .filter(account -> !seenEmails.contains(account.email.toLowerCase(Locale.ROOT)))
-                .map(this::asCrmContact)
-                .toList();
-        List<CrmContact> contacts = Stream.concat(crmContacts.stream(), fauxContacts.stream()).toList();
+        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
+        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
+          do {
+            syncContacts(resultSet, mailchimpConfig, communicationList, listMembers, seenEmails, mailchimpClient);
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              // next page
+              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
 
-        syncContacts(contacts, mailchimpConfig, communicationList);
+        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(lastSync, communicationList);
+        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
+          do {
+            PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
+            fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
+            syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, seenEmails, mailchimpClient);
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              // next page
+              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
+
+        if (mailchimpConfig.enableCrmBasedArchival) {
+          massArchive(mailchimpConfig, communicationList, listMembers, seenEmails, mailchimpClient);
+        }
       }
     }
   }
@@ -95,12 +121,15 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     return crmContact;
   }
 
-  protected void syncContacts(List<CrmContact> crmContacts, EnvironmentConfig.Mailchimp mailchimpConfig,
-      EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
-
+  protected void syncContacts(PagedResults.ResultSet<CrmContact> resultSet, EnvironmentConfig.Mailchimp mailchimpConfig,
+      EnvironmentConfig.CommunicationList communicationList, List<MemberInfo> listMembers, Set<String> seenEmails,
+      MailchimpClient mailchimpClient) {
     List<CrmContact> contactsToUpsert = new ArrayList<>();
     List<CrmContact> contactsToArchive = new ArrayList<>();
+
+    List<CrmContact> crmContacts = resultSet.getRecords().stream()
+        .filter(crmContact -> !seenEmails.contains(crmContact.email.toLowerCase(Locale.ROOT)))
+        .toList();
 
     // transactional is always subscribed
     if (communicationList.type == EnvironmentConfig.CommunicationListType.TRANSACTIONAL) {
@@ -110,8 +139,6 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
 
     try {
-      List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
-
       Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
       for (CrmContact crmContact : contactsToUpsert) {
         Map<String, Object> customFieldMap = getCustomFields(communicationList.id, crmContact, mailchimpClient, mailchimpConfig);
@@ -133,26 +160,14 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       String tagsBatchId = updateTagsBatch(communicationList.id, emailContacts, mailchimpClient, mailchimpConfig);
       mailchimpClient.runBatchOperations(mailchimpConfig, tagsBatchId, 0);
 
-      // this part's a little funky -- make sure to read the comments carefully
+      seenEmails.addAll(resultSet.getRecords().stream().map(c -> c.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet()));
+
       // get all mc email addresses in the entire audience
       Set<String> mcEmails = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-      // archive mc emails that are 1) marked as unsubscribed in the CRM
+      // archive mc emails that are marked as unsubscribed in the CRM
       Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email).collect(Collectors.toSet());
-      emailsToArchive.retainAll(mcEmails); // (but only if they actually exist in mc)
-      // or 2) not in the CRM at all
-      if (mailchimpConfig.enableCrmBasedArchival) {
-        Set<String> crmContactsEmails = new HashSet<>();
-        // get all email address in the entire CRM
-        crmContacts.forEach(crmContact -> {
-          crmContactsEmails.add(crmContact.email.toLowerCase(Locale.ROOT));
-          if (crmContact.account != null && !Strings.isNullOrEmpty(crmContact.account.email)) {
-            crmContactsEmails.add(crmContact.account.email.toLowerCase(Locale.ROOT));
-          }
-        });
-        // remove all CRM emails from the list of MC emails, which lives us with the list that needs to be archived
-        mcEmails.removeAll(crmContactsEmails);
-        emailsToArchive.addAll(mcEmails);
-      }
+      // but only if they actually exist in MC
+      emailsToArchive.retainAll(mcEmails);
 
       String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
       mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
@@ -161,6 +176,18 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     } catch (Exception e) {
       env.logJobWarn("Mailchimp syncContacts failed", e);
     }
+  }
+
+  protected void massArchive(EnvironmentConfig.Mailchimp mailchimpConfig,
+      EnvironmentConfig.CommunicationList communicationList, List<MemberInfo> listMembers, Set<String> seenEmails,
+      MailchimpClient mailchimpClient) throws Exception {
+    // get all mc email addresses in the entire audience
+    Set<String> emailsToArchive = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+    // remove all CRM emails from the list of MC emails, which leaves us with the list that needs to be archived
+    emailsToArchive.removeAll(seenEmails);
+
+    String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
+    mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
   }
 
   protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform mailchimpConfig) throws Exception {
