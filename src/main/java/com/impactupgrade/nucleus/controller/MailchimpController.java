@@ -12,10 +12,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -61,6 +58,7 @@ public class MailchimpController {
   }
 
   // Message events
+
   @Path("/webhook/message")
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
@@ -87,6 +85,13 @@ public class MailchimpController {
 
     env.endJobLog(jobStatus);
 
+    return Response.status(200).build();
+  }
+
+  // Mailchimp sends a GET to make sure the webhook is available (silly...)
+  @Path("/webhook/message")
+  @GET
+  public Response messageEvent() throws Exception {
     return Response.status(200).build();
   }
   
