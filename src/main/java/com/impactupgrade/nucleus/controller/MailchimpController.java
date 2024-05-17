@@ -20,6 +20,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityType.EMAIL;
 
@@ -68,7 +69,7 @@ public class MailchimpController {
   ) throws Exception {
     Environment env = envFactory.init(request);
 
-    String jobName = "Mailchimp webhook events batch";
+    String jobName = "Mailchimp message webhook events batch";
     env.startJobLog(JobType.EVENT, null, jobName, "Mailchimp");
 
     env.logJobInfo("Mailchimp message event batch received. Batch size: {}", webhookPayload.events.size());
@@ -76,11 +77,47 @@ public class MailchimpController {
     JobStatus jobStatus = JobStatus.DONE;
     for (Event event: webhookPayload.events) {
       try {
-        processEvent(event, env);  
+        processMessageEvent(event, env);
       } catch (Exception e) {
         env.logJobError("Failed to process event! Event type/email: {}/{}",
             event.eventType, event.message.email, e);
       }
+    }
+
+    env.endJobLog(jobStatus);
+
+    return Response.status(200).build();
+  }
+
+  // Audience events
+  @Path("/webhook/audience")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  public Response audienceEvent(
+          AudienceEvent audienceEvent,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+
+    String jobName = "Mailchimp audience event webhook";
+    env.startJobLog(JobType.EVENT, null, jobName, "Mailchimp");
+    env.logJobInfo("Mailchimp audience event received. Type/fired-at/list-id/email: {}/{}/{}/{}",
+            audienceEvent.type, audienceEvent.firedAt, audienceEvent.data.listId, audienceEvent.data.email);
+    JobStatus jobStatus = JobStatus.DONE;
+
+    try {
+      if ("subscribe".equalsIgnoreCase(audienceEvent.type)) {
+        //TODO:
+      } else if ("unsubscribe".equalsIgnoreCase(audienceEvent.type)) {
+        //TODO:
+      } else {
+        env.logJobInfo("skipping event type {}...", audienceEvent.type);
+      }
+
+    } catch (Exception e) {
+      env.logJobError("Failed to process audience event! Type/fired-at/list-id/email: {}/{}/{}/{}",
+            audienceEvent.type, audienceEvent.firedAt, audienceEvent.data.listId, audienceEvent.data.email);
+      jobStatus = JobStatus.FAILED;
     }
 
     env.endJobLog(jobStatus);
@@ -95,7 +132,7 @@ public class MailchimpController {
     return Response.status(200).build();
   }
   
-  private void processEvent(Event event, Environment env) throws Exception {
+  private void processMessageEvent(Event event, Environment env) throws Exception {
     if (event == null) {
       return;
     }
@@ -112,6 +149,27 @@ public class MailchimpController {
     } else {
       env.logJobInfo("skipping event type {}...", event.eventType);
     }
+  }
+
+  public static final class AudienceEvent {
+    public String type;
+    @JsonProperty("fired_at") // Date format 2009-03-26 21:35:57
+    public String firedAt;
+    public Data data;
+  }
+
+  public static final class Data {
+    public String id;
+    @JsonProperty("list_id")
+    public String listId;
+    public String email;
+    @JsonProperty("email_type")
+    public String emailType;
+    @JsonProperty("ip_opt")
+    public String ipOpt;
+    @JsonProperty("ip_signup")
+    public String ipSignup;
+    public Map<String, String> merges;
   }
   
   public static final class MessageWebhookPayload {
