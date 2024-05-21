@@ -393,7 +393,7 @@ public class StripeController {
           "Stripe: Updated Payment Method",
           "New payment method added for customer " + customers.get(0).getName() + ": <a href=\"https://dashboard.stripe.com/customers/" + customers.get(0).getId() + "\">https://dashboard.stripe.com/customers/" + customers.get(0).getId() + "</a>"
       );
-      env.notificationService().sendNotification(notification, null, "stripe:update-source");
+      env.notificationService().sendNotification(notification, null, "donations:payment-method-update");
 
       return Response.temporaryRedirect(URI.create(successUrl)).build();
     } catch (StripeException e) {

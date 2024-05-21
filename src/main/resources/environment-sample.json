@@ -194,7 +194,7 @@
     "donations:close-recurring-donation": {},
     "sms:inbound-default": {},
     "xero:contact-name-exists": {},
-    "stripe:update-source": {
+    "donations:payment-method-update": {
       "email": {
         "from": "somebody@test.com",
         "to": ["recipient@test.com"]
