@@ -133,16 +133,14 @@ public interface BasicCrmService extends CrmService {
     return Optional.empty();
   }
 
-  default String insertActivity(CrmActivity crmActivity) throws Exception {
-    return null;
+  default void batchInsertActivity(CrmActivity crmActivity) throws Exception {
   }
 
-  default String updateActivity(CrmActivity crmActivity) throws Exception {
-    return null;
+  default void batchUpdateActivity(CrmActivity crmActivity) throws Exception {
   }
 
-  default Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
-    return Optional.empty();
+  default List<CrmActivity> getActivitiesByExternalRefs(List<String> externalRefs) throws Exception {
+    return Collections.emptyList();
   }
 
   default String insertNote(CrmNote crmNote) throws Exception {

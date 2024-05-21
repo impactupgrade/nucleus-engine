@@ -4,30 +4,33 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.ecwid.maleorang.method.v3_0.campaigns.content.ContentInfo;
+import com.ecwid.maleorang.method.v3_0.reports.sent_to.SentToInfo;
+import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.CrmActivity;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.*;
+import javax.ws.rs.BeanParam;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-
-import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityType.EMAIL;
 
 @Path("/mailchimp")
 public class MailchimpController {
-
-  private static final String DATE_FORMAT = "yyyy-MM-dd";
 
   protected final EnvironmentFactory envFactory;
 
@@ -35,74 +38,18 @@ public class MailchimpController {
     this.envFactory = envFactory;
   }
 
-  @Path("/webhook")
-  @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response webhook(
-      @FormParam("action") String action,
-      @FormParam("reason") String reason,
-      @FormParam("email") String email,
-      @FormParam("list_id") String listId,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    Environment env = envFactory.init(request);
-
-    env.logJobInfo("action = {} reason = {} email = {} list_id = {}", action, reason, email, listId);
-
-    if (action.equalsIgnoreCase("unsub")) {
-      // TODO: mark as unsubscribed in the CRM
-    } else {
-      env.logJobWarn("unexpected event: {}", action);
-    }
-
-    return Response.status(200).build();
-  }
-
-  // Message events
-
-  @Path("/webhook/message")
-  @POST
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response messageEvent(
-      MessageWebhookPayload webhookPayload,
-      @Context HttpServletRequest request
-  ) throws Exception {
-    Environment env = envFactory.init(request);
-
-    String jobName = "Mailchimp message webhook events batch";
-    env.startJobLog(JobType.EVENT, null, jobName, "Mailchimp");
-
-    env.logJobInfo("Mailchimp message event batch received. Batch size: {}", webhookPayload.events.size());
-
-    JobStatus jobStatus = JobStatus.DONE;
-    for (Event event: webhookPayload.events) {
-      try {
-        processMessageEvent(event, env);
-      } catch (Exception e) {
-        env.logJobError("Failed to process event! Event type/email: {}/{}",
-            event.eventType, event.message.email, e);
-      }
-    }
-
-    env.endJobLog(jobStatus);
-
-    return Response.status(200).build();
-  }
-
-  // Audience events
   @Path("/webhook/audience")
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   public Response audienceEvent(
-          AudienceEvent audienceEvent,
-          @Context HttpServletRequest request
+      @BeanParam AudienceEvent audienceEvent,
+      @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
 
     String jobName = "Mailchimp audience event webhook";
     env.startJobLog(JobType.EVENT, null, jobName, "Mailchimp");
-    env.logJobInfo("Mailchimp audience event received. Type/fired-at/list-id/email: {}/{}/{}/{}",
-            audienceEvent.type, audienceEvent.firedAt, audienceEvent.data.listId, audienceEvent.data.email);
+    env.logJobInfo("Mailchimp audience event received: {}", audienceEvent);
     JobStatus jobStatus = JobStatus.DONE;
 
     try {
@@ -110,13 +57,14 @@ public class MailchimpController {
         //TODO:
       } else if ("unsubscribe".equalsIgnoreCase(audienceEvent.type)) {
         //TODO:
+      } else if ("campaign".equalsIgnoreCase(audienceEvent.type)) {
+        processCampaignEvent(audienceEvent, env);
       } else {
         env.logJobInfo("skipping event type {}...", audienceEvent.type);
       }
 
     } catch (Exception e) {
-      env.logJobError("Failed to process audience event! Type/fired-at/list-id/email: {}/{}/{}/{}",
-            audienceEvent.type, audienceEvent.firedAt, audienceEvent.data.listId, audienceEvent.data.email);
+      env.logJobError("Failed to process audience event!", e);
       jobStatus = JobStatus.FAILED;
     }
 
@@ -126,103 +74,83 @@ public class MailchimpController {
   }
 
   // Mailchimp sends a GET to make sure the webhook is available (silly...)
-  @Path("/webhook/message")
+  @Path("/webhook/audience")
   @GET
   public Response messageEvent() throws Exception {
     return Response.status(200).build();
   }
   
-  private void processMessageEvent(Event event, Environment env) throws Exception {
-    if (event == null) {
+  private void processCampaignEvent(AudienceEvent event, Environment env) throws Exception {
+    if (!"sent".equalsIgnoreCase(event.status)) {
       return;
     }
-    if ("send".equalsIgnoreCase(event.eventType)) {
-      // Using sender::recipient::sent-date
-      // as a conversation id 
-      Date sentAt = Date.from(Instant.ofEpochSecond(event.message.timestamp));
-      String conversationId = event.message.sender + "::" + event.message.email + "::" + new SimpleDateFormat(DATE_FORMAT).format(sentAt);
-      env.activityService().upsertActivityFromEmail(
-          event.message.email,
-          EMAIL,
-          conversationId,
-          event.message.subject); // using subject instead of message body (body n\a in the webhook's payload)
-    } else {
-      env.logJobInfo("skipping event type {}...", event.eventType);
+
+    // TODO: Clunky way to retrieve the specific account keys, when all we have is the List ID..
+    EnvironmentConfig.Mailchimp mailchimpConfig = null;
+    for (EnvironmentConfig.Mailchimp _mailchimpConfig : env.getConfig().mailchimp) {
+      for (EnvironmentConfig.CommunicationList communicationList : _mailchimpConfig.lists) {
+        if (event.listId.equalsIgnoreCase(communicationList.id)) {
+          mailchimpConfig = _mailchimpConfig;
+          break;
+        }
+      }
     }
+    if (mailchimpConfig == null) {
+      env.logJobError("unable to find ListID={}", event.listId);
+      return;
+    }
+    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
+
+    List<SentToInfo> sentTos = mailchimpClient.getCampaignRecipients(event.id);
+    List<String> emails = sentTos.stream()
+        .filter(member -> member.status == SentToInfo.Status.SEND)
+        .map(member -> member.email_address)
+        .toList();
+
+    ContentInfo contentInfo = mailchimpClient.getCampaignContent(event.id);
+
+    Date d = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(event.firedAt);
+    Calendar c = Calendar.getInstance();
+    c.setTime(d);
+
+    env.activityService().upsertActivityFromEmails(
+        emails,
+        CrmActivity.Type.EMAIL,
+        event.id,
+        c,
+        event.subject,
+        contentInfo.plain_text
+    );
   }
 
   public static final class AudienceEvent {
-    public String type;
-    @JsonProperty("fired_at") // Date format 2009-03-26 21:35:57
-    public String firedAt;
-    public Data data;
-  }
+    @FormParam("type") public String type;
+    @FormParam("fired_at") public String firedAt; // Date format 2009-03-26 21:35:57
+    @FormParam("data[id]") public String id;
+    @FormParam("data[list_id]") public String listId;
+    @FormParam("data[email]") public String email;
+    @FormParam("data[email_type]") public String emailType;
+    @FormParam("data[ip_opt]") public String ipOpt;
+    @FormParam("data[ip_signup]") public String ipSignup;
+    @FormParam("data[reason]") public String reason;
+    @FormParam("data[status]") public String status;
+    @FormParam("data[subject]") public String subject;
 
-  public static final class Data {
-    public String id;
-    @JsonProperty("list_id")
-    public String listId;
-    public String email;
-    @JsonProperty("email_type")
-    public String emailType;
-    @JsonProperty("ip_opt")
-    public String ipOpt;
-    @JsonProperty("ip_signup")
-    public String ipSignup;
-    public Map<String, String> merges;
+    @Override
+    public String toString() {
+      return "AudienceEvent{" +
+          "type='" + type + '\'' +
+          ", firedAt='" + firedAt + '\'' +
+          ", id='" + id + '\'' +
+          ", listId='" + listId + '\'' +
+          ", email='" + email + '\'' +
+          ", emailType='" + emailType + '\'' +
+          ", ipOpt='" + ipOpt + '\'' +
+          ", ipSignup='" + ipSignup + '\'' +
+          ", reason='" + reason + '\'' +
+          ", status='" + status + '\'' +
+          ", subject='" + subject + '\'' +
+          '}';
+    }
   }
-  
-  public static final class MessageWebhookPayload {
-    @JsonProperty("mandrill_events")
-    public List<Event> events;
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static final class Event {
-    @JsonProperty("_id")
-    public String id;
-    @JsonProperty("event")
-    public String eventType;
-    @JsonProperty("msg")
-    public Message message;
-
-    //@JsonProperty("ts")
-    //public Long timestamp;
-    //public String url;
-    //public String ip;
-    //@JsonProperty("user_agent")
-    //public String userAgent;
-    //public Object location;
-    //@JsonProperty("user_agent_parsed")
-    //public List<Object> userAgentParsed;
-    
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  public static final class Message {
-    @JsonProperty("_id")
-    public String id;
-    public String state; // One of: sent, rejected, spam, unsub, bounced, or soft-bounced
-    public String email;
-    public String sender;
-    public String subject;
-    @JsonProperty("ts")
-    public Long timestamp; // the integer UTC UNIX timestamp when the message was sent 
-    //TODO: add object definitions, if needed
-    //@JsonProperty("smtp_events")
-    //public List<Object> smtpEvents;
-    //public List<Object> opens;
-    //public List<Object> clicks;
-    //public List<String> tags;
-    //public Map<String, Object> metadata;
-    //@JsonProperty("subaccount")
-    //public String subAccount;
-    //public String diag; //specific SMTP response code and bounce description, if any, received from the remote server
-    //@JsonProperty("bounce_description")
-    //public String bounceDescription;
-    //public String template;
-  }
-
-  //TODO: Sync events: add/remove (to either of allowlist or denylist)
-  //TODO: inbound messages
 }

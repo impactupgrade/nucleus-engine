@@ -11,8 +11,8 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.util.Utils;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -22,11 +22,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
+import java.util.Calendar;
+import java.util.List;
 import java.util.Optional;
-
-import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityType.SMS;
 
 /**
  * To receive webhooks from MBT as messages are sent/received.
@@ -61,13 +59,16 @@ public class MinistryByTextController {
     String jobName = "SMS Inbound";
     env.startJobLog(JobType.EVENT, null, jobName, "MBT");
 
-    // Using combination of subscriber number and today's date as a conversation id to group all user's messages for current day
-    String date = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(Utils.now(env.getConfig().timezoneId));
-    String conversationId = inboundMessageWebhookData.subscriberNo  + "::" + new SimpleDateFormat(DATE_FORMAT).format(new Date());
-    env.activityService().upsertActivityFromPhoneNumber(
-        inboundMessageWebhookData.subscriberNo,
-        SMS,
+    Calendar c = Calendar.getInstance();
+
+    // Using today's date as the activity id to group all user's messages' statuses for current day
+    String conversationId = inboundMessageWebhookData.subscriberNo  + "::" + new SimpleDateFormat(DATE_FORMAT).format(c.getTime());
+    env.activityService().upsertActivityFromPhoneNumbers(
+        List.of(inboundMessageWebhookData.subscriberNo),
+        CrmActivity.Type.CALL,
         conversationId,
+        c,
+        "SMS " + conversationId,
         inboundMessageWebhookData.message
     );
 
@@ -95,17 +96,23 @@ public class MinistryByTextController {
     String jobName = "SMS Status";
     env.startJobLog(JobType.EVENT, null, jobName, "MBT");
 
+    Calendar c = Calendar.getInstance();
+
     Optional<CrmContact> crmContact = env.primaryCrmService()
         .searchContacts(ContactSearch.byPhone(messageStatusWebhookData.subscriberNo)).getSingleResult();
     if (crmContact.isPresent()) {
-      // Using combination of msisdn and today's date as a conversation id to group all user's messages' statuses for current day
-      String conversationId = messageStatusWebhookData.subscriberNo + "::" + new SimpleDateFormat(DATE_FORMAT).format(new Date());
-      env.activityService().upsertActivityFromPhoneNumber(
-          messageStatusWebhookData.subscriberNo,
-          SMS,
+      // Using today's date as the activity id to group all user's messages' statuses for current day
+      String conversationId = new SimpleDateFormat(DATE_FORMAT).format(c.getTime());
+      env.activityService().upsertActivityFromPhoneNumbers(
+          List.of(messageStatusWebhookData.subscriberNo),
+          CrmActivity.Type.CALL,
           conversationId,
+          c,
+          "SMS " + conversationId,
           messageStatusWebhookData.message
       );
+      /*List<String> phoneNumbers, CrmActivity.Type type, String activityId,
+      Calendar date, String subject, String messageBody*/
     } else {
       env.logJobWarn("no CRM contact found for phone number: {}", messageStatusWebhookData.subscriberNo);
     }

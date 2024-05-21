@@ -259,18 +259,16 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public String insertActivity(CrmActivity crmActivity) throws Exception {
-    return null;
+  public void batchInsertActivity(CrmActivity crmActivity) throws Exception {
   }
 
   @Override
-  public String updateActivity(CrmActivity crmActivity) throws Exception {
-    return null;
+  public void batchUpdateActivity(CrmActivity crmActivity) throws Exception {
   }
 
   @Override
-  public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
-    return Optional.empty();
+  public List<CrmActivity> getActivitiesByExternalRefs(List<String> externalRefs) throws Exception {
+    return Collections.emptyList();
   }
 
   @Override
