@@ -558,22 +558,18 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public String insertActivity(CrmActivity crmActivity) throws Exception {
+  public void batchInsertActivity(CrmActivity crmActivity) throws Exception {
     VirtuousClient.Task task = asTask(crmActivity);
-    VirtuousClient.Task createdTask = virtuousClient.createTask(task);
-    return createdTask == null ? null : createdTask.id + "";
+    virtuousClient.createTask(task);
   }
 
   @Override
-  public String updateActivity(CrmActivity crmActivity) throws Exception {
-    // TODO: May not be possible?
-    return null;
+  public void batchUpdateActivity(CrmActivity crmActivity) throws Exception {
   }
 
   @Override
-  public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
-    // TODO
-    return Optional.empty();
+  public List<CrmActivity> getActivitiesByExternalRefs(List<String> externalRefs) throws Exception {
+    return Collections.emptyList();
   }
 
   @Override

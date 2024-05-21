@@ -220,21 +220,19 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public String insertActivity(CrmActivity crmActivity) throws Exception {
+  public void batchInsertActivity(CrmActivity crmActivity) throws Exception {
     EngagementRequest engagementRequest = new EngagementRequest();
     setTaskFields(engagementRequest, crmActivity);
-    EngagementRequest response = engagementClient.insert(engagementRequest);
-    return response == null ? null : response.getId() + "";
+    engagementClient.insert(engagementRequest);
   }
 
   @Override
-  public String updateActivity(CrmActivity crmActivity) throws Exception {
-    return null;
+  public void batchUpdateActivity(CrmActivity crmActivity) throws Exception {
   }
 
   @Override
-  public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
-    return Optional.empty();
+  public List<CrmActivity> getActivitiesByExternalRefs(List<String> externalRefs) throws Exception {
+    return Collections.emptyList();
   }
 
   @Override

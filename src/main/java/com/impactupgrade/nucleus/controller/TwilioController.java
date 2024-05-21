@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.security.SecurityUtil;
@@ -36,6 +37,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -44,7 +46,6 @@ import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.entity.JobStatus.DONE;
 import static com.impactupgrade.nucleus.entity.JobStatus.FAILED;
-import static com.impactupgrade.nucleus.service.logic.ActivityService.ActivityType.SMS;
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
 
@@ -317,10 +318,12 @@ public class TwilioController {
 
     switch (eventType) {
       case "onMessageAdded":
-        env.activityService().upsertActivityFromPhoneNumber(
-            author, // TODO: Won't this fail to find a record if the author was the organization's number, not the outside recipient?
-            SMS, 
-            conversationSid, 
+        env.activityService().upsertActivityFromPhoneNumbers(
+            List.of(author), // TODO: Won't this fail to find a record if the author was the organization's number, not the outside recipient?
+            CrmActivity.Type.CALL,
+            conversationSid,
+            Calendar.getInstance(),
+            "SMS " + conversationSid,
             body
         );
         env.endJobLog(DONE);

@@ -141,6 +141,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmContact> getContactsByPhones(List<String> phones) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByPhones(phones));
+  }
+
+  @Override
   // currentPageToken assumed to be the offset index
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws InterruptedException, ConnectionException {
     return toCrmContact(sfdcClient.searchContacts(contactSearch));
@@ -251,7 +256,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public String insertActivity(CrmActivity crmActivity) throws Exception {
+  public void batchInsertActivity(CrmActivity crmActivity) throws Exception {
     SObject task = new SObject("Task");
 
     setActivityFields(task, crmActivity);
@@ -265,22 +270,21 @@ public class SfdcCrmService implements CrmService {
       default -> task.setField("TaskSubType", "Call");
     }
 
-    return sfdcClient.insert(task).getId();
+    sfdcClient.batchInsert(task);
   }
 
   @Override
-  public String updateActivity(CrmActivity crmActivity) throws Exception {
+  public void batchUpdateActivity(CrmActivity crmActivity) throws Exception {
     SObject task = new SObject("Task");
     task.setId(crmActivity.id);
     setActivityFields(task, crmActivity);
-    return sfdcClient.update(task).getId();
+    sfdcClient.batchUpdate(task);
   }
 
   @Override
-  public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
-    Optional<SObject> sObjectO = sfdcClient.getActivityByExternalReference(externalRef);
-    CrmActivity crmActivity = sObjectO.map(this::toCrmActivity).orElse(null);
-    return Optional.ofNullable(crmActivity);
+  public List<CrmActivity> getActivitiesByExternalRefs(List<String> externalRefs) throws Exception {
+    List<SObject> sObjects = sfdcClient.getActivitiesByExternalRefs(externalRefs);
+    return sObjects.stream().map(this::toCrmActivity).toList();
   }
 
   @Override

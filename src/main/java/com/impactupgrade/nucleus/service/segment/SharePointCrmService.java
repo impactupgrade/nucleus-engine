@@ -454,8 +454,16 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public String insertActivity(CrmActivity crmActivity) throws Exception {
-        return null;
+    public void batchInsertActivity(CrmActivity crmActivity) throws Exception {
+    }
+
+    @Override
+    public void batchUpdateActivity(CrmActivity crmActivity) throws Exception {
+    }
+
+    @Override
+    public List<CrmActivity> getActivitiesByExternalRefs(List<String> externalRefs) throws Exception {
+        return Collections.emptyList();
     }
 
     @Override
@@ -466,16 +474,6 @@ public class SharePointCrmService implements CrmService {
     @Override
     public List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields) {
         return null;
-    }
-
-    @Override
-    public String updateActivity(CrmActivity crmActivity) throws Exception {
-        return null;
-    }
-
-    @Override
-    public Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception {
-        return Optional.empty();
     }
 
     @Override

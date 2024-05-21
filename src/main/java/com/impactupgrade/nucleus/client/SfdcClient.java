@@ -741,6 +741,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(emails, List.of("Email", "npe01__HomeEmail__c", "npe01__WorkEmail__c", "npe01__AlternateEmail__c"), "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
+  public List<SObject> getContactsByPhones(List<String> phones, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(phones, List.of("Phone", "MobilePhone", "HomePhone", "npe01__WorkPhone__c"), "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // LEADS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -922,9 +926,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // ACTIVITIES
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getActivityByExternalReference(String externalReference, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(TASK_FIELDS, env.getConfig().salesforce.customQueryFields.task, extraFields) + " from task where " + env.getConfig().salesforce.fieldDefinitions.activityExternalReference + " = '" + externalReference + "'";
-    return querySingle(query);
+  public List<SObject> getActivitiesByExternalRefs(List<String> externalRefs, String... extraFields) throws ConnectionException, InterruptedException {
+    return getBulkResults(externalRefs, env.getConfig().salesforce.fieldDefinitions.activityExternalReference, "Task",
+        TASK_FIELDS, env.getConfig().salesforce.customQueryFields.task, extraFields);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

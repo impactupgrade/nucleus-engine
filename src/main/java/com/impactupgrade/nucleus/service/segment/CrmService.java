@@ -77,6 +77,14 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
+  default List<CrmContact> getContactsByPhones(List<String> phones) throws Exception {
+    List<CrmContact> contacts = new ArrayList<>();
+    for (String phone : phones) {
+      Optional<CrmContact> contact = searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
+      contact.ifPresent(contacts::add);
+    }
+    return contacts;
+  }
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
@@ -214,13 +222,13 @@ public interface CrmService extends SegmentService {
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  String insertActivity(CrmActivity crmActivity) throws Exception;
-  String updateActivity(CrmActivity crmActivity) throws Exception;
-  Optional<CrmActivity> getActivityByExternalRef(String externalRef) throws Exception;
+  void batchInsertActivity(CrmActivity crmActivity) throws Exception;
+  void batchUpdateActivity(CrmActivity crmActivity) throws Exception;
+  List<CrmActivity> getActivitiesByExternalRefs(List<String> externalRefs) throws Exception;
+
   String insertNote(CrmNote crmNote) throws Exception;
 
   List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
-
   EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();
 
 }

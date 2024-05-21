@@ -97,7 +97,7 @@ public class NotificationService {
     env.logJobInfo("attaching a Task CRM notification to {} and assigning to {}", targetId, assignTo);
 
     try {
-      crmService.insertActivity(new CrmActivity(
+      crmService.batchInsertActivity(new CrmActivity(
           null,
           targetId,
           assignTo,
@@ -111,6 +111,7 @@ public class NotificationService {
           null,
           null
       ));
+      crmService.batchFlush();
     } catch (Exception e) {
       env.logJobWarn("unable to create notification", e);
     }

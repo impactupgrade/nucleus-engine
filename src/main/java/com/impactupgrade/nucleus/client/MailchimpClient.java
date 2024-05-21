@@ -9,6 +9,8 @@ import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.batches.BatchStatus;
 import com.ecwid.maleorang.method.v3_0.batches.GetBatchStatusMethod;
 import com.ecwid.maleorang.method.v3_0.batches.StartBatchMethod;
+import com.ecwid.maleorang.method.v3_0.campaigns.content.ContentInfo;
+import com.ecwid.maleorang.method.v3_0.campaigns.content.GetCampaignContentMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.DeleteMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
@@ -17,6 +19,8 @@ import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.EditMergeFieldMethod;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.GetMergeFieldsMethod;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
+import com.ecwid.maleorang.method.v3_0.reports.sent_to.GetCampaignSentToMethod;
+import com.ecwid.maleorang.method.v3_0.reports.sent_to.SentToInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -193,6 +197,28 @@ public class MailchimpClient {
     editMemberMethod.tags = tags;
 
     return editMemberMethod;
+  }
+
+  public List<SentToInfo> getCampaignRecipients(String campaignId) throws IOException, MailchimpException {
+    GetCampaignSentToMethod getCampaignSentToMethod = new GetCampaignSentToMethod(campaignId);
+    getCampaignSentToMethod.fields = "sent_to.email_address,sent_to.status,total_items"; // HUGE performance improvement -- limit to only what we need
+    getCampaignSentToMethod.count = 1000; // subjective, but this is timing out periodically -- may need to dial it back further
+    env.logJobInfo("retrieving campaign {} contacts", campaignId);
+    GetCampaignSentToMethod.Response getCampaignSentToResponse = client.execute(getCampaignSentToMethod);
+    List<SentToInfo> sentTos = new ArrayList<>(getCampaignSentToResponse.sent_to);
+    while (getCampaignSentToResponse.total_items > sentTos.size()) {
+      getCampaignSentToMethod.offset = sentTos.size();
+      env.logJobInfo("retrieving campaign {} contacts (offset {} of total {})", campaignId, getCampaignSentToMethod.offset, getCampaignSentToResponse.total_items);
+      getCampaignSentToResponse = client.execute(getCampaignSentToMethod);
+      sentTos.addAll(getCampaignSentToResponse.sent_to);
+    }
+
+    return sentTos;
+  }
+
+  public ContentInfo getCampaignContent(String campaignId) throws IOException, MailchimpException {
+    GetCampaignContentMethod getCampaignContentMethod = new GetCampaignContentMethod(campaignId);
+    return client.execute(getCampaignContentMethod);
   }
 
   public void runBatchOperations(EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
