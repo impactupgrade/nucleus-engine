@@ -196,8 +196,8 @@
     "xero:contact-name-exists": {},
     "stripe:update-source": {
       "email": {
-        "from": "me",
-        "to": ["usa@destinyrescue.org"]
+        "from": "somebody@test.com",
+        "to": ["recipient@test.com"]
       },
       "sms": {
         "from": "",
