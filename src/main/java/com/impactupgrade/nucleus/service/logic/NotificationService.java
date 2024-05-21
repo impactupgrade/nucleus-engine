@@ -26,11 +26,11 @@ public class NotificationService {
     return notificationsConfig != null;
   }
 
-  public void sendNotification(Notification notification, String notificationKey) throws Exception {
+  public void sendNotification(Notification notification, String notificationKey) {
     sendNotification(notification, null, notificationKey);
   }
 
-  public void sendNotification(Notification notification, String targetId, String notificationKey) throws Exception {
+  public void sendNotification(Notification notification, String targetId, String notificationKey) {
     if (!notificationConfigured(notificationKey)) {
       env.logJobInfo("no notification configured for: {}", notificationKey);
 
@@ -76,8 +76,7 @@ public class NotificationService {
     }
   }
 
-  protected void createCrmTask(Notification notification, String targetId, EnvironmentConfig.Task notificationConfig)
-      throws Exception {
+  protected void createCrmTask(Notification notification, String targetId, EnvironmentConfig.Task notificationConfig) {
     CrmService crmService = env.primaryCrmService();
 
     if (crmService == null) {
@@ -97,20 +96,24 @@ public class NotificationService {
 
     env.logJobInfo("attaching a Task CRM notification to {} and assigning to {}", targetId, assignTo);
 
-    crmService.insertActivity(new CrmActivity(
-        null,
-        targetId,
-        assignTo,
-        notification.taskSubject,
-        notification.taskBody,
-        CrmActivity.Type.TASK,
-        CrmActivity.Status.TO_DO,
-        CrmActivity.Priority.MEDIUM,
-        dueDate,
-        null,
-        null,
-        null
-    ));
+    try {
+      crmService.insertActivity(new CrmActivity(
+          null,
+          targetId,
+          assignTo,
+          notification.taskSubject,
+          notification.taskBody,
+          CrmActivity.Type.TASK,
+          CrmActivity.Status.TO_DO,
+          CrmActivity.Priority.MEDIUM,
+          dueDate,
+          null,
+          null,
+          null
+      ));
+    } catch (Exception e) {
+      env.logJobWarn("unable to create notification", e);
+    }
   }
 
   public static class Notification {
