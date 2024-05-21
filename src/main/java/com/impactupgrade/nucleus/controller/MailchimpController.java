@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 @Path("/mailchimp")
 public class MailchimpController {
@@ -110,7 +111,7 @@ public class MailchimpController {
     ContentInfo contentInfo = mailchimpClient.getCampaignContent(event.id);
 
     Date d = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(event.firedAt);
-    Calendar c = Calendar.getInstance();
+    Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     c.setTime(d);
 
     env.activityService().upsertActivityFromEmails(
