@@ -218,7 +218,9 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     // Always do this last! We need all the metadata context to fill out the customer details.
-    initStripeCustomer(stripeCustomer, Optional.empty());
+    Optional<PaymentMethod.BillingDetails> billingDetails = stripePaymentIntent.getCharges().getData().stream()
+        .findFirst().map(Charge::getBillingDetails);
+    initStripeCustomer(stripeCustomer, billingDetails);
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -248,7 +250,7 @@ public class PaymentGatewayEvent implements Serializable {
     initStripeCustomer(Optional.of(stripeCustomer), Optional.empty());
   }
 
-  protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> billingDetails) {
+  protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> __billingDetails) {
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
@@ -260,6 +262,10 @@ public class PaymentGatewayEvent implements Serializable {
 
       crmContact.email = stripeCustomer.getEmail();
       crmContact.mobilePhone = stripeCustomer.getPhone();
+    } else if (__billingDetails.isPresent()) {
+      PaymentMethod.BillingDetails billingDetails = __billingDetails.get();
+      crmContact.email = billingDetails.getEmail();
+      crmContact.mobilePhone = billingDetails.getPhone();
     }
 
     // backfill with metadata if needed
@@ -277,8 +283,8 @@ public class PaymentGatewayEvent implements Serializable {
       }).findFirst().map(e -> (String) e.getValue()).orElse(null);
     }
 
-    initStripeCustomerName(__stripeCustomer, billingDetails);
-    initStripeAddress(__stripeCustomer, billingDetails);
+    initStripeCustomerName(__stripeCustomer, __billingDetails);
+    initStripeAddress(__stripeCustomer, __billingDetails);
   }
 
   // What happens in this method seems ridiculous, but we're trying to resiliently deal with a variety of situations.
