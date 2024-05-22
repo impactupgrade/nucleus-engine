@@ -135,6 +135,7 @@ public abstract class AbstractIT extends JerseyTest {
       }
 
       // TODO: may need to delete activities -- ran into an issue in TER where an opp couldn't be nuked until that was done
+      // TODO: does this always delete the Contacts as well?
       sfdcClient.delete(existingAccount);
     }
 

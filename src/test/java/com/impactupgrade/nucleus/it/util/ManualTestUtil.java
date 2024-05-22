@@ -26,6 +26,10 @@ public class ManualTestUtil {
 
     sObjects = sfdcClient.queryListAutoPaged("SELECT Id FROM Npe03__Recurring_Donation__c");
     sfdcClient.batchDelete(sObjects.toArray());
+
+    sObjects = sfdcClient.queryListAutoPaged("SELECT Id FROM Task");
+    sfdcClient.batchDelete(sObjects.toArray());
+    sfdcClient.batchFlush();
     sfdcClient.batchFlush();
 
     sObjects = sfdcClient.queryListAutoPaged("SELECT Id FROM Contact");
@@ -33,6 +37,10 @@ public class ManualTestUtil {
     sfdcClient.batchFlush();
 
     sObjects = sfdcClient.queryListAutoPaged("SELECT Id FROM Account");
+    sfdcClient.batchDelete(sObjects.toArray());
+    sfdcClient.batchFlush();
+
+    sObjects = sfdcClient.queryListAutoPaged("SELECT Id FROM Campaign");
     sfdcClient.batchDelete(sObjects.toArray());
     sfdcClient.batchFlush();
   }
