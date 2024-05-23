@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
@@ -153,8 +154,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public String updateOrCreateContact(CrmContact crmContact) throws Exception {
-        Contact contact = toContact(crmContact);
+    public String updateOrCreateContact(CrmAccount crmAccount, Optional<CrmContact> crmContact) throws Exception {
+        // Organization Contact with Contact Persons
+        Contact contact = toOrgContact(crmAccount, crmContact);
         Contacts contacts = new Contacts();
         contacts.setContacts(List.of(contact));
         try {
@@ -169,14 +171,16 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             for (Element element : e.getElements()) {
                 if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    if (crmContact.crmRawObject instanceof SObject sObject) {
+                    // TODO: decide if the field should be taken from contact or account
+                    if (crmContact.isPresent() && crmContact.get().crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContactForAccountNumber(supporterId).map(c -> c.getContactID().toString()).orElse(null);
                     }
                 }
                 if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("contact name must be unique across all active contacts"))) {
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    if (crmContact.crmRawObject instanceof SObject sObject) {
+                    // TODO: decide if the field should be taken from contact or account
+                    if (crmContact.isPresent() && crmContact.get().crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContactForName(contact.getName()).map(c -> {
                             // A few contacts have been entered manually without an Account Number being set.
@@ -186,10 +190,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                             } else {
                                 // Send notification if name already exists for different supporter id (account number)
                                 try {
-                                    env.logJobInfo("Sending notification for duplicated contact name '{}'...", crmContact.getFullName());
+                                    env.logJobInfo("Sending notification for duplicated contact name '{}'...", contact.getName());
                                     NotificationService.Notification notification = new NotificationService.Notification(
                                         "Xero: Contact name already exists",
-                                        "Xero: Contact with name '" + crmContact.getFullName() + "' already exists. Supporter ID: " + supporterId + "."
+                                        "Xero: Contact with name '" + contact.getName() + "' already exists. Supporter ID: " + supporterId + "."
                                     );
                                     env.notificationService().sendNotification(notification, "xero:contact-name-exists");
                                 } catch (Exception ex) {
@@ -425,6 +429,46 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     // Mappings
+    protected Contact toOrgContact(CrmAccount crmAccount, Optional<CrmContact> crmContact) {
+        if (crmAccount == null) {
+            return null;
+        }
+        Contact contact = new Contact();
+        contact.setName(crmAccount.name);
+        contact.setEmailAddress(crmAccount.email);
+        if (!Strings.isNullOrEmpty(crmAccount.billingAddress.street)) {
+            Address address = new Address()
+                    .addressLine1(crmAccount.billingAddress.street)
+                    .city(crmAccount.billingAddress.city)
+                    .region(crmAccount.billingAddress.state)
+                    .postalCode(crmAccount.billingAddress.postalCode)
+                    .country(crmAccount.billingAddress.country);
+            contact.setAddresses(List.of(address));
+        }
+
+        // TODO: make this part not-sfdc specific?
+        // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
+        // TODO: decide if the field should be taken from contact or account
+        if (crmContact.isPresent() && crmContact.get().crmRawObject instanceof SObject sObject) {
+            String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+            contact.setAccountNumber(supporterId);
+        }
+
+//        ContactPerson contactPerson = new ContactPerson();
+//        contactPerson.setFirstName(crmContact.firstName);
+//        contactPerson.setLastName(crmContact.lastName);
+//        contactPerson.setEmailAddress(crmContact.email);
+//
+//        contact.setContactPersons(List.of(contactPerson));
+
+        // TODO: temp
+        env.logJobInfo("account {} {}; contact {} {} {} {} {}",
+                crmAccount.id, crmAccount.name,
+                contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
+
+        return contact;
+    }
+
     protected Contact toContact(CrmContact crmContact) {
         if (crmContact == null) {
             return null;
@@ -510,6 +554,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected AccountingTransaction toAccountingTransaction(Invoice invoice) {
         return new AccountingTransaction(
+                null,
                 null,
                 null,
                 null,

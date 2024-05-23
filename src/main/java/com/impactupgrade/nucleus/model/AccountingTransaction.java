@@ -16,6 +16,7 @@ public class AccountingTransaction {
 
   // TODO: Rename? "Contact" in Xero, but something else in QB?
   public String contactId;
+  public String crmAccountId;
   public String crmContactId;
 
   public Double amountInDollars;
@@ -28,6 +29,7 @@ public class AccountingTransaction {
 
   public AccountingTransaction(
       String contactId,
+      String crmAccountId,
       String crmContactId,
       Double amountInDollars,
       ZonedDateTime date,
@@ -38,6 +40,7 @@ public class AccountingTransaction {
       Boolean recurring
   ) {
     this.contactId = contactId;
+    this.crmAccountId = crmAccountId;
     this.crmContactId = crmContactId;
 
     this.amountInDollars = amountInDollars;
