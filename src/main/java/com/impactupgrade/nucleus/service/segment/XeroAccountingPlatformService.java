@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
@@ -29,6 +30,7 @@ import com.xero.api.XeroBadRequestException;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
 import com.xero.models.accounting.Contact;
+import com.xero.models.accounting.ContactPerson;
 import com.xero.models.accounting.Contacts;
 import com.xero.models.accounting.Element;
 import com.xero.models.accounting.Invoice;
@@ -153,10 +155,19 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public String updateOrCreateContact(CrmContact crmContact) throws Exception {
-        Contact contact = toContact(crmContact);
+    public String updateOrCreateContact(Optional<CrmAccount> crmAccount, CrmContact crmContact) throws Exception {
+        Contact contact;
+        if (crmAccount.isPresent()) {
+            // Organization Contact with Contact Persons
+            contact = toOrgContact(crmAccount.get(), crmContact);
+        } else {
+            // Simple contact
+            contact = toContact(crmContact);
+        }
+
         Contacts contacts = new Contacts();
         contacts.setContacts(List.of(contact));
+
         try {
             // This method works very similar to POST Contacts (xeroApi.updateOrCreateContacts) 
             // but if an existing contact matches our ContactName or ContactNumber then we will receive an error
@@ -425,6 +436,46 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     // Mappings
+    protected Contact toOrgContact(CrmAccount crmAccount, CrmContact crmContact) {
+        if (crmAccount == null) {
+            return null;
+        }
+        Contact contact = new Contact();
+        contact.setName(crmAccount.name);
+        contact.setEmailAddress(crmAccount.email);
+        if (!Strings.isNullOrEmpty(crmAccount.billingAddress.street)) {
+            Address address = new Address()
+                    .addressLine1(crmAccount.billingAddress.street)
+                    .city(crmAccount.billingAddress.city)
+                    .region(crmAccount.billingAddress.state)
+                    .postalCode(crmAccount.billingAddress.postalCode)
+                    .country(crmAccount.billingAddress.country);
+            contact.setAddresses(List.of(address));
+        }
+
+        // TODO: make this part not-sfdc specific?
+        // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
+        // TODO: decide if the field should be taken from contact or account
+        if (crmContact.crmRawObject instanceof SObject sObject) {
+            String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+            contact.setAccountNumber(supporterId);
+        }
+
+        ContactPerson contactPerson = new ContactPerson();
+        contactPerson.setFirstName(crmContact.firstName);
+        contactPerson.setLastName(crmContact.lastName);
+        contactPerson.setEmailAddress(crmContact.email);
+
+        contact.setContactPersons(List.of(contactPerson));
+
+        // TODO: temp
+        env.logJobInfo("account {} {}; contact {} {} {} {} {}",
+                crmAccount.id, crmAccount.name,
+                contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
+
+        return contact;
+    }
+
     protected Contact toContact(CrmContact crmContact) {
         if (crmContact == null) {
             return null;
@@ -510,6 +561,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected AccountingTransaction toAccountingTransaction(Invoice invoice) {
         return new AccountingTransaction(
+                null,
                 null,
                 null,
                 null,
