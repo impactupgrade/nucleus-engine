@@ -548,7 +548,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     // IMPORTANT: If env.json defines emailOptOut/emailBounced, also include those contacts in this query! This might seem backwards,
     // but we need them in the results so that we can archive them in Mailchimp.
     List<String> clauses = new ArrayList<>();
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)) {
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)
+        && !env.getConfig().salesforce.fieldDefinitions.listFilterOverridesOptIn) {
       clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE");
 
       // ONLY ADD THESE IF WE'RE INCLUDING THE ABOVE OPT-IN FILTER! Otherwise, some orgs only have opt-out defined,
@@ -588,7 +589,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     // IMPORTANT: If env.json defines emailOptOut/emailBounced, also include those contacts in this query! This might seem backwards,
     // but we need them in the results so that we can archive them in Mailchimp.
     List<String> clauses = new ArrayList<>();
-    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn)) {
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn)
+        && !env.getConfig().salesforce.fieldDefinitions.accountListFilterOverridesOptIn) {
       clauses.add(env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn + "=TRUE");
 
       // ONLY ADD THESE IF WE'RE INCLUDING THE ABOVE OPT-IN FILTER! Otherwise, some orgs only have opt-out defined,
