@@ -406,28 +406,16 @@ public class HubSpotCrmService implements CrmService {
     contact.setCountry(crmContact.mailingAddress.country);
 
     // TODO: add/remove in default lists?
-    if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, true, contact.getOtherProperties());
-      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, false, contact.getOtherProperties());
-    }
     if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, false, contact.getOtherProperties());
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, true, contact.getOtherProperties());
-    }
-    if (crmContact.emailBounced != null && crmContact.emailBounced) {
+    } else if (crmContact.emailBounced != null && crmContact.emailBounced) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailBounced, true, contact.getOtherProperties());
+    } else if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, true, contact.getOtherProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, false, contact.getOtherProperties());
     }
 
-    if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, true, contact.getOtherProperties());
-      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, false, contact.getOtherProperties());
-
-      String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
-      if (!Strings.isNullOrEmpty(defaultListId)) {
-        env.logJobInfo("opting into the default HubSpot list: {}", defaultListId);
-        addContactToList(crmContact, defaultListId);
-      }
-    }
     if (crmContact.smsOptOut != null && crmContact.smsOptOut) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, false, contact.getOtherProperties());
       setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, true, contact.getOtherProperties());
@@ -436,6 +424,15 @@ public class HubSpotCrmService implements CrmService {
       if (!Strings.isNullOrEmpty(defaultListId)) {
         env.logJobInfo("opting out of the default HubSpot list: {}", defaultListId);
         removeContactFromList(crmContact, defaultListId);
+      }
+    } else if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
+      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptIn, true, contact.getOtherProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.smsOptOut, false, contact.getOtherProperties());
+
+      String defaultListId = env.getConfig().hubspot.defaultSmsOptInList;
+      if (!Strings.isNullOrEmpty(defaultListId)) {
+        env.logJobInfo("opting into the default HubSpot list: {}", defaultListId);
+        addContactToList(crmContact, defaultListId);
       }
     }
 

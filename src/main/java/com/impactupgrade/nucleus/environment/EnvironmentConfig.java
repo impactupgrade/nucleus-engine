@@ -96,11 +96,13 @@ public class EnvironmentConfig implements Serializable {
     public String fund = ""; // donation designation
 
     public String emailOptIn = "";
+    public boolean listFilterOverridesOptIn = false; // do not automatically factor the field into the communication sync's filter
     public String emailOptOut = "";
     public String emailBounced = "";
     public String emailGroups = "";
 
     public String accountEmailOptIn = "";
+    public boolean accountListFilterOverridesOptIn = false; // do not automatically factor the field into the communication sync's filter
     public String accountEmailOptOut = "";
     public String accountEmailBounced = "";
 

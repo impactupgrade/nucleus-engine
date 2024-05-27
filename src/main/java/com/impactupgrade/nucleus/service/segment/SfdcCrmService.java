@@ -430,14 +430,19 @@ public class SfdcCrmService implements CrmService {
     if (crmAccount.recordType != null && accountTypeToRecordTypeIds.containsKey(crmAccount.recordType)) {
       account.setField("RecordTypeId", accountTypeToRecordTypeIds.get(crmAccount.recordType));
     }
-    if (crmAccount.emailOptIn != null && crmAccount.emailOptIn) {
-      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn, true);
-    }
-    if (crmAccount.emailOptOut != null && crmAccount.emailOptOut) {
-      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut, true);
-    }
+
     if (crmAccount.emailBounced != null && crmAccount.emailBounced) {
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn, false);
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut, false);
       setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailBounced, true);
+    } else if (crmAccount.emailOptOut != null && crmAccount.emailOptOut) {
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn, false);
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut, true);
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailBounced, false);
+    } else if (crmAccount.emailOptIn != null && crmAccount.emailOptIn) {
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn, true);
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut, false);
+      setField(account, env.getConfig().salesforce.fieldDefinitions.accountEmailBounced, false);
     }
 
     for (String fieldName : crmAccount.crmRawFieldsToSet.keySet()) {
@@ -518,25 +523,26 @@ public class SfdcCrmService implements CrmService {
     }
     setField(contact, env.getConfig().salesforce.fieldDefinitions.contactLanguage, crmContact.language);
 
-    if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
+    if (crmContact.emailBounced != null && crmContact.emailBounced) {
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
-    }
-    if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailBounced, true);
+    } else if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
-    }
-    if (crmContact.emailBounced != null && crmContact.emailBounced) {
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailBounced, true);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailBounced, false);
+    } else if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, true);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailBounced, false);
     }
 
-    if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, false);
-    }
     if (crmContact.smsOptOut != null && crmContact.smsOptOut) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, false);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, true);
+    } else if (crmContact.smsOptIn != null && crmContact.smsOptIn) {
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptIn, true);
+      setField(contact, env.getConfig().salesforce.fieldDefinitions.smsOptOut, false);
     }
 
     if (!Strings.isNullOrEmpty(crmContact.notes)) {
