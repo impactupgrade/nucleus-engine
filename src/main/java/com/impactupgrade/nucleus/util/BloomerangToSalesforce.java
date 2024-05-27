@@ -20,7 +20,15 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 // TODO: Shift to using the Bloomerang API, instead of exports.
@@ -31,21 +39,12 @@ public class BloomerangToSalesforce {
     Environment env = new Environment() {
       @Override
       public EnvironmentConfig getConfig() {
-//        EnvironmentConfig envConfig = new EnvironmentConfig();
-//        envConfig.crmPrimary = "salesforce";
-//        envConfig.salesforce.sandbox = false;
-//        envConfig.salesforce.url = "TODO";
-//        envConfig.salesforce.username = "TODO";
-//        envConfig.salesforce.password = "TODO";
-//        envConfig.salesforce.enhancedRecurringDonations = true;
-//        envConfig.salesforce.npsp = true;
-//        return envConfig;
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.crmPrimary = "salesforce";
         envConfig.salesforce.sandbox = false;
-        envConfig.salesforce.url = "communityone.my.salesforce.com";
-        envConfig.salesforce.username = "team+c1@impactupgrade.com";
-        envConfig.salesforce.password = "ap8MwXPb7ZW4bfHHHeguKlt3lOgaaKFbm0ht5nwrwovwz";
+        envConfig.salesforce.url = "TODO";
+        envConfig.salesforce.username = "TODO";
+        envConfig.salesforce.password = "TODO";
         envConfig.salesforce.enhancedRecurringDonations = true;
         envConfig.salesforce.npsp = true;
         return envConfig;
@@ -262,6 +261,9 @@ public class BloomerangToSalesforce {
         sfdcAccount.setField("Type", constituentRow.get("Type"));
         String services = constituentRow.get("Custom: Business Type / Service Offered");
         sfdcAccount.setField("Services_Offered__c", services == null ? null : services.replaceAll("\\|", ";"));
+        sfdcAccount.setField("Status__c", constituentRow.get("Status"));
+        sfdcAccount.setField("Board_Care_Cultivation__c", constituentRow.get("Custom: Board Care & Cultivation"));
+        sfdcAccount.setField("Church_Affiliation__c", constituentRow.get("Custom: Church Affiliation"));
 
         for (Map<String, String> addressRow : addressRowsByAccountNumber.get(accountNumber)) {
           if ("Home".equalsIgnoreCase(addressRow.get("TypeName"))) {
