@@ -15,7 +15,7 @@ public interface AccountingPlatformService extends SegmentService {
 
     Optional<AccountingTransaction> getTransaction(CrmDonation crmDonation) throws Exception;
 
-    String updateOrCreateContact(Optional<CrmAccount> crmAccount, CrmContact crmContact) throws Exception;
+    String updateOrCreateContact(CrmAccount crmAccount, Optional<CrmContact> crmContact) throws Exception;
 
     String createTransaction(AccountingTransaction accountingTransaction) throws Exception;
 
