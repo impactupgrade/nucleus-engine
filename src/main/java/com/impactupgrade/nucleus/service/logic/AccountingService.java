@@ -64,7 +64,7 @@ public class AccountingService {
         }
 
         //TODO: need to decide if we need to keep "account >> faux contact" concept here of move it to downstream
-        String contactId = _accountingPlatformService.get().updateOrCreateContact(Optional.of(crmAccount), crmContact);
+        String contactId = _accountingPlatformService.get().updateOrCreateContact(crmAccount, Optional.of(crmContact));
         if (!Strings.isNullOrEmpty(contactId)) {
             env.logJobInfo("Upserted contact: {}", contactId);
 
@@ -90,6 +90,21 @@ public class AccountingService {
         // We retrieve the full objects from the CRM here, in case they have additional info over what was in
         // the payment event.
         return env.donationsCrmService().getContactById(crmDonation.contact.id).orElse(null);
+    }
+
+    private CrmContact asCrmContact(CrmAccount crmAccount) {
+        if (crmAccount != null && crmAccount.recordType == EnvironmentConfig.AccountType.ORGANIZATION) {
+            CrmContact crmContact = new CrmContact();
+            crmContact.id = crmAccount.id;
+            String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);
+            crmContact.firstName = firstLastName[0];
+            crmContact.lastName = firstLastName[1];
+            crmContact.mailingAddress = crmAccount.billingAddress;
+            crmContact.crmRawObject = crmAccount.crmRawObject;
+            return crmContact;
+        } else {
+            return null;
+        }
     }
 
 //    public void addDeposits(List<PaymentGatewayDeposit> paymentGatewayDeposits) {
