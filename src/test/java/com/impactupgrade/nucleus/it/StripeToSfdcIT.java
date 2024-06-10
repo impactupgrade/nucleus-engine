@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.it;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.it.util.StripeUtil;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.sforce.soap.partner.sobject.SObject;
 import com.stripe.model.Charge;
@@ -54,7 +55,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.ids.add(accountId);
+    Optional<SObject> accountO = sfdcClient.searchAccounts(accountSearch).stream().findFirst();
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
     assertEquals(customer.getName(), account.getField("Name"));
@@ -133,7 +136,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(1, contacts.size());
     SObject contact = contacts.get(0);
     String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.ids.add(accountId);
+    Optional<SObject> accountO = sfdcClient.searchAccounts(accountSearch).stream().findFirst();
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
     assertEquals(customer.getName(), account.getField("Name"));
@@ -195,7 +200,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(1, contacts.size());
     SObject contact = contacts.get(0);
     String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.ids.add(accountId);
+    Optional<SObject> accountO = sfdcClient.searchAccounts(accountSearch).stream().findFirst();
     assertTrue(accountO.isPresent());
     assertEquals(existingAccountId, accountId);
     SObject account = accountO.get();
@@ -228,7 +235,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.ids.add(accountId);
+    Optional<SObject> accountO = sfdcClient.searchAccounts(accountSearch).stream().findFirst();
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
     assertEquals(customer.getName(), account.getField("Name"));
@@ -289,9 +298,10 @@ public class StripeToSfdcIT extends AbstractIT {
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.ids.add(accountId);
+    Optional<SObject> accountO = sfdcClient.searchAccounts(accountSearch).stream().findFirst();
     assertTrue(accountO.isPresent());
-
 
     List<SObject> rds = sfdcClient.getRecurringDonationsByAccountId(accountId);
     assertEquals(1, rds.size());
@@ -299,7 +309,6 @@ public class StripeToSfdcIT extends AbstractIT {
     String sfdcPeriod = rd.getField("npe03__Installment_Period__c").toString();
     String sfdcPeriodFormatted = sfdcPeriod.endsWith("ly") ? sfdcPeriod.substring(0, sfdcPeriod.length() - 2) : sfdcPeriod;
     assertEquals("year", sfdcPeriodFormatted.toString().toLowerCase());
-
 
     // only delete if the test passed -- keep failures in SFDC for analysis
     clearSfdc(customer.getName());
@@ -336,7 +345,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.ids.add(accountId);
+    Optional<SObject> accountO = sfdcClient.searchAccounts(accountSearch).stream().findFirst();
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
     assertEquals(customer.getName(), account.getField("Name"));
@@ -404,7 +415,9 @@ public class StripeToSfdcIT extends AbstractIT {
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
-    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.ids.add(accountId);
+    Optional<SObject> accountO = sfdcClient.searchAccounts(accountSearch).stream().findFirst();
     assertTrue(accountO.isPresent());
     SObject account = accountO.get();
     assertEquals(customer.getName(), account.getField("Name"));

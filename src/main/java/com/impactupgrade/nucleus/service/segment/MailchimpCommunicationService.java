@@ -12,6 +12,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.commons.collections.CollectionUtils;
@@ -219,7 +220,9 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   protected void updateAccountsByEmails(List<String> emails, Consumer<CrmAccount> accountConsumer) throws Exception {
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
-    List<CrmAccount> accounts = crmService.getAccountsByEmails(emails);
+    AccountSearch search = new AccountSearch();
+    search.emails = emails;
+    List<CrmAccount> accounts = crmService.searchAccounts(search);
     int count = 0;
     int total = accounts.size();
     for (CrmAccount account : accounts) {

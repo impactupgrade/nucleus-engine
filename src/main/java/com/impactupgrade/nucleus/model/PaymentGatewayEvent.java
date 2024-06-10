@@ -37,11 +37,12 @@ public class PaymentGatewayEvent implements Serializable {
   protected final EnvironmentConfig envConfig;
 
   // For convenience's sake, making use of CRM models, here, to make downstream processing cleaner.
-  // Important to not make these public -- note how the setters are multistep!
+  // Important to NOT make these public -- note how the setters are multistep!
   protected CrmAccount crmAccount = new CrmAccount();
   protected CrmContact crmContact = new CrmContact();
   protected CrmDonation crmDonation = new CrmDonation();
   protected CrmRecurringDonation crmRecurringDonation = new CrmRecurringDonation();
+
   protected PaymentGatewayEventType eventType;
 
   public PaymentGatewayEvent(Environment env) {

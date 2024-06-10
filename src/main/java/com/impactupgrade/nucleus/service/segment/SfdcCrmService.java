@@ -101,21 +101,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmAccount> getAccountById(String id) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountById(id));
-  }
-
-  @Override
-  public List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountsByIds(ids));
-  }
-
-  @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountsByEmails(emails));
-  }
-
-  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     return toCrmContact(sfdcClient.getContactById(id));
   }
@@ -1100,7 +1085,9 @@ public class SfdcCrmService implements CrmService {
         .filter(accountId -> !Strings.isNullOrEmpty(accountId)).distinct().toList();
     Map<String, SObject> existingAccountsById = new HashMap<>();
     if (!accountIds.isEmpty()) {
-      sfdcClient.getAccountsByIds(accountIds, accountCustomFields).forEach(c -> {
+      AccountSearch search = new AccountSearch();
+      search.ids = accountIds;
+      sfdcClient.searchAccounts(search, accountCustomFields).forEach(c -> {
         // cache both the 15 and 18 char versions, so the sheet can use either
         existingAccountsById.put(c.getId(), c);
         existingAccountsById.put(c.getId().substring(0, 15), c);
@@ -1112,10 +1099,12 @@ public class SfdcCrmService implements CrmService {
     Optional<String> accountExtRefFieldName = accountExtRefKey.map(k -> k.replace("Account ExtRef ", ""));
     Map<String, SObject> existingAccountsByExtRef = new HashMap<>();
     if (accountExtRefKey.isPresent()) {
-      List<String> accountExtRefIds = importEvents.stream().map(e -> e.raw.get(accountExtRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
-      if (!accountExtRefIds.isEmpty()) {
+      List<String> accountExtRefValues = importEvents.stream().map(e -> e.raw.get(accountExtRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
+      if (!accountExtRefValues.isEmpty()) {
+        AccountSearch search = new AccountSearch();
+        search.customFields.put(accountExtRefKey.get(), accountExtRefValues);
         // The imported sheet data comes in as all strings, so use toString here too to convert numberic extref values.
-        sfdcClient.getAccountsByUniqueField(accountExtRefFieldName.get(), accountExtRefIds, accountCustomFields)
+        sfdcClient.searchAccounts(search, accountCustomFields)
             .forEach(c -> existingAccountsByExtRef.put(c.getField(accountExtRefFieldName.get()).toString(), c));
       }
     }
@@ -1126,8 +1115,10 @@ public class SfdcCrmService implements CrmService {
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().forEach(accountNames::add);
     Multimap<String, SObject> existingAccountsByName = ArrayListMultimap.create();
     if (!accountNames.isEmpty()) {
+      AccountSearch search = new AccountSearch();
+      search.names = accountNames;
       // Normalize the case!
-      sfdcClient.getAccountsByNames(accountNames, accountCustomFields)
+      sfdcClient.searchAccounts(search)
           .forEach(c -> existingAccountsByName.put(c.getField("Name").toString().toLowerCase(Locale.ROOT), c));
     }
 

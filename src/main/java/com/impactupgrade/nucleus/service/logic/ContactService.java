@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.service.logic;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
@@ -38,7 +39,9 @@ public class ContactService {
     Optional<CrmContact> existingContact = Optional.empty();
 
     if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)) {
-      existingAccount = crmService.getAccountById(paymentGatewayEvent.getCrmAccount().id);
+      AccountSearch search = new AccountSearch();
+      search.ids.add(paymentGatewayEvent.getCrmAccount().id);
+      existingAccount = crmService.searchAccounts(search).stream().findFirst();
       if (existingAccount.isPresent()) {
         env.logJobInfo("found CRM account {}", existingAccount.get().id);
       } else {
@@ -53,7 +56,9 @@ public class ContactService {
         env.logJobInfo("found CRM contact {}", existingContact.get().id);
 
         if (existingAccount.isEmpty() && !Strings.isNullOrEmpty(existingContact.get().account.id)) {
-          existingAccount = crmService.getAccountById(existingContact.get().account.id);
+          AccountSearch search = new AccountSearch();
+          search.ids.add(existingContact.get().account.id);
+          existingAccount = crmService.searchAccounts(search).stream().findFirst();
           if (existingAccount.isPresent()) {
             env.logJobInfo("found CRM account {}", existingContact.get().account.id);
           }
@@ -100,7 +105,9 @@ public class ContactService {
         env.logJobInfo("found CRM contact {}", existingContact.get().id);
 
         if (!Strings.isNullOrEmpty(existingContact.get().account.id)) {
-          existingAccount = crmService.getAccountById(existingContact.get().account.id);
+          AccountSearch search = new AccountSearch();
+          search.ids.add(existingContact.get().account.id);
+          existingAccount = crmService.searchAccounts(search).stream().findFirst();
           if (existingAccount.isPresent()) {
             env.logJobInfo("found CRM account {}", existingContact.get().account.id);
           }

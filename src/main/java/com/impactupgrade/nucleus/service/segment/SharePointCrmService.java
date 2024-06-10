@@ -144,16 +144,6 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmAccount> getAccountById(String id) throws Exception {
-        return Optional.empty();
-    }
-
-    @Override
-    public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-        return Collections.emptyList();
-    }
-
-    @Override
     public Optional<CrmContact> getContactById(String id) throws Exception {
         String idColumn = env.getConfig().sharePoint.idColumn;
 

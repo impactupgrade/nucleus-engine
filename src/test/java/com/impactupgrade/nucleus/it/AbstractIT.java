@@ -17,6 +17,7 @@ import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -121,7 +122,10 @@ public abstract class AbstractIT extends JerseyTest {
 
     SfdcClient sfdcClient = env.sfdcClient();
 
-    List<SObject> existingAccounts = sfdcClient.getAccountsByName(name);
+    AccountSearch accountSearch = new AccountSearch();
+    accountSearch.names.add(name);
+
+    List<SObject> existingAccounts = sfdcClient.searchAccounts(accountSearch);
     for (SObject existingAccount : existingAccounts) {
       List<SObject> existingOpps = sfdcClient.getDonationsByAccountId(existingAccount.getId());
       for (SObject existingOpp : existingOpps) {
@@ -139,7 +143,7 @@ public abstract class AbstractIT extends JerseyTest {
     }
 
     // ensure we're actually clean
-    assertEquals(0, sfdcClient.getAccountsByName(name).size());
+    assertEquals(0, sfdcClient.searchAccounts(accountSearch).size());
   }
 
   protected SObject randomContactSfdc() throws Exception {

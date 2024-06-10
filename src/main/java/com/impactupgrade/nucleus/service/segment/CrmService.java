@@ -32,24 +32,12 @@ import java.util.Optional;
 public interface CrmService extends SegmentService {
 
   // TODO: As we gain more granular search methods, we should instead think through general purpose options
-  //  that take filter as arguments (or a Search object).
+  //  that take filter as arguments (or a AbstractSearch object).
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // GENERAL PURPOSE
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  Optional<CrmAccount> getAccountById(String id) throws Exception;
-  default List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
-    List<CrmAccount> accounts = new ArrayList<>();
-    for (String id : ids) {
-      Optional<CrmAccount> account = getAccountById(id);
-      account.ifPresent(accounts::add);
-    }
-    return accounts;
-  }
-  List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception;
-  // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
-//  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;

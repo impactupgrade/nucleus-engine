@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.logic;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -77,7 +78,9 @@ public class AccountingService {
         // the payment event.
         CrmContact crmContact = null;
         if (!StringUtils.isEmpty(crmDonation.account.id)) {
-            CrmAccount crmAccount = env.donationsCrmService().getAccountById(crmDonation.account.id).orElse(null);
+            AccountSearch accountSearch = new AccountSearch();
+            accountSearch.ids.add(crmDonation.account.id);
+            CrmAccount crmAccount = env.donationsCrmService().searchAccounts(accountSearch).stream().findFirst().orElse(null);
             // create a faux contact for org type account
             if (crmAccount != null && crmAccount.recordType == EnvironmentConfig.AccountType.ORGANIZATION) {
                 crmContact = new CrmContact();

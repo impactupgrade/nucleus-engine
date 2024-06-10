@@ -11,6 +11,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -127,49 +128,38 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   // ACCOUNTS
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public Optional<SObject> getAccountById(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where id = '" + accountId + "'";
-    return querySingle(query);
-  }
-  public List<SObject> getAccountsByIds(List<String> ids, String... extraFields) throws ConnectionException, InterruptedException {
-    return getBulkResults(ids, "Id", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
-  }
-  public List<SObject> getAccountsByUniqueField(String fieldName, List<String> values, String... extraFields) throws ConnectionException, InterruptedException {
-    return getBulkResults(values, fieldName, "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
-  }
-
-  public List<SObject> getAccountsByName(String name, String... extraFields) throws ConnectionException, InterruptedException {
-    String escapedName = name.replaceAll("'", "\\\\'");
-    // Note the formal greeting -- super important, as that's often used in numerous imports/exports
-    String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where name like '%" + escapedName + "%' or npo02__Formal_Greeting__c='%" + escapedName + "%'";
-    return queryList(query);
-  }
-  public List<SObject> getAccountsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
-    return getBulkResults(names, "Name", "Account", ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
-  }
-
-  public List<SObject> getAccountsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
-    return this.getBulkResults(emails, List.of(env.getConfig().salesforce.fieldDefinitions.accountEmail), "Account", this.ACCOUNT_FIELDS, this.env.getConfig().salesforce.customQueryFields.account, extraFields);
-  }
-
   public List<SObject> searchAccounts(AccountSearch accountSearch, String... extraFields)
       throws ConnectionException, InterruptedException {
-    List<String> clauses = new ArrayList<>();
+    List<List<String>> clauses = new ArrayList<>();
 
-    if (!Strings.isNullOrEmpty(accountSearch.ownerId)) {
-      clauses.add("OwnerId = '" + accountSearch.ownerId + "'");
+    EnvironmentConfig.CRMFieldDefinitions fieldDefinitions = env.getConfig().salesforce.fieldDefinitions;
+
+    if (!Strings.isNullOrEmpty(fieldDefinitions.accountEmail)) {
+      clauses.add(accountSearch.emails.stream()
+          .map(s -> fieldDefinitions.accountEmail + " = '" + s + "'")
+          .toList());
     }
+    clauses.add(accountSearch.ids.stream()
+        .map(s -> "Id = '" + s + "'")
+        .toList());
+    clauses.add(accountSearch.keywords.stream()
+        .map(s -> "Name LIKE '%" + s + "%' OR BillingAddress LIKE '%" + s + "%' OR ShippingAddress LIKE '%" + s + "%'")
+        .toList());
+    clauses.add(accountSearch.names.stream()
+        .map(s -> s.replaceAll("'", "\\\\'"))
+        .map(s -> "Name LIKE '%" + s + "%' OR npo02__Formal_Greeting__c LIKE '%" + s + "%'")
+        .toList());
+    clauses.add(accountSearch.ownerIds.stream()
+        .map(s -> "OwnerId = '" + s + "'")
+        .toList());
 
-    if (!Strings.isNullOrEmpty(accountSearch.keywords)) {
-      String[] keywordSplit = accountSearch.keywords.trim().split("\\s+");
-      for (String keyword : keywordSplit) {
-        clauses.add("(Name LIKE '%" + keyword + "%' OR BillingAddress LIKE '%" + keyword + "%' OR ShippingAddress LIKE '%" + keyword + "%')");
-      }
-    }
+    clauses.add(accountSearch.customFields.entrySet().stream()
+        .flatMap(e -> e.getValue().stream().map(s -> e.getKey() + " = '" + s + "'"))
+        .toList());
 
-    String fullClause = String.join( " AND ", clauses);
+    String fullClause = clauses.stream().map(c -> String.join( " OR ", c)).collect(Collectors.joining(" AND ", "(", ")"));
     if (!Strings.isNullOrEmpty(fullClause)) {
-      fullClause = "where " + fullClause;
+      fullClause = "WHERE " + fullClause;
     }
 
     String select;
@@ -179,7 +169,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       select = getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields);
     }
 
-    String query ="select " + select +  " from account " + fullClause + " ORDER BY Name";
+    String query ="SELECT " + select +  " FROM Account " + fullClause + " ORDER BY Name";
 
     if (accountSearch.pageSize != null && accountSearch.pageSize > 0) {
       query += " LIMIT " + accountSearch.pageSize;

@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DynamicsCrmClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
@@ -198,17 +199,15 @@ public class DynamicsCrmService implements BasicCrmService {
 
   // Account
   @Override
-  public Optional<CrmAccount> getAccountById(String id) {
-    DynamicsCrmClient.Account account = dynamicsCrmClient.getAccountById(id);
-    return Optional.ofNullable(toCrmAccount(account));
-  }
+  public List<CrmAccount> searchAccounts(AccountSearch search) throws Exception {
+    // TODO: support of other search params
+    if (!search.ids.isEmpty()) {
+      return dynamicsCrmClient.getAccountsByIds(search.ids).stream()
+          .map(DynamicsCrmService::toCrmAccount)
+          .collect(Collectors.toList());
+    }
 
-  @Override
-  public List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
-    List<DynamicsCrmClient.Account> accounts = dynamicsCrmClient.getAccountsByIds(ids);
-    return accounts.stream()
-        .map(account -> toCrmAccount(account))
-        .collect(Collectors.toList());
+    return Collections.emptyList();
   }
 
   //TODO: convert crmAccount to Account

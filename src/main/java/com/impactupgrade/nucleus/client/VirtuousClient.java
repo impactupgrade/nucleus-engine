@@ -180,7 +180,7 @@ public class VirtuousClient extends OAuthClient {
   public List<ContactIndividualShort> getContactIndividuals(String searchString) {
     ContactsSearchCriteria criteria = new ContactsSearchCriteria();
     criteria.search = searchString;
-    ContactSearchResponse response = post(VIRTUOUS_API_URL + "/Contact/Search?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT, criteria, APPLICATION_JSON, headers(), ContactSearchResponse.class);
+    ContactSearchResponse response = post(VIRTUOUS_API_URL + "/Contact/AbstractSearch?skip=" + DEFAULT_OFFSET + "&take=" + DEFAULT_LIMIT, criteria, APPLICATION_JSON, headers(), ContactSearchResponse.class);
     if (response == null) {
       return Collections.emptyList();
     }

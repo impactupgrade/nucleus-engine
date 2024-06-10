@@ -4,16 +4,10 @@
 
 package com.impactupgrade.nucleus.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class AccountSearch extends AbstractSearch {
-  public String ownerId;
-  public String keywords;
-  public boolean basicSearch = false;
-
-  // helpers
-
-  public static AccountSearch byKeywords(String keywords) {
-    AccountSearch accountSearch = new AccountSearch();
-    accountSearch.keywords = keywords;
-    return accountSearch;
-  }
+  public List<String> emails = new ArrayList<>();
+  public List<String> ownerIds = new ArrayList<>();
 }
