@@ -195,6 +195,11 @@ public class VirtuousCrmService implements CrmService {
     return null;
   }
 
+  @Override
+  public List<CrmDonation> getDonationsUpdatedSince(Calendar updatedSince) throws Exception {
+    return null;
+  }
+
   private List<VirtuousClient.ContactMethod> getContactMethodsToCreate(VirtuousClient.ContactIndividual existing, VirtuousClient.ContactIndividual updating) {
     List<VirtuousClient.ContactMethod> toCreate = new ArrayList<>();
     for (VirtuousClient.ContactMethod updatingContactMethod : updating.contactMethods) {

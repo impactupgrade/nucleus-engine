@@ -14,9 +14,7 @@ import java.time.ZonedDateTime;
  */
 public class AccountingTransaction {
 
-  // TODO: Rename? "Contact" in Xero, but something else in QB?
-  public String contactId;
-  public String crmContactId;
+  public AccountingCustomer accountingCustomer;
 
   public Double amountInDollars;
   public ZonedDateTime date;
@@ -37,8 +35,7 @@ public class AccountingTransaction {
       String paymentGatewayTransactionId,
       Boolean recurring
   ) {
-    this.contactId = contactId;
-    this.crmContactId = crmContactId;
+    this.accountingCustomer = new AccountingCustomer(contactId, crmContactId, null);
 
     this.amountInDollars = amountInDollars;
     this.date = date;
