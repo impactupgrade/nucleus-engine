@@ -56,7 +56,6 @@ public class PaypalClient {
     public String status;
     @JsonProperty("supplementary_data")
     public SupplementaryData supplementaryData;
-    public Payee payee;
     @JsonProperty("create_time")
     public Date createTime;
     @JsonProperty("update_time")
@@ -85,8 +84,16 @@ public class PaypalClient {
     public Amount grossAmount;
     @JsonProperty("paypal_fee")
     public Amount paypalFee;
+    @JsonProperty("platform_fees")
+    public List<PlatformFee> platformFees;
     @JsonProperty("net_amount")
     public Amount netAmount;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class PlatformFee {
+    public Amount amount;
+    public Payee payee;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
