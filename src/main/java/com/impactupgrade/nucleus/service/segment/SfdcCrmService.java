@@ -193,6 +193,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationsByUniqueField(
+        env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId, List.of(customerId)));
+  }
+
+  @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws InterruptedException, ConnectionException {
     List<String> clauses = searchRecurringDonations(name, email, phone);
 
@@ -385,7 +391,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
     return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId));
   }
 

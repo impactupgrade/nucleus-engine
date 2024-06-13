@@ -294,6 +294,12 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception {
+    // TODO: Might be possible?
+    return List.of();
+  }
+
+  @Override
   public String insertDonation(CrmDonation crmDonation) throws Exception {
     VirtuousClient.Gift gift = asGift(crmDonation);
 
@@ -439,6 +445,11 @@ public class VirtuousCrmService implements CrmService {
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     VirtuousClient.RecurringGift recurringGift = virtuousClient.getRecurringGiftById(Integer.parseInt(id));
     return Optional.ofNullable(asCrmRecurringDonation(recurringGift));
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+    return Optional.empty(); // not possible without the contactId
   }
 
   @Override

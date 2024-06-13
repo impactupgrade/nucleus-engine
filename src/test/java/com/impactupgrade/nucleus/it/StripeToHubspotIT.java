@@ -128,7 +128,7 @@ public class StripeToHubspotIT extends AbstractIT {
     assertEquals(customer.getEmail(), contact.email);
     assertEquals(customer.getPhone(), contact.mobilePhone);
 
-    Optional<CrmRecurringDonation> _rd = hsCrmService.getRecurringDonationBySubscriptionId(subscription.getId(), null, null);
+    Optional<CrmRecurringDonation> _rd = hsCrmService.getRecurringDonationBySubscriptionId(subscription.getId());
     assertTrue(_rd.isPresent());
     CrmRecurringDonation rd = _rd.get();
     Deal rdDeal = (Deal) rd.crmRawObject;

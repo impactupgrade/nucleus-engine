@@ -260,6 +260,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id = '" + contactId + "' ORDER BY name";
     return querySingle(query);
   }
+  // TODO: needs additional filters, like the opt-out fields, from queryEmailContacts -- DRY it up?
   public Optional<SObject> getFilteredContactById(String contactId, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id = '" + contactId + "' and " + filter + " ORDER BY name";
     return querySingle(query);

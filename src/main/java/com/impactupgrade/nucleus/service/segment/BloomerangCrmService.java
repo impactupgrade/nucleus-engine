@@ -187,6 +187,12 @@ public class BloomerangCrmService implements CrmService {
     return Collections.emptyList();
   }
 
+  // Not able to retrieve donations purely by customerId -- must have the Constituent.
+  @Override
+  public List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception {
+    return List.of();
+  }
+
   @Override
   public void updateDonation(CrmDonation crmDonation) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
@@ -450,6 +456,11 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public void removeContactFromList(CrmContact crmContact, String listId) throws Exception {
     // SMS opt out
+  }
+
+  @Override
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+    return Optional.empty(); // not possible without the contactId
   }
 
   @Override
