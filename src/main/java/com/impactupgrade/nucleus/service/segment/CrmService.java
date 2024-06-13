@@ -118,6 +118,7 @@ public interface CrmService extends SegmentService {
   // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
   // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
   List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception;
+  List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception;
   String insertDonation(CrmDonation crmDonation) throws Exception;
   void updateDonation(CrmDonation crmDonation) throws Exception;
   void refundDonation(CrmDonation crmDonation) throws Exception;
@@ -139,7 +140,14 @@ public interface CrmService extends SegmentService {
     return crmRecurringDonation;
   }
   Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
-  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception;
+  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
+  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
+      String contactId) throws Exception {
+    // Most CRMs do not need the accountId/contactId to retrieve RDs, with notable exceptions like Virtuous.
+    // We don't even always have the accountId/contactId available, like when we're attempting to figure out who a donor
+    // is using past donations as a last resort in ContactService.
+    return getRecurringDonationBySubscriptionId(subscriptionId);
+  }
   List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 //  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;

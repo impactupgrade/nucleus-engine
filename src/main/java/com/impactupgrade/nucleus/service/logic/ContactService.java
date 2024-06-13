@@ -10,9 +10,12 @@ import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmDonation;
+import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -59,7 +62,7 @@ public class ContactService {
           }
         }
       } else {
-        env.logJobInfo("event included CRM contact {}, but the contact didn't exist; trying through the contact email...",
+        env.logJobInfo("event included CRM contact {}, but the contact didn't exist; trying through the contact...",
             paymentGatewayEvent.getCrmContact().id);
         // IMPORTANT: If this was the case, clear out the existingAccount and use the one discovered by the proceeding contact search!
         existingAccount = Optional.empty();
@@ -93,6 +96,24 @@ public class ContactService {
         if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().billingAddress.street)) {
           contactSearch.keywords = Set.of(paymentGatewayEvent.getCrmAccount().billingAddress.street);
           existingContact = crmService.searchContacts(contactSearch).getSingleResult();
+        }
+
+        // As a last resort, attempt to look up existing donations using the donor's customer or subscription. If
+        // donations are found, retrieve the contact/account from the latest. This prevents duplicate contacts
+        // when donations come in with nothing more than a first/last name.
+        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmRecurringDonation().subscriptionId)) {
+          Optional<CrmRecurringDonation> crmRecurringDonation = crmService.getRecurringDonationBySubscriptionId(
+              paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
+          if (crmRecurringDonation.isPresent()) {
+            existingContact = crmService.getContactById(crmRecurringDonation.get().contact.id);
+          }
+        }
+        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().customerId)) {
+          List<CrmDonation> crmDonations = crmService.getDonationsByCustomerId(
+              paymentGatewayEvent.getCrmDonation().customerId);
+          if (!crmDonations.isEmpty()) {
+            existingContact = crmService.getContactById(crmDonations.get(0).contact.id);
+          }
         }
       }
 

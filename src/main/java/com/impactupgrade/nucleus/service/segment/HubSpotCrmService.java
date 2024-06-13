@@ -203,6 +203,15 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception {
+    Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewayCustomerId, "EQ", customerId);
+    List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
+
+    DealResults results = hsClient.deal().search(filterGroups, dealFields);
+    return toCrmDonation(results.getResults());
+  }
+
+  @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception {
     // TODO
     return Collections.emptyList();
@@ -305,7 +314,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", subscriptionId);
     List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
     DealResults results = hsClient.deal().search(filterGroups, dealFields);

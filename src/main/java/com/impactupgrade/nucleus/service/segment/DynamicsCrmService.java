@@ -100,6 +100,11 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception {
+    return List.of();
+  }
+
+  @Override
   public String insertDonation(CrmDonation crmDonation) throws Exception {
     DynamicsCrmClient.Opportunity insertedOpportunity = dynamicsCrmClient.insertOpportunity(toOpportunity(crmDonation));
     return insertedOpportunity.id;

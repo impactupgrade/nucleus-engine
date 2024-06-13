@@ -6,6 +6,7 @@ package com.impactupgrade.nucleus.it;
 
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
+import com.impactupgrade.nucleus.client.StripeClient;
 import com.impactupgrade.nucleus.it.util.StripeUtil;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.sforce.soap.partner.sobject.SObject;
@@ -13,6 +14,7 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
+import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.PlanCreateParams;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
@@ -432,6 +434,64 @@ public class StripeToSfdcIT extends AbstractIT {
     // the Contact/Account the CRM itself (data wasn't overwritten).
     assertEquals(customer.getName() + " Donation", opp.getField("Name"));
     assertEquals("1.0", opp.getField("Amount"));
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(customer.getName());
+  }
+
+  /**
+   * In Stripe, if a Customer only has a name and no email, no phone, no street, and no street on the payment method,
+   * Nucleus was creating duplicate Contacts every time in the CRM. That was expected -- nothing to match against.
+   * However, one improvement:
+   * As a last resort, attempt to look up existing donations using the donor's customer or subscription. If
+   * donations are found, retrieve the contact/account from the latest.
+   */
+  @Test
+  public void stripeCustomerWithNoDetailsPreventDuplicateContacts() throws Exception {
+    StripeClient stripeClient = env.stripeClient();
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    // name only, no email, no phone, no address
+    String randomFirstName = RandomStringUtils.randomAlphabetic(8);
+    String randomLastName = RandomStringUtils.randomAlphabetic(8);
+    CustomerCreateParams.Builder customerBuilder = stripeClient.defaultCustomerBuilder(
+        randomFirstName + " " + randomLastName,
+        null,
+        "tok_visa"
+    );
+    Customer customer = stripeClient.createCustomer(customerBuilder);
+
+    Charge charge1 = StripeUtil.createCharge(customer, env);
+    String json1 = StripeUtil.createEventJson("charge.succeeded", charge1.getRawJsonObject(), charge1.getCreated());
+    Response response1 = target("/api/stripe/webhook").request().post(Entity.json(json1));
+    assertEquals(Response.Status.OK.getStatusCode(), response1.getStatus());
+    Thread.sleep(10000); // wait to allow processing to finish and metadata to be written back
+    Charge charge2 = StripeUtil.createCharge(customer, env);
+    String json2 = StripeUtil.createEventJson("charge.succeeded", charge2.getRawJsonObject(), charge2.getCreated());
+    Response response2 = target("/api/stripe/webhook").request().post(Entity.json(json2));
+    assertEquals(Response.Status.OK.getStatusCode(), response2.getStatus());
+
+    // verify ContactService -> SfdcCrmService
+    List<SObject> contacts = sfdcClient.getContactsByNames(List.of(randomFirstName + " " + randomLastName));
+    assertEquals(1, contacts.size()); // original bug
+    SObject contact = contacts.get(0);
+    String accountId = contact.getField("AccountId").toString();
+    Optional<SObject> accountO = sfdcClient.getAccountById(accountId);
+    assertTrue(accountO.isPresent());
+    SObject account = accountO.get();
+    assertEquals(customer.getName(), account.getField("Name"));
+    assertEquals(randomFirstName, contact.getField("FirstName"));
+    assertEquals(randomLastName, contact.getField("LastName"));
+
+    // verify DonationService -> SfdcCrmService
+    List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
+    assertEquals(2, opps.size()); // original bug (1 opp per 2 dup contacts)
+    SObject opp1 = opps.get(0);
+    assertEquals("Stripe", opp1.getField("Payment_Gateway_Name__c"));
+    assertEquals(customer.getId(), opp1.getField("Payment_Gateway_Customer_Id__c"));
+    SObject opp2 = opps.get(1);
+    assertEquals("Stripe", opp2.getField("Payment_Gateway_Name__c"));
+    assertEquals(customer.getId(), opp2.getField("Payment_Gateway_Customer_Id__c"));
 
     // only delete if the test passed -- keep failures in SFDC for analysis
     clearSfdc(customer.getName());

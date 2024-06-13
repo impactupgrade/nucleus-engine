@@ -104,6 +104,11 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception {
+    return List.of();
+  }
+
+  @Override
   public String insertDonation(CrmDonation crmDonation) throws Exception {
     return dwClient.insertDonation(crmDonation);
   }

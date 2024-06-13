@@ -1,9 +1,9 @@
 {
   "metadataKeys": {
-    "account": ["account", "account_id", "sf_account", "sf_account_id"],
-    "campaign": ["campaign", "campaign_id", "sf_campaign", "sf_campaign_id"],
+    "account": ["account", "account_id", "sf_account", "sf_account_id", "crm_account", "crm_account_id"],
+    "campaign": ["campaign", "campaign_id", "sf_campaign", "sf_campaign_id", "crm_campaign", "crm_campaign_id"],
     "fund": ["fund"],
-    "contact": ["contact", "contact_id", "sf_contact", "sf_contact_id"],
+    "contact": ["contact", "contact_id", "sf_contact", "sf_contact_id", "crm_contact", "crm_contact_id"],
     "recordType": ["sf_opp_record_type", "sf_opp_record_type_id"]
   },
 
