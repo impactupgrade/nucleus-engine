@@ -694,7 +694,7 @@ public class BloomerangToSalesforce {
     SObject sfdcOpportunity = new SObject("Opportunity");
     sfdcOpportunity.setField("npsp__Acknowledgment_Status__c", donationRow.get("AcknowledgementStatus"));
     sfdcOpportunity.setField("Amount", donationRow.get("Amount"));
-    sfdcOpportunity.setField("Non_Deductible__c", donationRow.get("NonDeductable"));
+    sfdcOpportunity.setField("Non_Deductible__c", donationRow.get("NonDeductible"));
     sfdcOpportunity.setField("Description", donationRow.get("Note"));
     sfdcOpportunity.setField("npsp__Honoree_Name__c", donationRow.get("TributeName"));
     sfdcOpportunity.setField("npsp__Tribute_Type__c", donationRow.get("TributeType"));
