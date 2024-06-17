@@ -200,6 +200,10 @@ public class Environment {
     return segmentServices(CommunicationService.class);
   }
 
+  public CommunicationService communicationService(String name) {
+    return segmentService(name, CommunicationService.class);
+  }
+
   public EnrichmentService enrichmentService(String name) {
     return segmentService(name, EnrichmentService.class);
   }

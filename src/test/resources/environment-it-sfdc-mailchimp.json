@@ -9,16 +9,12 @@
 
     "fieldDefinitions": {
       "emailOptOut": "HasOptedOutOfEmail",
-      "emailBounced": "",
-      "paymentGatewayName": "Payment_Gateway_Name__c",
-      "paymentGatewayTransactionId": "Payment_Gateway_Transaction_Id__c",
-      "paymentGatewayCustomerId": "Payment_Gateway_Customer_Id__c",
-      "paymentGatewaySubscriptionId": "Payment_Gateway_Subscription_Id__c"
+      "emailBounced": "Email_Bounced__c"
     },
     "customQueryFields": {
       "account": ["External_Reference__c"],
       "campaign": [],
-      "contact": ["External_Reference__c", "HasOptedOutOfEmail"],
+      "contact": ["External_Reference__c", "HasOptedOutOfEmail", "Email_Bounced__c"],
       "donation": ["Payment_Gateway_Name__c", "Payment_Gateway_Transaction_Id__c", "Payment_Gateway_Customer_Id__c"],
       "recurringDonation": ["Payment_Gateway_Name__c", "Payment_Gateway_Subscription_Id__c", "Payment_Gateway_Customer_Id__c"],
       "user": []
