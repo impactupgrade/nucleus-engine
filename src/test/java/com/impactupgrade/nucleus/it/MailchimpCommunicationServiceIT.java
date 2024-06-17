@@ -62,17 +62,13 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     assertTrue(crmContactsEmails.containsAll(emails));
 
     // Sync contacts to MC
-    for (CommunicationService communicationService : env.allCommunicationServices()) {
-      if (communicationService instanceof MailchimpCommunicationService) {
-        communicationService.syncContacts(beforeBulkImport);
-      }
-    }
+    env.communicationService("mailchimp").syncContacts(beforeBulkImport);
 
     EnvironmentConfig.Mailchimp mailchimp = env.getConfig().mailchimp.get(0);
     String listId = mailchimp.lists.get(0).id;
     MailchimpClient mailchimpClient = new MailchimpClient(mailchimp, env);
 
-    assertEmailsStatus(emails, "unsubscribed", listId, mailchimpClient);
+    assertEmailsStatus(emails, "subscribed", listId, mailchimpClient);
   }
 
   @Test
@@ -125,21 +121,20 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     assertEmailsStatus(cleanEmails, "cleaned", listId, mailchimpClient);
 
     // Sync unsubscribes MC >> SF
-    for (CommunicationService communicationService : env.allCommunicationServices()) {
-      if (communicationService instanceof MailchimpCommunicationService) {
-        communicationService.syncUnsubscribes(beforeBulkImport);
-      }
-    }
+    env.communicationService("mailchimp").syncContacts(beforeBulkImport);
 
     crmContacts = env.primaryCrmService().getContactsByEmails(unsubscribeEmails);
+    assertTrue(!crmContacts.isEmpty());
+
     for (CrmContact crmContact : crmContacts) {
       assertTrue(Boolean.TRUE == crmContact.emailOptOut);
     }
 
     crmContacts = env.primaryCrmService().getContactsByEmails(cleanEmails);
+    assertTrue(!crmContacts.isEmpty());
+
     for (CrmContact crmContact : crmContacts) {
-      //TODO: add custom field definition to json config
-      //assertTrue(Boolean.TRUE == crmContact.emailBounced);
+      assertTrue(Boolean.TRUE == crmContact.emailBounced);
     }
   }
 
@@ -164,7 +159,6 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
             .collect(Collectors.toMap(
                     m -> m.email_address, m -> m
             ));
-    // TODO: replace with bulk update?
     for (String email : emails) {
       MemberInfo memberInfo = memberInfoMap.get(email);
       if (memberInfo == null) {
