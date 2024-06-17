@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.isOk;
@@ -27,6 +28,7 @@ public class MinistryByTextClient extends OAuthClient {
 
   protected static String AUTH_ENDPOINT = "https://login.ministrybytext.com/connect/token";
   protected static String API_ENDPOINT_BASE = "https://api.ministrybytext.com/";
+  protected static String API_POWERED_BY_TEXT_ENDPOINT_BASE = "https://api.poweredbytext.com";
 
   protected final EnvironmentConfig.MBT mbtConfig;
 
@@ -61,6 +63,15 @@ public class MinistryByTextClient extends OAuthClient {
     return post(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
   }
 
+  public void upsertSubscribersBulk(String orgunitId, String groupId, List<CrmContact> crmContacts) {
+    List<Subscriber> subscribers = crmContacts.stream()
+            .map(this::toMBTSubscriber)
+            .collect(Collectors.toList());
+    post(API_POWERED_BY_TEXT_ENDPOINT_BASE + "/orgunit/" + orgunitId + "/groups/" + groupId + "/new-subscribers/bulk",
+            subscribers, APPLICATION_JSON, headers(), null);
+    //TODO: add response class
+  }
+
   public void upsertNotificationSetting(NotificationSetting notificationSetting,
       EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) throws IOException, InterruptedException {
     patch(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", notificationSetting, APPLICATION_JSON, headers());
@@ -68,6 +79,14 @@ public class MinistryByTextClient extends OAuthClient {
 
   public NotificationSettingResponse getNotificationSetting(EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) throws IOException, InterruptedException {
     return get(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", headers(), new GenericType<>() {});
+  }
+
+  public void upsertContactsBulk(String orgunitId, List<CrmContact> crmContacts) {
+    List<Contact> contacts = crmContacts.stream()
+            .map(this::toMBTContact)
+            .collect(Collectors.toList());
+    post(API_POWERED_BY_TEXT_ENDPOINT_BASE + "/orgunit/" + orgunitId + "/contacts/bulk", contacts, APPLICATION_JSON, headers(), null);
+    //TODO: add response class
   }
 
   // Having to modify this due to MBT's limited API. There's no upsert concept, and we want to avoid having to retrieve
@@ -97,6 +116,17 @@ public class MinistryByTextClient extends OAuthClient {
     // TODO: relations
 
     return subscriber;
+  }
+
+  protected Contact toMBTContact(CrmContact crmContact) {
+    Contact contact = new Contact();
+    contact.firstName = crmContact.firstName;
+    contact.lastName = crmContact.lastName;
+    //contact.gender = crmContact ?
+    contact.mobileNo = crmContact.mobilePhone;
+    // TODO: address, using mailing or billing
+    //contact.region = crmContact ?
+    return contact;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -189,5 +219,43 @@ public class MinistryByTextClient extends OAuthClient {
           "data=" + data +
           '}';
     }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Contact {
+    public String firstName;
+    public String lastName;
+    public String gender;
+    public String mobileNo;
+    public SubscriberAddress address;
+    public String region;
+  }
+
+  public static void main(String[] args) {
+    Environment env = new Environment() {
+      @Override
+      public EnvironmentConfig getConfig() {
+
+        EnvironmentConfig.MBT mbt = new EnvironmentConfig.MBT();
+        mbt.clientId = "GVU05RE7VMACNUU96ME8";
+        mbt.clientSecret = "CPMw462MQdLTW6MDDlagUWlOhxXXJgDRc0D8cBHuUqhO=g6ELo";
+        mbt.campusId = "cf774a3b-4910-4b16-b6b0-608f80d216a4";
+
+        EnvironmentConfig envConfig = new EnvironmentConfig();
+        envConfig.ministrybytext = List.of(mbt);
+        return envConfig;
+      }
+    };
+    EnvironmentConfig.MBT mbt = env.getConfig().ministrybytext.get(0);
+    MinistryByTextClient mbtClient = new MinistryByTextClient(mbt, env);
+
+    CrmContact crmContact = new CrmContact();
+    crmContact.id = "12345";
+    crmContact.firstName = "Brett";
+    crmContact.lastName = "Meyer";
+    crmContact.mobilePhone = "260-349-5732";
+    EnvironmentConfig.CommunicationList communicationList = new EnvironmentConfig.CommunicationList();
+    communicationList.id = "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b";
+    mbtClient.upsertSubscribersBulk("", "", List.of(crmContact));
   }
 }
