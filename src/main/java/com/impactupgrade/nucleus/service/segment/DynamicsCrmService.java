@@ -46,15 +46,11 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   // Contact
-  @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
-    DynamicsCrmClient.Contact contact = dynamicsCrmClient.getContactById(id);
-    return Optional.ofNullable(toCrmContact(contact));
-  }
 
   @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
-    return getContactById(id); //TODO: filter?
+    DynamicsCrmClient.Contact contact = dynamicsCrmClient.getContactById(id); //TODO: filter?
+    return Optional.ofNullable(toCrmContact(contact));
   }
 
   @Override
@@ -65,13 +61,16 @@ public class DynamicsCrmService implements BasicCrmService {
 
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
-    // TODO: by name and by keywords
+    // TODO
     DynamicsCrmClient.Contact contact;
-    if (!Strings.isNullOrEmpty(contactSearch.email)) {
-      contact = dynamicsCrmClient.getContactByEmail(contactSearch.email);
+    if (!contactSearch.ids.isEmpty()) {
+      contact = dynamicsCrmClient.getContactById(contactSearch.ids.stream().findFirst().get());
       return PagedResults.getPagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
-    } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-      contact = dynamicsCrmClient.getContactByPhoneNumber(contactSearch.phone);
+    } else if (!contactSearch.emails.isEmpty()) {
+      contact = dynamicsCrmClient.getContactByEmail(contactSearch.emails.stream().findFirst().get());
+      return PagedResults.getPagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
+    } else if (!contactSearch.phones.isEmpty()) {
+      contact = dynamicsCrmClient.getContactByPhoneNumber(contactSearch.phones.stream().findFirst().get());
       return PagedResults.getPagedResultsFromCurrentOffset(List.of(toCrmContact(contact)), contactSearch);
     } else {
       return new PagedResults<>();

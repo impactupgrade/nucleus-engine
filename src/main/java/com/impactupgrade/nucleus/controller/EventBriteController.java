@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -86,7 +87,10 @@ public class EventBriteController {
 
         CrmContact contact = toCrmContact(attendee);
         // LIFO
-        CrmContact existingContact = crmService.getContactsByEmails(List.of(contact.email))
+        ContactSearch search = new ContactSearch();
+        search.emails.add(contact.email);
+        // TODO: pagination coming in another PR
+        CrmContact existingContact = crmService.searchContacts(search).getResults()
             .stream().reduce((first, second) -> second).orElse(null);
         // Unlikely that they wouldn't already exist, but keep this here as a sanity check.
         upsertCrmContact(contact, Optional.ofNullable(existingContact), crmService);

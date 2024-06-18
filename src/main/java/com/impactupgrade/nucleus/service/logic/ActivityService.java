@@ -59,7 +59,9 @@ public class ActivityService {
 
   public void upsertActivityFromEmail(String email, ActivityType activityType, String conversationId,
       String messageBody) throws Exception {
-    Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
+    ContactSearch search = new ContactSearch();
+    search.emails.add(email);
+    Optional<CrmContact> crmContact = crmService.searchContacts(search).getSingleResult();
     if (crmContact.isPresent()) {
       upsertActivity(crmContact.get().id, activityType, conversationId, messageBody);
     } else {
@@ -69,7 +71,9 @@ public class ActivityService {
 
   public void upsertActivityFromPhoneNumber(String phoneNumber, ActivityType activityType, String conversationId,
       String messageBody) throws Exception {
-    Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byPhone(phoneNumber)).getSingleResult();
+    ContactSearch search = new ContactSearch();
+    search.phones.add(phoneNumber);
+    Optional<CrmContact> crmContact = crmService.searchContacts(search).getSingleResult();
     if (crmContact.isPresent()) {
       upsertActivity(crmContact.get().id, activityType, conversationId, messageBody);
     } else {

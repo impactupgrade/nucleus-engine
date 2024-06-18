@@ -126,13 +126,6 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
-    Contact contact = hsClient.contact().read(id, contactFields);
-    CrmContact crmContact = toCrmContact(contact);
-    return Optional.of(crmContact);
-  }
-
-  @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     //TODO Not currently implemented
     return Optional.empty();
@@ -147,13 +140,16 @@ public class HubSpotCrmService implements CrmService {
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
-    //  combining clauses, owner, by-namd, keyword search, pagination, etc.
+    //  combining clauses (both and + or), owner, by-namd, keyword search, pagination, etc.
 
-    if (!Strings.isNullOrEmpty(contactSearch.email)) {
-      List<CrmContact> contacts = toCrmContact(hsClient.contact().searchByEmail(contactSearch.email, contactFields).getResults());
+    if (!contactSearch.ids.isEmpty()) {
+      CrmContact contact = toCrmContact(hsClient.contact().read(contactSearch.ids.stream().findFirst().get(), contactFields));
+      return PagedResults.getPagedResultsFromCurrentOffset(contact, contactSearch);
+    } else if (!contactSearch.emails.isEmpty()) {
+      List<CrmContact> contacts = toCrmContact(hsClient.contact().searchByEmail(contactSearch.emails.stream().findFirst().get(), contactFields).getResults());
       return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
-    } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-      List<CrmContact> contacts =  toCrmContact(hsClient.contact().searchByPhone(contactSearch.phone, contactFields).getResults());
+    } else if (!contactSearch.phones.isEmpty()) {
+      List<CrmContact> contacts =  toCrmContact(hsClient.contact().searchByPhone(contactSearch.phones.stream().findFirst().get(), contactFields).getResults());
       return PagedResults.getPagedResultsFromCurrentOffset(contacts, contactSearch);
     } else {
       return new PagedResults<>();

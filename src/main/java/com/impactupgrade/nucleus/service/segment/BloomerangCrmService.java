@@ -78,12 +78,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
-    Constituent constituent = get(BLOOMERANG_URL + "constituent/" + id, headers(), Constituent.class);
-    return Optional.of(toCrmContact(constituent));
-  }
-
-  @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     //Not currently implemented
     return Optional.empty();
@@ -105,23 +99,29 @@ public class BloomerangCrmService implements CrmService {
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     Set<String> keywords = new HashSet<>();
 
-    String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
+    // TODO: does Bloomerang support ands and ors?
+    // TODO: by-id is a separate endpoint, but may only be singular -- must retrieve all of them at once
 
-    if (!Strings.isNullOrEmpty(contactSearch.email)) {
-      keywords.add(contactSearch.email);
-    }
-    if (!Strings.isNullOrEmpty(phone)) {
-      keywords.add(phone);
-    }
-    if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
-      keywords.add(contactSearch.firstName);
-    }
-    if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
-      keywords.add(contactSearch.lastName);
-    }
-    if (!contactSearch.keywords.isEmpty()) {
-      keywords.addAll(contactSearch.keywords);
-    }
+//    String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
+//
+//    if (!Strings.isNullOrEmpty(contactSearch.email)) {
+//      keywords.add(contactSearch.email);
+//    }
+//    if (!Strings.isNullOrEmpty(phone)) {
+//      keywords.add(phone);
+//    }
+//    if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
+//      keywords.add(contactSearch.firstName);
+//    }
+//    if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
+//      keywords.add(contactSearch.lastName);
+//    }
+//    if (!contactSearch.keywords.isEmpty()) {
+//      keywords.addAll(contactSearch.keywords);
+//    }
+//    if (!contactSearch.names.isEmpty()) {
+//      keywords.addAll(contactSearch.names);
+//    }
 
     String query = keywords.stream().map(k -> {
       k = k.trim();
@@ -157,14 +157,15 @@ public class BloomerangCrmService implements CrmService {
     // API appears to be doing SUPER forgiving fuzzy matches. If the search was by email/phone/name, verify those explicitly.
     // If it was a name search, make sure the name actually matches.
     List<Constituent> constituents = constituentSearchResults.results.stream()
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.email)
-            || (c.primaryEmail != null && !Strings.isNullOrEmpty(c.primaryEmail.value) && c.primaryEmail.value.equalsIgnoreCase(contactSearch.email))
-            || (c.secondaryEmails.stream().anyMatch(e -> e.value.equalsIgnoreCase(contactSearch.email))))
-        .filter(c -> Strings.isNullOrEmpty(phone)
-            || (c.primaryPhone != null && !Strings.isNullOrEmpty(c.primaryPhone.number) && c.primaryPhone.number.replaceAll("[\\D]", "").contains(phone))
-            || (c.secondaryPhones.stream().anyMatch(p -> p.number.replaceAll("[\\D]", "").contains(phone))))
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.firstName) || contactSearch.firstName.equalsIgnoreCase(c.firstName))
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.lastName) || contactSearch.lastName.equalsIgnoreCase(c.lastName))
+        .filter(c -> contactSearch.emails.isEmpty()
+            || (c.primaryEmail != null && !Strings.isNullOrEmpty(c.primaryEmail.value) && contactSearch.emails.contains(c.primaryEmail.value))
+            || (c.secondaryEmails.stream().anyMatch(e -> contactSearch.emails.contains(e.value))))
+        .filter(c -> contactSearch.phones.isEmpty()
+            || (c.primaryPhone != null && !Strings.isNullOrEmpty(c.primaryPhone.number) && contactSearch.phones.contains(c.primaryPhone.number))
+            || (c.secondaryPhones.stream().anyMatch(e -> contactSearch.phones.contains(e.number))))
+        // TODO: maybe reconsider the firstAndLastNames data structure, since it makes this check tough
+//        .filter(c -> Strings.isNullOrEmpty(contactSearch.firstName) || contactSearch.firstName.equalsIgnoreCase(c.firstName))
+//        .filter(c -> Strings.isNullOrEmpty(contactSearch.lastName) || contactSearch.lastName.equalsIgnoreCase(c.lastName))
         .collect(Collectors.toList());
 
     List<CrmContact> crmContacts = toCrmContact(constituents);
@@ -455,9 +456,9 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception{
     ContactSearch contactSearch = new ContactSearch();
-    contactSearch.email = email.orElse(null);
-    contactSearch.phone = phone.orElse(null);
-    contactSearch.keywords = name.map(Set::of).orElse(null);
+    email.ifPresent(s -> contactSearch.emails.add(s));
+    name.ifPresent(s -> contactSearch.names.add(s));
+    phone.ifPresent(s -> contactSearch.phones.add(s));
     // TODO: page them?
     PagedResults<CrmContact> contacts = searchContacts(contactSearch);
 

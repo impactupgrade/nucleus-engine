@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.sforce.soap.partner.MergeRequest;
@@ -79,7 +80,9 @@ public class MergeSfdcDuplicateContacts {
       Set<String> addresses = new HashSet<>();
 
       for (SObject duplicateRecordItem : duplicateRecordItems) {
-        CrmContact contact = sfdcCrmService.getContactById((String) duplicateRecordItem.getField("RecordId")).get();
+        ContactSearch search = new ContactSearch();
+        search.ids.add((String) duplicateRecordItem.getField("RecordId"));
+        CrmContact contact = sfdcCrmService.searchContacts(search).getSingleResult().get();
 
         // Note: Do not consider which Contacts have related Opportunities, as merge will move those automatically.
         if (!Strings.isNullOrEmpty(contact.mailingAddress.street)

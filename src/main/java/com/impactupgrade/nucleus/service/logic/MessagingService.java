@@ -120,10 +120,14 @@ public class MessagingService {
     // provided. Other flows allow email to be optional.
     CrmContact crmContact = null;
     if (!Strings.isNullOrEmpty(email) && !"no".equalsIgnoreCase(email)) {
-      crmContact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult().orElse(null);
+      ContactSearch search = new ContactSearch();
+      search.emails.add(email);
+      crmContact = crmService.searchContacts(search).getSingleResult().orElse(null);
     }
     if (crmContact == null) {
-      crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
+      ContactSearch search = new ContactSearch();
+      search.phones.add(phone);
+      crmContact = crmService.searchContacts(search).getSingleResult().orElse(null);
     }
 
     // if the flow didn't include an explicit email opt-in process, safe to assume it's fine if email is present
@@ -212,7 +216,9 @@ public class MessagingService {
 
   public void optIn(String phone) throws Exception {
     // First, look for an existing contact with the PN
-    CrmContact crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
+    ContactSearch search = new ContactSearch();
+    search.phones.add(phone);
+    CrmContact crmContact = crmService.searchContacts(search).getSingleResult().orElse(null);
     if (crmContact != null) {
       env.logJobInfo("opting {} ({}) into sms...", crmContact.id, phone);
       crmContact.smsOptIn = true;
@@ -226,7 +232,9 @@ public class MessagingService {
 
   public void optOut(String phone) throws Exception {
     // First, look for an existing contact with the PN
-    CrmContact crmContact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult().orElse(null);
+    ContactSearch search = new ContactSearch();
+    search.phones.add(phone);
+    CrmContact crmContact = crmService.searchContacts(search).getSingleResult().orElse(null);
     if (crmContact != null) {
       optOut(crmContact);
     } else {

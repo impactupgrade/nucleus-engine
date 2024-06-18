@@ -13,7 +13,6 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactFormData;
-import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
@@ -85,19 +84,21 @@ public class CrmController {
 
     CrmService crmService = getCrmService(env, crmType);
 
+    // TODO: Search GitHub for uses of this endpoint. Still needed?
+
     Optional<CrmContact> contact = Optional.empty();
-    if (!Strings.isNullOrEmpty(keywords)) {
-      env.logJobInfo("searching keyword={}", keywords);
-      contact = crmService.searchContacts(ContactSearch.byKeywords(keywords)).getSingleResult();
-    } else if (!Strings.isNullOrEmpty(email)) {
-      env.logJobInfo("searching email={}", email);
-      contact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
-    } else if (!Strings.isNullOrEmpty(phone)) {
-      env.logJobInfo("searching phone={}", phone);
-      contact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
-    } else {
-      env.logJobWarn("no search params provided");
-    }
+//    if (!Strings.isNullOrEmpty(keywords)) {
+//      env.logJobInfo("searching keyword={}", keywords);
+//      contact = crmService.searchContacts(ContactSearch.byKeywords(keywords)).getSingleResult();
+//    } else if (!Strings.isNullOrEmpty(email)) {
+//      env.logJobInfo("searching email={}", email);
+//      contact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
+//    } else if (!Strings.isNullOrEmpty(phone)) {
+//      env.logJobInfo("searching phone={}", phone);
+//      contact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
+//    } else {
+//      env.logJobWarn("no search params provided");
+//    }
 
     if (contact.isPresent()) {
       env.logJobInfo("returning Contact {}", contact.get().id);

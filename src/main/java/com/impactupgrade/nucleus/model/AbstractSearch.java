@@ -6,17 +6,18 @@ package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class AbstractSearch {
-  public List<String> ids = new ArrayList<>();
-  public List<String> keywords = new ArrayList<>();
-  public List<String> names = new ArrayList<>();
+  public Set<String> ids = new HashSet<>();
+  public Set<String> keywords = new HashSet<>();
+  public Set<String> names = new HashSet<>();
 
-  public Map<String, List<String>> customFields = new HashMap<>();
+  public Map<String, Set<String>> customFields = new HashMap<>();
 
   public boolean basicSearch = false;
 

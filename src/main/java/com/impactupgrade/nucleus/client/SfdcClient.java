@@ -505,11 +505,6 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return Files.readString(reportFile.toPath(), StandardCharsets.UTF_8);
   }
 
-  public List<SObject> getContactsByOpportunityName(String opportunityName, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id in (select contactid from Opportunity where name='" + opportunityName.replaceAll("'", "\\\\'") + "' and contactid != null)";
-    return queryListAutoPaged(query);
-  }
-
   public Collection<SObject> getEmailContacts(Calendar updatedSince, String filter, String... extraFields) throws ConnectionException, InterruptedException {
     String updatedSinceClause = "";
 
@@ -639,81 +634,79 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public PagedResults<SObject> searchContacts(ContactSearch contactSearch, String... extraFields)
       throws ConnectionException, InterruptedException {
-    List<String> clauses = new ArrayList<>();
+    List<List<String>> clauses = new ArrayList<>();
 
-    if (contactSearch.hasEmail != null) {
-      if (contactSearch.hasEmail) {
-        clauses.add("email != null AND email != ''");
-      } else {
-        clauses.add("email = null OR email = ''");
-      }
-    }
+    EnvironmentConfig.CRMFieldDefinitions fieldDefinitions = env.getConfig().salesforce.fieldDefinitions;
 
-    if (!Strings.isNullOrEmpty(contactSearch.email)) {
-      clauses.add("email = '" + contactSearch.email + "' OR npe01__HomeEmail__c = '" + contactSearch.email + "' OR npe01__WorkEmail__c = '" + contactSearch.email + "' OR npe01__AlternateEmail__c = '" + contactSearch.email + "'");
-    }
+//    if (!Strings.isNullOrEmpty(fieldDefinitions.accountEmail)) {
+//      clauses.add(accountSearch.emails.stream()
+//          .map(s -> fieldDefinitions.accountEmail + " = '" + s + "'")
+//          .toList());
+//    }
 
-    if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-      String phone = contactSearch.phone.replaceAll("[\\D.]", "");
-      if (phone.length() == 11) {
-        phone = phone.substring(1);
-      }
-      String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
-      // TODO: Finding a few clients with no homephone, so taking that out for now.
-      StringBuilder phoneClause = new StringBuilder()
-          .append("Phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
-      clauses.add(phoneClause.toString());
-    }
+    clauses.add(contactSearch.accountIds.stream()
+        .map(s -> "AccountId = '" + s + "'")
+        .toList());
+    clauses.add(contactSearch.emails.stream()
+        .map(s -> "Email = '" + s + "' OR npe01__HomeEmail__c = '" + s + "' OR npe01__WorkEmail__c = '" + s + "' OR npe01__AlternateEmail__c = '" + s + "'")
+        .toList());
+    clauses.add(contactSearch.firstAndLastNames.stream()
+        .map(a -> {
+          List<String> nameClauses = new ArrayList<>();
+          if (a.length >= 1 && !Strings.isNullOrEmpty(a[0])) {
+            a[0] = a[0].replaceAll("'", "\\\\'");
+            nameClauses.add("FirstName LIKE '%" + a[0] + "%'");
+          }
+          if (a.length >= 2 && !Strings.isNullOrEmpty(a[1])) {
+            a[1] = a[1].replaceAll("'", "\\\\'");
+            nameClauses.add("LastName LIKE '%" + a[1] + "%'");
+          }
+          return "(" + String.join(" AND ", nameClauses) + ")";
+        })
+        .toList());
+    clauses.add(contactSearch.ids.stream()
+        .map(s -> "Id = '" + s + "'")
+        .toList());
+    clauses.add(contactSearch.keywords.stream()
+        .map(s -> "FirstName LIKE '%" + s + "%' OR LastName LIKE '%" + s + "%' OR Email LIKE '%" + s + "%' OR Phone LIKE '%" + s + "%' OR MobilePhone LIKE '%" + s + "%' OR MailingStreet LIKE '%" + s + "%' OR MailingCity LIKE '%" + s + "%' OR MailingState LIKE '%" + s + "%' OR MailingPostalCode LIKE '%" + s + "%' OR Account.ShippingStreet LIKE '%" + s + "%' OR Account.ShippingCity LIKE '%" + s + "%' OR Account.ShippingState LIKE '%" + s + "%' OR Account.ShippingPostalCode LIKE '%" + s + "%' OR Account.BillingStreet LIKE '%" + s + "%' OR Account.BillingCity LIKE '%" + s + "%' OR Account.BillingState LIKE '%" + s + "%' OR Account.BillingPostalCode LIKE '%" + s + "%'")
+        .toList());
+    clauses.add(contactSearch.names.stream()
+        .map(s -> s.replaceAll("'", "\\\\'"))
+        .map(s -> "Name LIKE '%" + s + "%'")
+        .toList());
+    clauses.add(contactSearch.ownerIds.stream()
+        .map(s -> "OwnerId = '" + s + "'")
+        .toList());
+    clauses.add(contactSearch.phones.stream()
+        .map(s -> {
+          String phone = s.replaceAll("[\\D.]", "");
+          if (phone.length() == 11) {
+            phone = phone.substring(1);
+          }
+          String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
+          return "Phone LIKE '%" + phoneArr[0] + "%" + phoneArr[1] + "%" + phoneArr[2] + "%'" +
+              " OR MobilePhone LIKE '%" + phoneArr[0] + "%" + phoneArr[1] + "%" + phoneArr[2] + "%'" +
+              " OR HomePhone LIKE '%" + phoneArr[0] + "%" + phoneArr[1] + "%" + phoneArr[2] + "%'";
+        })
+        .toList());
 
-    // TODO: Finding a few clients with no homephone, so taking that out for now.
-    if (contactSearch.hasPhone != null) {
-      if (contactSearch.hasPhone) {
-        clauses.add("((Phone != null AND Phone != '') OR (MobilePhone != null AND MobilePhone != ''))");
-      } else {
-        clauses.add("(Phone = null OR Phone = '') AND (MobilePhone = null OR MobilePhone = '')");
-      }
-    }
+    clauses.add(contactSearch.customFields.entrySet().stream()
+        .flatMap(e -> e.getValue().stream().map(s -> e.getKey() + " = '" + s + "'"))
+        .toList());
 
-    if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
-      String escapedName = contactSearch.firstName.replaceAll("'", "\\\\'");
-      clauses.add("FirstName = '" + escapedName + "'");
-    }
-    if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
-      String escapedName = contactSearch.lastName.replaceAll("'", "\\\\'");
-      clauses.add("LastName = '" + escapedName + "'");
-    }
-
-    if (!Strings.isNullOrEmpty(contactSearch.accountId)) {
-      clauses.add("AccountId = '" + contactSearch.accountId + "'");
-    }
-
-    if (!Strings.isNullOrEmpty(contactSearch.ownerId)) {
-      clauses.add("OwnerId = '" + contactSearch.ownerId + "'");
-    }
-
-    if (!contactSearch.keywords.isEmpty()) {
-      for (String keyword : contactSearch.keywords) {
-        keyword = keyword.trim();
-        keyword = keyword.replaceAll("'", "\\\\'");
-        // TODO: Finding a few clients with no homephone, so taking that out for now.
-        clauses.add("(FirstName LIKE '%" + keyword + "%' OR LastName LIKE '%" + keyword + "%' OR Email LIKE '%" + keyword + "%' OR Phone LIKE '%" + keyword + "%' OR MobilePhone LIKE '%" + keyword + "%' OR MailingStreet LIKE '%" + keyword + "%' OR MailingCity LIKE '%" + keyword + "%' OR MailingState LIKE '%" + keyword + "%' OR MailingPostalCode LIKE '%" + keyword + "%' OR Account.ShippingStreet LIKE '%" + keyword + "%' OR Account.ShippingCity LIKE '%" + keyword + "%' OR Account.ShippingState LIKE '%" + keyword + "%' OR Account.ShippingPostalCode LIKE '%" + keyword + "%' OR Account.BillingStreet LIKE '%" + keyword + "%' OR Account.BillingCity LIKE '%" + keyword + "%' OR Account.BillingState LIKE '%" + keyword + "%' OR Account.BillingPostalCode LIKE '%" + keyword + "%')");
-      }
-    }
-
-    String fullClause = String.join( " AND ", clauses);
+    String fullClause = clauses.stream().map(c -> String.join( " OR ", c)).collect(Collectors.joining(" AND ", "(", ")"));
     if (!Strings.isNullOrEmpty(fullClause)) {
-      fullClause = "where " + fullClause;
+      fullClause = "WHERE " + fullClause;
     }
 
     String select;
     if (contactSearch.basicSearch) {
-      select = "Id, FirstName, LastName";
+      select = "Id, FirstName, LastName, Email, Phone";
     } else {
       select = getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
     }
 
-    String query ="select " + select +  " from contact " + fullClause + " ORDER BY LastName, FirstName";
+    String query ="SELECT " + select +  " FROM Contact " + fullClause + " ORDER BY LastName, FirstName";
 
     if (contactSearch.pageSize != null && contactSearch.pageSize > 0) {
       query += " LIMIT " + contactSearch.pageSize;

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DynamicsCrmClient extends OAuthClient {
@@ -142,7 +143,7 @@ public class DynamicsCrmClient extends OAuthClient {
     return getAccount("(" + id + ")");
   }
 
-  public List<Account> getAccountsByIds(List<String> ids) {
+  public List<Account> getAccountsByIds(Set<String> ids) {
     String idsFilters = ids.stream()
         .map(id -> "accountid eq '" + id + "'")
         .collect(Collectors.joining(" or "));

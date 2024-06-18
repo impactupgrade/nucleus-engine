@@ -170,7 +170,9 @@ public class DonationFormController {
 //      }
 //      // Retrieve or create the household Account/Contact.
 //      else {
-        Optional<CrmContact> existingContact = crmService.searchContacts(ContactSearch.byEmail(formData.getEmail())).getSingleResult();
+        ContactSearch search = new ContactSearch();
+        search.emails.add(formData.getEmail());
+        Optional<CrmContact> existingContact = crmService.searchContacts(search).getSingleResult();
         if (existingContact.isEmpty()) {
           env.logJobInfo("unable to find CRM contact using email {}; creating a new account/contact", formData.getEmail());
 

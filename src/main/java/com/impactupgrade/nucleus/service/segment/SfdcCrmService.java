@@ -101,11 +101,6 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
-    return toCrmContact(sfdcClient.getContactById(id));
-  }
-
-  @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     return toCrmContact(sfdcClient.getFilteredContactById(id, filter));
   }
@@ -113,16 +108,6 @@ public class SfdcCrmService implements CrmService {
   @Override
   public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
     return toCrmContact(sfdcClient.getFilteredContactByEmail(email, filter));
-  }
-
-  @Override
-  public List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByIds(ids));
-  }
-
-  @Override
-  public List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByEmails(emails));
   }
 
   @Override
@@ -862,17 +847,13 @@ public class SfdcCrmService implements CrmService {
    */
   @Override
   public List<CrmContact> getContactsFromList(String listId) throws Exception {
-    List<SObject> sObjects;
+    List<SObject> sObjects = Collections.emptyList();
     // 701 is the Campaign ID prefix
     if (listId.startsWith("701")) {
       sObjects = sfdcClient.getContactsByCampaignId(listId);
       // 00O - Report ID prefix
     } else if (listId.startsWith("00O")) {
       sObjects = sfdcClient.getContactsByReportId(listId);
-    }
-    // otherwise, assume it's an explicit Opportunity name
-    else {
-      sObjects = sfdcClient.getContactsByOpportunityName(listId);
     }
     return toCrmContact(sObjects);
   }
@@ -1081,8 +1062,8 @@ public class SfdcCrmService implements CrmService {
     String[] recurringDonationCustomFields = importEvents.stream().flatMap(e -> e.getRecurringDonationCustomFieldNames().stream()).distinct().toArray(String[]::new);
     String[] opportunityCustomFields = importEvents.stream().flatMap(e -> e.getOpportunityCustomFieldNames().stream()).distinct().toArray(String[]::new);
 
-    List<String> accountIds = importEvents.stream().map(e -> e.account.id)
-        .filter(accountId -> !Strings.isNullOrEmpty(accountId)).distinct().toList();
+    Set<String> accountIds = importEvents.stream().map(e -> e.account.id)
+        .filter(accountId -> !Strings.isNullOrEmpty(accountId)).collect(Collectors.toSet());
     Map<String, SObject> existingAccountsById = new HashMap<>();
     if (!accountIds.isEmpty()) {
       AccountSearch search = new AccountSearch();
@@ -1099,7 +1080,8 @@ public class SfdcCrmService implements CrmService {
     Optional<String> accountExtRefFieldName = accountExtRefKey.map(k -> k.replace("Account ExtRef ", ""));
     Map<String, SObject> existingAccountsByExtRef = new HashMap<>();
     if (accountExtRefKey.isPresent()) {
-      List<String> accountExtRefValues = importEvents.stream().map(e -> e.raw.get(accountExtRefKey.get())).filter(s -> !Strings.isNullOrEmpty(s)).toList();
+      Set<String> accountExtRefValues = importEvents.stream().map(e -> e.raw.get(accountExtRefKey.get()))
+          .filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toSet());
       if (!accountExtRefValues.isEmpty()) {
         AccountSearch search = new AccountSearch();
         search.customFields.put(accountExtRefKey.get(), accountExtRefValues);
@@ -1109,8 +1091,8 @@ public class SfdcCrmService implements CrmService {
       }
     }
 
-    List<String> accountNames = importEvents.stream().map(e -> e.account.name)
-        .filter(name -> !Strings.isNullOrEmpty(name)).distinct().collect(Collectors.toList());
+    Set<String> accountNames = importEvents.stream().map(e -> e.account.name)
+        .filter(name -> !Strings.isNullOrEmpty(name)).collect(Collectors.toSet());
     importEvents.stream().flatMap(e -> e.contactOrganizations.stream()).map(o -> o.name)
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().forEach(accountNames::add);
     Multimap<String, SObject> existingAccountsByName = ArrayListMultimap.create();

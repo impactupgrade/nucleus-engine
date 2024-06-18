@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -95,7 +96,9 @@ public class AccountingService {
         if (crmContact == null) {
             if (!StringUtils.isEmpty(crmDonation.contact.id)) {
                 // Get non-org contact
-                crmContact = env.donationsCrmService().getContactById(crmDonation.contact.id).orElse(null);
+                ContactSearch search = new ContactSearch();
+                search.ids.add(crmDonation.contact.id);
+                crmContact = env.donationsCrmService().searchContacts(search).getSingleResult().orElse(null);
             }
         }
         return crmContact;

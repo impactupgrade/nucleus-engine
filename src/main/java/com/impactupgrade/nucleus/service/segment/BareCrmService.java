@@ -39,11 +39,6 @@ import java.util.Optional;
 public class BareCrmService implements CrmService {
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     return Optional.empty();
   }

@@ -95,8 +95,9 @@ public class MinistryByTextController {
     String jobName = "SMS Status";
     env.startJobLog(JobType.EVENT, null, jobName, "MBT");
 
-    Optional<CrmContact> crmContact = env.primaryCrmService()
-        .searchContacts(ContactSearch.byPhone(messageStatusWebhookData.subscriberNo)).getSingleResult();
+    ContactSearch search = new ContactSearch();
+    search.phones.add(messageStatusWebhookData.subscriberNo);
+    Optional<CrmContact> crmContact = env.primaryCrmService().searchContacts(search).getSingleResult();
     if (crmContact.isPresent()) {
       // Using combination of msisdn and today's date as a conversation id to group all user's messages' statuses for current day
       String conversationId = messageStatusWebhookData.subscriberNo + "::" + new SimpleDateFormat(DATE_FORMAT).format(new Date());

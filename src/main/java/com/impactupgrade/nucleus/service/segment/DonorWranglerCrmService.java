@@ -49,13 +49,6 @@ public class DonorWranglerCrmService implements BasicCrmService {
   }
 
   @Override
-  public Optional<CrmContact> getContactById(String id) throws Exception {
-    return toCrmContact(
-        dwClient.contactSearch("id", id)
-    );
-  }
-
-  @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     //Not currently implemented
     return Optional.empty();
@@ -72,14 +65,19 @@ public class DonorWranglerCrmService implements BasicCrmService {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
     //  combining clauses, owner, keyword search, pagination, etc.
 
-    if (!Strings.isNullOrEmpty(contactSearch.email)) {
+    if (!contactSearch.ids.isEmpty()) {
       Optional<CrmContact> crmContact = toCrmContact(
-          dwClient.getContactByEmail(contactSearch.email)
+          dwClient.contactSearch("id", contactSearch.ids.stream().findFirst().get())
       );
       return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
-    } else if (!Strings.isNullOrEmpty(contactSearch.phone)) {
+    } else if (!contactSearch.emails.isEmpty()) {
       Optional<CrmContact> crmContact = toCrmContact(
-          dwClient.contactSearch("phone", contactSearch.phone)
+          dwClient.getContactByEmail(contactSearch.emails.stream().findFirst().get())
+      );
+      return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
+    } else if (!contactSearch.phones.isEmpty()) {
+      Optional<CrmContact> crmContact = toCrmContact(
+          dwClient.contactSearch("phone", contactSearch.phones.stream().findFirst().get())
       );
       return PagedResults.getPagedResultsFromCurrentOffset(crmContact, contactSearch);
     } else {

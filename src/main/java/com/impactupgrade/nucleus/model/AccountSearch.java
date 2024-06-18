@@ -4,10 +4,10 @@
 
 package com.impactupgrade.nucleus.model;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 public class AccountSearch extends AbstractSearch {
-  public List<String> emails = new ArrayList<>();
-  public List<String> ownerIds = new ArrayList<>();
+  public Set<String> emails = new HashSet<>();
+  public Set<String> ownerIds = new HashSet<>();
 }

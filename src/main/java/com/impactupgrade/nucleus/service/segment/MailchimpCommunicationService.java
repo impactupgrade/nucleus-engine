@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
+import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.commons.collections.CollectionUtils;
@@ -187,24 +188,27 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected List<String> getEmails(List<MemberInfo> memberInfos) {
-    return memberInfos.stream().map(u -> u.email_address).map(String::toLowerCase).distinct().sorted().toList();
+  protected Set<String> getEmails(List<MemberInfo> memberInfos) {
+    return memberInfos.stream().map(u -> u.email_address).map(String::toLowerCase).sorted().collect(Collectors.toSet());
   }
 
-  protected void syncUnsubscribed(List<String> unsubscribedEmails) throws Exception {
+  protected void syncUnsubscribed(Set<String> unsubscribedEmails) throws Exception {
     updateContactsByEmails(unsubscribedEmails, c -> c.emailOptOut = true);
     updateAccountsByEmails(unsubscribedEmails, a -> a.emailOptOut = true);
   }
 
-  protected void syncCleaned(List<String> cleanedEmails) throws Exception {
+  protected void syncCleaned(Set<String> cleanedEmails) throws Exception {
     updateContactsByEmails(cleanedEmails, c -> c.emailBounced = true);
     updateAccountsByEmails(cleanedEmails, a -> a.emailBounced = true);
   }
 
-  protected void updateContactsByEmails(List<String> emails, Consumer<CrmContact> contactConsumer) throws Exception {
+  protected void updateContactsByEmails(Set<String> emails, Consumer<CrmContact> contactConsumer) throws Exception {
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
-    List<CrmContact> contacts = crmService.getContactsByEmails(emails);
+    ContactSearch search = new ContactSearch();
+    search.emails = emails;
+    // TODO: pagination (coming in another PR)
+    List<CrmContact> contacts = crmService.searchContacts(search).getResults();
     int count = 0;
     int total = contacts.size();
     for (CrmContact crmContact : contacts) {
@@ -217,7 +221,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     crmService.batchFlush();
   }
 
-  protected void updateAccountsByEmails(List<String> emails, Consumer<CrmAccount> accountConsumer) throws Exception {
+  protected void updateAccountsByEmails(Set<String> emails, Consumer<CrmAccount> accountConsumer) throws Exception {
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
     AccountSearch search = new AccountSearch();
