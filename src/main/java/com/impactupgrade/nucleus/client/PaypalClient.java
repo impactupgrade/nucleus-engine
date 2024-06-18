@@ -9,7 +9,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.paypal.base.rest.APIContext;
+import org.json.JSONObject;
 
+import javax.ws.rs.core.MediaType;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,20 @@ public class PaypalClient {
         env.getConfig().paypal.clientSecret, 
         env.getConfig().paypal.mode);
     this.apiUrl = "sandbox".equalsIgnoreCase(env.getConfig().paypal.mode) ? PAYPAL_SANDBOX_API_URL : PAYPAL_API_URL;
+  }
+
+  public boolean isValidWebhookData(String transmissionId, String transmissionTime, String certUrl, String authAlgo, String transmissionSig,  String webhookId, String webhookEvent) throws Exception {
+    JSONObject jsonObject = new JSONObject();
+    jsonObject.put("transmission_id", transmissionId);
+    jsonObject.put("transmission_time", transmissionTime);
+    jsonObject.put("cert_url", certUrl);
+    jsonObject.put("auth_algo", authAlgo);
+    jsonObject.put("transmission_sig", transmissionSig);
+    jsonObject.put("webhook_id", webhookId);
+    jsonObject.put("webhook_event", new JSONObject(webhookEvent));
+
+    WebhookValidationResponse webhookValidationResponse = HttpClient.post(apiUrl + "/v1/notifications/verify-webhook-signature", jsonObject.toString(), MediaType.APPLICATION_JSON, HttpClient.HeaderBuilder.builder().header("Authorization", apiContext.fetchAccessToken()), WebhookValidationResponse.class);
+    return webhookValidationResponse != null && !"FAILURE".equalsIgnoreCase(webhookValidationResponse.verificationStatus);
   }
 
   public Subscription getSubscription(String id) throws Exception {
@@ -116,7 +132,6 @@ public class PaypalClient {
     public String rel;
     public String method;
   }
-
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static final class Subscription {
@@ -219,5 +234,11 @@ public class PaypalClient {
     public String postalCode;
     @JsonProperty("country_code")
     public String countryCode;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class WebhookValidationResponse {
+    @JsonProperty("verification_status")
+    public String verificationStatus;
   }
 }

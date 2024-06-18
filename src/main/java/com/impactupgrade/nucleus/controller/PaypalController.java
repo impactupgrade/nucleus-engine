@@ -91,7 +91,10 @@ public class PaypalController {
     );
     apiContext.addConfiguration(Constants.PAYPAL_WEBHOOK_ID, env.getConfig().paypal.webhookId);
 
-    boolean validEvent = Event.validateReceivedEvent(apiContext, getHeadersInfo(request), requestBody);
+    boolean validEvent = env.paypalClient().isValidWebhookData(
+            request.getHeader("Paypal-Transmission-Id"), request.getHeader("Paypal-Transmission-Time"),
+            request.getHeader("Paypal-Cert-Url"), request.getHeader("Paypal-Auth-Algo"), request.getHeader("Paypal-Transmission-Sig"),
+            env.getConfig().paypal.webhookId, requestBody);
     if (!validEvent) {
       throw new IllegalArgumentException("Invalid webhook event!");
     }
