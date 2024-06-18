@@ -361,8 +361,10 @@ public class BloomerangToSalesforce {
         sfdcContact.setField("Gender__c", constituentRow.get("Gender"));
         sfdcContact.setField("Prefix__c", constituentRow.get("Prefix"));
         sfdcContact.setField("Preferred_Communication_Channel__c", constituentRow.get("CommunicationChannelPreferred"));
-        // TODO: should we simply skip Inactive?
         sfdcContact.setField("Status__c", constituentRow.get("Status"));
+        if ("Deceased".equalsIgnoreCase(constituentRow.get("Status"))) {
+          sfdcContact.setField("npsp__Deceased__c", true);
+        }
         // TODO: affiliation?
         sfdcContact.setField("Employer__c", constituentRow.get("Employer"));
         sfdcContact.setField("Communication_Restrictions__c", constituentRow.get("CommunicationRestrictions").replaceAll("[|]+", ","));
