@@ -6,8 +6,6 @@ import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.service.segment.CommunicationService;
-import com.impactupgrade.nucleus.service.segment.MailchimpCommunicationService;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 

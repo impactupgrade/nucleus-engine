@@ -44,6 +44,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -310,5 +311,13 @@ public class Environment {
 
   public void endJobLog(JobStatus jobStatus) {
     jobLoggingServices().forEach(logger -> logger.endLog(jobStatus));
+  }
+
+  public String decodeBase64(String encoded) {
+    if (encoded == null) {
+      return null;
+    } else {
+      return new String(Base64.getDecoder().decode(encoded));
+    }
   }
 }
