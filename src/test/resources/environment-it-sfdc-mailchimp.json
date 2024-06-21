@@ -23,10 +23,10 @@
 
   "mailchimp": [
     {
-      "secretKey": "secret-key-here",
+      "secretKey": "NzA5ZDY2NjIyZmUzNDdjYjY5NDczODdmZWRmM2E1MTAtdXMxNA==",
       "lists": [
         {
-          "id": "list-id-here",
+          "id": "3d215dac12",
           "type": "MARKETING",
           "groups": {},
           "crmFilter": ""
