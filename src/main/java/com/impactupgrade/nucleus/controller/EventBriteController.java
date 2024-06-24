@@ -96,7 +96,7 @@ public class EventBriteController {
         CrmCampaign campaign = null;
         if (_campaign.isEmpty()) {
           EventBriteClient.Event event = eventBriteClient.getEvent("https://www.eventbriteapi.com/v3/events/" + attendee.eventId + "/");
-          campaign = upsertCrmCampaign(event, crmService);
+          campaign = upsertCrmCampaign(event, crmService, env);
         } else {
           campaign = _campaign.get();
         }
@@ -107,7 +107,7 @@ public class EventBriteController {
       // Skipping event.created entirely, since it's immediately followed up with an event.updated.
       case "event.updated", "event.published" -> {
         EventBriteClient.Event event = eventBriteClient.getEvent(webhookPayload.apiUrl);
-        upsertCrmCampaign(event, crmService);
+        upsertCrmCampaign(event, crmService, env);
       }
       case "event.unpublished" -> {
         EventBriteClient.Event event = eventBriteClient.getEvent(webhookPayload.apiUrl);
@@ -163,7 +163,7 @@ public class EventBriteController {
     Optional<CrmCampaign> campaign = crmService.getCampaignByExternalReference(order.eventId);
     if (campaign.isEmpty()) {
       EventBriteClient.Event event = env.eventBriteClient().getEvent("https://www.eventbriteapi.com/v3/events/" + order.eventId + "/");
-      upsertCrmCampaign(event, crmService);
+      upsertCrmCampaign(event, crmService, env);
     }
 
     // attendee can have a partial profile, which could have "Info Requested" as the email/name
@@ -206,12 +206,16 @@ public class EventBriteController {
     }
   }
 
-  protected CrmCampaign upsertCrmCampaign(EventBriteClient.Event event, CrmService crmService) throws Exception {
+  protected CrmCampaign upsertCrmCampaign(EventBriteClient.Event event, CrmService crmService, Environment env) throws Exception {
     CrmCampaign campaign = buildCrmCampaign(event);
     Optional<CrmCampaign> existingCampaign = crmService.getCampaignByExternalReference(event.id);
 
     if (existingCampaign.isEmpty()) {
-      campaign.id = crmService.insertCampaign(campaign);
+      try {
+        campaign.id = crmService.insertCampaign(campaign);
+      } catch (Exception e) {
+        env.logJobInfo("unable to create new campaign");
+      }
     } else {
       campaign.id = existingCampaign.get().id;
       crmService.updateCampaign(campaign);
