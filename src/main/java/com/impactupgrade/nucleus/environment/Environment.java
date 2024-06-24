@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.client.EventBriteClient;
 import com.impactupgrade.nucleus.client.FactsClient;
+import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.client.RaiselyClient;
 import com.impactupgrade.nucleus.client.PaypalClient;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
@@ -44,7 +45,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -275,6 +275,7 @@ public class Environment {
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
   public VirtuousClient virtuousClient() { return new VirtuousClient(this); }
+  public MailchimpClient mailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig) { return new MailchimpClient(mailchimpConfig, this); }
 
   // job logging services
 
@@ -311,13 +312,5 @@ public class Environment {
 
   public void endJobLog(JobStatus jobStatus) {
     jobLoggingServices().forEach(logger -> logger.endLog(jobStatus));
-  }
-
-  public String decodeBase64(String encoded) {
-    if (encoded == null) {
-      return null;
-    } else {
-      return new String(Base64.getDecoder().decode(encoded));
-    }
   }
 }

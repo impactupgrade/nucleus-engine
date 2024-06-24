@@ -49,7 +49,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -72,15 +71,10 @@ public class MailchimpClient {
   protected static final Integer BATCH_STATUS_MAX_RETRIES = 24;
 
   protected final com.ecwid.maleorang.MailchimpClient client;
-  protected final String apiKey;
   protected final Environment env;
 
   public MailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig, Environment env) {
-    String profile = System.getenv("PROFILE");
-    System.out.println("profile: " + profile);
-    apiKey = !Strings.isNullOrEmpty(profile) && profile.toLowerCase(Locale.ROOT).contains("it") ?
-            env.decodeBase64(mailchimpConfig.secretKey) : mailchimpConfig.secretKey;
-    client = new com.ecwid.maleorang.MailchimpClient(apiKey);
+    client = new com.ecwid.maleorang.MailchimpClient(mailchimpConfig.secretKey);
     this.env = env;
   }
 

@@ -4,7 +4,9 @@ import com.ecwid.maleorang.MailchimpObject;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.MailchimpClient;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.CrmContact;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,13 +24,27 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MailchimpCommunicationServiceIT extends AbstractIT {
 
   protected MailchimpCommunicationServiceIT() {
-    super(new App(envFactorySfdcMailchimp));
+    super(new App(new EnvironmentFactory("environment-it-sfdc-mailchimp.json") {
+      @Override
+      public Environment newEnv() {
+        return new Environment() {
+          @Override
+          public MailchimpClient mailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
+            //TODO: use team+it@impactupgrade.com account data (key and list id)
+            String decoded = new String(Base64.getDecoder().decode("NzA5ZDY2NjIyZmUzNDdjYjY5NDczODdmZWRmM2E1MTAtdXMxNA=="));
+            mailchimpConfig.secretKey = decoded;
+            return new MailchimpClient(mailchimpConfig,this);
+          }
+        };
+      }
+    }));
   }
 
   @Test
@@ -64,7 +81,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
 
     EnvironmentConfig.Mailchimp mailchimp = env.getConfig().mailchimp.get(0);
     String listId = mailchimp.lists.get(0).id;
-    MailchimpClient mailchimpClient = new MailchimpClient(mailchimp, env);
+    MailchimpClient mailchimpClient = env.mailchimpClient(mailchimp);
 
     assertEmailsStatus(emails, "subscribed", listId, mailchimpClient);
   }
@@ -106,7 +123,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     // Subscribe emails to MC list
     EnvironmentConfig.Mailchimp mailchimp = env.getConfig().mailchimp.get(0);
     String listId = mailchimp.lists.get(0).id;
-    MailchimpClient mailchimpClient = new MailchimpClient(mailchimp, env);
+    MailchimpClient mailchimpClient = env.mailchimpClient(mailchimp);
 
     addEmailsToList(emails, "subscribed", listId, mailchimpClient);
     Thread.sleep(10000);
@@ -119,17 +136,17 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     assertEmailsStatus(cleanEmails, "cleaned", listId, mailchimpClient);
 
     // Sync unsubscribes MC >> SF
-    env.communicationService("mailchimp").syncContacts(beforeBulkImport);
+    env.communicationService("mailchimp").syncUnsubscribes(beforeBulkImport);
 
     crmContacts = env.primaryCrmService().getContactsByEmails(unsubscribeEmails);
-    assertTrue(!crmContacts.isEmpty());
+    assertFalse(crmContacts.isEmpty());
 
     for (CrmContact crmContact : crmContacts) {
       assertTrue(Boolean.TRUE == crmContact.emailOptOut);
     }
 
     crmContacts = env.primaryCrmService().getContactsByEmails(cleanEmails);
-    assertTrue(!crmContacts.isEmpty());
+    assertFalse(crmContacts.isEmpty());
 
     for (CrmContact crmContact : crmContacts) {
       assertTrue(Boolean.TRUE == crmContact.emailBounced);

@@ -23,7 +23,6 @@
 
   "mailchimp": [
     {
-      "secretKey": "NzA5ZDY2NjIyZmUzNDdjYjY5NDczODdmZWRmM2E1MTAtdXMxNA==",
       "lists": [
         {
           "id": "3d215dac12",
