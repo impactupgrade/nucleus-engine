@@ -97,7 +97,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
   protected void syncContacts(List<CrmContact> crmContacts, EnvironmentConfig.Mailchimp mailchimpConfig,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
+    MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
 
     List<CrmContact> contactsToUpsert = new ArrayList<>();
     List<CrmContact> contactsToArchive = new ArrayList<>();
@@ -175,7 +175,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   @Override
   public void syncUnsubscribes(Calendar lastSync) throws Exception {
     for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
+      MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
       for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
         List<MemberInfo> unsubscribedMembers = mailchimpClient.getListMembers(communicationList.id, "unsubscribed", lastSync);
         syncUnsubscribed(getEmails(unsubscribedMembers));
@@ -256,7 +256,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   //  needs added, like a campaign tag to kick off a Journey in MC itself.
   protected void upsertContact(EnvironmentConfig.Mailchimp mailchimpConfig,
       EnvironmentConfig.CommunicationList communicationList, CrmContact crmContact) throws Exception {
-    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
+    MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
 
     // transactional is always subscribed
     if (communicationList.type != EnvironmentConfig.CommunicationListType.TRANSACTIONAL && !crmContact.canReceiveEmail()) {

@@ -65,7 +65,6 @@ public abstract class AbstractIT extends JerseyTest {
   protected static final EnvironmentFactory envFactoryHubspotStripe = new EnvironmentFactory("environment-it-hubspot-stripe.json");
   protected static final EnvironmentFactory envFactorySfdcStripe = new EnvironmentFactory("environment-it-sfdc-stripe.json");
   protected static final EnvironmentFactory envFactoryVirtuousStripe = new EnvironmentFactory("environment-it-virtuous-stripe.json");
-  protected static final EnvironmentFactory envFactorySfdcMailchimp = new EnvironmentFactory("environment-it-sfdc-mailchimp.json");
 
   protected final App app;
   protected final Environment env;

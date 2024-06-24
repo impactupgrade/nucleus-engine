@@ -100,7 +100,7 @@ public class MailchimpController {
       env.logJobError("unable to find ListID={}", event.listId);
       return;
     }
-    MailchimpClient mailchimpClient = new MailchimpClient(mailchimpConfig, env);
+    MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
 
     List<SentToInfo> sentTos = mailchimpClient.getCampaignRecipients(event.id);
     List<String> emails = sentTos.stream()
