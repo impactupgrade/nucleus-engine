@@ -37,8 +37,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
         return new Environment() {
           @Override
           public MailchimpClient mailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
-            //TODO: use team+it@impactupgrade.com account data (key and list id)
-            String decoded = new String(Base64.getDecoder().decode("NzA5ZDY2NjIyZmUzNDdjYjY5NDczODdmZWRmM2E1MTAtdXMxNA=="));
+            String decoded = new String(Base64.getDecoder().decode("YWU1ZTVhYjU3NmEwMzNhMjM1OTJkMjFhNGE0YjkxY2MtdXMyMg=="));
             mailchimpConfig.secretKey = decoded;
             return new MailchimpClient(mailchimpConfig,this);
           }
