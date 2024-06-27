@@ -67,7 +67,7 @@ end
 
 def login
   puts "Logging in..."
-  path = '/services/Soap/u/28.0'
+  path = '/services/Soap/u/48.0'
 
   pwd_token_encoded = ENV["SFDC_PASSWORD"]
   pwd_token_encoded = pwd_token_encoded.gsub(/&(?!amp;)/,'&amp;')
