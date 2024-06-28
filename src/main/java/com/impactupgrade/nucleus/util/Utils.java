@@ -50,6 +50,7 @@ public class Utils {
   }
 
   public static String truncate(String s, int maxChars) {
+    if (s == null) return null;
     return s.length() > maxChars ? s.substring(0, maxChars - 1) + "..." : s;
   }
 
