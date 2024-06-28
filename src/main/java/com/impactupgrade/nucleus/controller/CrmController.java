@@ -453,6 +453,10 @@ public class CrmController {
     Environment env = envFactory.init(request);
     env.logJobInfo("Filter: {}", filter);
 
+    if (Strings.isNullOrEmpty(filter)) {
+      return Response.status(Response.Status.BAD_REQUEST).build();
+    }
+
     double donationsTotal = env.donationsCrmService().getDonationsTotal(filter);
     return Response.status(200).entity(donationsTotal).build();
   }
