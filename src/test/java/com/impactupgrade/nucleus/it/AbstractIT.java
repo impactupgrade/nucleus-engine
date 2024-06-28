@@ -239,6 +239,6 @@ public abstract class AbstractIT extends JerseyTest {
 
     // The endpoint spins off an async thread, so give it time to complete. May need to bump this up if we introduce
     // tests with a larger number of import rows.
-    Thread.sleep(10000L);
+    Thread.sleep(30000);
   }
 }

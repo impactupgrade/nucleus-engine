@@ -44,6 +44,9 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
         };
       }
     }));
+
+    // Dial this WAY back. Small # of contacts, so don't use the default of 300s.
+    MailchimpClient.setBatchStatusRetryWaitInSeconds(5);
   }
 
   @Test
@@ -83,6 +86,11 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     MailchimpClient mailchimpClient = env.mailchimpClient(mailchimp);
 
     assertEmailsStatus(emails, "subscribed", listId, mailchimpClient);
+
+    for (int i = 1; i <= 5; i++) {
+      List<String> row = (List<String>) values.get(i);
+      clearSfdc(row.get(1)); // last name column
+    }
   }
 
   @Test
@@ -141,14 +149,19 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     assertFalse(crmContacts.isEmpty());
 
     for (CrmContact crmContact : crmContacts) {
-      assertTrue(Boolean.TRUE == crmContact.emailOptOut);
+      assertEquals(Boolean.TRUE, crmContact.emailOptOut);
     }
 
     crmContacts = env.primaryCrmService().getContactsByEmails(cleanEmails);
     assertFalse(crmContacts.isEmpty());
 
     for (CrmContact crmContact : crmContacts) {
-      assertTrue(Boolean.TRUE == crmContact.emailBounced);
+      assertEquals(Boolean.TRUE, crmContact.emailBounced);
+    }
+
+    for (int i = 1; i <= 5; i++) {
+      List<String> row = (List<String>) values.get(i);
+      clearSfdc(row.get(1)); // last name column
     }
   }
 

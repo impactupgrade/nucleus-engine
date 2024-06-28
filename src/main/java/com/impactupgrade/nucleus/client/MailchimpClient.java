@@ -67,8 +67,8 @@ public class MailchimpClient {
   public static final String TAG_INACTIVE = "inactive";
 
   // 2 hours
-  protected static final Integer BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS = 300;
-  protected static final Integer BATCH_STATUS_MAX_RETRIES = 24;
+  protected static Integer BATCH_STATUS_RETRY_WAIT_IN_SECONDS = 300;
+  protected static Integer BATCH_STATUS_MAX_RETRIES = 24;
 
   protected final com.ecwid.maleorang.MailchimpClient client;
   protected final Environment env;
@@ -227,16 +227,16 @@ public class MailchimpClient {
     return client.execute(getCampaignContentMethod);
   }
 
-  public void runBatchOperations(EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, Integer attemptCount) throws Exception {
+  public void runBatchOperations(EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, int attemptCount) throws Exception {
     if (attemptCount == BATCH_STATUS_MAX_RETRIES) {
       env.logJobError("exhausted retries; returning...");
     } else {
       GetBatchStatusMethod getBatchStatusMethod = new GetBatchStatusMethod(batchStatusId);
       BatchStatus batchStatus = client.execute(getBatchStatusMethod);
       if (!"finished".equalsIgnoreCase(batchStatus.status)) {
-        env.logJobInfo("Batch '{}' is not finished: {}/{} Retrying in {} seconds...", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations, BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS);
-        Thread.sleep(BATCH_STATUS_RETRY_TIMEOUT_IN_SECONDS * 1000);
-        Integer newAttemptCount = attemptCount + 1;
+        env.logJobInfo("Batch '{}' is not finished: {}/{} Retrying in {} seconds...", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations, BATCH_STATUS_RETRY_WAIT_IN_SECONDS);
+        Thread.sleep(BATCH_STATUS_RETRY_WAIT_IN_SECONDS * 1000);
+        int newAttemptCount = attemptCount + 1;
         runBatchOperations(mailchimpConfig, batchStatusId, newAttemptCount);
       } else {
         env.logJobInfo("Batch '{}' finished! (finished/total) {}/{}", batchStatusId, batchStatus.finished_operations, batchStatus.total_operations);
@@ -385,5 +385,11 @@ public class MailchimpClient {
   public static final class Error {
     public String field;
     public String message;
+  }
+
+  // IT utilities
+
+  public static void setBatchStatusRetryWaitInSeconds(int batchStatusRetryWaitInSeconds) {
+    BATCH_STATUS_RETRY_WAIT_IN_SECONDS = batchStatusRetryWaitInSeconds;
   }
 }
