@@ -214,7 +214,7 @@ public class EventBriteController {
       try {
         campaign.id = crmService.insertCampaign(campaign);
       } catch (Exception e) {
-        env.logJobInfo("unable to create new campaign");
+        env.logJobInfo("unable to create new campaign: {}", e.getMessage());
       }
     } else {
       campaign.id = existingCampaign.get().id;
