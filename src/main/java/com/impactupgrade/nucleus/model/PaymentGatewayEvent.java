@@ -492,8 +492,6 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     crmDonation.amount = capture.amount.value;
-    crmDonation.customerId = capture.payee.merchantId;
-    
     crmDonation.gatewayName = "PayPal";
     crmDonation.originalCurrency = capture.amount.currencyCode;
     //TODO: convert to USD from EUR?
@@ -502,9 +500,10 @@ public class PaymentGatewayEvent implements Serializable {
     crmDonation.url = capture.links.stream()
         .filter(link -> "self".equalsIgnoreCase(link.rel))
         .findFirst().map(link -> link.href).orElse(null);
-    
-    if (capture.payee != null) {
-      initPaypalPayee(capture.payee);  
+
+    PaypalClient.Payee payee = capture.sellerReceivableBreakdown.platformFees.get(0).payee;
+    if (payee != null) {
+      initPaypalPayee(payee);
     }
   }
 

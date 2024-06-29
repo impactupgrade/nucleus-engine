@@ -91,7 +91,10 @@ public class PaypalController {
     );
     apiContext.addConfiguration(Constants.PAYPAL_WEBHOOK_ID, env.getConfig().paypal.webhookId);
 
-    boolean validEvent = Event.validateReceivedEvent(apiContext, getHeadersInfo(request), requestBody);
+    boolean validEvent = env.paypalClient().isValidWebhookData(
+            request.getHeader("Paypal-Transmission-Id"), request.getHeader("Paypal-Transmission-Time"),
+            request.getHeader("Paypal-Cert-Url"), request.getHeader("Paypal-Auth-Algo"), request.getHeader("Paypal-Transmission-Sig"),
+            env.getConfig().paypal.webhookId, requestBody);
     if (!validEvent) {
       throw new IllegalArgumentException("Invalid webhook event!");
     }
@@ -116,7 +119,7 @@ public class PaypalController {
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(capture, env);
         String eventType = event.getEventType();
         env.logJobInfo("Got event type: '" + eventType + "'");
-        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
+        env.logJobInfo("Got payment gateway event: ", paymentGatewayEvent);
 
         // must first process the account/contact so they're available for the enricher
         env.logJobInfo("Processing donor for '" + eventType + "' event...");
@@ -139,7 +142,7 @@ public class PaypalController {
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(capture, env);
         String eventType = event.getEventType();
         env.logJobInfo("Got event type: '" + eventType + "'");
-        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
+        env.logJobInfo("Got payment gateway event: ", paymentGatewayEvent);
 
         env.logJobInfo("Processing donor for '" + eventType + "' event...");
         //env.contactService().processDonor(paymentGatewayEvent);
@@ -170,7 +173,7 @@ public class PaypalController {
         PaymentGatewayEvent paymentGatewayEvent = toPaymentGatewayEvent(subscription, env);
         String eventType = event.getEventType();
         env.logJobInfo("Got event type: '" + eventType + "'");
-        env.logJobInfo("Got payment gateway event: ", new Gson().toJson(paymentGatewayEvent));
+        env.logJobInfo("Got payment gateway event: ", paymentGatewayEvent);
 
         env.logJobInfo("Processing donor for '" + eventType + "' event...");
         //env.contactService().processDonor(paymentGatewayEvent);
