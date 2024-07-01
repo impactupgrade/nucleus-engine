@@ -11,6 +11,8 @@ import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmNote;
+import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 
@@ -61,7 +63,8 @@ public class BloomerangToSalesforce {
   }
 
   public void migrate() throws Exception {
-    SfdcClient sfdcClient = new SfdcClient(env);
+    CrmService sfdcCrmService = env.crmService("salesforce");
+    SfdcClient sfdcClient = env.sfdcClient();
 
     // TODO: Bloomerang exports a ZIP with a few dozen CSV files. We should accept that ZIP and expand it on our own.
     String addressFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Addresses.csv";
@@ -70,6 +73,7 @@ public class BloomerangToSalesforce {
     String emailFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Emails.csv";
     String householdFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Households.csv";
     String interactionFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Interactions.csv";
+    String noteFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Notes.csv";
     String phoneFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Phones.csv";
     String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/RecurringDonations.csv";
     String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/RecurringDonationPayments.csv";
@@ -674,6 +678,34 @@ public class BloomerangToSalesforce {
     }
 
     sfdcClient.batchFlush();
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // NOTES
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    List<Map<String, String>> noteRows;
+    try (InputStream is = new FileInputStream(noteFile)) {
+      noteRows = Utils.getCsvData(is);
+    }
+
+    for (Map<String, String> noteRow : noteRows) {
+      String contactId = constituentIdToContactId.get(noteRow.get("AccountNumber"));
+      String accountId = constituentIdToAccountId.get(noteRow.get("AccountNumber"));
+      if (Strings.isNullOrEmpty(contactId) && Strings.isNullOrEmpty(accountId)) {
+        continue;
+      }
+
+      CrmNote crmNote = new CrmNote();
+      crmNote.title = noteRow.get("CreatedDate") + " " + noteRow.get("CreatedName");
+      crmNote.note = noteRow.get("Note");
+      if (!Strings.isNullOrEmpty(contactId)) {
+        crmNote.targetId = contactId;
+      } else {
+        crmNote.targetId = accountId;
+      }
+      // Note: This is sequential, not batching. We can't batch since it needs to create multiple, related records.
+      sfdcCrmService.insertNote(crmNote);
+    }
   }
 
   private void processOpportunity(
