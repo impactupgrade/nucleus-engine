@@ -30,7 +30,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -352,5 +354,44 @@ public class Utils {
     street = alphanumericOnly(street);
 
     return street.toLowerCase(Locale.ROOT).trim();
+  }
+
+  public static List<String> parsePhoneNumber(String phoneNumber) {
+    if (Strings.isNullOrEmpty(phoneNumber)) {
+      return Collections.emptyList();
+    }
+    boolean internationalFormat = phoneNumber.startsWith("+");
+    String phone = phoneNumber.replaceAll("[\\D.]", "");
+
+    if (internationalFormat) {
+      if (phone.length() < 8) {
+        // invalid phone number
+        return Collections.emptyList();
+      }
+
+      boolean validCode = false;
+      for (CountryCallingCode countryCallingCode: CountryCallingCode.values()) {
+        String code = countryCallingCode.getCode().toString();
+
+        if (phone.startsWith(code)) {
+          validCode = true;
+          phone = phone.substring(code.length());
+          break;
+        }
+      }
+
+      if (!validCode) {
+        // invalid international code
+        return  Collections.emptyList();
+      }
+    }
+
+    List<String> phoneParts = new ArrayList<>();
+    phoneParts.add(phone.substring(0, 3));
+    phoneParts.add(phone.substring(3, Math.min(6, phone.length())));
+    if (phone.length() > 6) {
+      phoneParts.add(phone.substring(6));
+    }
+    return phoneParts;
   }
 }
