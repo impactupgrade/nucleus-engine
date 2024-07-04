@@ -14,9 +14,11 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.util.HttpClient;
+import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.QueryResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import org.apache.commons.collections.CollectionUtils;
 import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
@@ -653,16 +655,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     if (!Strings.isNullOrEmpty(contactSearch.phone)) {
-      String phone = contactSearch.phone.replaceAll("[\\D.]", "");
-      if (phone.length() == 11) {
-        phone = phone.substring(1);
+      List<String> phoneNumberChunks = Utils.parsePhoneNumber(contactSearch.phone);
+
+      if (CollectionUtils.isNotEmpty(phoneNumberChunks)) {
+        String phonePartsCondition = phoneNumberChunks.stream()
+                .collect(Collectors.joining("%"));
+        // TODO: Finding a few clients with no homephone, so taking that out for now.
+        String phoneClause = new StringBuilder()
+                .append("Phone LIKE '%").append(phonePartsCondition).append("%'")
+                .append(" OR MobilePhone LIKE '%").append(phonePartsCondition).append("%'")
+                .toString();
+        clauses.add(phoneClause);
       }
-      String[] phoneArr = {phone.substring(0, 3), phone.substring(3, 6), phone.substring(6, 10)};
-      // TODO: Finding a few clients with no homephone, so taking that out for now.
-      StringBuilder phoneClause = new StringBuilder()
-          .append("Phone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'")
-          .append(" OR MobilePhone LIKE '%").append(phoneArr[0]).append("%").append(phoneArr[1]).append("%").append(phoneArr[2]).append("%'");
-      clauses.add(phoneClause.toString());
     }
 
     // TODO: Finding a few clients with no homephone, so taking that out for now.
