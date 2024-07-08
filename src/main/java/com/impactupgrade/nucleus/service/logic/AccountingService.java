@@ -47,15 +47,14 @@ public class AccountingService {
             return;
         }
 
-        processDonation(paymentGatewayEvent.getCrmDonation());
+        processTransaction(paymentGatewayEvent.getCrmDonation());
 
         for (CrmDonation child : paymentGatewayEvent.getCrmDonation().children) {
-            processDonation(child);
+            processTransaction(child);
         }
     }
 
-    protected void processDonation(CrmDonation crmDonation) throws Exception {
-        CrmAccount crmAccount = getDonationAccount(crmDonation);
+    protected void processTransaction(CrmDonation crmDonation) throws Exception {
         CrmContact crmContact = getDonationContact(crmDonation);
         if (crmContact == null) {
             // Should be unreachable
@@ -63,33 +62,40 @@ public class AccountingService {
             return;
         }
 
-        //TODO: need to decide if we need to keep "account >> faux contact" concept here of move it to downstream
-        String contactId = _accountingPlatformService.get().updateOrCreateContact(Optional.of(crmAccount), crmContact);
+        String contactId = _accountingPlatformService.get().updateOrCreateContact(crmContact);
         if (!Strings.isNullOrEmpty(contactId)) {
             env.logJobInfo("Upserted contact: {}", contactId);
 
-            AccountingTransaction accountingTransaction = toAccountingTransaction(crmDonation, contactId, crmAccount.id, crmContact.id);
+            AccountingTransaction accountingTransaction = toAccountingTransaction(crmDonation, contactId, crmContact.id);
             String transactionId = _accountingPlatformService.get().createTransaction(accountingTransaction);
             env.logJobInfo("Created transaction: {}", transactionId);
         }
     }
 
-    private CrmAccount getDonationAccount(CrmDonation crmDonation) throws Exception {
-        if (crmDonation.account == null || StringUtils.isEmpty(crmDonation.account.id)) {
-            return null;
-        }
-        // We retrieve the full objects from the CRM here,
-        // in case they have additional info over what was in the payment event.
-        return env.donationsCrmService().getAccountById(crmDonation.account.id).orElse(null);
-    }
-
     private CrmContact getDonationContact(CrmDonation crmDonation) throws Exception {
-        if (crmDonation.contact == null || StringUtils.isEmpty(crmDonation.contact.id)) {
-            return null;
-        }
         // We retrieve the full objects from the CRM here, in case they have additional info over what was in
         // the payment event.
-        return env.donationsCrmService().getContactById(crmDonation.contact.id).orElse(null);
+        CrmContact crmContact = null;
+        if (!StringUtils.isEmpty(crmDonation.account.id)) {
+            CrmAccount crmAccount = env.donationsCrmService().getAccountById(crmDonation.account.id).orElse(null);
+            // create a faux contact for org type account
+            if (crmAccount != null && crmAccount.recordType == EnvironmentConfig.AccountType.ORGANIZATION) {
+                crmContact = new CrmContact();
+                crmContact.id = crmAccount.id;
+                String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);
+                crmContact.firstName = firstLastName[0];
+                crmContact.lastName = firstLastName[1];
+                crmContact.mailingAddress = crmAccount.billingAddress;
+                crmContact.crmRawObject = crmAccount.crmRawObject;
+            }
+        }
+        if (crmContact == null) {
+            if (!StringUtils.isEmpty(crmDonation.contact.id)) {
+                // Get non-org contact
+                crmContact = env.donationsCrmService().getContactById(crmDonation.contact.id).orElse(null);
+            }
+        }
+        return crmContact;
     }
 
 //    public void addDeposits(List<PaymentGatewayDeposit> paymentGatewayDeposits) {
@@ -231,10 +237,9 @@ public class AccountingService {
 //        }).collect(Collectors.toList());
 //    }
 
-    private AccountingTransaction toAccountingTransaction(CrmDonation crmDonation, String accountingContactId, String crmAccountId, String crmContactId) {
+    private AccountingTransaction toAccountingTransaction(CrmDonation crmDonation, String accountingContactId, String crmContactId) {
         return new AccountingTransaction(
             accountingContactId,
-            crmAccountId,
             crmContactId,
             crmDonation.amount,
             crmDonation.closeDate,
