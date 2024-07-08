@@ -24,6 +24,7 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
+import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
 import com.xero.api.XeroBadRequestException;
@@ -435,6 +436,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
         Contact contact = new Contact();
         contact.setName(crmAccount.name);
+        String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);
+        contact.setFirstName(firstLastName[0]);
+        contact.setLastName(firstLastName[1]);
         contact.setEmailAddress(crmAccount.email);
         if (!Strings.isNullOrEmpty(crmAccount.billingAddress.street)) {
             Address address = new Address()
