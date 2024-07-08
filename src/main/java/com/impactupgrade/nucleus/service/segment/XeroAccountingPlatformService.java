@@ -30,6 +30,7 @@ import com.xero.api.XeroBadRequestException;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
 import com.xero.models.accounting.Contact;
+import com.xero.models.accounting.ContactPerson;
 import com.xero.models.accounting.Contacts;
 import com.xero.models.accounting.Element;
 import com.xero.models.accounting.Invoice;
@@ -154,11 +155,19 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public String updateOrCreateContact(CrmAccount crmAccount, Optional<CrmContact> crmContact) throws Exception {
-        // Organization Contact with Contact Persons
-        Contact contact = toOrgContact(crmAccount, crmContact);
+    public String updateOrCreateContact(Optional<CrmAccount> crmAccount, CrmContact crmContact) throws Exception {
+        Contact contact;
+        if (crmAccount.isPresent()) {
+            // Organization Contact with Contact Persons
+            contact = toOrgContact(crmAccount.get(), crmContact);
+        } else {
+            // Simple contact
+            contact = toContact(crmContact);
+        }
+
         Contacts contacts = new Contacts();
         contacts.setContacts(List.of(contact));
+
         try {
             // This method works very similar to POST Contacts (xeroApi.updateOrCreateContacts) 
             // but if an existing contact matches our ContactName or ContactNumber then we will receive an error
@@ -171,16 +180,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             for (Element element : e.getElements()) {
                 if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    // TODO: decide if the field should be taken from contact or account
-                    if (crmContact.isPresent() && crmContact.get().crmRawObject instanceof SObject sObject) {
+                    if (crmContact.crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContactForAccountNumber(supporterId).map(c -> c.getContactID().toString()).orElse(null);
                     }
                 }
                 if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("contact name must be unique across all active contacts"))) {
                     // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    // TODO: decide if the field should be taken from contact or account
-                    if (crmContact.isPresent() && crmContact.get().crmRawObject instanceof SObject sObject) {
+                    if (crmContact.crmRawObject instanceof SObject sObject) {
                         String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
                         return getContactForName(contact.getName()).map(c -> {
                             // A few contacts have been entered manually without an Account Number being set.
@@ -190,10 +197,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                             } else {
                                 // Send notification if name already exists for different supporter id (account number)
                                 try {
-                                    env.logJobInfo("Sending notification for duplicated contact name '{}'...", contact.getName());
+                                    env.logJobInfo("Sending notification for duplicated contact name '{}'...", crmContact.getFullName());
                                     NotificationService.Notification notification = new NotificationService.Notification(
                                         "Xero: Contact name already exists",
-                                        "Xero: Contact with name '" + contact.getName() + "' already exists. Supporter ID: " + supporterId + "."
+                                        "Xero: Contact with name '" + crmContact.getFullName() + "' already exists. Supporter ID: " + supporterId + "."
                                     );
                                     env.notificationService().sendNotification(notification, "xero:contact-name-exists");
                                 } catch (Exception ex) {
@@ -429,7 +436,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     // Mappings
-    protected Contact toOrgContact(CrmAccount crmAccount, Optional<CrmContact> crmContact) {
+    protected Contact toOrgContact(CrmAccount crmAccount, CrmContact crmContact) {
         if (crmAccount == null) {
             return null;
         }
@@ -449,17 +456,17 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         // TODO: make this part not-sfdc specific?
         // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
         // TODO: decide if the field should be taken from contact or account
-        if (crmContact.isPresent() && crmContact.get().crmRawObject instanceof SObject sObject) {
+        if (crmContact.crmRawObject instanceof SObject sObject) {
             String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
             contact.setAccountNumber(supporterId);
         }
 
-//        ContactPerson contactPerson = new ContactPerson();
-//        contactPerson.setFirstName(crmContact.firstName);
-//        contactPerson.setLastName(crmContact.lastName);
-//        contactPerson.setEmailAddress(crmContact.email);
-//
-//        contact.setContactPersons(List.of(contactPerson));
+        ContactPerson contactPerson = new ContactPerson();
+        contactPerson.setFirstName(crmContact.firstName);
+        contactPerson.setLastName(crmContact.lastName);
+        contactPerson.setEmailAddress(crmContact.email);
+
+        contact.setContactPersons(List.of(contactPerson));
 
         // TODO: temp
         env.logJobInfo("account {} {}; contact {} {} {} {} {}",
