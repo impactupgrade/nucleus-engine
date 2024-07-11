@@ -2448,7 +2448,7 @@ public class SfdcCrmService implements CrmService {
       recordTypeName = (String) sObject.getChild("RecordType").getField("Name");
       recordTypeName = recordTypeName == null ? "" : recordTypeName.toLowerCase(Locale.ROOT);
       // TODO: Customize record type names through env.json?
-      if (recordTypeName.contains("business") || recordTypeName.contains("church") || recordTypeName.contains("org") || recordTypeName.contains("group"))  {
+      if (recordTypeName.contains("business") || recordTypeName.contains("church") || recordTypeName.contains("school") || recordTypeName.contains("org") || recordTypeName.contains("group"))  {
         recordType = EnvironmentConfig.AccountType.ORGANIZATION;
       }
     }
