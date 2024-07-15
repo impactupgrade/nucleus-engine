@@ -87,6 +87,8 @@ public class AccountingService {
                 crmContact.lastName = firstLastName[1];
                 crmContact.mailingAddress = crmAccount.billingAddress;
                 crmContact.crmRawObject = crmAccount.crmRawObject;
+                crmContact.email = crmDonation.contact.email;
+                crmContact.mobilePhone = crmDonation.contact.mobilePhone;
             }
         }
         if (crmContact == null) {
