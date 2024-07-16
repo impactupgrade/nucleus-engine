@@ -570,6 +570,7 @@ public class PaymentGatewayEvent implements Serializable {
         .filter(e -> filteredKeys.contains(e.getKey().toLowerCase(Locale.ROOT)))
         .map(Map.Entry::getValue)
         .findFirst()
+        .map(String::trim)
         .orElse(null);
   }
 
