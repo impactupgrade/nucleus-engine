@@ -66,18 +66,20 @@ public class BloomerangToSalesforce {
     CrmService sfdcCrmService = env.crmService("salesforce");
     SfdcClient sfdcClient = env.sfdcClient();
 
+    Date LAST_RUN = new SimpleDateFormat("MM/dd/yyyy").parse("04/17/2024");
+
     // TODO: Bloomerang exports a ZIP with a few dozen CSV files. We should accept that ZIP and expand it on our own.
-    String addressFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Addresses.csv";
-    String constituentFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Constituents.csv";
-    String donationFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Donations.csv";
-    String emailFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Emails.csv";
-    String householdFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Households.csv";
-    String interactionFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Interactions.csv";
-    String noteFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Notes.csv";
-    String phoneFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Phones.csv";
-    String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/RecurringDonations.csv";
-    String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/RecurringDonationPayments.csv";
-    String transactionFile = "/home/brmeyer/Downloads/DataExport-2024-04-17/Transactions.csv";
+    String addressFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Addresses.csv";
+    String constituentFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Constituents.csv";
+    String donationFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Donations.csv";
+    String emailFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Emails.csv";
+    String householdFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Households.csv";
+    String interactionFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Interactions.csv";
+    String noteFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Notes.csv";
+    String phoneFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Phones.csv";
+    String recurringDonationFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/RecurringDonations.csv";
+    String recurringDonationPaymentFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/RecurringDonationPayments.csv";
+    String transactionFile = "/home/brmeyer/Downloads/DataExport-2024-07-17/Transactions.csv";
 
     // TODO: pull to config
     String HOUSEHOLD_RECORD_TYPE_ID = "0128c000001xDX2AAM";
@@ -168,9 +170,6 @@ public class BloomerangToSalesforce {
 
     Map<String, String> campaignNameToId = sfdcClient.getCampaigns().stream()
         .collect(Collectors.toMap(c -> (String) c.getField("Name"), c -> c.getId(), (c1, c2) -> c1));
-
-    Map<String, String> extrefToTaskId = sfdcClient.queryListAutoPaged("SELECT Id, CallObject FROM Task WHERE CallObject!=''").stream()
-        .collect(Collectors.toMap(c -> (String) c.getField("CallObject"), c -> c.getId(), (c1, c2) -> c1));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // ACCOUNT
@@ -371,7 +370,15 @@ public class BloomerangToSalesforce {
         }
         // TODO: affiliation?
         sfdcContact.setField("Employer__c", constituentRow.get("Employer"));
-        sfdcContact.setField("Communication_Restrictions__c", constituentRow.get("CommunicationRestrictions").replaceAll("[|]+", ","));
+        sfdcContact.setField("Communication_Restrictions__c", constituentRow.get("CommunicationRestrictions").replaceAll("[|]+", ";"));
+        if (!Strings.isNullOrEmpty(constituentRow.get("CommunicationRestrictions"))) {
+          if (constituentRow.get("CommunicationRestrictions").contains("DoNotSolicit")) {
+            sfdcContact.setField("npsp__Do_Not_Contact__c", true);
+          }
+          if (constituentRow.get("CommunicationRestrictions").contains("DoNotCall")) {
+            sfdcContact.setField("DoNotCall", true);
+          }
+        }
         if ("OptedOut".equalsIgnoreCase(constituentRow.get("EmailInterestType"))) {
           sfdcContact.setField("HasOptedOutOfEmail", true);
         } else {
@@ -467,6 +474,12 @@ public class BloomerangToSalesforce {
 ////          sfdcClient.batchUpdate(sfdcContact);
 //          System.out.println("CONSTITUENT CONTACT UPDATE BY NAME: " + constituentRow.get("First") + " " + constituentRow.get("Last"));
         } else {
+          // TODO: temporarily skipping any past constituents, due to merges in SFDC and preventing more duplicates
+          Date createdDate = new SimpleDateFormat("MM/dd/yyyy").parse(constituentRow.get("CreatedDate"));
+          if (!createdDate.after(LAST_RUN)) {
+            continue;
+          }
+
           // TODO: business contact household + affiliation with business?
           sfdcContact.setField("AccountId", constituentIdToAccountId.get(accountNumber));
           sfdcContact.setField("Bloomerang_ID__c", accountNumber);
@@ -605,6 +618,9 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> donationRows;
     try (InputStream is = new FileInputStream(donationFile)) {
       donationRows = Utils.getCsvData(is);
+
+      // TODO: temporarily preventing updates!
+      donationRows = donationRows.stream().filter(r -> !transactionNumberToOppId.containsKey(r.get("TransactionNumber"))).toList();
     }
 
     for (Map<String, String> donationRow : donationRows) {
@@ -617,6 +633,9 @@ public class BloomerangToSalesforce {
     List<Map<String, String>> recurringDonationPaymentRows;
     try (InputStream is = new FileInputStream(recurringDonationPaymentFile)) {
       recurringDonationPaymentRows = Utils.getCsvData(is);
+
+      // TODO: temporarily preventing updates!
+      recurringDonationPaymentRows = recurringDonationPaymentRows.stream().filter(r -> !transactionNumberToOppId.containsKey(r.get("TransactionNumber"))).toList();
     }
 
     for (Map<String, String> recurringDonationPaymentsRow : recurringDonationPaymentRows) {
@@ -669,12 +688,7 @@ public class BloomerangToSalesforce {
       task.setField("Status", "Completed");
       task.setField("ActivityDate", new SimpleDateFormat("MM/dd/yyyy").parse(interactionRow.get("Date")));
 
-      if (extrefToTaskId.containsKey(interactionRow.get("Id"))) {
-        task.setId(extrefToTaskId.get(interactionRow.get("Id")));
-        sfdcClient.batchUpdate(task);
-      } else {
-        sfdcClient.batchInsert(task);
-      }
+      sfdcClient.batchInsert(task);
     }
 
     sfdcClient.batchFlush();
