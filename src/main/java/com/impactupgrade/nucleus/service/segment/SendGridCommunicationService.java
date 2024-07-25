@@ -68,8 +68,8 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
         UpsertContacts upsertContacts = new UpsertContacts();
         upsertContacts.list_ids = List.of(communicationList.id);
         upsertContacts.contacts = crmContacts.stream()
-            .map(crmContact -> toSendGridContact(crmContact, contactCampaignNames.get(crmContact.id), communicationList.groups,
-                customFieldsByName, sendgridClient, communicationPlatform))
+            .map(crmContact -> toSendGridContact(crmContact, contactCampaignNames.get(crmContact.id),
+                customFieldsByName, sendgridClient, communicationPlatform, communicationList))
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
         request.setBody(mapper.writeValueAsString(upsertContacts));
@@ -93,8 +93,10 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
     //TODO
   }
 
-  protected Contact toSendGridContact(CrmContact crmContact, List<String> campaignNames, Map<String, String> groups,
-      Map<String, String> customFieldsByName, SendGrid sendgridClient, EnvironmentConfig.CommunicationPlatform communicationPlatform) {
+  protected Contact toSendGridContact(CrmContact crmContact, List<String> campaignNames,
+      Map<String, String> customFieldsByName, SendGrid sendgridClient,
+      EnvironmentConfig.CommunicationPlatform communicationPlatform,
+      EnvironmentConfig.CommunicationList communicationList) {
     if (crmContact == null) {
       return null;
     }
@@ -113,7 +115,7 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
       contact.country = crmContact.mailingAddress.country;
       // TODO: contact.canReceiveEmail()? Is there a "status" field, or do we instead need to simply remove from the list?
 
-      Set<String> activeTags = getContactTagsCleaned(crmContact, campaignNames, communicationPlatform);
+      Set<String> activeTags = getContactTagsCleaned(crmContact, campaignNames, communicationPlatform, communicationList);
       // TODO: may need to use https://docs.sendgrid.com/api-reference/contacts/get-contacts-by-emails to get the
       //  total list
 //      List<String> inactiveTags =

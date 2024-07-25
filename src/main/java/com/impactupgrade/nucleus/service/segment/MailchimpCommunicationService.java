@@ -142,12 +142,14 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     try {
       Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
       for (CrmContact crmContact : contactsToUpsert) {
-        Map<String, Object> customFieldMap = getCustomFields(communicationList.id, crmContact, mailchimpClient, mailchimpConfig);
+        Map<String, Object> customFieldMap = getCustomFields(communicationList.id, crmContact, mailchimpClient,
+            mailchimpConfig, communicationList);
         contactsCustomFields.put(crmContact.email, customFieldMap);
       }
       Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts, communicationList);
       Map<String, Set<String>> tags = mailchimpClient.getContactsTags(listMembers);
-      Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig);
+      Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig,
+          communicationList);
 
       // run the actual contact upserts
       List<MemberInfo> upsertMemberInfos = toMcMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
@@ -189,10 +191,13 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
   }
 
-  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts, Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform mailchimpConfig) throws Exception {
+  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts, Map<String,
+      List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     Map<String, Set<String>> activeTags = new HashMap<>();
     for (CrmContact crmContact : crmContacts) {
-      Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig);
+      Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id),
+          mailchimpConfig, communicationList);
       activeTags.put(crmContact.email, tagsCleaned);
     }
     return activeTags;
@@ -290,10 +295,12 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
 
     try {
-      Map<String, Object> customFields = getCustomFields(communicationList.id, crmContact, mailchimpClient, mailchimpConfig);
+      Map<String, Object> customFields = getCustomFields(communicationList.id, crmContact, mailchimpClient,
+          mailchimpConfig, communicationList);
       // Don't need the extra Map layer, but keeping it for now to reuse existing code.
       Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(List.of(crmContact), communicationList);
-      Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig);
+      Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig,
+          communicationList);
 
       // run the actual contact upserts
       MemberInfo upsertMemberInfo = toMcMemberInfo(crmContact, customFields, communicationList.groups);
@@ -310,10 +317,11 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   }
 
   protected Map<String, Object> getCustomFields(String listId, CrmContact crmContact, MailchimpClient mailchimpClient,
-      EnvironmentConfig.CommunicationPlatform mailchimpConfig) throws Exception {
+      EnvironmentConfig.CommunicationPlatform mailchimpConfig, EnvironmentConfig.CommunicationList communicationList)
+      throws Exception {
     Map<String, Object> customFieldMap = new HashMap<>();
 
-    List<CustomField> customFields = buildContactCustomFields(crmContact, mailchimpConfig);
+    List<CustomField> customFields = buildContactCustomFields(crmContact, mailchimpConfig, communicationList);
     if (mergeFieldsNameToTag.isEmpty()) {
       List<MergeFieldInfo> mergeFields = mailchimpClient.getMergeFields(listId);
       for (MergeFieldInfo mergeField : mergeFields) {

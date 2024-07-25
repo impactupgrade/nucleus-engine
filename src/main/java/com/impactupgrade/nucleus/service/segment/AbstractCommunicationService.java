@@ -44,7 +44,8 @@ public abstract class AbstractCommunicationService implements CommunicationServi
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,
-      EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
+      EnvironmentConfig.CommunicationPlatform communicationPlatform,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<CustomField> customFields = new ArrayList<>();
 
     if (!Strings.isNullOrEmpty(crmContact.title)) {
@@ -140,8 +141,9 @@ public abstract class AbstractCommunicationService implements CommunicationServi
   }
 
   protected final Set<String> getContactTagsCleaned(CrmContact crmContact, List<String> contactCampaignNames,
-      EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
-    Set<String> tags = buildContactTags(crmContact, contactCampaignNames, communicationPlatform);
+      EnvironmentConfig.CommunicationPlatform communicationPlatform,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    Set<String> tags = buildContactTags(crmContact, contactCampaignNames, communicationPlatform, communicationList);
 
     // Mailchimp's Salesforce plugin chokes on tags > 80 chars, which seems like a sane limit anyway.
     Set<String> cleanedTags = new HashSet<>();
@@ -160,7 +162,8 @@ public abstract class AbstractCommunicationService implements CommunicationServi
   //  tags and have limitations on field names.
   // IMPORTANT: At the moment, any new tag added here must be added to EnvironmentConfig.CommunicationPlatform.controlledTags!
   protected Set<String> buildContactTags(CrmContact crmContact, List<String> contactCampaignNames,
-      EnvironmentConfig.CommunicationPlatform communicationPlatform) throws Exception {
+      EnvironmentConfig.CommunicationPlatform communicationPlatform,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     Set<String> tags = new HashSet<>();
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
