@@ -17,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -92,13 +93,13 @@ public class MergeSfdcDuplicateContacts {
           }
 
           if (!Strings.isNullOrEmpty(contact.mailingAddress.street)) {
-            addresses.add(contact.mailingAddress.street);
+            addresses.add(Utils.normalizeStreet(contact.mailingAddress.street));
           }
           if (!Strings.isNullOrEmpty(contact.account.billingAddress.street)) {
-            addresses.add(contact.account.billingAddress.street);
+            addresses.add(Utils.normalizeStreet(contact.account.billingAddress.street));
           }
           if (!Strings.isNullOrEmpty(contact.account.mailingAddress.street)) {
-            addresses.add(contact.account.mailingAddress.street);
+            addresses.add(Utils.normalizeStreet(contact.account.mailingAddress.street));
           }
         } else {
           secondary.add((SObject) contact.crmRawObject);
@@ -132,7 +133,8 @@ public class MergeSfdcDuplicateContacts {
       }
 
       if (names.size() > 1) {
-        log.info("DuplicateRecordSet contained multiple names; deleting the DuplicateRecordSet itself...");
+        log.info("DuplicateRecordSet contained multiple names ({}}); deleting the DuplicateRecordSet itself...",
+            String.join(", ", names));
         sfdcClient.delete(duplicateRecordSet);
         continue;
       }
@@ -159,12 +161,18 @@ public class MergeSfdcDuplicateContacts {
         continue;
       }
 
+      secondary.sort((s1, s2) -> {
+        Calendar createdDate1 = Utils.getCalendarFromDateTimeString((String) s1.getField("CreatedDate"));
+        Calendar createdDate2 = Utils.getCalendarFromDateTimeString((String) s2.getField("CreatedDate"));
+        return createdDate1.compareTo(createdDate2);
+      });
+
       String email = emails.stream().findFirst().orElse(null);
       String mobilePhone = mobilePhones.stream().findFirst().orElse(null);
       String homePhone = homePhones.stream().findFirst().orElse(null);
       String workPhone = workPhones.stream().findFirst().orElse(null);
 
-      // If all we have is secondaries, simply pick one to be the primary.
+      // If all we have is secondaries, simply pick the oldest to be the primary.
       if (primary == null && !secondary.isEmpty()) {
         primary = secondary.remove(0);
       }
@@ -191,15 +199,13 @@ public class MergeSfdcDuplicateContacts {
         masterRecord.setField("MobilePhone", mobilePhone);
         masterRecord.setField("HomePhone", homePhone);
         masterRecord.setField("npe01__WorkPhone__c", workPhone);
-        masterRecord.setField("Company_Name__c", secondaryItem.getField("Company_Name__c"));
-        masterRecord.setField("Focus__c", secondaryItem.getField("Focus__c"));
         masterRecord.setField("Title", secondaryItem.getField("Title"));
         masterRecord.setField("Industry", secondaryItem.getField("Industry"));
         mergeRequest.setMasterRecord(masterRecord);
 
         mergeRequest.setRecordToMergeIds(new String[] { secondaryItem.getId() });
 
-        log.info("merging {} into {}", secondaryItem.getId(), masterRecord.getId());
+        log.info("merging {}: {} into {}", primary.getField("Name"), secondaryItem.getId(), masterRecord.getId());
 
         MergeResult mergeResult = sfdcClient.merge(mergeRequest);
         if (!mergeResult.isSuccess()) {
