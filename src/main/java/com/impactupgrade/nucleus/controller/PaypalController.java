@@ -51,7 +51,16 @@ public class PaypalController {
 
     String jobName = "Paypal Event";
     env.startJobLog(JobType.EVENT, "webhook", jobName, "Paypal");
-    env.logJobInfo("received event from Paypal: {}", json);
+    env.logJobInfo("received event from Paypal", json);
+    env.logJobInfo("json: {}", json);
+    StringBuilder headers = new StringBuilder();
+    Enumeration<String> headerNames = request.getHeaderNames();
+    while (headerNames.hasMoreElements()) {
+      String headerName = headerNames.nextElement();
+      String headerValue = request.getHeader(headerName);
+      headers.append(headerName).append(": ").append(headerValue).append(", ");
+    }
+    env.logJobInfo("headers: {}", headers.toString());
 
     boolean isValid = isValidWebhookRequest(request, json, env);
     if (!isValid) {
