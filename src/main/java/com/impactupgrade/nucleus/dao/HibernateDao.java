@@ -30,6 +30,11 @@ public class HibernateDao<I extends Serializable, E> {
     this.sessionFactory = HibernateUtil.getSessionFactory();
   }
 
+  public HibernateDao(Class<E> clazz, SessionFactory sessionFactory) {
+    this.clazz = clazz;
+    this.sessionFactory = sessionFactory;
+  }
+
   public E insert(E entity) {
     final Session session = openSession();
     Transaction transaction = session.beginTransaction();
