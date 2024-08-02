@@ -218,7 +218,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   }
 
   protected List<String> getEmails(List<MemberInfo> memberInfos) {
-    return memberInfos.stream().map(u -> u.email_address).map(String::toLowerCase).distinct().sorted().toList();
+    return memberInfos.stream().map(u -> u.email_address.toLowerCase(Locale.ROOT)).distinct().sorted().toList();
   }
 
   protected void syncUnsubscribed(List<String> unsubscribedEmails) throws Exception {

@@ -182,10 +182,10 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
 
   private void updateEmailsStatus(List<String> emails, String status, String listId, MailchimpClient mailchimpClient) throws Exception {
     List<MemberInfo> memberInfos = mailchimpClient.getListMembers(listId, null, "members.email_address,members.status,members.merge_fields,members.interests,total_items", null);
-    Map<String, MemberInfo> memberInfoMap = memberInfos.stream()
-            .collect(Collectors.toMap(
-                    m -> m.email_address, m -> m
-            ));
+    Map<String, MemberInfo> memberInfoMap = memberInfos.stream().collect(Collectors.toMap(
+        m -> m.email_address.toLowerCase(Locale.ROOT),
+        m -> m
+    ));
     for (String email : emails) {
       MemberInfo memberInfo = memberInfoMap.get(email);
       if (memberInfo == null) {

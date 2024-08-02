@@ -49,6 +49,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -154,14 +155,14 @@ public class MailchimpClient {
   }
 
   public Map<String, Set<String>> getContactsTags(List<MemberInfo> memberInfos) throws IOException, MailchimpException {
-    Map<String, Set<String>> tagsMap = memberInfos.stream()
+    return memberInfos.stream()
         .collect(Collectors.toMap(
-            memberInfo -> memberInfo.email_address, memberInfo -> {
+            memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT),
+            memberInfo -> {
               List<MailchimpObject> tags = (List<MailchimpObject>) memberInfo.mapping.get(TAGS);
               return tags.stream().map(t -> t.mapping.get(TAG_NAME).toString()).collect(Collectors.toSet());
             }
         ));
-    return tagsMap;
   }
 
   public void updateContactTags(String listId, EmailContact emailContact) throws IOException, MailchimpException {
