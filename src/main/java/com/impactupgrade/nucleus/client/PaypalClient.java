@@ -6,15 +6,23 @@ package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.paypal.base.rest.APIContext;
 import org.json.JSONObject;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.MediaType;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 public class PaypalClient {
   
@@ -45,8 +53,56 @@ public class PaypalClient {
     jsonObject.put("webhook_id", webhookId);
     jsonObject.put("webhook_event", new JSONObject(webhookEvent));
 
-    WebhookValidationResponse webhookValidationResponse = HttpClient.post(apiUrl + "/v1/notifications/verify-webhook-signature", jsonObject.toString(), MediaType.APPLICATION_JSON, HttpClient.HeaderBuilder.builder().header("Authorization", apiContext.fetchAccessToken()), WebhookValidationResponse.class);
+    Map<String, Object> params = new LinkedHashMap<>();
+    params.put("transmission_id", transmissionId);
+    params.put("transmission_time", transmissionTime);
+    params.put("cert_url", certUrl);
+    params.put("auth_algo", authAlgo);
+    params.put("transmission_sig", transmissionSig);
+    params.put("webhook_id", webhookId);
+    //params.put("webhook_event", webhookEvent);
+
+    String requestBody = new ObjectMapper().writeValueAsString(params);
+    requestBody = requestBody.substring(0, requestBody.length()-1);
+    requestBody += ",\"webhook_event\":" + webhookEvent + "}";
+
+    System.out.println(requestBody);
+
+    WebhookValidationResponse webhookValidationResponse = HttpClient.post(apiUrl + "/v1/notifications/verify-webhook-signature", requestBody, MediaType.APPLICATION_JSON, HttpClient.HeaderBuilder.builder().header("Authorization", apiContext.fetchAccessToken()), WebhookValidationResponse.class);
     return webhookValidationResponse != null && !"FAILURE".equalsIgnoreCase(webhookValidationResponse.verificationStatus);
+  }
+
+  public boolean isValidWebhookData2(HttpServletRequest request, String requestBody) throws Exception {
+    URL url = new URL("https://api-m.sandbox.paypal.com/v1/notifications/verify-webhook-signature");
+    HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
+    httpConn.setRequestMethod("POST");
+
+    httpConn.setRequestProperty("Content-Type", "application/json");
+    httpConn.setRequestProperty("Authorization", apiContext.fetchAccessToken());
+
+    httpConn.setDoOutput(true);
+    OutputStreamWriter writer = new OutputStreamWriter(httpConn.getOutputStream());
+    writer.write("{ " +
+            "\"transmission_id\": \"" + request.getHeader("Paypal-Transmission-Id") + "\", " +
+            "\"transmission_time\": \"" + request.getHeader("Paypal-Transmission-Time") + "\", " +
+            "\"cert_url\": \"" + request.getHeader("Paypal-Cert-Url") + "\", " +
+            "\"auth_algo\": \"" + request.getHeader("Paypal-Auth-Algo") + "\", " +
+            "\"transmission_sig\": \"" + request.getHeader("Paypal-Transmission-Sig") + "\", " +
+            "\"webhook_id\": \"" + env.getConfig().paypal.webhookId + "\", " +
+            "\"webhook_event\":"  + requestBody +
+            "}");
+    writer.flush();
+    writer.close();
+    httpConn.getOutputStream().close();
+
+    InputStream responseStream = httpConn.getResponseCode() / 100 == 2
+            ? httpConn.getInputStream()
+            : httpConn.getErrorStream();
+    Scanner s = new Scanner(responseStream).useDelimiter("\\A");
+    String response = s.hasNext() ? s.next() : "";
+    System.out.println(response);
+
+    return response.contains("SUCCESS");
   }
 
   public Subscription getSubscription(String id) throws Exception {

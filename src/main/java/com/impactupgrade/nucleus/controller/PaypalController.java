@@ -49,6 +49,24 @@ public class PaypalController {
   public Response webhook(String json, @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
 
+    Map<String, String> headersInfo = getHeadersInfo(request);
+    for (Map.Entry<String, String> e: headersInfo.entrySet()) {
+      if (e.getKey().startsWith("Paypal")) {
+        System.out.println(e.getKey() + ":" + e.getValue());
+      }
+
+    }
+
+    APIContext apiContext = new APIContext(
+            env.getConfig().paypal.clientId,
+            env.getConfig().paypal.clientSecret,
+            env.getConfig().paypal.mode
+    );
+    apiContext.addConfiguration(Constants.PAYPAL_WEBHOOK_ID, env.getConfig().paypal.webhookId);
+    boolean validEvent = Event.validateReceivedEvent(apiContext, headersInfo, json);
+    System.out.println("Valid event: " + validEvent);
+
+
     String jobName = "Paypal Event";
     env.startJobLog(JobType.EVENT, "webhook", jobName, "Paypal");
     env.logJobInfo("received event from Paypal", json);
@@ -60,9 +78,18 @@ public class PaypalController {
       String headerValue = request.getHeader(headerName);
       headers.append(headerName).append(": ").append(headerValue).append(", ");
     }
-    env.logJobInfo("headers: {}", headers.toString());
+    //env.logJobInfo("headers: {}", headers.toString());
 
-    boolean isValid = isValidWebhookRequest(request, json, env);
+
+    boolean isValid = env.paypalClient().isValidWebhookData(
+            request.getHeader("Paypal-Transmission-Id"), request.getHeader("Paypal-Transmission-Time"),
+            request.getHeader("Paypal-Cert-Url"), request.getHeader("Paypal-Auth-Algo"), request.getHeader("Paypal-Transmission-Sig"),
+            env.getConfig().paypal.webhookId, json);
+    System.out.println("isValid: " + isValid);
+
+    boolean isValid2 = env.paypalClient().isValidWebhookData2(request, json);
+    System.out.println("isValid2: " + isValid2);
+
     if (!isValid) {
       env.logJobError("Paypal data was invalid");
       env.endJobLog(JobStatus.FAILED);
@@ -91,20 +118,6 @@ public class PaypalController {
     }
 
     return Response.status(200).build();
-  }
-
-  private boolean isValidWebhookRequest(HttpServletRequest request, String requestBody, Environment env) throws Exception {
-    APIContext apiContext = new APIContext(
-        env.getConfig().paypal.clientId, 
-        env.getConfig().paypal.clientSecret, 
-        env.getConfig().paypal.mode
-    );
-    apiContext.addConfiguration(Constants.PAYPAL_WEBHOOK_ID, env.getConfig().paypal.webhookId);
-
-    return env.paypalClient().isValidWebhookData(
-            request.getHeader("Paypal-Transmission-Id"), request.getHeader("Paypal-Transmission-Time"),
-            request.getHeader("Paypal-Cert-Url"), request.getHeader("Paypal-Auth-Algo"), request.getHeader("Paypal-Transmission-Sig"),
-            env.getConfig().paypal.webhookId, requestBody);
   }
 
   private Map<String, String> getHeadersInfo(HttpServletRequest request) {
