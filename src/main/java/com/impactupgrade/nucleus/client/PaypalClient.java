@@ -36,16 +36,19 @@ public class PaypalClient {
   }
 
   public boolean isValidWebhookData(String transmissionId, String transmissionTime, String certUrl, String authAlgo, String transmissionSig,  String webhookId, String webhookEvent) throws Exception {
-    JSONObject jsonObject = new JSONObject();
-    jsonObject.put("transmission_id", transmissionId);
-    jsonObject.put("transmission_time", transmissionTime);
-    jsonObject.put("cert_url", certUrl);
-    jsonObject.put("auth_algo", authAlgo);
-    jsonObject.put("transmission_sig", transmissionSig);
-    jsonObject.put("webhook_id", webhookId);
-    jsonObject.put("webhook_event", new JSONObject(webhookEvent));
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder
+            .append("{")
+            .append("\"transmission_id\":\"").append(transmissionId).append("\",")
+            .append("\"transmission_time\":\"").append(transmissionTime).append("\",")
+            .append("\"cert_url\":\"").append(certUrl).append("\",")
+            .append("\"auth_algo\":\"").append(authAlgo).append("\",")
+            .append("\"transmission_sig\":\"").append(transmissionSig).append("\",")
+            .append("\"webhook_id\":\"").append(webhookId).append("\",")
+            .append("\"webhook_event\":").append(webhookEvent)
+            .append("}");
 
-    WebhookValidationResponse webhookValidationResponse = HttpClient.post(apiUrl + "/v1/notifications/verify-webhook-signature", jsonObject.toString(), MediaType.APPLICATION_JSON, HttpClient.HeaderBuilder.builder().header("Authorization", apiContext.fetchAccessToken()), WebhookValidationResponse.class);
+    WebhookValidationResponse webhookValidationResponse = HttpClient.post(apiUrl + "/v1/notifications/verify-webhook-signature", stringBuilder.toString(), MediaType.APPLICATION_JSON, HttpClient.HeaderBuilder.builder().header("Authorization", apiContext.fetchAccessToken()), WebhookValidationResponse.class);
     return webhookValidationResponse != null && !"FAILURE".equalsIgnoreCase(webhookValidationResponse.verificationStatus);
   }
 
