@@ -16,8 +16,6 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.paypal.api.payments.Event;
-import com.paypal.base.Constants;
-import com.paypal.base.rest.APIContext;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
@@ -51,20 +49,13 @@ public class PaypalController {
 
     String jobName = "Paypal Event";
     env.startJobLog(JobType.EVENT, "webhook", jobName, "Paypal");
-    env.logJobInfo("received event from Paypal", json);
+    env.logJobInfo("received event from Paypal");
     env.logJobInfo("json: {}", json);
-    StringBuilder headers = new StringBuilder();
-    Enumeration<String> headerNames = request.getHeaderNames();
-    while (headerNames.hasMoreElements()) {
-      String headerName = headerNames.nextElement();
-      String headerValue = request.getHeader(headerName);
-      headers.append(headerName).append(": ").append(headerValue).append(", ");
-    }
-    env.logJobInfo("headers: {}", headers.toString());
+    env.logJobInfo("headers: {}", getHeadersInfo(request));
 
     boolean isValid = isValidWebhookRequest(request, json, env);
     if (!isValid) {
-      env.logJobError("Paypal data was invalid");
+      env.logJobError("Paypal data was invalid!");
       env.endJobLog(JobStatus.FAILED);
       return Response.status(400).build();
     }
@@ -94,13 +85,6 @@ public class PaypalController {
   }
 
   private boolean isValidWebhookRequest(HttpServletRequest request, String requestBody, Environment env) throws Exception {
-    APIContext apiContext = new APIContext(
-        env.getConfig().paypal.clientId, 
-        env.getConfig().paypal.clientSecret, 
-        env.getConfig().paypal.mode
-    );
-    apiContext.addConfiguration(Constants.PAYPAL_WEBHOOK_ID, env.getConfig().paypal.webhookId);
-
     return env.paypalClient().isValidWebhookData(
             request.getHeader("Paypal-Transmission-Id"), request.getHeader("Paypal-Transmission-Time"),
             request.getHeader("Paypal-Cert-Url"), request.getHeader("Paypal-Auth-Algo"), request.getHeader("Paypal-Transmission-Sig"),
