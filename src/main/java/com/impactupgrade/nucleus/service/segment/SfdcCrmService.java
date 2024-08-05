@@ -1096,7 +1096,11 @@ public class SfdcCrmService implements CrmService {
     }
 
     SObject result = sfdcClient.querySingle("SELECT SUM(Amount) TotalAmount FROM Opportunity WHERE StageName='Closed Won' AND " + filter).get();
-    return (Double) result.getField("TotalAmount");
+    Object totalAmount = result.getField("TotalAmount");
+    if (totalAmount == null) {
+      return 0.0;
+    }
+    return (Double) totalAmount;
   }
 
   @Override
