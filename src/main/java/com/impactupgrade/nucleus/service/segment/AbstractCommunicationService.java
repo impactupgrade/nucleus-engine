@@ -140,7 +140,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     return customFieldType;
   }
 
-  protected final Set<String> getContactTagsCleaned(CrmContact crmContact, List<String> contactCampaignNames,
+  protected Set<String> getContactTagsCleaned(CrmContact crmContact, List<String> contactCampaignNames,
       EnvironmentConfig.CommunicationPlatform communicationPlatform,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
     Set<String> tags = buildContactTags(crmContact, contactCampaignNames, communicationPlatform, communicationList);

@@ -103,6 +103,8 @@ public class FactsController {
         List<Map<String, String>> studentImports = new ArrayList<>();
         List<Map<String, String>> emergencyContactImports = new ArrayList<>();
 
+        Set<Integer> inactiveStudentIds = students.stream().map(s -> s.studentId).collect(Collectors.toSet());
+
         for (FactsClient.Student student : students) {
           // Inactive == applied but never enrolled. For now, keeping this out of SFDC.
           if ("Inactive".equalsIgnoreCase(student.school.status)) {
@@ -125,6 +127,8 @@ public class FactsController {
           if (Strings.isNullOrEmpty(student.school.status)) {
             continue;
           }
+
+          inactiveStudentIds.remove(student.studentId);
 
           Set<String> seenNames = new HashSet<>();
 
@@ -255,6 +259,9 @@ public class FactsController {
         // TODO: need genericized for non-SFDC environments
 //        insertRelationships(studentToParents, env, crmFieldDefinitions);
 
+        // handle non-current students
+        processInactiveStudents(inactiveStudentIds, env);
+
         log.info("DONE");
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -264,6 +271,11 @@ public class FactsController {
     new Thread(runnable).start();
 
     return Response.ok().build();
+  }
+
+  // Allow the subclasses to decide how to implement this. Some may tag differently, others may archive/delete.
+  protected void processInactiveStudents(Set<Integer> inactiveStudentIds, Environment env) {
+
   }
 
   protected Map<String, String> toContactData(FactsClient.Person person, FactsClient.Address address,
