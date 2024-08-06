@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -17,6 +18,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.isOk;
@@ -25,10 +27,26 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 public class MinistryByTextClient extends OAuthClient {
 
-  protected static String AUTH_ENDPOINT = "https://login.ministrybytext.com/connect/token";
-  protected static String API_ENDPOINT_BASE = "https://api.ministrybytext.com/";
+  protected static String AUTH_URL_PRODUCTION = "https://login.ministrybytext.com/connect/token";
+  protected static String AUTH_URL_SANDBOX = "https://login-qa.poweredbytext.com/connect/token";
+  protected static String API_BASE_URL_PRODUCTION = "https://api.ministrybytext.com";
+  protected static String API_BASE_URL_SANDBOX = "https://api-qa.poweredbytext.com";
+  protected static Integer BULK_API_LIMIT = 100;
 
   protected final EnvironmentConfig.MBT mbtConfig;
+
+  protected static final String AUTH_URL;
+  protected static final String API_BASE_URL;
+  static {
+    String profile = System.getenv("PROFILE");
+    if ("production".equalsIgnoreCase(profile)) {
+      AUTH_URL = AUTH_URL_PRODUCTION;
+      API_BASE_URL = API_BASE_URL_PRODUCTION;
+    } else {
+      AUTH_URL = AUTH_URL_SANDBOX;
+      API_BASE_URL = API_BASE_URL_SANDBOX;
+    }
+  }
 
   public MinistryByTextClient(EnvironmentConfig.MBT mbtConfig, Environment env) {
     super("ministrybytext", env);
@@ -49,25 +67,63 @@ public class MinistryByTextClient extends OAuthClient {
 
   @Override
   protected OAuthContext oAuthContext() {
-    return new ClientCredentialsOAuthContext(mbtConfig, AUTH_ENDPOINT, false);
+    return new ClientCredentialsOAuthContext(mbtConfig, AUTH_URL, false);
   }
 
   public List<Group> getGroups(EnvironmentConfig.MBT mbtConfig) {
-    return get(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups", headers(), new GenericType<>() {});
+    return get(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups", headers(), new GenericType<>() {});
   }
 
   public Subscriber upsertSubscriber(CrmContact crmContact, EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) {
     Subscriber subscriber = toMBTSubscriber(crmContact);
-    return post(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
+    return post(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
+  }
+
+  public List<Subscriber> upsertSubscribersBulk(String orgunitId, String groupId, List<CrmContact> crmContacts) {
+    List<Subscriber> subscribers = crmContacts.stream()
+            .map(this::toMBTSubscriber)
+            .collect(Collectors.toList());
+    List<List<Subscriber>> subscribersBatches = Lists.partition(subscribers, BULK_API_LIMIT);
+    int i = 0;
+    for (List<Subscriber> subscribersBatch: subscribersBatches) {
+      env.logJobInfo("Processing subscribers batch {} of total {}...", i++, subscribersBatches.size());
+      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/orgunit/" + orgunitId + "/groups/" + groupId + "/new-subscribers/bulk",
+              subscribersBatch, APPLICATION_JSON, headers(), BulkOperationResponse.class);
+      if (bulkOperationResponse != null && !bulkOperationResponse.isError) {
+        env.logJobInfo("Submitted subscribers batch. Batch id={}", bulkOperationResponse.data.batchId);
+      } else {
+        env.logJobWarn("Failed to process subscribers batch {} of total {}! Error message={}", i, subscribersBatches.size(), bulkOperationResponse.message);
+      }
+    }
+    return subscribers;
   }
 
   public void upsertNotificationSetting(NotificationSetting notificationSetting,
       EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) throws IOException, InterruptedException {
-    patch(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", notificationSetting, APPLICATION_JSON, headers());
+    patch(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", notificationSetting, APPLICATION_JSON, headers());
   }
 
   public NotificationSettingResponse getNotificationSetting(EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) throws IOException, InterruptedException {
-    return get(API_ENDPOINT_BASE + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", headers(), new GenericType<>() {});
+    return get(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", headers(), new GenericType<>() {});
+  }
+
+  public List<Contact> upsertContactsBulk(String orgunitId, List<CrmContact> crmContacts) {
+    List<Contact> contacts = crmContacts.stream()
+            .map(this::toMBTContact)
+            .collect(Collectors.toList());
+    List<List<Contact>> contactsBatches = Lists.partition(contacts, BULK_API_LIMIT);
+    int i = 0;
+    for (List<Contact> contactsBatch: contactsBatches) {
+      env.logJobInfo("Processing contacts batch {} of total {}...", i++, contactsBatches.size());
+      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/orgunit/" + orgunitId + "/contacts/bulk",
+              contactsBatch, APPLICATION_JSON, headers(), BulkOperationResponse.class);
+      if (bulkOperationResponse != null && !bulkOperationResponse.isError) {
+        env.logJobInfo("Submitted contacts batch. Batch id={}", bulkOperationResponse.data.batchId);
+      } else {
+        env.logJobWarn("Failed to process contacts batch {} of total {}! Error message={}", i, contactsBatches.size(), bulkOperationResponse.message);
+      }
+    }
+    return contacts;
   }
 
   // Having to modify this due to MBT's limited API. There's no upsert concept, and we want to avoid having to retrieve
@@ -97,6 +153,17 @@ public class MinistryByTextClient extends OAuthClient {
     // TODO: relations
 
     return subscriber;
+  }
+
+  protected Contact toMBTContact(CrmContact crmContact) {
+    Contact contact = new Contact();
+    contact.firstName = crmContact.firstName;
+    contact.lastName = crmContact.lastName;
+    //contact.gender = crmContact ?
+    contact.mobileNo = crmContact.mobilePhone;
+    // TODO: address, using mailing or billing
+    //contact.region = crmContact ?
+    return contact;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -188,6 +255,45 @@ public class MinistryByTextClient extends OAuthClient {
       return "NotificationSettingResponse{" +
           "data=" + data +
           '}';
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Contact {
+    public String firstName;
+    public String lastName;
+    public String gender;
+    public String mobileNo;
+    public SubscriberAddress address;
+    public String region;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class BulkOperationResponse {
+    public String message;
+    public boolean isError;
+    public String appCode;
+    public Data data;
+
+    @Override
+    public String toString() {
+      return "BulkOperationResponse{" +
+              "message='" + message + '\'' +
+              ", isError=" + isError +
+              ", appCode='" + appCode + '\'' +
+              ", data=" + data +
+              '}';
+    }
+  }
+
+  public static class Data {
+    public String batchId;
+
+    @Override
+    public String toString() {
+      return "Data{" +
+              "batchId='" + batchId + '\'' +
+              '}';
     }
   }
 }
