@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
@@ -30,6 +31,7 @@ public class MinistryByTextClient extends OAuthClient {
   protected static String AUTH_URL_SANDBOX = "https://login-qa.poweredbytext.com/connect/token";
   protected static String API_BASE_URL_PRODUCTION = "https://api.ministrybytext.com";
   protected static String API_BASE_URL_SANDBOX = "https://api-qa.poweredbytext.com";
+  protected static Integer BULK_API_LIMIT = 100;
 
   protected final EnvironmentConfig.MBT mbtConfig;
 
@@ -77,12 +79,23 @@ public class MinistryByTextClient extends OAuthClient {
     return post(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
   }
 
-  public BulkOperationResponse upsertSubscribersBulk(String orgunitId, String groupId, List<CrmContact> crmContacts) {
+  public List<Subscriber> upsertSubscribersBulk(String orgunitId, String groupId, List<CrmContact> crmContacts) {
     List<Subscriber> subscribers = crmContacts.stream()
             .map(this::toMBTSubscriber)
             .collect(Collectors.toList());
-    return post(API_BASE_URL + "/orgunit/" + orgunitId + "/groups/" + groupId + "/new-subscribers/bulk",
-            subscribers, APPLICATION_JSON, headers(), BulkOperationResponse.class);
+    List<List<Subscriber>> subscribersBatches = Lists.partition(subscribers, BULK_API_LIMIT);
+    int i = 0;
+    for (List<Subscriber> subscribersBatch: subscribersBatches) {
+      env.logJobInfo("Processing subscribers batch {} of total {}...", i++, subscribersBatches.size());
+      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/orgunit/" + orgunitId + "/groups/" + groupId + "/new-subscribers/bulk",
+              subscribersBatch, APPLICATION_JSON, headers(), BulkOperationResponse.class);
+      if (bulkOperationResponse != null && !bulkOperationResponse.isError) {
+        env.logJobInfo("Submitted subscribers batch. Batch id={}", bulkOperationResponse.data.batchId);
+      } else {
+        env.logJobWarn("Failed to process subscribers batch {} of total {}! Error message={}", i, subscribersBatches.size(), bulkOperationResponse.message);
+      }
+    }
+    return subscribers;
   }
 
   public void upsertNotificationSetting(NotificationSetting notificationSetting,
@@ -94,11 +107,23 @@ public class MinistryByTextClient extends OAuthClient {
     return get(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", headers(), new GenericType<>() {});
   }
 
-  public BulkOperationResponse upsertContactsBulk(String orgunitId, List<CrmContact> crmContacts) {
+  public List<Contact> upsertContactsBulk(String orgunitId, List<CrmContact> crmContacts) {
     List<Contact> contacts = crmContacts.stream()
             .map(this::toMBTContact)
             .collect(Collectors.toList());
-    return post(API_BASE_URL + "/orgunit/" + orgunitId + "/contacts/bulk", contacts, APPLICATION_JSON, headers(), BulkOperationResponse.class);
+    List<List<Contact>> contactsBatches = Lists.partition(contacts, BULK_API_LIMIT);
+    int i = 0;
+    for (List<Contact> contactsBatch: contactsBatches) {
+      env.logJobInfo("Processing contacts batch {} of total {}...", i++, contactsBatches.size());
+      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/orgunit/" + orgunitId + "/contacts/bulk",
+              contactsBatch, APPLICATION_JSON, headers(), BulkOperationResponse.class);
+      if (bulkOperationResponse != null && !bulkOperationResponse.isError) {
+        env.logJobInfo("Submitted contacts batch. Batch id={}", bulkOperationResponse.data.batchId);
+      } else {
+        env.logJobWarn("Failed to process contacts batch {} of total {}! Error message={}", i, contactsBatches.size(), bulkOperationResponse.message);
+      }
+    }
+    return contacts;
   }
 
   // Having to modify this due to MBT's limited API. There's no upsert concept, and we want to avoid having to retrieve
@@ -270,39 +295,5 @@ public class MinistryByTextClient extends OAuthClient {
               "batchId='" + batchId + '\'' +
               '}';
     }
-  }
-
-  public static void main(String[] args) {
-    Environment env = new Environment() {
-      @Override
-      public EnvironmentConfig getConfig() {
-
-        EnvironmentConfig.MBT mbt = new EnvironmentConfig.MBT();
-        mbt.clientId = "GVU05RE7VMACNUU96ME8";
-        mbt.clientSecret = "CPMw462MQdLTW6MDDlagUWlOhxXXJgDRc0D8cBHuUqhO=g6ELo";
-        mbt.campusId = "cf774a3b-4910-4b16-b6b0-608f80d216a4";
-
-        EnvironmentConfig envConfig = new EnvironmentConfig();
-        envConfig.ministrybytext = List.of(mbt);
-        return envConfig;
-      }
-    };
-    EnvironmentConfig.MBT mbt = env.getConfig().ministrybytext.get(0);
-    MinistryByTextClient mbtClient = new MinistryByTextClient(mbt, env);
-
-    CrmContact crmContact = new CrmContact();
-    crmContact.id = "12345";
-    crmContact.firstName = "Brett";
-    crmContact.lastName = "Meyer";
-    crmContact.mobilePhone = "260-349-5732";
-    EnvironmentConfig.CommunicationList communicationList = new EnvironmentConfig.CommunicationList();
-    communicationList.id = "c64ecadf-bbfa-4cd4-8f19-a64e5d661b2b";
-    String orgunitId = "cf774a3b-4910-4b16-b6b0-608f80d216a4";
-    BulkOperationResponse bulkOperationResponse = mbtClient.upsertSubscribersBulk(orgunitId, communicationList.id, List.of(crmContact));
-    System.out.println(bulkOperationResponse);
-
-    bulkOperationResponse = mbtClient.upsertContactsBulk(orgunitId, List.of(crmContact));
-    System.out.println(bulkOperationResponse);
-
   }
 }
