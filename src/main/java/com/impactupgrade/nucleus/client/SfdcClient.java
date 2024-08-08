@@ -103,7 +103,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     boolean npsp = env.getConfig().salesforce.npsp;
 
     ACCOUNT_FIELDS = "id, OwnerId, Owner.Id, Owner.IsActive, name, phone, BillingStreet, BillingCity, BillingPostalCode, BillingState, BillingCountry, ShippingStreet, ShippingCity, ShippingPostalCode, ShippingState, ShippingCountry";
-    CAMPAIGN_FIELDS = "id, name, parentid, ownerid, owner.id, owner.isactive, StartDate, EndDate, RecordTypeId, RecordType.Id, RecordType.Name";
+    CAMPAIGN_FIELDS = "id, name, parentid, ownerid, owner.id, owner.isactive, StartDate, EndDate";
+    if (env.getConfig().salesforce.campaignHasRecordTypes) {
+      CAMPAIGN_FIELDS += ", RecordTypeId, RecordType.Id, RecordType.Name";
+    }
     CONTACT_FIELDS = "Id, AccountId, OwnerId, Owner.Id, Owner.Name, Owner.IsActive, FirstName, LastName, Title, Account.Id, Account.Name, Account.BillingStreet, Account.BillingCity, Account.BillingPostalCode, Account.BillingState, Account.BillingCountry, Account.ShippingStreet, Account.ShippingCity, Account.ShippingPostalCode, Account.ShippingState, Account.ShippingCountry, name, email, mailingstreet, mailingcity, mailingstate, mailingpostalcode, mailingcountry, CreatedDate, HomePhone, MobilePhone, Phone";
     LEAD_FIELDS = "Id, FirstName, LastName, Email, OwnerId, Owner.Id, Owner.Name, Owner.IsActive";
     DONATION_FIELDS = "id, AccountId, Account.Id, Account.Name, ContactId, Amount, Name, RecordTypeId, RecordType.Id, RecordType.Name, CampaignId, Campaign.ParentId, CloseDate, StageName, Type, Description, OwnerId, Owner.Id, Owner.IsActive";
@@ -116,10 +119,15 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       //  has them due to the Household vs. Organization default, but commercial entities have a flatter setup.
       //  IF we need these commercially, needs to become a configurable option in env.json. Unfortunately, SFDC
       //  returns a query error if you try to query them but no record types exist for that object.
-      ACCOUNT_FIELDS += ", RecordTypeId, RecordType.Id, RecordType.Name, npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c, npo02__FirstCloseDate__c";
+      if (env.getConfig().salesforce.accountHasRecordTypes) {
+        ACCOUNT_FIELDS += ", RecordTypeId, RecordType.Id, RecordType.Name";
+        CONTACT_FIELDS += ", Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name";
+        DONATION_FIELDS += ", Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name";
+      }
+      ACCOUNT_FIELDS += ", npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c, npo02__FirstCloseDate__c";
       // TODO: Same point about NPSP.
-      CONTACT_FIELDS += ", Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name, account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, account.npo02__LargestAmount__c, account.npo02__OppsClosedThisYear__c, account.npo02__OppAmountThisYear__c, npe01__Home_Address__c, npe01__WorkPhone__c, npe01__PreferredPhone__c, npe01__HomeEmail__c, npe01__WorkEmail__c, npe01__AlternateEmail__c, npe01__Preferred_Email__c";
-      DONATION_FIELDS += ", npe03__Recurring_Donation__c, Account.RecordTypeId, Account.RecordType.Id, Account.RecordType.Name";
+      CONTACT_FIELDS += ", account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, account.npo02__LargestAmount__c, account.npo02__OppsClosedThisYear__c, account.npo02__OppAmountThisYear__c, npe01__Home_Address__c, npe01__WorkPhone__c, npe01__PreferredPhone__c, npe01__HomeEmail__c, npe01__WorkEmail__c, npe01__AlternateEmail__c, npe01__Preferred_Email__c";
+      DONATION_FIELDS += ", npe03__Recurring_Donation__c";
       RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npe03__Contact__r.Phone, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name, OwnerId, Owner.Id, Owner.IsActive";
     }
   }

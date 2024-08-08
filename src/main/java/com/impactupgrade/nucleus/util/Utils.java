@@ -166,10 +166,13 @@ public class Utils {
   }
 
   public static Calendar toCalendar(ZonedDateTime zonedDateTime, String explicitTimezoneId) {
+    if (zonedDateTime == null) {
+      return null;
+    }
     if (!Strings.isNullOrEmpty(explicitTimezoneId)) {
       zonedDateTime = zonedDateTime.withZoneSameInstant(ZoneId.of(explicitTimezoneId));
     }
-    return zonedDateTime != null ? GregorianCalendar.from(zonedDateTime) : null;
+    return GregorianCalendar.from(zonedDateTime);
   }
 
   public static String cleanUnicode(String s) {
