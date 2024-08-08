@@ -678,12 +678,13 @@ public class CrmImportEvent {
     importEvent.contactMailingZip = data.get("Billing Postal Code");
     importEvent.contactMailingCountry = data.get("Billing Country");
 
-    if (!Strings.isNullOrEmpty(data.get("Campaign ID"))) {
-      CampaignMembership campaignMembership = new CampaignMembership();
-      // TODO: more likely to be an extref?
-      campaignMembership.campaignId = data.get("Campaign ID");
-      importEvent.contactCampaigns.add(campaignMembership);
-    }
+    // TODO: more likely to be an extref?
+    // TODO: rework this condition - triggers 'Campaign ID: id value of incorrect type: 87647' error
+//    if (!Strings.isNullOrEmpty(data.get("Campaign ID"))) {
+//      CampaignMembership campaignMembership = new CampaignMembership();
+//      campaignMembership.campaignId = data.get("Campaign ID");
+//      importEvent.contactCampaigns.add(campaignMembership);
+//    }
     if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
       CampaignMembership campaignMembership = new CampaignMembership();
       campaignMembership.campaignName = data.get("Campaign Name");
