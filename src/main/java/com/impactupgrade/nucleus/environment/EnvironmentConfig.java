@@ -212,6 +212,8 @@ public class EnvironmentConfig implements Serializable {
     public boolean npsp = true;
     // some differences in fields/operations
     public boolean enhancedRecurringDonations = false;
+    public boolean accountHasRecordTypes = false;
+    public boolean campaignHasRecordTypes = false;
 
     public boolean sandbox = false;
     public String url = "";
