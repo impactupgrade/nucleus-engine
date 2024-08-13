@@ -160,4 +160,44 @@ public class CommunicationController {
 
     return Response.ok().build();
   }
+
+  // Auto archive the MC contact if they don't exist as a subscriber in the CRM. Enable only if the organization
+  // ensures all contacts are first in the CRM. If they still manually upload to MC directly, keep this turned off.
+  @GET
+  @Path("/mass-archive")
+  public Response massArchive(@Context HttpServletRequest request) throws Exception {
+    Environment env = envFactory.init(request);
+
+    Runnable thread = () -> {
+      try {
+        String jobName = "Communication: Mass Archive";
+        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        boolean success = true;
+
+        for (CommunicationService communicationService : env.allCommunicationServices()) {
+          try {
+            communicationService.massArchive();
+            env.logJobInfo("{}: massArchive done", communicationService.name());
+          } catch (Exception e) {
+            env.logJobError("communication massArchive failed for {}", communicationService.name(), e);
+            env.logJobError(e.getMessage());
+            success = false;
+          }
+        }
+
+        if (success) {
+          env.endJobLog(JobStatus.DONE);
+        } else {
+          env.endJobLog(JobStatus.FAILED);
+        }
+      } catch (Exception e) {
+        env.logJobError("communication massArchive failed", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.ok().build();
+  }
 }
