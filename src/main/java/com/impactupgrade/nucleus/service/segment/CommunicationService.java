@@ -12,4 +12,5 @@ public interface CommunicationService extends SegmentService {
   void syncUnsubscribes(Calendar lastSync) throws Exception;
   void upsertContact(String contactId) throws Exception;
   // TODO: deleteContact
+  void massArchive() throws Exception;
 }

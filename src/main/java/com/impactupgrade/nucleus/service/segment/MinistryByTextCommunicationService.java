@@ -86,4 +86,9 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
       }
     }
   }
+
+  @Override
+  public void massArchive() throws Exception {
+    // TODO
+  }
 }

@@ -87,8 +87,8 @@ public class MailchimpController {
     }
 
     // TODO: Clunky way to retrieve the specific account keys, when all we have is the List ID..
-    EnvironmentConfig.Mailchimp mailchimpConfig = null;
-    for (EnvironmentConfig.Mailchimp _mailchimpConfig : env.getConfig().mailchimp) {
+    EnvironmentConfig.CommunicationPlatform mailchimpConfig = null;
+    for (EnvironmentConfig.CommunicationPlatform _mailchimpConfig : env.getConfig().mailchimp) {
       for (EnvironmentConfig.CommunicationList communicationList : _mailchimpConfig.lists) {
         if (event.listId.equalsIgnoreCase(communicationList.id)) {
           mailchimpConfig = _mailchimpConfig;
