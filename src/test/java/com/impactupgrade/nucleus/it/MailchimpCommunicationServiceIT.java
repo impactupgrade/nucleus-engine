@@ -81,7 +81,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     // Sync contacts to MC
     env.communicationService("mailchimp").syncContacts(beforeBulkImport);
 
-    EnvironmentConfig.Mailchimp mailchimp = env.getConfig().mailchimp.get(0);
+    EnvironmentConfig.CommunicationPlatform mailchimp = env.getConfig().mailchimp.get(0);
     String listId = mailchimp.lists.get(0).id;
     MailchimpClient mailchimpClient = env.mailchimpClient(mailchimp);
 
@@ -128,7 +128,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     assertTrue(crmContactsEmails.containsAll(emails));
 
     // Subscribe emails to MC list
-    EnvironmentConfig.Mailchimp mailchimp = env.getConfig().mailchimp.get(0);
+    EnvironmentConfig.CommunicationPlatform mailchimp = env.getConfig().mailchimp.get(0);
     String listId = mailchimp.lists.get(0).id;
     MailchimpClient mailchimpClient = env.mailchimpClient(mailchimp);
 
