@@ -67,4 +67,9 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
       }
     }
   }
+
+  @Override
+  public void massArchive() throws Exception {
+    // TODO
+  }
 }

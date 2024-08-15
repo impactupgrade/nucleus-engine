@@ -93,6 +93,11 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
     //TODO
   }
 
+  @Override
+  public void massArchive() throws Exception {
+    // TODO
+  }
+
   protected Contact toSendGridContact(CrmContact crmContact, List<String> campaignNames,
       Map<String, String> customFieldsByName, SendGrid sendgridClient,
       EnvironmentConfig.CommunicationPlatform communicationPlatform,
