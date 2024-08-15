@@ -21,7 +21,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -60,12 +59,11 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
         List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
         Set<String> mcEmails = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-        Set<String> seenEmails = new HashSet<>();
 
         PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
         for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
           do {
-            syncContacts(resultSet, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient);
+            syncContacts(resultSet, mailchimpConfig, communicationList, listMembers, mcEmails, mailchimpClient);
             if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
               // next page
               resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
@@ -80,7 +78,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           do {
             PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
             fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
-            syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient);
+            syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, mcEmails, mailchimpClient);
             if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
               // next page
               resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
@@ -120,13 +118,11 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
   protected void syncContacts(PagedResults.ResultSet<CrmContact> resultSet, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
       EnvironmentConfig.CommunicationList communicationList, List<MemberInfo> listMembers, Set<String> mcEmails,
-      Set<String> seenEmails, MailchimpClient mailchimpClient) {
+      MailchimpClient mailchimpClient) {
     List<CrmContact> contactsToUpsert = new ArrayList<>();
     List<CrmContact> contactsToArchive = new ArrayList<>();
 
-    List<CrmContact> crmContacts = resultSet.getRecords().stream()
-        .filter(crmContact -> !seenEmails.contains(crmContact.email.toLowerCase(Locale.ROOT)))
-        .toList();
+    List<CrmContact> crmContacts = resultSet.getRecords();
 
     // transactional is always subscribed
     if (communicationList.type == EnvironmentConfig.CommunicationListType.TRANSACTIONAL) {
@@ -159,10 +155,8 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       String tagsBatchId = updateTagsBatch(communicationList.id, emailContacts, mailchimpClient, mailchimpConfig);
       mailchimpClient.runBatchOperations(mailchimpConfig, tagsBatchId, 0);
 
-      seenEmails.addAll(resultSet.getRecords().stream().map(c -> c.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet()));
-
       // archive mc emails that are marked as unsubscribed in the CRM
-      Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email).collect(Collectors.toSet());
+      Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
       // but only if they actually exist in MC
       emailsToArchive.retainAll(mcEmails);
 
