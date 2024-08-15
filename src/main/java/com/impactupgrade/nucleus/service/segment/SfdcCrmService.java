@@ -2182,6 +2182,10 @@ public class SfdcCrmService implements CrmService {
 
   protected void setBulkImportOpportunityFields(SObject opportunity, SObject existingOpportunity, CrmImportEvent importEvent)
       throws ExecutionException {
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId)) {
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId, importEvent.opportunityTransactionId);
+    }
+
     if (!Strings.isNullOrEmpty(importEvent.opportunityRecordTypeId)) {
       opportunity.setField("RecordTypeId", importEvent.opportunityRecordTypeId);
     } else if (!Strings.isNullOrEmpty(importEvent.opportunityRecordTypeName)) {

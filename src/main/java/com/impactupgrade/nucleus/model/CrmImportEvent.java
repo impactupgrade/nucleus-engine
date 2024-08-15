@@ -165,6 +165,7 @@ public class CrmImportEvent {
   public String opportunitySource;
   public String opportunityStageName;
   public String opportunityTerminal;
+  public String opportunityTransactionId;
 
   public BigDecimal recurringDonationAmount;
   public String recurringDonationCampaignId;
@@ -661,55 +662,37 @@ public class CrmImportEvent {
     CrmImportEvent importEvent = new CrmImportEvent();
     importEvent.raw = data;
 
-    // Account
-    importEvent.account.name = data.get("Organization Name"); // ?
-
     // Contact
     importEvent.contactPersonalEmail = data.get("Donor Email");
     importEvent.contactFirstName = data.get("Supporter First Name");
     importEvent.contactLastName = data.get("Supporter Last Name");
     importEvent.contactMobilePhone = data.get("Donor Phone Number");
-    importEvent.contactOptInEmail = Boolean.TRUE.toString().equalsIgnoreCase(data.get("Email Opt In")); // ?
+    importEvent.contactOptInEmail = "true".equalsIgnoreCase(data.get("Email Opt In"));
 
     // Address
-    importEvent.contactMailingStreet = data.get("Billing Address");
-    importEvent.contactMailingCity = data.get("Billing City");
-    importEvent.contactMailingState = data.get("Billing State");
-    importEvent.contactMailingZip = data.get("Billing Postal Code");
-    importEvent.contactMailingCountry = data.get("Billing Country");
+    importEvent.account.billingAddress.street = data.get("Billing Address");
+    if (!Strings.isNullOrEmpty(data.get("Billing Address 2"))) {
+      importEvent.account.billingAddress.street += ", " + data.get("Billing Address 2");
+    }
+    importEvent.account.billingAddress.city = data.get("Billing City");
+    importEvent.account.billingAddress.state = data.get("Billing State");
+    importEvent.account.billingAddress.postalCode = data.get("Billing Postal Code");
+    importEvent.account.billingAddress.country = data.get("Billing Country");
 
-    // TODO: more likely to be an extref?
-    // TODO: rework this condition - triggers 'Campaign ID: id value of incorrect type: 87647' error
-//    if (!Strings.isNullOrEmpty(data.get("Campaign ID"))) {
-//      CampaignMembership campaignMembership = new CampaignMembership();
-//      campaignMembership.campaignId = data.get("Campaign ID");
-//      importEvent.contactCampaigns.add(campaignMembership);
-//    }
-    if (!Strings.isNullOrEmpty(data.get("Campaign Name"))) {
-      CampaignMembership campaignMembership = new CampaignMembership();
-      campaignMembership.campaignName = data.get("Campaign Name");
-      importEvent.contactCampaigns.add(campaignMembership);
-    }
-    if (!Strings.isNullOrEmpty(data.get("Internal Campaign Name"))) {
-      CampaignMembership campaignMembership = new CampaignMembership();
-      campaignMembership.campaignName = data.get("Internal Campaign Name");
-      importEvent.contactCampaigns.add(campaignMembership);
-    }
+    // TODO: Should "Campaign ID" go to an extref?
+//    importEvent.opportunityCampaignName = data.get("Campaign Name");
 
     // Opportunity
     importEvent.opportunityAmount = BigDecimal.valueOf(Double.valueOf(data.get("Charged Intended Donation Amount")));
-    importEvent.opportunityName = "Classy " + data.get("Transaction Type") + " " + data.get("Transaction ID");
-
+    importEvent.opportunityName = "Classy: " + data.get("Campaign Name");
+    importEvent.opportunityTransactionId = data.get("Transaction ID");
     try {
       importEvent.opportunityDate = Calendar.getInstance();
       importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.get("Transaction Date")));
     } catch (ParseException e) {
       throw new RuntimeException("failed to parse date", e);
     }
-    importEvent.opportunitySource = data.get("Payment Source");
-    importEvent.opportunityDescription = data.get("Transaction Type") + " for Designation Program " + data.get("Program Designation ID");
-    importEvent.opportunityCampaignId = data.get("Campaign ID");
-    importEvent.opportunityCampaignName = data.get("Campaign Name");
+    importEvent.opportunitySource = "Classy";
 
     return importEvent;
   }
