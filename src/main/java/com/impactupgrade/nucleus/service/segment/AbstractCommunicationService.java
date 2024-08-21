@@ -201,29 +201,23 @@ public abstract class AbstractCommunicationService implements CommunicationServi
   }
 
   protected String getTagName(CrmContact crmContact, EnvironmentConfig.CrmFieldToCommunicationTag mapping) {
-    Object value = crmContact.fieldFetcher != null ? crmContact.fieldFetcher.apply(mapping.crmFieldName) : null;
-    String valueString = value == null ? "" : value.toString();
-    if (mapping.crmConditions.stream().allMatch(condition -> evaluate(valueString, condition))) {
-      String tagName = mapping.communicationTagName;
-      if (mapping.isAppend) {
-        tagName = tagName + Utils.toSlug(valueString);
-      }
-      return tagName;
+    Object crmFieldValue = crmContact.fieldFetcher != null ? crmContact.fieldFetcher.apply(mapping.crmFieldName) : null;
+    String crmFieldValueString = crmFieldValue == null ? "" : crmFieldValue.toString();
+    if (evaluate(crmFieldValueString, mapping.operator, mapping.value)) {
+      return mapping.communicationTagName;
     } else {
       return null;
     }
   }
 
-  protected boolean evaluate(String crmFieldValue, EnvironmentConfig.CrmFieldToCommunicationTagCondition crmFieldToCommunicationTagCondition) {
-    if (Strings.isNullOrEmpty(crmFieldValue)
-            || crmFieldToCommunicationTagCondition == null
-            || crmFieldToCommunicationTagCondition.operator == null) {
+  protected boolean evaluate(String crmFieldValueString, EnvironmentConfig.Operator operator, String value) {
+    if (Strings.isNullOrEmpty(crmFieldValueString) || operator == null) {
       return false;
     }
-    return switch(crmFieldToCommunicationTagCondition.operator) {
-      case NOT_EMPTY -> Strings.isNullOrEmpty(crmFieldValue);
-      case EQUAL_TO ->  crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
-      case NOT_EQUAL_TO -> !crmFieldValue.equalsIgnoreCase(crmFieldToCommunicationTagCondition.value);
+    return switch(operator) {
+      case NOT_EMPTY -> Strings.isNullOrEmpty(crmFieldValueString);
+      case EQUAL_TO ->  crmFieldValueString.equalsIgnoreCase(value);
+      case NOT_EQUAL_TO -> !crmFieldValueString.equalsIgnoreCase(value);
     };
   }
 

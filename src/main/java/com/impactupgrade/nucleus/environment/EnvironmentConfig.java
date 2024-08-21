@@ -315,17 +315,11 @@ public class EnvironmentConfig implements Serializable {
     public String communicationFieldName;
   }
 
-  public static class CrmFieldToCommunicationTagCondition implements Serializable {
-    public Operator operator;
-    public String value;
-  }
-
   public static class CrmFieldToCommunicationTag implements Serializable {
     public String crmFieldName;
-    // conjunction
-    public List<CrmFieldToCommunicationTagCondition> crmConditions;
+    public Operator operator;
+    public String value;
     public String communicationTagName;
-    public boolean isAppend;
   }
 
   public static class CommunicationPlatform extends Platform {
