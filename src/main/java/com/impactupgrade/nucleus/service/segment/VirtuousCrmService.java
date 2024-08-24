@@ -115,12 +115,6 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    // TODO
-    return Optional.empty();
-  }
-
-  @Override
   public String insertContact(CrmContact crmContact) throws Exception {
     VirtuousClient.Contact contact = asContact(crmContact);
     VirtuousClient.Contact createdContact = virtuousClient.createContact(contact);
@@ -545,11 +539,6 @@ public class VirtuousCrmService implements CrmService {
   public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return null;
-  }
-
-  @Override
-  public List<CrmUser> getUsers() throws Exception {
-    return Collections.emptyList();
   }
 
   @Override

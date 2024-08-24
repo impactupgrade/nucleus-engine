@@ -14,21 +14,17 @@ import com.sforce.async.ContentType;
 import com.sforce.async.JobInfo;
 import com.sforce.async.JobStateEnum;
 import com.sforce.async.OperationEnum;
-import com.sforce.async.QueryResultList;
 import com.sforce.soap.partner.LoginResult;
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.ConnectorConfig;
-import org.apache.commons.io.IOUtils;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,66 +65,6 @@ public class SfdcBulkClient {
     bulkConfig.setCompression(false);
     bulkConfig.setTraceMessage(false);
     return new BulkConnection(bulkConfig);
-  }
-
-  public void ownerTransfer(String oldOwnerId, String newOwnerId, String object, String... whereClauses)
-      throws ConnectionException, AsyncApiException, IOException {
-    String query = "SELECT Id, OwnerId FROM " + object + " WHERE OwnerId='" + oldOwnerId + "'";
-    for (String whereClause : whereClauses) {
-      query += " AND " + whereClause;
-    }
-
-    env.logJobInfo("retrieving all {} records to transfer; bulk query: {}", object, query);
-
-    try (
-        ByteArrayInputStream queryIS = new ByteArrayInputStream(query.getBytes());
-        InputStream specFileInputStream = Thread.currentThread().getContextClassLoader()
-            .getResourceAsStream("sfdc/ownertransfer_spec.csv")
-    ) {
-      BulkConnection bulkConn = bulkConn();
-
-      JobInfo queryJob = createJob(object, OperationEnum.query, bulkConn);
-      BatchInfo queryBatchInfo = bulkConn.createBatchFromStream(queryJob, queryIS);
-      closeJob(queryJob.getId(), bulkConn);
-      awaitCompletion(queryJob, queryBatchInfo, bulkConn);
-
-      QueryResultList queryResultList = bulkConn.getQueryResultList(queryJob.getId(), queryBatchInfo.getId());
-      String[] queryResults = queryResultList.getResult();
-      for (int i = 0; i < queryResults.length; i++) {
-        env.logJobInfo("processing query result set {} of {}", i+1, queryResults.length);
-        String queryResultId = queryResults[i];
-
-        InputStream queryResultIS = null;
-        InputStream newOwnerIS = null;
-
-        try {
-          // TODO: I'm assuming each one of the results contains the CSV header, and can therefore be run
-          // as independent chunks!
-          queryResultIS = bulkConn.getQueryResultStream(queryJob.getId(), queryBatchInfo.getId(), queryResultId);
-          String queryResult = IOUtils.toString(queryResultIS, StandardCharsets.UTF_8);
-          // TODO: SHOULD be ok for now, but may need to switch to a streaming setup to preserve memory for huge sets...
-          queryResult = queryResult.replaceAll(oldOwnerId, newOwnerId);
-
-          newOwnerIS = IOUtils.toInputStream(queryResult, StandardCharsets.UTF_8);
-
-          JobInfo updateJob = createJob(object, OperationEnum.update, bulkConn);
-
-          uploadSpec(updateJob, specFileInputStream, bulkConn);
-
-          List<BatchInfo> fileUpload = createBatchesFromCSV(updateJob, newOwnerIS, bulkConn);
-          closeJob(updateJob.getId(), bulkConn);
-          awaitCompletion(updateJob, fileUpload, bulkConn);
-          checkUploadResults(updateJob, fileUpload, bulkConn);
-        } finally {
-          if (newOwnerIS != null) {
-            newOwnerIS.close();
-          }
-          if (queryResultIS != null) {
-            queryResultIS.close();
-          }
-        }
-      }
-    }
   }
 
   /**

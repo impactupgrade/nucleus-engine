@@ -151,12 +151,6 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    //TODO Not currently implemented
-    return Optional.empty();
-  }
-
-  @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
     //  combining clauses, owner, by-namd, keyword search, pagination, etc.
@@ -1052,11 +1046,6 @@ public class HubSpotCrmService implements CrmService {
     List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, contactFields);
     List<CrmContact> crmContacts = results.stream().map(this::toCrmContact).collect(Collectors.toList());
     return PagedResults.unpagedResults(crmContacts);
-  }
-
-  @Override
-  public List<CrmUser> getUsers() throws Exception {
-    return Collections.emptyList();
   }
 
   @Override
