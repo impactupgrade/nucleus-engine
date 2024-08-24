@@ -16,8 +16,6 @@ import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.ChargeCollection;
 import com.stripe.model.Customer;
-import com.stripe.model.Event;
-import com.stripe.model.EventCollection;
 import com.stripe.model.Invoice;
 import com.stripe.model.InvoiceItem;
 import com.stripe.model.PaymentIntent;
@@ -29,18 +27,14 @@ import com.stripe.model.PriceCollection;
 import com.stripe.model.Product;
 import com.stripe.model.ProductSearchResult;
 import com.stripe.model.Refund;
-import com.stripe.model.RefundCollection;
 import com.stripe.model.Source;
 import com.stripe.model.Subscription;
-import com.stripe.model.SubscriptionItem;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.BalanceTransactionListParams;
 import com.stripe.param.ChargeCreateParams;
-import com.stripe.param.ChargeListParams;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerListParams;
 import com.stripe.param.CustomerRetrieveParams;
-import com.stripe.param.CustomerSearchParams;
 import com.stripe.param.CustomerUpdateParams;
 import com.stripe.param.InvoiceCreateParams;
 import com.stripe.param.InvoiceItemCreateParams;
@@ -104,11 +98,6 @@ public class StripeClient {
     }.result();
   }
 
-  public List<Charge> getChargesFromCustomer(String customerId) throws StripeException {
-    ChargeListParams params = ChargeListParams.builder().setCustomer(customerId).build();
-    return Charge.list(params, requestOptions).getData();
-  }
-
   public Invoice getInvoice(String id) throws StripeException {
     Map<String, Object> params = new HashMap<>();
     List<String> expand = new ArrayList<>();
@@ -161,14 +150,6 @@ public class StripeClient {
     return getCustomersByEmail(email).stream().min(Comparator.comparing(Customer::getCreated));
   }
 
-  public List<Customer> getCustomersByName(String name) throws StripeException {
-    CustomerSearchParams customerParams = CustomerSearchParams.builder()
-        .setQuery("name~\"" + name + "\"")
-        .addExpand("data.sources")
-        .build();
-    return Customer.search(customerParams, requestOptions).getData();
-  }
-
   public PaymentIntent getPaymentIntent(String id) throws StripeException {
     return new Retriever<PaymentIntent>() {
       @Override
@@ -214,20 +195,6 @@ public class StripeClient {
     env.logJobInfo("cancelled subscription {}", id);
   }
 
-  public SubscriptionItem getSubscriptionItem(String id) throws StripeException {
-    return new Retriever<SubscriptionItem>() {
-      @Override
-      protected SubscriptionItem retrieve() throws StripeException {
-        return SubscriptionItem.retrieve(id, requestOptions);
-      }
-    }.result();
-  }
-
-  public Iterable<Charge> getAllChargesFromCustomer(String customerId) throws StripeException {
-    ChargeCollection chargeCollection = Charge.list(ChargeListParams.builder().setCustomer(customerId).build(), requestOptions);
-    return chargeCollection.autoPagingIterable();
-  }
-
   public Iterable<Charge> getAllCharges(Date startDate, Date endDate) throws StripeException {
     Map<String, Object> params = new HashMap<>();
     params.put("limit", 100);
@@ -246,37 +213,6 @@ public class StripeClient {
     return chargeCollection.autoPagingIterable();
   }
 
-  public Iterable<Refund> getAllRefunds(Date startDate, Date endDate) throws StripeException {
-    Map<String, Object> params = new HashMap<>();
-    params.put("limit", 100);
-    Map<String, Object> createdParams = new HashMap<>();
-    createdParams.put("gte", startDate.getTime() / 1000);
-    createdParams.put("lte", endDate.getTime() / 1000);
-    params.put("created", createdParams);
-
-    List<String> expandList = new ArrayList<>();
-    expandList.add("data.charge");
-    expandList.add("data.payment_intent");
-    expandList.add("data.balance_transaction");
-    params.put("expand", expandList);
-
-    RefundCollection refundCollection = Refund.list(params, requestOptions);
-    return refundCollection.autoPagingIterable();
-  }
-
-  public Iterable<Event> getAllEvents(String eventType, Date startDate, Date endDate) throws StripeException {
-    Map<String, Object> params = new HashMap<>();
-    params.put("limit", 100);
-    Map<String, Object> createdParams = new HashMap<>();
-    createdParams.put("gte", startDate.getTime() / 1000);
-    createdParams.put("lte", endDate.getTime() / 1000);
-    params.put("created", createdParams);
-    params.put("type", eventType);
-
-    EventCollection eventCollection = Event.list(params, requestOptions);
-    return eventCollection.autoPagingIterable();
-  }
-
   public List<Payout> getPayouts(Date startDate, Date endDate, int payoutLimit) throws StripeException {
     PayoutListParams.ArrivalDate arrivalDate = PayoutListParams.ArrivalDate.builder()
         .setGte(startDate.getTime() / 1000)
@@ -290,16 +226,6 @@ public class StripeClient {
     return Payout.list(params, requestOptions).getData();
   }
 
-  public List<Payout> getPayouts(String endingBefore, int payoutLimit) throws StripeException {
-    Map<String, Object> payoutParams = new HashMap<>();
-    // "ending_before" is a little misleading -- results are LIFO, so this actually means "give me all payouts
-    // that have happened *after* (chronologically) the given payoutId
-    payoutParams.put("ending_before", endingBefore);
-    payoutParams.put("limit", payoutLimit);
-
-    return Payout.list(payoutParams, requestOptions).getData();
-  }
-
   public Payout getPayout(String id) throws StripeException {
     return new Retriever<Payout>() {
       @Override
@@ -307,11 +233,6 @@ public class StripeClient {
         return Payout.retrieve(id, requestOptions);
       }
     }.result();
-  }
-
-  public List<BalanceTransaction> getBalanceTransactions(String payoutId) throws StripeException {
-    Payout payout = Payout.retrieve(payoutId, requestOptions);
-    return getBalanceTransactions(payout);
   }
 
   public List<BalanceTransaction> getBalanceTransactions(Payout payout) throws StripeException {
