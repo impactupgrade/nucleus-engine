@@ -48,10 +48,6 @@ public class AccountingService {
         }
 
         processTransaction(paymentGatewayEvent.getCrmDonation());
-
-        for (CrmDonation child : paymentGatewayEvent.getCrmDonation().children) {
-            processTransaction(child);
-        }
     }
 
     protected void processTransaction(CrmDonation crmDonation) throws Exception {

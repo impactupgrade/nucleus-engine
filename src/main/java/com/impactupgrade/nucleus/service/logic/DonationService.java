@@ -120,11 +120,6 @@ public class DonationService {
 
     paymentGatewayEvent.getCrmDonation().id = crmService.insertDonation(paymentGatewayEvent.getCrmDonation());
 
-    for (CrmDonation child : paymentGatewayEvent.getCrmDonation().children) {
-      child.id = crmService.insertDonation(child);
-      child.parent.id = paymentGatewayEvent.getCrmDonation().id;
-    }
-
     if (paymentGatewayEvent.getCrmDonation().status == CrmDonation.Status.FAILED) {
       String targetId = null;
       if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().account.id)) {

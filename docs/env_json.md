@@ -152,12 +152,6 @@ https://github.com/impactupgrade/nucleus-engine/blob/master/src/main/resources/e
     "secretKey": "sk_live_abc123"
   },
 
-  "raisely": {
-    "username": "user@abc123.com",
-    "password": "abc123",
-    "stripeAppId": "ca_abc123"
-  },
-
   "mailchimp": [
     {
       "secretKey": "abc123-us18",

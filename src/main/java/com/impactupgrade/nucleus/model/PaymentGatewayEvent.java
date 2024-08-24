@@ -321,7 +321,8 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     // Now do first name, again using metadata. Don't do "contains 'first' and contains 'name'", since that would also
-    // pick up, as an example, Raisely's use of fundraiser_first_name. Instead, use regex that's a little more explicit.
+    // pick up, as an example, other tools' use of something like  fundraiser_first_name. Instead, use regex that's a
+    // little more explicit.
     crmContact.firstName = crmContact.metadata.entrySet().stream().filter(e -> {
       String key = e.getKey().toLowerCase(Locale.ROOT);
       return key.matches("(?i)first.*name");
