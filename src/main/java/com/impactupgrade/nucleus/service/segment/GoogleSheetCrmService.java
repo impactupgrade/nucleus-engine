@@ -11,7 +11,6 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.impactupgrade.nucleus.util.Utils;
@@ -51,11 +50,6 @@ public class GoogleSheetCrmService implements BasicCrmService {
 
     @Override
     public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
         return Optional.empty();
     }
 
@@ -104,11 +98,6 @@ public class GoogleSheetCrmService implements BasicCrmService {
     @Override
     public void refundDonation(CrmDonation crmDonation) throws Exception {
 
-    }
-
-    @Override
-    public List<CrmUser> getUsers() throws Exception {
-        return Collections.emptyList();
     }
 
     @Override

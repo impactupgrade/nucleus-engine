@@ -788,7 +788,6 @@ public class SmsCampaignJobExecutorTest extends AbstractMockTest {
   public void testDefaultLanguage() throws Exception {
     Environment env = new DefaultEnvironment();
     HibernateDao<Long, Job> jobDao = new HibernateDao<>(Job.class);
-    HibernateDao<Long, JobProgress> jobProgressDao = new HibernateDao<>(JobProgress.class);
     HibernateDao<Long, Organization> organizationDao = new HibernateDao<>(Organization.class);
 
     ScheduledJobService service = new ScheduledJobService(env);

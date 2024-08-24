@@ -90,12 +90,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    //TODO Not currently implemented
-    return Optional.empty();
-  }
-
-  @Override
   public List<CrmAccount> searchAccounts(AccountSearch accountSearch) {
     // TODO
     return Collections.emptyList();
@@ -353,11 +347,6 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public void processBulkImport(List<CrmImportEvent> importEvents) throws Exception {
     throw new RuntimeException("not implemented");
-  }
-
-  @Override
-  public List<CrmUser> getUsers() throws Exception {
-    return Collections.emptyList();
   }
 
   @Override

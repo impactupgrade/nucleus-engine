@@ -14,7 +14,6 @@ import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.model.CrmUser;
 import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.Calendar;
@@ -54,12 +53,6 @@ public class DynamicsCrmService implements BasicCrmService {
   @Override
   public Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception {
     return getContactById(id); //TODO: filter?
-  }
-
-  @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    DynamicsCrmClient.Contact contact = dynamicsCrmClient.getContactByEmail(email); //TODO: filter?
-    return Optional.ofNullable(toCrmContact(contact));
   }
 
   @Override
@@ -174,11 +167,6 @@ public class DynamicsCrmService implements BasicCrmService {
   @Override
   public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return new PagedResults<>();
-  }
-
-  @Override
-  public List<CrmUser> getUsers() throws Exception {
-    return null;
   }
 
   @Override

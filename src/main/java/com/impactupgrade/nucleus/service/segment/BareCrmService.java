@@ -59,11 +59,6 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmContact> getFilteredContactByEmail(String email, String filter) throws Exception {
-    return Optional.empty();
-  }
-
-  @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
     return new PagedResults<>();
   }
@@ -220,11 +215,6 @@ public class BareCrmService implements CrmService {
   @Override
   public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return new PagedResults<>();
-  }
-
-  @Override
-  public List<CrmUser> getUsers() throws Exception {
-    return Collections.emptyList();
   }
 
   @Override

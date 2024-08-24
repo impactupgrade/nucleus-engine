@@ -17,11 +17,9 @@ import java.util.stream.Collectors;
 
 public class ActivityService {
 
-  private final Environment env;
   private final CrmService crmService;
 
   public ActivityService(Environment env) {
-    this.env = env;
     crmService = env.primaryCrmService();
   }
 
