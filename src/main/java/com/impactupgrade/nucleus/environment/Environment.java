@@ -8,7 +8,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.EventBriteClient;
 import com.impactupgrade.nucleus.client.FactsClient;
 import com.impactupgrade.nucleus.client.MailchimpClient;
-import com.impactupgrade.nucleus.client.RaiselyClient;
 import com.impactupgrade.nucleus.client.PaypalClient;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
@@ -29,7 +28,6 @@ import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.segment.CommunicationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
-import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.service.segment.BareCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
@@ -204,14 +202,6 @@ public class Environment {
     return segmentService(name, CommunicationService.class);
   }
 
-  public EnrichmentService enrichmentService(String name) {
-    return segmentService(name, EnrichmentService.class);
-  }
-
-  public List<EnrichmentService> allEnrichmentServices() {
-    return segmentServices(EnrichmentService.class);
-  }
-
   public Optional<AccountingPlatformService> accountingPlatformService() {
     if (Strings.isNullOrEmpty(getConfig().accountingPrimary)) {
       return Optional.empty();
@@ -265,7 +255,6 @@ public class Environment {
   public EventBriteClient eventBriteClient() { return new EventBriteClient(this); }
   public FactsClient factsClient() { return new FactsClient(this); }
   public PaypalClient paypalClient() { return new PaypalClient(this); }
-  public RaiselyClient raiselyClient() { return new RaiselyClient(this); }
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password, boolean isSandbox) { return new SfdcClient(this, username, password, isSandbox); }
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }

@@ -13,7 +13,6 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
-import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.paypal.api.payments.Event;
 import com.paypal.base.Constants;
@@ -30,7 +29,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Path("/paypal")
@@ -128,12 +126,10 @@ public class PaypalController {
         env.logJobInfo("Got event type: '" + eventType + "'");
         env.logJobInfo("Got payment gateway event: ", paymentGatewayEvent);
 
-        // must first process the account/contact so they're available for the enricher
+        // must first process the account/contact so they're available
         env.logJobInfo("Processing donor for '" + eventType + "' event...");
         //env.contactService().processDonor(paymentGatewayEvent);
         env.logJobInfo("Donor processed for '" + eventType + "' event...");
-
-        enrich(paymentGatewayEvent, env);
 
         env.logJobInfo("Creating donation for '" + eventType + "' event...");
         //env.donationService().createDonation(paymentGatewayEvent);
@@ -186,8 +182,6 @@ public class PaypalController {
         //env.contactService().processDonor(paymentGatewayEvent);
         env.logJobInfo("Donor processed for '" + eventType + "' event...");
 
-        enrich(paymentGatewayEvent, env);
-
         env.logJobInfo("Creating donation for '" + eventType + "' event...");
         //env.donationService().createDonation(paymentGatewayEvent);
         env.logJobInfo("Donation created for '" + eventType + "' event.");
@@ -211,8 +205,6 @@ public class PaypalController {
         //env.contactService().processDonor(paymentGatewayEvent);
         env.logJobInfo("Donor processed for '" + eventType + "' event...");
 
-        enrich(paymentGatewayEvent, env);
-
         env.logJobInfo("Closing recurring donation for '" + eventType + "' event...");
         //env.donationService().closeRecurringDonation(paymentGatewayEvent);
         env.logJobInfo("Recurring donation closed for '" + eventType + "' event.");
@@ -232,15 +224,6 @@ public class PaypalController {
     PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
     paymentGatewayEvent.initPaypalSubscription(subscription);
     return paymentGatewayEvent;
-  }
-
-  private void enrich(PaymentGatewayEvent paymentGatewayEvent, Environment env)
-      throws Exception {
-    List<EnrichmentService> enrichmentServices = env.allEnrichmentServices().stream()
-        .filter(es -> es.eventIsFromPlatform(paymentGatewayEvent.getCrmDonation())).toList();
-    for (EnrichmentService enrichmentService : enrichmentServices) {
-      enrichmentService.enrich(paymentGatewayEvent.getCrmDonation());
-    }
   }
 
   private JSONObject getResourceJson(Event event) {

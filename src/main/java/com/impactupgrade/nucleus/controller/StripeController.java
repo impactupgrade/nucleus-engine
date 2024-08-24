@@ -15,7 +15,6 @@ import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEventType;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
-import com.impactupgrade.nucleus.service.segment.EnrichmentService;
 import com.impactupgrade.nucleus.service.segment.StripePaymentGatewayService;
 import com.impactupgrade.nucleus.util.TestUtil;
 import com.stripe.exception.StripeException;
@@ -128,11 +127,8 @@ public class StripeController {
         } else {
           PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.chargeToPaymentGatewayEvent(charge, true);
           paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_SUCCESS);
-          // must first process the account/contact so they're available for the enricher
+          // must first process the account/contact so they're available
           env.contactService().processDonor(paymentGatewayEvent);
-
-          enrich(paymentGatewayEvent, env);
-
           env.donationService().processDonation(paymentGatewayEvent);
           env.accountingService().processTransaction(paymentGatewayEvent);
         }
@@ -143,11 +139,8 @@ public class StripeController {
 
         PaymentGatewayEvent paymentGatewayEvent = stripePaymentGatewayService.paymentIntentToPaymentGatewayEvent(paymentIntent, true);
         paymentGatewayEvent.setPaymentGatewayEventType(PaymentGatewayEventType.PAYMENT_SUCCESS);
-        // must first process the account/contact so they're available for the enricher
+        // must first process the account/contact so they're available
         env.contactService().processDonor(paymentGatewayEvent);
-
-        enrich(paymentGatewayEvent, env);
-
         env.donationService().processDonation(paymentGatewayEvent);
         env.accountingService().processTransaction(paymentGatewayEvent);
       }
@@ -310,15 +303,6 @@ public class StripeController {
         }
       }
       default -> env.logJobInfo("unhandled Stripe webhook event type: {}", eventType);
-    }
-  }
-
-  private void enrich(PaymentGatewayEvent paymentGatewayEvent, Environment env)
-      throws Exception {
-    List<EnrichmentService> enrichmentServices = env.allEnrichmentServices().stream()
-        .filter(es -> es.eventIsFromPlatform(paymentGatewayEvent.getCrmDonation())).toList();
-    for (EnrichmentService enrichmentService : enrichmentServices) {
-      enrichmentService.enrich(paymentGatewayEvent.getCrmDonation());
     }
   }
 

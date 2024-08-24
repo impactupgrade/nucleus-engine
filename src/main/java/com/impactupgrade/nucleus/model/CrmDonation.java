@@ -19,10 +19,6 @@ public class CrmDonation extends CrmOpportunity {
 
   public CrmRecurringDonation recurringDonation = new CrmRecurringDonation();
 
-  // primary/secondary event management
-  public CrmDonation parent = null;
-  public List<CrmDonation> children = new ArrayList<>();
-
   public Double amount;
   public String customerId;
   public ZonedDateTime depositDate;
