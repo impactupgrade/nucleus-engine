@@ -26,7 +26,7 @@ import java.util.Optional;
 
 /**
  * There is typically a huge difference in the feature set of general-purpose CRMs (like SFDC and HS) vs.
- * nonprofit CRMs and donor management/retention platforms (like Bloomerang and Donor Wrangler). The latter rarely
+ * nonprofit CRMs and donor management/retention platforms (like Bloomerang). The latter rarely
  * include campaigns, lists/reports, non-donation opportunities, tasks, etc. Often, they don't even include an
  * account/household/organization level, instead lumping everything into a single "Donor" object (which we opt
  * to map to Contact). Ditto for recurring donations.

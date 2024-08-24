@@ -152,11 +152,6 @@ public class EnvironmentConfig implements Serializable {
     public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
   }
 
-  public Donorwrangler donorwrangler = new Donorwrangler();
-  public static class Donorwrangler extends Platform {
-    public String subdomain = "";
-  }
-
   public DynamicsPlatform dynamicsPlatform = new DynamicsPlatform();
   public static class DynamicsPlatform extends Platform {
     public String tenantId = "";

@@ -112,11 +112,6 @@
     "anonymousId": ""
   },
 
-  "donorwrangler": {
-    "secretKey": "",
-    "subdomain": ""
-  },
-
   "stripe": {
     "secretKey": "sk_test_51Imqu3HAwJOu5brrFI1LeFsnRbGSKo01FLQ9tJijlMtTZPXl4XyB2Kidg9qrWqCP6VlDK5EO0YxSXAbPcWZBp7ey00dhw2OuZg"
   },

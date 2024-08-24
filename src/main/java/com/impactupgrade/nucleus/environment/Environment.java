@@ -5,7 +5,6 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.client.DonorWranglerClient;
 import com.impactupgrade.nucleus.client.EventBriteClient;
 import com.impactupgrade.nucleus.client.FactsClient;
 import com.impactupgrade.nucleus.client.MailchimpClient;
@@ -263,7 +262,6 @@ public class Environment {
 
   // vendor clients
 
-  public DonorWranglerClient donorwranglerClient() { return new DonorWranglerClient(this); }
   public EventBriteClient eventBriteClient() { return new EventBriteClient(this); }
   public FactsClient factsClient() { return new FactsClient(this); }
   public PaypalClient paypalClient() { return new PaypalClient(this); }
