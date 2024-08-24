@@ -355,8 +355,6 @@ public class EnvironmentConfig implements Serializable {
 
   public List<CommunicationPlatform> sendgrid = new ArrayList<>();
 
-  public Platform spoke = new Platform();
-
   public Twilio twilio = new Twilio();
   public static class Twilio extends Platform {
     public String senderPn = "";
