@@ -358,11 +358,4 @@ public class SfdcBulkClient {
       batchInfos.add(batchInfo);
     }
   }
-
-  public static void main(String[] args) throws ConnectionException, InterruptedException, AsyncApiException, IOException {
-//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Account");
-//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Contact");
-//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "npe03__Recurring_Donation__c", "npe03__Open_Ended_Status__c='Open'");
-//    new SfdcBulkClient().ownerTransfer("005f40000027xCZAAY", "005f4000000s4r7AAA", "Opportunity", "StageName='Pledged'");
-  }
 }
