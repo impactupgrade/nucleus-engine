@@ -133,38 +133,6 @@ public class PaymentGatewayController {
 
     return Response.status(200).build();
   }
-//  TODO: Temporarily commenting out this endpoint until if/when we need it
-//  TODO: If needed, return more useful response
-//  @Path("/verify/charge")
-//  @POST
-//  public Response verifyCharge(
-//      @FormParam("id") String id,
-//      @FormParam("nucleus-username") String nucleusUsername,
-//      @Context HttpServletRequest request
-//  ) throws Exception {
-//    Environment env = envFactory.init(request);
-//
-//    Runnable thread = () -> {
-//      try {
-//        String jobName = "Payment Gateway: Verify Charge";
-//        env.startJobLog(JobType.EVENT, nucleusUsername, jobName, "Nucleus Portal");
-//
-//        for (PaymentGatewayService paymentGatewayService : env.allPaymentGatewayServices()) {
-//          paymentGatewayService.verifyCharge(id);
-//          env.logJobInfo("{}: charge verified", paymentGatewayService.name());
-//        }
-//        env.endJobLog(JobStatus.DONE);
-//      } catch (Exception e) {
-//        env.logJobError("verifyCharge failed", e);
-//        env.logJobError(e.getMessage());
-//        env.endJobLog(JobStatus.FAILED);
-//      }
-//    };
-//    new Thread(thread).start();
-//
-//    return Response.status(200).build();
-//
-//  }
 
   @Path("/verify/charges")
   @GET

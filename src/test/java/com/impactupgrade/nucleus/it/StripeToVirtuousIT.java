@@ -198,7 +198,7 @@ public class StripeToVirtuousIT extends AbstractIT {
   @Test
   public void testCancel() throws Exception {
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
+    StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
