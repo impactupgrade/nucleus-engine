@@ -4,7 +4,6 @@
 
 package com.impactupgrade.nucleus;
 
-import com.impactupgrade.nucleus.controller.AccountingController;
 import com.impactupgrade.nucleus.controller.BackupController;
 import com.impactupgrade.nucleus.controller.CommunicationController;
 import com.impactupgrade.nucleus.controller.CrmController;
@@ -88,7 +87,6 @@ public class App {
     apiConfig.register(new SecurityExceptionMapper());
     apiConfig.register(MultiPartFeature.class);
 
-    apiConfig.register(accountingController());
     apiConfig.register(backupController());
     apiConfig.register(communicationController());
     apiConfig.register(crmController());
@@ -145,7 +143,6 @@ public class App {
   public void registerServlets(ServletContextHandler context) throws Exception {}
 
   // Allow orgs to override specific controllers.
-  protected AccountingController accountingController() { return new AccountingController(envFactory); }
   protected BackupController backupController() { return new BackupController(envFactory); }
   protected CommunicationController communicationController() { return new CommunicationController(envFactory); }
   protected CrmController crmController() { return new CrmController(envFactory); }

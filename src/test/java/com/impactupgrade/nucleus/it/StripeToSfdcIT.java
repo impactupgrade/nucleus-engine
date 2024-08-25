@@ -120,7 +120,7 @@ public class StripeToSfdcIT extends AbstractIT {
     // different email
     existingContact.setField("Email", RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com");
     // different phone
-    String existingContactId = sfdcClient.insert(existingContact).getId();
+    sfdcClient.insert(existingContact).getId();
 
     Charge charge = StripeUtil.createCharge(customer, env);
     String json = StripeUtil.createEventJson("charge.succeeded", charge.getRawJsonObject(), charge.getCreated());
@@ -178,7 +178,7 @@ public class StripeToSfdcIT extends AbstractIT {
     existingContact.setField("LastName", lastName);
     // same email
     existingContact.setField("Email", customer.getEmail());
-    String existingContactId = sfdcClient.insert(existingContact).getId();
+    sfdcClient.insert(existingContact).getId();
 
     // update the Customer with metadata pointing to missing records
     Map<String, String> customerMetadata = Map.of("sf_account", existingAccountId, "sf_contact", "0035YABCDEFGHIJKLM");
@@ -276,7 +276,7 @@ public class StripeToSfdcIT extends AbstractIT {
   @Test
   public void coreSubscriptionFrequency() throws Exception {
     Customer customer = StripeUtil.createCustomer(env);
-    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.YEAR);
+    StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.YEAR);
     List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
     PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
     String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
@@ -322,7 +322,7 @@ public class StripeToSfdcIT extends AbstractIT {
     // no FirstName
     existingContact.setField("LastName", customer.getName().split(" ")[1]);
     existingContact.setField("Email", customer.getEmail());
-    String existingContactId = sfdcClient.insert(existingContact).getId();
+    sfdcClient.insert(existingContact).getId();
 
     String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 
@@ -390,7 +390,7 @@ public class StripeToSfdcIT extends AbstractIT {
     existingContact.setField("LastName", customer.getName().split(" ")[1] + "2");
     existingContact.setField("Email", customer.getEmail());
     existingContact.setField("MobilePhone", "260-987-6543");
-    String existingContactId = sfdcClient.insert(existingContact).getId();
+    sfdcClient.insert(existingContact).getId();
 
     String nowDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(now("UTC"));
 

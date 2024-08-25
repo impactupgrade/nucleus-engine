@@ -13,7 +13,6 @@ import com.ecwid.maleorang.method.v3_0.campaigns.content.ContentInfo;
 import com.ecwid.maleorang.method.v3_0.campaigns.content.GetCampaignContentMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.DeleteMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.EditMemberMethod;
-import com.ecwid.maleorang.method.v3_0.lists.members.GetMemberMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.GetMembersMethod;
 import com.ecwid.maleorang.method.v3_0.lists.members.MemberInfo;
 import com.ecwid.maleorang.method.v3_0.lists.merge_fields.EditMergeFieldMethod;
@@ -77,11 +76,6 @@ public class MailchimpClient {
   public MailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig, Environment env) {
     client = new com.ecwid.maleorang.MailchimpClient(mailchimpConfig.secretKey);
     this.env = env;
-  }
-
-  public MemberInfo getContactInfo(String listId, String contactEmail) throws IOException, MailchimpException {
-    GetMemberMethod getMemberMethod = new GetMemberMethod(listId, contactEmail);
-    return client.execute(getMemberMethod);
   }
 
   public void upsertContact(String listId, MemberInfo contact) throws IOException, MailchimpException {

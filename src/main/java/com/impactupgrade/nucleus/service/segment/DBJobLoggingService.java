@@ -24,8 +24,6 @@ import java.util.TimeZone;
 
 public class DBJobLoggingService implements JobLoggingService {
 
-  private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
-
   protected Environment env;
   protected SessionFactory sessionFactory;
 
