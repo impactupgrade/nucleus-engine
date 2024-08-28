@@ -19,6 +19,7 @@ import com.impactupgrade.nucleus.controller.PaypalController;
 import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
+import com.impactupgrade.nucleus.controller.DataSyncController;
 import com.impactupgrade.nucleus.controller.TwilioController;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.security.SecurityExceptionMapper;
@@ -89,6 +90,7 @@ public class App {
 
     apiConfig.register(backupController());
     apiConfig.register(communicationController());
+    apiConfig.register(dataSyncController());
     apiConfig.register(crmController());
     apiConfig.register(donationFormController());
     apiConfig.register(emailController());
@@ -145,6 +147,7 @@ public class App {
   // Allow orgs to override specific controllers.
   protected BackupController backupController() { return new BackupController(envFactory); }
   protected CommunicationController communicationController() { return new CommunicationController(envFactory); }
+  protected DataSyncController dataSyncController() { return new DataSyncController(envFactory); }
   protected CrmController crmController() { return new CrmController(envFactory); }
   protected DonationFormController donationFormController() { return new DonationFormController(envFactory); }
   protected EmailController emailController() { return new EmailController(envFactory); }
