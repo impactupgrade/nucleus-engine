@@ -1,0 +1,2 @@
+com.impactupgrade.nucleus.service.segment.StripeDataSyncService
+com.impactupgrade.nucleus.service.segment.XeroDataSyncService
