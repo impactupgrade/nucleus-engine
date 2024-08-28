@@ -218,6 +218,11 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
+  public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
   public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
     return Collections.emptyMap();
   }

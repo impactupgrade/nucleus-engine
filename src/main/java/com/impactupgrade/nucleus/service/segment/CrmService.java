@@ -233,6 +233,8 @@ public interface CrmService extends SegmentService {
     }
     return emails;
   }
+  PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception;
+
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
