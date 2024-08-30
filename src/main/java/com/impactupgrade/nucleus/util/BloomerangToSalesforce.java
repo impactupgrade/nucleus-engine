@@ -250,80 +250,81 @@ public class BloomerangToSalesforce {
       boolean isBusiness = "Organization".equalsIgnoreCase(constituentRow.get("Type"));
       constituentIdToIsBusiness.put(accountNumber, isBusiness);
 
-      if (constituentIdToBloomerangHousehold.containsKey(accountNumber)) {
-        // already have the household
-      } else {
-        SObject sfdcAccount = new SObject("Account");
+      SObject sfdcAccount = new SObject("Account");
+
+      if (!constituentIdToBloomerangHousehold.containsKey(accountNumber)) {
+        // set these fields only if we didn't already process the household
 
         sfdcAccount.setField("Name", constituentRow.get("FullName"));
         sfdcAccount.setField("npo02__Formal_Greeting__c", constituentRow.get("FormalName"));
         sfdcAccount.setField("npo02__Informal_Greeting__c", constituentRow.get("InformalName"));
-        sfdcAccount.setField("Envelope_Name__c", constituentRow.get("EnvelopeName"));
         sfdcAccount.setField("Recognition_Name__c", constituentRow.get("RecognitionName"));
-        sfdcAccount.setField("Website", constituentRow.get("Website"));
-        sfdcAccount.setField("Type", constituentRow.get("Type"));
-        String services = constituentRow.get("Custom: Business Type / Service Offered");
-        sfdcAccount.setField("Services_Offered__c", services == null ? null : services.replaceAll("\\|", ";"));
-        sfdcAccount.setField("Status__c", constituentRow.get("Status"));
-        sfdcAccount.setField("Board_Care_Cultivation__c", constituentRow.get("Custom: Board Care & Cultivation"));
-        sfdcAccount.setField("Church_Affiliation__c", constituentRow.get("Custom: Church Affiliation"));
+      }
 
-        for (Map<String, String> addressRow : addressRowsByAccountNumber.get(accountNumber)) {
-          if ("Home".equalsIgnoreCase(addressRow.get("TypeName"))) {
-            // TODO: This will overwrite the address each time if there are multiple addresses. May need to introduce
-            //  secondary address fields...
-            //          sfdcAccount.setField("npsp__MailingStreet__c", addressRow.get("Street"));
-            //          sfdcAccount.setField("npsp__MailingCity__c", addressRow.get("City"));
-            //          sfdcAccount.setField("npsp__MailingState__c", addressRow.get("State"));
-            //          sfdcAccount.setField("npsp__MailingPostalCode__c", addressRow.get("PostalCode"));
-            //          sfdcAccount.setField("npsp__MailingCountry__c", addressRow.get("Country"));
+      sfdcAccount.setField("Envelope_Name__c", constituentRow.get("EnvelopeName"));
+      sfdcAccount.setField("Website", constituentRow.get("Website"));
+      sfdcAccount.setField("Type", constituentRow.get("Type"));
+      String services = constituentRow.get("Custom: Business Type / Service Offered");
+      sfdcAccount.setField("Services_Offered__c", services == null ? null : services.replaceAll("\\|", ";"));
+      sfdcAccount.setField("Status__c", constituentRow.get("Status"));
+      sfdcAccount.setField("Board_Care_Cultivation__c", constituentRow.get("Custom: Board Care & Cultivation"));
+      sfdcAccount.setField("Church_Affiliation__c", constituentRow.get("Custom: Church Affiliation"));
 
-            if ("True".equalsIgnoreCase(addressRow.get("IsPrimary"))) {
-              sfdcAccount.setField("BillingStreet", addressRow.get("Street"));
-              sfdcAccount.setField("BillingCity", addressRow.get("City"));
-              sfdcAccount.setField("BillingState", addressRow.get("State"));
-              sfdcAccount.setField("BillingPostalCode", addressRow.get("PostalCode"));
-              sfdcAccount.setField("BillingCountry", addressRow.get("Country"));
+      for (Map<String, String> addressRow : addressRowsByAccountNumber.get(accountNumber)) {
+        if ("Home".equalsIgnoreCase(addressRow.get("TypeName"))) {
+          // TODO: This will overwrite the address each time if there are multiple addresses. May need to introduce
+          //  secondary address fields...
+          //          sfdcAccount.setField("npsp__MailingStreet__c", addressRow.get("Street"));
+          //          sfdcAccount.setField("npsp__MailingCity__c", addressRow.get("City"));
+          //          sfdcAccount.setField("npsp__MailingState__c", addressRow.get("State"));
+          //          sfdcAccount.setField("npsp__MailingPostalCode__c", addressRow.get("PostalCode"));
+          //          sfdcAccount.setField("npsp__MailingCountry__c", addressRow.get("Country"));
+
+          if ("True".equalsIgnoreCase(addressRow.get("IsPrimary"))) {
+            sfdcAccount.setField("BillingStreet", addressRow.get("Street"));
+            sfdcAccount.setField("BillingCity", addressRow.get("City"));
+            sfdcAccount.setField("BillingState", addressRow.get("State"));
+            sfdcAccount.setField("BillingPostalCode", addressRow.get("PostalCode"));
+            sfdcAccount.setField("BillingCountry", addressRow.get("Country"));
 //              sfdcContact.setField("npe01__Primary_Address_Type__c", "Home");
-            }
-          } else if ("Work".equalsIgnoreCase(addressRow.get("TypeName"))) {
-            // TODO: This will overwrite the address each time if there are multiple addresses. May need to introduce
-            //  secondary address fields...
-            //          sfdcAccount.setField("npsp__MailingStreet__c", addressRow.get("Street"));
-            //          sfdcAccount.setField("npsp__MailingCity__c", addressRow.get("City"));
-            //          sfdcAccount.setField("npsp__MailingState__c", addressRow.get("State"));
-            //          sfdcAccount.setField("npsp__MailingPostalCode__c", addressRow.get("PostalCode"));
-            //          sfdcAccount.setField("npsp__MailingCountry__c", addressRow.get("Country"));
+          }
+        } else if ("Work".equalsIgnoreCase(addressRow.get("TypeName"))) {
+          // TODO: This will overwrite the address each time if there are multiple addresses. May need to introduce
+          //  secondary address fields...
+          //          sfdcAccount.setField("npsp__MailingStreet__c", addressRow.get("Street"));
+          //          sfdcAccount.setField("npsp__MailingCity__c", addressRow.get("City"));
+          //          sfdcAccount.setField("npsp__MailingState__c", addressRow.get("State"));
+          //          sfdcAccount.setField("npsp__MailingPostalCode__c", addressRow.get("PostalCode"));
+          //          sfdcAccount.setField("npsp__MailingCountry__c", addressRow.get("Country"));
 
-            if ("True".equalsIgnoreCase(addressRow.get("IsPrimary"))) {
-              sfdcAccount.setField("BillingStreet", addressRow.get("Street"));
-              sfdcAccount.setField("BillingCity", addressRow.get("City"));
-              sfdcAccount.setField("BillingState", addressRow.get("State"));
-              sfdcAccount.setField("BillingPostalCode", addressRow.get("PostalCode"));
-              sfdcAccount.setField("BillingCountry", addressRow.get("Country"));
+          if ("True".equalsIgnoreCase(addressRow.get("IsPrimary"))) {
+            sfdcAccount.setField("BillingStreet", addressRow.get("Street"));
+            sfdcAccount.setField("BillingCity", addressRow.get("City"));
+            sfdcAccount.setField("BillingState", addressRow.get("State"));
+            sfdcAccount.setField("BillingPostalCode", addressRow.get("PostalCode"));
+            sfdcAccount.setField("BillingCountry", addressRow.get("Country"));
 //              sfdcContact.setField("npe01__Primary_Address_Type__c", "Work");
-            }
           }
         }
+      }
 
-        if (constituentIdToAccountId.containsKey(accountNumber)) {
-          sfdcAccount.setId(constituentIdToAccountId.get(accountNumber));
+      if (constituentIdToAccountId.containsKey(accountNumber)) {
+        sfdcAccount.setId(constituentIdToAccountId.get(accountNumber));
 
-          sfdcClient.batchUpdate(sfdcAccount);
-          System.out.println("CONSTITUENT ACCOUNT UPDATE: " + constituentRow.get("FullName"));
+        sfdcClient.batchUpdate(sfdcAccount);
+        System.out.println("CONSTITUENT ACCOUNT UPDATE: " + constituentRow.get("FullName"));
+      } else {
+        if (isBusiness) {
+          sfdcAccount.setField("RecordTypeId", ORGANIZATION_RECORD_TYPE_ID);
         } else {
-          if (isBusiness) {
-            sfdcAccount.setField("RecordTypeId", ORGANIZATION_RECORD_TYPE_ID);
-          } else {
-            sfdcAccount.setField("RecordTypeId", HOUSEHOLD_RECORD_TYPE_ID);
-          }
-          sfdcAccount.setField("Bloomerang_ID__c", accountNumber);
-
-          constituentRowsToBeInserted.add(constituentRow);
-
-          sfdcClient.batchInsert(sfdcAccount);
-          System.out.println("CONSTITUENT ACCOUNT INSERT: " + constituentRow.get("FullName"));
+          sfdcAccount.setField("RecordTypeId", HOUSEHOLD_RECORD_TYPE_ID);
         }
+        sfdcAccount.setField("Bloomerang_ID__c", accountNumber);
+
+        constituentRowsToBeInserted.add(constituentRow);
+
+        sfdcClient.batchInsert(sfdcAccount);
+        System.out.println("CONSTITUENT ACCOUNT INSERT: " + constituentRow.get("FullName"));
       }
     }
 
