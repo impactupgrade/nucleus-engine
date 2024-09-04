@@ -11,8 +11,10 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -45,14 +47,18 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
 
         PagedResults<CrmContact> pagedResults = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
         for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
+
+          List<CrmContact> crmContacts = new ArrayList<>();
           for (CrmContact crmContact : resultSet.getRecords()) {
             String smsPn = crmContact.phoneNumberForSMS();
             if (!Strings.isNullOrEmpty(smsPn) && !seenPhones.contains(smsPn)) {
-              env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.phoneNumberForSMS(), communicationList.id);
-              mbtClient.upsertSubscriber(crmContact, mbtConfig, communicationList);
+              env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, smsPn, communicationList.id);
+              crmContacts.add(crmContact);
               seenPhones.add(smsPn);
             }
           }
+
+          mbtClient.upsertSubscribersBulk(crmContacts, mbtConfig, communicationList);
         }
       }
     }

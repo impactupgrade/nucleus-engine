@@ -79,7 +79,7 @@ public class MinistryByTextClient extends OAuthClient {
     return post(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/subscribers", subscriber, APPLICATION_JSON, headers(), Subscriber.class);
   }
 
-  public List<Subscriber> upsertSubscribersBulk(String orgunitId, String groupId, List<CrmContact> crmContacts) {
+  public List<Subscriber> upsertSubscribersBulk(List<CrmContact> crmContacts, EnvironmentConfig.MBT mbtConfig, EnvironmentConfig.CommunicationList communicationList) {
     List<Subscriber> subscribers = crmContacts.stream()
             .map(this::toMBTSubscriber)
             .collect(Collectors.toList());
@@ -87,7 +87,7 @@ public class MinistryByTextClient extends OAuthClient {
     int i = 0;
     for (List<Subscriber> subscribersBatch: subscribersBatches) {
       env.logJobInfo("Processing subscribers batch {} of total {}...", i++, subscribersBatches.size());
-      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/orgunit/" + orgunitId + "/groups/" + groupId + "/new-subscribers/bulk",
+      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/new-subscribers/bulk",
               subscribersBatch, APPLICATION_JSON, headers(), BulkOperationResponse.class);
       if (bulkOperationResponse != null && !bulkOperationResponse.isError) {
         env.logJobInfo("Submitted subscribers batch. Batch id={}", bulkOperationResponse.data.batchId);
@@ -107,7 +107,7 @@ public class MinistryByTextClient extends OAuthClient {
     return get(API_BASE_URL + "campuses/" + mbtConfig.campusId + "/groups/" + communicationList.id + "/notification-url", headers(), new GenericType<>() {});
   }
 
-  public List<Contact> upsertContactsBulk(String orgunitId, List<CrmContact> crmContacts) {
+  public List<Contact> upsertContactsBulk(List<CrmContact> crmContacts, EnvironmentConfig.MBT mbtConfig) {
     List<Contact> contacts = crmContacts.stream()
             .map(this::toMBTContact)
             .collect(Collectors.toList());
@@ -115,7 +115,7 @@ public class MinistryByTextClient extends OAuthClient {
     int i = 0;
     for (List<Contact> contactsBatch: contactsBatches) {
       env.logJobInfo("Processing contacts batch {} of total {}...", i++, contactsBatches.size());
-      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/orgunit/" + orgunitId + "/contacts/bulk",
+      BulkOperationResponse bulkOperationResponse = post(API_BASE_URL + "/campuses/" + mbtConfig.campusId + "/contacts/bulk",
               contactsBatch, APPLICATION_JSON, headers(), BulkOperationResponse.class);
       if (bulkOperationResponse != null && !bulkOperationResponse.isError) {
         env.logJobInfo("Submitted contacts batch. Batch id={}", bulkOperationResponse.data.batchId);
