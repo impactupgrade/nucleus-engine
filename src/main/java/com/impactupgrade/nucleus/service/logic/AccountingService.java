@@ -58,7 +58,8 @@ public class AccountingService {
             return;
         }
 
-        String contactId = _accountingPlatformService.get().updateOrCreateContact(crmContact);
+        String contactId = _accountingPlatformService.get()
+            .updateOrCreateContacts(List.of(crmContact)).stream().findFirst().orElse(null);
         if (!Strings.isNullOrEmpty(contactId)) {
             env.logJobInfo("Upserted contact: {}", contactId);
 
