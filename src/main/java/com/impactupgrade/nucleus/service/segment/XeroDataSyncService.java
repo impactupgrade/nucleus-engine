@@ -33,9 +33,12 @@ public class XeroDataSyncService implements DataSyncService {
   public void syncContacts(Calendar updatedAfter) throws Exception {
     PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorContacts(updatedAfter);
     for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-      //TODO: bulk update?
-      for (CrmContact crmContact : resultSet.getRecords()) {
-        //TODO: update contact in Xero
+      if (env.accountingPlatformService().isPresent()) {
+        try {
+          env.accountingPlatformService().get().updateOrCreateContacts(resultSet.getRecords());
+        } catch (Exception e) {
+          //TODO: process errors
+        }
       }
     }
   }
