@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
+import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
@@ -29,11 +30,13 @@ import com.xero.api.XeroBadRequestException;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
 import com.xero.models.accounting.Contact;
+import com.xero.models.accounting.ContactPerson;
 import com.xero.models.accounting.Contacts;
 import com.xero.models.accounting.Element;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
+import com.xero.models.accounting.Phone;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
@@ -152,61 +155,76 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return (crmDonation.gatewayName + ":" + crmDonation.transactionId);
     }
 
-    @Override
-    public String updateOrCreateContact(CrmContact crmContact) throws Exception {
-        Contact contact = toContact(crmContact);
-        Contacts contacts = new Contacts();
-        contacts.setContacts(List.of(contact));
-        try {
-            // This method works very similar to POST Contacts (xeroApi.updateOrCreateContacts) 
-            // but if an existing contact matches our ContactName or ContactNumber then we will receive an error
-            Contacts createdContacts = xeroApi.createContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
-            Contact upsertedContact = createdContacts.getContacts().stream().findFirst().get();
-            return upsertedContact.getContactID().toString();
-        } catch (XeroBadRequestException e) {
-            // TODO: upsert appears to require the actual contact ID in order to update. Since we're only providing
-            //   the accountNumber, updating fails. However, the error gives us the contactID we need...
-            for (Element element : e.getElements()) {
-                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
-                    // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    if (crmContact.crmRawObject instanceof SObject sObject) {
-                        String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
-                        return getContactForAccountNumber(supporterId).map(c -> c.getContactID().toString()).orElse(null);
-                    }
-                }
-                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("contact name must be unique across all active contacts"))) {
-                    // TODO: Same as toContact -- DR specific, SFDC specific, etc.
-                    if (crmContact.crmRawObject instanceof SObject sObject) {
-                        String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
-                        return getContactForName(contact.getName()).map(c -> {
-                            // A few contacts have been entered manually without an Account Number being set.
-                            // If that's the case, assume it's the correct person, without checking the supporterId.
-                            if (Strings.isNullOrEmpty(c.getAccountNumber()) || c.getAccountNumber().equals(supporterId)) {
-                                return c.getContactID().toString();
-                            } else {
-                                // Send notification if name already exists for different supporter id (account number)
-                                try {
-                                    env.logJobInfo("Sending notification for duplicated contact name '{}'...", crmContact.getFullName());
-                                    NotificationService.Notification notification = new NotificationService.Notification(
-                                        "Xero: Contact name already exists",
-                                        "Xero: Contact with name '" + crmContact.getFullName() + "' already exists. Supporter ID: " + supporterId + "."
-                                    );
-                                    env.notificationService().sendNotification(notification, "xero:contact-name-exists");
-                                } catch (Exception ex) {
-                                    env.logJobError("Failed to send notification! {}", getExceptionDetails(e));
-                                }
-                                return null;
-                            }    
-                        }).orElse(null);
-                    }
-                }
-            }
+//    @Override
+//    public String updateOrCreateContact(CrmContact crmContact) throws Exception {
+//        Contact contact = toContact(crmContact);
+//        Contacts contacts = new Contacts();
+//        contacts.setContacts(List.of(contact));
+//
+//        try {
+//            // This method works very similar to POST Contacts (xeroApi.updateOrCreateContacts)
+//            // but if an existing contact matches our ContactName or ContactNumber then we will receive an error
+//            Contacts createdContacts = xeroApi.createContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
+//            Contact upsertedContact = createdContacts.getContacts().stream().findFirst().get();
+//            return upsertedContact.getContactID().toString();
+//        } catch (XeroBadRequestException e) {
+//            // TODO: upsert appears to require the actual contact ID in order to update. Since we're only providing
+//            //   the accountNumber, updating fails. However, the error gives us the contactID we need...
+//            for (Element element : e.getElements()) {
+//                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
+//                    // TODO: Same as toContact -- DR specific, SFDC specific, etc.
+//                    if (crmContact.crmRawObject instanceof SObject sObject) {
+//                        String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+//                        return getContactForAccountNumber(supporterId).map(c -> c.getContactID().toString()).orElse(null);
+//                    }
+//                }
+//                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("contact name must be unique across all active contacts"))) {
+//                    // TODO: Same as toContact -- DR specific, SFDC specific, etc.
+//                    if (crmContact.crmRawObject instanceof SObject sObject) {
+//                        String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+//                        return getContactForName(contact.getName()).map(c -> {
+//                            // A few contacts have been entered manually without an Account Number being set.
+//                            // If that's the case, assume it's the correct person, without checking the supporterId.
+//                            if (Strings.isNullOrEmpty(c.getAccountNumber()) || c.getAccountNumber().equals(supporterId)) {
+//                                return c.getContactID().toString();
+//                            } else {
+//                                // Send notification if name already exists for different supporter id (account number)
+//                                try {
+//                                    env.logJobInfo("Sending notification for duplicated contact name '{}'...", crmContact.getFullName());
+//                                    NotificationService.Notification notification = new NotificationService.Notification(
+//                                        "Xero: Contact name already exists",
+//                                        "Xero: Contact with name '" + crmContact.getFullName() + "' already exists. Supporter ID: " + supporterId + "."
+//                                    );
+//                                    env.notificationService().sendNotification(notification, "xero:contact-name-exists");
+//                                } catch (Exception ex) {
+//                                    env.logJobError("Failed to send notification! {}", getExceptionDetails(e));
+//                                }
+//                                return null;
+//                            }
+//                        }).orElse(null);
+//                    }
+//                }
+//            }
+//
+//            env.logJobError("Failed to upsert contact! {}", getExceptionDetails(e));
+//            return null;
+//        } catch (Exception e) {
+//            env.logJobError("Failed to upsert contact! {}", getExceptionDetails(e));
+//            return null;
+//        }
+//    }
 
-            env.logJobError("Failed to upsert contact! {}", getExceptionDetails(e));
-            return null;
+    @Override
+    public List<String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
+        Contacts contacts = new Contacts();
+        contacts.setContacts(crmContacts.stream().map(this::toContact).toList());
+
+        try {
+            Contacts upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
+            return upsertedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList();
         } catch (Exception e) {
-            env.logJobError("Failed to upsert contact! {}", getExceptionDetails(e));
-            return null;
+            //TODO: check errors
+            return Collections.emptyList();
         }
     }
 
@@ -425,36 +443,86 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     // Mappings
+//    protected Contact toContact(CrmContact crmContact) {
+//        if (crmContact == null) {
+//            return null;
+//        }
+//        Contact contact = new Contact();
+//        contact.setFirstName(crmContact.firstName);
+//        contact.setLastName(crmContact.lastName);
+//        contact.setName(crmContact.getFullName());
+//        contact.setEmailAddress(crmContact.email);
+//        if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
+//            Address address = new Address()
+//                    .addressLine1(crmContact.mailingAddress.street)
+//                    .city(crmContact.mailingAddress.city)
+//                    .region(crmContact.mailingAddress.state)
+//                    .postalCode(crmContact.mailingAddress.postalCode)
+//                    .country(crmContact.mailingAddress.country);
+//            contact.setAddresses(List.of(address));
+//        }
+//
+//        // TODO: make this part not-sfdc specific?
+//        // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
+//        if (crmContact.crmRawObject instanceof SObject sObject) {
+//            String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+//            contact.setAccountNumber(supporterId);
+//        }
+//
+//        // TODO: temp
+//        env.logJobInfo("contact {} {} {} {} {} {}", crmContact.id, contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
+//
+//        return contact;
+//    }
+
     protected Contact toContact(CrmContact crmContact) {
         if (crmContact == null) {
             return null;
         }
+
         Contact contact = new Contact();
-        contact.setFirstName(crmContact.firstName);
-        contact.setLastName(crmContact.lastName);
-        contact.setName(crmContact.getFullName());
+        contact.accountNumber(crmContact.account.id);
+        Phone mobilePhone = new Phone();
+        mobilePhone.setPhoneType(Phone.PhoneTypeEnum.MOBILE);
+        mobilePhone.setPhoneNumber(crmContact.mobilePhone);
+        //TODO: area/country codes?
+        contact.setPhones(List.of(mobilePhone)); //TODO: add home/work?
         contact.setEmailAddress(crmContact.email);
-        if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
-            Address address = new Address()
-                    .addressLine1(crmContact.mailingAddress.street)
-                    .city(crmContact.mailingAddress.city)
-                    .region(crmContact.mailingAddress.state)
-                    .postalCode(crmContact.mailingAddress.postalCode)
-                    .country(crmContact.mailingAddress.country);
-            contact.setAddresses(List.of(address));
+        if (crmContact.account.billingAddress != null) {
+            contact.setAddresses(List.of(toAddress(crmContact.account.billingAddress)));
         }
 
-        // TODO: make this part not-sfdc specific?
-        // TODO: SUPPORTER_ID_FIELD_NAME is DR specific
-        if (crmContact.crmRawObject instanceof SObject sObject) {
-            String supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
-            contact.setAccountNumber(supporterId);
+        if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
+            // Household
+            contact.setName(crmContact.getFullName() + " " + crmContact.account.id);
+            contact.setFirstName(crmContact.firstName);
+            contact.setLastName(crmContact.lastName);
+        } else {
+            // Organization
+            //TODO: Three different record types to include: AU ORGANISATION, AU CHURCH, AU SCHOOL?
+            contact.setName(crmContact.account.name + " " + crmContact.account.id);
+            ContactPerson primaryContactPerson = new ContactPerson();
+            primaryContactPerson.setFirstName(crmContact.firstName);
+            primaryContactPerson.setLastName(crmContact.lastName);
+            contact.setContactPersons(List.of(primaryContactPerson));
         }
 
         // TODO: temp
         env.logJobInfo("contact {} {} {} {} {} {}", crmContact.id, contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
 
         return contact;
+    }
+
+    protected Address toAddress(CrmAddress crmAddress) {
+        if (crmAddress == null) {
+            return null;
+        }
+        return new Address()
+            .addressLine1(crmAddress.street)
+            .city(crmAddress.city)
+            .region(crmAddress.state)
+            .postalCode(crmAddress.postalCode)
+            .country(crmAddress.country);
     }
 
     protected Invoice toInvoice(AccountingTransaction transaction) {
