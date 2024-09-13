@@ -1085,7 +1085,7 @@ public class SfdcCrmService implements CrmService {
       return 0.0;
     }
 
-    SObject result = sfdcClient.querySingle("SELECT SUM(Amount) TotalAmount FROM Opportunity WHERE StageName='Closed Won' AND " + filter).get();
+    SObject result = sfdcClient.querySingle("SELECT SUM(Amount) TotalAmount FROM Opportunity WHERE StageName IN ('Closed Won', 'Posted', 'Awarded') AND " + filter).get();
     Object totalAmount = result.getField("TotalAmount");
     if (totalAmount == null) {
       return 0.0;
