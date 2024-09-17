@@ -113,6 +113,11 @@ public class DynamicsCrmService implements BasicCrmService {
     //TODO: howto?
   }
 
+  @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
+  }
+
   private CrmDonation toCrmDonation(DynamicsCrmClient.Opportunity opportunity) {
     if (opportunity == null) {
       return null;
