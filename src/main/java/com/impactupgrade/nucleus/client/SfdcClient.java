@@ -887,6 +887,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryListAutoPaged(query);
   }
 
+  public List<SObject> getDonationsUpdatedAfter(Calendar updatedSince, String... extraFields) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) + " from Opportunity " +
+            "where " + updatedSinceClause + " ORDER BY CloseDate DESC";
+    return queryListAutoPaged(query);
+  }
+
   public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId, String... extraFields) throws ConnectionException, InterruptedException {
     // TODO: Using TOMORROW to account for timezone issues -- we can typically get away with that approach
     // since most RDs are monthly...

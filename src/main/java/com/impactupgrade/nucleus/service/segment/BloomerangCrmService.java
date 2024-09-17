@@ -498,6 +498,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
+  }
+
+  @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
     Donation recurringDonation = getDonation(id);
     return Optional.ofNullable(toCrmRecurringDonation(recurringDonation));
