@@ -1,10 +1,13 @@
 package com.impactupgrade.nucleus.service.segment;
 
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.Calendar;
+import java.util.List;
 
 public class XeroDataSyncService implements DataSyncService {
 
@@ -41,5 +44,38 @@ public class XeroDataSyncService implements DataSyncService {
         }
       }
     }
+  }
+
+  @Override
+  public void syncTransactions(Calendar updatedAfter) throws Exception {
+    List<CrmDonation> crmDonations = env.primaryCrmService().getDonations(updatedAfter);
+    if (env.accountingPlatformService().isPresent()) {
+      //TODO: get all contacts ids for crm contacts and do bulk update instead?
+      for (CrmDonation crmDonation : crmDonations) {
+        try {
+          CrmContact crmContact = crmDonation.contact;
+          String contactId = env.accountingPlatformService().get().updateOrCreateContacts(List.of(crmContact))
+              .stream()
+              .findFirst().orElse(null);
+          env.accountingPlatformService().get().createTransaction(toAccountingTransaction(contactId, crmContact, crmDonation));
+        } catch (Exception e) {
+          //TODO: process errors
+        }
+      }
+
+    }
+  }
+
+  protected AccountingTransaction toAccountingTransaction(String accountingContactId, CrmContact crmContact, CrmDonation crmDonation) {
+    return new AccountingTransaction(
+        accountingContactId,
+        crmContact.id,
+        crmDonation.amount,
+        crmDonation.closeDate,
+        crmDonation.description,
+        crmDonation.transactionType,
+        crmDonation.gatewayName,
+        crmDonation.transactionId,
+        crmDonation.isRecurring());
   }
 }

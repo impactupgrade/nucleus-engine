@@ -379,6 +379,11 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
+  }
+
+  @Override
   public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
     VirtuousClient.RecurringGift recurringGift = asRecurringGift(recurringDonation);
     recurringGift = virtuousClient.createRecurringGift(recurringGift);

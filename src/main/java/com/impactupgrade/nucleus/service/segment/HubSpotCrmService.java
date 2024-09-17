@@ -582,6 +582,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
+  }
+
+  @Override
   public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     // TODO: campaign
 
