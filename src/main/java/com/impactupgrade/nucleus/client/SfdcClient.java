@@ -683,12 +683,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    queryResults.add(queryDonatingContacts(updatedSinceClause));
+    queryResults.add(queryDonorContacts(updatedSinceClause));
 
     return queryResults;
   }
 
-  protected QueryResult queryDonatingContacts(String updatedSinceClause) throws ConnectionException, InterruptedException {
+  protected QueryResult queryDonorContacts(String updatedSinceClause) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(updatedSinceClause)) {
       env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
       return new QueryResult();
@@ -890,7 +890,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public List<SObject> getDonationsUpdatedAfter(Calendar updatedSince, String... extraFields) throws ConnectionException, InterruptedException {
     String updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) + " from Opportunity " +
-            "where " + updatedSinceClause + " ORDER BY CloseDate DESC";
+        "where " + updatedSinceClause + " AND stageName = 'Closed Won' ORDER BY CloseDate DESC ";
     return queryListAutoPaged(query);
   }
 

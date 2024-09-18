@@ -480,8 +480,16 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             return null;
         }
 
+        String supporterId;
+        if (crmContact.crmRawObject instanceof SObject sObject) {
+            supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
+        } else {
+            //Should be unreachable
+            supporterId = crmContact.account.id;
+        }
+
         Contact contact = new Contact();
-        contact.accountNumber(crmContact.account.id);
+        contact.accountNumber(supporterId);
         Phone mobilePhone = new Phone();
         mobilePhone.setPhoneType(Phone.PhoneTypeEnum.MOBILE);
         mobilePhone.setPhoneNumber(crmContact.mobilePhone);
@@ -494,13 +502,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
         if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
             // Household
-            contact.setName(crmContact.getFullName() + " " + crmContact.account.id);
+            contact.setName(crmContact.getFullName() + " " + supporterId);
             contact.setFirstName(crmContact.firstName);
             contact.setLastName(crmContact.lastName);
         } else {
             // Organization
             //TODO: Three different record types to include: AU ORGANISATION, AU CHURCH, AU SCHOOL?
-            contact.setName(crmContact.account.name + " " + crmContact.account.id);
+            contact.setName(crmContact.account.name + " " + supporterId);
             ContactPerson primaryContactPerson = new ContactPerson();
             primaryContactPerson.setFirstName(crmContact.firstName);
             primaryContactPerson.setLastName(crmContact.lastName);
