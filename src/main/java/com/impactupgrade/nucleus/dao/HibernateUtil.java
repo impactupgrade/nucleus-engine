@@ -21,6 +21,8 @@ public class HibernateUtil {
 
   private static SessionFactory createSessionFactory() {
     try {
+      log.info("building the default SessionFactory");
+
       final Configuration configuration = new Configuration();
 
       // core
@@ -30,7 +32,7 @@ public class HibernateUtil {
 
       return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
     } catch (Throwable e) {
-      log.error("Failed to create session factory: {}", e.getMessage());
+      log.error("failed to create the default SessionFactory: {}", e.getMessage());
       return null;
     }
   }
