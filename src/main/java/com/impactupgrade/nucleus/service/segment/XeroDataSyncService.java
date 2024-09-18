@@ -40,7 +40,7 @@ public class XeroDataSyncService implements DataSyncService {
         try {
           env.accountingPlatformService().get().updateOrCreateContacts(resultSet.getRecords());
         } catch (Exception e) {
-          //TODO: process errors
+          env.logJobError("{}/syncContacts failed: {}", this.name(), e);
         }
       }
     }
@@ -51,18 +51,18 @@ public class XeroDataSyncService implements DataSyncService {
     List<CrmDonation> crmDonations = env.primaryCrmService().getDonations(updatedAfter);
     if (env.accountingPlatformService().isPresent()) {
       //TODO: get all contacts ids for crm contacts and do bulk update instead?
-      for (CrmDonation crmDonation : crmDonations) {
-        try {
+      try {
+        for (CrmDonation crmDonation : crmDonations) {
           CrmContact crmContact = crmDonation.contact;
+          //TODO: replace with 'getContactIdForTransaction?'
           String contactId = env.accountingPlatformService().get().updateOrCreateContacts(List.of(crmContact))
               .stream()
               .findFirst().orElse(null);
           env.accountingPlatformService().get().createTransaction(toAccountingTransaction(contactId, crmContact, crmDonation));
-        } catch (Exception e) {
-          //TODO: process errors
         }
+      } catch (Exception e) {
+        env.logJobError("{}/syncTransactions failed: {}", this.name(), e);
       }
-
     }
   }
 
