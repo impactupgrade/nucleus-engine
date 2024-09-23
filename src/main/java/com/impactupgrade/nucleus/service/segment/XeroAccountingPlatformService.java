@@ -19,20 +19,18 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
-import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
-import com.xero.api.XeroBadRequestException;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.ContactPerson;
 import com.xero.models.accounting.Contacts;
-import com.xero.models.accounting.Element;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
@@ -40,6 +38,7 @@ import com.xero.models.accounting.Phone;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -149,6 +148,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         } else {
             return Optional.empty();
         }
+    }
+
+    @Override
+    public Optional<AccountingContact> getContact(CrmContact crmContact) throws Exception {
+        Optional<Contact> contact = getContactForAccountNumber(getAccountNumber(crmContact));
+        return contact
+            .map(c -> new AccountingContact(c.getContactID().toString(), crmContact.id))
+            .or(Optional::empty);
     }
 
     protected String getReference(CrmDonation crmDonation) {
@@ -265,6 +272,19 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             return createdInvoices.getInvoices().stream().findFirst().get().getInvoiceID().toString();
         } catch (Exception e) {
             env.logJobError("Failed to create invoices! {}", getExceptionDetails(e));
+            throw e;
+        }
+    }
+
+    @Override
+    public List<String> updateOrCreateTransactions(List<AccountingTransaction> accountingTransactions) throws Exception {
+        Invoices invoices = new Invoices();
+        invoices.setInvoices(accountingTransactions.stream().map(this::toInvoice).toList());
+        try {
+            Invoices createdInvoices = xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
+            return createdInvoices.getInvoices().stream().map(invoice -> invoice.getInvoiceID().toString()).toList();
+        } catch (Exception e) {
+            env.logJobError("Failed to upsert invoices! {}", getExceptionDetails(e));
             throw e;
         }
     }
@@ -480,35 +500,37 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             return null;
         }
 
-        String supporterId;
-        if (crmContact.crmRawObject instanceof SObject sObject) {
-            supporterId = (String) sObject.getField(SUPPORTER_ID_FIELD_NAME);
-        } else {
-            //Should be unreachable
-            supporterId = crmContact.account.id;
-        }
-
         Contact contact = new Contact();
-        contact.accountNumber(supporterId);
+        contact.setAccountNumber(getAccountNumber(crmContact));
+        contact.setEmailAddress(crmContact.email);
+
+        contact.setPhones(new ArrayList<>());
         Phone mobilePhone = new Phone();
         mobilePhone.setPhoneType(Phone.PhoneTypeEnum.MOBILE);
         mobilePhone.setPhoneNumber(crmContact.mobilePhone);
         //TODO: area/country codes?
-        contact.setPhones(List.of(mobilePhone)); //TODO: add home/work?
-        contact.setEmailAddress(crmContact.email);
+        contact.getPhones().add(mobilePhone);
+        if (!Strings.isNullOrEmpty(crmContact.workPhone)) {
+            Phone workPhone = new Phone();
+            workPhone.setPhoneType(Phone.PhoneTypeEnum.OFFICE);
+            workPhone.setPhoneNumber(crmContact.workPhone);
+            //TODO: area/country codes?
+            contact.getPhones().add(workPhone);
+        }
+
         if (crmContact.account.billingAddress != null) {
             contact.setAddresses(List.of(toAddress(crmContact.account.billingAddress)));
         }
 
         if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
             // Household
-            contact.setName(crmContact.getFullName() + " " + supporterId);
+            contact.setName(crmContact.getFullName() + " " + contact.getAccountNumber());
             contact.setFirstName(crmContact.firstName);
             contact.setLastName(crmContact.lastName);
         } else {
             // Organization
             //TODO: Three different record types to include: AU ORGANISATION, AU CHURCH, AU SCHOOL?
-            contact.setName(crmContact.account.name + " " + supporterId);
+            contact.setName(crmContact.account.name + " " + contact.getAccountNumber());
             ContactPerson primaryContactPerson = new ContactPerson();
             primaryContactPerson.setFirstName(crmContact.firstName);
             primaryContactPerson.setLastName(crmContact.lastName);
@@ -519,6 +541,19 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         env.logJobInfo("contact {} {} {} {} {} {}", crmContact.id, contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
 
         return contact;
+    }
+
+    private String getAccountNumber(CrmContact crmContact) {
+        String accountNumber;
+        if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
+            String supporterId = crmContact.crmRawObject instanceof SObject sObject ?
+                (String) sObject.getField(SUPPORTER_ID_FIELD_NAME)
+                : null;
+            accountNumber = supporterId;
+        } else {
+            accountNumber = crmContact.account.id;
+        }
+        return accountNumber;
     }
 
     protected Address toAddress(CrmAddress crmAddress) {
