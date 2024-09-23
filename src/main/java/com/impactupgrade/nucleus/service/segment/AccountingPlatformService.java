@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.impactupgrade.nucleus.model.AccountingContact;
 import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -15,9 +16,13 @@ public interface AccountingPlatformService extends SegmentService {
 
     Optional<AccountingTransaction> getTransaction(CrmDonation crmDonation) throws Exception;
 
+    Optional<AccountingContact> getContact(CrmContact crmContact) throws Exception;
+
     List<String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception;
 
     String createTransaction(AccountingTransaction accountingTransaction) throws Exception;
+
+    List<String> updateOrCreateTransactions(List<AccountingTransaction> accountingTransactions) throws Exception;
 
 //    List<AccountingTransaction> getTransactions(Date startDate) throws Exception;
 //
