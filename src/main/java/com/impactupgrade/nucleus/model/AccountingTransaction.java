@@ -25,6 +25,9 @@ public class AccountingTransaction {
   public String paymentGatewayName;
   public String paymentGatewayTransactionId;
   public Boolean recurring;
+  //TODO: find a way of passing crm object custom fields to accounting layer
+  // (configurable list of custom fields' names? extract into a map to use instead of entire crmDonation object?)
+  public CrmDonation crmDonation;
 
   public AccountingTransaction(
       String contactId,
