@@ -48,6 +48,9 @@ import java.util.UUID;
 public class XeroAccountingPlatformService implements AccountingPlatformService {
 
     protected static final String SUPPORTER_ID_FIELD_NAME = "Supporter_ID__c";
+    protected static final String WPG_FIELD_NAME = "WPG__c";
+    protected static final String TAX_DEDUCTIBLE_GIFT_FIELD_NAME = "Tax_Deductible_Gift__c";
+    protected static final String OTHER_INCOME_FIELD_NAME = "Other_Income__c";
     // If false return 200 OK and mix of successfully created objects and any with validation errors
     protected static final Boolean SUMMARIZE_ERRORS = Boolean.TRUE;
     // e.g. unitdp=4 – (Unit Decimal Places) You can opt in to use four decimal places for unit amounts
@@ -496,10 +499,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 //    }
 
     protected Contact toContact(CrmContact crmContact) {
-        if (crmContact == null) {
-            return null;
-        }
-
         Contact contact = new Contact();
         contact.setAccountNumber(getAccountNumber(crmContact));
         contact.setEmailAddress(crmContact.email);
@@ -524,13 +523,15 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
         if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
             // Household
-            contact.setName(crmContact.getFullName() + " " + contact.getAccountNumber());
+            String supporterId = crmContact.crmRawObject instanceof SObject sObject ?
+                (String) sObject.getField(SUPPORTER_ID_FIELD_NAME) : null;
+            contact.setName(crmContact.getFullName() + " " + supporterId);
             contact.setFirstName(crmContact.firstName);
             contact.setLastName(crmContact.lastName);
         } else {
             // Organization
             //TODO: Three different record types to include: AU ORGANISATION, AU CHURCH, AU SCHOOL?
-            contact.setName(crmContact.account.name + " " + contact.getAccountNumber());
+            contact.setName(crmContact.account.name + " " + crmContact.account.id);
             ContactPerson primaryContactPerson = new ContactPerson();
             primaryContactPerson.setFirstName(crmContact.firstName);
             primaryContactPerson.setLastName(crmContact.lastName);
@@ -543,17 +544,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return contact;
     }
 
-    private String getAccountNumber(CrmContact crmContact) {
-        String accountNumber;
-        if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
-            String supporterId = crmContact.crmRawObject instanceof SObject sObject ?
-                (String) sObject.getField(SUPPORTER_ID_FIELD_NAME)
-                : null;
-            accountNumber = supporterId;
-        } else {
-            accountNumber = crmContact.account.id;
-        }
-        return accountNumber;
+    protected String getAccountNumber(CrmContact crmContact) {
+        return crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD ?
+            crmContact.id : crmContact.account.id;
     }
 
     protected Address toAddress(CrmAddress crmAddress) {
@@ -604,12 +597,37 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         if (accountingTransaction.transactionType == EnvironmentConfig.TransactionType.TICKET) {
             lineItem.setAccountCode("160");
             lineItem.setItemCode("EI");
+
+            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, OTHER_INCOME_FIELD_NAME))) {
+                lineItem.setAccountCode("260");
+                lineItem.setItemCode("Other Income");
+            }
+
         } else if (accountingTransaction.recurring) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
+
+            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
+                lineItem.setAccountCode("120");
+                lineItem.setItemCode("RecurringWPG");
+            }
+
+            //TODO: complete this part once COA Codes list is defined
+//            if (!Strings.isNullOrEmpty(getCustomDonationField(accountingTransaction, "Country Designation"))) {
+//                lineItem.setAccountCode("country_account_code"); //?
+//                lineItem.setItemCode("country_item_code");
+//            }
+
         } else {
-            lineItem.setAccountCode("116");
-            lineItem.setItemCode("Donate");
+            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, TAX_DEDUCTIBLE_GIFT_FIELD_NAME))) {
+                lineItem.setAccountCode("116");
+                lineItem.setItemCode("Donate");
+            }
+            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
+                //TODO: create Receive Money?
+                lineItem.setAccountCode("116");
+                lineItem.setItemCode("Donate");
+            }
         }
 
         return Collections.singletonList(lineItem);
@@ -617,6 +635,11 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected String getReference(AccountingTransaction accountingTransaction) {
         return accountingTransaction.paymentGatewayName + ":" + accountingTransaction.paymentGatewayTransactionId;
+    }
+
+    protected String getCustomDonationField(AccountingTransaction accountingTransaction, String fieldName) {
+        return accountingTransaction.crmDonation.crmRawObject instanceof SObject sObject ?
+            (String) sObject.getField(fieldName) : null;
     }
 
     protected AccountingTransaction toAccountingTransaction(Invoice invoice) {
