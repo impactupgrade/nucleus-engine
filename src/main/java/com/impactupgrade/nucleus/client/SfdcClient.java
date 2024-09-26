@@ -675,7 +675,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return query(query);
   }
 
-  public List<QueryResult> getDonorContacts(Calendar updatedSince)
+  public List<QueryResult> getDonorContacts(Calendar updatedSince, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<QueryResult> queryResults = new ArrayList<>();
 
@@ -683,17 +683,17 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    queryResults.add(queryDonorContacts(updatedSinceClause));
+    queryResults.add(queryDonorContacts(updatedSinceClause, extraFields));
 
     return queryResults;
   }
 
-  protected QueryResult queryDonorContacts(String updatedSinceClause) throws ConnectionException, InterruptedException {
+  protected QueryResult queryDonorContacts(String updatedSinceClause, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(updatedSinceClause)) {
       env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
       return new QueryResult();
     }
-    String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, null) + " " +
+    String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) + " " +
         "FROM Contact " +
         "WHERE " + updatedSinceClause +
         "AND Account.npo02__TotalOppAmount__c > 0.0";

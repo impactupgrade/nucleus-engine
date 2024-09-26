@@ -52,7 +52,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     protected static final String TAX_DEDUCTIBLE_GIFT_FIELD_NAME = "Tax_Deductible_Gift__c";
     protected static final String OTHER_INCOME_FIELD_NAME = "Other_Income__c";
     // If false return 200 OK and mix of successfully created objects and any with validation errors
-    protected static final Boolean SUMMARIZE_ERRORS = Boolean.TRUE;
+    protected static final Boolean SUMMARIZE_ERRORS = Boolean.FALSE;
     // e.g. unitdp=4 – (Unit Decimal Places) You can opt in to use four decimal places for unit amounts
     protected static final Integer UNITDP = 4;
 
@@ -170,13 +170,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         Contacts contacts = new Contacts();
         contacts.setContacts(crmContacts.stream().map(this::toContact).toList());
 
-        try {
-            Contacts upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
-            return upsertedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList();
-        } catch (Exception e) {
-            //TODO: check errors
-            return Collections.emptyList();
-        }
+        Contacts upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
+        return upsertedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList();
     }
 
     protected Optional<Contact> getContact(String where) throws Exception {
@@ -199,11 +194,11 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return contacts.getContacts().stream().findFirst();
     }
 
-    private Optional<Contact> getContactForName(String name) throws Exception {
+    public Optional<Contact> getContactForName(String name) throws Exception {
         return getContact("Name=\"" + name + "\"");
     }
 
-    private Optional<Contact> getContactForAccountNumber(String accountNumber) throws Exception {
+    public Optional<Contact> getContactForAccountNumber(String accountNumber) throws Exception {
         return getContact("AccountNumber=\"" + accountNumber + "\"");
     }
 
@@ -215,7 +210,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
             return createdInvoices.getInvoices().stream().findFirst().get().getInvoiceID().toString();
         } catch (Exception e) {
-            env.logJobError("Failed to create invoices! {}", getExceptionDetails(e));
+            env.logJobError("Failed to create invoices! {}", e);
             throw e;
         }
     }
@@ -224,13 +219,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     public List<String> updateOrCreateTransactions(List<AccountingTransaction> accountingTransactions) throws Exception {
         Invoices invoices = new Invoices();
         invoices.setInvoices(accountingTransactions.stream().map(this::toInvoice).toList());
-        try {
-            Invoices createdInvoices = xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
-            return createdInvoices.getInvoices().stream().map(invoice -> invoice.getInvoiceID().toString()).toList();
-        } catch (Exception e) {
-            env.logJobError("Failed to upsert invoices! {}", getExceptionDetails(e));
-            throw e;
-        }
+        Invoices createdInvoices = xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
+        return createdInvoices.getInvoices().stream().map(invoice -> invoice.getInvoiceID().toString()).toList();
     }
 
     protected String getAccessToken() throws Exception {
@@ -285,10 +275,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return accessToken;
     }
 
-    protected String getExceptionDetails(Exception e) {
-        return e == null ? null : e.getClass() + ":" + e;
-    }
-
     protected Contact toContact(CrmContact crmContact) {
         Contact contact = new Contact();
         contact.setAccountNumber(getAccountNumber(crmContact));
@@ -314,15 +300,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
         if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
             // Household
-            String supporterId = crmContact.crmRawObject instanceof SObject sObject ?
-                (String) sObject.getField(SUPPORTER_ID_FIELD_NAME) : null;
-            contact.setName(crmContact.getFullName() + " " + supporterId);
+            contact.setName(crmContact.getFullName() + " " + getAccountNumber(crmContact));
             contact.setFirstName(crmContact.firstName);
             contact.setLastName(crmContact.lastName);
         } else {
             // Organization
             //TODO: Three different record types to include: AU ORGANISATION, AU CHURCH, AU SCHOOL?
-            contact.setName(crmContact.account.name + " " + crmContact.account.id);
+            contact.setName(crmContact.account.name + " " + getAccountNumber(crmContact));
             ContactPerson primaryContactPerson = new ContactPerson();
             primaryContactPerson.setFirstName(crmContact.firstName);
             primaryContactPerson.setLastName(crmContact.lastName);
@@ -336,8 +320,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     protected String getAccountNumber(CrmContact crmContact) {
+        String supporterId = crmContact.crmRawObject instanceof SObject sObject ?
+            (String) sObject.getField(SUPPORTER_ID_FIELD_NAME) : null;
         return crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD ?
-            crmContact.id : crmContact.account.id;
+            supporterId : crmContact.account.id;
     }
 
     protected Address toAddress(CrmAddress crmAddress) {
