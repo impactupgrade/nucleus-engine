@@ -26,13 +26,11 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
-import com.xero.api.XeroBadRequestException;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.ContactPerson;
 import com.xero.models.accounting.Contacts;
-import com.xero.models.accounting.Element;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
@@ -42,12 +40,9 @@ import org.json.JSONObject;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -174,68 +169,47 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     @Override
     public List<String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
         Contacts contacts = new Contacts();
-        List<Contact> toUpsert = crmContacts.stream().map(this::toContact).toList();
-        contacts.setContacts(toUpsert);
-        Set<String> processedIds = new HashSet<>( );
-
+        contacts.setContacts(crmContacts.stream().map(this::toContact).toList());
         try {
             Contacts upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
-
             int index = 0;
-            List<Contact> toRetry = new ArrayList<>();
-            for (Contact upserted: upsertedContacts.getContacts()) {
+            List<String> processedIds = new ArrayList<>();
+            List<Contact> contactsToRetry = new ArrayList<>();
 
+            for (Contact upserted : upsertedContacts.getContacts()) {
                 if (Boolean.TRUE == upserted.getHasValidationErrors()) {
-                   System.out.println(upserted.getValidationErrors());
+                    Contact contact = contacts.getContacts().get(index);
 
                     if (upserted.getValidationErrors().stream()
-                        .anyMatch(error ->
-                            error.getMessage().contains("Account Number already exists")
-                                || error.getMessage().contains("contact name must be unique across all active contacts"))) {
-                        Contact contact = toUpsert.get(index);
-                        contact.setContactID(upserted.getContactID());
-                        toRetry.add(contact);
+                        .anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
+
+                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber());
+                        if (existingContact.isPresent()) {
+                            contact.setContactID(existingContact.get().getContactID());
+                            contactsToRetry.add(contact);
+                        } else {
+                            // Should be unreachable
+                            env.logJobWarn("failed to get contact for account number {}!", contact.getAccountNumber());
+                        }
+                    } else {
+                        env.logJobWarn("failed to upsert contact {}! error message(s): {}",
+                            contact.getName(), upserted.getValidationErrors().stream().map(error -> error.getMessage()).collect(Collectors.joining(",")));
                     }
                 } else {
                     processedIds.add(upserted.getContactID().toString());
                 }
-
-
                 index++;
             }
 
-            if (!toRetry.isEmpty()) {
+            if (!contactsToRetry.isEmpty()) {
+                contacts.setContacts(contactsToRetry);
+                upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
                 processedIds.addAll(upsertedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList());
             }
-
-            return processedIds.stream().toList();
-
-        } catch (XeroBadRequestException e) {
-            // Should be unrwachable for summarize errors = false
-            // TODO: upsert appears to require the actual contact ID in order to update. Since we're only providing
-            //   the accountNumber, updating fails. However, the error gives us the contactID we need...
-//            List<Contact> toRetry = new ArrayList<>();
-//            int index = 0;
-//            for (Element element : e.getElements()) {
-//                if (element.getValidationErrors().stream()
-//                    .anyMatch(error ->
-//                        error.getMessage().contains("Account Number already exists")
-//                        || error.getMessage().contains("contact name must be unique across all active contacts"))) {
-//                    Contact contact = toUpsert.get(index);
-//                    contact.setContactID(element.getContactID());
-//                    toRetry.add(contact);
-//                }
-//                index++;
-//            }
-//
-//            contacts.setContacts(toRetry);
-//            Contacts retriedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, false);
-//            //TODO: here we only return ids of retried items not all the contacts we had initially (!)
-//            return retriedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList();
-            return null;
+            return processedIds;
         } catch (Exception e) {
-            env.logJobError("Failed to upsert contact! {}", e);
-            return null;
+            env.logJobError("Failed to upsert contacts! {}", e);
+            return Collections.emptyList();
         }
     }
 

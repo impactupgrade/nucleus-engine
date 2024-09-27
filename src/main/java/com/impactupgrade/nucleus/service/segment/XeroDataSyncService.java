@@ -43,6 +43,7 @@ public class XeroDataSyncService implements DataSyncService {
     if (env.accountingPlatformService().isPresent()) {
       PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorContacts(updatedAfter);
       for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
+        if (resultSet.getRecords().isEmpty()) continue;
         try {
           env.accountingPlatformService().get().updateOrCreateContacts(resultSet.getRecords());
         } catch (Exception e) {
