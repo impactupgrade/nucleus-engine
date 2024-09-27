@@ -173,8 +173,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         try {
             Contacts upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
             int index = 0;
-            List<String> processedIds = new ArrayList<>();
             List<Contact> contactsToRetry = new ArrayList<>();
+            List<String> processedIds = new ArrayList<>();
 
             for (Contact upserted : upsertedContacts.getContacts()) {
                 if (Boolean.TRUE == upserted.getHasValidationErrors()) {
@@ -416,39 +416,28 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         if (accountingTransaction.transactionType == EnvironmentConfig.TransactionType.TICKET) {
             lineItem.setAccountCode("160");
             lineItem.setItemCode("EI");
-
             if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, OTHER_INCOME_FIELD_NAME))) {
                 lineItem.setAccountCode("260");
                 lineItem.setItemCode("Other Income");
             }
-
         } else if (accountingTransaction.recurring) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
-
-            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
-                lineItem.setAccountCode("120");
-                lineItem.setItemCode("RecurringWPG");
-            }
-
-            //TODO: complete this part once COA Codes list is defined
-//            if (!Strings.isNullOrEmpty(getCustomDonationField(accountingTransaction, "Country Designation"))) {
-//                lineItem.setAccountCode("country_account_code"); //?
-//                lineItem.setItemCode("country_item_code");
-//            }
-
-        } else {
-            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, TAX_DEDUCTIBLE_GIFT_FIELD_NAME))) {
-                lineItem.setAccountCode("116");
-                lineItem.setItemCode("Donate");
-            }
-            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
-                //TODO: create Receive Money?
-                lineItem.setAccountCode("116");
-                lineItem.setItemCode("Donate");
-            }
+        } else if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
+            lineItem.setAccountCode("120");
+            lineItem.setItemCode("RecurringWPG");
+        //TODO: complete this part once COA Codes list is defined
+        } else if (!Strings.isNullOrEmpty(getCustomDonationField(accountingTransaction, "Country Designation"))) {
+            lineItem.setAccountCode("country_account_code"); //?
+            lineItem.setItemCode("country_item_code");
+        } else if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, TAX_DEDUCTIBLE_GIFT_FIELD_NAME))) {
+            lineItem.setAccountCode("116");
+            lineItem.setItemCode("Donate");
+        } else if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
+            //TODO: create Receive Money?
+            lineItem.setAccountCode("116");
+            lineItem.setItemCode("Donate");
         }
-
         return Collections.singletonList(lineItem);
     }
 
