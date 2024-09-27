@@ -200,8 +200,9 @@ public class EnvironmentConfig implements Serializable {
 
   public LittleGreenLight littleGreenLight = new LittleGreenLight();
   public static class LittleGreenLight extends Platform {
+    public String subdomain = "";
 //    public Integer defaultFundId = null;
-//    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
+    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
   }
 
   public Salesforce salesforce = new Salesforce();

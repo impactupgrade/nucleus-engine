@@ -7,9 +7,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -33,25 +31,22 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
-import static com.impactupgrade.nucleus.util.HttpClient.put;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+
+// TODO: search for remaining mentions of "bloomerang"
 
 public class LittleGreenLightCrmService implements CrmService {
 
@@ -94,39 +89,34 @@ public class LittleGreenLightCrmService implements CrmService {
 
   @Override
   public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
-    Set<String> keywords = new HashSet<>();
+    List<String> queries = new ArrayList<>();
 
     String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
 
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
-      keywords.add(contactSearch.email);
+      // TODO
     }
     if (!Strings.isNullOrEmpty(phone)) {
-      keywords.add(phone);
+      // TODO
     }
     if (!Strings.isNullOrEmpty(contactSearch.firstName)) {
-      keywords.add(contactSearch.firstName);
+      queries.add("first_name=" + contactSearch.firstName);
     }
     if (!Strings.isNullOrEmpty(contactSearch.lastName)) {
-      keywords.add(contactSearch.lastName);
+      queries.add("last_name=" + contactSearch.firstName);
     }
     if (!contactSearch.keywords.isEmpty()) {
-      keywords.addAll(contactSearch.keywords);
+      // TODO
     }
 
-    String query = keywords.stream().map(k -> {
-      k = k.trim();
-      try {
-        return URLEncoder.encode(k, StandardCharsets.UTF_8.toString());
-      } catch (UnsupportedEncodingException e) {
-        // will never happen
-        return null;
-      }
-    }).filter(Objects::nonNull).collect(Collectors.joining("+"));
+    String query = queries.stream().map(q -> {
+      q = q.trim();
+      return URLEncoder.encode(q, StandardCharsets.UTF_8);
+    }).collect(Collectors.joining("&"));
 
     ConstituentSearchResults constituentSearchResults = null;
     try {
-      constituentSearchResults = get(LITTLEGREENLIGHT_URL + "constituents/search?search=" + query, headers(), ConstituentSearchResults.class);
+      constituentSearchResults = get(LITTLEGREENLIGHT_URL + "v1/constituents/search.json?" + query, headers(), ConstituentSearchResults.class);
     } catch (Exception e) {
 //      env.logJobError("search failed", e);
     }
@@ -134,48 +124,19 @@ public class LittleGreenLightCrmService implements CrmService {
       return PagedResults.pagedResultsFromCurrentOffset(Collections.emptyList(), contactSearch);
     }
 
-    for (Constituent constituent : constituentSearchResults.items) {
-      if (constituent.emailIds.size() > 1) {
-        List<String> emailIds = constituent.emailIds.stream().filter(id -> id != constituent.primaryEmail.id).map(Object::toString).toList();
-        constituent.secondaryEmails = get(LITTLEGREENLIGHT_URL + "emails?id=" + String.join("%7C", emailIds), headers(), EmailResults.class).items;
-      }
-      if (constituent.phoneIds.size() > 1) {
-        List<String> phoneIds = constituent.phoneIds.stream().filter(id -> id != constituent.primaryPhone.id).map(Object::toString).toList();
-        constituent.secondaryPhones = get(LITTLEGREENLIGHT_URL + "phones?id=" + String.join("%7C", phoneIds), headers(), PhoneResults.class).items;
-      }
-    }
-
-    // API appears to be doing SUPER forgiving fuzzy matches. If the search was by email/phone/name, verify those explicitly.
-    // If it was a name search, make sure the name actually matches.
-    List<Constituent> constituents = constituentSearchResults.items.stream()
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.email)
-            || (c.primaryEmail != null && !Strings.isNullOrEmpty(c.primaryEmail.value) && c.primaryEmail.value.equalsIgnoreCase(contactSearch.email))
-            || (c.secondaryEmails.stream().anyMatch(e -> e.value.equalsIgnoreCase(contactSearch.email))))
-        .filter(c -> Strings.isNullOrEmpty(phone)
-            || (c.primaryPhone != null && !Strings.isNullOrEmpty(c.primaryPhone.number) && c.primaryPhone.number.replaceAll("[\\D]", "").contains(phone))
-            || (c.secondaryPhones.stream().anyMatch(p -> p.number.replaceAll("[\\D]", "").contains(phone))))
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.firstName) || contactSearch.firstName.equalsIgnoreCase(c.firstName))
-        .filter(c -> Strings.isNullOrEmpty(contactSearch.lastName) || contactSearch.lastName.equalsIgnoreCase(c.lastName))
-        .collect(Collectors.toList());
-
-    List<CrmContact> crmContacts = toCrmContact(constituents);
+    List<CrmContact> crmContacts = toCrmContact(constituentSearchResults.items);
     return PagedResults.pagedResultsFromCurrentOffset(crmContacts, contactSearch);
   }
 
   @Override
-  public Optional<CrmDonation> getDonationByTransactionIds(List<String> transactionIds, String accountId, String contactId) {
-    return getDonation(
-        contactId,
-        List.of("Donation", "RecurringDonationPayment"),
-        env.getConfig().littleGreenLight.fieldDefinitions.paymentGatewayTransactionId,
-        transactionIds
-    ).map(this::toCrmDonation);
-  }
-
-  // Not able to retrieve donations purely by transactionIds -- must have the Constituent.
-  @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
-    return Collections.emptyList();
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) {
+    return transactionIds.stream().flatMap(transactionId ->
+      get(
+          LITTLEGREENLIGHT_URL + "v1/gifts/search.json?external_id=" + transactionId + "&sort=date!",
+          headers(),
+          DonationResults.class
+      ).items.stream()
+    ).map(this::toCrmDonation).toList();
   }
 
   // Not able to retrieve donations purely by customerId -- must have the Constituent.
@@ -194,18 +155,17 @@ public class LittleGreenLightCrmService implements CrmService {
     Constituent constituent = new Constituent();
     constituent.firstName = crmContact.firstName;
     constituent.lastName = crmContact.lastName;
-    constituent.householdId = crmContact.account.id == null ? null : Integer.parseInt(crmContact.account.id);
 
     if (!Strings.isNullOrEmpty(crmContact.email)) {
       final Email constituentEmail = new Email();
-      constituentEmail.value = crmContact.email;
-      constituent.primaryEmail = constituentEmail;
+      constituentEmail.address = crmContact.email;
+      constituent.emailAddresses.add(constituentEmail);
     }
 
     if (!Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
       final Phone constituentPhone = new Phone();
       constituentPhone.number = crmContact.phoneNumberForSMS();
-      constituent.primaryPhone = constituentPhone;
+      constituent.phoneNumbers.add(constituentPhone);
     }
 
     if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
@@ -215,10 +175,10 @@ public class LittleGreenLightCrmService implements CrmService {
       constituentAddress.state = crmContact.mailingAddress.state;
       constituentAddress.postalCode = crmContact.mailingAddress.postalCode;
       constituentAddress.country = crmContact.mailingAddress.country;
-      constituent.primaryAddress = constituentAddress;
+      constituent.streetAddresses.add(constituentAddress);
     }
 
-    constituent = post(LITTLEGREENLIGHT_URL + "constituent", constituent, APPLICATION_JSON, headers(), Constituent.class);
+    constituent = post(LITTLEGREENLIGHT_URL + "v1/constituents.json", constituent, APPLICATION_JSON, headers(), Constituent.class);
 
     if (constituent == null) {
       return null;
@@ -229,12 +189,12 @@ public class LittleGreenLightCrmService implements CrmService {
 
   @Override
   public void updateContact(CrmContact crmContact) throws Exception {
-    // currently used only by custom donation forms, messaging opt in/out, and batch updates
+    // TODO
   }
 
   @Override
   public String insertDonation(CrmDonation crmDonation) throws Exception {
-    // Bloomerang has no notion of non-successful transactions.
+    // LGL has no notion of non-successful transactions.
     if (crmDonation.status != CrmDonation.Status.SUCCESSFUL) {
       env.logJobInfo("skipping the non-successful transaction: {}", crmDonation.transactionId);
       return null;
@@ -243,39 +203,28 @@ public class LittleGreenLightCrmService implements CrmService {
     String date = DateTimeFormatter.ofPattern("MM/dd/yyyy").format(crmDonation.closeDate);
 
     Donation donation = new Donation();
-    donation.accountId = Integer.parseInt(crmDonation.contact.id);
+    donation.constituentId = Integer.parseInt(crmDonation.contact.id);
     donation.receivedAmount = crmDonation.amount;
     donation.receivedDate = date;
-    donation.method = "Credit Card";
-
-    Designation designation = new Designation();
-    designation.amount = donation.receivedAmount;
+    // TODO: payment_type_id
+//    donation.method = "Credit Card";
 
     // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
     if (!Strings.isNullOrEmpty(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund))) {
-      designation.fundId = Integer.parseInt(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
+      donation.fundId = Integer.parseInt(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
     } else {
-      designation.fundId = env.getConfig().littleGreenLight.defaultFundId;
+      // TODO
+//      donation.fundId = env.getConfig().littleGreenLight.defaultFundId;
     }
 
-    if (crmDonation.isRecurring()) {
-      designation.type = "RecurringDonationPayment";
-      // This is a little odd, but it appears Bloomerang wants the ID of the *designation* within the RecurringDonation,
-      // not the donation itself. So we unfortunately need to grab that from the API.
-      Donation recurringDonation = getDonation(crmDonation.recurringDonation.id);
-      designation.recurringDonationId = recurringDonation.designations.get(0).id;
-      designation.isExtraPayment = false;
-    } else {
-      designation.type = "Donation";
-    }
+    // TODO: gift_type_id (Gift) and gift_category_id (Donation vs Recurring)
+//    donation.type = "Donation";
 
-    setProperty(env.getConfig().littleGreenLight.fieldDefinitions.paymentGatewayName, crmDonation.gatewayName, designation.customFields);
-    setProperty(env.getConfig().littleGreenLight.fieldDefinitions.paymentGatewayTransactionId, crmDonation.transactionId, designation.customFields);
-    setProperty(env.getConfig().littleGreenLight.fieldDefinitions.paymentGatewayCustomerId, crmDonation.customerId, designation.customFields);
+    // TODO: payment_type_id (Stripe or Credit Card?)
+//    setProperty(env.getConfig().littleGreenLight.fieldDefinitions.paymentGatewayName, crmDonation.gatewayName, designation.customFields);
+    donation.externalId = crmDonation.transactionId;
 
-    donation.designations.add(designation);
-
-    donation = post(LITTLEGREENLIGHT_URL + "transaction", donation, APPLICATION_JSON, headers(), Donation.class);
+    donation = post(LITTLEGREENLIGHT_URL + "v1/constituents/" + crmDonation.contact.id + "/gifts.json", donation, APPLICATION_JSON, headers(), Donation.class);
 
     if (donation == null) {
       return null;
@@ -287,20 +236,6 @@ public class LittleGreenLightCrmService implements CrmService {
   @Override
   public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     return null;
-  }
-
-  protected void setProperty(String fieldKey, String value, List<JsonNode> customFields) {
-    // Optional field names may not be configured in env.json, so ensure we actually have a name first...
-    // Likewise, don't set a null or empty value.
-    if (Strings.isNullOrEmpty(fieldKey) || value == null) {
-      return;
-    }
-    int fieldId = Integer.parseInt(fieldKey);
-
-    ObjectNode objectNode = mapper.createObjectNode();
-    objectNode.put("FieldId", fieldId);
-    objectNode.put("Value", value);
-    customFields.add(objectNode);
   }
 
   @Override
@@ -411,7 +346,6 @@ public class LittleGreenLightCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception {
-    Donation recurringDonation = getDonation(id);
     return Optional.empty();
   }
 
@@ -495,95 +429,49 @@ public class LittleGreenLightCrmService implements CrmService {
     return null;
   }
 
-  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
-      String customFieldKey, String customFieldValue) {
-    return getDonation(constituentId, donationTypes, customFieldKey, List.of(customFieldValue));
-  }
-
-  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
-      String customFieldKey, List<String> _customFieldValues) {
-    if (Strings.isNullOrEmpty(customFieldKey)) {
-      return Optional.empty();
-    }
-
-    List<String> customFieldValues = _customFieldValues.stream().filter(v -> !Strings.isNullOrEmpty(v)).collect(Collectors.toList());
-    if (customFieldValues.isEmpty()) {
-      return Optional.empty();
-    }
-
-    for (String donationType : donationTypes) {
-      Optional<Donation> donation = getDonations(constituentId, donationType).stream().filter(d -> {
-        String customFieldValue = getCustomFieldValue(d, customFieldKey);
-        return customFieldValues.contains(customFieldValue);
-      }).findFirst();
-      if (donation.isPresent()) {
-        return donation;
-      }
-    }
-
-    return Optional.empty();
-  }
-
-  // type: Donation, Pledge, PledgePayment, RecurringDonation, RecurringDonationPayment
-  protected List<Donation> getDonations(String crmContactId, String type) {
-    // Assuming that the default page size of 50 is enough...
-    return get(
-        LITTLEGREENLIGHT_URL + "transactions?type=" + type + "&accountId=" + crmContactId + "&orderBy=Date&orderDirection=Desc",
-        headers(),
-        DonationResults.class
-    ).items;
-  }
-
-  protected Donation getDonation(String donationId) {
-    return get(
-        LITTLEGREENLIGHT_URL + "transaction/" + donationId,
-        headers(),
-        Donation.class
-    );
-  }
-
-  protected String getCustomFieldValue(Donation donation, String customFieldKey) {
-    if (Strings.isNullOrEmpty(customFieldKey)) {
-      return null;
-    }
-    int customFieldId = Integer.parseInt(customFieldKey);
-    return donation.designations.stream().flatMap(designation -> designation.customFields.stream())
-        .filter(jsonNode -> jsonNode.has("FieldId") && jsonNode.get("FieldId").asInt() == customFieldId)
-        .map(jsonNode -> jsonNode.get("Value").get("Value").asText())
-        .findFirst().orElse(null);
-  }
-
   protected CrmContact toCrmContact(Constituent constituent) {
     if (constituent == null) {
       return null;
     }
 
-    String householdId = constituent.householdId == null ? null : constituent.householdId + "";
-    String primaryEmail = constituent.primaryEmail == null ? null : constituent.primaryEmail.value;
-    String primaryPhone = constituent.primaryPhone == null ? null : constituent.primaryPhone.number;
+    Optional<String> primaryEmail = constituent.emailAddresses.stream()
+        .filter(e -> e.isPreferred != null && e.isPreferred).findFirst().map(e -> e.address);
+    if (primaryEmail.isEmpty()) {
+      primaryEmail = constituent.emailAddresses.stream().findFirst().map(e -> e.address);
+    }
+    Optional<String> primaryPhone = constituent.phoneNumbers.stream()
+        .filter(e -> e.isPreferred != null && e.isPreferred).findFirst().map(e -> e.number);
+    if (primaryPhone.isEmpty()) {
+      primaryPhone = constituent.phoneNumbers.stream().findFirst().map(e -> e.number);
+    }
+    Optional<Address> primaryAddress = constituent.streetAddresses.stream()
+        .filter(e -> e.isPreferred != null && e.isPreferred).findFirst();
+    if (primaryAddress.isEmpty()) {
+      primaryAddress = constituent.streetAddresses.stream().findFirst();
+    }
     CrmAddress crmAddress = new CrmAddress();
-    if (constituent.primaryAddress != null){
+    if (primaryAddress.isPresent()){
       crmAddress = new CrmAddress(
-          constituent.primaryAddress.street,
-          constituent.primaryAddress.city,
-          constituent.primaryAddress.state,
-          constituent.primaryAddress.postalCode,
-          constituent.primaryAddress.country
+          primaryAddress.get().street,
+          primaryAddress.get().city,
+          primaryAddress.get().state,
+          primaryAddress.get().postalCode,
+          primaryAddress.get().country
       );
     }
 
     return new CrmContact(
         constituent.id + "",
-        new CrmAccount(householdId),
+        null, // account
         null, // description
-        primaryEmail,
+        primaryEmail.orElse(null),
         Collections.emptyList(), // List<String> emailGroups,
         null, // Boolean emailBounced,
         null, // Boolean emailOptIn,
         null, // Boolean emailOptOut,
         null, // Calendar firstDonationDate,
         constituent.firstName,
-        primaryPhone,
+        primaryPhone.orElse(null),
         null, // Double largestDonationAmount,
         null, // Calendar lastDonationDate,
         constituent.lastName,
@@ -602,7 +490,7 @@ public class LittleGreenLightCrmService implements CrmService {
         null, // Double totalDonationAmountYtd
         null, // String workPhone,
         constituent,
-        "https://crm.bloomerang.co/Constituent/" + constituent.id + "/Profile",
+        "https://" + env.getConfig().littleGreenLight.subdomain + ".littlegreenlight.com/constituents/" + constituent.id,
         null // fieldFetcher
     );
   }
@@ -619,59 +507,54 @@ public class LittleGreenLightCrmService implements CrmService {
       return null;
     }
 
-    // TODO
-    CrmAccount crmAccount = new CrmAccount();
-
     CrmContact crmContact = new CrmContact();
-    crmContact.id = donation.accountId + "";
+    crmContact.id = donation.constituentId + "";
 
     return new CrmDonation(
         donation.id + "",
-        crmAccount,
+        null, // account
         crmContact,
         null, // CrmRecurringDonation recurringDonation,
         donation.receivedAmount,
         null, // String customerId,
-        null, // ZonedDateTime depositDate,
+        Utils.getZonedDateTimeFromDateTimeString(donation.depositDate),
         null, // String depositId,
         null, // String depositTransactionId,
-        getCustomFieldValue(donation, env.getConfig().littleGreenLight.fieldDefinitions.paymentGatewayName),
+        null, // String gatewayName // TODO
         null, // EnvironmentConfig.PaymentEventType paymentEventType,
-        null, // String paymentMethod,
+        null, // String paymentMethod, // TODO
         null, // String refundId,
         null, // ZonedDateTime refundDate,
-        CrmDonation.Status.SUCCESSFUL, // Bloomerang has no notion of non-successful transactions.
-        null,
+        CrmDonation.Status.SUCCESSFUL, // LGL has no notion of non-successful transactions.
+        null, // String failureReason
         false, // boolean transactionCurrencyConverted,
         null, // Double transactionExchangeRate,
         null, // Double transactionFeeInDollars,
-        getCustomFieldValue(donation, env.getConfig().littleGreenLight.fieldDefinitions.paymentGatewayTransactionId),
-        null, // Double transactionNetAmountInDollars,
+        donation.externalId,
+        donation.depositedAmount,
         null, // Double transactionOriginalAmountInDollars,
         null, // String transactionOriginalCurrency,
         null, // String transactionSecondaryId,
         null, // String transactionUrl,
-        null, // String campaignId,
+        donation.campaignId + "",
         Utils.getZonedDateTimeFromDateTimeString(donation.receivedDate),
         null, // String description,
         null, // String name,
         null, // String ownerId,
         null, // String recordTypeId,
         donation,
-        "https://crm.bloomerang.co/Constituent/" + donation.accountId + "/Transaction/Edit/" + donation.id
+        "https://" + env.getConfig().littleGreenLight.subdomain + ".littlegreenlight.com/gifts/" + donation.id
     );
   }
 
   private HttpClient.HeaderBuilder headers() {
-    return HttpClient.HeaderBuilder.builder().header("X-API-KEY", apiKey);
+    return HttpClient.HeaderBuilder.builder().authBearerToken(apiKey);
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Constituent {
     public int id;
-    @JsonProperty("external_constituent_id") // TODO: work into Stripe Customer ID
-    public String externalConstituentId;
     @JsonProperty("is_org") // TODO
     public Boolean isOrg;
     @JsonProperty("org_name") // TODO
@@ -684,9 +567,9 @@ public class LittleGreenLightCrmService implements CrmService {
     @JsonProperty("email_addresses")
     List<Email> emailAddresses = new ArrayList<>();
     @JsonProperty("phone_numbers")
-    List<Email> phoneNumbers = new ArrayList<>();
+    List<Phone> phoneNumbers = new ArrayList<>();
     @JsonProperty("street_addresses")
-    List<Email> streetAddresses = new ArrayList<>();
+    List<Address> streetAddresses = new ArrayList<>();
 
     /*
     TODO
@@ -709,6 +592,8 @@ public class LittleGreenLightCrmService implements CrmService {
     public int id;
     // TODO: email_address_type_id, email_type_name, is_preferred
     public String address;
+    @JsonProperty("is_preferred")
+    public Boolean isPreferred;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -725,6 +610,8 @@ public class LittleGreenLightCrmService implements CrmService {
     public int id;
     // TODO: phone_number_type_id, phone_type_name, is_preferred
     public String number;
+    @JsonProperty("is_preferred")
+    public Boolean isPreferred;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -746,6 +633,8 @@ public class LittleGreenLightCrmService implements CrmService {
     @JsonProperty("postal_code")
     public String postalCode;
     public String country;
+    @JsonProperty("is_preferred")
+    public Boolean isPreferred;
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -761,7 +650,7 @@ public class LittleGreenLightCrmService implements CrmService {
   public static class Donation {
     public int id;
     @JsonProperty("external_id") // TODO: work into Stripe Transaction ID
-    public String externalConstituentId;
+    public String externalId;
     @JsonProperty("constituent_id")
     public Integer constituentId;
     @JsonProperty("campaign_id")
@@ -774,12 +663,8 @@ public class LittleGreenLightCrmService implements CrmService {
     public Integer eventId;
     @JsonProperty("received_amount")
     public Double receivedAmount;
-//    @JsonProperty("Method")
-//    public String method = "None";
     @JsonProperty("received_date")
     public String receivedDate;
-//    @JsonProperty("Designations")
-//    public List<Designation> designations = new ArrayList<>();
     // TODO: payment_type_id, note
     @JsonProperty("deposit_date") // TODO
     public String depositDate;
