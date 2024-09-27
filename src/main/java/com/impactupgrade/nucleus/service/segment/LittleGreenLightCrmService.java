@@ -46,8 +46,6 @@ import static com.impactupgrade.nucleus.util.HttpClient.get;
 import static com.impactupgrade.nucleus.util.HttpClient.post;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-// TODO: search for remaining mentions of "bloomerang"
-
 public class LittleGreenLightCrmService implements CrmService {
 
   private static final String LITTLEGREENLIGHT_URL = "https://api.littlegreenlight.com/v1/";
