@@ -172,7 +172,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     @Override
     public List<String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
         Contacts contacts = new Contacts();
-        contacts.setContacts(crmContacts.stream().map(this::toContact).toList());
+        List<Contact> toUpsert = crmContacts.stream().map(this::toContact).toList();
+        contacts.setContacts(toUpsert);
 
         try {
             Contacts upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
@@ -180,34 +181,22 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         } catch (XeroBadRequestException e) {
             // TODO: upsert appears to require the actual contact ID in order to update. Since we're only providing
             //   the accountNumber, updating fails. However, the error gives us the contactID we need...
-            List<Contact> existingContacts = new ArrayList<>();
+            List<Contact> toRetry = new ArrayList<>();
+            int index = 0;
             for (Element element : e.getElements()) {
-                Contact contact = new Contact();
-                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
+                if (element.getValidationErrors().stream()
+                    .anyMatch(error ->
+                        error.getMessage().contains("Account Number already exists")
+                        || error.getMessage().contains("contact name must be unique across all active contacts"))) {
+                    Contact contact = toUpsert.get(index);
                     contact.setContactID(element.getContactID());
-                    //TODO: get account number from error
+                    toRetry.add(contact);
                 }
-                if (element.getValidationErrors().stream().anyMatch(error -> error.getMessage().contains("contact name must be unique across all active contacts"))) {
-                    contact.setContactID(element.getContactID());
-                    //TODO: get account number from error
-                }
-                existingContacts.add(contact);
+                index++;
             }
 
-            Map<String, Contact> contactsByAccountNumber = existingContacts.stream()
-                .collect(Collectors.toMap(c -> c.getAccountNumber(), c -> c));
-
-            List<Contact> contactsToRetry = contacts.getContacts().stream()
-                    .filter(c -> contactsByAccountNumber.containsKey(c.getAccountNumber()))
-                    .map(c -> {
-                        Contact existing = contactsByAccountNumber.get(c.getAccountNumber());
-                        c.setContactID(existing.getContactID());
-                        return c;
-                    }).toList();
-
-            Contacts toRetry = new Contacts();
-            toRetry.setContacts(contactsToRetry);
-            Contacts retriedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, toRetry, false);
+            contacts.setContacts(toRetry);
+            Contacts retriedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, false);
             //TODO: here we only return ids of retried items not all the contacts we had initially (!)
             return retriedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList();
         } catch (Exception e) {
@@ -319,7 +308,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected Contact toContact(CrmContact crmContact) {
         Contact contact = new Contact();
-        contact.setAccountNumber(getAccountNumber(crmContact));
+
+        String accountNumber = getAccountNumber(crmContact);
+        contact.setAccountNumber(accountNumber);
+
         contact.setEmailAddress(crmContact.email);
 
         contact.setPhones(new ArrayList<>());
@@ -342,13 +334,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
         if (crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD) {
             // Household
-            contact.setName(crmContact.getFullName() + " " + getAccountNumber(crmContact));
+            contact.setName(crmContact.getFullName() + " " + accountNumber);
             contact.setFirstName(crmContact.firstName);
             contact.setLastName(crmContact.lastName);
         } else {
             // Organization
             //TODO: Three different record types to include: AU ORGANISATION, AU CHURCH, AU SCHOOL?
-            contact.setName(crmContact.account.name + " " + getAccountNumber(crmContact));
+            contact.setName(crmContact.account.name + " " + accountNumber);
             ContactPerson primaryContactPerson = new ContactPerson();
             primaryContactPerson.setFirstName(crmContact.firstName);
             primaryContactPerson.setLastName(crmContact.lastName);
