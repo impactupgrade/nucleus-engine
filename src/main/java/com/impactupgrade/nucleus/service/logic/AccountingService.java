@@ -246,7 +246,8 @@ public class AccountingService {
             crmDonation.transactionType,
             crmDonation.gatewayName,
             crmDonation.transactionId,
-            crmDonation.isRecurring()
+            crmDonation.isRecurring(),
+            crmDonation.crmRawObject
         );
     }
 

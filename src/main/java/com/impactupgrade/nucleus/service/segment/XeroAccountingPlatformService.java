@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -255,7 +256,18 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public List<String> updateOrCreateTransactions(List<AccountingTransaction> accountingTransactions) throws Exception {
+    public List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations, List<CrmContact> crmContacts) throws Exception {
+        Map<String, CrmContact> contactMap = crmContacts.stream()
+            .collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
+
+        List<AccountingTransaction> accountingTransactions = new ArrayList<>();
+        for (CrmDonation crmDonation: crmDonations) {
+            CrmContact crmContact = contactMap.get(crmDonation.contact.id);
+            // only donations for existing contacts (!)
+            getContact(crmContact).ifPresent(ac ->
+                accountingTransactions.add(toAccountingTransaction(ac.contactId, ac.crmContactId, crmDonation)));
+        }
+
         Invoices invoices = new Invoices();
         invoices.setInvoices(accountingTransactions.stream().map(this::toInvoice).toList());
         Invoices createdInvoices = xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
@@ -416,25 +428,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         if (accountingTransaction.transactionType == EnvironmentConfig.TransactionType.TICKET) {
             lineItem.setAccountCode("160");
             lineItem.setItemCode("EI");
-            if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, OTHER_INCOME_FIELD_NAME))) {
-                lineItem.setAccountCode("260");
-                lineItem.setItemCode("Other Income");
-            }
         } else if (accountingTransaction.recurring) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
-        } else if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
-            lineItem.setAccountCode("120");
-            lineItem.setItemCode("RecurringWPG");
-        //TODO: complete this part once COA Codes list is defined
-        } else if (!Strings.isNullOrEmpty(getCustomDonationField(accountingTransaction, "Country Designation"))) {
-            lineItem.setAccountCode("country_account_code"); //?
-            lineItem.setItemCode("country_item_code");
-        } else if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, TAX_DEDUCTIBLE_GIFT_FIELD_NAME))) {
-            lineItem.setAccountCode("116");
-            lineItem.setItemCode("Donate");
-        } else if ("true".equalsIgnoreCase(getCustomDonationField(accountingTransaction, WPG_FIELD_NAME))) {
-            //TODO: create Receive Money?
+        } else {
             lineItem.setAccountCode("116");
             lineItem.setItemCode("Donate");
         }
@@ -446,22 +443,37 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     protected String getCustomDonationField(AccountingTransaction accountingTransaction, String fieldName) {
-        return accountingTransaction.crmDonation.crmRawObject instanceof SObject sObject ?
+        return accountingTransaction.crmRawObject instanceof SObject sObject ?
             (String) sObject.getField(fieldName) : null;
     }
 
     protected AccountingTransaction toAccountingTransaction(Invoice invoice) {
         return new AccountingTransaction(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                getPaymentGatewayTransactionId(invoice),
-                null
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            getPaymentGatewayTransactionId(invoice),
+            null,
+            null
         );
+    }
+
+    protected AccountingTransaction toAccountingTransaction(String accountingContactId, String crmContactId, CrmDonation crmDonation) {
+        return new AccountingTransaction(
+            accountingContactId,
+            crmContactId,
+            crmDonation.amount,
+            crmDonation.closeDate,
+            crmDonation.description,
+            crmDonation.transactionType,
+            crmDonation.gatewayName,
+            crmDonation.transactionId,
+            crmDonation.isRecurring(),
+            crmDonation.crmRawObject);
     }
 
     protected String getPaymentGatewayTransactionId(Invoice invoice) {

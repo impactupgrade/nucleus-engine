@@ -22,7 +22,7 @@ public interface AccountingPlatformService extends SegmentService {
 
     String createTransaction(AccountingTransaction accountingTransaction) throws Exception;
 
-    List<String> updateOrCreateTransactions(List<AccountingTransaction> accountingTransactions) throws Exception;
+    List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations, List<CrmContact> crmContacts) throws Exception;
 
 //    List<AccountingTransaction> getTransactions(Date startDate) throws Exception;
 //
