@@ -146,6 +146,11 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
+    public PagedResults<CrmAccount> getDonorAccounts(Calendar updatedSince) throws Exception {
+        return new PagedResults<>();
+    }
+
+    @Override
     public double getDonationsTotal(String filter) throws Exception {
         return 0;
     }

@@ -1083,6 +1083,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public PagedResults<CrmAccount> getDonorAccounts(Calendar updatedSince) throws Exception {
+    List<QueryResult> queryResults = sfdcClient.getDonorAccounts(updatedSince);
+    return toCrmAccountPages(queryResults);
+  }
+
+  @Override
   public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
     Map<String, String> lists = new HashMap<>();
     List<SObject> listRecords = new ArrayList<>();
