@@ -26,6 +26,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
+import com.xero.api.XeroMinuteRateLimitException;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
 import com.xero.models.accounting.BankTransaction;
@@ -59,6 +60,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     protected static final Boolean SUMMARIZE_ERRORS = Boolean.FALSE;
     // e.g. unitdp=4 – (Unit Decimal Places) You can opt in to use four decimal places for unit amounts
     protected static final Integer UNITDP = 4;
+
+    protected static final Integer RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS = 61;
+    protected static final Integer RATE_LIMIT_MAX_RETRIES = 3;
 
     protected final ApiClient apiClient;
     protected final AccountingApi xeroApi;
@@ -186,7 +190,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     if (upserted.getValidationErrors().stream()
                         .anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
 
-                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber(), true);
+                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber(), true, RATE_LIMIT_MAX_RETRIES);
                         if (existingContact.isPresent()) {
                             contact.setContactID(existingContact.get().getContactID());
                             contactsToRetry.add(contact);
@@ -245,6 +249,20 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     public Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived) throws Exception {
         return getContact("AccountNumber=\"" + accountNumber + "\"", includeArchived);
+    }
+
+    public Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived, int maxRetries) throws Exception {
+        for (int i = 0; i <= maxRetries; i++) {
+            try {
+                return getContactForAccountNumber(accountNumber, includeArchived);
+            } catch (XeroMinuteRateLimitException e) {
+                env.logJobWarn("API rate limit exceeded. Trying again after " + RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS + " seconds...");
+                Thread.sleep(RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS * 1000);
+            }
+        }
+        // Should be unreachable
+        env.logJobWarn("Failed to find Contact after {} tries!", maxRetries);
+        return Optional.empty();
     }
 
     @Override
