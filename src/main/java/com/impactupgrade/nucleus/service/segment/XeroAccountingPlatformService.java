@@ -194,6 +194,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                         if (existingContact.isPresent()) {
                             contact.setContactID(existingContact.get().getContactID());
                             contactsToRetry.add(contact);
+
+                            env.logJobInfo("updating " + contact.getName() + " " + contact.getEmailAddress() + " " + contact.getContactID());
                         } else {
                             // Should be unreachable
                             env.logJobWarn("failed to get contact for account number {}!", contact.getAccountNumber());
@@ -204,6 +206,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     }
                 } else {
                     processedIds.add(upserted.getContactID().toString());
+
+                    env.logJobInfo("inserting " + upserted.getName() + " " + upserted.getEmailAddress() + " " + upserted.getContactID());
                 }
                 index++;
             }
@@ -456,9 +460,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             primaryContactPerson.setLastName(crmContact.lastName);
             contact.setContactPersons(List.of(primaryContactPerson));
         }
-
-        // TODO: temp
-        env.logJobInfo("contact {} {} {} {} {} {}", crmContact.id, contact.getFirstName(), contact.getLastName(), contact.getName(), contact.getEmailAddress(), contact.getAccountNumber());
 
         return contact;
     }
