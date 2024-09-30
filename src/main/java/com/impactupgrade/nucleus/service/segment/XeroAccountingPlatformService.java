@@ -28,6 +28,8 @@ import com.sforce.soap.partner.sobject.SObject;
 import com.xero.api.ApiClient;
 import com.xero.api.client.AccountingApi;
 import com.xero.models.accounting.Address;
+import com.xero.models.accounting.BankTransaction;
+import com.xero.models.accounting.BankTransactions;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.ContactPerson;
 import com.xero.models.accounting.Contacts;
@@ -257,6 +259,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations, List<CrmContact> crmContacts) throws Exception {
+        // Get existing invoices for crmDonations by date
+        List<ZonedDateTime> donationDates = crmDonations.stream().map(ac -> ac.closeDate).toList();
+        ZonedDateTime minDate = Collections.min(donationDates);
+        List<Invoice> existingInvoices = getInvoices(minDate);
+        Map<String, Invoice> invoicesByReference = existingInvoices.stream()
+            .collect(Collectors.toMap(invoice -> invoice.getReference(), invoice -> invoice));
+
         Map<String, CrmContact> contactMap = crmContacts.stream()
             .collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
 
@@ -264,14 +273,74 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         for (CrmDonation crmDonation: crmDonations) {
             CrmContact crmContact = contactMap.get(crmDonation.contact.id);
             // only donations for existing contacts (!)
-            getContact(crmContact).ifPresent(ac ->
-                accountingTransactions.add(toAccountingTransaction(ac.contactId, ac.crmContactId, crmDonation)));
+            getContact(crmContact).ifPresent(accountingContact -> {
+                AccountingTransaction accountingTransaction = toAccountingTransaction(accountingContact.contactId, accountingContact.crmContactId, crmDonation);
+                // fill invoice ids, where available
+                Invoice existingInvoice = invoicesByReference.get(getReference(accountingTransaction));
+                String invoiceId = existingInvoice != null ? existingInvoice.getInvoiceID().toString() : null;
+                accountingTransaction.transactionId = invoiceId;
+                accountingTransactions.add(accountingTransaction);
+            });
         }
 
         Invoices invoices = new Invoices();
         invoices.setInvoices(accountingTransactions.stream().map(this::toInvoice).toList());
         Invoices createdInvoices = xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
         return createdInvoices.getInvoices().stream().map(invoice -> invoice.getInvoiceID().toString()).toList();
+    }
+
+    public List<Invoice> getInvoices(ZonedDateTime updatedAfter) throws Exception {
+        return getInvoices(toUpdatedAfterClause(updatedAfter));
+    }
+
+    public List<Invoice> getInvoices(String where) throws Exception {
+        Invoices invoices = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
+            // OffsetDateTime ifModifiedSince
+            null,
+            where,
+            // String order,
+            null,
+            // List<UUID> ids,
+            null,
+            //List<String> invoiceNumbers,
+            null,
+            //List<UUID> contactIDs,
+            null,
+            //List<String> statuses,
+            List.of(
+                Invoice.StatusEnum.DRAFT.name(),
+                Invoice.StatusEnum.SUBMITTED.name(),
+                Invoice.StatusEnum.AUTHORISED.name(),
+                Invoice.StatusEnum.PAID.name()
+            ),
+            //Integer page,
+            null,
+            //Boolean includeArchived,
+            false,
+            //Boolean createdByMyApp,
+            null,
+            // Integer unitdp
+            null,
+            // Boolean summaryOnly
+            false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
+        );
+        return invoices.getInvoices();
+    }
+
+    public List<BankTransaction> getBankTransactions(ZonedDateTime updatedAfter) throws Exception {
+        return getBankTransactions(toUpdatedAfterClause(updatedAfter));
+    }
+
+    public List<BankTransaction> getBankTransactions(String where) throws Exception {
+        BankTransactions bankTransactions = xeroApi.getBankTransactions(getAccessToken(), xeroTenantId, null, where, null, null, null);
+        return bankTransactions.getBankTransactions();
+    }
+
+    private String toUpdatedAfterClause(ZonedDateTime zonedDateTime) {
+        int year = zonedDateTime.getYear();
+        int month = zonedDateTime.getMonthValue();
+        int day = zonedDateTime.getDayOfMonth();
+        return "Date >= " + "DateTime(" + year + ", " + month + ", " + day + ")";
     }
 
     protected String getAccessToken() throws Exception {
@@ -394,6 +463,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected Invoice toInvoice(AccountingTransaction transaction) {
         Invoice invoice = new Invoice();
+        if (!Strings.isNullOrEmpty(transaction.transactionId)) {
+            invoice.setInvoiceID(UUID.fromString(transaction.transactionId));
+        }
 
         ZonedDateTime transactionDate = transaction.date;
         org.threeten.bp.ZonedDateTime threetenTransactionDate = org.threeten.bp.ZonedDateTime.ofInstant(
