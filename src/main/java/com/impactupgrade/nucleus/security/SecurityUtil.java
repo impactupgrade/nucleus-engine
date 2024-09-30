@@ -18,6 +18,7 @@ public class SecurityUtil {
       apiKey = env.getQueryParams().get("Nucleus-Api-Key");
     }
     if (!env.getConfig().apiKey.equalsIgnoreCase(apiKey)) {
+      env.logJobWarn("unable to verify api key");
       throw new SecurityException();
     }
   }
