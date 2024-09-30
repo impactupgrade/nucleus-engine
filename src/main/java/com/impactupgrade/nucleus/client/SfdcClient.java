@@ -11,8 +11,10 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.QueryResult;
@@ -125,7 +127,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     if (npsp) {
-      ACCOUNT_FIELDS += ", npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c, npo02__FirstCloseDate__c";
+      ACCOUNT_FIELDS += ", npo02__NumberOfClosedOpps__c, npo02__TotalOppAmount__c, npo02__LastCloseDate__c, npo02__LargestAmount__c, npo02__OppsClosedThisYear__c, npo02__OppAmountThisYear__c, npo02__FirstCloseDate__c, npe01__One2OneContact__c";
       CONTACT_FIELDS += ", account.npo02__NumberOfClosedOpps__c, account.npo02__TotalOppAmount__c, account.npo02__FirstCloseDate__c, account.npo02__LastCloseDate__c, account.npo02__LargestAmount__c, account.npo02__OppsClosedThisYear__c, account.npo02__OppAmountThisYear__c, npe01__Home_Address__c, npe01__WorkPhone__c, npe01__PreferredPhone__c, npe01__HomeEmail__c, npe01__WorkEmail__c, npe01__AlternateEmail__c, npe01__Preferred_Email__c, HomePhone";
       DONATION_FIELDS += ", npe03__Recurring_Donation__c";
       RECURRINGDONATION_FIELDS = "id, name, npe03__Recurring_Donation_Campaign__c, npe03__Recurring_Donation_Campaign__r.Name, npe03__Next_Payment_Date__c, npe03__Installment_Period__c, npe03__Amount__c, npe03__Open_Ended_Status__c, npe03__Contact__c, npe03__Contact__r.Id, npe03__Contact__r.Name, npe03__Contact__r.Email, npe03__Contact__r.Phone, npe03__Schedule_Type__c, npe03__Date_Established__c, npe03__Organization__c, npe03__Organization__r.Id, npe03__Organization__r.Name, OwnerId, Owner.Id, Owner.IsActive";
@@ -697,6 +699,32 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         "FROM Contact " +
         "WHERE " + updatedSinceClause +
         "AND Account.npo02__TotalOppAmount__c > 0.0";
+    return query(query);
+  }
+
+  public List<QueryResult> getDonorAccounts(Calendar updatedSince, String... extraFields)
+      throws ConnectionException, InterruptedException {
+    List<QueryResult> queryResults = new ArrayList<>();
+
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
+    queryResults.add(queryDonorAccounts(updatedSinceClause, extraFields));
+
+    return queryResults;
+  }
+
+  protected QueryResult queryDonorAccounts(String updatedSinceClause, String... extraFields) throws ConnectionException, InterruptedException {
+    if (Strings.isNullOrEmpty(updatedSinceClause)) {
+      env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
+      return new QueryResult();
+    }
+    String query = "SELECT " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " " +
+        "FROM Account " +
+        "WHERE " + updatedSinceClause +
+        "AND recordType == " + EnvironmentConfig.AccountType.ORGANIZATION + " " +
+        "AND npo02__TotalOppAmount__c > 0.0";
     return query(query);
   }
 
