@@ -475,6 +475,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             return null;
         }
         return new Address()
+            .addressType(Address.AddressTypeEnum.STREET)
             .addressLine1(crmAddress.street)
             .city(crmAddress.city)
             .region(crmAddress.state)
