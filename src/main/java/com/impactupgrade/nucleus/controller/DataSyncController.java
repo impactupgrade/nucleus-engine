@@ -25,7 +25,7 @@ public class DataSyncController {
 
   @GET
   @Path("/contacts/daily")
-  public Response syncDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
+  public Response syncContactsDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
     Environment env = environmentFactory.init(request);
 
     Calendar lastSync = Calendar.getInstance();
@@ -56,6 +56,48 @@ public class DataSyncController {
 
       } catch (Exception e) {
         env.logJobError("sync contacts failed!", e);
+        env.logJobError(e.getMessage());
+        env.endJobLog(JobStatus.FAILED);
+      }
+    };
+    new Thread(thread).start();
+
+    return Response.ok().build();
+  }
+
+  @GET
+  @Path("/transactions/daily")
+  public Response syncTransactionsDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
+    Environment env = environmentFactory.init(request);
+
+    Calendar lastSync = Calendar.getInstance();
+    // run daily, but setting this high to catch previous misses
+    if (syncDays == null || syncDays <= 0) {
+      syncDays = 3;
+    }
+    lastSync.add(Calendar.DATE, -syncDays);
+
+    Runnable thread = () -> {
+      try {
+        String jobName = "Transactions Sync: Daily";
+        env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
+        boolean success = true;
+
+        for (DataSyncService dataSyncService : env.allDataSyncServices()) {
+          try {
+            dataSyncService.syncTransactions(lastSync);
+            env.logJobInfo("{}: sync transactions done", dataSyncService.name());
+          } catch (Exception e) {
+            env.logJobError("sync transactions failed for {}", dataSyncService.name(), e);
+            env.logJobError(e.getMessage());
+            success = false;
+          }
+        }
+
+        env.endJobLog(success ? JobStatus.DONE : JobStatus.FAILED);
+
+      } catch (Exception e) {
+        env.logJobError("sync transactions failed!", e);
         env.logJobError(e.getMessage());
         env.endJobLog(JobStatus.FAILED);
       }
