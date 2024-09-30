@@ -6,8 +6,10 @@ import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,19 +90,25 @@ public class XeroDataSyncService implements DataSyncService {
 
   private List<CrmContact> getPrimaryContactsForAccounts(List<CrmAccount> crmAccounts) throws Exception {
     Map<String, CrmAccount> contactsToAccountsMap = new HashMap<>();
+    List<CrmContact> fauxContacts = new ArrayList<>();
     crmAccounts.stream()
         .filter(crmAccount -> crmAccount.crmRawObject instanceof SObject)
         .forEach(crmAccount -> {
           String contactId = (String) ((SObject) crmAccount.crmRawObject).getField(CONTACT_ID_CUSTOM_FIELD_NAME);
           if (!Strings.isNullOrEmpty(contactId)) {
             contactsToAccountsMap.put(contactId, crmAccount);
+          } else {
+            // adding faux contact if account does not have primary contact available
+            fauxContacts.add(toFauxContact(crmAccount));
           }
         });
+
     List<String> contactIds = contactsToAccountsMap.keySet().stream().toList();
     List<CrmContact> crmContacts = env.primaryCrmService().getContactsByIds(contactIds);
     crmContacts.forEach(crmContact -> {
       crmContact.account = contactsToAccountsMap.get(crmContact.id);
     });
+    crmContacts.addAll(fauxContacts);
     return crmContacts;
   }
 
@@ -111,5 +119,18 @@ public class XeroDataSyncService implements DataSyncService {
         // Only unique ids
         .filter(contact -> crmContactIds.add(contact.id))
         .toList();
+  }
+
+  private CrmContact toFauxContact(CrmAccount crmAccount) {
+    CrmContact crmContact = new CrmContact();
+    crmContact.id = crmAccount.id;
+    String[] firstLastName = Utils.fullNameToFirstLast(crmAccount.name);
+    crmContact.firstName = firstLastName[0];
+    crmContact.lastName = firstLastName[1];
+    crmContact.mailingAddress = crmAccount.billingAddress;
+    crmContact.crmRawObject = crmAccount.crmRawObject;
+    crmContact.email = crmAccount.email;
+    crmContact.account = crmAccount;
+    return crmContact;
   }
 }
