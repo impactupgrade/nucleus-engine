@@ -719,10 +719,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
       return new QueryResult();
     }
+    Set<String> organizationRecordTypeNames = Set.of("business", "church", "school", "org", "group");
     String query = "SELECT " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " " +
         "FROM Account " +
         "WHERE " + updatedSinceClause +
-        "AND recordType == " + EnvironmentConfig.AccountType.ORGANIZATION + " " +
+        "AND (" + organizationRecordTypeNames.stream()
+          .map(name -> "RecordType.Name like '%" + name + "%'")
+          .collect(Collectors.joining(" OR ")) + ") " +
         "AND npo02__TotalOppAmount__c > 0.0";
     return query(query);
   }
