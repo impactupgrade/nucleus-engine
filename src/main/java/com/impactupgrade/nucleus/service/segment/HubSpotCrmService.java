@@ -1059,6 +1059,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public PagedResults<CrmAccount> getDonorAccounts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
   public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
     Map<String, String> listNameToId = new HashMap<>();
     List<ContactList> listResults = HubSpotClientFactory.v1Client(env).contactList().getAll().getLists();
