@@ -18,6 +18,7 @@ public class AccountingTransaction {
   public String contactId;
   public String crmContactId;
 
+  public String transactionId; // invoice id, bank transaction id, etc.
   public Double amountInDollars;
   public ZonedDateTime date;
   public String description;
