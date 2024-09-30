@@ -460,10 +460,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             // Organization
             //TODO: Three different record types to include: AU ORGANISATION, AU CHURCH, AU SCHOOL?
             contact.setName(crmContact.account.name + " " + accountNumber);
-            ContactPerson primaryContactPerson = new ContactPerson();
-            primaryContactPerson.setFirstName(crmContact.firstName);
-            primaryContactPerson.setLastName(crmContact.lastName);
-            contact.setContactPersons(List.of(primaryContactPerson));
+            if (!Strings.isNullOrEmpty(crmContact.email)) {
+                ContactPerson primaryContactPerson = new ContactPerson();
+                primaryContactPerson.setFirstName(crmContact.firstName);
+                primaryContactPerson.setLastName(crmContact.lastName);
+                primaryContactPerson.setEmailAddress(contact.getEmailAddress());
+                contact.setContactPersons(List.of(primaryContactPerson));
+            }
         }
 
         return contact;
