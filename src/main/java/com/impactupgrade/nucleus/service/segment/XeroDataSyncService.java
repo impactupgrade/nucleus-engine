@@ -1,18 +1,25 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.sforce.soap.partner.sobject.SObject;
 
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class XeroDataSyncService implements DataSyncService {
 
   protected Environment env;
+
+  private static final String CONTACT_ID_CUSTOM_FIELD_NAME = "npe01__One2OneContact__c";
 
   @Override
   public String name() {
@@ -45,6 +52,17 @@ public class XeroDataSyncService implements DataSyncService {
           env.logJobError("{}/syncContacts failed: {}", this.name(), e);
         }
       }
+
+      PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getDonorAccounts(updatedAfter);
+      for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
+        if (resultSet.getRecords().isEmpty()) continue;
+        List<CrmContact> crmContacts = getPrimaryContactsForAccounts(resultSet.getRecords());
+        try {
+          env.accountingPlatformService().get().updateOrCreateContacts(crmContacts);
+        } catch (Exception e) {
+          env.logJobError("{}/syncContacts failed: {}", this.name(), e);
+        }
+      }
     } else {
       env.logJobWarn("Accounting Platform Service is not defined!");
     }
@@ -66,6 +84,24 @@ public class XeroDataSyncService implements DataSyncService {
     } else {
       env.logJobWarn("Accounting Platform Service is not defined!");
     }
+  }
+
+  private List<CrmContact> getPrimaryContactsForAccounts(List<CrmAccount> crmAccounts) throws Exception {
+    Map<String, CrmAccount> contactsToAccountsMap = new HashMap<>();
+    crmAccounts.stream()
+        .filter(crmAccount -> crmAccount.crmRawObject instanceof SObject)
+        .forEach(crmAccount -> {
+          String contactId = (String) ((SObject) crmAccount.crmRawObject).getField(CONTACT_ID_CUSTOM_FIELD_NAME);
+          if (!Strings.isNullOrEmpty(contactId)) {
+            contactsToAccountsMap.put(contactId, crmAccount);
+          }
+        });
+    List<String> contactIds = contactsToAccountsMap.keySet().stream().toList();
+    List<CrmContact> crmContacts = env.primaryCrmService().getContactsByIds(contactIds);
+    crmContacts.forEach(crmContact -> {
+      crmContact.account = contactsToAccountsMap.get(crmContact.id);
+    });
+    return crmContacts;
   }
 
   private List<CrmContact> getCrmContacts(List<CrmDonation> crmDonations) {

@@ -180,6 +180,11 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
+  public PagedResults<CrmAccount> getDonorAccounts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
   public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
     return null;
   }

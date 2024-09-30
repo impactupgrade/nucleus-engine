@@ -546,6 +546,11 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public PagedResults<CrmAccount> getDonorAccounts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
   public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
     return null;
