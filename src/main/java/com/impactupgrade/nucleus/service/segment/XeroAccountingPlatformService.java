@@ -48,6 +48,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService {
@@ -178,7 +179,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         Contacts contacts = new Contacts();
         contacts.setContacts(crmContacts.stream().map(this::toContact).toList());
         try {
-            Contacts upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
+            Contacts upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS));
             int index = 0;
             List<Contact> contactsToRetry = new ArrayList<>();
             List<String> processedIds = new ArrayList<>();
@@ -190,7 +191,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     if (upserted.getValidationErrors().stream()
                         .anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
 
-                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber(), true, RATE_LIMIT_MAX_RETRIES);
+                        Optional<Contact> existingContact = callWithRetries(() -> getContactForAccountNumber(contact.getAccountNumber(), true));
                         if (existingContact.isPresent()) {
                             contact.setContactID(existingContact.get().getContactID());
                             contactsToRetry.add(contact);
@@ -214,7 +215,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
             if (!contactsToRetry.isEmpty()) {
                 contacts.setContacts(contactsToRetry);
-                upsertedContacts = xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS);
+                upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS));
                 processedIds.addAll(upsertedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList());
             }
             return processedIds;
@@ -255,18 +256,22 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return getContact("AccountNumber=\"" + accountNumber + "\"", includeArchived);
     }
 
-    public Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived, int maxRetries) throws Exception {
+    private <T> T callWithRetries(Callable<T> callable) throws Exception {
+        return callWithRetries(callable, RATE_LIMIT_MAX_RETRIES);
+    }
+
+    private <T> T callWithRetries(Callable<T> callable, int maxRetries) throws Exception {
         for (int i = 0; i <= maxRetries; i++) {
             try {
-                return getContactForAccountNumber(accountNumber, includeArchived);
+                return callable.call();
             } catch (XeroMinuteRateLimitException e) {
                 env.logJobWarn("API rate limit exceeded. Trying again after " + RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS + " seconds...");
                 Thread.sleep(RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS * 1000);
             }
         }
         // Should be unreachable
-        env.logJobWarn("Failed to find Contact after {} tries!", maxRetries);
-        return Optional.empty();
+        env.logJobWarn("Failed to get API response after {} tries!", maxRetries);
+        return null;
     }
 
     @Override
@@ -298,7 +303,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         for (CrmDonation crmDonation: crmDonations) {
             CrmContact crmContact = contactMap.get(crmDonation.contact.id);
             // only donations for existing contacts (!)
-            getContact(crmContact).ifPresent(accountingContact -> {
+            callWithRetries(() -> getContact(crmContact)).ifPresent(accountingContact -> {
                 AccountingTransaction accountingTransaction = toAccountingTransaction(accountingContact.contactId, accountingContact.crmContactId, crmDonation);
                 // fill invoice ids, where available
                 Invoice existingInvoice = invoicesByReference.get(getReference(accountingTransaction));
@@ -310,7 +315,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
         Invoices invoices = new Invoices();
         invoices.setInvoices(accountingTransactions.stream().map(this::toInvoice).toList());
-        Invoices createdInvoices = xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
+        Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP));
         return createdInvoices.getInvoices().stream().map(invoice -> invoice.getInvoiceID().toString()).toList();
     }
 
