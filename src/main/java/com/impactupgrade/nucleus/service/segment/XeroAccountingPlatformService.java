@@ -159,7 +159,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public Optional<AccountingContact> getContact(CrmContact crmContact) throws Exception {
-        Optional<Contact> contact = getContactForAccountNumber(getAccountNumber(crmContact));
+        Optional<Contact> contact = getContactForAccountNumber(getAccountNumber(crmContact), true);
         return contact
             .map(c -> new AccountingContact(c.getContactID().toString(), crmContact.id))
             .or(Optional::empty);
@@ -186,7 +186,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     if (upserted.getValidationErrors().stream()
                         .anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
 
-                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber());
+                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber(), true);
                         if (existingContact.isPresent()) {
                             contact.setContactID(existingContact.get().getContactID());
                             contactsToRetry.add(contact);
@@ -217,6 +217,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     protected Optional<Contact> getContact(String where) throws Exception {
+        return getContact(where, false);
+    }
+
+    protected Optional<Contact> getContact(String where, boolean includeArchived) throws Exception {
         Contacts contacts = xeroApi.getContacts(getAccessToken(), xeroTenantId,
 //            OffsetDateTime ifModifiedSince,
             null,
@@ -228,20 +232,19 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             null,
 //            Integer page,
             null,
-//            Boolean includeArchived,
-            null,
+            includeArchived,
 //            Boolean summaryOnly
             true
         );
         return contacts.getContacts().stream().findFirst();
     }
 
-    public Optional<Contact> getContactForName(String name) throws Exception {
-        return getContact("Name=\"" + name + "\"");
+    public Optional<Contact> getContactForName(String name, boolean includeArchived) throws Exception {
+        return getContact("Name=\"" + name + "\"", includeArchived);
     }
 
-    public Optional<Contact> getContactForAccountNumber(String accountNumber) throws Exception {
-        return getContact("AccountNumber=\"" + accountNumber + "\"");
+    public Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived) throws Exception {
+        return getContact("AccountNumber=\"" + accountNumber + "\"", includeArchived);
     }
 
     @Override
