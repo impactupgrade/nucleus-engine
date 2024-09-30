@@ -758,6 +758,11 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
+  @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return toCrmDonation(sfdcClient.getDonationsUpdatedAfter(updatedAfter));
+  }
+
   protected void setDonationDepositFields(SObject existingOpportunity, SObject opportunityUpdate,
       CrmDonation crmDonation) throws InterruptedException {
     // If the payment gateway event has a refund ID, this item in the payout was a refund. Mark it as such!
@@ -1039,6 +1044,12 @@ public class SfdcCrmService implements CrmService {
   public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
     List<QueryResult> queryResults = sfdcClient.getSmsContacts(updatedSince, communicationList.crmFilter);
+    return toCrmContactPages(queryResults);
+  }
+
+  @Override
+  public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
+    List<QueryResult> queryResults = sfdcClient.getDonorContacts(updatedSince);
     return toCrmContactPages(queryResults);
   }
 

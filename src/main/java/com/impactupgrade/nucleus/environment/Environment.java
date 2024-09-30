@@ -32,6 +32,7 @@ import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.service.segment.BareCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
+import com.impactupgrade.nucleus.service.segment.DataSyncService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -200,6 +201,14 @@ public class Environment {
 
   public CommunicationService communicationService(String name) {
     return segmentService(name, CommunicationService.class);
+  }
+
+  public DataSyncService dataSyncService(String name) {
+    return segmentService(name, DataSyncService.class);
+  }
+
+  public List<DataSyncService> allDataSyncServices() {
+    return segmentServices(DataSyncService.class);
   }
 
   public Optional<AccountingPlatformService> accountingPlatformService() {

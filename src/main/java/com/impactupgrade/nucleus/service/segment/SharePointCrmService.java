@@ -354,6 +354,11 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
+    public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+        return List.of();
+    }
+
+    @Override
     public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
         return null;
     }
@@ -410,6 +415,11 @@ public class SharePointCrmService implements CrmService {
 
     @Override
     public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+        return new PagedResults<>();
+    }
+
+    @Override
+    public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
         return new PagedResults<>();
     }
 

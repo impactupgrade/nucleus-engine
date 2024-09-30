@@ -25,6 +25,7 @@ public class AccountingTransaction {
   public String paymentGatewayName;
   public String paymentGatewayTransactionId;
   public Boolean recurring;
+  public Object crmRawObject;
 
   public AccountingTransaction(
       String contactId,
@@ -35,7 +36,8 @@ public class AccountingTransaction {
       EnvironmentConfig.TransactionType transactionType,
       String paymentGatewayName,
       String paymentGatewayTransactionId,
-      Boolean recurring
+      Boolean recurring,
+      Object crmRawObject
   ) {
     this.contactId = contactId;
     this.crmContactId = crmContactId;
@@ -47,5 +49,6 @@ public class AccountingTransaction {
     this.paymentGatewayName = paymentGatewayName;
     this.paymentGatewayTransactionId = paymentGatewayTransactionId;
     this.recurring = recurring;
+    this.crmRawObject = crmRawObject;
   }
 }

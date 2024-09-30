@@ -380,6 +380,11 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
+  public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
   public double getDonationsTotal(String filter) throws Exception {
     throw new RuntimeException("not implemented");
   }
@@ -490,6 +495,11 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
     // currently no deposit management
+  }
+
+  @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
   }
 
   @Override

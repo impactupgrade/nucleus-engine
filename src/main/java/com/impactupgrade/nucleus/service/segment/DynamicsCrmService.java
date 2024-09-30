@@ -113,6 +113,11 @@ public class DynamicsCrmService implements BasicCrmService {
     //TODO: howto?
   }
 
+  @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
+  }
+
   private CrmDonation toCrmDonation(DynamicsCrmClient.Opportunity opportunity) {
     if (opportunity == null) {
       return null;
@@ -166,6 +171,11 @@ public class DynamicsCrmService implements BasicCrmService {
 
   @Override
   public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
+  public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
     return new PagedResults<>();
   }
 

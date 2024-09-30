@@ -101,6 +101,11 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
+    public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+        return List.of();
+    }
+
+    @Override
     public PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception {
         return null;
     }
@@ -132,6 +137,11 @@ public class GoogleSheetCrmService implements BasicCrmService {
 
     @Override
     public PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
+        return new PagedResults<>();
+    }
+
+    @Override
+    public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
         return new PagedResults<>();
     }
 

@@ -122,6 +122,7 @@ public interface CrmService extends SegmentService {
   void updateDonation(CrmDonation crmDonation) throws Exception;
   void refundDonation(CrmDonation crmDonation) throws Exception;
   void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception;
+  List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception;
 
   // Some CRMs do not have full-blown notions of RDs, so no RD ID. Searching by the payment gateway's
   // subscription is at times the only option.
@@ -189,6 +190,8 @@ public interface CrmService extends SegmentService {
   PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
+  PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception;
+
   // Map<Contact Id, List<Campaign Name>>
   // We pass the whole list of contacts that we're about to sync to this all at once, then let the implementations
   // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.

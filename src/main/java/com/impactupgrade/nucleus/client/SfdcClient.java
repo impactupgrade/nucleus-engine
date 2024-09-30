@@ -611,6 +611,31 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return query(query);
   }
 
+  public List<QueryResult> getDonorContacts(Calendar updatedSince, String... extraFields)
+      throws ConnectionException, InterruptedException {
+    List<QueryResult> queryResults = new ArrayList<>();
+
+    String updatedSinceClause = "";
+    if (updatedSince != null) {
+      updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    }
+    queryResults.add(queryDonorContacts(updatedSinceClause, extraFields));
+
+    return queryResults;
+  }
+
+  protected QueryResult queryDonorContacts(String updatedSinceClause, String... extraFields) throws ConnectionException, InterruptedException {
+    if (Strings.isNullOrEmpty(updatedSinceClause)) {
+      env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
+      return new QueryResult();
+    }
+    String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) + " " +
+        "FROM Contact " +
+        "WHERE " + updatedSinceClause +
+        "AND Account.npo02__TotalOppAmount__c > 0.0";
+    return query(query);
+  }
+
   public List<SObject> searchContacts(ContactSearch contactSearch, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<String> clauses = new ArrayList<>();
@@ -786,6 +811,13 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public List<SObject> getDonationsByAccountId(String accountId, String... extraFields) throws ConnectionException, InterruptedException {
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where accountid = '" + accountId + "' AND StageName != 'Pledged' ORDER BY CloseDate DESC";
+    return queryListAutoPaged(query);
+  }
+
+  public List<SObject> getDonationsUpdatedAfter(Calendar updatedSince, String... extraFields) throws ConnectionException, InterruptedException {
+    String updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) + " from Opportunity " +
+        "where " + updatedSinceClause + " AND stageName = 'Closed Won' ORDER BY CloseDate DESC ";
     return queryListAutoPaged(query);
   }
 

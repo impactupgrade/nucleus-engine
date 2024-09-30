@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,7 +40,7 @@ public class AccountingServiceTest {
   @Mock
   private AccountingPlatformService accountingPlatformService;
   @Captor
-  ArgumentCaptor<CrmContact> contactCaptor;
+  ArgumentCaptor<List<CrmContact>> contactsCaptor;
 
   @InjectMocks
   private AccountingService unit;
@@ -90,8 +91,8 @@ public class AccountingServiceTest {
 
     unit.processTransaction(crmDonation);
 
-    verify(accountingPlatformService).updateOrCreateContact(contactCaptor.capture());
-    assertEquals(contactCaptor.getValue(), crmContact);
+    verify(accountingPlatformService).updateOrCreateContacts(contactsCaptor.capture());
+    assertEquals(contactsCaptor.getValue().get(0), crmContact);
   }
 
   @Test
@@ -100,8 +101,8 @@ public class AccountingServiceTest {
 
     unit.processTransaction(crmDonation);
 
-    verify(accountingPlatformService).updateOrCreateContact(contactCaptor.capture());
-    assertEquals(contactCaptor.getValue(), crmContact);
+    verify(accountingPlatformService).updateOrCreateContacts(contactsCaptor.capture());
+    assertEquals(contactsCaptor.getValue().get(0), crmContact);
   }
 
   @Test
@@ -110,8 +111,9 @@ public class AccountingServiceTest {
 
     unit.processTransaction(crmDonation);
 
-    verify(accountingPlatformService).updateOrCreateContact(contactCaptor.capture());
-    CrmContact contact = contactCaptor.getValue();
+    verify(accountingPlatformService).updateOrCreateContacts(contactsCaptor.capture());
+    List<CrmContact> contacts = contactsCaptor.getValue();
+    CrmContact contact = contacts.get(0);
     assertNotNull(contact);
     assertEquals(contact.firstName, crmAccount.name.split("\\s")[0]);
     assertEquals(contact.lastName, crmAccount.name.split("\\s")[1]);
