@@ -119,7 +119,6 @@ public class PaypalController {
         //env.donationService().createDonation(paymentGatewayEvent);
         env.logJobInfo("Donation created for '" + eventType + "' event.");
         env.logJobInfo("Processing transaction for '" + eventType + "' event...");
-        //env.accountingService().processTransaction(paymentGatewayEvent);
         env.logJobInfo("Transaction processed for '" + eventType + "' event.");
       }
       case "PAYMENT.CAPTURE.DECLINED" -> {
@@ -170,7 +169,6 @@ public class PaypalController {
         //env.donationService().createDonation(paymentGatewayEvent);
         env.logJobInfo("Donation created for '" + eventType + "' event.");
         env.logJobInfo("Processing transaction for '" + eventType + "' event...");
-        //env.accountingService().processTransaction(paymentGatewayEvent);
         env.logJobInfo("Transaction processed for '" + eventType + "' event.");
       }
       case "BILLING.SUBSCRIPTION.CANCELLED" -> {

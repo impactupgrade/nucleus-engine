@@ -17,7 +17,6 @@ import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
-import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ActivityService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
@@ -148,7 +147,6 @@ public class Environment {
   public MessagingService messagingService() { return new MessagingService(this); }
   public NotificationService notificationService() { return new NotificationService(this); }
   public ScheduledJobService scheduledJobService() { return new ScheduledJobService(this); }
-  public AccountingService accountingService() { return new AccountingService(this); }
 
   // segment services
 
