@@ -53,10 +53,9 @@ import java.util.stream.Collectors;
 
 public class XeroAccountingPlatformService implements AccountingPlatformService {
 
+    // TODO: these are custom to DR, move to dr-hub extension
     protected static final String SUPPORTER_ID_FIELD_NAME = "Supporter_ID__c";
-    protected static final String WPG_FIELD_NAME = "WPG__c";
-    protected static final String TAX_DEDUCTIBLE_GIFT_FIELD_NAME = "Tax_Deductible_Gift__c";
-    protected static final String OTHER_INCOME_FIELD_NAME = "Other_Income__c";
+    protected static final String ACCOUNT_ID_FIELD_NAME = "Account_ID__c";
     // If false return 200 OK and mix of successfully created objects and any with validation errors
     protected static final Boolean SUMMARIZE_ERRORS = Boolean.FALSE;
     // e.g. unitdp=4 – (Unit Decimal Places) You can opt in to use four decimal places for unit amounts
@@ -208,7 +207,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 } else {
                     processedIds.add(upserted.getContactID().toString());
 
-                    env.logJobInfo("inserting " + upserted.getName() + " " + upserted.getEmailAddress() + " " + upserted.getContactID());
+                    env.logJobInfo("upserting " + upserted.getName() + " " + upserted.getEmailAddress() + " " + upserted.getContactID());
                 }
                 index++;
             }
@@ -472,11 +471,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return contact;
     }
 
+    // TODO: move to dr-hub, shouldn't be SFDC specific
     protected String getAccountNumber(CrmContact crmContact) {
         String supporterId = crmContact.crmRawObject instanceof SObject sObject ?
             (String) sObject.getField(SUPPORTER_ID_FIELD_NAME) : null;
+        String accountId = crmContact.account.crmRawObject instanceof SObject sObject ?
+            (String) sObject.getField(ACCOUNT_ID_FIELD_NAME) : null;
         return crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD ?
-            supporterId : crmContact.account.id;
+            supporterId : accountId;
     }
 
     protected Address toAddress(CrmAddress crmAddress) {
