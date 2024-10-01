@@ -45,7 +45,7 @@ public class XeroDataSyncService implements DataSyncService {
   @Override
   public void syncContacts(Calendar updatedAfter) throws Exception {
     if (env.accountingPlatformService().isPresent()) {
-      PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorContacts(updatedAfter);
+      PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorIndividualContacts(updatedAfter);
       for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
         if (resultSet.getRecords().isEmpty()) continue;
         try {
@@ -55,7 +55,7 @@ public class XeroDataSyncService implements DataSyncService {
         }
       }
 
-      PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getDonorAccounts(updatedAfter);
+      PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getDonorOrganizationAccounts(updatedAfter);
       for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
         if (resultSet.getRecords().isEmpty()) continue;
         List<CrmContact> crmContacts = getPrimaryContactsForAccounts(resultSet.getRecords());

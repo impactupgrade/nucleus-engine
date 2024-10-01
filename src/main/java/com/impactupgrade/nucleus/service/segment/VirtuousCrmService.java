@@ -541,12 +541,12 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
+  public PagedResults<CrmContact> getDonorIndividualContacts(Calendar updatedSince) throws Exception {
     return new PagedResults<>();
   }
 
   @Override
-  public PagedResults<CrmAccount> getDonorAccounts(Calendar updatedSince) throws Exception {
+  public PagedResults<CrmAccount> getDonorOrganizationAccounts(Calendar updatedSince) throws Exception {
     return new PagedResults<>();
   }
 
