@@ -11,7 +11,6 @@ import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.dao.HibernateUtil;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
@@ -32,7 +31,6 @@ public abstract class AbstractMockTest {
   protected static final ObjectMapper MAPPER = new ObjectMapper();
 
   // TODO: Do these need reset after each test method, or does Mockito/Junit do that automatically?
-  @Mock protected AccountingService accountingServiceMock;
   @Mock protected ContactService contactServiceMock;
   @Mock protected DonationService donationServiceMock;
   @Mock protected CrmService crmServiceMock;
@@ -56,11 +54,6 @@ public abstract class AbstractMockTest {
     @Override
     public CrmService primaryCrmService() {
       return crmServiceMock;
-    }
-
-    @Override
-    public AccountingService accountingService() {
-      return accountingServiceMock;
     }
 
     @Override

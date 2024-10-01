@@ -44,7 +44,6 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -122,55 +121,11 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public Optional<AccountingTransaction> getTransaction(CrmDonation crmDonation) throws Exception {
-        Invoices invoicesResponse = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
-                // OffsetDateTime ifModifiedSince
-                null,
-                //String where,
-                "Reference==\"" + getReference(crmDonation) + "\"",
-                // String order,
-                null,
-                // List<UUID> ids,
-                null,
-                //List<String> invoiceNumbers,
-                null,
-                //List<UUID> contactIDs,
-                null,
-                //List<String> statuses,
-                List.of(
-                        Invoice.StatusEnum.DRAFT.name(),
-                        Invoice.StatusEnum.SUBMITTED.name(),
-                        Invoice.StatusEnum.AUTHORISED.name(),
-                        Invoice.StatusEnum.PAID.name()
-                ),
-                //Integer page,
-                null,
-                //Boolean includeArchived,
-                false,
-                //Boolean createdByMyApp,
-                null,
-                // Integer unitdp
-                null,
-                // Boolean summaryOnly
-                false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
-        );
-        if (!invoicesResponse.getInvoices().isEmpty()) {
-            return Optional.of(toAccountingTransaction(invoicesResponse.getInvoices().get(0)));
-        } else {
-            return Optional.empty();
-        }
-    }
-
-    @Override
     public Optional<AccountingContact> getContact(CrmContact crmContact) throws Exception {
         Optional<Contact> contact = getContactForAccountNumber(getAccountNumber(crmContact), true);
         return contact
             .map(c -> new AccountingContact(c.getContactID().toString(), crmContact.id))
             .or(Optional::empty);
-    }
-
-    protected String getReference(CrmDonation crmDonation) {
-        return (crmDonation.gatewayName + ":" + crmDonation.transactionId);
     }
 
     @Override
@@ -224,10 +179,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
     }
 
-    protected Optional<Contact> getContact(String where) throws Exception {
-        return getContact(where, false);
-    }
-
     protected Optional<Contact> getContact(String where, boolean includeArchived) throws Exception {
         Contacts contacts = xeroApi.getContacts(getAccessToken(), xeroTenantId,
 //            OffsetDateTime ifModifiedSince,
@@ -245,10 +196,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             true
         );
         return contacts.getContacts().stream().findFirst();
-    }
-
-    public Optional<Contact> getContactForName(String name, boolean includeArchived) throws Exception {
-        return getContact("Name=\"" + name + "\"", includeArchived);
     }
 
     public Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived) throws Exception {
@@ -271,19 +218,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         // Should be unreachable
         env.logJobWarn("Failed to get API response after {} tries!", maxRetries);
         return null;
-    }
-
-    @Override
-    public String createTransaction(AccountingTransaction accountingTransaction) throws Exception {
-        Invoices invoices = new Invoices();
-        invoices.setInvoices(List.of(toInvoice(accountingTransaction)));
-        try {
-            Invoices createdInvoices = xeroApi.createInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP);
-            return createdInvoices.getInvoices().stream().findFirst().get().getInvoiceID().toString();
-        } catch (Exception e) {
-            env.logJobError("Failed to create invoices! {}", e);
-            throw e;
-        }
     }
 
     @Override
@@ -547,26 +481,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return accountingTransaction.paymentGatewayName + ":" + accountingTransaction.paymentGatewayTransactionId;
     }
 
-    protected String getCustomDonationField(AccountingTransaction accountingTransaction, String fieldName) {
-        return accountingTransaction.crmRawObject instanceof SObject sObject ?
-            (String) sObject.getField(fieldName) : null;
-    }
-
-    protected AccountingTransaction toAccountingTransaction(Invoice invoice) {
-        return new AccountingTransaction(
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            getPaymentGatewayTransactionId(invoice),
-            null,
-            null
-        );
-    }
-
     protected AccountingTransaction toAccountingTransaction(String accountingContactId, String crmContactId, CrmDonation crmDonation) {
         return new AccountingTransaction(
             accountingContactId,
@@ -579,11 +493,5 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             crmDonation.transactionId,
             crmDonation.isRecurring(),
             crmDonation.crmRawObject);
-    }
-
-    protected String getPaymentGatewayTransactionId(Invoice invoice) {
-        // references are, ex, Stripe:ch______
-        String reference = invoice.getReference().toLowerCase(Locale.ROOT);
-        return reference.startsWith("stripe:") ? reference.replace("stripe:", "") : null;
     }
 }
