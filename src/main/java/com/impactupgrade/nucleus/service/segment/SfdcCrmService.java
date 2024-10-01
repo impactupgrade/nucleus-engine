@@ -1078,13 +1078,13 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public PagedResults<CrmContact> getDonorContacts(Calendar updatedSince) throws Exception {
-    List<QueryResult> queryResults = sfdcClient.getDonorContacts(updatedSince);
+    List<QueryResult> queryResults = sfdcClient.getDonorIndividualContacts(updatedSince);
     return toCrmContactPages(queryResults);
   }
 
   @Override
   public PagedResults<CrmAccount> getDonorAccounts(Calendar updatedSince) throws Exception {
-    List<QueryResult> queryResults = sfdcClient.getDonorAccounts(updatedSince);
+    List<QueryResult> queryResults = sfdcClient.getDonorOrganizationAccounts(updatedSince);
     return toCrmAccountPages(queryResults);
   }
 
