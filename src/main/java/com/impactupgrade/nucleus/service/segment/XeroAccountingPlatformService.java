@@ -19,8 +19,6 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.AccountingContact;
-import com.impactupgrade.nucleus.model.AccountingTransaction;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -46,7 +44,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -118,14 +115,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 query.setParameter("apiKey", env.getConfig().apiKey);
             }
         ).get();
-    }
-
-    @Override
-    public Optional<AccountingContact> getContact(CrmContact crmContact) throws Exception {
-        Optional<Contact> contact = getContactForAccountNumber(getAccountNumber(crmContact), true);
-        return contact
-            .map(c -> new AccountingContact(c.getContactID().toString(), crmContact.id))
-            .or(Optional::empty);
     }
 
     @Override
@@ -227,28 +216,36 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         ZonedDateTime minDate = Collections.min(donationDates);
         List<Invoice> existingInvoices = getInvoices(minDate);
         Map<String, Invoice> invoicesByReference = existingInvoices.stream()
-            .collect(Collectors.toMap(invoice -> invoice.getReference(), invoice -> invoice));
+            .collect(Collectors.toMap(Invoice::getReference, invoice -> invoice));
 
         Map<String, CrmContact> contactMap = crmContacts.stream()
             .collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
 
-        List<AccountingTransaction> accountingTransactions = new ArrayList<>();
+        List<Invoice> invoices = new ArrayList<>();
         for (CrmDonation crmDonation: crmDonations) {
             CrmContact crmContact = contactMap.get(crmDonation.contact.id);
-            // only donations for existing contacts (!)
-            callWithRetries(() -> getContact(crmContact)).ifPresent(accountingContact -> {
-                AccountingTransaction accountingTransaction = toAccountingTransaction(accountingContact.contactId, accountingContact.crmContactId, crmDonation);
-                // fill invoice ids, where available
-                Invoice existingInvoice = invoicesByReference.get(getReference(accountingTransaction));
-                String invoiceId = existingInvoice != null ? existingInvoice.getInvoiceID().toString() : null;
-                accountingTransaction.transactionId = invoiceId;
-                accountingTransactions.add(accountingTransaction);
-            });
+            if (crmContact != null) {
+                Invoice invoice = toInvoice(crmDonation, crmContact);
+
+                Invoice existingInvoice = invoicesByReference.get(getReference(crmDonation));
+                if (existingInvoice != null) {
+                    // TODO: For now, avoiding updates of invoices, instead opting to skip them.
+                    //  Concerned about update something that's already been reconciled.
+//                    invoice.setInvoiceID(existingInvoice.getInvoiceID());
+
+                    env.logJobInfo("skipping donation {}; found existing invoice {} {}", crmDonation.id, existingInvoice.getReference(), existingInvoice.getInvoiceID());
+                    continue;
+                }
+
+                invoices.add(invoice);
+            } else {
+                env.logJobWarn("skipping donation {}; unable to find contact {}", crmDonation.id, crmDonation.contact.id);
+            }
         }
 
-        Invoices invoices = new Invoices();
-        invoices.setInvoices(accountingTransactions.stream().map(this::toInvoice).toList());
-        Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoices, SUMMARIZE_ERRORS, UNITDP));
+        Invoices invoicesPost = new Invoices();
+        invoicesPost.setInvoices(invoices);
+        Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
         return createdInvoices.getInvoices().stream().map(invoice -> invoice.getInvoiceID().toString()).toList();
     }
 
@@ -428,46 +425,42 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             .country(crmAddress.country);
     }
 
-    protected Invoice toInvoice(AccountingTransaction transaction) {
+    protected Invoice toInvoice(CrmDonation crmDonation, CrmContact crmContact) {
         Invoice invoice = new Invoice();
-        if (!Strings.isNullOrEmpty(transaction.transactionId)) {
-            invoice.setInvoiceID(UUID.fromString(transaction.transactionId));
-        }
 
-        ZonedDateTime transactionDate = transaction.date;
         org.threeten.bp.ZonedDateTime threetenTransactionDate = org.threeten.bp.ZonedDateTime.ofInstant(
-            org.threeten.bp.Instant.ofEpochSecond(transactionDate.toEpochSecond()),
-            org.threeten.bp.ZoneId.of(transactionDate.getZone().getId())
+            org.threeten.bp.Instant.ofEpochSecond(crmDonation.closeDate.toEpochSecond()),
+            org.threeten.bp.ZoneId.of(crmDonation.closeDate.getZone().getId())
         );
         org.threeten.bp.LocalDate threetenLocalDate = threetenTransactionDate.toLocalDate();
         invoice.setDate(threetenLocalDate);
         invoice.setDueDate(threetenLocalDate);
         Contact contact = new Contact();
-        contact.setContactID(UUID.fromString(transaction.contactId));
+        contact.setAccountNumber(getAccountNumber(crmContact));
         invoice.setContact(contact);
 
-        invoice.setLineItems(getLineItems(transaction));
+        invoice.setLineItems(getLineItems(crmDonation));
         invoice.setType(Invoice.TypeEnum.ACCREC); // Receive
 
-        invoice.setReference(getReference(transaction));
+        invoice.setReference(getReference(crmDonation));
         invoice.setStatus(Invoice.StatusEnum.AUTHORISED);
 
         return invoice;
     }
 
-    protected List<LineItem> getLineItems(AccountingTransaction accountingTransaction) {
+    protected List<LineItem> getLineItems(CrmDonation crmDonation) {
         LineItem lineItem = new LineItem();
-        lineItem.setDescription(accountingTransaction.description);
+        lineItem.setDescription(crmDonation.description);
         lineItem.setQuantity(1.0);
-        lineItem.setUnitAmount(accountingTransaction.amountInDollars);
+        lineItem.setUnitAmount(crmDonation.amount);
         // TODO: DR TEST (https://developer.xero.com/documentation/api/accounting/types/#tax-rates -- country specific)
         lineItem.setTaxType("EXEMPTOUTPUT");
 
         // TODO: DR TEST -- need to be able to override with code
-        if (accountingTransaction.transactionType == EnvironmentConfig.TransactionType.TICKET) {
+        if (crmDonation.transactionType == EnvironmentConfig.TransactionType.TICKET) {
             lineItem.setAccountCode("160");
             lineItem.setItemCode("EI");
-        } else if (accountingTransaction.recurring) {
+        } else if (crmDonation.isRecurring()) {
             lineItem.setAccountCode("122");
             lineItem.setItemCode("Partner");
         } else {
@@ -477,21 +470,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return Collections.singletonList(lineItem);
     }
 
-    protected String getReference(AccountingTransaction accountingTransaction) {
-        return accountingTransaction.paymentGatewayName + ":" + accountingTransaction.paymentGatewayTransactionId;
-    }
-
-    protected AccountingTransaction toAccountingTransaction(String accountingContactId, String crmContactId, CrmDonation crmDonation) {
-        return new AccountingTransaction(
-            accountingContactId,
-            crmContactId,
-            crmDonation.amount,
-            crmDonation.closeDate,
-            crmDonation.description,
-            crmDonation.transactionType,
-            crmDonation.gatewayName,
-            crmDonation.transactionId,
-            crmDonation.isRecurring(),
-            crmDonation.crmRawObject);
+    protected String getReference(CrmDonation crmDonation) {
+        return crmDonation.gatewayName + ":" + crmDonation.transactionId;
     }
 }

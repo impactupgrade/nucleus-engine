@@ -29,7 +29,7 @@ public class StripeDataSyncService implements DataSyncService {
 
   @Override
   public void syncContacts(Calendar updatedAfter) throws Exception {
-    PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorContacts(updatedAfter);
+    PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorIndividualContacts(updatedAfter);
     for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
       //TODO: bulk update?
       for (CrmContact crmContact : resultSet.getRecords()) {
