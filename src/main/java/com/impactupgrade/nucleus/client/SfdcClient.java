@@ -11,7 +11,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.util.HttpClient;
@@ -676,7 +675,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return query(query);
   }
 
-  public List<QueryResult> getDonorContacts(Calendar updatedSince, String... extraFields)
+  public List<QueryResult> getDonorIndividualContacts(Calendar updatedSince, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<QueryResult> queryResults = new ArrayList<>();
 
@@ -684,24 +683,28 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    queryResults.add(queryDonorContacts(updatedSinceClause, extraFields));
+    queryResults.add(queryDonorIndividualContacts(updatedSinceClause, extraFields));
 
     return queryResults;
   }
 
-  protected QueryResult queryDonorContacts(String updatedSinceClause, String... extraFields) throws ConnectionException, InterruptedException {
+  protected QueryResult queryDonorIndividualContacts(String updatedSinceClause, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(updatedSinceClause)) {
       env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
       return new QueryResult();
     }
+    Set<String> organizationRecordTypeNames = Set.of("business", "church", "school", "org", "group");
     String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) + " " +
         "FROM Contact " +
         "WHERE " + updatedSinceClause +
+        "AND (" + organizationRecordTypeNames.stream()
+          .map(name -> "RecordType.Name NOT LIKE '%" + name + "%'")
+          .collect(Collectors.joining(" AND ")) + ") " +
         "AND Account.npo02__TotalOppAmount__c > 0.0";
     return query(query);
   }
 
-  public List<QueryResult> getDonorAccounts(Calendar updatedSince, String... extraFields)
+  public List<QueryResult> getDonorOrganizationAccounts(Calendar updatedSince, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<QueryResult> queryResults = new ArrayList<>();
 
@@ -709,12 +712,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     if (updatedSince != null) {
       updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
-    queryResults.add(queryDonorAccounts(updatedSinceClause, extraFields));
+    queryResults.add(queryDonorOrganizationAccounts(updatedSinceClause, extraFields));
 
     return queryResults;
   }
 
-  protected QueryResult queryDonorAccounts(String updatedSinceClause, String... extraFields) throws ConnectionException, InterruptedException {
+  protected QueryResult queryDonorOrganizationAccounts(String updatedSinceClause, String... extraFields) throws ConnectionException, InterruptedException {
     if (Strings.isNullOrEmpty(updatedSinceClause)) {
       env.logJobWarn("no filter provided; out of caution, skipping the query to protect API limits");
       return new QueryResult();
@@ -724,7 +727,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         "FROM Account " +
         "WHERE " + updatedSinceClause +
         "AND (" + organizationRecordTypeNames.stream()
-          .map(name -> "RecordType.Name like '%" + name + "%'")
+          .map(name -> "RecordType.Name LIKE '%" + name + "%'")
           .collect(Collectors.joining(" OR ")) + ") " +
         "AND npo02__TotalOppAmount__c > 0.0";
     return query(query);
