@@ -64,27 +64,26 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         Set<String> seenEmails = new HashSet<>();
 
         PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
+        PageResultsProcessor<CrmContact> contactPageResultsProcessor = new PageResultsProcessor<>(
+            (contactResultSet) -> syncContacts(contactResultSet, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient),
+            env.primaryCrmService()::queryMoreContacts
+        );
         for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-          PageResultsProcessor<CrmContact> processor = new PageResultsProcessor<>(
-                (contactResultSet) -> syncContacts(contactResultSet, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient),
-                env.primaryCrmService()::queryMoreContacts
-          );
-          processor.process(resultSet);
+          contactPageResultsProcessor.process(resultSet);
         }
 
         PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(lastSync, communicationList);
+        PageResultsProcessor<CrmAccount> accountPageResultsProcessor = new PageResultsProcessor<>(
+            (accountResultSet) -> {
+              PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
+              fauxContacts.getRecords().addAll(accountResultSet.getRecords().stream().map(this::asCrmContact).toList());
+
+              syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient);
+            },
+            env.primaryCrmService()::queryMoreAccounts
+        );
         for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
-          do {
-            PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
-            fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
-            syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient);
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
+          accountPageResultsProcessor.process(resultSet);
         }
 
         if (mailchimpConfig.enableCrmBasedArchival) {
