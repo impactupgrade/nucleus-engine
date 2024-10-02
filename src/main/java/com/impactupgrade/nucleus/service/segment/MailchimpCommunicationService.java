@@ -66,8 +66,8 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
         for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
           PageResultsProcessor<CrmContact> processor = new PageResultsProcessor<>(
-                env.primaryCrmService()::queryMoreContacts,
-                (contactResultSet) -> syncContacts(contactResultSet, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient)
+                (contactResultSet) -> syncContacts(contactResultSet, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient),
+                env.primaryCrmService()::queryMoreContacts
           );
           processor.process(resultSet);
         }

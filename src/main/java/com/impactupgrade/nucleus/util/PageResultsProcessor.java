@@ -7,13 +7,13 @@ import java.util.function.Consumer;
 
 public class PageResultsProcessor<T> {
 
-  private final CheckedFunction<String, PagedResults.ResultSet<T>> getter;
   private final Consumer<PagedResults.ResultSet<T>> consumer;
+  private final CheckedFunction<String, PagedResults.ResultSet<T>> getter;
 
-  public PageResultsProcessor(CheckedFunction<String, PagedResults.ResultSet<T>> getter,
-                              Consumer<PagedResults.ResultSet<T>> consumer) {
-    this.getter = getter;
+  public PageResultsProcessor(Consumer<PagedResults.ResultSet<T>> consumer,
+                              CheckedFunction<String, PagedResults.ResultSet<T>> getter) {
     this.consumer = consumer;
+    this.getter = getter;
   }
 
   public void process(PagedResults.ResultSet<T> resultSet) throws Exception {
