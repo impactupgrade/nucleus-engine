@@ -700,7 +700,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         "AND (" + organizationRecordTypeNames.stream()
           .map(name -> "Account.RecordType.Name NOT LIKE '%" + name + "%'")
           .collect(Collectors.joining(" AND ")) + ") " +
-        "AND Account.npo02__TotalOppAmount__c > 0.0";
+        "AND npo02__TotalOppAmount__c > 0.0";
     return query(query);
   }
 
