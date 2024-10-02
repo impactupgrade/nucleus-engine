@@ -8,16 +8,16 @@ import java.util.function.Consumer;
 public class PageResultsProcessor<T> {
 
   private final CheckedFunction<String, PagedResults.ResultSet<T>> getter;
-  private final Consumer<PagedResults.ResultSet<T>> processor;
+  private final Consumer<PagedResults.ResultSet<T>> consumer;
 
   public PageResultsProcessor(CheckedFunction<String, PagedResults.ResultSet<T>> getter,
-                              Consumer<PagedResults.ResultSet<T>> processor) {
+                              Consumer<PagedResults.ResultSet<T>> consumer) {
     this.getter = getter;
-    this.processor = processor;
+    this.consumer = consumer;
   }
 
   public void process(PagedResults.ResultSet<T> resultSet) throws Exception {
-    processor.accept(resultSet);
+    consumer.accept(resultSet);
     if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
       PagedResults.ResultSet<T> nextResultSet = getter.apply(resultSet.getNextPageToken());
       process(nextResultSet);
