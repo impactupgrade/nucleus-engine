@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.PageResultsProcessor;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
@@ -64,15 +65,11 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
         PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
         for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-          do {
-            syncContacts(resultSet, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient);
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
+          PageResultsProcessor<CrmContact> processor = new PageResultsProcessor<>(
+                env.primaryCrmService()::queryMoreContacts,
+                (contactResultSet) -> syncContacts(contactResultSet, mailchimpConfig, communicationList, listMembers, mcEmails, seenEmails, mailchimpClient)
+          );
+          processor.process(resultSet);
         }
 
         PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(lastSync, communicationList);
