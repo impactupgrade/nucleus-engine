@@ -19,6 +19,7 @@ import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmDonation;
@@ -44,6 +45,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -191,11 +193,11 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return getContact("AccountNumber=\"" + accountNumber + "\"", includeArchived);
     }
 
-    private <T> T callWithRetries(Callable<T> callable) throws Exception {
+    protected <T> T callWithRetries(Callable<T> callable) throws Exception {
         return callWithRetries(callable, RATE_LIMIT_MAX_RETRIES);
     }
 
-    private <T> T callWithRetries(Callable<T> callable, int maxRetries) throws Exception {
+    protected <T> T callWithRetries(Callable<T> callable, int maxRetries) throws Exception {
         for (int i = 0; i <= maxRetries; i++) {
             try {
                 return callable.call();
@@ -210,37 +212,37 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     @Override
-    public List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations, List<CrmContact> crmContacts) throws Exception {
+    public List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations) throws Exception {
         // Get existing invoices for crmDonations by date
         List<ZonedDateTime> donationDates = crmDonations.stream().map(ac -> ac.closeDate).toList();
         ZonedDateTime minDate = Collections.min(donationDates);
         List<Invoice> existingInvoices = getInvoices(minDate);
+        // shouldn't be collisions moving forward, but there are old references like "RD-PayWay"
         Map<String, Invoice> invoicesByReference = existingInvoices.stream()
-            .collect(Collectors.toMap(Invoice::getReference, invoice -> invoice));
-
-        Map<String, CrmContact> contactMap = crmContacts.stream()
-            .collect(Collectors.toMap(crmContact -> crmContact.id, crmContact -> crmContact));
+            .collect(Collectors.toMap(Invoice::getReference, invoice -> invoice, (i1, i2) -> i1));
 
         List<Invoice> invoices = new ArrayList<>();
         for (CrmDonation crmDonation: crmDonations) {
-            CrmContact crmContact = contactMap.get(crmDonation.contact.id);
-            if (crmContact != null) {
-                Invoice invoice = toInvoice(crmDonation, crmContact);
+            Invoice existingInvoice = invoicesByReference.get(getReference(crmDonation));
+            if (existingInvoice != null) {
+                // TODO: For now, avoiding updates of invoices, instead opting to skip them.
+                //  Concerned about update something that's already been reconciled.
+//                  invoice.setInvoiceID(existingInvoice.getInvoiceID());
 
-                Invoice existingInvoice = invoicesByReference.get(getReference(crmDonation));
-                if (existingInvoice != null) {
-                    // TODO: For now, avoiding updates of invoices, instead opting to skip them.
-                    //  Concerned about update something that's already been reconciled.
-//                    invoice.setInvoiceID(existingInvoice.getInvoiceID());
-
-                    env.logJobInfo("skipping donation {}; found existing invoice {} {}", crmDonation.id, existingInvoice.getReference(), existingInvoice.getInvoiceID());
-                    continue;
-                }
-
-                invoices.add(invoice);
-            } else {
-                env.logJobWarn("skipping donation {}; unable to find contact {}", crmDonation.id, crmDonation.contact.id);
+                env.logJobInfo("skipping donation {}; found existing invoice {} {}", crmDonation.id, existingInvoice.getReference(), existingInvoice.getInvoiceID());
+                continue;
             }
+
+            String accountNumber = getAccountNumber(crmDonation.contact, crmDonation.account);
+            // TODO: API rate limit risk
+            Optional<Contact> contact = callWithRetries(() -> getContactForAccountNumber(accountNumber, true));
+            if (contact.isEmpty()) {
+                env.logJobInfo("skipping donation {}; unable to find contact {}", crmDonation.id, accountNumber);
+                continue;
+            }
+            Invoice invoice = toInvoice(crmDonation, contact.get().getContactID());
+
+            invoices.add(invoice);
         }
 
         Invoices invoicesPost = new Invoices();
@@ -254,37 +256,47 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     public List<Invoice> getInvoices(String where) throws Exception {
-        Invoices invoices = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
-            // OffsetDateTime ifModifiedSince
-            null,
-            where,
-            // String order,
-            null,
-            // List<UUID> ids,
-            null,
-            //List<String> invoiceNumbers,
-            null,
-            //List<UUID> contactIDs,
-            null,
-            //List<String> statuses,
-            List.of(
-                Invoice.StatusEnum.DRAFT.name(),
-                Invoice.StatusEnum.SUBMITTED.name(),
-                Invoice.StatusEnum.AUTHORISED.name(),
-                Invoice.StatusEnum.PAID.name()
-            ),
-            //Integer page,
-            null,
-            //Boolean includeArchived,
-            false,
-            //Boolean createdByMyApp,
-            null,
-            // Integer unitdp
-            null,
-            // Boolean summaryOnly
-            false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
-        );
-        return invoices.getInvoices();
+        int page = 1;
+        boolean anotherPage = true;
+        List<Invoice> allInvoices = new ArrayList<>();
+        while (anotherPage) {
+            Invoices invoices = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
+                // OffsetDateTime ifModifiedSince
+                null,
+                where,
+                // String order,
+                null,
+                // List<UUID> ids,
+                null,
+                //List<String> invoiceNumbers,
+                null,
+                //List<UUID> contactIDs,
+                null,
+                //List<String> statuses,
+                List.of(
+                    Invoice.StatusEnum.DRAFT.name(),
+                    Invoice.StatusEnum.SUBMITTED.name(),
+                    Invoice.StatusEnum.AUTHORISED.name(),
+                    Invoice.StatusEnum.PAID.name()
+                ),
+                page,
+                //Boolean includeArchived,
+                false,
+                //Boolean createdByMyApp,
+                null,
+                // Integer unitdp
+                null,
+                // Boolean summaryOnly
+                false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
+            );
+            List<Invoice> pageInvoices = invoices.getInvoices();
+            allInvoices.addAll(pageInvoices);
+            if (pageInvoices.size() < 100) {
+                anotherPage = false;
+            }
+            page++;
+        }
+        return allInvoices;
     }
 
     public List<BankTransaction> getBankTransactions(ZonedDateTime updatedAfter) throws Exception {
@@ -292,11 +304,22 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     public List<BankTransaction> getBankTransactions(String where) throws Exception {
-        BankTransactions bankTransactions = xeroApi.getBankTransactions(getAccessToken(), xeroTenantId, null, where, null, null, null);
-        return bankTransactions.getBankTransactions();
+        int page = 1;
+        boolean anotherPage = true;
+        List<BankTransaction> allTransactions = new ArrayList<>();
+        while (anotherPage) {
+            BankTransactions bankTransactions = xeroApi.getBankTransactions(getAccessToken(), xeroTenantId, null, where, null, page, null);
+            List<BankTransaction> pageBankTransactions = bankTransactions.getBankTransactions();
+            allTransactions.addAll(pageBankTransactions);
+            if (pageBankTransactions.size() < 100) {
+                anotherPage = false;
+            }
+            page++;
+        }
+        return allTransactions;
     }
 
-    private String toUpdatedAfterClause(ZonedDateTime zonedDateTime) {
+    protected String toUpdatedAfterClause(ZonedDateTime zonedDateTime) {
         int year = zonedDateTime.getYear();
         int month = zonedDateTime.getMonthValue();
         int day = zonedDateTime.getDayOfMonth();
@@ -358,7 +381,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     protected Contact toContact(CrmContact crmContact) {
         Contact contact = new Contact();
 
-        String accountNumber = getAccountNumber(crmContact);
+        String accountNumber = getAccountNumber(crmContact, crmContact.account);
         contact.setAccountNumber(accountNumber);
 
         contact.setEmailAddress(crmContact.email);
@@ -403,12 +426,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     // TODO: move to dr-hub, shouldn't be SFDC specific
-    protected String getAccountNumber(CrmContact crmContact) {
+    protected String getAccountNumber(CrmContact crmContact, CrmAccount crmAccount) {
         String supporterId = crmContact.crmRawObject instanceof SObject sObject ?
             (String) sObject.getField(SUPPORTER_ID_FIELD_NAME) : null;
-        String accountId = crmContact.account.crmRawObject instanceof SObject sObject ?
+        String accountId = crmAccount.crmRawObject instanceof SObject sObject ?
             (String) sObject.getField(ACCOUNT_ID_FIELD_NAME) : null;
-        return crmContact.account.recordType == EnvironmentConfig.AccountType.HOUSEHOLD ?
+        return crmAccount.recordType == EnvironmentConfig.AccountType.HOUSEHOLD ?
             supporterId : accountId;
     }
 
@@ -425,7 +448,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             .country(crmAddress.country);
     }
 
-    protected Invoice toInvoice(CrmDonation crmDonation, CrmContact crmContact) {
+    protected Invoice toInvoice(CrmDonation crmDonation, UUID contactId) {
         Invoice invoice = new Invoice();
 
         org.threeten.bp.ZonedDateTime threetenTransactionDate = org.threeten.bp.ZonedDateTime.ofInstant(
@@ -436,7 +459,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         invoice.setDate(threetenLocalDate);
         invoice.setDueDate(threetenLocalDate);
         Contact contact = new Contact();
-        contact.setAccountNumber(getAccountNumber(crmContact));
+        contact.setContactID(contactId);
         invoice.setContact(contact);
 
         invoice.setLineItems(getLineItems(crmDonation));
@@ -471,6 +494,17 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     }
 
     protected String getReference(CrmDonation crmDonation) {
-        return crmDonation.gatewayName + ":" + crmDonation.transactionId;
+        String reference;
+        if (!Strings.isNullOrEmpty(crmDonation.transactionId)) {
+            reference = crmDonation.transactionId;
+        } else {
+            reference = crmDonation.id;
+        }
+
+        if (!Strings.isNullOrEmpty(crmDonation.gatewayName)) {
+            reference = crmDonation.gatewayName + ":" + reference;
+        }
+
+        return reference;
     }
 }

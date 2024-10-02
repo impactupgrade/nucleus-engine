@@ -11,5 +11,5 @@ import java.util.List;
 
 public interface AccountingPlatformService extends SegmentService {
     List<String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception;
-    List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations, List<CrmContact> crmContacts) throws Exception;
+    List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations) throws Exception;
 }

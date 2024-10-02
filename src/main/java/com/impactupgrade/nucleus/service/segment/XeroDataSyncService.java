@@ -12,10 +12,8 @@ import com.sforce.soap.partner.sobject.SObject;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class XeroDataSyncService implements DataSyncService {
 
@@ -77,9 +75,8 @@ public class XeroDataSyncService implements DataSyncService {
       if (crmDonations.isEmpty()) {
         return;
       }
-      List<CrmContact> crmContacts = getCrmContacts(crmDonations);
       try {
-        env.accountingPlatformService().get().updateOrCreateTransactions(crmDonations, crmContacts);
+        env.accountingPlatformService().get().updateOrCreateTransactions(crmDonations);
       } catch (Exception e) {
         env.logJobError("{}/syncTransactions failed: {}", this.name(), e);
       }
@@ -110,15 +107,6 @@ public class XeroDataSyncService implements DataSyncService {
     });
     crmContacts.addAll(fauxContacts);
     return crmContacts;
-  }
-
-  private List<CrmContact> getCrmContacts(List<CrmDonation> crmDonations) {
-    Set<String> crmContactIds = new HashSet<>();
-    return crmDonations.stream()
-        .map(crmDonation -> crmDonation.contact)
-        // Only unique ids
-        .filter(contact -> crmContactIds.add(contact.id))
-        .toList();
   }
 
   private CrmContact toFauxContact(CrmAccount crmAccount) {

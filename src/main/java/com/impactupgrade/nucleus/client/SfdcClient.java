@@ -921,7 +921,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getDonationsUpdatedAfter(Calendar updatedSince, String... extraFields) throws ConnectionException, InterruptedException {
-    String updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    // TODO: not allowing updates for now, so only grab what recently closed
+//    String updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+    String updatedSinceClause = "CloseDate >= " + new SimpleDateFormat("yyyy-MM-dd").format(updatedSince.getTime());
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) + " from Opportunity " +
         "where " + updatedSinceClause + " AND stageName = 'Closed Won' ORDER BY CloseDate DESC ";
     return queryListAutoPaged(query);
