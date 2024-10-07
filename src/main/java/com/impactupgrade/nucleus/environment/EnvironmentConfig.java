@@ -94,6 +94,7 @@ public class EnvironmentConfig implements Serializable {
     public String paymentGatewayDepositFee = "";
     public String paymentGatewayFailureReason = "";
     public String fund = ""; // donation designation
+    public String paymentMetadata = ""; // store all metadata from the triggering event, such as a Stripe charge
 
     public String emailOptIn = "";
     public boolean listFilterOverridesOptIn = false; // do not automatically factor the field into the communication sync's filter
