@@ -532,6 +532,10 @@ public class StripeClient {
     return customer.update(customerParams, requestOptions);
   }
 
+  public Customer updateCustomer(Customer customer, CustomerUpdateParams customerUpdateParams) throws StripeException {
+    return customer.update(customerUpdateParams, requestOptions);
+  }
+
   public ChargeCreateParams.Builder defaultChargeBuilder(Customer customer, PaymentSource source, long amountInCents,
       String currency) {
     return ChargeCreateParams.builder()
