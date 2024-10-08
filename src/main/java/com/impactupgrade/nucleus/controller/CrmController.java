@@ -618,7 +618,7 @@ public class CrmController {
     return Response.status(200).entity(contacts).build();
   }
 
-  private List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
+  protected List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
     String fileExtension = Utils.getFileExtension(fileDisposition.getFileName());
     List<Map<String, String>> data = new ArrayList<>();
 
