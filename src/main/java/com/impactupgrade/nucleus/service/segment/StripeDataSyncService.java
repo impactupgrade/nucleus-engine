@@ -11,6 +11,7 @@ import com.stripe.param.CustomerUpdateParams;
 
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 public class StripeDataSyncService implements DataSyncService {
@@ -63,7 +64,7 @@ public class StripeDataSyncService implements DataSyncService {
       // Update
       CustomerUpdateParams customerUpdateParams = CustomerUpdateParams.builder()
           .setName(crmContact.getFullName())
-          .setEmail(crmContact.email)
+          .setEmail(crmContact.email.toLowerCase(Locale.ROOT))
           .setAddress(toUpdateAddress(crmContact.mailingAddress))
           .build();
       return env.stripeClient().updateCustomer(existingCustomer.get(), customerUpdateParams);
@@ -71,7 +72,7 @@ public class StripeDataSyncService implements DataSyncService {
       // Create
       CustomerCreateParams.Builder customerCreateParamsBuilder = CustomerCreateParams.builder()
           .setName(crmContact.getFullName())
-          .setEmail(crmContact.email)
+          .setEmail(crmContact.email.toLowerCase(Locale.ROOT))
           .setAddress(toCreateAddress(crmContact.mailingAddress));
       return env.stripeClient().createCustomer(customerCreateParamsBuilder);
     }
