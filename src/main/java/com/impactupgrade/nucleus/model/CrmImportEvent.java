@@ -4,11 +4,9 @@
 
 package com.impactupgrade.nucleus.model;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -492,211 +490,6 @@ public class CrmImportEvent {
     return importEvent;
   }
 
-  public static List<CrmImportEvent> fromFBFundraiser(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromFBFundraiser).filter(Objects::nonNull).collect(Collectors.toList());
-  }
-
-  public static CrmImportEvent fromFBFundraiser(Map<String, String> _data) {
-    // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
-
-//  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
-    if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
-      CrmImportEvent importEvent = new CrmImportEvent();
-      importEvent.raw = data;
-
-//    TODO: support for initial amount, any fees, and net amount
-//    importEvent. = data.get("Donation Amount");
-//    importEvent. = data.get("FB Fee");
-//    importEvent. = getAmount(data, "Net Payout Amount");
-      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
-
-//      TODO: support for different currencies will likely be needed in the future
-//      importEvent. = data.get("Payout Currency");
-//      importEvent. = data.get("Sender Currency");
-      if (data.get("Fundraiser Type").contains("Fundraiser")) {
-        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Title");
-      } else if (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) {
-        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Title") + " (" + data.get("Fundraiser Type") + ")";
-      } else {
-        importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Type");
-      }
-      try {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Charge Date")));
-      } catch (ParseException e) {
-        throw new RuntimeException("failed to parse date", e);
-      }
-
-      importEvent.contactFirstName = Utils.nameToTitleCase(data.get("First Name"));
-      importEvent.contactLastName = Utils.nameToTitleCase(data.get("Last Name"));
-      importEvent.contactPersonalEmail = data.get("Email Address");
-      importEvent.opportunitySource = (!Strings.isNullOrEmpty(data.get("Fundraiser Title"))) ? data.get("Fundraiser Title") : data.get("Fundraiser Type");
-      importEvent.opportunityTerminal = data.get("Payment Processor");
-      importEvent.opportunityStageName = "Posted";
-
-      if (data.containsKey("CRM Campaign ID")) {
-        importEvent.opportunityCampaignId = data.get("CRM Campaign ID");
-      }
-
-      List<String> description = new ArrayList<>();
-      description.add("Fundraiser Title: " + data.get("Fundraiser Title"));
-      description.add("Fundraiser Type: " + data.get("Fundraiser Type"));
-      description.add("Campaign Owner Name: " + data.get("Campaign Owner Name"));
-      // Depending on the context, Campaign ID might be the CRM, but it might be vendor-specific (ie, Facebook)
-      description.add("Campaign ID: " + data.get("Campaign ID"));
-      description.add("CRM Campaign ID: " + data.get("CRM Campaign ID"));
-      description.add("Permalink: " + data.get("Permalink"));
-      description.add("Payment ID: " + data.get("Payment ID"));
-      description.add("Source Name: " + data.get("Source Name"));
-      importEvent.opportunityDescription = Joiner.on("\n").join(description);
-
-      return importEvent;
-    } else {
-      return null;
-    }
-  }
-
-  public static List<CrmImportEvent> fromGreaterGiving(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromGreaterGiving).filter(Objects::nonNull).collect(Collectors.toList());
-  }
-
-  public static CrmImportEvent fromGreaterGiving(Map<String, String> _data) {
-    // TODO: Not mapped:
-    // Household Phone
-    // Account1 Phone
-    // Account1 Street
-    // Account1 City
-    // Account1 State/Province
-    // Account1 Zip/Postal Code
-    // Account1 Country
-    // Account1 Website
-    // Payment Check/Reference Number
-    // Payment Method
-    // Contact1 Salutation
-    // Contact1 Title
-    // Contact1 Birthdate
-    // Contact1 Work Email
-    // Contact1 Alternate Email
-    // Contact1 Preferred Email
-    // Contact1 Other Phone
-    // Contact2 Salutation
-    // Contact2 First Name
-    // Contact2 Last Name
-    // Contact2 Birthdate
-    // Contact2 Title
-    // Contact2 Personal Email
-    // Contact2 Work Email
-    // Contact2 Alternate Email
-    // Contact2 Preferred Email
-    // Contact2 Home Phone
-    // Contact2 Work Phone
-    // Contact2 Mobile Phone
-    // Contact2 Other Phone
-    // Contact2 Preferred Phone
-    // Donation Donor (IE, Contact1 or Contact2)
-    // Donation Member Level
-    // Donation Membership Start Date
-    // Donation Membership End Date
-    // Donation Membership Origin
-    // Donation Record Type Name
-    // Campaign Member Status
-
-    // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
-
-    // TODO: Other types? Skipping gift-in-kind
-    if (data.get("Donation Type").equalsIgnoreCase("Donation") || data.get("Donation Type").equalsIgnoreCase("Auction")) {
-      CrmImportEvent importEvent = new CrmImportEvent();
-      importEvent.raw = data;
-
-      importEvent.account.name = data.get("Account1 Name");
-      importEvent.account.billingAddress.street = data.get("Home Street");
-      importEvent.account.billingAddress.city = data.get("Home City");
-      importEvent.account.billingAddress.state = data.get("Home State/Province");
-      importEvent.account.billingAddress.postalCode = data.get("Home Zip/Postal Code");
-      importEvent.account.billingAddress.country = data.get("Home Country");
-
-      importEvent.contactFirstName = data.get("Contact1 First Name");
-      importEvent.contactLastName = data.get("Contact1 Last Name");
-      importEvent.contactPersonalEmail = data.get("Contact1 Personal Email");
-      importEvent.contactWorkEmail = data.get("Contact1 Work Email");
-      importEvent.contactOtherEmail = data.get("Contact1 Other Email");
-      importEvent.contactMobilePhone = data.get("Contact1 Mobile Phone");
-      importEvent.contactHomePhone = data.get("Contact1 Home Phone");
-      importEvent.contactWorkPhone = data.get("Contact1 Work Phone");
-      importEvent.contactOtherPhone = data.get("Contact1 Other Phone");
-      importEvent.contactPhonePreference = ContactPhonePreference.fromName(data.get("Contact Preferred Phone"));
-
-      importEvent.opportunityAmount = getAmount(data, "Donation Amount");
-      if (!Strings.isNullOrEmpty(data.get("Donation Name"))) {
-        importEvent.opportunityName = data.get("Donation Name");
-      } else {
-        importEvent.opportunityName = "Greater Giving: " + data.get("Donation Type");
-      }
-      try {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Donation Date")));
-      } catch (ParseException e) {
-        throw new RuntimeException("failed to parse date", e);
-      }
-      importEvent.opportunitySource = data.get("Donation Type");
-      importEvent.opportunityStageName = data.get("Donation Stage");
-      importEvent.opportunityDescription = data.get("Donation Description");
-      importEvent.opportunityCampaignName = data.get("Campaign Name");
-
-      return importEvent;
-    } else {
-      return null;
-    }
-  }
-
-  public static List<CrmImportEvent> fromClassy(List<Map<String, String>> data) {
-    return data.stream().map(CrmImportEvent::fromClassy).filter(Objects::nonNull).collect(Collectors.toList());
-  }
-
-  public static CrmImportEvent fromClassy(Map<String, String> _data) {
-    // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
-
-    CrmImportEvent importEvent = new CrmImportEvent();
-    importEvent.raw = data;
-
-    // Contact
-    importEvent.contactPersonalEmail = data.get("Donor Email");
-    importEvent.contactFirstName = data.get("Supporter First Name");
-    importEvent.contactLastName = data.get("Supporter Last Name");
-    importEvent.contactMobilePhone = data.get("Donor Phone Number");
-    importEvent.contactOptInEmail = "true".equalsIgnoreCase(data.get("Email Opt In"));
-
-    // Address
-    importEvent.account.billingAddress.street = data.get("Billing Address");
-    if (!Strings.isNullOrEmpty(data.get("Billing Address 2"))) {
-      importEvent.account.billingAddress.street += ", " + data.get("Billing Address 2");
-    }
-    importEvent.account.billingAddress.city = data.get("Billing City");
-    importEvent.account.billingAddress.state = data.get("Billing State");
-    importEvent.account.billingAddress.postalCode = data.get("Billing Postal Code");
-    importEvent.account.billingAddress.country = data.get("Billing Country");
-
-    // TODO: Should "Campaign ID" go to an extref?
-//    importEvent.opportunityCampaignName = data.get("Campaign Name");
-
-    // Opportunity
-    importEvent.opportunityAmount = BigDecimal.valueOf(Double.valueOf(data.get("Charged Intended Donation Amount")));
-    importEvent.opportunityName = "Classy: " + data.get("Campaign Name");
-    importEvent.opportunityTransactionId = data.get("Transaction ID");
-    try {
-      importEvent.opportunityDate = Calendar.getInstance();
-      importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.get("Transaction Date")));
-    } catch (ParseException e) {
-      throw new RuntimeException("failed to parse date", e);
-    }
-    importEvent.opportunitySource = "Classy";
-
-    return importEvent;
-  }
-
   public List<String> getAccountColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Account")).toList();
   }
@@ -753,6 +546,16 @@ public class CrmImportEvent {
             || !Strings.isNullOrEmpty(contactOtherEmail);
   }
 
+  public static BigDecimal getAmount(Map<String, String> data, String columnName) {
+    if (!data.containsKey(columnName)) {
+      return null;
+    }
+    String n = data.get(columnName);
+    if (Strings.isNullOrEmpty(n)) {
+      return null;
+    }
+    return new BigDecimal(n.replace("$", "").replace(",", "").trim()).setScale(2, RoundingMode.CEILING);
+  }
 
   // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
   private static Calendar getDate(Map<String, String> data, String columnName) {
@@ -787,16 +590,5 @@ public class CrmImportEvent {
   private String removeDateSelectors(String s) {
     return s.replace("dd/mm/yyyy", "").replace("dd-mm-yyyy", "").replace("mm/dd/yyyy", "").replace("mm/dd/yy", "")
         .replace("mm-dd-yyyy", "").replace("yyyy-mm-dd", "").trim();
-  }
-
-  private static BigDecimal getAmount(Map<String, String> data, String columnName) {
-    if (!data.containsKey(columnName)) {
-      return null;
-    }
-    String n = data.get(columnName);
-    if (Strings.isNullOrEmpty(n)) {
-      return null;
-    }
-    return new BigDecimal(n.replace("$", "").replace(",", "").trim()).setScale(2, RoundingMode.CEILING);
   }
 }
