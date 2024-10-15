@@ -544,6 +544,36 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return query(query);
   }
 
+  public Set<String> getAllContactEmails(String filter) throws ConnectionException, InterruptedException {
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " AND " + filter;
+    }
+
+    // If env.json defines an emailOptIn, automatically factor that into the query.
+    // IMPORTANT: If env.json defines emailOptOut/emailBounced, also include those contacts in this query! This might seem backwards,
+    // but we need them in the results so that we can archive them in Mailchimp.
+    List<String> clauses = new ArrayList<>();
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)
+        && !env.getConfig().salesforce.fieldDefinitions.listFilterOverridesOptIn) {
+      clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE");
+
+      // ONLY ADD THESE IF WE'RE INCLUDING THE ABOVE OPT-IN FILTER! Otherwise, some orgs only have opt-out defined,
+      // and we'd effectively be syncing ONLY unsubscribes.
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptOut)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptOut + "=TRUE");
+      }
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailBounced)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.emailBounced + "=TRUE");
+      }
+    }
+    String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
+
+    // IMPORTANT: Order by CreatedDate ASC, ensuring this is FIFO for contacts sharing the same email address.
+    // The oldest record is typically the truth.
+    String query = "SELECT Email FROM Contact WHERE Email!=''" + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
+    return queryListAutoPaged(query).stream().map(so -> so.getField("Email").toString()).collect(Collectors.toSet());
+  }
+
   public QueryResult getEmailAccounts(Calendar updatedSince, String filter, String... extraFields)
       throws ConnectionException, InterruptedException {
     String emailField = env.getConfig().salesforce.fieldDefinitions.accountEmail;
@@ -581,6 +611,40 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     String query = "select " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " from account where " + emailField + "!=''" + updatedSinceClause + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
     return query(query);
+  }
+
+  public Set<String> getAllAccountEmails(String filter)
+      throws ConnectionException, InterruptedException {
+    String emailField = env.getConfig().salesforce.fieldDefinitions.accountEmail;
+    if (Strings.isNullOrEmpty(emailField)) {
+      return Collections.emptySet();
+    }
+
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " AND " + filter;
+    }
+
+    // If env.json defines an emailOptIn, automatically factor that into the query.
+    // IMPORTANT: If env.json defines emailOptOut/emailBounced, also include those contacts in this query! This might seem backwards,
+    // but we need them in the results so that we can archive them in Mailchimp.
+    List<String> clauses = new ArrayList<>();
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn)
+        && !env.getConfig().salesforce.fieldDefinitions.accountListFilterOverridesOptIn) {
+      clauses.add(env.getConfig().salesforce.fieldDefinitions.accountEmailOptIn + "=TRUE");
+
+      // ONLY ADD THESE IF WE'RE INCLUDING THE ABOVE OPT-IN FILTER! Otherwise, some orgs only have opt-out defined,
+      // and we'd effectively be syncing ONLY unsubscribes.
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.accountEmailOptOut + "=TRUE");
+      }
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.accountEmailBounced)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.accountEmailBounced + "=TRUE");
+      }
+    }
+    String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
+
+    String query = "SELECT " + emailField + " FROM Account WHERE " + emailField + "!=''" + filter + optInOutFilters + " ORDER BY CreatedDate ASC";
+    return queryListAutoPaged(query).stream().map(so -> so.getField(emailField).toString()).collect(Collectors.toSet());
   }
 
   public List<QueryResult> getSmsContacts(Calendar updatedSince, String filter, String... extraFields)
@@ -735,6 +799,15 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     String query = "select " + getFieldsList(LEAD_FIELDS, env.getConfig().salesforce.customQueryFields.lead, extraFields) +  " from lead where Email != null" + updatedSinceClause + filter;
     return query(query);
+  }
+
+  public Set<String> getAllLeadEmails(String filter) throws ConnectionException, InterruptedException {
+    if (!Strings.isNullOrEmpty(filter)) {
+      filter = " AND " + filter;
+    }
+
+    String query = "SELECT Email FROM Lead WHERE Email!=''" + filter;
+    return queryListAutoPaged(query).stream().map(so -> so.getField("Email").toString()).collect(Collectors.toSet());
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

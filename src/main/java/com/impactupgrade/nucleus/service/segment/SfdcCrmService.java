@@ -1039,9 +1039,29 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public Set<String> getAllContactEmails(EnvironmentConfig.CommunicationList communicationList)
+      throws Exception {
+    Set<String> emails = sfdcClient.getAllContactEmails(communicationList.crmFilter);
+
+    // Why not a getEmailLeads method? Because Leads are super unique to SFDC, so we don't want to add another
+    // SFDC-specific method to CrmService. Additionally, the fields we care about in Lead are named identically as the
+    // ones in Contact, so it fits cleanly into the CrmContact model.
+    if (!Strings.isNullOrEmpty(communicationList.crmLeadFilter)) {
+      emails.addAll(sfdcClient.getAllLeadEmails(communicationList.crmLeadFilter));
+    }
+
+    return emails;
+  }
+
+  @Override
   public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     QueryResult queryResult = sfdcClient.getEmailAccounts(updatedSince, communicationList.crmAccountFilter);
     return toCrmAccountPages(List.of(queryResult));
+  }
+
+  @Override
+  public Set<String> getAllAccountEmails(EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    return sfdcClient.getAllAccountEmails(communicationList.crmLeadFilter);
   }
 
   @Override
