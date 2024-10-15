@@ -582,6 +582,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
+  }
+
+  @Override
   public String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     // TODO: campaign
 
@@ -1046,6 +1051,16 @@ public class HubSpotCrmService implements CrmService {
     List<Contact> results = hsClient.contact().searchAutoPaging(filterGroups, contactFields);
     List<CrmContact> crmContacts = results.stream().map(this::toCrmContact).collect(Collectors.toList());
     return PagedResults.unpagedResults(crmContacts);
+  }
+
+  @Override
+  public PagedResults<CrmContact> getDonorIndividualContacts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
+  public PagedResults<CrmAccount> getDonorOrganizationAccounts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override

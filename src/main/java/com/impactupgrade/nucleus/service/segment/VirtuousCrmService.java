@@ -379,6 +379,11 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
+  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return List.of();
+  }
+
+  @Override
   public String insertRecurringDonation(CrmRecurringDonation recurringDonation) throws Exception {
     VirtuousClient.RecurringGift recurringGift = asRecurringGift(recurringDonation);
     recurringGift = virtuousClient.createRecurringGift(recurringGift);
@@ -533,6 +538,16 @@ public class VirtuousCrmService implements CrmService {
     List<CrmContact> results = contacts.stream().map(this::asCrmContact).collect(Collectors.toList());
     PagedResults.ResultSet<CrmContact> resultSet = new PagedResults.ResultSet<>(results, null);
     return new PagedResults<>(resultSet);
+  }
+
+  @Override
+  public PagedResults<CrmContact> getDonorIndividualContacts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
+  }
+
+  @Override
+  public PagedResults<CrmAccount> getDonorOrganizationAccounts(Calendar updatedSince) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override
