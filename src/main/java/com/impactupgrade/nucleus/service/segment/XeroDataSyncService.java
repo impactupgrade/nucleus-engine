@@ -45,9 +45,16 @@ public class XeroDataSyncService implements DataSyncService {
     if (env.accountingPlatformService().isPresent()) {
       PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorIndividualContacts(updatedAfter);
       for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-        if (resultSet.getRecords().isEmpty()) continue;
         try {
-          env.accountingPlatformService().get().updateOrCreateContacts(resultSet.getRecords());
+          do {
+            env.accountingPlatformService().get().updateOrCreateContacts(resultSet.getRecords());
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              // next page
+              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
         } catch (Exception e) {
           env.logJobError("{}/syncContacts failed: {}", this.name(), e);
         }
@@ -55,10 +62,17 @@ public class XeroDataSyncService implements DataSyncService {
 
       PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getDonorOrganizationAccounts(updatedAfter);
       for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
-        if (resultSet.getRecords().isEmpty()) continue;
-        List<CrmContact> crmContacts = getPrimaryContactsForAccounts(resultSet.getRecords());
         try {
-          env.accountingPlatformService().get().updateOrCreateContacts(crmContacts);
+          do {
+            List<CrmContact> crmContacts = getPrimaryContactsForAccounts(resultSet.getRecords());
+            env.accountingPlatformService().get().updateOrCreateContacts(crmContacts);
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              // next page
+              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
         } catch (Exception e) {
           env.logJobError("{}/syncContacts failed: {}", this.name(), e);
         }
