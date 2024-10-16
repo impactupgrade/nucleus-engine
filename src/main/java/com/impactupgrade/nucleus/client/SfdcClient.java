@@ -925,7 +925,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 //    String updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     String updatedSinceClause = "CloseDate >= " + new SimpleDateFormat("yyyy-MM-dd").format(updatedSince.getTime());
     String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) + " from Opportunity " +
-        "where " + updatedSinceClause + " AND stageName = 'Closed Won' ORDER BY CloseDate DESC ";
+        "where " + updatedSinceClause + " AND stageName = 'Closed Won' ORDER BY CloseDate ASC";
     return queryListAutoPaged(query);
   }
 

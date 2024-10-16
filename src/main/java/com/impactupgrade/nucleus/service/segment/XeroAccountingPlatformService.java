@@ -15,6 +15,7 @@ import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.impactupgrade.nucleus.dao.HibernateDao;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -221,34 +222,43 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         Map<String, Invoice> invoicesByReference = existingInvoices.stream()
             .collect(Collectors.toMap(Invoice::getReference, invoice -> invoice, (i1, i2) -> i1));
 
-        List<Invoice> invoices = new ArrayList<>();
-        for (CrmDonation crmDonation: crmDonations) {
-            Invoice existingInvoice = invoicesByReference.get(getReference(crmDonation));
-            if (existingInvoice != null) {
-                // TODO: For now, avoiding updates of invoices, instead opting to skip them.
-                //  Concerned about update something that's already been reconciled.
-//                  invoice.setInvoiceID(existingInvoice.getInvoiceID());
+        // TODO: Due to the rate limit risk of using getContactForAccountNumber, we break the list into chunks. That
+        //  way if we run into the daily limit, we've at least inserted what we could.
+        List<List<CrmDonation>> crmDonationBatches = Lists.partition(crmDonations, 50);
+        List<String> createdInvoiceIds = new ArrayList<>();
 
-                env.logJobInfo("skipping donation {}; found existing invoice {} {}", crmDonation.id, existingInvoice.getReference(), existingInvoice.getInvoiceID());
-                continue;
+        for (List<CrmDonation> crmDonationBatch : crmDonationBatches) {
+            List<Invoice> invoices = new ArrayList<>();
+            for (CrmDonation crmDonation : crmDonationBatch) {
+                Invoice existingInvoice = invoicesByReference.get(getReference(crmDonation));
+                if (existingInvoice != null) {
+                    // TODO: For now, avoiding updates of invoices, instead opting to skip them.
+                    //  Concerned about update something that's already been reconciled.
+//                    invoice.setInvoiceID(existingInvoice.getInvoiceID());
+
+                    env.logJobInfo("skipping donation {}; found existing invoice {} {}", crmDonation.id, existingInvoice.getReference(), existingInvoice.getInvoiceID());
+                    continue;
+                }
+
+                String accountNumber = getAccountNumber(crmDonation.contact, crmDonation.account);
+                // TODO: API rate limit risk
+                Optional<Contact> contact = callWithRetries(() -> getContactForAccountNumber(accountNumber, true));
+                if (contact.isEmpty()) {
+                    env.logJobInfo("skipping donation {}; unable to find contact {}", crmDonation.id, accountNumber);
+                    continue;
+                }
+                Invoice invoice = toInvoice(crmDonation, contact.get().getContactID());
+
+                invoices.add(invoice);
             }
 
-            String accountNumber = getAccountNumber(crmDonation.contact, crmDonation.account);
-            // TODO: API rate limit risk
-            Optional<Contact> contact = callWithRetries(() -> getContactForAccountNumber(accountNumber, true));
-            if (contact.isEmpty()) {
-                env.logJobInfo("skipping donation {}; unable to find contact {}", crmDonation.id, accountNumber);
-                continue;
-            }
-            Invoice invoice = toInvoice(crmDonation, contact.get().getContactID());
-
-            invoices.add(invoice);
+            Invoices invoicesPost = new Invoices();
+            invoicesPost.setInvoices(invoices);
+            Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
+            createdInvoices.getInvoices().forEach(invoice -> createdInvoiceIds.add(invoice.getInvoiceID().toString()));
         }
 
-        Invoices invoicesPost = new Invoices();
-        invoicesPost.setInvoices(invoices);
-        Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
-        return createdInvoices.getInvoices().stream().map(invoice -> invoice.getInvoiceID().toString()).toList();
+        return createdInvoiceIds;
     }
 
     public List<Invoice> getInvoices(ZonedDateTime updatedAfter) throws Exception {
