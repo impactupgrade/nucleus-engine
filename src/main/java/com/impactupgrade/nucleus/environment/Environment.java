@@ -17,7 +17,6 @@ import com.impactupgrade.nucleus.client.TwilioClient;
 import com.impactupgrade.nucleus.client.VirtuousClient;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
-import com.impactupgrade.nucleus.service.logic.AccountingService;
 import com.impactupgrade.nucleus.service.logic.ActivityService;
 import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
@@ -32,6 +31,7 @@ import com.impactupgrade.nucleus.service.segment.JobLoggingService;
 import com.impactupgrade.nucleus.service.segment.BareCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
+import com.impactupgrade.nucleus.service.segment.DataSyncService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -147,7 +147,6 @@ public class Environment {
   public MessagingService messagingService() { return new MessagingService(this); }
   public NotificationService notificationService() { return new NotificationService(this); }
   public ScheduledJobService scheduledJobService() { return new ScheduledJobService(this); }
-  public AccountingService accountingService() { return new AccountingService(this); }
 
   // segment services
 
@@ -200,6 +199,14 @@ public class Environment {
 
   public CommunicationService communicationService(String name) {
     return segmentService(name, CommunicationService.class);
+  }
+
+  public DataSyncService dataSyncService(String name) {
+    return segmentService(name, DataSyncService.class);
+  }
+
+  public List<DataSyncService> allDataSyncServices() {
+    return segmentServices(DataSyncService.class);
   }
 
   public Optional<AccountingPlatformService> accountingPlatformService() {
