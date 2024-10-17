@@ -7,9 +7,12 @@ package com.impactupgrade.nucleus.service.segment;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.PageResultsProcessor;
 import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
@@ -56,8 +59,14 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
 
       for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
         // TODO: SG has a max of 30k per call, so we may need to break this down for some customers.
-        List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList)
-            .getResultSets().stream().flatMap(rs -> rs.getRecords().stream()).toList();
+        List<CrmContact> crmContacts = new ArrayList<>();
+        PagedResults<CrmContact> pagedResults = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
+        PageResultsProcessor<CrmContact> contactPageResultsProcessor = new PageResultsProcessor<>(
+            //TODO: update contacts page by page instead?
+            contactResultSet -> contactResultSet.getRecords().stream().forEach(crmContacts::add),
+            env.primaryCrmService()::queryMoreContacts);
+        contactPageResultsProcessor.processPagedResults(pagedResults);
+
         Map<String, List<String>> contactCampaignNames = getContactCampaignNames(crmContacts, communicationList);
 
         env.logJobInfo("upserting {} contacts to list {}", crmContacts.size(), communicationList.id);

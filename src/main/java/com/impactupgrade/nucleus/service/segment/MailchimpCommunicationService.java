@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.PageResultsProcessor;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
