@@ -25,7 +25,6 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.impactupgrade.nucleus.util.Utils;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -660,14 +659,10 @@ public class CrmController {
   }
 
   // TODO: move to a service layer instead?
-  protected CrmImportEvent fromFBFundraiser(Map<String, String> _data) {
-    // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
-
+  protected CrmImportEvent fromFBFundraiser(Map<String, String> data) {
 //  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
       CrmImportEvent importEvent = new CrmImportEvent();
-      importEvent.raw = data;
 
 //    TODO: support for initial amount, any fees, and net amount
 //    importEvent. = data.get("Donation Amount");
@@ -721,7 +716,7 @@ public class CrmController {
     }
   }
 
-  protected CrmImportEvent fromGreaterGiving(Map<String, String> _data) {
+  protected CrmImportEvent fromGreaterGiving(Map<String, String> data) {
     // TODO: Not mapped:
     // Household Phone
     // Account1 Phone
@@ -762,13 +757,9 @@ public class CrmController {
     // Donation Record Type Name
     // Campaign Member Status
 
-    // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
-
     // TODO: Other types? Skipping gift-in-kind
     if (data.get("Donation Type").equalsIgnoreCase("Donation") || data.get("Donation Type").equalsIgnoreCase("Auction")) {
       CrmImportEvent importEvent = new CrmImportEvent();
-      importEvent.raw = data;
 
       importEvent.account.name = data.get("Account1 Name");
       importEvent.account.billingAddress.street = data.get("Home Street");
@@ -811,12 +802,8 @@ public class CrmController {
     }
   }
 
-  protected CrmImportEvent fromClassy(Map<String, String> _data) {
-    // Be case-insensitive, for sources that aren't always consistent.
-    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
-
+  protected CrmImportEvent fromClassy(Map<String, String> data) {
     CrmImportEvent importEvent = new CrmImportEvent();
-    importEvent.raw = data;
 
     // Contact
     importEvent.contactPersonalEmail = data.get("Donor Email");
@@ -844,7 +831,7 @@ public class CrmController {
     importEvent.opportunityTransactionId = data.get("Transaction ID");
     try {
       importEvent.opportunityDate = Calendar.getInstance();
-      importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.get("Transaction Date")));
+      importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yy HH:mm").parse(data.get("Transaction Date")));
     } catch (ParseException e) {
       throw new RuntimeException("failed to parse date", e);
     }
