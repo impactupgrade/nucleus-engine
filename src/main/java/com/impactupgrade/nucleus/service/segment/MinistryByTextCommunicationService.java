@@ -48,7 +48,7 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
 
         PagedResults<CrmContact> pagedResults = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
         PageResultsProcessor<CrmContact> contactPageResultsProcessor = new PageResultsProcessor<>(
-            (contactResultSet) -> {
+            contactResultSet -> {
               List<CrmContact> crmContacts = new ArrayList<>();
               for (CrmContact crmContact : contactResultSet.getRecords()) {
                 String smsPn = crmContact.phoneNumberForSMS();
