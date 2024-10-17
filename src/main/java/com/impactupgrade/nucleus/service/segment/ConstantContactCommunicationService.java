@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.PageResultsProcessor;
 
 import java.util.Calendar;
 import java.util.Optional;
@@ -35,12 +36,16 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
 
       for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
         PagedResults<CrmContact> pagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
-          for (CrmContact crmContact : resultSet.getRecords()) {
-            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.email, communicationList.id);
-            constantContactClient.upsertContact(crmContact, communicationList.id);
-          }
-        }
+
+        PageResultsProcessor<CrmContact> contactPageResultsProcessor = new PageResultsProcessor<>(
+            contactResultSet -> {
+              for (CrmContact crmContact : contactResultSet.getRecords()) {
+                env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.email, communicationList.id);
+                constantContactClient.upsertContact(crmContact, communicationList.id);
+              }
+            },
+            env.primaryCrmService()::queryMoreContacts);
+        contactPageResultsProcessor.processPagedResults(pagedResults);
       }
     }
   }

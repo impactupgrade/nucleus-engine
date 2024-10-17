@@ -10,6 +10,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.PageResultsProcessor;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -46,20 +47,22 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
         Set<String> seenPhones = new HashSet<>();
 
         PagedResults<CrmContact> pagedResults = env.primaryCrmService().getSmsContacts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
+        PageResultsProcessor<CrmContact> contactPageResultsProcessor = new PageResultsProcessor<>(
+            contactResultSet -> {
+              List<CrmContact> crmContacts = new ArrayList<>();
+              for (CrmContact crmContact : contactResultSet.getRecords()) {
+                String smsPn = crmContact.phoneNumberForSMS();
+                if (!Strings.isNullOrEmpty(smsPn) && !seenPhones.contains(smsPn)) {
+                  env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, smsPn, communicationList.id);
+                  crmContacts.add(crmContact);
+                  seenPhones.add(smsPn);
+                }
+              }
 
-          List<CrmContact> crmContacts = new ArrayList<>();
-          for (CrmContact crmContact : resultSet.getRecords()) {
-            String smsPn = crmContact.phoneNumberForSMS();
-            if (!Strings.isNullOrEmpty(smsPn) && !seenPhones.contains(smsPn)) {
-              env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, smsPn, communicationList.id);
-              crmContacts.add(crmContact);
-              seenPhones.add(smsPn);
-            }
-          }
-
-          mbtClient.upsertSubscribersBulk(crmContacts, mbtConfig, communicationList);
-        }
+              mbtClient.upsertSubscribersBulk(crmContacts, mbtConfig, communicationList);
+            },
+            env.primaryCrmService()::queryMoreContacts);
+        contactPageResultsProcessor.processPagedResults(pagedResults);
       }
     }
   }
