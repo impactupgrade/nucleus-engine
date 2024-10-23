@@ -252,10 +252,15 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 invoices.add(invoice);
             }
 
-            Invoices invoicesPost = new Invoices();
-            invoicesPost.setInvoices(invoices);
-            Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
-            createdInvoices.getInvoices().forEach(invoice -> createdInvoiceIds.add(invoice.getInvoiceID().toString()));
+            if (!invoices.isEmpty()) {
+                Invoices invoicesPost = new Invoices();
+                invoicesPost.setInvoices(invoices);
+                Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
+                createdInvoices.getInvoices().stream().filter(i -> !i.getValidationErrors().isEmpty())
+                    .forEach(i -> env.logJobWarn(i.getReference() + " failed to insert: " + i.getValidationErrors().get(0).getMessage()));
+                createdInvoices.getInvoices().stream().filter(i -> i.getValidationErrors().isEmpty())
+                    .forEach(i -> createdInvoiceIds.add(i.getInvoiceID().toString()));
+            }
         }
 
         return createdInvoiceIds;
