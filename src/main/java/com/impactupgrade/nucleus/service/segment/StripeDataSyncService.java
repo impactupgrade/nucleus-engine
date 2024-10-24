@@ -1,22 +1,27 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.stripe.exception.RateLimitException;
+import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerUpdateParams;
 
 import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 
 public class StripeDataSyncService implements DataSyncService {
 
   protected Environment env;
+
+  protected static final Integer RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS = 10; //?
+  protected static final Integer RATE_LIMIT_MAX_RETRIES = 3;
 
   @Override
   public String name() {
@@ -41,7 +46,6 @@ public class StripeDataSyncService implements DataSyncService {
 
       for (CrmContact crmContact : resultSet.getRecords()) {
         try {
-          //TODO: consider handling retry since we do 1 by 1?
           updateOrCreateCustomer(crmContact);
         } catch (Exception e) {
           env.logJobError("{}/syncContacts failed: {}", this.name(), e);
@@ -52,10 +56,8 @@ public class StripeDataSyncService implements DataSyncService {
 
   @Override
   public void syncTransactions(Calendar updatedAfter) throws Exception {
-    List<CrmDonation> crmDonations = env.primaryCrmService().getDonations(updatedAfter);
-    for (CrmDonation crmDonation : crmDonations) {
-      //TODO: one by one update in Stripe
-    }
+    //TODO: pull our nightly batch job from PaymentGatewayController
+    // and instead have this concept do it
   }
 
   protected Customer updateOrCreateCustomer(CrmContact crmContact) throws Exception {
@@ -65,21 +67,29 @@ public class StripeDataSyncService implements DataSyncService {
       CustomerUpdateParams customerUpdateParams = CustomerUpdateParams.builder()
           .setName(crmContact.getFullName())
           .setEmail(crmContact.email.toLowerCase(Locale.ROOT))
-          .setAddress(toUpdateAddress(crmContact.mailingAddress))
+          .setAddress(toUpdateAddress(crmContact.account.billingAddress))
+          .setPhone(crmContact.mobilePhone)
           .build();
-      return env.stripeClient().updateCustomer(existingCustomer.get(), customerUpdateParams);
+      return callWithRetries(() -> env.stripeClient().updateCustomer(existingCustomer.get(), customerUpdateParams));
     } else {
-      // Create
-      CustomerCreateParams.Builder customerCreateParamsBuilder = CustomerCreateParams.builder()
-          .setName(crmContact.getFullName())
-          .setEmail(crmContact.email.toLowerCase(Locale.ROOT))
-          .setAddress(toCreateAddress(crmContact.mailingAddress));
-      return env.stripeClient().createCustomer(customerCreateParamsBuilder);
+      //TODO: create?
+//      CustomerCreateParams.Builder customerCreateParamsBuilder = CustomerCreateParams.builder()
+//          .setName(crmContact.getFullName())
+//          .setEmail(crmContact.email.toLowerCase(Locale.ROOT))
+//          .setAddress(toCreateAddress(crmContact.account.billingAddress))
+//          .setPhone(crmContact.mobilePhone);
+//      return env.stripeClient().createCustomer(customerCreateParamsBuilder);
+      return null;
     }
   }
 
   protected Optional<Customer> getCustomer(CrmContact crmContact) throws Exception {
-    return env.stripeClient().getCustomerByEmail(crmContact.email);
+    if (!Strings.isNullOrEmpty(crmContact.email)) {
+      return env.stripeClient().getCustomerByEmail(crmContact.email);
+    } else {
+      env.logJobWarn("Contact {} does not have an email defined!", crmContact.getFullName());
+      return Optional.empty();
+    }
   }
 
   protected CustomerUpdateParams.Address toUpdateAddress(CrmAddress crmAddress) {
@@ -100,5 +110,19 @@ public class StripeDataSyncService implements DataSyncService {
         .setPostalCode(crmAddress.postalCode)
         .setCountry(crmAddress.country)
         .build();
+  }
+
+  protected <T> T callWithRetries(Callable<T> callable) throws Exception {
+    for (int i = 0; i <= RATE_LIMIT_MAX_RETRIES; i++) {
+      try {
+        return callable.call();
+      } catch (RateLimitException e) {
+        env.logJobWarn("API rate limit exceeded. Trying again after " + RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS + " seconds...");
+        Thread.sleep(RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS * 1000);
+      }
+    }
+    // Should be unreachable
+    env.logJobWarn("Failed to get API response after {} tries!", RATE_LIMIT_MAX_RETRIES);
+    return null;
   }
 }
