@@ -257,7 +257,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 invoicesPost.setInvoices(invoices);
                 Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
                 createdInvoices.getInvoices().stream().filter(i -> !i.getValidationErrors().isEmpty())
-                    .forEach(i -> env.logJobWarn(i.getReference() + " failed to insert: " + i.getValidationErrors().get(0).getMessage()));
+                    .forEach(i -> env.logJobWarn(i.getReference() + " failed to insert: " + i));
                 createdInvoices.getInvoices().stream().filter(i -> i.getValidationErrors().isEmpty())
                     .forEach(i -> createdInvoiceIds.add(i.getInvoiceID().toString()));
             }
@@ -497,13 +497,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         // TODO: DR TEST -- need to be able to override with code
         if (crmDonation.transactionType == EnvironmentConfig.TransactionType.TICKET) {
             lineItem.setAccountCode("160");
-            lineItem.setItemCode("EI");
         } else if (crmDonation.isRecurring()) {
             lineItem.setAccountCode("122");
-            lineItem.setItemCode("Partner");
         } else {
             lineItem.setAccountCode("116");
-            lineItem.setItemCode("Donate");
         }
         return Collections.singletonList(lineItem);
     }
