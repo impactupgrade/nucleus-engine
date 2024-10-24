@@ -130,7 +130,6 @@ public class StripeController {
           // must first process the account/contact so they're available
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().processDonation(paymentGatewayEvent);
-          env.accountingService().processTransaction(paymentGatewayEvent);
         }
       }
       case "payment_intent.succeeded" -> {
@@ -142,7 +141,6 @@ public class StripeController {
         // must first process the account/contact so they're available
         env.contactService().processDonor(paymentGatewayEvent);
         env.donationService().processDonation(paymentGatewayEvent);
-        env.accountingService().processTransaction(paymentGatewayEvent);
       }
       case "charge.failed" -> {
         Charge charge = (Charge) stripeObject;

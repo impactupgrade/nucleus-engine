@@ -216,7 +216,6 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       }
       env.contactService().processDonor(paymentGatewayEvent);
       env.donationService().processDonation(paymentGatewayEvent);
-      env.accountingService().processTransaction(paymentGatewayEvent);
 
     } catch (Exception e) {
       env.logJobError("charge replay failed", e);
@@ -270,7 +269,6 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           }
           env.contactService().processDonor(paymentGatewayEvent);
           env.donationService().processDonation(paymentGatewayEvent);
-          env.accountingService().processTransaction(paymentGatewayEvent);
 //          }
         } catch (Exception e) {
           env.logJobError("charge replay failed", e);
