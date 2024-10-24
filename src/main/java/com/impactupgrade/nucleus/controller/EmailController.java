@@ -23,14 +23,21 @@ public class EmailController {
 
   @GET
   @Path("/sync/daily")
-  public Response syncDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
-    return new CommunicationController(envFactory).syncDaily(syncDays, request);
+  public Response syncDaily(
+          @QueryParam("service") String serviceName,
+          @QueryParam("syncDays") Integer syncDays,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    return new CommunicationController(envFactory).syncDaily(serviceName, syncDays, request);
   }
 
   @GET
   @Path("/sync/all")
-  public Response syncAll(@Context HttpServletRequest request) throws Exception {
-    return new CommunicationController(envFactory).syncAll(request);
+  public Response syncAll(
+          @QueryParam("service") String serviceName,
+          @Context HttpServletRequest request
+  ) throws Exception {
+    return new CommunicationController(envFactory).syncAll(serviceName, request);
   }
 
   @POST
@@ -38,8 +45,9 @@ public class EmailController {
   @Consumes("application/x-www-form-urlencoded")
   public Response upsertContact(
       @FormParam("contact-id") String contactId,
+      @QueryParam("service") String serviceName,
       @Context HttpServletRequest request
   ) throws Exception {
-    return new CommunicationController(envFactory).upsertContact(contactId, request);
+    return new CommunicationController(envFactory).upsertContact(contactId, serviceName, request);
   }
 }
