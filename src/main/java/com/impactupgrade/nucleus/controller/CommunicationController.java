@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.controller;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -11,10 +12,16 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.service.segment.CommunicationService;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import java.util.Calendar;
+import java.util.List;
 
 @Path("/communication")
 public class CommunicationController {
@@ -27,7 +34,8 @@ public class CommunicationController {
 
   @GET
   @Path("/sync/daily")
-  public Response syncDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
+  public Response syncDaily(@QueryParam("service") String serviceName, @QueryParam("syncDays") Integer syncDays,
+      @Context HttpServletRequest request) throws Exception {
     Environment env = envFactory.init(request);
 
     Calendar lastSync = Calendar.getInstance();
@@ -43,7 +51,9 @@ public class CommunicationController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        for (CommunicationService communicationService : env.allCommunicationServices()) {
+        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+
+        for (CommunicationService communicationService : communicationServices) {
           try {
             // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             communicationService.syncUnsubscribes(lastSync);
@@ -82,7 +92,8 @@ public class CommunicationController {
 
   @GET
   @Path("/sync/all")
-  public Response syncAll(@Context HttpServletRequest request) throws Exception {
+  public Response syncAll(@QueryParam("service") String serviceName, @Context HttpServletRequest request)
+      throws Exception {
     Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
@@ -91,7 +102,9 @@ public class CommunicationController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        for (CommunicationService communicationService : env.allCommunicationServices()) {
+        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+
+        for (CommunicationService communicationService : communicationServices) {
           try {
             // do unsubscribes first so that the CRM has the most recent data before attempting the main sync
             communicationService.syncUnsubscribes(null);
@@ -133,6 +146,7 @@ public class CommunicationController {
   @Consumes("application/x-www-form-urlencoded")
   public Response upsertContact(
       @FormParam("contact-id") String contactId,
+      @FormParam("service") String serviceName,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
@@ -140,7 +154,10 @@ public class CommunicationController {
       try {
         String jobName = "Communication: Single Contact";
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
-        for (CommunicationService communicationService : env.allCommunicationServices()) {
+
+        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+
+        for (CommunicationService communicationService : communicationServices) {
           try {
             communicationService.upsertContact(contactId);
             env.logJobInfo("{}: upsert contact done ({})", communicationService.name(), contactId);
@@ -165,7 +182,8 @@ public class CommunicationController {
   // ensures all contacts are first in the CRM. If they still manually upload to MC directly, keep this turned off.
   @GET
   @Path("/mass-archive")
-  public Response massArchive(@Context HttpServletRequest request) throws Exception {
+  public Response massArchive(@QueryParam("service") String serviceName, @Context HttpServletRequest request)
+      throws Exception {
     Environment env = envFactory.init(request);
 
     Runnable thread = () -> {
@@ -174,7 +192,9 @@ public class CommunicationController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        for (CommunicationService communicationService : env.allCommunicationServices()) {
+        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+
+        for (CommunicationService communicationService : communicationServices) {
           try {
             communicationService.massArchive();
             env.logJobInfo("{}: massArchive done", communicationService.name());
@@ -199,5 +219,13 @@ public class CommunicationController {
     new Thread(thread).start();
 
     return Response.ok().build();
+  }
+
+  protected List<CommunicationService> getCommunicationServices(String serviceName, Environment env) {
+    if (!Strings.isNullOrEmpty(serviceName)) {
+      return List.of(env.communicationService(serviceName));
+    } else {
+      return env.allCommunicationServices();
+    }
   }
 }
