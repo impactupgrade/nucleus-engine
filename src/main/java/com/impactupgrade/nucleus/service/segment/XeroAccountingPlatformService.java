@@ -488,7 +488,12 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected List<LineItem> getLineItems(CrmDonation crmDonation) {
         LineItem lineItem = new LineItem();
-        lineItem.setDescription(crmDonation.description);
+        // description is required, so fall back on name if needed
+        if (!Strings.isNullOrEmpty(crmDonation.description)) {
+            lineItem.setDescription(crmDonation.description);
+        } else {
+            lineItem.setDescription(crmDonation.name);
+        }
         lineItem.setQuantity(1.0);
         lineItem.setUnitAmount(crmDonation.amount);
         // TODO: DR TEST (https://developer.xero.com/documentation/api/accounting/types/#tax-rates -- country specific)
