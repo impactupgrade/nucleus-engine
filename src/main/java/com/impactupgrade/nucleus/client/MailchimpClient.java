@@ -60,6 +60,7 @@ public class MailchimpClient {
   public static final String FIRST_NAME = "FNAME";
   public static final String LAST_NAME = "LNAME";
   public static final String PHONE_NUMBER = "PHONE";
+  public static final String SMS_PHONE_NUMBER = "SMSPHONE";
   public static final String TAGS = "tags";
   public static final String TAG_NAME = "name";
   public static final String TAG_STATUS = "status";

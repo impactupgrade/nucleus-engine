@@ -30,10 +30,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.impactupgrade.nucleus.client.MailchimpClient.FIRST_NAME;
-import static com.impactupgrade.nucleus.client.MailchimpClient.LAST_NAME;
-import static com.impactupgrade.nucleus.client.MailchimpClient.PHONE_NUMBER;
-import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
+import static com.impactupgrade.nucleus.client.MailchimpClient.*;
 
 public class MailchimpCommunicationService extends AbstractCommunicationService {
 
@@ -421,6 +418,12 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.merge_fields.mapping.put(FIRST_NAME, crmContact.firstName);
     mcContact.merge_fields.mapping.put(LAST_NAME, crmContact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
+
+    mcContact.consents_to_one_to_one_messaging = true; //?
+    mcContact.sms_phone_number = crmContact.mobilePhone;
+    mcContact.merge_fields.mapping.put(SMS_PHONE_NUMBER, crmContact.mobilePhone);
+    mcContact.sms_subscription_status = SUBSCRIBED;
+
     mcContact.merge_fields.mapping.putAll(customFields);
     mcContact.status = SUBSCRIBED;
 
