@@ -891,7 +891,7 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
-    return toCrmCampaign(sfdcClient.getCampaignByExternalReference(externalReference));
+    return toCrmCampaign(sfdcClient.getCampaignByUniqueField(externalReference));
   }
 
   @Override
@@ -1351,21 +1351,25 @@ public class SfdcCrmService implements CrmService {
     boolean hasContactColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
         .anyMatch(entry -> entry.getKey().startsWith("Contact") && !Strings.isNullOrEmpty(entry.getValue()));
     boolean hasContactOrgColumns = importEvents.stream().anyMatch(e -> !e.contactOrganizations.isEmpty());
+    boolean hasOppColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
+        .anyMatch(entry -> entry.getKey().startsWith("Opportunity") && !Strings.isNullOrEmpty(entry.getValue()));
+    boolean hasRdColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
+        .anyMatch(entry -> entry.getKey().startsWith("Recurring Donation") && !Strings.isNullOrEmpty(entry.getValue()));
 
-    boolean hasOppLookups = importEvents.stream().anyMatch(e -> e.opportunityDate != null || e.opportunityId != null);
-    boolean hasRdLookups = importEvents.stream().anyMatch(e -> e.recurringDonationAmount != null || e.recurringDonationId != null);
-    boolean hasCampaignLookups = importEvents.stream().anyMatch(e ->
+    boolean hasCampaignMemberLookups = importEvents.stream().anyMatch(e ->
         !e.contactCampaigns.isEmpty() || !e.accountCampaigns.isEmpty());
 
     // For the following contexts, we unfortunately can't use batch inserts/updates of accounts/contacts.
     // Opportunity/RD inserts, 1..n Organization affiliations, Campaign membership
     // TODO: We probably *can*, but the code will be rather complex to manage the variety of batch actions paired with CSV rows.
-    boolean nonBatchMode = hasOppLookups || hasRdLookups || hasCampaignLookups || hasContactOrgColumns;
+    boolean nonBatchMode = hasOppColumns || hasRdColumns || hasCampaignMemberLookups || hasContactOrgColumns;
 
     List<String> nonBatchAccountIds = new ArrayList<>();
     List<String> nonBatchContactIds = new ArrayList<>();
     while(nonBatchAccountIds.size() < importEvents.size()) nonBatchAccountIds.add("");
     while(nonBatchContactIds.size() < importEvents.size()) nonBatchContactIds.add("");
+
+    int eventsSize = importEvents.size();
 
     // IMPORTANT IMPORTANT IMPORTANT
     // Process importEvents in two passes, first processing the ones that will result in an update to a contact, then
@@ -1378,163 +1382,66 @@ public class SfdcCrmService implements CrmService {
     // If it were the other way around, there's a good chance that Spouse B would land in their own isolated Account,
     // unless there was a direct address match.
 
-    int eventsSize = importEvents.size();
-    for (int _i = 0; _i < eventsSize * 2; _i++) {
-      // TODO: Not sure if this setup is clever or hacky...
-      boolean secondPass = _i >= eventsSize;
-      if (_i == eventsSize) {
-        sfdcClient.batchFlush();
-      }
-      int i = _i % eventsSize;
-
-      CrmImportEvent importEvent = importEvents.get(i);
-
-      if (secondPass && !importEvent.secondPass) {
-        continue;
-      }
-
-      env.logJobInfo("import processing contacts/account on row {} of {}", i + 2, eventsSize + 1);
-
-      // Special case. Unlike the other "hasLookup" fields that are defined outside of the loop, we need to know if
-      // this row actually has values for those fields. In some imports, organizations with no contacts are mixed
-      // in with rows that have contacts. The column headers exist, but if there are no values, we assume
-      // account-only import for that individual row. Not an all-or-nothing situation.
-      boolean hasContactExtRef = contactExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(contactExtRefKey.get()));
-      boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contactId)
-              || importEvent.hasEmail()
-              || !Strings.isNullOrEmpty(importEvent.contactLastName) || hasContactExtRef;
-
-      SObject account = null;
-      SObject contact = null;
-
-      // A few situations have come up where there were not cleanly-split first vs. last name columns, but instead a
-      // "salutation" (firstname) and then a full name. Allow users to provide the former as the firstname
-      // and the latter as the "lastname", but clean it up. This must happen before the first names are split up, below!
-      if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
-          && importEvent.contactLastName.contains(importEvent.contactFirstName)) {
-        // TODO: The above may still be important, but this introduces bugs. Examples: Anonymous as the first and last
-        //  name (last name will be stripped to empty string), real last names that contain a first name (Brett Bretterson), etc.
-//        importEvent.contactLastName = importEvent.contactLastName.replace(importEvent.contactFirstName, "").trim();
-      }
-
-      // Deep breath. It gets weird.
-
-      // If we're in the second pass, we already know we need to insert the contact.
-      if (secondPass) {
-        account = upsertAccount(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns, nonBatchMode);
-
-        contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
-            existingContactsByEmail, existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode);
-      }
-      // If we're in account-only mode (we have no contact info to match against) and we have a way to look up the accounts:
-      else if (
-          hasAccountColumns
-          && (!hasContactColumns || !hasContactLookups)
-          && (!Strings.isNullOrEmpty(importEvent.account.id) || !Strings.isNullOrEmpty(importEvent.account.name)
-              || accountExtRefKey.isPresent() && existingAccountsByExtRef.containsKey(importEvent.raw.get(accountExtRefKey.get())))
-      ) {
-        account = upsertAccount(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns, nonBatchMode);
-      }
-      // If the explicit Contact ID was given and the contact actually exists, update.
-      else if (!Strings.isNullOrEmpty(importEvent.contactId) && existingContactsById.containsKey(importEvent.contactId)) {
-        SObject existingContact = existingContactsById.get(importEvent.contactId);
-
-        if (account == null) {
-          String accountId = (String) existingContact.getField("AccountId");
-          if (!Strings.isNullOrEmpty(accountId)) {
-            SObject existingAccount = (SObject) existingContact.getChild("Account");
-            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns, nonBatchMode);
-          }
+    if (hasAccountColumns || hasContactColumns || hasContactOrgColumns) {
+      for (int _i = 0; _i < eventsSize * 2; _i++) {
+        // TODO: Not sure if this setup is clever or hacky...
+        boolean secondPass = _i >= eventsSize;
+        if (_i == eventsSize) {
+          sfdcClient.batchFlush();
         }
+        int i = _i % eventsSize;
 
-        // use accountId, not account.id -- if the contact was recently imported by this current process,
-        // the contact.account child relationship will not yet exist in the existingContactsById map
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, nonBatchMode);
-      }
-      // Similarly, if we have an external ref ID, check that next.
-      else if (contactExtRefKey.isPresent() && existingContactsByExtRef.containsKey(importEvent.raw.get(contactExtRefKey.get()))) {
-        SObject existingContact = existingContactsByExtRef.get(importEvent.raw.get(contactExtRefKey.get()));
+        CrmImportEvent importEvent = importEvents.get(i);
 
-        if (account == null) {
-          String accountId = (String) existingContact.getField("AccountId");
-          if (!Strings.isNullOrEmpty(accountId)) {
-            SObject existingAccount = (SObject) existingContact.getChild("Account");
-            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns, nonBatchMode);
-          }
-        }
-
-        // use accountId, not account.id -- if the contact was recently imported by this current process,
-        // the contact.account child relationship will not yet exist in the existingContactsByExtRefId map
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, nonBatchMode);
-      }
-      // Else if a contact already exists with the given email address, update.
-      else if (importEvent.hasEmail() && findExistingContactByEmail(importEvent, existingContactsByEmail).isPresent()) {
-        // TODO: do this once further up?
-        SObject existingContact = findExistingContactByEmail(importEvent, existingContactsByEmail).get();
-        if (account == null) {
-          String accountId = (String) existingContact.getField("AccountId");
-          if (!Strings.isNullOrEmpty(accountId)) {
-            SObject existingAccount = (SObject) existingContact.getChild("Account");
-            account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns, nonBatchMode);
-          }
-        }
-
-        // use accountId, not account.id -- if the contact was recently imported by this current process,
-        // the contact.account child relationship will not yet exist in the existingContactsByEmail map
-        contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, nonBatchMode);
-      }
-      // If we have a first and last name, try searching for an existing contact by name.
-      // Only do this if we can match against street address or phone number as well. Simply by-name is too risky.
-      // Better to allow duplicates than to overwrite records.
-      // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
-      else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
-          && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))) {
-        List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
-            .filter(c -> {
-              // If the SFDC record has no address or phone at all, allow the by-name match. It might seem like this
-              // somewhat defeats the purpose, but we're running into situations where basic records were originally
-              // created with extremely bare info.
-              if (c.getField("MailingStreet") == null && c.getChild("Account").getField("BillingStreet") == null
-                  && c.getChild("Account").getField("ShippingStreet") == null
-                  && c.getField("Phone") == null && c.getField("HomePhone") == null && c.getField("MobilePhone") == null) {
-                return true;
-              }
-
-              // To make matching simpler, since home phone on one side could = mobile phone on the other side
-              // and billing address on one side could match the mailing address on the other side, we cram
-              // all options from each side into a list. Then, simply look for an intersection of both lists as a match.
-
-              // make the address checks a little more resilient by removing all non-alphanumerics
-              // ex: 123 Main St. != 123 Main St --> 123MainSt == 123MainSt
-
-              List<String> list1 = Stream.of(
-                  alphanumericOnly(importEvent.contactMailingStreet),
-                  alphanumericOnly(importEvent.account.billingAddress.street),
-                  alphanumericOnly(importEvent.account.mailingAddress.street),
-                  alphanumericOnly(importEvent.originalStreet),
-                  numericOnly(importEvent.contactHomePhone),
-                  numericOnly(importEvent.contactMobilePhone),
-                  numericOnly(importEvent.contactPhone)
-              ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
-
-              List<String> list2 = Stream.of(
-                  alphanumericOnly((String) c.getField("MailingStreet")),
-                  alphanumericOnly((String) c.getChild("Account").getField("BillingStreet")),
-                  alphanumericOnly((String) c.getChild("Account").getField("ShippingStreet")),
-                  numericOnly((String) c.getField("HomePhone")),
-                  numericOnly((String) c.getField("MobilePhone")),
-                  numericOnly((String) c.getField("Phone"))
-              ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
-
-              list1.retainAll(list2);
-              return !list1.isEmpty();
-            }).sorted(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString((String) c.getField("CreatedDate")))).toList();
-
-        if (existingContacts.isEmpty()) {
-          importEvent.secondPass = true;
+        if (secondPass && !importEvent.secondPass) {
           continue;
-        } else {
-          SObject existingContact = existingContacts.get(0);
+        }
+
+        env.logJobInfo("import processing contacts/account on row {} of {}", i + 2, eventsSize + 1);
+
+        // Special case. Unlike the other "hasLookup" fields that are defined outside of the loop, we need to know if
+        // this row actually has values for those fields. In some imports, organizations with no contacts are mixed
+        // in with rows that have contacts. The column headers exist, but if there are no values, we assume
+        // account-only import for that individual row. Not an all-or-nothing situation.
+        boolean hasContactExtRef = contactExtRefKey.isPresent() && !Strings.isNullOrEmpty(importEvent.raw.get(contactExtRefKey.get()));
+        boolean hasContactLookups = !Strings.isNullOrEmpty(importEvent.contactId)
+            || importEvent.hasEmail()
+            || !Strings.isNullOrEmpty(importEvent.contactLastName) || hasContactExtRef;
+
+        SObject account = null;
+        SObject contact = null;
+
+        // A few situations have come up where there were not cleanly-split first vs. last name columns, but instead a
+        // "salutation" (firstname) and then a full name. Allow users to provide the former as the firstname
+        // and the latter as the "lastname", but clean it up. This must happen before the first names are split up, below!
+        if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
+            && importEvent.contactLastName.contains(importEvent.contactFirstName)) {
+          // TODO: The above may still be important, but this introduces bugs. Examples: Anonymous as the first and last
+          //  name (last name will be stripped to empty string), real last names that contain a first name (Brett Bretterson), etc.
+          //        importEvent.contactLastName = importEvent.contactLastName.replace(importEvent.contactFirstName, "").trim();
+        }
+
+        // Deep breath. It gets weird.
+
+        // If we're in the second pass, we already know we need to insert the contact.
+        if (secondPass) {
+          account = upsertAccount(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns, nonBatchMode);
+
+          contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
+              existingContactsByEmail, existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode);
+        }
+        // If we're in account-only mode (we have no contact info to match against) and we have a way to look up the accounts:
+        else if (
+            hasAccountColumns
+                && (!hasContactColumns || !hasContactLookups)
+                && (!Strings.isNullOrEmpty(importEvent.account.id) || !Strings.isNullOrEmpty(importEvent.account.name)
+                || accountExtRefKey.isPresent() && existingAccountsByExtRef.containsKey(importEvent.raw.get(accountExtRefKey.get())))
+        ) {
+          account = upsertAccount(importEvent, existingAccountsById, existingAccountsByName, accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, hasAccountColumns, nonBatchMode);
+        }
+        // If the explicit Contact ID was given and the contact actually exists, update.
+        else if (!Strings.isNullOrEmpty(importEvent.contactId) && existingContactsById.containsKey(importEvent.contactId)) {
+          SObject existingContact = existingContactsById.get(importEvent.contactId);
 
           if (account == null) {
             String accountId = (String) existingContact.getField("AccountId");
@@ -1544,74 +1451,172 @@ public class SfdcCrmService implements CrmService {
             }
           }
 
+          // use accountId, not account.id -- if the contact was recently imported by this current process,
+          // the contact.account child relationship will not yet exist in the existingContactsById map
           contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, nonBatchMode);
         }
-      }
-      // Otherwise, abandon all hope and insert, but only if we at least have a field to use as a lookup.
-      else if (hasContactLookups) {
-        importEvent.secondPass = true;
-        continue;
-      }
+        // Similarly, if we have an external ref ID, check that next.
+        else if (contactExtRefKey.isPresent() && existingContactsByExtRef.containsKey(importEvent.raw.get(contactExtRefKey.get()))) {
+          SObject existingContact = existingContactsByExtRef.get(importEvent.raw.get(contactExtRefKey.get()));
 
-      if (account != null) {
-        for (CrmImportEvent.CampaignMembership campaignMembership : importEvent.accountCampaigns) {
-          if (!Strings.isNullOrEmpty(campaignMembership.campaignId)) {
-            addAccountToCampaign(account.getId(), campaignMembership.campaignId, campaignMembership.status, true);
-          }
-          if (!Strings.isNullOrEmpty(campaignMembership.campaignName)) {
-            if (campaignNameToId.containsKey(campaignMembership.campaignName.toLowerCase(Locale.ROOT))) {
-              addAccountToCampaign(account.getId(), campaignNameToId.get(campaignMembership.campaignName.toLowerCase(Locale.ROOT)), campaignMembership.status, true);
-            } else {
-              String campaignId = insertCampaign(new CrmCampaign(null, campaignMembership.campaignName));
-              campaignNameToId.put(campaignId, campaignMembership.campaignName);
-              addAccountToCampaign(account.getId(), campaignId, campaignMembership.status, true);
+          if (account == null) {
+            String accountId = (String) existingContact.getField("AccountId");
+            if (!Strings.isNullOrEmpty(accountId)) {
+              SObject existingAccount = (SObject) existingContact.getChild("Account");
+              account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns, nonBatchMode);
             }
           }
-        }
 
-        if (!Strings.isNullOrEmpty(importEvent.accountNote)) {
-          CrmNote crmNote = new CrmNote(account.getId(), null, importEvent.accountNote, Calendar.getInstance());
-          insertNote(crmNote);
+          // use accountId, not account.id -- if the contact was recently imported by this current process,
+          // the contact.account child relationship will not yet exist in the existingContactsByExtRefId map
+          contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, nonBatchMode);
         }
-      }
-
-      if (contact != null) {
-        for (CrmImportEvent.CampaignMembership campaignMembership : importEvent.contactCampaigns) {
-          if (!Strings.isNullOrEmpty(campaignMembership.campaignId)) {
-            addContactToCampaign(contact.getId(), campaignMembership.campaignId, campaignMembership.status, true);
-          }
-          if (!Strings.isNullOrEmpty(campaignMembership.campaignName)) {
-            if (campaignNameToId.containsKey(campaignMembership.campaignName.toLowerCase(Locale.ROOT))) {
-              addContactToCampaign(contact.getId(), campaignNameToId.get(campaignMembership.campaignName.toLowerCase(Locale.ROOT)), campaignMembership.status, true);
-            } else {
-              String campaignId = insertCampaign(new CrmCampaign(null, campaignMembership.campaignName));
-              campaignNameToId.put(campaignId, campaignMembership.campaignName);
-              addContactToCampaign(contact.getId(), campaignId, campaignMembership.status, true);
+        // Else if a contact already exists with the given email address, update.
+        else if (importEvent.hasEmail() && findExistingContactByEmail(importEvent, existingContactsByEmail).isPresent()) {
+          // TODO: do this once further up?
+          SObject existingContact = findExistingContactByEmail(importEvent, existingContactsByEmail).get();
+          if (account == null) {
+            String accountId = (String) existingContact.getField("AccountId");
+            if (!Strings.isNullOrEmpty(accountId)) {
+              SObject existingAccount = (SObject) existingContact.getChild("Account");
+              account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns, nonBatchMode);
             }
           }
+
+          // use accountId, not account.id -- if the contact was recently imported by this current process,
+          // the contact.account child relationship will not yet exist in the existingContactsByEmail map
+          contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, nonBatchMode);
+        }
+        // If we have a first and last name, try searching for an existing contact by name.
+        // Only do this if we can match against street address or phone number as well. Simply by-name is too risky.
+        // Better to allow duplicates than to overwrite records.
+        // If 1 match, update. If 0 matches, insert. If 2 or more matches, skip completely out of caution.
+        else if (!Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(importEvent.contactLastName)
+            && existingContactsByName.containsKey(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase(Locale.ROOT))) {
+          List<SObject> existingContacts = existingContactsByName.get(importEvent.contactFirstName.toLowerCase(Locale.ROOT) + " " + importEvent.contactLastName.toLowerCase()).stream()
+              .filter(c -> {
+                // If the SFDC record has no address or phone at all, allow the by-name match. It might seem like this
+                // somewhat defeats the purpose, but we're running into situations where basic records were originally
+                // created with extremely bare info.
+                if (c.getField("MailingStreet") == null && c.getChild("Account").getField("BillingStreet") == null
+                    && c.getChild("Account").getField("ShippingStreet") == null
+                    && c.getField("Phone") == null && c.getField("HomePhone") == null && c.getField("MobilePhone") == null) {
+                  return true;
+                }
+
+                // To make matching simpler, since home phone on one side could = mobile phone on the other side
+                // and billing address on one side could match the mailing address on the other side, we cram
+                // all options from each side into a list. Then, simply look for an intersection of both lists as a match.
+
+                // make the address checks a little more resilient by removing all non-alphanumerics
+                // ex: 123 Main St. != 123 Main St --> 123MainSt == 123MainSt
+
+                List<String> list1 = Stream.of(
+                    alphanumericOnly(importEvent.contactMailingStreet),
+                    alphanumericOnly(importEvent.account.billingAddress.street),
+                    alphanumericOnly(importEvent.account.mailingAddress.street),
+                    alphanumericOnly(importEvent.originalStreet),
+                    numericOnly(importEvent.contactHomePhone),
+                    numericOnly(importEvent.contactMobilePhone),
+                    numericOnly(importEvent.contactPhone)
+                ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
+
+                List<String> list2 = Stream.of(
+                    alphanumericOnly((String) c.getField("MailingStreet")),
+                    alphanumericOnly((String) c.getChild("Account").getField("BillingStreet")),
+                    alphanumericOnly((String) c.getChild("Account").getField("ShippingStreet")),
+                    numericOnly((String) c.getField("HomePhone")),
+                    numericOnly((String) c.getField("MobilePhone")),
+                    numericOnly((String) c.getField("Phone"))
+                ).filter(s -> !Strings.isNullOrEmpty(s)).collect(Collectors.toList()); // mutable list
+
+                list1.retainAll(list2);
+                return !list1.isEmpty();
+              }).sorted(Comparator.comparing(c -> Utils.getCalendarFromDateTimeString((String) c.getField("CreatedDate")))).toList();
+
+          if (existingContacts.isEmpty()) {
+            importEvent.secondPass = true;
+            continue;
+          } else {
+            SObject existingContact = existingContacts.get(0);
+
+            if (account == null) {
+              String accountId = (String) existingContact.getField("AccountId");
+              if (!Strings.isNullOrEmpty(accountId)) {
+                SObject existingAccount = (SObject) existingContact.getChild("Account");
+                account = updateBulkImportAccount(existingAccount, importEvent.account, importEvent.raw, "Account", hasAccountColumns, nonBatchMode);
+              }
+            }
+
+            contact = updateBulkImportContact(existingContact, account, importEvent, batchUpdateContacts, nonBatchMode);
+          }
+        }
+        // Otherwise, abandon all hope and insert, but only if we at least have a field to use as a lookup.
+        else if (hasContactLookups) {
+          importEvent.secondPass = true;
+          continue;
         }
 
-        if (!Strings.isNullOrEmpty(importEvent.contactNote)) {
-          CrmNote crmNote = new CrmNote(contact.getId(), null, importEvent.contactNote, Calendar.getInstance());
-          insertNote(crmNote);
+        if (account != null) {
+          for (CrmImportEvent.CampaignMembership campaignMembership : importEvent.accountCampaigns) {
+            if (!Strings.isNullOrEmpty(campaignMembership.campaignId)) {
+              addAccountToCampaign(account.getId(), campaignMembership.campaignId, campaignMembership.status, true);
+            }
+            if (!Strings.isNullOrEmpty(campaignMembership.campaignName)) {
+              if (campaignNameToId.containsKey(campaignMembership.campaignName.toLowerCase(Locale.ROOT))) {
+                addAccountToCampaign(account.getId(), campaignNameToId.get(campaignMembership.campaignName.toLowerCase(Locale.ROOT)), campaignMembership.status, true);
+              } else {
+                String campaignId = insertCampaign(new CrmCampaign(null, campaignMembership.campaignName));
+                campaignNameToId.put(campaignId, campaignMembership.campaignName);
+                addAccountToCampaign(account.getId(), campaignId, campaignMembership.status, true);
+              }
+            }
+          }
+
+          if (!Strings.isNullOrEmpty(importEvent.accountNote)) {
+            CrmNote crmNote = new CrmNote(account.getId(), null, importEvent.accountNote, Calendar.getInstance());
+            insertNote(crmNote);
+          }
         }
+
+        if (contact != null) {
+          for (CrmImportEvent.CampaignMembership campaignMembership : importEvent.contactCampaigns) {
+            if (!Strings.isNullOrEmpty(campaignMembership.campaignId)) {
+              addContactToCampaign(contact.getId(), campaignMembership.campaignId, campaignMembership.status, true);
+            }
+            if (!Strings.isNullOrEmpty(campaignMembership.campaignName)) {
+              if (campaignNameToId.containsKey(campaignMembership.campaignName.toLowerCase(Locale.ROOT))) {
+                addContactToCampaign(contact.getId(), campaignNameToId.get(campaignMembership.campaignName.toLowerCase(Locale.ROOT)), campaignMembership.status, true);
+              } else {
+                String campaignId = insertCampaign(new CrmCampaign(null, campaignMembership.campaignName));
+                campaignNameToId.put(campaignId, campaignMembership.campaignName);
+                addContactToCampaign(contact.getId(), campaignId, campaignMembership.status, true);
+              }
+            }
+          }
+
+          if (!Strings.isNullOrEmpty(importEvent.contactNote)) {
+            CrmNote crmNote = new CrmNote(contact.getId(), null, importEvent.contactNote, Calendar.getInstance());
+            insertNote(crmNote);
+          }
+        }
+
+        if (hasContactOrgColumns && contact != null) {
+          importOrgAffiliations(contact, existingAccountsById, existingAccountsByExtRef, existingAccountsByName, seenRelationships, importEvent);
+        }
+
+        if (nonBatchMode) {
+          nonBatchAccountIds.set(i, account != null ? account.getId() : null);
+          nonBatchContactIds.set(i, contact != null ? contact.getId() : null);
+        }
+
+        env.logJobInfo("imported row {}", (i + 1));
       }
 
-      if (hasContactOrgColumns && contact != null) {
-        importOrgAffiliations(contact, existingAccountsById, existingAccountsByExtRef, existingAccountsByName, seenRelationships, importEvent);
-      }
-
-      if (nonBatchMode) {
-        nonBatchAccountIds.set(i, account != null ? account.getId() : null);
-        nonBatchContactIds.set(i, contact != null ? contact.getId() : null);
-      }
-
-      env.logJobInfo("Imported {} contacts", (i + 1));
+      sfdcClient.batchFlush();
     }
 
-    sfdcClient.batchFlush();
-
-    if (hasRdLookups) {
+    if (hasRdColumns) {
       // TODO: Won't this loop process the same RD over and over each time it appears in an Opp row? Keep track of "visited"?
       for (int i = 0; i < eventsSize; i++) {
         CrmImportEvent importEvent = importEvents.get(i);
@@ -1655,13 +1660,13 @@ public class SfdcCrmService implements CrmService {
           sfdcClient.batchInsert(recurringDonation);
         }
 
-        env.logJobInfo("Imported {} recurring donations", (i + 1));
+        env.logJobInfo("imported row {}", (i + 1));
       }
 
       sfdcClient.batchFlush();
     }
 
-    if (hasOppLookups) {
+    if (hasOppColumns) {
       for (int i = 0; i < eventsSize; i++) {
         CrmImportEvent importEvent = importEvents.get(i);
 
@@ -1707,7 +1712,7 @@ public class SfdcCrmService implements CrmService {
 
           sfdcClient.batchInsert(opportunity);
         }
-        env.logJobInfo("Imported {} opportunities", (i + 1));
+        env.logJobInfo("imported row {}", (i + 1));
       }
 
       sfdcClient.batchFlush();
