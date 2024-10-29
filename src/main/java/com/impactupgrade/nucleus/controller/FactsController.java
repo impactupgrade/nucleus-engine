@@ -246,13 +246,13 @@ public class FactsController {
           firstPass = parentImports;
           secondPass = studentImports;
         }
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(firstPass);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(firstPass, env);
         env.primaryCrmService().processBulkImport(importEvents);
-        importEvents = CrmImportEvent.fromGeneric(secondPass);
+        importEvents = CrmImportEvent.fromGeneric(secondPass, env);
         env.primaryCrmService().processBulkImport(importEvents);
 
         if (factsConfig.syncEmergency) {
-          importEvents = CrmImportEvent.fromGeneric(emergencyContactImports);
+          importEvents = CrmImportEvent.fromGeneric(emergencyContactImports, env);
           env.primaryCrmService().processBulkImport(importEvents);
         }
 
@@ -534,7 +534,7 @@ public class FactsController {
           staffImports.add(staffData);
         }
 
-        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(staffImports);
+        List<CrmImportEvent> importEvents = CrmImportEvent.fromGeneric(staffImports, env);
         env.primaryCrmService().processBulkImport(importEvents);
 
         log.info("DONE");
