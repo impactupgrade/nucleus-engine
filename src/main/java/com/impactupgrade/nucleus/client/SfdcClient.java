@@ -19,6 +19,7 @@ import com.sforce.soap.partner.QueryResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
@@ -225,8 +226,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public List<SObject> getCampaignsByNames(List<String> names, String... extraFields) throws ConnectionException, InterruptedException {
     return getBulkResults(names, "Name", "Campaign", CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields);
   }
-  public Optional<SObject> getCampaignByExternalReference(String externalReference, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) +  " from campaign where " + env.getConfig().salesforce.fieldDefinitions.campaignExternalReference +  " = '" + externalReference.replaceAll("'", "\\\\'") + "'";
+  public Optional<SObject> getCampaignByUniqueField(String fieldName, String... extraFields) throws ConnectionException, InterruptedException {
+    extraFields = ArrayUtils.add(extraFields, fieldName);
+    String query = "select " + getFieldsList(CAMPAIGN_FIELDS, env.getConfig().salesforce.customQueryFields.campaign, extraFields) +  " from campaign where " + env.getConfig().salesforce.fieldDefinitions.campaignExternalReference +  " = '" + fieldName.replaceAll("'", "\\\\'") + "'";
     return querySingle(query);
   }
 
@@ -278,6 +280,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return getBulkResults(ids, "Id", "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
   public List<SObject> getContactsByUniqueField(String fieldName, List<String> values, String... extraFields) throws ConnectionException, InterruptedException {
+    extraFields = ArrayUtils.add(extraFields, fieldName);
     return getBulkResults(values, fieldName, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
@@ -882,6 +885,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getDonationsByUniqueField(String fieldName, List<String> values, String... extraFields) throws ConnectionException, InterruptedException {
+    extraFields = ArrayUtils.add(extraFields, fieldName);
     return getBulkResults(values, fieldName, "Opportunity", DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields);
   }
 
