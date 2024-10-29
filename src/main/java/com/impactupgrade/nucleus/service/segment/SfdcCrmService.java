@@ -960,7 +960,7 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("RecordTypeId", crmOpportunity.recordTypeId);
     opportunity.setField("Name", crmOpportunity.name);
     opportunity.setField("npsp__Primary_Contact__c", crmOpportunity.contact.id);
-    opportunity.setField("CloseDate", Calendar.getInstance());
+    opportunity.setField("CloseDate", Utils.toCalendar(ZonedDateTime.now(), env.getConfig().timezoneId));
     // TODO: Good enough for now, but likely needs to be customized.
     opportunity.setField("StageName", "Pledged");
     opportunity.setField("OwnerId", crmOpportunity.ownerId);
@@ -2202,13 +2202,13 @@ public class SfdcCrmService implements CrmService {
     if (frequency != null) {
       recurringDonation.setField("Npe03__Installment_Period__c", frequency.name());
     }
-    recurringDonation.setField("Npe03__Date_Established__c", importEvent.recurringDonationStartDate);
-    recurringDonation.setField("Npe03__Next_Payment_Date__c", importEvent.recurringDonationNextPaymentDate);
+    recurringDonation.setField("Npe03__Date_Established__c", Utils.toCalendar(importEvent.recurringDonationStartDate, env.getConfig().timezoneId));
+    recurringDonation.setField("Npe03__Next_Payment_Date__c", Utils.toCalendar(importEvent.recurringDonationNextPaymentDate, env.getConfig().timezoneId));
 
     if (env.getConfig().salesforce.enhancedRecurringDonations) {
       recurringDonation.setField("npsp__RecurringType__c", "Open");
       // It's a picklist, so it has to be a string and not numeric :(
-      recurringDonation.setField("npsp__Day_of_Month__c", importEvent.recurringDonationStartDate.get(Calendar.DAY_OF_MONTH) + "");
+      recurringDonation.setField("npsp__Day_of_Month__c", importEvent.recurringDonationStartDate.getMonthValue() + "");
     }
 
     recurringDonation.setField("OwnerId", importEvent.recurringDonationOwnerId);
@@ -2243,7 +2243,7 @@ public class SfdcCrmService implements CrmService {
     } else {
       opportunity.setField("StageName", "Closed Won");
     }
-    opportunity.setField("CloseDate", importEvent.opportunityDate);
+    opportunity.setField("CloseDate", Utils.toCalendar(importEvent.opportunityDate, env.getConfig().timezoneId));
 
     opportunity.setField("OwnerId", importEvent.opportunityOwnerId);
 

@@ -5,15 +5,14 @@
 package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -24,6 +23,7 @@ import java.util.stream.Stream;
 
 import static com.impactupgrade.nucleus.util.Utils.checkboxToBool;
 import static com.impactupgrade.nucleus.util.Utils.fullNameToFirstLast;
+import static com.impactupgrade.nucleus.util.Utils.getZonedDateFromDateString;
 
 public class CrmImportEvent {
 
@@ -154,7 +154,7 @@ public class CrmImportEvent {
   public BigDecimal opportunityAmount;
   public String opportunityCampaignId;
   public String opportunityCampaignName;
-  public Calendar opportunityDate;
+  public ZonedDateTime opportunityDate;
   public String opportunityDescription;
   public String opportunityName;
   public String opportunityOwnerId;
@@ -170,9 +170,9 @@ public class CrmImportEvent {
   public String recurringDonationCampaignName;
   public String recurringDonationInterval;
   public String recurringDonationName;
-  public Calendar recurringDonationNextPaymentDate;
+  public ZonedDateTime recurringDonationNextPaymentDate;
   public String recurringDonationOwnerId;
-  public Calendar recurringDonationStartDate;
+  public ZonedDateTime recurringDonationStartDate;
   public String recurringDonationStatus;
 
   // If the sheet is updating addresses, but all we have is names and no ids/extrefs/emails, we still need
@@ -192,15 +192,15 @@ public class CrmImportEvent {
     return (contactFirstName + " " + contactLastName).trim();
   }
 
-  public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data) {
+  public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data, Environment env) {
     return data.stream()
         // Some spreadsheets oddly give us empty rows at the end before the file terminates. Skip them!
         .filter(d -> d.values().stream().anyMatch(v -> !Strings.isNullOrEmpty(v)))
-        .map(CrmImportEvent::fromGeneric)
+        .map(d -> fromGeneric(d, env))
         .collect(Collectors.toList());
   }
 
-  public static CrmImportEvent fromGeneric(Map<String, String> _data) {
+  public static CrmImportEvent fromGeneric(Map<String, String> _data, Environment env) {
     // TODO: It originally made sense to use CaseInsensitiveMap here. But, we run into issues since most
     //  impls of CaseInsensitiveMap automatically lowercase all keys and values. That wrecks havoc for CRMs like SFDC,
     //  where the API is unfortunately case sensitive. For now, keep the originals and require column heads to be
@@ -460,7 +460,7 @@ public class CrmImportEvent {
     importEvent.opportunityAmount = getAmount(data, "Opportunity Amount");
     importEvent.opportunityCampaignId = data.get("Opportunity Campaign ID");
     importEvent.opportunityCampaignName = data.get("Opportunity Campaign Name");
-    importEvent.opportunityDate = getDate(data, "Opportunity Date");
+    importEvent.opportunityDate = getDate(data, "Opportunity Date", env);
     importEvent.opportunityDescription = data.get("Opportunity Description");
     importEvent.opportunityName = data.get("Opportunity Name");
     importEvent.opportunityOwnerId = data.get("Opportunity Owner ID");
@@ -476,9 +476,9 @@ public class CrmImportEvent {
     importEvent.recurringDonationCampaignName = data.get("Recurring Donation Campaign Name");
     importEvent.recurringDonationInterval = data.get("Recurring Donation Interval");
     importEvent.recurringDonationName = data.get("Recurring Donation Name");
-    importEvent.recurringDonationNextPaymentDate = getDate(data, "Recurring Donation Next Payment Date");
+    importEvent.recurringDonationNextPaymentDate = getDate(data, "Recurring Donation Next Payment Date", env);
     importEvent.recurringDonationOwnerId = data.get("Recurring Donation Owner ID");
-    importEvent.recurringDonationStartDate = getDate(data, "Recurring Donation Start Date");
+    importEvent.recurringDonationStartDate = getDate(data, "Recurring Donation Start Date", env);
     importEvent.recurringDonationStatus = data.get("Recurring Donation Status");
 
     importEvent.originalStreet = data.get("Original Street");
@@ -558,35 +558,24 @@ public class CrmImportEvent {
   }
 
   // TODO: Hate this code -- is there a lib that can handle it in a forgiving way?
-  private static Calendar getDate(Map<String, String> data, String columnName) {
-    String key = null;
-
+  private static ZonedDateTime getDate(Map<String, String> data, String columnName, Environment env) {
     if (data.containsKey(columnName + " dd/mm/yyyy")) {
-      key = columnName + " dd/mm/yyyy";
+      return getZonedDateFromDateString(data.get(columnName + " dd/mm/yyyy"), env.getConfig().timezoneId, "d/M/yyyy");
     } else if (data.containsKey(columnName + " dd-mm-yyyy")) {
-      key = columnName + " dd-mm-yyyy";
+      return getZonedDateFromDateString(data.get(columnName + " dd-mm-yyyy"), env.getConfig().timezoneId, "d-M-yyyy");
     } else if (data.containsKey(columnName + " mm/dd/yyyy")) {
-      key = columnName + " mm/dd/yyyy";
+      return getZonedDateFromDateString(data.get(columnName + " mm/dd/yyyy"), env.getConfig().timezoneId, "M/d/yyyy");
     } else if (data.containsKey(columnName + " mm/dd/yy")) {
-      key = columnName + " mm/dd/yy";
+      return getZonedDateFromDateString(data.get(columnName + " mm/dd/yy"), env.getConfig().timezoneId, "M/d/yy");
     } else if (data.containsKey(columnName + " mm-dd-yyyy")) {
-      key = columnName + " mm-dd-yyyy";
+      return getZonedDateFromDateString(data.get(columnName + " mm-dd-yyyy"), env.getConfig().timezoneId, "M-d-yyyy");
     } else if (data.containsKey(columnName + " yyyy-mm-dd")) {
-      key = columnName + " yyyy-mm-dd";
+      return getZonedDateFromDateString(data.get(columnName + " yyyy-mm-dd"), env.getConfig().timezoneId, "yyyy-M-d");
     }
 
-    if (Strings.isNullOrEmpty(key) || Strings.isNullOrEmpty(data.get(key))) {
-      return null;
-    }
-
-    try {
-      Calendar c = Calendar.getInstance();
-      c.setTime(new SimpleDateFormat("dd/MM/yyyy").parse(data.get(key)));
-      return c;
-    } catch (ParseException e) {
-      throw new RuntimeException("failed to parse date", e);
-    }
+    return null;
   }
+
   private String removeDateSelectors(String s) {
     return s.replace("dd/mm/yyyy", "").replace("dd-mm-yyyy", "").replace("mm/dd/yyyy", "").replace("mm/dd/yy", "")
         .replace("mm-dd-yyyy", "").replace("yyyy-mm-dd", "").trim();

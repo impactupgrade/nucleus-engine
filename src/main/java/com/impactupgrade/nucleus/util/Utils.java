@@ -30,7 +30,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.GregorianCalendar;
@@ -128,15 +127,17 @@ public class Utils {
   }
 
   public static ZonedDateTime getZonedDateFromDateString(String date, String timezoneId) {
+    try {
+      return getZonedDateFromDateString(date, timezoneId, "yyyy-M-d");
+    } catch (DateTimeParseException e) {
+      return getZonedDateFromDateString(date, timezoneId, "M/d/yyyy");
+    }
+  }
+
+  public static ZonedDateTime getZonedDateFromDateString(String date, String timezoneId, String format) throws DateTimeParseException {
     if (!Strings.isNullOrEmpty(date)) {
-      LocalDate localDate;
-      try {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        localDate = LocalDate.parse(date, dtf);
-      } catch (DateTimeParseException e) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-        localDate = LocalDate.parse(date, dtf);
-      }
+      DateTimeFormatter dtf = DateTimeFormatter.ofPattern(format);
+      LocalDate localDate = LocalDate.parse(date, dtf);
       return localDate.atStartOfDay(ZoneId.of(timezoneId));
     }
     return null;

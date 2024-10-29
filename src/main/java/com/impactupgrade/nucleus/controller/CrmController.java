@@ -47,10 +47,7 @@ import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -61,6 +58,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.impactupgrade.nucleus.util.Utils.getZonedDateFromDateString;
 import static com.impactupgrade.nucleus.util.Utils.noWhitespace;
 import static com.impactupgrade.nucleus.util.Utils.trim;
 
@@ -257,7 +255,7 @@ public class CrmController {
     try {
       // Important to do this outside of the new thread -- ensures the InputStream is still open.
       List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
-      List<CrmImportEvent> importEvents = toCrmImportEvents(data);
+      List<CrmImportEvent> importEvents = toCrmImportEvents(data, env);
 
       Runnable thread = () -> {
         try {
@@ -294,7 +292,7 @@ public class CrmController {
     gsheetUrl = noWhitespace(gsheetUrl);
 
     List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
-    List<CrmImportEvent> importEvents = toCrmImportEvents(data);
+    List<CrmImportEvent> importEvents = toCrmImportEvents(data, env);
     CrmService crmService = getCrmService(env, crmType);
 
     Runnable thread = () -> {
@@ -330,7 +328,7 @@ public class CrmController {
 
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
     List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
-    List<CrmImportEvent> importEvents = toCrmImportEvents(data, this::fromFBFundraiser);
+    List<CrmImportEvent> importEvents = toCrmImportEvents(data, d -> fromFBFundraiser(d, env));
     CrmService crmService = getCrmService(env, crmType);
 
     Runnable thread = () -> {
@@ -367,7 +365,7 @@ public class CrmController {
     // Excel is expected. Greater Giving has an Excel report export purpose built for SFDC.
     // TODO: But, what if a different CRM is targeted?
     List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
-    List<CrmImportEvent> importEvents = toCrmImportEvents(data, this::fromGreaterGiving);
+    List<CrmImportEvent> importEvents = toCrmImportEvents(data, d -> fromGreaterGiving(d, env));
 
     CrmService crmService = getCrmService(env, crmType);
 
@@ -396,7 +394,7 @@ public class CrmController {
     SecurityUtil.verifyApiKey(env);
 
     List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
-    List<CrmImportEvent> importEvents = toCrmImportEvents(data, this::fromClassy);
+    List<CrmImportEvent> importEvents = toCrmImportEvents(data, d -> fromClassy(d, env));
 
     Runnable thread = () -> {
       try {
@@ -650,8 +648,8 @@ public class CrmController {
     return data;
   }
 
-  protected List<CrmImportEvent> toCrmImportEvents(List<Map<String, String>> data) {
-    return toCrmImportEvents(data, CrmImportEvent::fromGeneric);
+  protected List<CrmImportEvent> toCrmImportEvents(List<Map<String, String>> data, Environment env) {
+    return toCrmImportEvents(data, d -> CrmImportEvent.fromGeneric(d, env));
   }
 
   protected List<CrmImportEvent> toCrmImportEvents(List<Map<String, String>> data, Function<Map<String, String>, CrmImportEvent> mappingFunction) {
@@ -659,7 +657,7 @@ public class CrmController {
   }
 
   // TODO: move to a service layer instead?
-  protected CrmImportEvent fromFBFundraiser(Map<String, String> data) {
+  protected CrmImportEvent fromFBFundraiser(Map<String, String> data, Environment env) {
 //  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
       CrmImportEvent importEvent = new CrmImportEvent();
@@ -680,12 +678,7 @@ public class CrmController {
       } else {
         importEvent.opportunityName = "Facebook Fundraiser: " + data.get("Fundraiser Type");
       }
-      try {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Charge Date")));
-      } catch (ParseException e) {
-        throw new RuntimeException("failed to parse date", e);
-      }
+      importEvent.opportunityDate = getZonedDateFromDateString(data.get("Charge Date"), env.getConfig().timezoneId, "yyyy-M-d");
 
       importEvent.contactFirstName = Utils.nameToTitleCase(data.get("First Name"));
       importEvent.contactLastName = Utils.nameToTitleCase(data.get("Last Name"));
@@ -716,7 +709,7 @@ public class CrmController {
     }
   }
 
-  protected CrmImportEvent fromGreaterGiving(Map<String, String> data) {
+  protected CrmImportEvent fromGreaterGiving(Map<String, String> data, Environment env) {
     // TODO: Not mapped:
     // Household Phone
     // Account1 Phone
@@ -785,12 +778,7 @@ public class CrmController {
       } else {
         importEvent.opportunityName = "Greater Giving: " + data.get("Donation Type");
       }
-      try {
-        importEvent.opportunityDate = Calendar.getInstance();
-        importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(data.get("Donation Date")));
-      } catch (ParseException e) {
-        throw new RuntimeException("failed to parse date", e);
-      }
+      importEvent.opportunityDate = getZonedDateFromDateString(data.get("Donation Date"), env.getConfig().timezoneId, "yyyy-M-d");
       importEvent.opportunitySource = data.get("Donation Type");
       importEvent.opportunityStageName = data.get("Donation Stage");
       importEvent.opportunityDescription = data.get("Donation Description");
@@ -802,7 +790,7 @@ public class CrmController {
     }
   }
 
-  protected CrmImportEvent fromClassy(Map<String, String> data) {
+  protected CrmImportEvent fromClassy(Map<String, String> data, Environment env) {
     CrmImportEvent importEvent = new CrmImportEvent();
 
     // Contact
@@ -829,12 +817,7 @@ public class CrmController {
     importEvent.opportunityAmount = BigDecimal.valueOf(Double.valueOf(data.get("Charged Intended Donation Amount")));
     importEvent.opportunityName = "Classy: " + data.get("Campaign Name");
     importEvent.opportunityTransactionId = data.get("Transaction ID");
-    try {
-      importEvent.opportunityDate = Calendar.getInstance();
-      importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.get("Transaction Date")));
-    } catch (ParseException e) {
-      throw new RuntimeException("failed to parse date", e);
-    }
+    importEvent.opportunityDate = getZonedDateFromDateString(data.get("Transaction Date"), env.getConfig().timezoneId, "yyyy-MM-dd HH:mm:ss");
     importEvent.opportunitySource = "Classy";
 
     return importEvent;
