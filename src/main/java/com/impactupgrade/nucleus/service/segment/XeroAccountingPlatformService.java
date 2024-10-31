@@ -217,7 +217,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         // Get existing invoices for crmDonations by date
         List<ZonedDateTime> donationDates = crmDonations.stream().map(ac -> ac.closeDate).toList();
         ZonedDateTime minDate = Collections.min(donationDates);
-        List<Invoice> existingInvoices = getInvoices(minDate);
+        List<Invoice> existingInvoices = callWithRetries(() -> getInvoices(minDate));
         // shouldn't be collisions moving forward, but there are old references like "RD-PayWay"
         Map<String, Invoice> invoicesByReference = existingInvoices.stream()
             .collect(Collectors.toMap(Invoice::getReference, invoice -> invoice, (i1, i2) -> i1));
@@ -241,18 +241,19 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 }
 
                 String accountNumber = getAccountNumber(crmDonation.contact, crmDonation.account);
-                // TODO: API rate limit risk
                 Optional<Contact> contact = callWithRetries(() -> getContactForAccountNumber(accountNumber, true));
                 if (contact.isEmpty()) {
                     env.logJobInfo("skipping donation {}; unable to find contact {}", crmDonation.id, accountNumber);
                     continue;
                 }
-                Invoice invoice = toInvoice(crmDonation, contact.get().getContactID());
 
+                env.logJobInfo("donation {} will be inserted on contact {}", crmDonation.id, accountNumber);
+                Invoice invoice = toInvoice(crmDonation, contact.get().getContactID());
                 invoices.add(invoice);
             }
 
             if (!invoices.isEmpty()) {
+                env.logJobInfo("inserting {} invoices", invoices.size());
                 Invoices invoicesPost = new Invoices();
                 invoicesPost.setInvoices(invoices);
                 Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
