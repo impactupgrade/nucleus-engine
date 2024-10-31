@@ -831,7 +831,7 @@ public class CrmController {
     importEvent.opportunityTransactionId = data.get("Transaction ID");
     try {
       importEvent.opportunityDate = Calendar.getInstance();
-      importEvent.opportunityDate.setTime(new SimpleDateFormat("MM/dd/yy HH:mm").parse(data.get("Transaction Date")));
+      importEvent.opportunityDate.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.get("Transaction Date")));
     } catch (ParseException e) {
       throw new RuntimeException("failed to parse date", e);
     }
