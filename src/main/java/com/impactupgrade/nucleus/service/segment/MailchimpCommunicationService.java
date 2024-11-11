@@ -17,6 +17,7 @@ import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -159,12 +160,17 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
       String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
       mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
+
+      List<MemberInfo> memberInfos = mailchimpClient.getListMembers(communicationList.id);
+      backfillContacts(contactsToUpsert, memberInfos);
     } catch (MailchimpException e) {
       env.logJobWarn("Mailchimp syncContacts failed: {}", mailchimpClient.exceptionToString(e));
     } catch (Exception e) {
       env.logJobWarn("Mailchimp syncContacts failed", e);
     }
   }
+
+  protected void backfillContacts(List<CrmContact> contacts, List<MemberInfo> memberInfos) {}
 
   @Override
   public void massArchive() throws Exception {
