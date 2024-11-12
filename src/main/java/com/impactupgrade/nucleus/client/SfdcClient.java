@@ -11,7 +11,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.impactupgrade.integration.sfdc.SFDCPartnerAPIClient;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.util.HttpClient;
@@ -527,25 +526,19 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     // IMPORTANT: If env.json defines emailOptOut/emailBounced, also include those contacts in this query! This might seem backwards,
     // but we need them in the results so that we can archive them in Mailchimp.
     List<String> clauses = new ArrayList<>();
-    EnvironmentConfig.CRMFieldDefinitions crmFields = env.getConfig().salesforce.fieldDefinitions;
-
-    if (!Strings.isNullOrEmpty(crmFields.emailOptIn) && !crmFields.listFilterOverridesOptIn) {
-      clauses.add(crmFields.emailOptIn + "=TRUE");
+    if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptIn)
+        && !env.getConfig().salesforce.fieldDefinitions.listFilterOverridesOptIn) {
+      clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptIn + "=TRUE");
 
       // ONLY ADD THESE IF WE'RE INCLUDING THE ABOVE OPT-IN FILTER! Otherwise, some orgs only have opt-out defined,
       // and we'd effectively be syncing ONLY unsubscribes.
-      if (!Strings.isNullOrEmpty(crmFields.emailOptOut)) {
-        clauses.add(crmFields.emailOptOut + "=TRUE");
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailOptOut)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.emailOptOut + "=TRUE");
       }
-      if (!Strings.isNullOrEmpty(crmFields.emailBounced)) {
-        clauses.add(crmFields.emailBounced + "=TRUE");
+      if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailBounced)) {
+        clauses.add(env.getConfig().salesforce.fieldDefinitions.emailBounced + "=TRUE");
       }
     }
-
-    if (!Strings.isNullOrEmpty(crmFields.smsOptIn) && !crmFields.listFilterOverridesOptIn) {
-      clauses.add(crmFields.smsOptIn + "=TRUE");
-    }
-
     String optInOutFilters = clauses.isEmpty() ? "" : " AND (" + String.join(" OR ", clauses) + ")";
 
     // IMPORTANT: Order by CreatedDate ASC, ensuring this is FIFO for contacts sharing the same email address.

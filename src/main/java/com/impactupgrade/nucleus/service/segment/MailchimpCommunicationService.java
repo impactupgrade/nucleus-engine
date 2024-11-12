@@ -15,9 +15,9 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.CountryCallingCode;
 import org.apache.commons.collections.CollectionUtils;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -31,7 +31,11 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.impactupgrade.nucleus.client.MailchimpClient.*;
+import static com.impactupgrade.nucleus.client.MailchimpClient.FIRST_NAME;
+import static com.impactupgrade.nucleus.client.MailchimpClient.LAST_NAME;
+import static com.impactupgrade.nucleus.client.MailchimpClient.PHONE_NUMBER;
+import static com.impactupgrade.nucleus.client.MailchimpClient.SMS_PHONE_NUMBER;
+import static com.impactupgrade.nucleus.client.MailchimpClient.SUBSCRIBED;
 
 public class MailchimpCommunicationService extends AbstractCommunicationService {
 
@@ -142,7 +146,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           communicationList);
 
       // run the actual contact upserts
-      List<MemberInfo> upsertMemberInfos = toMcMemberInfos(communicationList, contactsToUpsert, contactsCustomFields);
+      List<MemberInfo> upsertMemberInfos = toMcMemberInfos(communicationList, mailchimpConfig, contactsToUpsert, contactsCustomFields);
       String upsertBatchId = mailchimpClient.upsertContactsBatch(communicationList.id, upsertMemberInfos);
       mailchimpClient.runBatchOperations(mailchimpConfig, upsertBatchId, 0);
 
@@ -160,17 +164,12 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
 
       String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
       mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
-
-      List<MemberInfo> memberInfos = mailchimpClient.getListMembers(communicationList.id);
-      backfillContacts(contactsToUpsert, memberInfos);
     } catch (MailchimpException e) {
       env.logJobWarn("Mailchimp syncContacts failed: {}", mailchimpClient.exceptionToString(e));
     } catch (Exception e) {
       env.logJobWarn("Mailchimp syncContacts failed", e);
     }
   }
-
-  protected void backfillContacts(List<CrmContact> contacts, List<MemberInfo> memberInfos) {}
 
   @Override
   public void massArchive() throws Exception {
@@ -308,7 +307,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           communicationList);
 
       // run the actual contact upserts
-      MemberInfo upsertMemberInfo = toMcMemberInfo(crmContact, customFields, communicationList.groups);
+      MemberInfo upsertMemberInfo = toMcMemberInfo(crmContact, customFields, communicationList.groups, mailchimpConfig);
       mailchimpClient.upsertContact(communicationList.id, upsertMemberInfo);
 
       // update all contacts' tags
@@ -403,14 +402,14 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected List<MemberInfo> toMcMemberInfos(EnvironmentConfig.CommunicationList communicationList, List<CrmContact> crmContacts,
+  protected List<MemberInfo> toMcMemberInfos(EnvironmentConfig.CommunicationList communicationList, EnvironmentConfig.CommunicationPlatform mailchimpConfig, List<CrmContact> crmContacts,
       Map<String, Map<String, Object>> customFieldsMap) {
     return crmContacts.stream()
-        .map(crmContact -> toMcMemberInfo(crmContact, customFieldsMap.get(crmContact.email), communicationList.groups))
+        .map(crmContact -> toMcMemberInfo(crmContact, customFieldsMap.get(crmContact.email), communicationList.groups, mailchimpConfig))
         .collect(Collectors.toList());
   }
 
-  protected MemberInfo toMcMemberInfo(CrmContact crmContact, Map<String, Object> customFields, Map<String, String> groups) {
+  protected MemberInfo toMcMemberInfo(CrmContact crmContact, Map<String, Object> customFields, Map<String, String> groups, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
     if (crmContact == null) {
       return null;
     }
@@ -425,10 +424,17 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.merge_fields.mapping.put(LAST_NAME, crmContact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
 
-    mcContact.consents_to_one_to_one_messaging = true; //?
-    mcContact.sms_phone_number = crmContact.mobilePhone;
-    mcContact.merge_fields.mapping.put(SMS_PHONE_NUMBER, crmContact.mobilePhone);
-    mcContact.sms_subscription_status = SUBSCRIBED;
+    boolean smsOptIn = Boolean.TRUE == crmContact.smsOptIn && Boolean.FALSE == crmContact.smsOptOut;
+    String phoneNumber = crmContact.phoneNumberForSMS();
+    boolean phoneNumberAllowed =
+        phoneNumber.startsWith(mailchimpConfig.countryCode)
+        || ((!phoneNumber.startsWith("+") && crmContact.account.billingAddress.country.equalsIgnoreCase(mailchimpConfig.country)));
+    if (smsOptIn && phoneNumberAllowed) {
+      mcContact.consents_to_one_to_one_messaging = true;
+      mcContact.sms_subscription_status = SUBSCRIBED;
+      mcContact.sms_phone_number = phoneNumber;
+      mcContact.merge_fields.mapping.put(SMS_PHONE_NUMBER, phoneNumber);
+    }
 
     mcContact.merge_fields.mapping.putAll(customFields);
     mcContact.status = SUBSCRIBED;

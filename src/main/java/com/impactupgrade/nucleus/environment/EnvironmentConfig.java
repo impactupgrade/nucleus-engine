@@ -327,6 +327,8 @@ public class EnvironmentConfig implements Serializable {
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;
+    public String country;
+    public String countryCode;
   }
 
   public List<CommunicationPlatform> mailchimp = new ArrayList<>();
