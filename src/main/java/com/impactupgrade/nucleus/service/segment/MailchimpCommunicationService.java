@@ -15,7 +15,6 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
-import com.impactupgrade.nucleus.util.CountryCallingCode;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
@@ -424,14 +423,10 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.merge_fields.mapping.put(LAST_NAME, crmContact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
 
-    boolean smsOptIn = Boolean.TRUE == crmContact.smsOptIn && Boolean.FALSE == crmContact.smsOptOut;
-    String phoneNumber = crmContact.phoneNumberForSMS();
-    boolean phoneNumberAllowed =
-        phoneNumber.startsWith(mailchimpConfig.countryCode)
-        || ((!phoneNumber.startsWith("+") && crmContact.account.billingAddress.country.equalsIgnoreCase(mailchimpConfig.country)));
-    if (smsOptIn && phoneNumberAllowed) {
+    if (smsAllowed(crmContact, mailchimpConfig)) {
       mcContact.consents_to_one_to_one_messaging = true;
       mcContact.sms_subscription_status = SUBSCRIBED;
+      String phoneNumber = crmContact.phoneNumberForSMS();
       mcContact.sms_phone_number = phoneNumber;
       mcContact.merge_fields.mapping.put(SMS_PHONE_NUMBER, phoneNumber);
     }
@@ -446,5 +441,26 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.interests = groupMap;
 
     return mcContact;
+  }
+
+  private boolean smsAllowed(CrmContact crmContact, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
+    boolean smsOptIn = Boolean.TRUE == crmContact.smsOptIn && Boolean.FALSE == crmContact.smsOptOut;
+    if (!smsOptIn) {
+      return false;
+    }
+    String phoneNumber = crmContact.phoneNumberForSMS();
+    if (Strings.isNullOrEmpty(phoneNumber)) {
+      return false;
+    }
+
+    boolean smsAllowed = false;
+    if (!Strings.isNullOrEmpty(mailchimpConfig.countryCode) && phoneNumber.startsWith(mailchimpConfig.countryCode)) {
+      smsAllowed = true;
+    } else if (!phoneNumber.startsWith("+") && !Strings.isNullOrEmpty(mailchimpConfig.country)
+        && crmContact.account.billingAddress != null && !Strings.isNullOrEmpty(crmContact.account.billingAddress.country)
+        && crmContact.account.billingAddress.country.equalsIgnoreCase(mailchimpConfig.country)) {
+      smsAllowed = true;
+    }
+    return smsAllowed;
   }
 }
