@@ -137,7 +137,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     if (upserted.getValidationErrors().stream()
                         .anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
 
-                        Optional<Contact> existingContact = callWithRetries(() -> getContactForAccountNumber(contact.getAccountNumber(), true));
+                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber(), true);
                         if (existingContact.isPresent()) {
                             contact.setContactID(existingContact.get().getContactID());
                             contactsToRetry.add(contact);
@@ -171,8 +171,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
     }
 
-    protected Optional<Contact> getContact(String where, boolean includeArchived) throws Exception {
-        Contacts contacts = xeroApi.getContacts(getAccessToken(), xeroTenantId,
+    protected List<Contact> getContacts(String where, boolean includeArchived) throws Exception {
+        Contacts contacts = callWithRetries(() -> xeroApi.getContacts(getAccessToken(), xeroTenantId,
 //            OffsetDateTime ifModifiedSince,
             null,
 //            String where,
@@ -186,12 +186,17 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             includeArchived,
 //            Boolean summaryOnly
             true
-        );
-        return contacts.getContacts().stream().findFirst();
+        ));
+        return contacts.getContacts();
+    }
+
+    public List<Contact> getContactsForAccountNumbers(List<String> accountNumbers, boolean includeArchived) throws Exception {
+        String conditions = accountNumbers.stream().map(s -> "AccountNumber=\"" + s + "\"").collect(Collectors.joining(" OR "));
+        return getContacts(conditions, includeArchived);
     }
 
     public Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived) throws Exception {
-        return getContact("AccountNumber=\"" + accountNumber + "\"", includeArchived);
+        return getContacts("AccountNumber=\"" + accountNumber + "\"", includeArchived).stream().findFirst();
     }
 
     protected <T> T callWithRetries(Callable<T> callable) throws Exception {
@@ -217,18 +222,23 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         // Get existing invoices for crmDonations by date
         List<ZonedDateTime> donationDates = crmDonations.stream().map(ac -> ac.closeDate).toList();
         ZonedDateTime minDate = Collections.min(donationDates);
-        List<Invoice> existingInvoices = callWithRetries(() -> getInvoices(minDate));
+        List<Invoice> existingInvoices = getInvoices(minDate);
         // shouldn't be collisions moving forward, but there are old references like "RD-PayWay"
         Map<String, Invoice> invoicesByReference = existingInvoices.stream()
             .collect(Collectors.toMap(Invoice::getReference, invoice -> invoice, (i1, i2) -> i1));
 
-        // TODO: Due to the rate limit risk of using getContactForAccountNumber, we break the list into chunks. That
+        // TODO: Due to the rate limit risks, we break the list into chunks. That
         //  way if we run into the daily limit, we've at least inserted what we could.
         List<List<CrmDonation>> crmDonationBatches = Lists.partition(crmDonations, 50);
         List<String> createdInvoiceIds = new ArrayList<>();
 
         for (List<CrmDonation> crmDonationBatch : crmDonationBatches) {
             List<Invoice> invoices = new ArrayList<>();
+
+            List<String> accountNumbers = crmDonationBatch.stream().map(d -> getAccountNumber(d.contact, d.account)).toList();
+            Map<String, Contact> contactsByAccountNumbers = getContactsForAccountNumbers(accountNumbers, true).stream()
+                .collect(Collectors.toMap(Contact::getAccountNumber, c -> c));
+
             for (CrmDonation crmDonation : crmDonationBatch) {
                 Invoice existingInvoice = invoicesByReference.get(getReference(crmDonation));
                 if (existingInvoice != null) {
@@ -241,14 +251,14 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 }
 
                 String accountNumber = getAccountNumber(crmDonation.contact, crmDonation.account);
-                Optional<Contact> contact = callWithRetries(() -> getContactForAccountNumber(accountNumber, true));
-                if (contact.isEmpty()) {
+                Contact contact = contactsByAccountNumbers.get(accountNumber);
+                if (contact == null) {
                     env.logJobInfo("skipping donation {}; unable to find contact {}", crmDonation.id, accountNumber);
                     continue;
                 }
 
-                env.logJobInfo("donation {} will be inserted on contact {}", crmDonation.id, accountNumber);
-                Invoice invoice = toInvoice(crmDonation, contact.get().getContactID());
+                env.logJobInfo("donation invoice {} will be inserted on contact {}", crmDonation.id, accountNumber);
+                Invoice invoice = toInvoice(crmDonation, contact.getContactID());
                 invoices.add(invoice);
             }
 
@@ -276,7 +286,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         boolean anotherPage = true;
         List<Invoice> allInvoices = new ArrayList<>();
         while (anotherPage) {
-            Invoices invoices = xeroApi.getInvoices(getAccessToken(), xeroTenantId,
+            final int _page = page;
+            Invoices invoices = callWithRetries(() -> xeroApi.getInvoices(getAccessToken(), xeroTenantId,
                 // OffsetDateTime ifModifiedSince
                 null,
                 where,
@@ -295,7 +306,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     Invoice.StatusEnum.AUTHORISED.name(),
                     Invoice.StatusEnum.PAID.name()
                 ),
-                page,
+                _page,
                 //Boolean includeArchived,
                 false,
                 //Boolean createdByMyApp,
@@ -304,7 +315,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 null,
                 // Boolean summaryOnly
                 false //The supplied filter (where) is unavailable on this endpoint when summaryOnly=true
-            );
+            ));
             List<Invoice> pageInvoices = invoices.getInvoices();
             allInvoices.addAll(pageInvoices);
             if (pageInvoices.size() < 100) {
@@ -324,7 +335,9 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         boolean anotherPage = true;
         List<BankTransaction> allTransactions = new ArrayList<>();
         while (anotherPage) {
-            BankTransactions bankTransactions = xeroApi.getBankTransactions(getAccessToken(), xeroTenantId, null, where, null, page, null);
+            final int _page = page;
+            BankTransactions bankTransactions = callWithRetries(() -> xeroApi.getBankTransactions(
+                getAccessToken(), xeroTenantId, null, where, null, _page, null));
             List<BankTransaction> pageBankTransactions = bankTransactions.getBankTransactions();
             allTransactions.addAll(pageBankTransactions);
             if (pageBankTransactions.size() < 100) {
