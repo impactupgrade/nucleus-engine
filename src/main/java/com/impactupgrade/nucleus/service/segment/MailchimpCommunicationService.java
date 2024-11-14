@@ -306,7 +306,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           communicationList);
 
       // run the actual contact upserts
-      MemberInfo upsertMemberInfo = toMcMemberInfo(crmContact, customFields, communicationList.groups, mailchimpConfig);
+      MemberInfo upsertMemberInfo = toMcMemberInfo(mailchimpConfig, crmContact, customFields, communicationList.groups);
       mailchimpClient.upsertContact(communicationList.id, upsertMemberInfo);
 
       // update all contacts' tags
@@ -404,11 +404,11 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   protected List<MemberInfo> toMcMemberInfos(EnvironmentConfig.CommunicationList communicationList, EnvironmentConfig.CommunicationPlatform mailchimpConfig, List<CrmContact> crmContacts,
       Map<String, Map<String, Object>> customFieldsMap) {
     return crmContacts.stream()
-        .map(crmContact -> toMcMemberInfo(crmContact, customFieldsMap.get(crmContact.email), communicationList.groups, mailchimpConfig))
+        .map(crmContact -> toMcMemberInfo(mailchimpConfig, crmContact, customFieldsMap.get(crmContact.email), communicationList.groups))
         .collect(Collectors.toList());
   }
 
-  protected MemberInfo toMcMemberInfo(CrmContact crmContact, Map<String, Object> customFields, Map<String, String> groups, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
+  protected MemberInfo toMcMemberInfo(EnvironmentConfig.CommunicationPlatform mailchimpConfig, CrmContact crmContact, Map<String, Object> customFields, Map<String, String> groups) {
     if (crmContact == null) {
       return null;
     }
