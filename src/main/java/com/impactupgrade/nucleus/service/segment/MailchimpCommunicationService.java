@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -423,7 +424,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     mcContact.merge_fields.mapping.put(LAST_NAME, crmContact.lastName);
     mcContact.merge_fields.mapping.put(PHONE_NUMBER, crmContact.mobilePhone);
 
-    if (smsAllowed(crmContact, mailchimpConfig)) {
+    if (smsAllowed(mailchimpConfig, crmContact)) {
       mcContact.consents_to_one_to_one_messaging = true;
       mcContact.sms_subscription_status = SUBSCRIBED;
       String phoneNumber = crmContact.phoneNumberForSMS();
@@ -443,7 +444,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     return mcContact;
   }
 
-  private boolean smsAllowed(CrmContact crmContact, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
+  private boolean smsAllowed(EnvironmentConfig.CommunicationPlatform mailchimpConfig, CrmContact crmContact) {
     boolean smsOptIn = Boolean.TRUE == crmContact.smsOptIn && Boolean.FALSE == crmContact.smsOptOut;
     if (!smsOptIn) {
       return false;
@@ -456,10 +457,12 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     boolean smsAllowed = false;
     if (!Strings.isNullOrEmpty(mailchimpConfig.countryCode) && phoneNumber.startsWith(mailchimpConfig.countryCode)) {
       smsAllowed = true;
-    } else if (!phoneNumber.startsWith("+") && !Strings.isNullOrEmpty(mailchimpConfig.country)
-        && crmContact.account.billingAddress != null && !Strings.isNullOrEmpty(crmContact.account.billingAddress.country)
-        && crmContact.account.billingAddress.country.equalsIgnoreCase(mailchimpConfig.country)) {
-      smsAllowed = true;
+    } else if (!Strings.isNullOrEmpty(mailchimpConfig.country) && !phoneNumber.startsWith("+")) {
+      smsAllowed = Stream.of(crmContact.account.billingAddress, crmContact.account.mailingAddress, crmContact.mailingAddress)
+          .filter(Objects::nonNull)
+          .map(crmAddress -> crmAddress.country)
+          .filter(country -> mailchimpConfig.country.equalsIgnoreCase(country))
+          .findFirst().isPresent();
     }
     return smsAllowed;
   }
