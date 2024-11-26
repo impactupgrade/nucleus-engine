@@ -445,7 +445,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   }
 
   private boolean smsAllowed(EnvironmentConfig.CommunicationPlatform mailchimpConfig, CrmContact crmContact) {
-    boolean smsOptIn = Boolean.TRUE == crmContact.smsOptIn && Boolean.FALSE == crmContact.smsOptOut;
+    boolean smsOptIn = Boolean.TRUE == crmContact.smsOptIn && Boolean.TRUE != crmContact.smsOptOut;
     if (!smsOptIn) {
       return false;
     }
@@ -460,9 +460,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     } else if (!Strings.isNullOrEmpty(mailchimpConfig.country) && !phoneNumber.startsWith("+")) {
       smsAllowed = Stream.of(crmContact.account.billingAddress, crmContact.account.mailingAddress, crmContact.mailingAddress)
           .filter(Objects::nonNull)
-          .map(crmAddress -> crmAddress.country)
-          .filter(country -> mailchimpConfig.country.equalsIgnoreCase(country))
-          .findFirst().isPresent();
+          .anyMatch(crmAddress -> mailchimpConfig.country.equalsIgnoreCase(crmAddress.country));
     }
     return smsAllowed;
   }
