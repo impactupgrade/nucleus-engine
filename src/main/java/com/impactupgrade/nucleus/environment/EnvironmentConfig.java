@@ -327,6 +327,12 @@ public class EnvironmentConfig implements Serializable {
     // Transactional email (donation receipts, notifications, etc.) need one of the email platforms to be
     // designated as the conduit!
     public boolean transactionalSender = false;
+
+    // TODO: Email assumed to be enabled by default and this is not currently used. If the types of platforms expands,
+    //  we may need to work this into the code.
+    public Boolean enableEmail = true;
+    public Boolean enableSms = false;
+
     public String country;
     public String countryCode;
   }

@@ -445,6 +445,9 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   }
 
   private boolean smsAllowed(EnvironmentConfig.CommunicationPlatform mailchimpConfig, CrmContact crmContact) {
+    if (!mailchimpConfig.enableSms) {
+      return false;
+    }
     boolean smsOptIn = Boolean.TRUE == crmContact.smsOptIn && Boolean.TRUE != crmContact.smsOptOut;
     if (!smsOptIn) {
       return false;
