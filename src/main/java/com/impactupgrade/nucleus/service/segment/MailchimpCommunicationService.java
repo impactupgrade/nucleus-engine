@@ -15,6 +15,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
+import com.impactupgrade.nucleus.util.PageResultsProcessor;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
@@ -76,19 +77,15 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         }
 
         PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
-          do {
-            PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
-            fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
-            syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, mcEmails, mailchimpClient);
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
+        PageResultsProcessor<CrmAccount> accountPageResultsProcessor = new PageResultsProcessor<>(
+            accountResultSet -> {
+              PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
+              fauxContacts.getRecords().addAll(accountResultSet.getRecords().stream().map(this::asCrmContact).toList());
+
+              syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, mcEmails, mailchimpClient);
+            },
+            env.primaryCrmService()::queryMoreAccounts);
+        accountPageResultsProcessor.processPagedResults(accountPagedResults);
       }
     }
   }
