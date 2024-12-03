@@ -25,9 +25,6 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.impactupgrade.nucleus.util.Utils;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
@@ -46,7 +43,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -482,17 +478,9 @@ public class CrmController {
     List<CrmCustomField> customFields = new ArrayList<>();
 
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
-    CSVParser csvParser = CSVParser.parse(
-            inputStream,
-            Charset.defaultCharset(),
-            CSVFormat.DEFAULT
-                    .withFirstRecordAsHeader()
-                    .withIgnoreHeaderCase()
-                    .withTrim()
-    );
-    for (CSVRecord csvRecord : csvParser) {
-      Map<String, String> data = csvRecord.toMap();
-      customFields.add(CrmCustomField.fromGeneric(data));
+    List<Map<String, String>> rows = Utils.getCsvData(inputStream);
+    for (Map<String, String> row : rows) {
+      customFields.add(CrmCustomField.fromGeneric(row));
     }
 
     CrmService crmService = getCrmService(env, crmType);
@@ -625,21 +613,10 @@ public class CrmController {
 
   protected List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {
     String fileExtension = Utils.getFileExtension(fileDisposition.getFileName());
-    List<Map<String, String>> data = new ArrayList<>();
+    List<Map<String, String>> data;
 
     if ("csv".equals(fileExtension)) {
-      CSVParser csvParser = CSVParser.parse(
-              inputStream,
-              Charset.defaultCharset(),
-              CSVFormat.DEFAULT
-                      .withFirstRecordAsHeader()
-                      .withIgnoreHeaderCase()
-                      .withTrim()
-      );
-      data = new ArrayList<>();
-      for (CSVRecord csvRecord : csvParser) {
-        data.add(csvRecord.toMap());
-      }
+      data = Utils.getCsvData(inputStream);
     } else if ("xlsx".equals(fileExtension)) {
       data = Utils.getExcelData(inputStream, 0);
     } else {

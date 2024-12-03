@@ -4,11 +4,11 @@
 
 package com.impactupgrade.nucleus.util;
 
-import com.fasterxml.jackson.databind.MappingIterator;
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import com.google.common.base.Strings;
 import com.sun.xml.ws.util.StringUtils;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
@@ -20,6 +20,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
@@ -35,7 +36,6 @@ import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -209,14 +209,42 @@ public class Utils {
   }
 
   public static List<Map<String, String>> getCsvData(InputStream inputStream) throws IOException {
-    CsvMapper mapper = new CsvMapper();
-    CsvSchema schema = CsvSchema.emptySchema().withHeader();
-    MappingIterator<Map<String, String>> iterator = mapper.readerFor(Map.class).with(schema).readValues(inputStream);
-    List<Map<String, String>> result = new LinkedList<>();
-    while (iterator.hasNext()) {
-      result.add(iterator.next());
+    try (CSVParser csvParser = CSVParser.parse(
+        inputStream,
+        Charset.defaultCharset(),
+        CSVFormat.DEFAULT
+            .withIgnoreHeaderCase()
+            .withTrim()
+    )) {
+      CSVRecord headerRecord = csvParser.iterator().next();
+      List<String> headers = new ArrayList<>();
+      List<Integer> headerIndices = new ArrayList<>();
+
+      for (int i = 0; i < headerRecord.size(); i++) {
+        String header = headerRecord.get(i);
+        if (header != null && !header.trim().isEmpty()) {
+          headers.add(header.trim());
+          headerIndices.add(i);
+        }
+      }
+
+      List<Map<String, String>> data = new ArrayList<>();
+      while (csvParser.iterator().hasNext()) {
+        CSVRecord csvRecord = csvParser.iterator().next();
+        Map<String, String> row = new HashMap<>();
+        for (int i = 0; i < headers.size(); i++) {
+          String header = headers.get(i);
+          int index = headerIndices.get(i);
+          if (index < csvRecord.size()) {
+            String value = csvRecord.get(index);
+            row.put(header, value);
+          }
+        }
+
+        data.add(row);
+      }
+      return data;
     }
-    return result;
   }
 
   public static List<Map<String, String>> getExcelData(InputStream inputStream) throws IOException {
