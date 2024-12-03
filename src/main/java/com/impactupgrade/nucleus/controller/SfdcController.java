@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
+import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -36,7 +37,6 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -72,18 +72,7 @@ public class SfdcController {
     if (!Strings.isNullOrEmpty(gsheetUrl)) {
       data = GoogleSheetsUtil.getSheetData(gsheetUrl);
     } else if (inputStream != null) {
-      CSVParser csvParser = CSVParser.parse(
-          inputStream,
-          Charset.defaultCharset(),
-          CSVFormat.DEFAULT
-              .withFirstRecordAsHeader()
-              .withIgnoreHeaderCase()
-              .withTrim()
-      );
-      data = new ArrayList<>();
-      for (CSVRecord csvRecord : csvParser) {
-        data.add(csvRecord.toMap());
-      }
+      data = Utils.getCsvData(inputStream);
     } else {
       env.logJobWarn("no GSheet/CSV provided; skipping");
       return Response.status(400).build();
