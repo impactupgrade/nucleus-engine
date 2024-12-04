@@ -266,6 +266,7 @@ public class EnvironmentConfig implements Serializable {
   public Stripe stripe = new Stripe();
   public static class Stripe extends Platform {
     public List<Expression> filteringExpressions = new ArrayList<>();
+    public boolean enableContactSync = false;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -329,8 +330,8 @@ public class EnvironmentConfig implements Serializable {
 
     // TODO: Email assumed to be enabled by default and this is not currently used. If the types of platforms expands,
     //  we may need to work this into the code.
-    public Boolean enableEmail = true;
-    public Boolean enableSms = false;
+    public boolean enableEmail = true;
+    public boolean enableSms = false;
 
     public String country;
     public String countryCode;

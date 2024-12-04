@@ -13,6 +13,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import java.util.Calendar;
+import java.util.List;
 
 @Path("/data-sync")
 public class DataSyncController {
@@ -25,7 +26,8 @@ public class DataSyncController {
 
   @GET
   @Path("/contacts/daily")
-  public Response syncContactsDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
+  public Response syncContactsDaily(@QueryParam("syncDays") Integer syncDays, @QueryParam("service") String serviceName,
+      @Context HttpServletRequest request) throws Exception {
     Environment env = environmentFactory.init(request);
 
     Calendar lastSync = Calendar.getInstance();
@@ -41,7 +43,9 @@ public class DataSyncController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        for (DataSyncService dataSyncService : env.allDataSyncServices()) {
+        List<DataSyncService> dataSyncServices = env.dataSyncServices(serviceName);
+
+        for (DataSyncService dataSyncService : dataSyncServices) {
           try {
             dataSyncService.syncContacts(lastSync);
             env.logJobInfo("{}: sync contacts done", dataSyncService.name());
@@ -67,7 +71,8 @@ public class DataSyncController {
 
   @GET
   @Path("/transactions/daily")
-  public Response syncTransactionsDaily(@QueryParam("syncDays") Integer syncDays, @Context HttpServletRequest request) throws Exception {
+  public Response syncTransactionsDaily(@QueryParam("syncDays") Integer syncDays,
+      @QueryParam("service") String serviceName, @Context HttpServletRequest request) throws Exception {
     Environment env = environmentFactory.init(request);
 
     Calendar lastSync = Calendar.getInstance();
@@ -83,7 +88,9 @@ public class DataSyncController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        for (DataSyncService dataSyncService : env.allDataSyncServices()) {
+        List<DataSyncService> dataSyncServices = env.dataSyncServices(serviceName);
+
+        for (DataSyncService dataSyncService : dataSyncServices) {
           try {
             dataSyncService.syncTransactions(lastSync);
             env.logJobInfo("{}: sync transactions done", dataSyncService.name());
