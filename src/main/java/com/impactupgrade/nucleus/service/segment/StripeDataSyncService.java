@@ -2,6 +2,7 @@ package com.impactupgrade.nucleus.service.segment;
 
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmAddress;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
@@ -43,21 +44,64 @@ public class StripeDataSyncService implements DataSyncService {
       return;
     }
 
-    // TODO: also sync getDonorOrganizationAccounts
     PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorIndividualContacts(updatedAfter);
     for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-      for (CrmContact crmContact : resultSet.getRecords()) {
-        try {
-          if (Strings.isNullOrEmpty(crmContact.email)) {
-            env.logJobInfo("skipping {}; no email address", crmContact.id);
-            continue;
+      try {
+        do {
+          syncContacts(resultSet.getRecords());
+          if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+            // next page
+            resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
+          } else {
+            resultSet = null;
           }
-          updateCustomer(crmContact);
-        } catch (Exception e) {
-          env.logJobError("{}/syncContacts failed: {}", this.name(), e);
-        }
+        } while (resultSet != null);
+      } catch (Exception e) {
+        env.logJobError("{}/syncContacts failed: {}", this.name(), e);
       }
     }
+
+    PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getDonorOrganizationAccounts(updatedAfter);
+    for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
+      try {
+        do {
+          List<CrmAccount> crmAccounts = resultSet.getRecords();
+          List<CrmContact> fauxContacts = crmAccounts.stream().map(this::toFauxContact).toList();
+          syncContacts(fauxContacts);
+          if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+            // next page
+            resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
+          } else {
+            resultSet = null;
+          }
+        } while (resultSet != null);
+      } catch (Exception e) {
+        env.logJobError("{}/syncContacts failed: {}", this.name(), e);
+      }
+    }
+  }
+
+  protected void syncContacts(List<CrmContact> contacts) {
+    for (CrmContact crmContact : contacts) {
+      try {
+        if (Strings.isNullOrEmpty(crmContact.email)) {
+          env.logJobInfo("skipping {}; no email address", crmContact.id);
+          continue;
+        }
+        updateCustomer(crmContact);
+      } catch (Exception e) {
+        env.logJobError("{}/syncContacts failed: {}", this.name(), e);
+      }
+    }
+  }
+
+  protected CrmContact toFauxContact(CrmAccount crmAccount) {
+    CrmContact crmContact = new CrmContact();
+    crmContact.account = crmAccount;
+    crmContact.setFullNameOverride(crmAccount.name);
+    crmContact.email = crmAccount.email;
+    crmContact.mobilePhone = crmAccount.phone;
+    return crmContact;
   }
 
   @Override
