@@ -10,15 +10,16 @@ import com.stripe.model.Customer;
 import com.stripe.param.CustomerUpdateParams;
 
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 
 public class StripeDataSyncService implements DataSyncService {
 
   protected Environment env;
 
-  protected static final Integer RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS = 10; //?
+  protected static final Integer RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS = 5;
   protected static final Integer RATE_LIMIT_MAX_RETRIES = 3;
 
   @Override
@@ -38,10 +39,19 @@ public class StripeDataSyncService implements DataSyncService {
 
   @Override
   public void syncContacts(Calendar updatedAfter) throws Exception {
+    if (!env.getConfig().stripe.enableContactSync) {
+      return;
+    }
+
+    // TODO: also sync getDonorOrganizationAccounts
     PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getDonorIndividualContacts(updatedAfter);
     for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
       for (CrmContact crmContact : resultSet.getRecords()) {
         try {
+          if (Strings.isNullOrEmpty(crmContact.email)) {
+            env.logJobInfo("skipping {}; no email address", crmContact.id);
+            continue;
+          }
           updateCustomer(crmContact);
         } catch (Exception e) {
           env.logJobError("{}/syncContacts failed: {}", this.name(), e);
@@ -56,28 +66,26 @@ public class StripeDataSyncService implements DataSyncService {
     // and instead have this concept do it
   }
 
-  protected Customer updateCustomer(CrmContact crmContact) throws Exception {
-    Optional<Customer> existingCustomer = getCustomer(crmContact);
-    if (existingCustomer.isPresent()) {
-      // Update
+  protected void updateCustomer(CrmContact crmContact) throws Exception {
+    List<Customer> existingCustomers = getCustomers(crmContact);
+    for (Customer existingCustomer : existingCustomers) {
+      env.logJobInfo("updating contact {}, customer {}", crmContact.id, existingCustomer.getId());
       CustomerUpdateParams customerUpdateParams = CustomerUpdateParams.builder()
           .setName(crmContact.getFullName())
           .setEmail(crmContact.email.toLowerCase(Locale.ROOT))
           .setAddress(toUpdateAddress(crmContact.account.billingAddress))
           .setPhone(crmContact.mobilePhone)
           .build();
-      return callWithRetries(() -> env.stripeClient().updateCustomer(existingCustomer.get(), customerUpdateParams));
-    } else {
-      return null;
+      callWithRetries(() -> env.stripeClient().updateCustomer(existingCustomer, customerUpdateParams));
     }
   }
 
-  protected Optional<Customer> getCustomer(CrmContact crmContact) throws Exception {
+  protected List<Customer> getCustomers(CrmContact crmContact) throws Exception {
     if (!Strings.isNullOrEmpty(crmContact.email)) {
-      return env.stripeClient().getCustomerByEmail(crmContact.email);
+      return callWithRetries(() -> env.stripeClient().getCustomersByEmail(crmContact.email));
     } else {
       env.logJobInfo("Expected contact {} to have an email defined.", crmContact.getFullName());
-      return Optional.empty();
+      return Collections.emptyList();
     }
   }
 
