@@ -437,8 +437,9 @@ public class SharePointCrmService implements CrmService {
     public Map<String, String> getFieldOptions(String object) throws Exception {
         return Collections.emptyMap();
     }
+
     @Override
-    public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
+    public Map<String, List<String>> getContactsCampaigns(List<CrmContact> crmContacts,
         EnvironmentConfig.CommunicationList communicationList) throws Exception {
         return null;
     }

@@ -53,6 +53,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -938,20 +939,34 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Map<String, List<String>> getContactCampaignsByContactIds(List<String> contactIds,
+  public Map<String, List<String>> getContactsCampaigns(List<CrmContact> crmContacts,
       EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    Map<String, List<String>> contactCampaigns = new HashMap<>();
-    List<SObject> campaignMembers = sfdcClient.getEmailCampaignsByContactIds(
-        contactIds, communicationList.crmCampaignMemberFilter);
-    for (SObject campaignMember : campaignMembers) {
-      String contactId = (String) campaignMember.getField("ContactId");
-      String campaignName = (String) campaignMember.getChild("Campaign").getField("Name");
-      if (!contactCampaigns.containsKey(contactId)) {
-        contactCampaigns.put(contactId, new ArrayList<>());
+    Map<String, List<String>> campaigns = new HashMap<>();
+
+    List<String> contactIds = crmContacts.stream().map(c -> c.id).filter(Objects::nonNull).toList();
+    List<String> accountIds = crmContacts.stream().map(c -> c.account.id).filter(Objects::nonNull).toList();
+
+    Map<String, List<SObject>> contactCampaignMembers
+        = sfdcClient.getCampaignsByContactIds(contactIds, communicationList.crmCampaignMemberFilter);
+    Map<String, List<SObject>> accountCampaignMembers
+        = sfdcClient.getCampaignsByAccountIds(accountIds, communicationList.crmCampaignMemberFilter);
+
+    for (CrmContact crmContact : crmContacts) {
+      List<SObject> allCampaignMembers = Stream.of(
+          contactCampaignMembers.get(crmContact.id),
+          accountCampaignMembers.get(crmContact.account.id)
+      ).filter(Objects::nonNull).flatMap(List::stream).toList();
+
+      for (SObject campaignMember : allCampaignMembers) {
+        String campaignName = (String) campaignMember.getChild("Campaign").getField("Name");
+        if (!campaigns.containsKey(crmContact.id)) {
+          campaigns.put(crmContact.id, new ArrayList<>());
+        }
+        campaigns.get(crmContact.id).add(campaignName);
       }
-      contactCampaigns.get(contactId).add(campaignName);
     }
-    return contactCampaigns;
+
+    return campaigns;
   }
 
   @Override
