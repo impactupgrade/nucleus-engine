@@ -232,32 +232,51 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return querySingle(query);
   }
 
-  // See note on CrmService.getEmailCampaignsByContactIds. Retrieve in batches to preserve API limits!
-  public List<SObject> getEmailCampaignsByContactIds(List<String> contactIds, String filter) throws ConnectionException, InterruptedException {
+  public Map<String, List<SObject>> getCampaignsByContactIds(List<String> contactIds, String filter) throws ConnectionException, InterruptedException {
+    return getCampaignsByIds(contactIds, "ContactId", filter);
+  }
+
+  public Map<String, List<SObject>> getCampaignsByAccountIds(List<String> accountIds, String filter) throws ConnectionException, InterruptedException {
     // TODO: Note the use of CampaignMember -- currently need the name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
+
+    if (!env.getConfig().salesforce.accountCampaignMembers) {
+      return Collections.emptyMap();
+    }
+
+    return getCampaignsByIds(accountIds, "AccountId", filter);
+  }
+
+  // See note on CrmService.getContactsCampaigns. Retrieve in batches to preserve API limits!
+  protected Map<String, List<SObject>> getCampaignsByIds(List<String> ids, String fieldName, String filter) throws ConnectionException, InterruptedException {
+    // TODO: Note the use of CampaignMember -- currently need the name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
+
+    if (ids.isEmpty()) {
+      return Collections.emptyMap();
+    }
 
     List<String> page;
     List<String> more;
-    int size = contactIds.size();
+    int size = ids.size();
     if (size > MAX_ID_QUERY_LIST_SIZE) {
-      page = contactIds.subList(0, MAX_ID_QUERY_LIST_SIZE);
-      more = contactIds.subList(MAX_ID_QUERY_LIST_SIZE, size);
+      page = ids.subList(0, MAX_ID_QUERY_LIST_SIZE);
+      more = ids.subList(MAX_ID_QUERY_LIST_SIZE, size);
     } else {
-      page = contactIds;
+      page = ids;
       more = Collections.emptyList();
     }
 
-    String contactIdsJoin = page.stream().map(contactId -> "'" + contactId + "'").collect(Collectors.joining(","));
-    String query = "SELECT ContactId, Campaign.Name FROM CampaignMember WHERE ContactId IN (" + contactIdsJoin + ")";
+    String idsJoin = page.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+    String query = "SELECT " + fieldName + ", Campaign.Name FROM CampaignMember WHERE " + fieldName + " IN (" + idsJoin + ")";
     if (!Strings.isNullOrEmpty(filter)) {
       query += " AND " + filter;
     } else {
       query += " AND Campaign.IsActive=TRUE";
     }
-    List<SObject> results = queryListAutoPaged(query);
+    Map<String, List<SObject>> results = queryListAutoPaged(query).stream()
+        .collect(Collectors.groupingBy(campaignMember -> (String) campaignMember.getField(fieldName)));
 
     if (!more.isEmpty()) {
-      results.addAll(getEmailCampaignsByContactIds(more, filter));
+      results.putAll(getCampaignsByIds(more, fieldName, filter));
     }
 
     return results;
@@ -505,12 +524,17 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String updatedSinceClause = "";
     String ts = updatedSince == null ? "" : new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     if (updatedSince != null) {
-      updatedSinceClause = " and SystemModStamp >= " + ts;
+      updatedSinceClause = " AND SystemModStamp >= " + ts;
     }
     queryResults.add(queryEmailContacts(updatedSinceClause, filter, extraFields));
 
     if (updatedSince != null) {
-      updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + ts + " OR Campaign.SystemModStamp >= " + ts + ")";
+      if (env.getConfig().salesforce.accountCampaignMembers) {
+        updatedSinceClause = " AND AccountId IN (SELECT AccountId FROM CampaignMember WHERE SystemModStamp >= " + ts + " OR Campaign.SystemModStamp >= " + ts + ")";
+        queryResults.add(queryEmailContacts(updatedSinceClause, filter, extraFields));
+      }
+
+      updatedSinceClause = " AND Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + ts + " OR Campaign.SystemModStamp >= " + ts + ")";
       queryResults.add(queryEmailContacts(updatedSinceClause, filter, extraFields));
     }
 

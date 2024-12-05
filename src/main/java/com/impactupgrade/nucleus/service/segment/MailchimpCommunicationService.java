@@ -140,7 +140,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
             mailchimpConfig, communicationList);
         contactsCustomFields.put(crmContact.email, customFieldMap);
       }
-      Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(crmContacts, communicationList);
+      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
       Map<String, Set<String>> tags = mailchimpClient.getContactsTags(listMembers);
       Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig,
           communicationList);
@@ -302,7 +302,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
       Map<String, Object> customFields = getCustomFields(communicationList.id, crmContact, mailchimpClient,
           mailchimpConfig, communicationList);
       // Don't need the extra Map layer, but keeping it for now to reuse existing code.
-      Map<String, List<String>> crmContactCampaignNames = getContactCampaignNames(List.of(crmContact), communicationList);
+      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(List.of(crmContact), communicationList);
       Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig,
           communicationList);
 

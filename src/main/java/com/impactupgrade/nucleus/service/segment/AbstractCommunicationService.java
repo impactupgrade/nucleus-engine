@@ -13,7 +13,6 @@ import com.impactupgrade.nucleus.util.Utils;
 import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -32,15 +31,6 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     // TODO: DO NOT try to pull CrmService here! We should consider a refactor (possibly splitting EmailService
     //  into an email sync service vs. transactional email service. Currently, nucleus-core and others use
     //  SendGridEmailService, even when no CrmService is identified.
-  }
-
-  protected Map<String, List<String>> getContactCampaignNames(List<CrmContact> crmContacts,
-      EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    List<String> crmContactIds = crmContacts.stream().map(c -> c.id).filter(Objects::nonNull).collect(Collectors.toList());
-    if (crmContactIds.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    return env.primaryCrmService().getContactCampaignsByContactIds(crmContactIds, communicationList);
   }
 
   protected List<CustomField> buildContactCustomFields(CrmContact crmContact,
