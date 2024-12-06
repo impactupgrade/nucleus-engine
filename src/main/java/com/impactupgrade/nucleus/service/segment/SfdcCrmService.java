@@ -2440,7 +2440,7 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
-  protected Optional<SObject> getCampaignOrDefault(CrmRecord crmRecord) throws ConnectionException, InterruptedException {
+  protected Optional<SObject> getCampaignOrDefault(CrmRecord crmRecord) throws Exception {
     Optional<SObject> campaign = Optional.empty();
 
     String campaignIdOrName = crmRecord.getMetadataValue(env.getConfig().metadataKeys.campaign);
@@ -2449,6 +2449,15 @@ public class SfdcCrmService implements CrmService {
         campaign = sfdcClient.getCampaignById(campaignIdOrName);
       } else {
         campaign = sfdcClient.getCampaignByName(campaignIdOrName);
+
+        // If the campaign is not found by name, we assume it needs to be auto created!
+        if (campaign.isEmpty()) {
+          SObject newCampaign = new SObject("Campaign");
+          newCampaign.setField("Name", campaignIdOrName);
+          String newCampaignId = sfdcClient.insert(newCampaign).getId();
+          newCampaign.setId(newCampaignId);
+          campaign = Optional.of(newCampaign);
+        }
       }
     }
 
