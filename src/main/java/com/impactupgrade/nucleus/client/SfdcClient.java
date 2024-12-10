@@ -958,7 +958,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   public Optional<SObject> getNextPledgedDonationByRecurringDonationId(String recurringDonationId, String... extraFields) throws ConnectionException, InterruptedException {
     // TODO: Using TOMORROW to account for timezone issues -- we can typically get away with that approach
     // since most RDs are monthly...
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND stageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate Desc LIMIT 1";
+    String query = "SELECT " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " FROM Opportunity WHERE npe03__Recurring_Donation__c = '" + recurringDonationId + "' AND StageName = 'Pledged' AND CloseDate <= TOMORROW ORDER BY CloseDate DESC LIMIT 1";
     return querySingle(query);
   }
 
