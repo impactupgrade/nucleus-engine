@@ -1362,14 +1362,16 @@ public class SfdcCrmService implements CrmService {
     List<String> batchUpdateRecurringDonations = new ArrayList<>();
 
     boolean hasAccountColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .anyMatch(entry -> entry.getKey().startsWith("Account") && !Strings.isNullOrEmpty(entry.getValue()));
+        .filter(entry -> !"Account Id".equalsIgnoreCase(entry.getKey()))
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("account") && !Strings.isNullOrEmpty(entry.getValue()));
     boolean hasContactColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .anyMatch(entry -> entry.getKey().startsWith("Contact") && !Strings.isNullOrEmpty(entry.getValue()));
+        .filter(entry -> !"Contact Id".equalsIgnoreCase(entry.getKey()))
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("contact") && !Strings.isNullOrEmpty(entry.getValue()));
     boolean hasContactOrgColumns = importEvents.stream().anyMatch(e -> !e.contactOrganizations.isEmpty());
     boolean hasOppColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .anyMatch(entry -> entry.getKey().startsWith("Opportunity") && !Strings.isNullOrEmpty(entry.getValue()));
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("opportunity") && !Strings.isNullOrEmpty(entry.getValue()));
     boolean hasRdColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .anyMatch(entry -> entry.getKey().startsWith("Recurring Donation") && !Strings.isNullOrEmpty(entry.getValue()));
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("recurring donation") && !Strings.isNullOrEmpty(entry.getValue()));
 
     boolean hasCampaignMemberLookups = importEvents.stream().anyMatch(e ->
         !e.contactCampaigns.isEmpty() || !e.accountCampaigns.isEmpty());
