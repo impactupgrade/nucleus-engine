@@ -605,6 +605,14 @@ public class SfdcCrmService implements CrmService {
     env.logJobInfo("found SFDC pledged opportunity {} in recurring donation {}",
         pledgedOpportunity.getId(), recurringDonationId);
 
+    // If the pledged gift has a primary campaign source set, we know the Recurring Donation itself has a campaign.
+    // We need to trust that as the Campaign ID, and not Stripe metadata, in case the RD was moved to a different
+    // campaign in SFDC after the fact.
+    String pledgedOpportunityCampaignId = (String) pledgedOpportunity.getField("CampaignId");
+    if (!Strings.isNullOrEmpty(pledgedOpportunityCampaignId)) {
+      crmDonation.campaignId = pledgedOpportunityCampaignId;
+    }
+
     // check to see if the recurring donation was a failed attempt or successful
     if (crmDonation.status == CrmDonation.Status.SUCCESSFUL) {
       // update existing pledged donation to Closed Won
@@ -820,7 +828,7 @@ public class SfdcCrmService implements CrmService {
     }
     recurringDonation.setField("Npe03__Date_Established__c", Utils.toCalendar(crmRecurringDonation.subscriptionStartDate, env.getConfig().timezoneId));
     recurringDonation.setField("Npe03__Next_Payment_Date__c", Utils.toCalendar(crmRecurringDonation.subscriptionNextDate, env.getConfig().timezoneId));
-    recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", getCampaignOrDefault(crmRecurringDonation).map(SObject::getId).orElse(null));
+    recurringDonation.setField("Npe03__Recurring_Donation_Campaign__c", campaign.map(SObject::getId).orElse(null));
 
     // Purely a default, but we expect this to be generally overridden.
     recurringDonation.setField("Name", crmRecurringDonation.contact.getFullName() + " Recurring Donation");

@@ -16,6 +16,7 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.model.Subscription;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.PlanCreateParams;
+import com.stripe.param.SubscriptionUpdateParams;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 
@@ -268,6 +269,69 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(nowDate, opp.getField("CloseDate"));
     assertEquals(customer.getName() + " Donation", opp.getField("Name"));
     assertEquals("1.0", opp.getField("Amount"));
+
+    // only delete if the test passed -- keep failures in SFDC for analysis
+    clearSfdc(customer.getName());
+  }
+
+  @Test
+  public void ignoreStripeMetadataCampaignIdIfRDCampaignUpdatedInSFDC() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    SObject campaign1 = new SObject("Campaign");
+    campaign1.setField("Name", RandomStringUtils.randomAlphabetic(8));
+    String campaignId1 = sfdcClient.insert(campaign1).getId();
+    SObject campaign2 = new SObject("Campaign");
+    campaign2.setField("Name", RandomStringUtils.randomAlphabetic(8));
+    String campaignId2 = sfdcClient.insert(campaign2).getId();
+
+    Customer customer = StripeUtil.createCustomer(env);
+    Subscription subscription = StripeUtil.createSubscription(customer, env, PlanCreateParams.Interval.MONTH);
+    // set the campaign_id metadata on the Subscription so the initial RD will have the original campaign set
+    subscription.update(SubscriptionUpdateParams.builder().putMetadata("campaign_id", campaignId1).build(),
+        env.stripeClient().getRequestOptions());
+    List<PaymentIntent> paymentIntents = env.stripeClient().getPaymentIntentsFromCustomer(customer.getId());
+    PaymentIntent paymentIntent = env.stripeClient().getPaymentIntent(paymentIntents.get(0).getId());
+    String json = StripeUtil.createEventJson("payment_intent.succeeded", paymentIntent.getRawJsonObject(), paymentIntent.getCreated());
+
+    // play as a Stripe webhook
+    Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).stream().findFirst();
+    SObject contact = contactO.get();
+    String accountId = contact.getField("AccountId").toString();
+
+    List<SObject> rds = sfdcClient.getRecurringDonationsByAccountId(accountId);
+    assertEquals(1, rds.size());
+    SObject rd = rds.get(0);
+    assertEquals(campaignId1, rd.getField("npe03__Recurring_Donation_Campaign__c"));
+
+    List<SObject> opps = sfdcClient.getDonationsByAccountId(accountId);
+    assertEquals(1, opps.size());
+    SObject opp = opps.get(0);
+    assertEquals(rd.getId(), opp.getField("npe03__Recurring_Donation__c"));
+    assertEquals(campaignId1, opp.getField("CampaignId"));
+
+    // set the Opp back to Pledged, update the RD/Opp in SFDC with a new campaign, then rerun the webhook and make sure
+    // the new campaign is honored and the old campaign in Stripe doesn't overwrite it
+    SObject oppUpdate = new SObject("Opportunity");
+    oppUpdate.setId(opp.getId());
+    oppUpdate.setField("StageName", "Pledged");
+    oppUpdate.setField("CampaignId", campaignId2);
+    oppUpdate.setFieldsToNull(new String[]{env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId});
+    sfdcClient.update(oppUpdate);
+    SObject rdUpdate = new SObject("npe03__Recurring_Donation__c");
+    rdUpdate.setId(rd.getId());
+    rdUpdate.setField("npe03__Recurring_Donation_Campaign__c", campaignId2);
+    sfdcClient.update(rdUpdate);
+
+    response = target("/api/stripe/webhook").request().post(Entity.json(json));
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    opp = sfdcClient.getDonationById(opp.getId()).get();
+    assertEquals("Closed Won", opp.getField("StageName"));
+    assertEquals(campaignId2, opp.getField("CampaignId"));
 
     // only delete if the test passed -- keep failures in SFDC for analysis
     clearSfdc(customer.getName());
