@@ -264,13 +264,6 @@ public class EnvironmentConfig implements Serializable {
     public List<Expression> filteringExpressions = new ArrayList<>();
   }
 
-  public Paypal paypal = new Paypal();
-  public static class Paypal extends Platform {
-    //TODO: filtering expressions same as for Stripe?
-    public String mode;
-    public String webhookId;
-  }
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // ACCOUNTING
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

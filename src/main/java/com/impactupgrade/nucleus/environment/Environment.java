@@ -8,7 +8,6 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.EventBriteClient;
 import com.impactupgrade.nucleus.client.FactsClient;
 import com.impactupgrade.nucleus.client.MailchimpClient;
-import com.impactupgrade.nucleus.client.PaypalClient;
 import com.impactupgrade.nucleus.client.SfdcBulkClient;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.impactupgrade.nucleus.client.SfdcMetadataClient;
@@ -261,7 +260,6 @@ public class Environment {
 
   public EventBriteClient eventBriteClient() { return new EventBriteClient(this); }
   public FactsClient factsClient() { return new FactsClient(this); }
-  public PaypalClient paypalClient() { return new PaypalClient(this); }
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password, boolean isSandbox) { return new SfdcClient(this, username, password, isSandbox); }
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }

@@ -7,7 +7,6 @@ package com.impactupgrade.nucleus;
 import com.impactupgrade.nucleus.controller.BackupController;
 import com.impactupgrade.nucleus.controller.CommunicationController;
 import com.impactupgrade.nucleus.controller.CrmController;
-import com.impactupgrade.nucleus.controller.DonationFormController;
 import com.impactupgrade.nucleus.controller.EmailController;
 import com.impactupgrade.nucleus.controller.EventBriteController;
 import com.impactupgrade.nucleus.controller.FactsController;
@@ -15,7 +14,6 @@ import com.impactupgrade.nucleus.controller.JobController;
 import com.impactupgrade.nucleus.controller.MailchimpController;
 import com.impactupgrade.nucleus.controller.MinistryByTextController;
 import com.impactupgrade.nucleus.controller.PaymentGatewayController;
-import com.impactupgrade.nucleus.controller.PaypalController;
 import com.impactupgrade.nucleus.controller.ScheduledJobController;
 import com.impactupgrade.nucleus.controller.SfdcController;
 import com.impactupgrade.nucleus.controller.StripeController;
@@ -92,7 +90,6 @@ public class App {
     apiConfig.register(communicationController());
     apiConfig.register(dataSyncController());
     apiConfig.register(crmController());
-    apiConfig.register(donationFormController());
     apiConfig.register(emailController());
     apiConfig.register(eventBriteController());
     apiConfig.register(factsController());
@@ -103,7 +100,6 @@ public class App {
     apiConfig.register(sfdcController());
     apiConfig.register(scheduledJobController());
     apiConfig.register(stripeController());
-    apiConfig.register(paypalController());
     apiConfig.register(twilioController());
 
     registerAPIControllers(apiConfig);
@@ -149,7 +145,6 @@ public class App {
   protected CommunicationController communicationController() { return new CommunicationController(envFactory); }
   protected DataSyncController dataSyncController() { return new DataSyncController(envFactory); }
   protected CrmController crmController() { return new CrmController(envFactory); }
-  protected DonationFormController donationFormController() { return new DonationFormController(envFactory); }
   protected EmailController emailController() { return new EmailController(envFactory); }
   protected EventBriteController eventBriteController() { return new EventBriteController(envFactory); }
   protected FactsController factsController() { return new FactsController(envFactory); }
@@ -157,7 +152,6 @@ public class App {
   protected MailchimpController mailchimpController() { return new MailchimpController(envFactory); }
   protected MinistryByTextController ministrybytextController() { return new MinistryByTextController(envFactory); }
   protected PaymentGatewayController paymentGatewayController() { return new PaymentGatewayController(envFactory); }
-  protected PaypalController paypalController() { return new PaypalController(envFactory); }
   protected SfdcController sfdcController() { return new SfdcController(envFactory); }
   protected ScheduledJobController scheduledJobController() { return new ScheduledJobController(envFactory); }
   protected StripeController stripeController() { return new StripeController(envFactory); }
