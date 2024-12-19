@@ -114,7 +114,7 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception {
     return Collections.emptyList();
   }
 

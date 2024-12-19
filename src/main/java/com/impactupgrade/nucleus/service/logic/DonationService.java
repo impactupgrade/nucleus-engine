@@ -78,11 +78,11 @@ public class DonationService {
   }
 
   protected void fetchAndSetDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmDonation> existingDonation = crmService.getDonationByTransactionIds(
+    Optional<CrmDonation> existingDonation = crmService.getDonationsByTransactionIds(
         paymentGatewayEvent.getCrmDonation().getTransactionIds(),
         paymentGatewayEvent.getCrmDonation().account.id,
         paymentGatewayEvent.getCrmDonation().contact.id
-    );
+    ).stream().findFirst();
     if (existingDonation.isPresent()) {
       env.logJobInfo("found existing, posted CRM donation {} using transaction {}",
           existingDonation.get().id, paymentGatewayEvent.getCrmDonation().transactionId);
@@ -137,11 +137,11 @@ public class DonationService {
   }
 
   public void refundDonation(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
-    Optional<CrmDonation> donation = crmService.getDonationByTransactionIds(
+    Optional<CrmDonation> donation = crmService.getDonationsByTransactionIds(
         paymentGatewayEvent.getCrmDonation().getTransactionIds(),
         paymentGatewayEvent.getCrmAccount().id,
         paymentGatewayEvent.getCrmContact().id
-    );
+    ).stream().findFirst();
 
     // make sure that a donation was found and that only 1 donation was found
     if (donation.isPresent()) {
@@ -235,11 +235,11 @@ public class DonationService {
   public void processDeposit(List<PaymentGatewayEvent> paymentGatewayEvents) throws Exception {
     List<CrmDonation> crmDonations = new ArrayList<>();
     for (PaymentGatewayEvent e : paymentGatewayEvents) {
-      Optional<CrmDonation> donation = crmService.getDonationByTransactionIds(
+      Optional<CrmDonation> donation = crmService.getDonationsByTransactionIds(
           e.getCrmDonation().getTransactionIds(),
           e.getCrmAccount().id,
           e.getCrmContact().id
-      );
+      ).stream().findFirst();
       if (donation.isPresent()) {
         e.getCrmDonation().id = donation.get().id;
         e.getCrmDonation().crmRawObject = donation.get().crmRawObject;

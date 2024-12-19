@@ -269,7 +269,7 @@ public class VirtuousCrmService implements CrmService {
 
   // Donations
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception {
     // TODO: possible to query for the whole list at once?
     // TODO: For now, safe to assume Stripe here, but might need an interface change...
     List<CrmDonation> donations = new ArrayList<>();

@@ -166,19 +166,13 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmDonation> getDonationByTransactionIds(List<String> transactionIds, String accountId, String contactId) {
-    return getDonation(
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId) {
+    return getDonations(
         contactId,
         List.of("Donation", "RecurringDonationPayment"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewayTransactionId,
         transactionIds
-    ).map(this::toCrmDonation);
-  }
-
-  // Not able to retrieve donations purely by transactionIds -- must have the Constituent.
-  @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
-    return Collections.emptyList();
+    ).stream().map(this::toCrmDonation).toList();
   }
 
   // Not able to retrieve donations purely by customerId -- must have the Constituent.
@@ -459,12 +453,12 @@ public class BloomerangCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
-    return getDonation(
+    return getDonations(
         contactId,
         List.of("RecurringDonation"),
         env.getConfig().bloomerang.fieldDefinitions.paymentGatewaySubscriptionId,
         List.of(subscriptionId)
-    ).map(this::toCrmRecurringDonation);
+    ).stream().map(this::toCrmRecurringDonation).findFirst();
   }
 
   @Override
@@ -630,34 +624,23 @@ public class BloomerangCrmService implements CrmService {
     return null;
   }
 
-  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
-      String customFieldKey, String customFieldValue) {
-    return getDonation(constituentId, donationTypes, customFieldKey, List.of(customFieldValue));
-  }
-
-  protected Optional<Donation> getDonation(String constituentId, List<String> donationTypes,
+  protected List<Donation> getDonations(String constituentId, List<String> donationTypes,
       String customFieldKey, List<String> _customFieldValues) {
     if (Strings.isNullOrEmpty(customFieldKey)) {
-      return Optional.empty();
-    }
+      return List.of();    }
 
     List<String> customFieldValues = _customFieldValues.stream().filter(v -> !Strings.isNullOrEmpty(v)).collect(Collectors.toList());
     if (customFieldValues.isEmpty()) {
-      return Optional.empty();
-    }
+      return List.of();    }
 
     for (String donationType : donationTypes) {
-      Optional<Donation> donation = getDonations(constituentId, donationType).stream().filter(d -> {
+      return getDonations(constituentId, donationType).stream().filter(d -> {
         String customFieldValue = getCustomFieldValue(d, customFieldKey);
         return customFieldValues.contains(customFieldValue);
-      }).findFirst();
-      if (donation.isPresent()) {
-        return donation;
-      }
+      }).toList();
     }
 
-    return Optional.empty();
-  }
+    return List.of();  }
 
   // type: Donation, Pledge, PledgePayment, RecurringDonation, RecurringDonationPayment
   protected List<Donation> getDonations(String crmContactId, String type) {
