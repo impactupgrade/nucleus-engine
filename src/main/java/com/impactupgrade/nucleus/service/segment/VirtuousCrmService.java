@@ -858,7 +858,7 @@ public class VirtuousCrmService implements CrmService {
     gift.isTaxDeductible = true;
 
     // assumed to be the unique code that the UI gives for a *segment*
-    String segmentCode = crmDonation.getMetadataValue(env.getConfig().metadataKeys.campaign);
+    String segmentCode = crmDonation.getRawData(env.getConfig().metadataKeys.campaign);
     if (!Strings.isNullOrEmpty(segmentCode)) {
       VirtuousClient.Segment segment = virtuousClient.getSegmentByCode(segmentCode);
       if (segment != null) {
@@ -893,9 +893,9 @@ public class VirtuousCrmService implements CrmService {
         recurringGift.amount,
         null, // String customerId,
         null, // String description,
-        null, // String donationName,
         CrmRecurringDonation.Frequency.fromName(recurringGift.frequency), // TODO: same values?
         recurringGift.paymentGatewayName(env),
+        null, // String name,
         null, // String ownerId,
         recurringGift.status,
         null, // String subscriptionCurrency,

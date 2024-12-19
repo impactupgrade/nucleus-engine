@@ -17,9 +17,11 @@ import java.util.Set;
 public abstract class CrmRecord implements Serializable {
 
   public String id;
+  public String recordTypeId;
+  public String recordTypeName;
 
   @JsonIgnore
-  protected Map<String, String> metadata = new CaseInsensitiveMap<>();
+  protected Map<String, String> rawData = new CaseInsensitiveMap<>(); // Keep this protected -- ensure it always stays a CaseInsensitiveMap.
 
   @JsonIgnore
   public Object crmRawObject;
@@ -43,36 +45,48 @@ public abstract class CrmRecord implements Serializable {
     this.crmUrl = crmUrl;
   }
 
-  public void addMetadata(String key, String value) {
-    metadata.put(key, value);
+  public CrmRecord(
+      String id,
+      String recordTypeId,
+      String recordTypeName,
+      Object crmRawObject,
+      String crmUrl
+  ) {
+    this(id, crmRawObject, crmUrl);
+    this.recordTypeId = recordTypeId;
+    this.recordTypeName = recordTypeName;
   }
 
-  public Map<String, String> getAllMetadata() {
-    return metadata;
+  public void addRawData(String key, String value) {
+    rawData.put(key, value);
   }
 
-  public String getMetadataValue(String metadataKey) {
-    return getMetadataValue(Set.of(metadataKey));
+  public Map<String, String> getAllRawData() {
+    return rawData;
   }
 
-  public String getMetadataValue(Collection<String> metadataKeys) {
-    String metadataValue = null;
+  public String getRawData(String key) {
+    return getRawData(Set.of(key));
+  }
 
-    for (String metadataKey : metadataKeys) {
-      if (metadata.containsKey(metadataKey) && !Strings.isNullOrEmpty(metadata.get(metadataKey))) {
-        metadataValue = metadata.get(metadataKey);
+  public String getRawData(Collection<String> keys) {
+    String value = null;
+
+    for (String key : keys) {
+      if (rawData.containsKey(key) && !Strings.isNullOrEmpty(rawData.get(key))) {
+        value = rawData.get(key);
         break;
       }
     }
 
-    if (metadataValue != null) {
+    if (value != null) {
       // IMPORTANT: The keys and values are sometimes copy/pasted by a human and we've had issues with whitespace.
       // Strip it! But note that sometimes it's something like a non-breaking space char (pasted from a doc?),
       // so convert that to a standard space first.
-      metadataValue = metadataValue.replaceAll("[\\h+]", " ");
-      metadataValue = metadataValue.trim();
+      value = value.replaceAll("[\\h+]", " ");
+      value = value.trim();
     }
 
-    return metadataValue;
+    return value;
   }
 }

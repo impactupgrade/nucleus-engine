@@ -19,9 +19,6 @@ public class CrmAccount extends CrmRecord {
   public String ownerId;
   public String phone;
   public EnvironmentConfig.AccountType recordType = EnvironmentConfig.AccountType.HOUSEHOLD;
-  // sometimes there is a deeper breakdown
-  public String recordTypeId;
-  public String recordTypeName;
   public String type;
   public String website;
 
@@ -50,7 +47,7 @@ public class CrmAccount extends CrmRecord {
       Object crmRawObject,
       String crmUrl
   ) {
-    super(id, crmRawObject, crmUrl);
+    super(id, recordTypeId, recordTypeName, crmRawObject, crmUrl);
 
     this.billingAddress = billingAddress;
     this.description = description;
@@ -60,8 +57,6 @@ public class CrmAccount extends CrmRecord {
     this.ownerId = ownerId;
     this.phone = phone;
     if (recordType != null) this.recordType = recordType;
-    this.recordTypeId = recordTypeId;
-    this.recordTypeName = recordTypeName;
     this.type = type;
     this.website = website;
   }

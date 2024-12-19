@@ -255,8 +255,8 @@ public class BloomerangCrmService implements CrmService {
     designation.amount = donation.amount;
 
     // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
-    if (!Strings.isNullOrEmpty(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund))) {
-      designation.fundId = Integer.parseInt(crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
+    if (!Strings.isNullOrEmpty(crmDonation.getRawData(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(crmDonation.getRawData(env.getConfig().metadataKeys.fund));
     } else {
       designation.fundId = env.getConfig().bloomerang.defaultFundId;
     }
@@ -299,8 +299,8 @@ public class BloomerangCrmService implements CrmService {
     Designation designation = new Designation();
     designation.amount = donation.amount;
     // If the transaction included Fund metadata, assume it's the FundId. Otherwise, use the org's default.
-    if (!Strings.isNullOrEmpty(crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund))) {
-      designation.fundId = Integer.parseInt(crmRecurringDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
+    if (!Strings.isNullOrEmpty(crmRecurringDonation.getRawData(env.getConfig().metadataKeys.fund))) {
+      designation.fundId = Integer.parseInt(crmRecurringDonation.getRawData(env.getConfig().metadataKeys.fund));
     } else {
       designation.fundId = env.getConfig().bloomerang.defaultFundId;
     }
@@ -806,6 +806,7 @@ public class BloomerangCrmService implements CrmService {
         null, // String name,
         null, // String ownerId,
         null, // String recordTypeId,
+        null, // String recordTypeName,
         donation,
         "https://crm.bloomerang.co/Constituent/" + donation.accountId + "/Transaction/Edit/" + donation.id
     );
@@ -836,9 +837,9 @@ public class BloomerangCrmService implements CrmService {
         donation.amount,
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayCustomerId),
         null, // String description,
-        "Recurring Donation",
         CrmRecurringDonation.Frequency.fromName(designation.recurringDonationFrequency),
         getCustomFieldValue(donation, env.getConfig().bloomerang.fieldDefinitions.paymentGatewayName),
+        "Recurring Donation",
         null, // String ownerId,
         designation.recurringDonationStatus,
         null, // String subscriptionCurrency,

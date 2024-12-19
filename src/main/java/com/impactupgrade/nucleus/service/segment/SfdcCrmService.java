@@ -568,11 +568,11 @@ public class SfdcCrmService implements CrmService {
       contact.setField("Description", crmContact.notes);
     }
 
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmSource, crmContact.getMetadataValue("utm_source"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmCampaign, crmContact.getMetadataValue("utm_campaign"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmMedium, crmContact.getMetadataValue("utm_medium"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmTerm, crmContact.getMetadataValue("utm_term"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmContent, crmContact.getMetadataValue("utm_content"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmSource, crmContact.getRawData("utm_source"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmCampaign, crmContact.getRawData("utm_campaign"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmMedium, crmContact.getRawData("utm_medium"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmTerm, crmContact.getRawData("utm_term"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmContent, crmContact.getRawData("utm_content"));
 
     // TODO: Avoiding setting the mailing address of a Contact, instead allowing the Account to handle it. But should we?
 
@@ -654,14 +654,14 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId, crmDonation.customerId);
     }
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.fund)) {
-      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.fund, crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.fund, crmDonation.getRawData(env.getConfig().metadataKeys.fund));
     }
 
     if (crmDonation.transactionType != null) {
       String recordTypeId = env.getConfig().salesforce.transactionTypeToRecordTypeIds.get(crmDonation.transactionType);
       opportunity.setField("RecordTypeId", recordTypeId);
     } else {
-      String recordTypeId = crmDonation.getMetadataValue(env.getConfig().metadataKeys.recordType);
+      String recordTypeId = crmDonation.getRawData(env.getConfig().metadataKeys.recordType);
       opportunity.setField("RecordTypeId", recordTypeId);
     }
 
@@ -689,17 +689,17 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("Name", crmDonation.contact.getFullName() + " Donation");
 
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentMetadata)) {
-      String metadata = crmDonation.getAllMetadata().entrySet().stream()
+      String metadata = crmDonation.getAllRawData().entrySet().stream()
           .filter(e -> !Strings.isNullOrEmpty(e.getValue())).map(e -> e.getKey() + ": " + e.getValue())
           .distinct().sorted().collect(Collectors.joining("\n"));
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentMetadata, metadata);
     }
 
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmSource, crmDonation.getMetadataValue("utm_source"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmCampaign, crmDonation.getMetadataValue("utm_campaign"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmMedium, crmDonation.getMetadataValue("utm_medium"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmTerm, crmDonation.getMetadataValue("utm_term"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmContent, crmDonation.getMetadataValue("utm_content"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmSource, crmDonation.getRawData("utm_source"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmCampaign, crmDonation.getRawData("utm_campaign"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmMedium, crmDonation.getRawData("utm_medium"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmTerm, crmDonation.getRawData("utm_term"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmContent, crmDonation.getRawData("utm_content"));
 
 
 
@@ -2455,7 +2455,7 @@ public class SfdcCrmService implements CrmService {
   protected Optional<SObject> getCampaignOrDefault(CrmRecord crmRecord) throws Exception {
     Optional<SObject> campaign = Optional.empty();
 
-    String campaignIdOrName = crmRecord.getMetadataValue(env.getConfig().metadataKeys.campaign);
+    String campaignIdOrName = crmRecord.getRawData(env.getConfig().metadataKeys.campaign);
     if (!Strings.isNullOrEmpty(campaignIdOrName)) {
       if (campaignIdOrName.startsWith("701")) {
         campaign = sfdcClient.getCampaignById(campaignIdOrName);
@@ -2768,6 +2768,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Name"),
         (String) sObject.getField("OwnerId"),
         (String) sObject.getField("RecordTypeId"),
+        (String) sObject.getChild("RecordType").getField("Name"),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Opportunity/" + sObject.getId() + "/view"
     );
@@ -2804,9 +2805,9 @@ public class SfdcCrmService implements CrmService {
         amount,
         customerId,
         null, // String description,
-        getStringField(sObject, "Name"),
         frequency,
         paymentGatewayName,
+        getStringField(sObject, "Name"),
         getStringField(sObject, "OwnerId"),
         getStringField(sObject, "npe03__Open_Ended_Status__c"),
         null, // String subscriptionCurrency,
