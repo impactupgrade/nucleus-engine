@@ -85,7 +85,7 @@ public class CrmController {
     email = noWhitespace(email);
     phone = trim(phone);
 
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
 
     Optional<CrmContact> contact = Optional.empty();
     if (!Strings.isNullOrEmpty(keywords)) {
@@ -149,7 +149,7 @@ public class CrmController {
     SecurityUtil.verifyApiKey(env);
 
     try {
-      CrmService crmService = getCrmService(env, crmType);
+      CrmService crmService = env.crmService(crmType);
 
       // TODO: update support
 
@@ -220,7 +220,7 @@ public class CrmController {
     SecurityUtil.verifyApiKey(env);
 
     try {
-      CrmService crmService = getCrmService(env, crmType);
+      CrmService crmService = env.crmService(crmType);
       AccountSearch accountSearch = new AccountSearch();
       accountSearch.basicSearch = true;
       List<CrmAccount> accounts = crmService.searchAccounts(accountSearch).getResults();
@@ -289,7 +289,7 @@ public class CrmController {
 
     List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
     List<CrmImportEvent> importEvents = toCrmImportEvents(data, env);
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
 
     Runnable thread = () -> {
       try {
@@ -325,7 +325,7 @@ public class CrmController {
     // Important to do this outside of the new thread -- ensures the InputStream is still open.
     List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
     List<CrmImportEvent> importEvents = toCrmImportEvents(data, d -> fromFBFundraiser(d, env));
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
 
     Runnable thread = () -> {
       try {
@@ -363,7 +363,7 @@ public class CrmController {
     List<Map<String, String>> data = toListOfMap(inputStream, fileDisposition);
     List<CrmImportEvent> importEvents = toCrmImportEvents(data, d -> fromGreaterGiving(d, env));
 
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
 
     Runnable thread = () -> {
       try {
@@ -483,7 +483,7 @@ public class CrmController {
       customFields.add(CrmCustomField.fromGeneric(row));
     }
 
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
 
     Runnable thread = () -> {
       try {
@@ -513,7 +513,7 @@ public class CrmController {
 
     List<Map<String, String>> data = GoogleSheetsUtil.getSheetData(gsheetUrl);
     List<CrmCustomField> customFields = CrmCustomField.fromGeneric(data);
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
 
     Runnable thread = () -> {
       try {
@@ -545,7 +545,7 @@ public class CrmController {
       listType = CrmContactListType.valueOf(_listType.trim().toUpperCase(Locale.ROOT));
     }
 
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
     Map<String, String> lists = crmService.getContactLists(listType);
 
     return Response.status(200).entity(lists).build();
@@ -561,7 +561,7 @@ public class CrmController {
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
     String filter = "";
 
     if (Strings.isNullOrEmpty(type)) {
@@ -605,7 +605,7 @@ public class CrmController {
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
-    CrmService crmService = getCrmService(env, crmType);
+    CrmService crmService = env.crmService(crmType);
     List<CrmContact> contacts = crmService.getContactsFromList(listId);
 
     return Response.status(200).entity(contacts).build();
@@ -798,16 +798,5 @@ public class CrmController {
     importEvent.opportunitySource = "Classy";
 
     return importEvent;
-  }
-
-  private CrmService getCrmService(Environment env, String crmType) {
-    // default crm service
-    CrmService crmService = env.primaryCrmService();
-    if ("donations".equalsIgnoreCase(crmType)) {
-      crmService = env.donationsCrmService();
-    } else if ("messaging".equalsIgnoreCase(crmType)) {
-      crmService = env.messagingCrmService();
-    }
-    return crmService;
   }
 }

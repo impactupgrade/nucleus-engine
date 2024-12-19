@@ -150,7 +150,11 @@ public class Environment {
   // segment services
 
   public CrmService crmService(final String name) {
-    if (Strings.isNullOrEmpty(name)) {
+    if ("donations".equalsIgnoreCase(name)) {
+      return donationsCrmService();
+    } else if ("messaging".equalsIgnoreCase(name)) {
+      return messagingCrmService();
+    } else if (Strings.isNullOrEmpty(name)) {
       return primaryCrmService();
     } else {
       return segmentService(name, CrmService.class);
