@@ -192,16 +192,32 @@ public class Environment {
     return segmentService(getConfig().emailTransactional, EmailService.class);
   }
 
-  public List<CommunicationService> allCommunicationServices() {
-    return segmentServices(CommunicationService.class);
-  }
-
   public CommunicationService communicationService(String name) {
     return segmentService(name, CommunicationService.class);
   }
 
+  public List<CommunicationService> communicationServices(String serviceName) {
+    if (!Strings.isNullOrEmpty(serviceName)) {
+      return List.of(communicationService(serviceName));
+    } else {
+      return allCommunicationServices();
+    }
+  }
+
+  public List<CommunicationService> allCommunicationServices() {
+    return segmentServices(CommunicationService.class);
+  }
+
   public DataSyncService dataSyncService(String name) {
     return segmentService(name, DataSyncService.class);
+  }
+
+  public List<DataSyncService> dataSyncServices(String serviceName) {
+    if (!Strings.isNullOrEmpty(serviceName)) {
+      return List.of(dataSyncService(serviceName));
+    } else {
+      return allDataSyncServices();
+    }
   }
 
   public List<DataSyncService> allDataSyncServices() {

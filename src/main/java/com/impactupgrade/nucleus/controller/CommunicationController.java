@@ -4,7 +4,6 @@
 
 package com.impactupgrade.nucleus.controller;
 
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -51,7 +50,7 @@ public class CommunicationController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+        List<CommunicationService> communicationServices = env.communicationServices(serviceName);
 
         for (CommunicationService communicationService : communicationServices) {
           try {
@@ -102,7 +101,7 @@ public class CommunicationController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+        List<CommunicationService> communicationServices = env.communicationServices(serviceName);
 
         for (CommunicationService communicationService : communicationServices) {
           try {
@@ -155,7 +154,7 @@ public class CommunicationController {
         String jobName = "Communication: Single Contact";
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
 
-        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+        List<CommunicationService> communicationServices = env.communicationServices(serviceName);
 
         for (CommunicationService communicationService : communicationServices) {
           try {
@@ -192,7 +191,7 @@ public class CommunicationController {
         env.startJobLog(JobType.EVENT, null, jobName, "Nucleus Portal");
         boolean success = true;
 
-        List<CommunicationService> communicationServices = getCommunicationServices(serviceName, env);
+        List<CommunicationService> communicationServices = env.communicationServices(serviceName);
 
         for (CommunicationService communicationService : communicationServices) {
           try {
@@ -219,13 +218,5 @@ public class CommunicationController {
     new Thread(thread).start();
 
     return Response.ok().build();
-  }
-
-  protected List<CommunicationService> getCommunicationServices(String serviceName, Environment env) {
-    if (!Strings.isNullOrEmpty(serviceName)) {
-      return List.of(env.communicationService(serviceName));
-    } else {
-      return env.allCommunicationServices();
-    }
   }
 }
