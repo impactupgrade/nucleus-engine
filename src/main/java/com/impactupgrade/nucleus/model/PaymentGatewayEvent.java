@@ -132,7 +132,7 @@ public class PaymentGatewayEvent implements Serializable {
     }
 
     // Always do this last! We need all the metadata context to fill out the customer details.
-    initStripeCustomer(stripeCustomer, Optional.ofNullable(stripeCharge.getBillingDetails()));
+    initStripeCustomer(stripeCustomer, Optional.ofNullable(stripeCharge.getBillingDetails()), stripeCharge.getReceiptEmail());
   }
 
   public void initStripe(PaymentIntent stripePaymentIntent, Optional<Customer> stripeCustomer,
@@ -219,7 +219,7 @@ public class PaymentGatewayEvent implements Serializable {
     // Always do this last! We need all the metadata context to fill out the customer details.
     Optional<PaymentMethod.BillingDetails> billingDetails = stripePaymentIntent.getCharges().getData().stream()
         .findFirst().map(Charge::getBillingDetails);
-    initStripeCustomer(stripeCustomer, billingDetails);
+    initStripeCustomer(stripeCustomer, billingDetails, stripePaymentIntent.getReceiptEmail());
   }
 
   public void initStripe(Refund stripeRefund) {
@@ -246,10 +246,11 @@ public class PaymentGatewayEvent implements Serializable {
     initStripeSubscription(stripeSubscription, stripeCustomer);
 
     // Always do this last! We need all the metadata context to fill out the customer details.
-    initStripeCustomer(Optional.of(stripeCustomer), Optional.empty());
+    initStripeCustomer(Optional.of(stripeCustomer), Optional.empty(), null);
   }
 
-  protected void initStripeCustomer(Optional<Customer> __stripeCustomer, Optional<PaymentMethod.BillingDetails> __billingDetails) {
+  protected void initStripeCustomer(Optional<Customer> __stripeCustomer,
+      Optional<PaymentMethod.BillingDetails> __billingDetails, String receiptEmail) {
     if (__stripeCustomer.isPresent()) {
       Customer stripeCustomer = __stripeCustomer.get();
 
@@ -261,10 +262,12 @@ public class PaymentGatewayEvent implements Serializable {
 
       crmContact.email = stripeCustomer.getEmail();
       crmContact.mobilePhone = stripeCustomer.getPhone();
-    } else if (__billingDetails.isPresent()) {
+    } else if (__billingDetails.isPresent() && !Strings.isNullOrEmpty(__billingDetails.get().getEmail())) {
       PaymentMethod.BillingDetails billingDetails = __billingDetails.get();
       crmContact.email = billingDetails.getEmail();
       crmContact.mobilePhone = billingDetails.getPhone();
+    } else {
+      crmContact.email = receiptEmail;
     }
 
     // backfill with metadata if needed
