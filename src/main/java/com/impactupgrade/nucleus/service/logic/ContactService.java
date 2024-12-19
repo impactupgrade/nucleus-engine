@@ -103,7 +103,10 @@ public class ContactService {
         // when donations come in with nothing more than a first/last name.
         if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmRecurringDonation().subscriptionId)) {
           Optional<CrmRecurringDonation> crmRecurringDonation = crmService.getRecurringDonationBySubscriptionId(
-              paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
+              paymentGatewayEvent.getCrmRecurringDonation().subscriptionId,
+              paymentGatewayEvent.getCrmAccount().id,
+              paymentGatewayEvent.getCrmContact().id
+          );
           if (crmRecurringDonation.isPresent()) {
             existingContact = crmService.getContactById(crmRecurringDonation.get().contact.id);
           }

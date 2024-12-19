@@ -57,9 +57,9 @@ public class CrmRecurringDonation extends CrmRecord {
   public Double amount;
   public String customerId;
   public String description;
-  public String donationName;
   public Frequency frequency = Frequency.MONTHLY;
   public String gatewayName;
+  public String name;
   public String ownerId;
   public String status;
   public String subscriptionCurrency;
@@ -87,9 +87,9 @@ public class CrmRecurringDonation extends CrmRecord {
       Double amount,
       String customerId,
       String description,
-      String donationName,
       Frequency frequency,
       String gatewayName,
+      String name,
       String ownerId,
       String status,
       String subscriptionCurrency,
@@ -109,9 +109,9 @@ public class CrmRecurringDonation extends CrmRecord {
     this.amount = amount;
     this.customerId = customerId;
     this.description = description;
-    this.donationName = donationName;
     if (frequency != null) this.frequency = frequency;
     this.gatewayName = gatewayName;
+    this.name = name;
     this.ownerId = ownerId;
     this.status = status;
     this.subscriptionCurrency = subscriptionCurrency;

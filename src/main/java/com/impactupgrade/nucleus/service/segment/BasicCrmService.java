@@ -7,6 +7,7 @@ package com.impactupgrade.nucleus.service.segment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmCampaign;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmCustomField;
@@ -15,9 +16,9 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
+import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.Collections;
 import java.util.List;
@@ -52,8 +53,8 @@ public interface BasicCrmService extends CrmService {
     return Collections.emptyList();
   }
 
-  default List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
-    return Collections.emptyList();
+  default PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+    return new PagedResults<>();
   }
 
   default String insertAccount(CrmAccount crmAccount) throws Exception {
@@ -74,7 +75,8 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
+      String contactId) throws Exception {
     return Optional.empty();
   }
 
@@ -85,7 +87,7 @@ public interface BasicCrmService extends CrmService {
   default void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
   }
 
-  default void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  default void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   default void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {

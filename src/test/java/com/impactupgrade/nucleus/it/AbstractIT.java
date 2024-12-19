@@ -211,8 +211,7 @@ public abstract class AbstractIT extends JerseyTest {
     CrmService crmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    List<CrmContact> existingContacts = crmService.searchContacts(ContactSearch.byKeywords("Tester"))
-        .getResultSets().stream().flatMap(rs -> rs.getRecords().stream()).toList();
+    List<CrmContact> existingContacts = crmService.searchContacts(ContactSearch.byKeywords("Tester")).getResults();
     for (CrmContact existingContact : existingContacts) {
       VirtuousClient.Gifts gifts = virtuousClient.getGiftsByContact(Integer.parseInt(existingContact.id));
       for (VirtuousClient.Gift gift : gifts.list) {
@@ -223,8 +222,7 @@ public abstract class AbstractIT extends JerseyTest {
     }
 
     // ensure we're actually clean
-    assertEquals(0, crmService.searchContacts(ContactSearch.byKeywords("Tester")).getResultSets()
-        .stream().flatMap(rs -> rs.getRecords().stream()).toList().size());
+    assertEquals(0, crmService.searchContacts(ContactSearch.byKeywords("Tester")).getResults().size());
   }
 
   protected void postToBulkImport(List<Object> values) throws Exception {

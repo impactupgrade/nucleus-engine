@@ -4,7 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayTransaction;
@@ -23,6 +23,6 @@ public interface PaymentGatewayService extends SegmentService {
   void verifyAndReplayCharges(Date startDate, Date endDate);
   void verifyAndReplayDeposits(Date startDate, Date endDate);
 
-  void updateSubscription(ManageDonationEvent manageDonationEvent) throws Exception;
+  void updateSubscription(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception;
   void closeSubscription(String subscriptionId) throws Exception;
 }

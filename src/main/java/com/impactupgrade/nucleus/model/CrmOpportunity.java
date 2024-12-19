@@ -15,7 +15,6 @@ public class CrmOpportunity extends CrmRecord {
   public String description;
   public String name;
   public String ownerId;
-  public String recordTypeId;
 
   public CrmOpportunity() {}
 
@@ -35,10 +34,11 @@ public class CrmOpportunity extends CrmRecord {
       String name,
       String ownerId,
       String recordTypeId,
+      String recordTypeName,
       Object crmRawObject,
       String crmUrl
   ) {
-    super(id, crmRawObject, crmUrl);
+    super(id, recordTypeId, recordTypeName, crmRawObject, crmUrl);
 
     if (account != null) this.account = account;
     if (contact != null) this.contact = contact;
@@ -48,6 +48,5 @@ public class CrmOpportunity extends CrmRecord {
     this.description = description;
     this.name = name;
     this.ownerId = ownerId;
-    this.recordTypeId = recordTypeId;
   }
 }

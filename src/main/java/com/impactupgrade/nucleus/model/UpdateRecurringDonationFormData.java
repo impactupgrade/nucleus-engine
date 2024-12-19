@@ -7,7 +7,7 @@ package com.impactupgrade.nucleus.model;
 import javax.ws.rs.FormParam;
 import java.util.Optional;
 
-public class ManageDonationFormData {
+public class UpdateRecurringDonationFormData {
 
   @FormParam("rd_id") String recurringDonationId;
   @FormParam("amount") Optional<Double> amount;
@@ -21,7 +21,7 @@ public class ManageDonationFormData {
 
   @Override
   public String toString() {
-    return "ManageDonationFormData{" +
+    return "UpdateRecurringDonationFormData{" +
         ",\n recurringDonationId='" + recurringDonationId +
         ",\n amount=" + amount +
         ",\n pauseDonation=" + pauseDonation +

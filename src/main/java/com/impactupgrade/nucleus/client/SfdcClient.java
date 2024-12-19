@@ -200,7 +200,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       query += " OFFSET " + offset;
     }
 
-    return queryListAutoPaged(query);
+    return queryList(query);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
