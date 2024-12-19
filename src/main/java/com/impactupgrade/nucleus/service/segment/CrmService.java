@@ -93,6 +93,7 @@ public interface CrmService extends SegmentService {
     return contacts;
   }
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
+  Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId, String status) throws Exception;
@@ -278,13 +279,6 @@ public interface CrmService extends SegmentService {
   void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // PORTAL UTILS
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
-  Map<String, String> getFieldOptions(String object) throws Exception;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -294,7 +288,8 @@ public interface CrmService extends SegmentService {
 
   String insertNote(CrmNote crmNote) throws Exception;
 
-  List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
+  Map<String, String> getFieldOptions(String object) throws Exception;
   EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();
+  List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
 
 }
