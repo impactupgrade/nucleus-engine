@@ -45,7 +45,7 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   Optional<CrmAccount> getAccountById(String id) throws Exception;
-  default List<CrmAccount> getAccountsByIds(List<String> ids) throws Exception {
+  default List<CrmAccount> getAccountsByIds(List<String> ids, String... extraFields) throws Exception {
     List<CrmAccount> accounts = new ArrayList<>();
     for (String id : ids) {
       Optional<CrmAccount> account = getAccountById(id);
@@ -70,7 +70,7 @@ public interface CrmService extends SegmentService {
 
   Optional<CrmContact> getContactById(String id) throws Exception;
   Optional<CrmContact> getFilteredContactById(String id, String filter) throws Exception;
-  default List<CrmContact> getContactsByIds(List<String> ids) throws Exception {
+  default List<CrmContact> getContactsByIds(List<String> ids, String... extraFields) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String id : ids) {
       Optional<CrmContact> contact = getContactById(id);
@@ -78,7 +78,7 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
-  default List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
+  default List<CrmContact> getContactsByEmails(List<String> emails, String... extraFields) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
       contacts.addAll(searchContacts(ContactSearch.byEmail(email)).getResults());
