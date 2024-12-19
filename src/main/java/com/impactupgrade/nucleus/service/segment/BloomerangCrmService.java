@@ -447,11 +447,6 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
-    return Optional.empty(); // not possible without the contactId
-  }
-
-  @Override
   public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
     return getDonations(
         contactId,

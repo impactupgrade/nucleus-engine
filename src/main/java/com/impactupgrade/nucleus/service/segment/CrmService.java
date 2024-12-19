@@ -129,14 +129,11 @@ public interface CrmService extends SegmentService {
     return crmRecurringDonation;
   }
   Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
-  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
-  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
-      String contactId) throws Exception {
-    // Most CRMs do not need the accountId/contactId to retrieve RDs, with notable exceptions like Virtuous.
-    // We don't even always have the accountId/contactId available, like when we're attempting to figure out who a donor
-    // is using past donations as a last resort in ContactService.
-    return getRecurringDonationBySubscriptionId(subscriptionId);
-  }
+  // Most CRMs do not need the accountId/contactId to retrieve RDs, with notable exceptions like Virtuous.
+  // We don't even always have the accountId/contactId available, like when we're attempting to figure out who a donor
+  // is using past donations as a last resort in ContactService.
+  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
+      String contactId) throws Exception;
   List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 //  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;

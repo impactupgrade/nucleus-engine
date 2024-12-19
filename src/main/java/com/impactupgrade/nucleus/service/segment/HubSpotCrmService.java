@@ -313,7 +313,8 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
+      String contactId) throws Exception {
     Filter filter = new Filter(env.getConfig().hubspot.fieldDefinitions.paymentGatewaySubscriptionId, "EQ", subscriptionId);
     List<FilterGroup> filterGroups = List.of(new FilterGroup(List.of(filter)));
     DealResults results = hsClient.deal().search(filterGroups, dealFields);
