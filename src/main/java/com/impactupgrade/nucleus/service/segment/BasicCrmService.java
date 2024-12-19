@@ -17,7 +17,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.Collections;
@@ -86,7 +86,7 @@ public interface BasicCrmService extends CrmService {
   default void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
   }
 
-  default void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  default void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   default void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {

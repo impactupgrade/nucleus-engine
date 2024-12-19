@@ -29,7 +29,7 @@ import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecord;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.CacheUtil;
 import com.impactupgrade.nucleus.util.Utils;
@@ -995,8 +995,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
 
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
     toUpdate.setId(crmRecurringDonation.id);
@@ -1004,34 +1004,34 @@ public class SfdcCrmService implements CrmService {
       toUpdate.setField("Npe03__Amount__c", crmRecurringDonation.amount);
       env.logJobInfo("Updating Npe03__Amount__c to {}...", crmRecurringDonation.amount);
     }
-    if (manageDonationEvent.getNextPaymentDate() != null) {
-      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
-      env.logJobInfo("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
+      toUpdate.setField("Npe03__Next_Payment_Date__c", updateRecurringDonationEvent.getNextPaymentDate());
+      env.logJobInfo("Updating Npe03__Next_Payment_Date__c to {}...", updateRecurringDonationEvent.getNextPaymentDate().toString());
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
+    if (updateRecurringDonationEvent.getPauseDonation()) {
       toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
       toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
 
-      if (manageDonationEvent.getPauseDonationUntilDate() == null) {
+      if (updateRecurringDonationEvent.getPauseDonationUntilDate() == null) {
         env.logJobInfo("pausing {} indefinitely...", crmRecurringDonation.id);
       } else {
-        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
+        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, updateRecurringDonationEvent.getPauseDonationUntilDate().getTime());
       }
-      setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
+      setRecurringDonationFieldsForPause(toUpdate, updateRecurringDonationEvent);
     }
 
-    if (manageDonationEvent.getResumeDonation()) {
+    if (updateRecurringDonationEvent.getResumeDonation()) {
       toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
 
-      if (manageDonationEvent.getResumeDonationOnDate() == null) {
+      if (updateRecurringDonationEvent.getResumeDonationOnDate() == null) {
         env.logJobInfo("resuming {} immediately...", crmRecurringDonation.id);
         toUpdate.setField("Npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
       } else {
-        env.logJobInfo("resuming {} on {}...", crmRecurringDonation.id, manageDonationEvent.getResumeDonationOnDate().getTime());
-        toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
+        env.logJobInfo("resuming {} on {}...", crmRecurringDonation.id, updateRecurringDonationEvent.getResumeDonationOnDate().getTime());
+        toUpdate.setField("Npe03__Next_Payment_Date__c", updateRecurringDonationEvent.getResumeDonationOnDate());
       }
-      setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
+      setRecurringDonationFieldsForResume(toUpdate, updateRecurringDonationEvent);
     }
 
     sfdcClient.update(toUpdate);
@@ -1045,12 +1045,12 @@ public class SfdcCrmService implements CrmService {
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to pause
   protected void setRecurringDonationFieldsForPause(SObject recurringDonation,
-      ManageDonationEvent manageDonationEvent) throws Exception {
+      UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to resume
   protected void setRecurringDonationFieldsForResume(SObject recurringDonation,
-      ManageDonationEvent manageDonationEvent) throws Exception {
+      UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   @Override

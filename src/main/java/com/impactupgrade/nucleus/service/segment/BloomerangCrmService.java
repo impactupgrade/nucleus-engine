@@ -28,7 +28,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.HttpClient;
 import com.impactupgrade.nucleus.util.Utils;
@@ -509,8 +509,8 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
     // TODO: We need a refactor. Upstream (DonationService), we're already retrieving this once to confirm the RD's
     //  existence. But here we need it again in order to get the designations. Can we trust crmRecurringDonation.raw?
     Donation recurringDonation = getDonation(crmRecurringDonation.id);
@@ -521,16 +521,16 @@ public class BloomerangCrmService implements CrmService {
           .forEach(rd -> rd.amount = crmRecurringDonation.amount);
       env.logJobInfo("Updating amount to {}...", crmRecurringDonation.amount);
     }
-    if (manageDonationEvent.getNextPaymentDate() != null) {
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
       // TODO: RecurringDonationNextInstallmentDate
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
+    if (updateRecurringDonationEvent.getPauseDonation()) {
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
         rd.recurringDonationStatus = "Closed";
         rd.recurringDonationEndDate = new SimpleDateFormat("MM/dd/yyyy").format(Calendar.getInstance().getTime());
       });
-    } else if (manageDonationEvent.getResumeDonation()) {
+    } else if (updateRecurringDonationEvent.getResumeDonation()) {
       recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus)).forEach(rd -> {
         rd.recurringDonationStatus = "Active";
         rd.recurringDonationEndDate = "";

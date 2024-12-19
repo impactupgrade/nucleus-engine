@@ -20,7 +20,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.ArrayList;
@@ -33,6 +33,12 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface CrmService extends SegmentService {
+
+  // NOTE: Methods often receive a whole list of lookups that we're about to process to this all at once. We then let
+  // the implementations decide how to implement them in the most performant way. Some APIs may solely allow retrieval
+  // one at a time. Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to
+  // retrieve large batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in
+  // play...
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // GENERAL PURPOSE
@@ -89,9 +95,6 @@ public interface CrmService extends SegmentService {
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
-  // TODO: Business Donations coming soon.
-//  boolean hasSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
-//  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId, String status) throws Exception;
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
@@ -182,7 +185,7 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // TODO
-  void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
+  void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMUNICATION SYNC

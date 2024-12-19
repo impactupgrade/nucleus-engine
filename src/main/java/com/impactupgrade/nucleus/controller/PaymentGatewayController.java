@@ -11,8 +11,8 @@ import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
-import com.impactupgrade.nucleus.model.ManageDonationFormData;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationFormData;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayTransaction;
 import com.impactupgrade.nucleus.security.SecurityUtil;
@@ -121,15 +121,15 @@ public class PaymentGatewayController {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.APPLICATION_JSON)
   public Response updateRecurringDonation(
-      @BeanParam ManageDonationFormData formData,      // collected form data for event
+      @BeanParam UpdateRecurringDonationFormData formData,      // collected form data for event
       Form rawFormData,                                // raw form data
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request, rawFormData.asMap());
     SecurityUtil.verifyApiKey(env);
 
-    ManageDonationEvent manageDonationEvent = new ManageDonationEvent(formData, env);
-    env.donationService().updateRecurringDonation(manageDonationEvent);
+    UpdateRecurringDonationEvent updateRecurringDonationEvent = new UpdateRecurringDonationEvent(formData, env);
+    env.donationService().updateRecurringDonation(updateRecurringDonationEvent);
 
     return Response.status(200).build();
   }
