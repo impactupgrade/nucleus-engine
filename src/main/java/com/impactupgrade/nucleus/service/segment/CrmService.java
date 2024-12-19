@@ -34,9 +34,6 @@ import java.util.Set;
 
 public interface CrmService extends SegmentService {
 
-  // TODO: As we gain more granular search methods, we should instead think through general purpose options
-  //  that take filter as arguments (or a Search object).
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // GENERAL PURPOSE
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,10 +47,14 @@ public interface CrmService extends SegmentService {
     }
     return accounts;
   }
-  List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception;
-  // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
-//  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
-  List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
+  default List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+    List<CrmAccount> accounts = new ArrayList<>();
+    for (String email : emails) {
+      accounts.addAll(searchAccounts(AccountSearch.byEmail(email)).getResults());
+    }
+    return accounts;
+  }
+  PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
   void addAccountToCampaign(CrmAccount crmAccount, String campaignId, String status) throws Exception;
@@ -74,16 +75,14 @@ public interface CrmService extends SegmentService {
   default List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
-      searchContacts(ContactSearch.byEmail(email)).getResultSets().stream()
-          .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
+      contacts.addAll(searchContacts(ContactSearch.byEmail(email)).getResults());
     }
     return contacts;
   }
   default List<CrmContact> getContactsByPhones(List<String> phones) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String phone : phones) {
-      searchContacts(ContactSearch.byPhone(phone)).getResultSets().stream()
-          .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
+      contacts.addAll(searchContacts(ContactSearch.byPhone(phone)).getResults());
     }
     return contacts;
   }

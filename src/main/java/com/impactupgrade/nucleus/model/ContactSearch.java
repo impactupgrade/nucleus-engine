@@ -7,7 +7,6 @@ package com.impactupgrade.nucleus.model;
 import java.util.Set;
 
 public class ContactSearch extends AbstractSearch {
-  public String email;
   public Boolean hasEmail;
   public String phone;
   public Boolean hasPhone;

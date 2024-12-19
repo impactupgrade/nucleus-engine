@@ -223,7 +223,7 @@ public class CrmController {
       CrmService crmService = getCrmService(env, crmType);
       AccountSearch accountSearch = new AccountSearch();
       accountSearch.basicSearch = true;
-      List<CrmAccount> accounts = crmService.searchAccounts(accountSearch);
+      List<CrmAccount> accounts = crmService.searchAccounts(accountSearch).getResults();
       return Response.ok().entity(accounts).build();
     } catch (Exception e) {
       env.logJobError("failed to get accounts", e);

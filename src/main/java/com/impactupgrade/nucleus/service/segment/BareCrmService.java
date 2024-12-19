@@ -44,11 +44,6 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-    return Collections.emptyList();
-  }
-
-  @Override
   public Optional<CrmContact> getContactById(String id) throws Exception {
     return Optional.empty();
   }
@@ -64,8 +59,8 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override

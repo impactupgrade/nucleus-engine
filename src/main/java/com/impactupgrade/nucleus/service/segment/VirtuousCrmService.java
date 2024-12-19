@@ -76,11 +76,6 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-    return Collections.emptyList();
-  }
-
-  @Override
   public String insertAccount(CrmAccount crmAccount) throws Exception {
     return null;
   }
@@ -230,8 +225,8 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
-    return Collections.emptyList();
+  public PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override

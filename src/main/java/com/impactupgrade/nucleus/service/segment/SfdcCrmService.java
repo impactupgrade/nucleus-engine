@@ -152,8 +152,10 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   // currentPageToken assumed to be the offset index
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws InterruptedException, ConnectionException {
-    return toCrmAccount(sfdcClient.searchAccounts(accountSearch));
+  public PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws InterruptedException, ConnectionException {
+    List<SObject> results = sfdcClient.searchAccounts(accountSearch);
+    PagedResults<SObject> pagedResults = PagedResults.pagedResultsFromCurrentOffset(results, accountSearch);
+    return toCrmAccount(pagedResults);
   }
 
   @Override

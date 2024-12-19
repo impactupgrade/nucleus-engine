@@ -90,9 +90,9 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) {
+  public PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) {
     // TODO
-    return Collections.emptyList();
+    return new PagedResults<>();
   }
 
   @Override
@@ -397,11 +397,6 @@ public class BloomerangCrmService implements CrmService {
   @Override
   public Optional<CrmAccount> getAccountById(String id) throws Exception {
     return Optional.empty();
-  }
-
-  @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-    return Collections.emptyList();
   }
 
   @Override

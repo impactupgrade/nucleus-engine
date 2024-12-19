@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class AbstractSearch {
+  public String email;
   public Set<String> keywords = new HashSet<>();
   public String ownerId;
   public boolean basicSearch = false;
