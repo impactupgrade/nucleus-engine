@@ -6,7 +6,14 @@ package com.impactupgrade.nucleus.model;
 
 import com.google.common.base.Strings;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class AbstractSearch {
+  public Set<String> keywords = new HashSet<>();
+  public String ownerId;
+  public boolean basicSearch = false;
+
   public Integer pageSize;
   public String pageToken;
 

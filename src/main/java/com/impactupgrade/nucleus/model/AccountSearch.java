@@ -4,16 +4,16 @@
 
 package com.impactupgrade.nucleus.model;
 
+import java.util.Set;
+
 public class AccountSearch extends AbstractSearch {
-  public String ownerId;
-  public String keywords;
-  public boolean basicSearch = false;
 
   // helpers
 
   public static AccountSearch byKeywords(String keywords) {
     AccountSearch accountSearch = new AccountSearch();
-    accountSearch.keywords = keywords;
+    String[] keywordSplit = keywords.trim().split("\\s+");
+    accountSearch.keywords = Set.of(keywordSplit);
     return accountSearch;
   }
 }

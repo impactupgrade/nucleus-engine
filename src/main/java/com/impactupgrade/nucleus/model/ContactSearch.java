@@ -4,7 +4,6 @@
 
 package com.impactupgrade.nucleus.model;
 
-import java.util.HashSet;
 import java.util.Set;
 
 public class ContactSearch extends AbstractSearch {
@@ -14,10 +13,7 @@ public class ContactSearch extends AbstractSearch {
   public Boolean hasPhone;
   public String firstName;
   public String lastName;
-  public Set<String> keywords = new HashSet<>();
   public String accountId;
-  public String ownerId;
-  public boolean basicSearch = false;
 
   // helpers
 
@@ -37,12 +33,6 @@ public class ContactSearch extends AbstractSearch {
     ContactSearch contactSearch = new ContactSearch();
     contactSearch.firstName = firstName;
     contactSearch.lastName = lastName;
-    return contactSearch;
-  }
-
-  public static ContactSearch byKeywords(Set<String> keywords) {
-    ContactSearch contactSearch = new ContactSearch();
-    contactSearch.keywords = keywords;
     return contactSearch;
   }
 

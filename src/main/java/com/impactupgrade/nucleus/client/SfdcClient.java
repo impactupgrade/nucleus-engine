@@ -170,9 +170,10 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       clauses.add("OwnerId = '" + accountSearch.ownerId + "'");
     }
 
-    if (!Strings.isNullOrEmpty(accountSearch.keywords)) {
-      String[] keywordSplit = accountSearch.keywords.trim().split("\\s+");
-      for (String keyword : keywordSplit) {
+    if (!accountSearch.keywords.isEmpty()) {
+      for (String keyword : accountSearch.keywords) {
+        keyword = keyword.trim();
+        keyword = keyword.replaceAll("'", "\\\\'");
         clauses.add("(Name LIKE '%" + keyword + "%' OR BillingAddress LIKE '%" + keyword + "%' OR ShippingAddress LIKE '%" + keyword + "%')");
       }
     }
