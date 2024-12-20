@@ -419,14 +419,23 @@ public class HubSpotCrmService implements CrmService {
     contact.setCountry(crmContact.mailingAddress.country);
 
     // TODO: add/remove in default lists?
-    if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
+    if (crmContact.emailBounced != null && crmContact.emailBounced) {
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, false, contact.getOtherProperties());
+      // if bounced is not set as a custom field, default to setting opt-out
+      if (Strings.isNullOrEmpty(env.getConfig().hubspot.fieldDefinitions.emailBounced)) {
+        setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, true, contact.getOtherProperties());
+      } else {
+        setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, false, contact.getOtherProperties());
+        setProperty(env.getConfig().hubspot.fieldDefinitions.emailBounced, true, contact.getOtherProperties());
+      }
+    } else if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, false, contact.getOtherProperties());
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, true, contact.getOtherProperties());
-    } else if (crmContact.emailBounced != null && crmContact.emailBounced) {
-      setProperty(env.getConfig().hubspot.fieldDefinitions.emailBounced, true, contact.getOtherProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailBounced, false, contact.getOtherProperties());
     } else if (crmContact.emailOptIn != null && crmContact.emailOptIn) {
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptIn, true, contact.getOtherProperties());
       setProperty(env.getConfig().hubspot.fieldDefinitions.emailOptOut, false, contact.getOtherProperties());
+      setProperty(env.getConfig().hubspot.fieldDefinitions.emailBounced, false, contact.getOtherProperties());
     }
 
     if (crmContact.smsOptOut != null && crmContact.smsOptOut) {

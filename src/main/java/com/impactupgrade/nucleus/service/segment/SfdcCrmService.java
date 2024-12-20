@@ -542,8 +542,13 @@ public class SfdcCrmService implements CrmService {
 
     if (crmContact.emailBounced != null && crmContact.emailBounced) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
-      setField(contact, env.getConfig().salesforce.fieldDefinitions.emailBounced, true);
+      // if bounced is not set as a custom field, default to setting opt-out
+      if (Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.emailBounced)) {
+        setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
+      } else {
+        setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, false);
+        setField(contact, env.getConfig().salesforce.fieldDefinitions.emailBounced, true);
+      }
     } else if (crmContact.emailOptOut != null && crmContact.emailOptOut) {
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptIn, false);
       setField(contact, env.getConfig().salesforce.fieldDefinitions.emailOptOut, true);
@@ -1067,29 +1072,9 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Set<String> getAllContactEmails(EnvironmentConfig.CommunicationList communicationList)
-      throws Exception {
-    Set<String> emails = sfdcClient.getAllContactEmails(communicationList.crmFilter);
-
-    // Why not a getEmailLeads method? Because Leads are super unique to SFDC, so we don't want to add another
-    // SFDC-specific method to CrmService. Additionally, the fields we care about in Lead are named identically as the
-    // ones in Contact, so it fits cleanly into the CrmContact model.
-    if (!Strings.isNullOrEmpty(communicationList.crmLeadFilter)) {
-      emails.addAll(sfdcClient.getAllLeadEmails(communicationList.crmLeadFilter));
-    }
-
-    return emails;
-  }
-
-  @Override
   public PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception {
     QueryResult queryResult = sfdcClient.getEmailAccounts(updatedSince, communicationList.crmAccountFilter);
     return toCrmAccountPages(List.of(queryResult));
-  }
-
-  @Override
-  public Set<String> getAllAccountEmails(EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    return sfdcClient.getAllAccountEmails(communicationList.crmLeadFilter);
   }
 
   @Override

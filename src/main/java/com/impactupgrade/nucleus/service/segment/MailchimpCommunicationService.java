@@ -179,14 +179,40 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
         List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
         // get all mc email addresses in the entire audience
         Set<String> emailsToArchive = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+
         // remove CRM contacts
-        Set<String> crmEmails = env.primaryCrmService().getAllContactEmails(communicationList).stream()
-            .map(e -> e.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-        emailsToArchive.removeAll(crmEmails);
+        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(null, communicationList);
+        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
+          do {
+            for (CrmContact crmContact : resultSet.getRecords()) {
+              if (crmContact.canReceiveEmail()) {
+                emailsToArchive.remove(crmContact.email.toLowerCase(Locale.ROOT));
+              }
+            }
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
         // remove CRM accounts
-        crmEmails = env.primaryCrmService().getAllAccountEmails(communicationList).stream()
-            .map(e -> e.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-        emailsToArchive.removeAll(crmEmails);
+        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(null, communicationList);
+        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
+          do {
+            for (CrmAccount crmAccount : resultSet.getRecords()) {
+              if (crmAccount.canReceiveEmail()) {
+                emailsToArchive.remove(crmAccount.email.toLowerCase(Locale.ROOT));
+              }
+            }
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              // next page
+              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
 
         env.logJobInfo("massArchiving {} contacts in MC: {}", emailsToArchive.size(), String.join(", ", emailsToArchive));
         String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);

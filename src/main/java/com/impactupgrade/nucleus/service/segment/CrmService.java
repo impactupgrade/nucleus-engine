@@ -25,12 +25,9 @@ import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 public interface CrmService extends SegmentService {
 
@@ -193,47 +190,6 @@ public interface CrmService extends SegmentService {
   PagedResults<CrmContact> getEmailContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   PagedResults<CrmAccount> getEmailAccounts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
   PagedResults<CrmContact> getSmsContacts(Calendar updatedSince, EnvironmentConfig.CommunicationList communicationList) throws Exception;
-  // Special methods to retrieve all emails in the system, used for mass archival logic. For CRMs that allow control
-  // over fields returned (SFDC, HS), override these and limit to email address only -- preserve memory.
-  default Set<String> getAllContactEmails(EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    Set<String> emails = new HashSet<>();
-    PagedResults<CrmContact> contactPagedResults = getEmailContacts(null, communicationList);
-    for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-      do {
-        for (CrmContact crmContact : resultSet.getRecords()) {
-          if (crmContact.canReceiveEmail()) {
-            emails.add(crmContact.email.toLowerCase(Locale.ROOT));
-          }
-        }
-        if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-          resultSet = queryMoreContacts(resultSet.getNextPageToken());
-        } else {
-          resultSet = null;
-        }
-      } while (resultSet != null);
-    }
-    return emails;
-  }
-  default Set<String> getAllAccountEmails(EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    Set<String> emails = new HashSet<>();
-    PagedResults<CrmAccount> contactPagedResults = getEmailAccounts(null, communicationList);
-    for (PagedResults.ResultSet<CrmAccount> resultSet : contactPagedResults.getResultSets()) {
-      do {
-        for (CrmAccount crmAccount : resultSet.getRecords()) {
-          if (crmAccount.canReceiveEmail()) {
-            emails.add(crmAccount.email.toLowerCase(Locale.ROOT));
-          }
-        }
-        if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-          // next page
-          resultSet = queryMoreAccounts(resultSet.getNextPageToken());
-        } else {
-          resultSet = null;
-        }
-      } while (resultSet != null);
-    }
-    return emails;
-  }
   PagedResults<CrmContact> getDonorIndividualContacts(Calendar updatedSince) throws Exception;
   PagedResults<CrmAccount> getDonorOrganizationAccounts(Calendar updatedSince) throws Exception;
 
