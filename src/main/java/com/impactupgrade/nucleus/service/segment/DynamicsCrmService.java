@@ -82,7 +82,7 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception {
     if (Strings.isNullOrEmpty(env.getConfig().dynamicsPlatform.fieldDefinitions.paymentGatewayTransactionId)) {
       return Collections.emptyList();
     }

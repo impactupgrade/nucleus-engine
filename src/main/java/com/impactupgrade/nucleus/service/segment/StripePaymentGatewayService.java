@@ -10,7 +10,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.filter.StripeObjectFilter;
 import com.impactupgrade.nucleus.model.CrmDonation;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayDeposit;
 import com.impactupgrade.nucleus.model.PaymentGatewayEvent;
 import com.impactupgrade.nucleus.model.PaymentGatewayEventType;
@@ -109,7 +109,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
       PaymentGatewayDeposit deposit = new PaymentGatewayDeposit();
 
       payoutToPaymentGatewayEvents(payout).forEach(e -> {
-        String fund = e.getCrmDonation().getMetadataValue(env.getConfig().metadataKeys.fund);
+        String fund = e.getCrmDonation().getRawData(env.getConfig().metadataKeys.fund);
         deposit.addTransaction(e.getCrmDonation(), fund);
       });
 
@@ -155,11 +155,13 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
           String transactionId = chargeId;
           Optional<CrmDonation> donation = Optional.empty();
           if (!Strings.isNullOrEmpty(paymentIntentId)) {
-            donation = env.donationsCrmService().getDonationByTransactionId(paymentIntentId);
+            // TODO: should we attempt to look up the accountId/contactId from the CustomerId?
+            donation = env.donationsCrmService().getDonationsByTransactionIds(List.of(paymentIntentId), null, null).stream().findFirst();
             transactionId = paymentIntentId;
           }
           if (donation.isEmpty()) {
-            donation = env.donationsCrmService().getDonationByTransactionId(chargeId);
+            // TODO: should we attempt to look up the accountId/contactId from the CustomerId?
+            donation = env.donationsCrmService().getDonationsByTransactionIds(List.of(paymentIntentId), null, null).stream().findFirst();
           }
 
           if (donation.isEmpty()) {
@@ -303,27 +305,27 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   }
 
   @Override
-  public void updateSubscription(ManageDonationEvent manageDonationEvent) throws StripeException, ParseException {
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+  public void updateSubscription(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws StripeException, ParseException {
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
 
     if (crmRecurringDonation.amount != null && crmRecurringDonation.amount > 0) {
       stripeClient.updateSubscriptionAmount(crmRecurringDonation.subscriptionId, crmRecurringDonation.amount);
     }
 
-    if (manageDonationEvent.getNextPaymentDate() != null) {
-      stripeClient.updateSubscriptionDate(crmRecurringDonation.subscriptionId, manageDonationEvent.getNextPaymentDate());
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
+      stripeClient.updateSubscriptionDate(crmRecurringDonation.subscriptionId, updateRecurringDonationEvent.getNextPaymentDate());
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
-      stripeClient.pauseSubscription(crmRecurringDonation.subscriptionId, manageDonationEvent.getPauseDonationUntilDate());
+    if (updateRecurringDonationEvent.getPauseDonation()) {
+      stripeClient.pauseSubscription(crmRecurringDonation.subscriptionId, updateRecurringDonationEvent.getPauseDonationUntilDate());
     }
 
-    if (manageDonationEvent.getResumeDonation()) {
-      stripeClient.resumeSubscription(crmRecurringDonation.subscriptionId, manageDonationEvent.getResumeDonationOnDate());
+    if (updateRecurringDonationEvent.getResumeDonation()) {
+      stripeClient.resumeSubscription(crmRecurringDonation.subscriptionId, updateRecurringDonationEvent.getResumeDonationOnDate());
     }
 
-    if (manageDonationEvent.getStripeToken() != null) {
-      stripeClient.updateSubscriptionPaymentMethod(crmRecurringDonation.subscriptionId, manageDonationEvent.getStripeToken());
+    if (updateRecurringDonationEvent.getStripeToken() != null) {
+      stripeClient.updateSubscriptionPaymentMethod(crmRecurringDonation.subscriptionId, updateRecurringDonationEvent.getStripeToken());
     }
     
     stripeClient.disableSubscriptionProration(crmRecurringDonation.subscriptionId);

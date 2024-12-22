@@ -25,7 +25,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.Utils;
 import com.microsoft.graph.models.Site;
@@ -149,11 +149,6 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-        return Collections.emptyList();
-    }
-
-    @Override
     public Optional<CrmContact> getContactById(String id) throws Exception {
         String idColumn = env.getConfig().sharePoint.idColumn;
 
@@ -174,8 +169,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
-        return Collections.emptyList();
+    public PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception {
+        return new PagedResults<>();
     }
 
     @Override
@@ -315,7 +310,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+    public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception {
         return null;
     }
 
@@ -325,7 +320,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+    public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
+        String contactId) throws Exception {
         return Optional.empty();
     }
 
@@ -374,7 +370,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
 
     }
 

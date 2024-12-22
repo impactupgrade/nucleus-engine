@@ -4,18 +4,12 @@
 
 package com.impactupgrade.nucleus.it;
 
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.glassfish.jersey.media.multipart.FormDataMultiPart;
-import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.junit.jupiter.api.Test;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.Response;
-import java.io.File;
 import java.util.List;
 import java.util.Optional;
 
@@ -167,7 +161,7 @@ public class BulkImportIT extends AbstractIT {
     );
     postToBulkImport(values);
 
-    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, Description FROM Contact WHERE Name='" + firstname + " " + lastname + "'");
+    List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, Description FROM Contact WHERE Name='" + firstname + " " + lastname + "' ORDER BY CreatedDate ASC");
     assertEquals(2, contacts.size());
 
     // ensure the oldest contact received the update

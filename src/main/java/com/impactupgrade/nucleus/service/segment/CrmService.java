@@ -20,7 +20,7 @@ import com.impactupgrade.nucleus.model.CrmNote;
 import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.ArrayList;
@@ -31,8 +31,11 @@ import java.util.Optional;
 
 public interface CrmService extends SegmentService {
 
-  // TODO: As we gain more granular search methods, we should instead think through general purpose options
-  //  that take filter as arguments (or a Search object).
+  // NOTE: Methods often receive a whole list of lookups that we're about to process to this all at once. We then let
+  // the implementations decide how to implement them in the most performant way. Some APIs may solely allow retrieval
+  // one at a time. Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to
+  // retrieve large batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in
+  // play...
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // GENERAL PURPOSE
@@ -47,10 +50,14 @@ public interface CrmService extends SegmentService {
     }
     return accounts;
   }
-  List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception;
-  // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
-//  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
-  List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
+  default List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+    List<CrmAccount> accounts = new ArrayList<>();
+    for (String email : emails) {
+      accounts.addAll(searchAccounts(AccountSearch.byEmail(email)).getResults());
+    }
+    return accounts;
+  }
+  PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
   void updateAccount(CrmAccount crmAccount) throws Exception;
   void addAccountToCampaign(CrmAccount crmAccount, String campaignId, String status) throws Exception;
@@ -71,25 +78,21 @@ public interface CrmService extends SegmentService {
   default List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
-      searchContacts(ContactSearch.byEmail(email)).getResultSets().stream()
-          .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
+      contacts.addAll(searchContacts(ContactSearch.byEmail(email)).getResults());
     }
     return contacts;
   }
   default List<CrmContact> getContactsByPhones(List<String> phones) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String phone : phones) {
-      searchContacts(ContactSearch.byPhone(phone)).getResultSets().stream()
-          .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
+      contacts.addAll(searchContacts(ContactSearch.byPhone(phone)).getResults());
     }
     return contacts;
   }
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
+  Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   void updateContact(CrmContact crmContact) throws Exception;
-  // TODO: Business Donations coming soon.
-//  boolean hasSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
-//  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
   void addContactToCampaign(CrmContact crmContact, String campaignId, String status) throws Exception;
   List<CrmContact> getContactsFromList(String listId) throws Exception;
   void addContactToList(CrmContact crmContact, String listId) throws Exception;
@@ -98,25 +101,8 @@ public interface CrmService extends SegmentService {
   String insertOpportunity(CrmOpportunity crmOpportunity) throws Exception;
 
   // transaction id, secondary id, refund id, etc.
-  // default impl doesn't need accountId and contactId, so simply make use of getDonationsByTransactionIds
-  default Optional<CrmDonation> getDonationByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception {
-    List<CrmDonation> crmDonations = getDonationsByTransactionIds(transactionIds);
-
-    if (crmDonations == null || crmDonations.isEmpty()) {
-      return Optional.empty();
-    }
-
-    return Optional.of(crmDonations.get(0));
-  }
-  // helper method
-  default Optional<CrmDonation> getDonationByTransactionId(String transactionId) throws Exception {
-    return getDonationByTransactionIds(List.of(transactionId), null, null);
-  }
-  // We pass the whole list of donations that we're about to process to this all at once, then let the implementations
-  // decide how to implement it in the most performant way. Some APIs may solely allow retrieval one at a time.
-  // Others, like SFDC's SOQL, may allow clauses like "WHERE IN (<list>)" in queries, allowing us to retrieve large
-  // batches all at once. This is SUPER important, especially for SFDC, where monthly API limits are in play...
-  List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception;
+  // we also need account/contact since some CRMs will not allow transaction retrieval without providing the constituent
+  List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception;
   List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception;
   String insertDonation(CrmDonation crmDonation) throws Exception;
   void updateDonation(CrmDonation crmDonation) throws Exception;
@@ -140,14 +126,11 @@ public interface CrmService extends SegmentService {
     return crmRecurringDonation;
   }
   Optional<CrmRecurringDonation> getRecurringDonationById(String id) throws Exception;
-  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception;
-  default Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
-      String contactId) throws Exception {
-    // Most CRMs do not need the accountId/contactId to retrieve RDs, with notable exceptions like Virtuous.
-    // We don't even always have the accountId/contactId available, like when we're attempting to figure out who a donor
-    // is using past donations as a last resort in ContactService.
-    return getRecurringDonationBySubscriptionId(subscriptionId);
-  }
+  // Most CRMs do not need the accountId/contactId to retrieve RDs, with notable exceptions like Virtuous.
+  // We don't even always have the accountId/contactId available, like when we're attempting to figure out who a donor
+  // is using past donations as a last resort in ContactService.
+  Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
+      String contactId) throws Exception;
   List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 //  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
@@ -180,7 +163,7 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // TODO
-  void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
+  void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMUNICATION SYNC
@@ -232,13 +215,6 @@ public interface CrmService extends SegmentService {
   void processBulkImport(List<CrmImportEvent> importEvents) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // PORTAL UTILS
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  Map<String, String> getContactLists(CrmContactListType listType) throws Exception;
-  Map<String, String> getFieldOptions(String object) throws Exception;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // MISC
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -248,7 +224,8 @@ public interface CrmService extends SegmentService {
 
   String insertNote(CrmNote crmNote) throws Exception;
 
-  List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
+  Map<String, String> getFieldOptions(String object) throws Exception;
   EnvironmentConfig.CRMFieldDefinitions getFieldDefinitions();
+  List<CrmCustomField> insertCustomFields(List<CrmCustomField> crmCustomFields);
 
 }

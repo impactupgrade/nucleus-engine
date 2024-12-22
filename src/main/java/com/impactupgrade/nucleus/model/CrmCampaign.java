@@ -12,8 +12,6 @@ public class CrmCampaign extends CrmRecord {
   public String externalReference;
   public ZonedDateTime startDate;
   public ZonedDateTime endDate;
-  public String recordTypeId;
-  public String recordTypeName;
 
   public CrmCampaign(String id, String name) {
     this.id = id;
@@ -31,13 +29,11 @@ public class CrmCampaign extends CrmRecord {
       Object crmRawObject,
       String crmUrl
   ) {
-    super(id, crmRawObject, crmUrl);
+    super(id, recordTypeId, recordTypeName, crmRawObject, crmUrl);
 
     this.name = name;
     this.externalReference = externalReference;
     this.startDate = startDate;
     this.endDate = endDate;
-    this.recordTypeId = recordTypeId;
-    this.recordTypeName = recordTypeName;
   }
 }

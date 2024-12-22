@@ -12,7 +12,7 @@ import java.text.ParseException;
 import java.time.ZoneId;
 import java.util.Calendar;
 
-public class ManageDonationEvent {
+public class UpdateRecurringDonationEvent {
 
   protected final Environment env;
 
@@ -26,11 +26,11 @@ public class ManageDonationEvent {
   protected Boolean cancelDonation;
   protected String stripeToken;
 
-  public ManageDonationEvent(Environment env) {
+  public UpdateRecurringDonationEvent(Environment env) {
     this.env = env;
   }
 
-  public ManageDonationEvent(ManageDonationFormData formData, Environment env) throws ParseException {
+  public UpdateRecurringDonationEvent(UpdateRecurringDonationFormData formData, Environment env) throws ParseException {
     this.env = env;
 
     crmRecurringDonation.id = formData.recurringDonationId;
@@ -94,7 +94,7 @@ public class ManageDonationEvent {
   public void setStripeToken(String stripeToken) { this.stripeToken = stripeToken; }
 
   public String toString() {
-    return "ManageDonationEvent {" +
+    return "UpdateRecurringDonationEvent {" +
         ",\n crmRecurringDonation: " + this.crmRecurringDonation +
         ",\n pauseDonation: " + this.pauseDonation +
         ",\n pauseDonationUntilDate: " + this.pauseDonationUntilDate +

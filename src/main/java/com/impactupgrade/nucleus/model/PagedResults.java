@@ -26,6 +26,10 @@ public class PagedResults<T> {
     return resultSets;
   }
 
+  public List<T> getResults() {
+    return resultSets.stream().flatMap(rs -> rs.getRecords().stream()).toList();
+  }
+
   public Optional<T> getSingleResult() {
     return resultSets.stream().flatMap(rs -> rs.getRecords().stream()).findFirst();
   }

@@ -29,7 +29,7 @@ import com.impactupgrade.nucleus.model.CrmOpportunity;
 import com.impactupgrade.nucleus.model.CrmRecord;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.model.CrmUser;
-import com.impactupgrade.nucleus.model.ManageDonationEvent;
+import com.impactupgrade.nucleus.model.UpdateRecurringDonationEvent;
 import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.CacheUtil;
 import com.impactupgrade.nucleus.util.Utils;
@@ -152,8 +152,10 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   // currentPageToken assumed to be the offset index
-  public List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws InterruptedException, ConnectionException {
-    return toCrmAccount(sfdcClient.searchAccounts(accountSearch));
+  public PagedResults<CrmAccount> searchAccounts(AccountSearch accountSearch) throws InterruptedException, ConnectionException {
+    List<SObject> results = sfdcClient.searchAccounts(accountSearch);
+    PagedResults<SObject> pagedResults = PagedResults.pagedResultsFromCurrentOffset(results, accountSearch);
+    return toCrmAccount(pagedResults);
   }
 
   @Override
@@ -187,7 +189,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception {
+  public List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds, String accountId, String contactId) throws Exception {
     return toCrmDonation(sfdcClient.getDonationsByTransactionIds(transactionIds));
   }
 
@@ -402,7 +404,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId) throws Exception {
+  public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId,
+      String contactId) throws Exception {
     return toCrmRecurringDonation(sfdcClient.getRecurringDonationBySubscriptionId(subscriptionId));
   }
 
@@ -571,11 +574,11 @@ public class SfdcCrmService implements CrmService {
       contact.setField("Description", crmContact.notes);
     }
 
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmSource, crmContact.getMetadataValue("utm_source"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmCampaign, crmContact.getMetadataValue("utm_campaign"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmMedium, crmContact.getMetadataValue("utm_medium"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmTerm, crmContact.getMetadataValue("utm_term"));
-    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmContent, crmContact.getMetadataValue("utm_content"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmSource, crmContact.getRawData("utm_source"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmCampaign, crmContact.getRawData("utm_campaign"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmMedium, crmContact.getRawData("utm_medium"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmTerm, crmContact.getRawData("utm_term"));
+    setField(contact, env.getConfig().salesforce.fieldDefinitions.contact.utmContent, crmContact.getRawData("utm_content"));
 
     // TODO: Avoiding setting the mailing address of a Contact, instead allowing the Account to handle it. But should we?
 
@@ -657,14 +660,14 @@ public class SfdcCrmService implements CrmService {
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId, crmDonation.customerId);
     }
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.fund)) {
-      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.fund, crmDonation.getMetadataValue(env.getConfig().metadataKeys.fund));
+      opportunity.setField(env.getConfig().salesforce.fieldDefinitions.fund, crmDonation.getRawData(env.getConfig().metadataKeys.fund));
     }
 
     if (crmDonation.transactionType != null) {
       String recordTypeId = env.getConfig().salesforce.transactionTypeToRecordTypeIds.get(crmDonation.transactionType);
       opportunity.setField("RecordTypeId", recordTypeId);
     } else {
-      String recordTypeId = crmDonation.getMetadataValue(env.getConfig().metadataKeys.recordType);
+      String recordTypeId = crmDonation.getRawData(env.getConfig().metadataKeys.recordType);
       opportunity.setField("RecordTypeId", recordTypeId);
     }
 
@@ -692,17 +695,17 @@ public class SfdcCrmService implements CrmService {
     opportunity.setField("Name", crmDonation.contact.getFullName() + " Donation");
 
     if (!Strings.isNullOrEmpty(env.getConfig().salesforce.fieldDefinitions.paymentMetadata)) {
-      String metadata = crmDonation.getAllMetadata().entrySet().stream()
+      String metadata = crmDonation.getAllRawData().entrySet().stream()
           .filter(e -> !Strings.isNullOrEmpty(e.getValue())).map(e -> e.getKey() + ": " + e.getValue())
           .distinct().sorted().collect(Collectors.joining("\n"));
       opportunity.setField(env.getConfig().salesforce.fieldDefinitions.paymentMetadata, metadata);
     }
 
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmSource, crmDonation.getMetadataValue("utm_source"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmCampaign, crmDonation.getMetadataValue("utm_campaign"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmMedium, crmDonation.getMetadataValue("utm_medium"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmTerm, crmDonation.getMetadataValue("utm_term"));
-    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmContent, crmDonation.getMetadataValue("utm_content"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmSource, crmDonation.getRawData("utm_source"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmCampaign, crmDonation.getRawData("utm_campaign"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmMedium, crmDonation.getRawData("utm_medium"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmTerm, crmDonation.getRawData("utm_term"));
+    setField(opportunity, env.getConfig().salesforce.fieldDefinitions.donation.utmContent, crmDonation.getRawData("utm_content"));
 
 
 
@@ -998,8 +1001,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-    CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
+  public void updateRecurringDonation(UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
+    CrmRecurringDonation crmRecurringDonation = updateRecurringDonationEvent.getCrmRecurringDonation();
 
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
     toUpdate.setId(crmRecurringDonation.id);
@@ -1007,34 +1010,34 @@ public class SfdcCrmService implements CrmService {
       toUpdate.setField("Npe03__Amount__c", crmRecurringDonation.amount);
       env.logJobInfo("Updating Npe03__Amount__c to {}...", crmRecurringDonation.amount);
     }
-    if (manageDonationEvent.getNextPaymentDate() != null) {
-      toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getNextPaymentDate());
-      env.logJobInfo("Updating Npe03__Next_Payment_Date__c to {}...", manageDonationEvent.getNextPaymentDate().toString());
+    if (updateRecurringDonationEvent.getNextPaymentDate() != null) {
+      toUpdate.setField("Npe03__Next_Payment_Date__c", updateRecurringDonationEvent.getNextPaymentDate());
+      env.logJobInfo("Updating Npe03__Next_Payment_Date__c to {}...", updateRecurringDonationEvent.getNextPaymentDate().toString());
     }
 
-    if (manageDonationEvent.getPauseDonation()) {
+    if (updateRecurringDonationEvent.getPauseDonation()) {
       toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
       toUpdate.setFieldsToNull(new String[] {"Npe03__Next_Payment_Date__c"});
 
-      if (manageDonationEvent.getPauseDonationUntilDate() == null) {
+      if (updateRecurringDonationEvent.getPauseDonationUntilDate() == null) {
         env.logJobInfo("pausing {} indefinitely...", crmRecurringDonation.id);
       } else {
-        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, manageDonationEvent.getPauseDonationUntilDate().getTime());
+        env.logJobInfo("pausing {} until {}...", crmRecurringDonation.id, updateRecurringDonationEvent.getPauseDonationUntilDate().getTime());
       }
-      setRecurringDonationFieldsForPause(toUpdate, manageDonationEvent);
+      setRecurringDonationFieldsForPause(toUpdate, updateRecurringDonationEvent);
     }
 
-    if (manageDonationEvent.getResumeDonation()) {
+    if (updateRecurringDonationEvent.getResumeDonation()) {
       toUpdate.setField("Npe03__Open_Ended_Status__c", "Open");
 
-      if (manageDonationEvent.getResumeDonationOnDate() == null) {
+      if (updateRecurringDonationEvent.getResumeDonationOnDate() == null) {
         env.logJobInfo("resuming {} immediately...", crmRecurringDonation.id);
         toUpdate.setField("Npe03__Next_Payment_Date__c", Calendar.getInstance().getTime());
       } else {
-        env.logJobInfo("resuming {} on {}...", crmRecurringDonation.id, manageDonationEvent.getResumeDonationOnDate().getTime());
-        toUpdate.setField("Npe03__Next_Payment_Date__c", manageDonationEvent.getResumeDonationOnDate());
+        env.logJobInfo("resuming {} on {}...", crmRecurringDonation.id, updateRecurringDonationEvent.getResumeDonationOnDate().getTime());
+        toUpdate.setField("Npe03__Next_Payment_Date__c", updateRecurringDonationEvent.getResumeDonationOnDate());
       }
-      setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
+      setRecurringDonationFieldsForResume(toUpdate, updateRecurringDonationEvent);
     }
 
     sfdcClient.update(toUpdate);
@@ -1048,12 +1051,12 @@ public class SfdcCrmService implements CrmService {
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to pause
   protected void setRecurringDonationFieldsForPause(SObject recurringDonation,
-      ManageDonationEvent manageDonationEvent) throws Exception {
+      UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to resume
   protected void setRecurringDonationFieldsForResume(SObject recurringDonation,
-      ManageDonationEvent manageDonationEvent) throws Exception {
+      UpdateRecurringDonationEvent updateRecurringDonationEvent) throws Exception {
   }
 
   @Override
@@ -2438,7 +2441,7 @@ public class SfdcCrmService implements CrmService {
   protected Optional<SObject> getCampaignOrDefault(CrmRecord crmRecord) throws Exception {
     Optional<SObject> campaign = Optional.empty();
 
-    String campaignIdOrName = crmRecord.getMetadataValue(env.getConfig().metadataKeys.campaign);
+    String campaignIdOrName = crmRecord.getRawData(env.getConfig().metadataKeys.campaign);
     if (!Strings.isNullOrEmpty(campaignIdOrName)) {
       if (campaignIdOrName.startsWith("701")) {
         campaign = sfdcClient.getCampaignById(campaignIdOrName);
@@ -2751,6 +2754,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Name"),
         (String) sObject.getField("OwnerId"),
         (String) sObject.getField("RecordTypeId"),
+        (String) sObject.getChild("RecordType").getField("Name"),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Opportunity/" + sObject.getId() + "/view"
     );
@@ -2787,9 +2791,9 @@ public class SfdcCrmService implements CrmService {
         amount,
         customerId,
         null, // String description,
-        getStringField(sObject, "Name"),
         frequency,
         paymentGatewayName,
+        getStringField(sObject, "Name"),
         getStringField(sObject, "OwnerId"),
         getStringField(sObject, "npe03__Open_Ended_Status__c"),
         null, // String subscriptionCurrency,
