@@ -443,6 +443,10 @@ public class VirtuousCrmService implements CrmService {
 
   @Override
   public Optional<CrmRecurringDonation> getRecurringDonationBySubscriptionId(String subscriptionId, String accountId, String contactId) throws Exception {
+    if (Strings.isNullOrEmpty(contactId)) {
+      // not possible without the contactId
+      return Optional.empty();
+    }
     VirtuousClient.RecurringGifts recurringGifts = virtuousClient.getRecurringGiftsByContact(Integer.parseInt(contactId));
     Optional<VirtuousClient.RecurringGift> recurringGift = recurringGifts.list.stream()
         .filter(rg -> subscriptionId.equalsIgnoreCase(rg.paymentGatewaySubscriptionId(env)))
