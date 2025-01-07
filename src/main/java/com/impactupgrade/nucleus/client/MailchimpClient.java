@@ -101,6 +101,10 @@ public class MailchimpClient {
         })
         .collect(Collectors.toList());
 
+    if (upsertMemberMethods.isEmpty()) {
+      return null;
+    }
+
     StartBatchMethod startBatchMethod = new StartBatchMethod(upsertMemberMethods);
     BatchStatus batchStatus = client.execute(startBatchMethod);
     return batchStatus.id;
@@ -144,6 +148,10 @@ public class MailchimpClient {
         .map(email -> new DeleteMemberMethod(listId, email))
         .collect(Collectors.toList());
 
+    if (deleteMemberMethods.isEmpty()) {
+      return null;
+    }
+
     StartBatchMethod startBatchMethod = new StartBatchMethod(deleteMemberMethods);
     BatchStatus batchStatus = client.execute(startBatchMethod);
     return batchStatus.id;
@@ -168,6 +176,10 @@ public class MailchimpClient {
   public String updateContactTagsBatch(String listId, List<EmailContact> emailContacts) throws IOException, MailchimpException {
     List<EditMemberMethod.AddorRemoveTag> editMemberMethods = emailContacts.stream()
         .map(emailContact -> addOrRemoveTag(listId, emailContact)).collect(Collectors.toList());
+
+    if (editMemberMethods.isEmpty()) {
+      return null;
+    }
 
     StartBatchMethod startBatchMethod = new StartBatchMethod(editMemberMethods);
     BatchStatus batchStatus = client.execute(startBatchMethod);
@@ -224,6 +236,10 @@ public class MailchimpClient {
   }
 
   public void runBatchOperations(EnvironmentConfig.CommunicationPlatform mailchimpConfig, String batchStatusId, int attemptCount) throws Exception {
+    if (Strings.isNullOrEmpty(batchStatusId)) {
+      return;
+    }
+
     if (attemptCount == BATCH_STATUS_MAX_RETRIES) {
       env.logJobError("exhausted retries; returning...");
     } else {
