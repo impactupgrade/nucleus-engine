@@ -48,14 +48,14 @@ public class MessagingService {
       if (e1.getCode() == 21610) {
         env.logJobInfo("message to {} failed due to blacklist; updating contact in CRM", crmContact.phoneNumberForSMS());
         try {
-          env.messagingService().optOut(crmContact);
+          optOut(crmContact);
         } catch (Exception e2) {
           env.logJobError("CRM contact update failed", e2);
         }
       } else if (e1.getCode() == 21408 || e1.getCode() == 21211) {
         env.logJobInfo("invalid phone number: {}; updating contact in CRM", crmContact.phoneNumberForSMS());
         try {
-          env.messagingService().optOut(crmContact);
+          optOut(crmContact);
         } catch (Exception e2) {
           env.logJobError("CRM contact update failed", e2);
         }
