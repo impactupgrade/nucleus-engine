@@ -861,7 +861,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String transactionIdsJoin = page.stream().map(transactionId -> "'" + transactionId + "'").collect(Collectors.joining(","));
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " from Opportunity where " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " in (" + transactionIdsJoin + ")";
+    // IMPORTANT: It's ***VITAL*** that this be ordered CloseDate+CreatedDate DESC! Ex: when we're processing a refund in a
+    // payout, CrmDonation.getTransactionIds() will include both the refundId and the charge/paymentId. For some/most
+    // orgs, refunds are typically reflected on the original Opp. But for others, they leave the original Opp with the
+    // charge/paymentId and create a second Opp with the refundId. If we don't order this with newest-first, the
+    // original Opp might be picked up using the charge/paymentId and we'll update the wrong one.
+    String query = "SELECT " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) +  " FROM Opportunity WHERE " + env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId + " IN (" + transactionIdsJoin + ") ORDER BY CloseDate DESC, CreatedDate DESC";
     List<SObject> results = queryList(query);
 
     if (!more.isEmpty()) {

@@ -12,6 +12,7 @@ import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Card;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
+import com.stripe.model.Dispute;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.PaymentMethod;
@@ -223,6 +224,24 @@ public class PaymentGatewayEvent implements Serializable {
   }
 
   public void initStripe(Refund stripeRefund) {
+    crmDonation.gatewayName = "Stripe";
+
+    crmDonation.refundId = stripeRefund.getId();
+    if (!Strings.isNullOrEmpty(stripeRefund.getPaymentIntent())) {
+      crmDonation.transactionId = stripeRefund.getPaymentIntent();
+      crmDonation.secondaryId = stripeRefund.getCharge();
+    } else {
+      crmDonation.transactionId = stripeRefund.getCharge();
+    }
+
+    if (stripeRefund.getCreated() != null) {
+      crmDonation.refundDate = Utils.toZonedDateTime(stripeRefund.getCreated(), "UTC");
+    } else {
+      crmDonation.refundDate = Utils.now("UTC");
+    }
+  }
+
+  public void initStripe(Dispute stripeRefund) {
     crmDonation.gatewayName = "Stripe";
 
     crmDonation.refundId = stripeRefund.getId();

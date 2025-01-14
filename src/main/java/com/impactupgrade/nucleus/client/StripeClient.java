@@ -27,6 +27,7 @@ import com.stripe.model.PriceCollection;
 import com.stripe.model.Product;
 import com.stripe.model.ProductSearchResult;
 import com.stripe.model.Refund;
+import com.stripe.model.RefundCollection;
 import com.stripe.model.Source;
 import com.stripe.model.Subscription;
 import com.stripe.net.RequestOptions;
@@ -213,7 +214,26 @@ public class StripeClient {
     return chargeCollection.autoPagingIterable();
   }
 
-  public List<Payout> getPayouts(Date startDate, Date endDate, int payoutLimit) throws StripeException {
+  public Iterable<Refund> getAllRefunds(Date startDate, Date endDate) throws StripeException {
+    Map<String, Object> params = new HashMap<>();
+    params.put("limit", 100);
+    Map<String, Object> createdParams = new HashMap<>();
+    createdParams.put("gte", startDate.getTime() / 1000);
+    createdParams.put("lte", endDate.getTime() / 1000);
+    params.put("created", createdParams);
+
+    List<String> expandList = new ArrayList<>();
+    expandList.add("data.customer");
+    expandList.add("data.charge");
+    expandList.add("data.payment_intent");
+    expandList.add("data.balance_transaction");
+    params.put("expand", expandList);
+
+    RefundCollection refundCollection = Refund.list(params, requestOptions);
+    return refundCollection.autoPagingIterable();
+  }
+
+  public List<Payout> getAllPayouts(Date startDate, Date endDate, int payoutLimit) throws StripeException {
     PayoutListParams.ArrivalDate arrivalDate = PayoutListParams.ArrivalDate.builder()
         .setGte(startDate.getTime() / 1000)
         .setLte(endDate.getTime() / 1000)
@@ -224,6 +244,19 @@ public class StripeClient {
         .build();
 
     return Payout.list(params, requestOptions).getData();
+  }
+
+  public Iterable<Payout> getAllPayouts(Date startDate, Date endDate) throws StripeException {
+    PayoutListParams.ArrivalDate arrivalDate = PayoutListParams.ArrivalDate.builder()
+        .setGte(startDate.getTime() / 1000)
+        .setLte(endDate.getTime() / 1000)
+        .build();
+    PayoutListParams params = PayoutListParams.builder()
+        .setLimit(100L)
+        .setArrivalDate(arrivalDate)
+        .build();
+
+    return Payout.list(params, requestOptions).autoPagingIterable();
   }
 
   public Payout getPayout(String id) throws StripeException {

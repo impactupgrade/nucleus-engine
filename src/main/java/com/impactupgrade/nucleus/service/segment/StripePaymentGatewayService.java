@@ -19,6 +19,7 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
+import com.stripe.model.Dispute;
 import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Payout;
@@ -101,7 +102,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   @Override
   public List<PaymentGatewayDeposit> getDeposits(Date startDate, Date endDate) throws Exception {
     List<PaymentGatewayDeposit> deposits = new ArrayList<>();
-    List<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+    List<Payout> payouts = stripeClient.getAllPayouts(startDate, endDate, 100);
     // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
     Collections.reverse(payouts);
     for (Payout payout : payouts) {
@@ -283,7 +284,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
   public void verifyAndReplayDeposits(Date startDate, Date endDate) {
     try {
       SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
-      List<Payout> payouts = stripeClient.getPayouts(startDate, endDate, 100);
+      List<Payout> payouts = stripeClient.getAllPayouts(startDate, endDate, 100);
       // convert newest first oldest first -- SUPER important for accounting reconciliation, where sequential processing is needed
       Collections.reverse(payouts);
       for (Payout payout : payouts) {
@@ -418,11 +419,6 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
     List<BalanceTransaction> balanceTransactions = stripeClient.getBalanceTransactions(payout);
     for (BalanceTransaction balanceTransaction : balanceTransactions) {
-      if ("adjustment".equalsIgnoreCase(balanceTransaction.getType())) {
-        // TODO
-        continue;
-      }
-
       if (balanceTransaction.getSourceObject() instanceof Charge charge) {
         env.logJobInfo("found charge {}", charge.getId());
 
@@ -443,6 +439,15 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
 
         PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
         paymentGatewayEvent.initStripe(refund);
+        paymentGatewayEvent.getCrmDonation().depositId = payout.getId();
+        paymentGatewayEvent.getCrmDonation().depositDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC"));
+
+        paymentGatewayEvents.add(paymentGatewayEvent);
+      } else if (balanceTransaction.getSourceObject() instanceof Dispute dispute) {
+        env.logJobInfo("found dispute {}", dispute.getId());
+
+        PaymentGatewayEvent paymentGatewayEvent = new PaymentGatewayEvent(env);
+        paymentGatewayEvent.initStripe(dispute);
         paymentGatewayEvent.getCrmDonation().depositId = payout.getId();
         paymentGatewayEvent.getCrmDonation().depositDate = ZonedDateTime.ofInstant(Instant.ofEpochSecond(payout.getArrivalDate()), ZoneId.of("UTC"));
 
