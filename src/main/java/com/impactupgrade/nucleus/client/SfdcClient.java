@@ -525,7 +525,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     String updatedSinceClause = "";
     String ts = updatedSince == null ? "" : new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     if (updatedSince != null) {
-      updatedSinceClause = " AND SystemModStamp >= " + ts;
+      updatedSinceClause = " AND (SystemModStamp >= " + ts + " OR Account.SystemModStamp >= " + ts + ")";
     }
     queryResults.add(queryEmailContacts(updatedSinceClause, filter, extraFields));
 
@@ -616,13 +616,14 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<QueryResult> queryResults = new ArrayList<>();
 
     String updatedSinceClause = "";
+    String ts = updatedSince == null ? "" : new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     if (updatedSince != null) {
-      updatedSinceClause = " and SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+      updatedSinceClause = " AND (SystemModStamp >= " + ts + " OR Account.SystemModStamp >= " + ts + ")";
     }
     queryResults.add(querySmsContacts(updatedSinceClause, filter, extraFields));
 
     if (updatedSince != null) {
-      updatedSinceClause = " and Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime()) + ")";
+      updatedSinceClause = " AND Id IN (SELECT ContactId FROM CampaignMember WHERE SystemModStamp >= " + ts + ")";
       queryResults.add(querySmsContacts(updatedSinceClause, filter, extraFields));
     }
 
@@ -644,8 +645,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     List<QueryResult> queryResults = new ArrayList<>();
 
     String updatedSinceClause = "";
+    String ts = updatedSince == null ? "" : new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     if (updatedSince != null) {
-      updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+      updatedSinceClause = " AND (SystemModStamp >= " + ts + " OR Account.SystemModStamp >= " + ts + ")";
     }
     queryResults.add(queryDonorIndividualContacts(updatedSinceClause, extraFields));
 
@@ -660,11 +662,11 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     Set<String> organizationRecordTypeNames = Set.of("business", "church", "school", "org", "group");
     String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) + " " +
         "FROM Contact " +
-        "WHERE " + updatedSinceClause +
-        "AND (" + organizationRecordTypeNames.stream()
+        "WHERE " +
+        "(" + organizationRecordTypeNames.stream()
           .map(name -> "Account.RecordType.Name NOT LIKE '%" + name + "%'")
           .collect(Collectors.joining(" AND ")) + ") " +
-        "AND npo02__TotalOppAmount__c > 0.0";
+        "AND npo02__TotalOppAmount__c > 0.0" + updatedSinceClause;
     return query(query);
   }
 
