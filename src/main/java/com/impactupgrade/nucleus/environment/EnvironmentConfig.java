@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,11 +61,14 @@ public class EnvironmentConfig implements Serializable {
 
   public MetadataKeys metadataKeys = new MetadataKeys();
   public static class MetadataKeys implements Serializable {
-    public Set<String> account = new HashSet<>();
-    public Set<String> campaign = new HashSet<>();
-    public Set<String> fund = new HashSet<>();
-    public Set<String> contact = new HashSet<>();
-    public Set<String> recordType = new HashSet<>();
+    // IMPORTANT: Use LinkedHashSet here, not HashSet, so they're in insertion order. We need a prioritized order,
+    // checking explicit ones first prior to implicit ones. See environment-default.json and its campaign metadata
+    // keys for an example.
+    public Set<String> account = new LinkedHashSet<>();
+    public Set<String> campaign = new LinkedHashSet<>();
+    public Set<String> fund = new LinkedHashSet<>();
+    public Set<String> contact = new LinkedHashSet<>();
+    public Set<String> recordType = new LinkedHashSet<>();
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
