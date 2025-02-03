@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.sun.mail.smtp.SMTPTransport;
 
@@ -31,14 +32,20 @@ public abstract class SmtpEmailService implements EmailService {
   }
 
   @Override
-  public void sendEmailText(String subject, String body, boolean isHtml, String to, String from) {
-    env.logJobInfo("sendEmailText: to={} from={} subject={} isHtml={}", to, from, subject, isHtml);
+  public void sendEmailText(String subject, String body, boolean isHtml, String to, String cc, String bcc, String from) {
+    env.logJobInfo("sendEmailText: to={} cc={} bcc={} from={} subject={} isHtml={}", to, cc, bcc, from, subject, isHtml);
     try {
       Session session = Session.getInstance(props, null);
 
       Message msg = new MimeMessage(session);
       msg.setFrom(new InternetAddress(from));
       msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to, false));
+      if (!Strings.isNullOrEmpty(cc)) {
+        msg.addRecipients(Message.RecipientType.CC, InternetAddress.parse(cc, false));
+      }
+      if (!Strings.isNullOrEmpty(bcc)) {
+        msg.addRecipients(Message.RecipientType.BCC, InternetAddress.parse(bcc, false));
+      }
       msg.setSubject(subject);
       if (isHtml) {
         msg.setContent(body, "text/html");
