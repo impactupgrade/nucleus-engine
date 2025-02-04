@@ -47,10 +47,10 @@ public class SendGridEmailService extends SmtpEmailService {
 
     Personalization personalization = new Personalization();
     tos.forEach(to -> personalization.addTo(new Email(to)));
-    if (CollectionUtils.isNotEmpty(ccs)) {
+    if (ccs != null) {
       ccs.forEach(cc -> personalization.addCc(new Email(cc)));
     }
-    if (CollectionUtils.isNotEmpty(bccs)) {
+    if (bccs != null) {
       bccs.forEach(bcc -> personalization.addBcc(new Email(bcc)));
     }
     data.entrySet().forEach(e -> personalization.addDynamicTemplateData(e.getKey(), e.getValue()));
