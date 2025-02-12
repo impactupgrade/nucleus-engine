@@ -22,7 +22,7 @@ public class HubSpotEmailService extends SmtpEmailService {
   }
 
   @Override
-  public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from) {
+  public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, List<String> ccs, List<String> bccs, String from) {
     // TODO
   }
 

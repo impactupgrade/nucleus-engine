@@ -58,9 +58,17 @@ public class NotificationService {
     }
     String emailFrom = notificationConfig.from;
     String emailTo = String.join(",", notificationConfig.to);
-    env.transactionalEmailService().sendEmailText(notification.emailSubject, notification.emailBody, true, emailTo, emailFrom);
+    String emailCc = null;
+    String emailBcc = null;
+    if (CollectionUtils.isNotEmpty(notificationConfig.cc)) {
+      emailCc = String.join(",", notificationConfig.cc);
+    }
+    if (CollectionUtils.isNotEmpty(notificationConfig.bcc)) {
+      emailBcc = String.join(",", notificationConfig.bcc);
+    }
+    env.transactionalEmailService().sendEmailText(notification.emailSubject, notification.emailBody, true, emailTo, emailCc, emailBcc, emailFrom);
 
-    env.logJobInfo("emailed notification to: {}", emailTo);
+    env.logJobInfo("emailed notification to: {}, cc: {}, bcc: {}", emailTo, emailCc, emailBcc);
   }
 
   protected void sendSmsNotification(Notification notification, EnvironmentConfig.Notification notificationConfig) {

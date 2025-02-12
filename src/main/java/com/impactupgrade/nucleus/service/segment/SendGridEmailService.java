@@ -14,6 +14,7 @@ import com.sendgrid.SendGrid;
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Email;
 import com.sendgrid.helpers.mail.objects.Personalization;
+import org.apache.commons.collections.CollectionUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,7 @@ public class SendGridEmailService extends SmtpEmailService {
   }
 
   @Override
-  public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from) {
+  public void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, List<String> ccs, List<String> bccs, String from) {
     Optional<EnvironmentConfig.CommunicationPlatform> _sg = env.getConfig().sendgrid.stream().filter(sg -> sg.transactionalSender).findFirst();
     if (_sg.isEmpty()) {
       env.logJobError("unable to find SendGrid config with transactionalSender=true");
@@ -44,16 +45,18 @@ public class SendGridEmailService extends SmtpEmailService {
     request.setMethod(Method.POST);
     request.setEndpoint("/mail/send");
 
-    Mail mail = new Mail();
-
-    for (String to : tos) {
-      Personalization personalization = new Personalization();
-      personalization.addTo(new Email(to));
-      for (Map.Entry<String, Object> d : data.entrySet()) {
-        personalization.addDynamicTemplateData(d.getKey(), d.getValue());
-      }
-      mail.addPersonalization(personalization);
+    Personalization personalization = new Personalization();
+    tos.forEach(to -> personalization.addTo(new Email(to)));
+    if (ccs != null) {
+      ccs.forEach(cc -> personalization.addCc(new Email(cc)));
     }
+    if (bccs != null) {
+      bccs.forEach(bcc -> personalization.addBcc(new Email(bcc)));
+    }
+    data.entrySet().forEach(e -> personalization.addDynamicTemplateData(e.getKey(), e.getValue()));
+
+    Mail mail = new Mail();
+    mail.addPersonalization(personalization);
 
     if (from.contains("<") && from.contains(">")) {
       // ex: Brett Meyer <brett@impactupgrade.com>

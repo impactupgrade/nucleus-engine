@@ -12,6 +12,6 @@ import java.util.Map;
  */
 public interface EmailService extends SegmentService {
 
-  void sendEmailText(String subject, String body, boolean isHtml, String to, String from);
-  void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, String from);
+  void sendEmailText(String subject, String body, boolean isHtml, String to, String cc, String bcc, String from);
+  void sendEmailTemplate(String subject, String template, Map<String, Object> data, List<String> tos, List<String> ccs, List<String> bccs, String from);
 }

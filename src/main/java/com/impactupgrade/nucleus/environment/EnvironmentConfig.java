@@ -399,6 +399,8 @@ public class EnvironmentConfig implements Serializable {
   public static class Notification implements Serializable {
     public String from = "";
     public Set<String> to = new HashSet<>();
+    public Set<String> cc = new HashSet<>();
+    public Set<String> bcc = new HashSet<>();
   }
 
   public static class Task implements Serializable {
