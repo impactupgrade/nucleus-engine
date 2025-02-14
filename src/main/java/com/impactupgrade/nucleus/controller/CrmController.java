@@ -25,6 +25,7 @@ import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.impactupgrade.nucleus.util.Utils;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
@@ -634,10 +635,13 @@ public class CrmController {
   }
 
   // TODO: move to a service layer instead?
-  protected CrmImportEvent fromFBFundraiser(Map<String, String> data, Environment env) {
+  protected CrmImportEvent fromFBFundraiser(Map<String, String> _data, Environment env) {
+    // Be case-insensitive, for sources that aren't always consistent.
+    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
 //  TODO: 'S' means a standard charge, but will likely need to eventually support other types like refunds, etc.
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
       CrmImportEvent importEvent = new CrmImportEvent();
+      importEvent.raw = data;
 
 //    TODO: support for initial amount, any fees, and net amount
 //    importEvent. = data.get("Donation Amount");
@@ -686,7 +690,7 @@ public class CrmController {
     }
   }
 
-  protected CrmImportEvent fromGreaterGiving(Map<String, String> data, Environment env) {
+  protected CrmImportEvent fromGreaterGiving(Map<String, String> _data, Environment env) {
     // TODO: Not mapped:
     // Household Phone
     // Account1 Phone
@@ -727,9 +731,13 @@ public class CrmController {
     // Donation Record Type Name
     // Campaign Member Status
 
+    // Be case-insensitive, for sources that aren't always consistent.
+    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
+
     // TODO: Other types? Skipping gift-in-kind
     if (data.get("Donation Type").equalsIgnoreCase("Donation") || data.get("Donation Type").equalsIgnoreCase("Auction")) {
       CrmImportEvent importEvent = new CrmImportEvent();
+      importEvent.raw = data;
 
       importEvent.account.name = data.get("Account1 Name");
       importEvent.account.billingAddress.street = data.get("Home Street");
@@ -767,8 +775,11 @@ public class CrmController {
     }
   }
 
-  protected CrmImportEvent fromClassy(Map<String, String> data, Environment env) {
+  protected CrmImportEvent fromClassy(Map<String, String> _data, Environment env) {
+    // Be case-insensitive, for sources that aren't always consistent.
+    CaseInsensitiveMap<String, String> data = new CaseInsensitiveMap<>(_data);
     CrmImportEvent importEvent = new CrmImportEvent();
+    importEvent.raw = data;
 
     // Contact
     importEvent.contactPersonalEmail = data.get("Donor Email");
