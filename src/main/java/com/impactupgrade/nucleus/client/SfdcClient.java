@@ -666,7 +666,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         "(" + organizationRecordTypeNames.stream()
           .map(name -> "Account.RecordType.Name NOT LIKE '%" + name + "%'")
           .collect(Collectors.joining(" AND ")) + ") " +
-        "AND npo02__TotalOppAmount__c > 0.0" + updatedSinceClause;
+        "AND npo02__TotalOppAmount__c > 0.0" +
+        updatedSinceClause;
     return query(query);
   }
 
@@ -676,7 +677,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     String updatedSinceClause = "";
     if (updatedSince != null) {
-      updatedSinceClause = "SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
+      updatedSinceClause = " AND SystemModStamp >= " + new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(updatedSince.getTime());
     }
     queryResults.add(queryDonorOrganizationAccounts(updatedSinceClause, extraFields));
 
@@ -691,11 +692,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     Set<String> organizationRecordTypeNames = Set.of("business", "church", "school", "org", "group");
     String query = "SELECT " + getFieldsList(ACCOUNT_FIELDS, env.getConfig().salesforce.customQueryFields.account, extraFields) + " " +
         "FROM Account " +
-        "WHERE " + updatedSinceClause +
-        "AND (" + organizationRecordTypeNames.stream()
+        "WHERE " +
+        "(" + organizationRecordTypeNames.stream()
           .map(name -> "RecordType.Name LIKE '%" + name + "%'")
           .collect(Collectors.joining(" OR ")) + ") " +
-        "AND npo02__TotalOppAmount__c > 0.0";
+        "AND npo02__TotalOppAmount__c > 0.0" +
+        updatedSinceClause;
     return query(query);
   }
 
