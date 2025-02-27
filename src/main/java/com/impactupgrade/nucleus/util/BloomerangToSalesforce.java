@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 // TODO: Shift to using the Bloomerang API, instead of exports.
-// TODO: Rework this to use Bulk Upsert, like the Raiser's Edge migration.
+// TODO: Rework this to use Bulk Upsert, like DonorPerfectToSalesforce or RaisersEdgeToSalesforce
 public class BloomerangToSalesforce {
 
   public static void main(String[] args) throws Exception {
