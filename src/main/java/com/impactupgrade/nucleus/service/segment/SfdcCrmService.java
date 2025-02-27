@@ -1960,7 +1960,7 @@ public class SfdcCrmService implements CrmService {
       setCustomBulkValue(contact, "npe01__WorkPhone__c", importEvent.contactWorkPhone);
     }
 
-    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
+    if (importEvent.contactPhonePreference != null && (existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__PreferredPhone__c"))) && env.getConfig().salesforce.npsp) {
       String customFieldValue = switch (importEvent.contactPhonePreference) {
         case HOME -> "Home";
         case MOBILE -> "Mobile";
@@ -1994,7 +1994,7 @@ public class SfdcCrmService implements CrmService {
       setCustomBulkValue(contact, "npe01__AlternateEmail__c", otherEmail);
     }
 
-    if ((existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
+    if (importEvent.contactEmailPreference != null && (existingContact == null || Strings.isNullOrEmpty((String) existingContact.getField("npe01__Preferred_Email__c"))) && env.getConfig().salesforce.npsp) {
       String customFieldValue = switch (importEvent.contactEmailPreference) {
         case PERSONAL -> "Personal";
         case WORK -> "Work";

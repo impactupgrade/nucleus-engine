@@ -40,7 +40,7 @@ public class CrmImportEvent {
 
     public static ContactEmailPreference fromName(String name) {
       if (Strings.isNullOrEmpty(name)) {
-        return PERSONAL;
+        return null;
       }
 
       if (PERSONAL.name.equals(name.toLowerCase(Locale.ROOT))) {
@@ -50,8 +50,7 @@ public class CrmImportEvent {
       } else if (OTHER.name.equals(name.toLowerCase(Locale.ROOT))) {
         return OTHER;
       } else {
-        // default to personal
-        return PERSONAL;
+        return null;
       }
     }
   }
@@ -70,8 +69,7 @@ public class CrmImportEvent {
 
     public static ContactPhonePreference fromName(String name) {
       if (Strings.isNullOrEmpty(name)) {
-        // default to personal
-        return MOBILE;
+        return null;
       }
 
       if (HOME.name.equals(name.toLowerCase(Locale.ROOT))) {
@@ -83,8 +81,7 @@ public class CrmImportEvent {
       } else if (OTHER.name.equals(name.toLowerCase(Locale.ROOT))) {
         return OTHER;
       } else {
-        // default to personal
-        return MOBILE;
+        return null;
       }
     }
   }
@@ -112,7 +109,7 @@ public class CrmImportEvent {
   public String contactPersonalEmail;
   public String contactWorkEmail;
   public String contactOtherEmail;
-  public ContactEmailPreference contactEmailPreference = ContactEmailPreference.PERSONAL;
+  public ContactEmailPreference contactEmailPreference;
 
   // could be a contact's household, could be an organization itself -- both are assumed to be the primary account
   public CrmAccount account = new CrmAccount();
@@ -134,7 +131,7 @@ public class CrmImportEvent {
   public String contactMobilePhone;
   public String contactWorkPhone;
   public String contactOtherPhone;
-  public ContactPhonePreference contactPhonePreference = ContactPhonePreference.MOBILE;
+  public ContactPhonePreference contactPhonePreference;
 
   public String contactMailingStreet;
   public String contactMailingCity;
