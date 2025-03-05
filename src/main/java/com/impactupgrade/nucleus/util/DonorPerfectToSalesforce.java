@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// TODO: Rework this to use Bulk Upsert, like the Raiser's Edge migration.
 public class DonorPerfectToSalesforce {
 
   public static void main(String[] args) throws Exception {
@@ -37,9 +36,9 @@ public class DonorPerfectToSalesforce {
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.crmPrimary = "salesforce";
         envConfig.salesforce.sandbox = false;
-        envConfig.salesforce.url = "";
-        envConfig.salesforce.username = "";
-        envConfig.salesforce.password = "";
+        envConfig.salesforce.url = "neighborlinkfortwayne.my.salesforce.com";
+        envConfig.salesforce.username = "team+nlfw@impactupgrade.com";
+        envConfig.salesforce.password = "AMC!huc*qbc@gqt8vrxdiCpe56TyHWdMBL5eqDPHlEA";
         envConfig.salesforce.enhancedRecurringDonations = true;
         envConfig.salesforce.npsp = true;
         return envConfig;
@@ -69,19 +68,24 @@ public class DonorPerfectToSalesforce {
     Map<String, Boolean> constituentIdToIsBusiness = new HashMap<>();
     Map<String, String> transactionNumberToOppId = new HashMap<>();
 
+    Map<String, String> existingBusinessAccountIdsByName = new HashMap<>();
     List<SObject> accounts = sfdcClient.queryListAutoPaged("SELECT Id, DP_ID__c, RecordTypeId, Name, BillingStreet FROM Account WHERE DP_ID__c!=NULL");
     for (SObject account : accounts) {
       constituentIdToAccountId.put((String) account.getField("DP_ID__c"), account.getId());
+      // TODO: verify existing record types are correct
       boolean isBusiness = account.getField("RecordTypeId").equals(ORGANIZATION_RECORD_TYPE_ID);
       constituentIdToIsBusiness.put((String) account.getField("DP_ID__c"), isBusiness);
+      if (isBusiness) {
+        existingBusinessAccountIdsByName.put((String) account.getField("Name"), account.getId());
+      }
     }
 
-    Map<String, SObject> existingContactsByEmail = new HashMap<>();
+    Map<String, String> existingContactIdsByEmail = new HashMap<>();
     List<SObject> contacts = sfdcClient.queryListAutoPaged("SELECT Id, AccountId, DP_ID__c, FirstName, LastName, Email, Account.Name, Account.BillingStreet FROM Contact WHERE Email!=''");
     for (SObject contact : contacts) {
       String emailKey = contact.getField("Email").toString().toLowerCase(Locale.ROOT);
-      if (!existingContactsByEmail.containsKey(emailKey)) {
-        existingContactsByEmail.put(emailKey, contact);
+      if (!existingContactIdsByEmail.containsKey(emailKey)) {
+        existingContactIdsByEmail.put(emailKey, contact.getId());
       }
 
       String dpId = (String) contact.getField("DP_ID__c");
@@ -141,33 +145,21 @@ public class DonorPerfectToSalesforce {
     for (Map<String, String> constituentRow : constituentRows) {
       String donorId = constituentRow.get("DONOR_ID");
       String type = constituentRow.get("DONOR_TYPE_DESCR");
-      String firstName = constituentRow.get("FIRST_NAME");
-      String lastName = constituentRow.get("LAST_NAME");
-      String orgName = constituentRow.get("ORG_NAME");
 
-      boolean isBusiness = !Strings.isNullOrEmpty(type) && !"Individual".equalsIgnoreCase(type);
+      boolean isBusiness = "Y".equalsIgnoreCase(constituentRow.get("ORG_REC"))
+          || (!Strings.isNullOrEmpty(type) && !"Individual".equalsIgnoreCase(type));
       constituentIdToIsBusiness.put(donorId, isBusiness);
 
-      String accountName;
-      if (isBusiness) {
-        if (!Strings.isNullOrEmpty(orgName) && !Strings.isNullOrEmpty(firstName)) {
-          accountName = orgName;
-          // TODO: biz, plus contact with affiliation
-        } else {
-          accountName = lastName;
-          // TODO: biz only, no contact
-        }
-      } else {
-        accountName = firstName + " " + lastName;
-        // TODO: if orgName, need a household, but also create a name-only organization and an affiliation
-      }
+      String accountName = getAccountName(constituentRow);
 
       SObject sfdcAccount = new SObject("Account");
 
       sfdcAccount.setField("Name", accountName);
+      sfdcAccount.setField("Description", constituentRow.get("NARRATIVE"));
       sfdcAccount.setField("npo02__Formal_Greeting__c", constituentRow.get("SALUTATION"));
       sfdcAccount.setField("npo02__Informal_Greeting__c", constituentRow.get("INFORMAL_SAL"));
-//      sfdcAccount.setField("Recognition_Name__c", constituentRow.get("RecognitionName"));
+      // TODO: create field
+      sfdcAccount.setField("Attn__c", constituentRow.get("OPT_LINE"));
 
 //      sfdcAccount.setField("Envelope_Name__c", constituentRow.get("EnvelopeName"));
 //      sfdcAccount.setField("Type", constituentRow.get("Type"));
@@ -216,8 +208,13 @@ public class DonorPerfectToSalesforce {
         SaveResult result = results.batchInsertResults().get(i);
         if (result.isSuccess() && !Strings.isNullOrEmpty(result.getId())) {
           String sfdcAccountId = result.getId();
+          String donorId = constituentRow.get("DONOR_ID");
+          constituentIdToAccountId.put(donorId, sfdcAccountId);
 
-          constituentIdToAccountId.put(constituentRow.get("AccountNumber"), sfdcAccountId);
+          if (constituentIdToIsBusiness.getOrDefault(donorId, false)) {
+            String accountName = getAccountName(constituentRow);
+            existingBusinessAccountIdsByName.put(accountName, sfdcAccountId);
+          }
         }
       }
     }
@@ -226,57 +223,88 @@ public class DonorPerfectToSalesforce {
     // CONTACT
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // TODO: If it's a biz with no first/last name, skip the contact entirely. Email already included in Account.
-    //  Do other fields need pulled in too?
-
     constituentRowsToBeInserted = new ArrayList<>();
 
     for (Map<String, String> constituentRow : constituentRows) {
       String donorId = constituentRow.get("DONOR_ID");
       String email = constituentRow.get("EMAIL");
 
+      boolean isBusiness = constituentIdToIsBusiness.getOrDefault(donorId, false);
+
       if (!Strings.isNullOrEmpty(constituentRow.get("FIRST_NAME"))) {
         SObject sfdcContact = new SObject("Contact");
 
+        sfdcContact.setField("FirstName", constituentRow.get("FIRST_NAME"));
+        sfdcContact.setField("LastName", constituentRow.get("LAST_NAME"));
+        // TODO: create field
+        sfdcContact.setField("Middle_Name__c", constituentRow.get("MIDDLE_NAME"));
         sfdcContact.setField("Title", constituentRow.get("TITLE"));
-        if ("Y".equalsIgnoreCase(constituentRow.get("DECEASED"))) {
-          sfdcContact.setField("npsp__Deceased__c", true);
-        }
         // TODO: create the field
         sfdcContact.setField("Employer__c", constituentRow.get("EMPLOYER"));
+        sfdcContact.setField("Description", constituentRow.get("NARRATIVE"));
+
+        if ("Y".equalsIgnoreCase(constituentRow.get("DECEASED"))) {
+          sfdcContact.setField("npsp__Deceased__c", true);
+          sfdcContact.setField("npsp__Do_Not_Contact__c", true);
+        }
         if ("Y".equalsIgnoreCase(constituentRow.get("NOCALL"))) {
           sfdcContact.setField("DoNotCall", true);
+        }
+        if ("Y".equalsIgnoreCase(constituentRow.get("NO_EMAIL"))) {
+          sfdcContact.setField("HasOptedOutOfEmail", true);
+        }
+        if ("Y".equalsIgnoreCase(constituentRow.get("NOMAIL"))) {
+          // TODO: create field
+          sfdcContact.setField("Do_Not_Mail__c", true);
         }
 
         sfdcContact.setField("npe01__HomeEmail__c", email);
         sfdcContact.setField("npe01__Preferred_Email__c", "Personal");
         sfdcContact.setField("MobilePhone", constituentRow.get("MOBILE_PHONE"));
         sfdcContact.setField("npe01__PreferredPhone__c", "Mobile");
+        sfdcContact.setField("HomePhone", constituentRow.get("HOME_PHONE"));
 
         if (constituentIdToContactId.containsKey(donorId)) {
           sfdcContact.setId(constituentIdToContactId.get(donorId));
 
           sfdcClient.batchUpdate(sfdcContact);
-          System.out.println("CONSTITUENT CONTACT UPDATE: " + constituentRow.get("First") + " " + constituentRow.get("Last"));
-        } else if (existingContactsByEmail.containsKey(email)) {
-          // TODO: need to update the account
-
-          sfdcContact.setId(existingContactsByEmail.get(email).getId());
-
+          System.out.println("CONSTITUENT CONTACT UPDATE: " + constituentRow.get("FIRST_NAME") + " " + constituentRow.get("LAST_NAME"));
+        } else if (existingContactIdsByEmail.containsKey(email)) {
+          sfdcContact.setId(existingContactIdsByEmail.get(email));
           sfdcClient.batchUpdate(sfdcContact);
-          System.out.println("CONSTITUENT CONTACT UPDATE BY EMAIL: " + constituentRow.get("First") + " " + constituentRow.get("Last"));
+          System.out.println("CONSTITUENT CONTACT UPDATE BY EMAIL: " + constituentRow.get("FIRST_NAME") + " " + constituentRow.get("LAST_NAME"));
         } else {
-          sfdcContact.setField("AccountId", constituentIdToAccountId.get(donorId));
           sfdcContact.setField("DP_ID__c", donorId);
 
-          sfdcContact.setField("FirstName", constituentRow.get("First"));
-          sfdcContact.setField("LastName", constituentRow.get("Last"));
-          sfdcContact.setField("Middle_Name__c", constituentRow.get("Middle"));
+          // If it was a biz, the account will be the biz itself. Allow the inserted contact to create its own
+          // household, then create an affiliation with the biz account afterward.
+          if (isBusiness) {
+            String sfdcContactId = sfdcClient.insert(sfdcContact).getId();
+            constituentIdToContactId.put(donorId, sfdcContactId);
 
-          constituentRowsToBeInserted.add(constituentRow);
+            insertAffiliation(sfdcContactId, constituentIdToAccountId.get(donorId), sfdcClient);
+          } else {
+            sfdcContact.setField("AccountId", constituentIdToAccountId.get(donorId));
+            constituentRowsToBeInserted.add(constituentRow);
 
-          sfdcClient.batchInsert(sfdcContact);
-          System.out.println("CONSTITUENT CONTACT INSERT: " + constituentRow.get("First") + " " + constituentRow.get("Last"));
+            // If this was an individual donor, but ORG_NAME was defined, it's pointing to their employer or an org
+            // they represent. Allow the donor to have a household (above), but create a bare account for the ORG_NAME
+            // and create an affiliation.
+            String orgName = constituentRow.get("ORG_NAME");
+            if (!Strings.isNullOrEmpty(orgName) && !existingBusinessAccountIdsByName.containsKey(orgName)) {
+              String sfdcContactId = sfdcClient.insert(sfdcContact).getId();
+
+              SObject sfdcAccount = new SObject("Account");
+              sfdcAccount.setField("Name", orgName);
+              String sfdcAccountId = sfdcClient.insert(sfdcAccount).getId();
+              existingBusinessAccountIdsByName.put(orgName, sfdcAccountId);
+              insertAffiliation(sfdcContactId, constituentIdToAccountId.get(donorId), sfdcClient);
+            } else {
+              sfdcClient.batchInsert(sfdcContact);
+            }
+          }
+
+          System.out.println("CONSTITUENT CONTACT INSERT: " + constituentRow.get("FIRST_NAME") + " " + constituentRow.get("LAST_NAME"));
         }
       }
     }
@@ -290,7 +318,7 @@ public class DonorPerfectToSalesforce {
           Map<String, String> constituentRow = constituentRowsToBeInserted.get(i);
           String sfdcContactId = result.getId();
 
-          constituentIdToContactId.put(constituentRow.get("AccountNumber"), sfdcContactId);
+          constituentIdToContactId.put(constituentRow.get("DONOR_ID"), sfdcContactId);
         }
       }
     }
@@ -312,6 +340,34 @@ public class DonorPerfectToSalesforce {
 //    }
 //
 //    sfdcClient.batchFlush();
+  }
+
+  private String getAccountName(Map<String, String> constituentRow) {
+    String type = constituentRow.get("DONOR_TYPE_DESCR");
+    boolean isBusiness = !Strings.isNullOrEmpty(type) && !"Individual".equalsIgnoreCase(type);
+    String firstName = constituentRow.get("FIRST_NAME");
+    String lastName = constituentRow.get("LAST_NAME");
+    String orgName = constituentRow.get("ORG_NAME");
+
+    if (isBusiness) {
+      if (!Strings.isNullOrEmpty(orgName) && !Strings.isNullOrEmpty(firstName)) {
+        return orgName;
+      } else {
+        // Biz only, no contact. Contact will be skipped since it has no first name.
+        return lastName;
+      }
+    } else {
+      return firstName + " " + lastName;
+    }
+  }
+
+  private void insertAffiliation(String contactId, String accountId, SfdcClient sfdcClient) throws InterruptedException {
+    SObject affiliation = new SObject("npe5__Affiliation__c");
+    affiliation.setField("npe5__Contact__c", contactId);
+    affiliation.setField("npe5__Organization__c", accountId);
+    affiliation.setField("npe5__Status__c", "Current");
+//    affiliation.setField("npe5__Role__c", role);
+    sfdcClient.batchInsert(affiliation);
   }
 
 //  private void processOpportunity(
