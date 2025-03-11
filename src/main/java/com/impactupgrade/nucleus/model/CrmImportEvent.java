@@ -97,6 +97,57 @@ public class CrmImportEvent {
   //  where the API is unfortunately case sensitive. For now, keep the originals and require column heads to be
   //  case sensitive
   public Map<String, String> raw = new HashMap<>();
+  
+  // TODO: We have an unfortunate design flaw. SfdcCrmService checks the following first before deciding if we need
+  //  to actually process a Account/Contact:
+  //  if (hasAccountColumns || hasContactColumns || hasContactOrgColumns) {
+  //  If that fails, the Account/Contact is not attempted. Makes sense. But originally, those booleans solely looked at
+  //  the raw hashmap (above), looking for keys that started with the appropriate word. If we're importing a generic
+  //  CSV, fromGeneric sets:
+  //  importEvent.raw = data;
+  //  But in CrmController, where we're programmatically building up the CrmImportEvent (ex: Classy), we don't actually
+  //  need to create raw map entries. Instead, we're simply setting the below fields for the Account/Contact.
+  //  Which creates a disconnect: Account/Contact-relevant fields have values, but since there's no raw map,
+  //  SfdcCrmService assumed no Account/Contact data was actually present.
+  //  For now, use these fields to explicitly state that relevant fields are present. But this needs rethought in general.
+  private boolean hasAccountColumns = false;
+  public void hasAccountColumns(boolean hasAccountColumns) {
+    this.hasAccountColumns = hasAccountColumns;
+  }
+  public boolean hasAccountColumns() {
+    if (hasAccountColumns) return true;
+    return raw.entrySet().stream()
+        .filter(entry -> !"Account Id".equalsIgnoreCase(entry.getKey()))
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("account") && !Strings.isNullOrEmpty(entry.getValue()));
+  }
+  private boolean hasContactColumns = false;
+  public void hasContactColumns(boolean hasContactColumns) {
+    this.hasContactColumns = hasContactColumns;
+  }
+  public boolean hasContactColumns() {
+    if (hasContactColumns) return true;
+    return raw.entrySet().stream()
+        .filter(entry -> !"Contact Id".equalsIgnoreCase(entry.getKey()))
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("contact") && !Strings.isNullOrEmpty(entry.getValue()));
+  }
+  private boolean hasOppColumns = false;
+  public void hasOppColumns(boolean hasOppColumns) {
+    this.hasOppColumns = hasOppColumns;
+  }
+  public boolean hasOppColumns() {
+    if (hasOppColumns) return true;
+    return raw.entrySet().stream()
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("opportunity") && !Strings.isNullOrEmpty(entry.getValue()));
+  }
+  private boolean hasRdColumns = false;
+  public void hasRdColumns(boolean hasRdColumns) {
+    this.hasRdColumns = hasRdColumns;
+  }
+  public boolean hasRdColumns() {
+    if (hasRdColumns) return true;
+    return raw.entrySet().stream()
+        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("recurring donation") && !Strings.isNullOrEmpty(entry.getValue()));
+  }
 
   // For updates only, used for retrieval.
   public String contactId;

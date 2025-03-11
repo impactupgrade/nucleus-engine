@@ -1354,17 +1354,11 @@ public class SfdcCrmService implements CrmService {
     List<String> batchUpdateOpportunities = new ArrayList<>();
     List<String> batchUpdateRecurringDonations = new ArrayList<>();
 
-    boolean hasAccountColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .filter(entry -> !"Account Id".equalsIgnoreCase(entry.getKey()))
-        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("account") && !Strings.isNullOrEmpty(entry.getValue()));
-    boolean hasContactColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .filter(entry -> !"Contact Id".equalsIgnoreCase(entry.getKey()))
-        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("contact") && !Strings.isNullOrEmpty(entry.getValue()));
+    boolean hasAccountColumns = importEvents.stream().anyMatch(CrmImportEvent::hasAccountColumns);
+    boolean hasContactColumns = importEvents.stream().anyMatch(CrmImportEvent::hasContactColumns);
     boolean hasContactOrgColumns = importEvents.stream().anyMatch(e -> !e.contactOrganizations.isEmpty());
-    boolean hasOppColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("opportunity") && !Strings.isNullOrEmpty(entry.getValue()));
-    boolean hasRdColumns = importEvents.stream().flatMap(e -> e.raw.entrySet().stream())
-        .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("recurring donation") && !Strings.isNullOrEmpty(entry.getValue()));
+    boolean hasOppColumns = importEvents.stream().anyMatch(CrmImportEvent::hasOppColumns);
+    boolean hasRdColumns = importEvents.stream().anyMatch(CrmImportEvent::hasRdColumns);
 
     boolean hasCampaignMemberLookups = importEvents.stream().anyMatch(e ->
         !e.contactCampaigns.isEmpty() || !e.accountCampaigns.isEmpty());

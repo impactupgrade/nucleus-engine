@@ -639,6 +639,9 @@ public class CrmController {
     if (data.get("Charge Action Type").equalsIgnoreCase("S")) {
       CrmImportEvent importEvent = new CrmImportEvent();
 
+      importEvent.hasContactColumns(true);
+      importEvent.hasOppColumns(true);
+
 //    TODO: support for initial amount, any fees, and net amount
 //    importEvent. = data.get("Donation Amount");
 //    importEvent. = data.get("FB Fee");
@@ -731,6 +734,10 @@ public class CrmController {
     if (data.get("Donation Type").equalsIgnoreCase("Donation") || data.get("Donation Type").equalsIgnoreCase("Auction")) {
       CrmImportEvent importEvent = new CrmImportEvent();
 
+      importEvent.hasAccountColumns(true);
+      importEvent.hasContactColumns(true);
+      importEvent.hasOppColumns(true);
+
       importEvent.account.name = data.get("Account1 Name");
       importEvent.account.billingAddress.street = data.get("Home Street");
       importEvent.account.billingAddress.city = data.get("Home City");
@@ -769,6 +776,10 @@ public class CrmController {
 
   protected CrmImportEvent fromClassy(Map<String, String> data, Environment env) {
     CrmImportEvent importEvent = new CrmImportEvent();
+
+    importEvent.hasAccountColumns(true);
+    importEvent.hasContactColumns(true);
+    importEvent.hasOppColumns(true);
 
     // Contact
     importEvent.contactPersonalEmail = data.get("Donor Email");
