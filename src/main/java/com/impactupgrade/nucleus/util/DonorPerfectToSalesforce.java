@@ -262,6 +262,8 @@ public class DonorPerfectToSalesforce {
       row.put("Opportunity Campaign Name", donationRow.get("SOLICIT_CODE_DESCR"));
       row.put("Account ExtRef DP_ID__c", donorId);
       row.put("Contact ExtRef DP_ID__c", donorId);
+
+      seenDonationIds.add(giftId);
     }
 
     importEvents = CrmImportEvent.fromGeneric(rows, env);
