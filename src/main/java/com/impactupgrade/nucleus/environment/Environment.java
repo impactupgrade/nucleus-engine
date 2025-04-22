@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.BrevoClient;
 import com.impactupgrade.nucleus.client.EventBriteClient;
 import com.impactupgrade.nucleus.client.FactsClient;
 import com.impactupgrade.nucleus.client.MailchimpClient;
@@ -248,6 +249,7 @@ public class Environment {
   public TwilioClient twilioClient() { return new TwilioClient(this); }
   public VirtuousClient virtuousClient() { return new VirtuousClient(this); }
   public MailchimpClient mailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig) { return new MailchimpClient(mailchimpConfig, this); }
+  public BrevoClient brevoClient(EnvironmentConfig.CommunicationPlatform brevoConfig) { return new BrevoClient(brevoConfig, this); }
 
   // job logging services
 
