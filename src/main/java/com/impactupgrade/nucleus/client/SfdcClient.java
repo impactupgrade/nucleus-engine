@@ -318,7 +318,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getContactsByCampaignId(String campaignId, String... extraFields) throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " from contact where id in (select contactid from CampaignMember where id='" + campaignId + "' and contactid != null)";
+    String query = "SELECT " + getFieldsList(CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields) +  " FROM Contact WHERE Id IN (SELECT ContactId FROM CampaignMember WHERE CampaignId='" + campaignId + "' AND ContactId != NULL)";
     return queryListAutoPaged(query);
   }
 
