@@ -1,18 +1,27 @@
 package com.impactupgrade.nucleus.client;
 
 import brevo.ApiClient;
-import brevo.ApiException;
 import brevo.Configuration;
 import brevo.auth.ApiKeyAuth;
 import brevoApi.ContactsApi;
+import brevoModel.GetContactDetails;
 import brevoModel.GetContacts;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BrevoClient {
 
+  private static final Logger log = LoggerFactory.getLogger(BrevoClient.class);
+
   protected final ApiClient apiClient;
   protected final Environment env;
+
+  private static final Integer CONTACTS_API_LIMIT = 100;
 
   public BrevoClient(EnvironmentConfig.CommunicationPlatform brevoConfig, Environment env) {
     this.env = env;
@@ -30,15 +39,33 @@ public class BrevoClient {
     //partnerKey.setApiKeyPrefix("Token");
   }
 
-  public void getContacts() {
-    ContactsApi contactsApi = new ContactsApi();
-    try {
-      GetContacts result = contactsApi.getContacts(
-          //Long limit, Long offset, String modifiedSince, String createdSince, String sort, Long segmentId, List<Long> listIds
-          100L, 0L, null, null, null, null, null);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println(e.getResponseBody());
-    }
+  public void importContacts(List<GetContactDetails> contactDetails) throws Exception {
+    ContactsApi contactsApi = new ContactsApi(apiClient);
+    //TODO:
+    contactsApi.importContacts(null);
   }
+
+  public List<GetContactDetails> getContactsFromList(String listId) throws Exception {
+    Long id;
+    try {
+      id = Long.parseLong(listId);
+    } catch (NumberFormatException e) {
+      log.error("Failed to parse list id: '" + listId + "'!");
+      return null;
+    }
+
+    ContactsApi contactsApi = new ContactsApi();
+    Long offset = 0L;
+    GetContacts result = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
+    List<GetContactDetails> contacts = new ArrayList<>();
+    while (result.getCount() > contacts.size()) {
+      offset = Long.valueOf(contacts.size());
+      env.logJobInfo("retrieving list {} contacts (offset {} of total {})", listId, offset, result.getCount());
+      result = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
+      result.getContacts().stream().forEach(c -> contacts.add((GetContactDetails) c));
+    }
+    return contacts;
+  }
+
+
 }
