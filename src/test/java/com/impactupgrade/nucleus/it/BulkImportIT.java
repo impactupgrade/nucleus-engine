@@ -4,18 +4,12 @@
 
 package com.impactupgrade.nucleus.it;
 
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.impactupgrade.nucleus.App;
 import com.impactupgrade.nucleus.client.SfdcClient;
 import com.sforce.soap.partner.sobject.SObject;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.glassfish.jersey.media.multipart.FormDataMultiPart;
-import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.junit.jupiter.api.Test;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.Response;
-import java.io.File;
 import java.util.List;
 import java.util.Optional;
 
@@ -130,6 +124,52 @@ public class BulkImportIT extends AbstractIT {
     clearSfdc(lastnameD);
     clearSfdc(lastNameExistingE);
     clearSfdc(lastNameExistingF);
+  }
+
+  @Test
+  public void multipleContactsSameEmail() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    String email = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    String firstnameA = RandomStringUtils.randomAlphabetic(8);
+    String lastnameA = RandomStringUtils.randomAlphabetic(8);
+
+    String firstnameB = RandomStringUtils.randomAlphabetic(8);
+    String lastnameB = RandomStringUtils.randomAlphabetic(8);
+
+    List<Object> values = List.of(
+        List.of("Contact First Name", "Contact Last Name", "Contact Email"),
+        List.of(firstnameA, lastnameA, email),
+        // same email, different name
+        List.of(firstnameB, lastnameB, email)
+    );
+    postToBulkImport(values);
+
+    // only the first should have been kept and the second skipped
+    List<SObject> emailContacts = sfdcClient.getContactsByEmails(List.of(email));
+    assertEquals(1, emailContacts.size());
+    assertEquals(firstnameA + " " + lastnameA, emailContacts.get(0).getField("Name"));
+
+    // run it again -- A already exists in SFDC, so we're making sure that it's not overwritten by B
+    postToBulkImport(values);
+    emailContacts = sfdcClient.getContactsByEmails(List.of(email));
+    assertEquals(1, emailContacts.size());
+    assertEquals(firstnameA + " " + lastnameA, emailContacts.get(0).getField("Name"));
+
+    // run it again -- A already exists in SFDC, but this time B is listed first and SHOULD overwrite
+    values = List.of(
+        List.of("Contact First Name", "Contact Last Name", "Contact Email"),
+        List.of(firstnameB, lastnameB, email),
+        List.of(firstnameA, lastnameA, email)
+    );
+    postToBulkImport(values);
+    emailContacts = sfdcClient.getContactsByEmails(List.of(email));
+    assertEquals(1, emailContacts.size());
+    assertEquals(firstnameB + " " + lastnameB, emailContacts.get(0).getField("Name"));
+
+    clearSfdc(lastnameA);
+    clearSfdc(lastnameB);
   }
 
   @Test
@@ -494,6 +534,6 @@ public class BulkImportIT extends AbstractIT {
     clearSfdc(existingContact.getField("LastName").toString());
   }
 
-  // TODO: contact campaign membership, multiple campaigns at once
+  // TODO: multiple campaigns at once
 
 }

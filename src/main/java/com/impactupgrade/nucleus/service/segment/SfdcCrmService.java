@@ -1904,6 +1904,9 @@ public class SfdcCrmService implements CrmService {
       } else if (!bulkInsertContacts.contains(key)) {
         bulkInsertContacts.add(key);
         sfdcClient.batchInsert(contact);
+      } else {
+        // Skip doing the maps, below, since we're not doing anything with this contact (duplicate email, etc).
+        return contact;
       }
     }
 
