@@ -10,11 +10,9 @@ import com.impactupgrade.nucleus.client.SfdcMetadataClient;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
-import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
@@ -111,38 +109,12 @@ public class CrmController {
 
   @Path("/contact")
   @POST
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
   public Response upsertContact(
-          @FormParam("account_owner_email") String accountOwnerEmail,
-          @FormParam("account_id") String accountId,
-          @FormParam("account_name") String accountName,
-          @FormParam("account_email") String accountEmail,
-          @FormParam("account_phone") String accountPhone,
-          @FormParam("account_website") String accountWebsite,
-          @FormParam("account_type") String accountType,
-          @FormParam("account_street") String accountStreet,
-          @FormParam("account_street_2") String accountStreet2,
-          @FormParam("account_city") String accountCity,
-          @FormParam("account_state") String accountState,
-          @FormParam("account_zip") String accountZip,
-          @FormParam("account_country") String accountCountry,
-          @FormParam("contact_owner_email") String contactOwnerEmail,
-          @FormParam("contact_first_name") String contactFirstName,
-          @FormParam("contact_last_name") String contactLastName,
-          @FormParam("contact_email") String contactEmail,
-          @FormParam("contact_phone_pref") String contactPhonePref,
-          @FormParam("contact_home_phone") String contactHomePhone,
-          @FormParam("contact_work_phone") String contactWorkPhone,
-          @FormParam("contact_mobile_phone") String contactMobilePhone,
-          @FormParam("contact_street") String contactStreet,
-          @FormParam("contact_street_2") String contactStreet2,
-          @FormParam("contact_city") String contactCity,
-          @FormParam("contact_state") String contactState,
-          @FormParam("contact_zip") String contactZip,
-          @FormParam("contact_country") String contactCountry,
-          @QueryParam("crmType") String crmType,
-          @Context HttpServletRequest request
+      CrmContact crmContact,
+      @QueryParam("crmType") String crmType,
+      @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
@@ -150,60 +122,27 @@ public class CrmController {
     try {
       CrmService crmService = getCrmService(env, crmType);
 
-      // TODO: update support
-
-      if (Strings.isNullOrEmpty(accountId)) {
-        CrmAccount newAccount = new CrmAccount();
-
-        if (crmService.getUserByEmail(accountOwnerEmail).isPresent()) {
-          newAccount.ownerId = crmService.getUserByEmail(accountOwnerEmail).get().id();
+      if (Strings.isNullOrEmpty(crmContact.id)) {
+        if (Strings.isNullOrEmpty(crmContact.account.id)) {
+          crmContact.account.id = crmService.insertAccount(crmContact.account);
+        } else {
+          crmService.updateAccount(crmContact.account);
         }
-        newAccount.name = accountName;
-        newAccount.email = accountPhone;
-        newAccount.phone = accountPhone;
-        newAccount.website = accountWebsite;
-        if (!Strings.isNullOrEmpty(accountType)) {
-          newAccount.recordType = EnvironmentConfig.AccountType.valueOf(accountType.toUpperCase(Locale.ROOT));
+
+        crmService.insertContact(crmContact);
+      } else {
+        // update account only, no inserts, preventing duplicate accounts from being created if all we're doing
+        // is updating contact-only fields (IE, no account fields present in the request)
+        if (!Strings.isNullOrEmpty(crmContact.account.id)) {
+          crmService.updateAccount(crmContact.account);
         }
-        newAccount.billingAddress.street = accountStreet;
-        if (!Strings.isNullOrEmpty(accountStreet2)) {
-          newAccount.billingAddress.street = newAccount.billingAddress.street + "," + accountStreet2;
-        }
-        newAccount.billingAddress.city = accountCity;
-        newAccount.billingAddress.state = accountState;
-        newAccount.billingAddress.postalCode = accountZip;
-        newAccount.billingAddress.country = accountCountry;
 
-        accountId = crmService.insertAccount(newAccount);
+        crmService.updateContact(crmContact);
       }
-
-      CrmContact newContact = new CrmContact();
-
-      if (crmService.getUserByEmail(contactOwnerEmail).isPresent()) {
-        newContact.ownerId = crmService.getUserByEmail(contactOwnerEmail).get().id();
-      }
-      newContact.firstName = contactFirstName;
-      newContact.lastName = contactLastName;
-      newContact.email = contactEmail;
-      newContact.preferredPhone = CrmContact.PreferredPhone.valueOf(contactPhonePref);
-      newContact.homePhone = contactHomePhone;
-      newContact.mobilePhone = contactMobilePhone;
-      newContact.workPhone = contactWorkPhone;
-      newContact.account.id = accountId;
-      newContact.mailingAddress.street = contactStreet;
-      if (!Strings.isNullOrEmpty(contactStreet2)) {
-        newContact.mailingAddress.street = newContact.mailingAddress.street + "," + contactStreet2;
-      }
-      newContact.mailingAddress.city = contactCity;
-      newContact.mailingAddress.state = contactState;
-      newContact.mailingAddress.postalCode = contactZip;
-      newContact.mailingAddress.country = contactCountry;
-
-      crmService.insertContact(newContact);
 
       return Response.ok().build();
     } catch (Exception e) {
-      env.logJobError("failed to create account/contact", e);
+      env.logJobError("failed to upsert the contact", e);
       return Response.serverError().build();
     }
   }
