@@ -12,7 +12,6 @@ import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
-import com.impactupgrade.nucleus.model.AccountSearch;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
 import com.impactupgrade.nucleus.model.CrmAccount;
@@ -205,28 +204,6 @@ public class CrmController {
       return Response.ok().build();
     } catch (Exception e) {
       env.logJobError("failed to create account/contact", e);
-      return Response.serverError().build();
-    }
-  }
-
-  @Path("/account")
-  @GET
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response getAllAccounts(
-          @QueryParam("crmType") String crmType,
-          @Context HttpServletRequest request
-  ) {
-    Environment env = envFactory.init(request);
-    SecurityUtil.verifyApiKey(env);
-
-    try {
-      CrmService crmService = getCrmService(env, crmType);
-      AccountSearch accountSearch = new AccountSearch();
-      accountSearch.basicSearch = true;
-      List<CrmAccount> accounts = crmService.searchAccounts(accountSearch);
-      return Response.ok().entity(accounts).build();
-    } catch (Exception e) {
-      env.logJobError("failed to get accounts", e);
       return Response.serverError().build();
     }
   }
