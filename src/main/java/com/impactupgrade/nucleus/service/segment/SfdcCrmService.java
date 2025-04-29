@@ -56,6 +56,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -1098,7 +1099,7 @@ public class SfdcCrmService implements CrmService {
 
   @Override
   public Map<String, String> getContactLists(CrmContactListType listType) throws Exception {
-    Map<String, String> lists = new HashMap<>();
+    Map<String, String> lists = new TreeMap<>(); // map that sorts by the natural order of the keys
     List<SObject> listRecords = new ArrayList<>();
     if (listType == CrmContactListType.ALL || listType == CrmContactListType.CAMPAIGN) {
       listRecords.addAll(sfdcClient.getCampaigns());
