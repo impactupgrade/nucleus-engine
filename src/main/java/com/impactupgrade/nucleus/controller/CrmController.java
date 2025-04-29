@@ -122,7 +122,9 @@ public class CrmController {
     try {
       CrmService crmService = getCrmService(env, crmType);
 
-      if (Strings.isNullOrEmpty(crmContact.id)) {
+      List<CrmContact> existingContacts = env.contactService().findExistingContacts(crmContact);
+
+      if (existingContacts.isEmpty()) {
         if (Strings.isNullOrEmpty(crmContact.account.id)) {
           crmContact.account.id = crmService.insertAccount(crmContact.account);
         } else {
@@ -130,14 +132,15 @@ public class CrmController {
         }
 
         crmService.insertContact(crmContact);
-      } else {
-        // update account only, no inserts, preventing duplicate accounts from being created if all we're doing
-        // is updating contact-only fields (IE, no account fields present in the request)
-        if (!Strings.isNullOrEmpty(crmContact.account.id)) {
-          crmService.updateAccount(crmContact.account);
-        }
 
-        crmService.updateContact(crmContact);
+      } else {
+        for (CrmContact existingContact : existingContacts) {
+          crmContact.account.id = existingContact.account.id;
+          crmContact.id = existingContact.id;
+
+          crmService.updateAccount(crmContact.account);
+          crmService.updateContact(crmContact);
+        }
       }
 
       return Response.ok().build();

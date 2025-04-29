@@ -30,6 +30,10 @@ public class PagedResults<T> {
     return resultSets.stream().flatMap(rs -> rs.getRecords().stream()).findFirst();
   }
 
+  public List<T> getResultsFromAllFirstPages() {
+    return resultSets.stream().flatMap(rs -> rs.getRecords().stream()).toList();
+  }
+
   public static class ResultSet<T> {
     private final List<T> records;
     // Could be a numeric offset or string cursor -- each usage must know which to expect

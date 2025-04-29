@@ -18,6 +18,7 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ContactService {
 
@@ -62,7 +63,7 @@ public class ContactService {
           }
         }
       } else {
-        env.logJobInfo("event included CRM contact {}, but the contact didn't exist; trying through the contact...",
+        env.logJobInfo("event included CRM contact {}, but the contact didn't exist; trying to find the contact by other means...",
             paymentGatewayEvent.getCrmContact().id);
         // IMPORTANT: If this was the case, clear out the existingAccount and use the one discovered by the proceeding contact search!
         existingAccount = Optional.empty();
@@ -73,58 +74,30 @@ public class ContactService {
     // sf_contact, the email address might still be a match here. We assume that sf_account without the presence of
     // sf_contact is a business gift!
     if (existingAccount.isEmpty() && existingContact.isEmpty()) {
-      if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().email)) {
-        existingContact = crmService.searchContacts(ContactSearch.byEmail(paymentGatewayEvent.getCrmContact().email)).getSingleResult();
-      }
-      if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())) {
-        existingContact = crmService.searchContacts(ContactSearch.byPhone(paymentGatewayEvent.getCrmContact().phoneNumberForSMS())).getSingleResult();
-      }
-      if (existingContact.isEmpty()
-          && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().firstName) && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().lastName)) {
-        ContactSearch contactSearch = new ContactSearch();
-        contactSearch.firstName = paymentGatewayEvent.getCrmContact().firstName;
-        contactSearch.lastName = paymentGatewayEvent.getCrmContact().lastName;
-        // Only return results if an address was also available!
-        if (!Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().mailingAddress.street)) {
-          contactSearch.keywords = Set.of(paymentGatewayEvent.getCrmContact().mailingAddress.street);
-          existingContact = crmService.searchContacts(contactSearch).getSingleResult();
-        }
-        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().mailingAddress.street)) {
-          contactSearch.keywords = Set.of(paymentGatewayEvent.getCrmAccount().mailingAddress.street);
-          existingContact = crmService.searchContacts(contactSearch).getSingleResult();
-        }
-        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().billingAddress.street)) {
-          contactSearch.keywords = Set.of(paymentGatewayEvent.getCrmAccount().billingAddress.street);
-          existingContact = crmService.searchContacts(contactSearch).getSingleResult();
-        }
+      existingContact = findExistingContacts(paymentGatewayEvent.getCrmContact()).stream().findFirst();
 
-        // As a last resort, attempt to look up existing donations using the donor's customer or subscription. If
-        // donations are found, retrieve the contact/account from the latest. This prevents duplicate contacts
-        // when donations come in with nothing more than a first/last name.
-        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmRecurringDonation().subscriptionId)) {
-          Optional<CrmRecurringDonation> crmRecurringDonation = crmService.getRecurringDonationBySubscriptionId(
-              paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
-          if (crmRecurringDonation.isPresent()) {
-            existingContact = crmService.getContactById(crmRecurringDonation.get().contact.id);
-          }
+      // As a last resort, attempt to look up existing donations using the donor's customer or subscription. If
+      // donations are found, retrieve the contact/account from the latest. This prevents duplicate contacts
+      // when donations come in with nothing more than a first/last name.
+      if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmRecurringDonation().subscriptionId)) {
+        Optional<CrmRecurringDonation> crmRecurringDonation = crmService.getRecurringDonationBySubscriptionId(
+            paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
+        if (crmRecurringDonation.isPresent()) {
+          existingContact = crmService.getContactById(crmRecurringDonation.get().contact.id);
         }
-        if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().customerId)) {
-          List<CrmDonation> crmDonations = crmService.getDonationsByCustomerId(
-              paymentGatewayEvent.getCrmDonation().customerId);
-          if (!crmDonations.isEmpty()) {
-            existingContact = crmService.getContactById(crmDonations.get(0).contact.id);
-          }
+      }
+      if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().customerId)) {
+        List<CrmDonation> crmDonations = crmService.getDonationsByCustomerId(
+            paymentGatewayEvent.getCrmDonation().customerId);
+        if (!crmDonations.isEmpty()) {
+          existingContact = crmService.getContactById(crmDonations.get(0).contact.id);
         }
       }
 
-      if (existingContact.isPresent()) {
-        env.logJobInfo("found CRM contact {}", existingContact.get().id);
-
-        if (!Strings.isNullOrEmpty(existingContact.get().account.id)) {
-          existingAccount = crmService.getAccountById(existingContact.get().account.id);
-          if (existingAccount.isPresent()) {
-            env.logJobInfo("found CRM account {}", existingContact.get().account.id);
-          }
+      if (existingContact.isPresent() && !Strings.isNullOrEmpty(existingContact.get().account.id)) {
+        existingAccount = crmService.getAccountById(existingContact.get().account.id);
+        if (existingAccount.isPresent()) {
+          env.logJobInfo("found CRM account {}", existingContact.get().account.id);
         }
       }
     }
@@ -135,6 +108,48 @@ public class ContactService {
       existingAccount.ifPresent(a -> paymentGatewayEvent.setCrmAccountId(a.id));
       existingContact.ifPresent(c -> paymentGatewayEvent.setCrmContactId(c.id));
     }
+  }
+
+  public List<CrmContact> findExistingContacts(CrmContact crmContact) throws Exception {
+    List<CrmContact> existingContacts = List.of();
+
+    if (!Strings.isNullOrEmpty(crmContact.id)) {
+      existingContacts = crmService.getContactById(crmContact.id).map(List::of).orElse(List.of());
+    }
+    if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.email)) {
+      existingContacts = crmService.searchContacts(ContactSearch.byEmail(crmContact.email))
+          .getResultsFromAllFirstPages();
+    }
+    if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
+      existingContacts = crmService.searchContacts(ContactSearch.byPhone(crmContact.phoneNumberForSMS()))
+          .getResultsFromAllFirstPages();
+    }
+    if (existingContacts.isEmpty()
+        && !Strings.isNullOrEmpty(crmContact.firstName) && !Strings.isNullOrEmpty(crmContact.lastName)) {
+      ContactSearch contactSearch = new ContactSearch();
+      contactSearch.firstName = crmContact.firstName;
+      contactSearch.lastName = crmContact.lastName;
+      // Only return results if an address was also available!
+      if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
+        contactSearch.keywords = Set.of(crmContact.mailingAddress.street);
+        existingContacts = crmService.searchContacts(contactSearch).getResultsFromAllFirstPages();
+      }
+      if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.account.mailingAddress.street)) {
+        contactSearch.keywords = Set.of(crmContact.account.mailingAddress.street);
+        existingContacts = crmService.searchContacts(contactSearch).getResultsFromAllFirstPages();
+      }
+      if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.account.billingAddress.street)) {
+        contactSearch.keywords = Set.of(crmContact.account.billingAddress.street);
+        existingContacts = crmService.searchContacts(contactSearch).getResultsFromAllFirstPages();
+      }
+    }
+
+    if (!existingContacts.isEmpty()) {
+      env.logJobInfo("found CRM contacts {}", existingContacts.stream().map(c -> c.id)
+          .collect(Collectors.joining(", ")));
+    }
+
+    return existingContacts;
   }
 
   protected void createDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
