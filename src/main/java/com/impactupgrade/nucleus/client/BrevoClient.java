@@ -6,6 +6,8 @@ import brevo.Configuration;
 import brevo.auth.ApiKeyAuth;
 import brevoApi.ContactsApi;
 import brevoModel.CreateAttribute;
+import brevoModel.CreateContact;
+import brevoModel.CreateUpdateContactModel;
 import brevoModel.CreatedProcessId;
 import brevoModel.GetAttributes;
 import brevoModel.GetAttributesAttributes;
@@ -15,6 +17,7 @@ import brevoModel.PostContactInfo;
 import brevoModel.RemoveContactFromList;
 import brevoModel.RequestContactImport;
 import brevoModel.RequestContactImportJsonBody;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.slf4j.Logger;
@@ -36,6 +39,7 @@ public class BrevoClient {
   protected final Environment env;
 
   private static final Integer CONTACTS_API_LIMIT = 100;
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   public BrevoClient(EnvironmentConfig.CommunicationPlatform brevoConfig, Environment env) {
     this.env = env;
@@ -53,22 +57,36 @@ public class BrevoClient {
     //partnerKey.setApiKeyPrefix("Token");
   }
 
+  public void createContact(String listId, GetContactDetails getContactDetails) throws ApiException {
+    Long id = parseLong(listId);
+    CreateContact createContact = new CreateContact();
+    createContact.setListIds(List.of(id));
+    createContact.setEmail(getContactDetails.getEmail());
+    createContact.setAttributes(getContactDetails.getAttributes());
+    createContact.setEmailBlacklisted(false);
+    createContact.setSmsBlacklisted(false);
+    createContact.setUpdateEnabled(true); // to allow upsert
+    ContactsApi api = new ContactsApi();
+    CreateUpdateContactModel response = api.createContact(createContact);
+  }
+
   public List<GetContactDetails> getContactsFromList(String listId) throws ApiException {
     Long id = parseLong(listId);
     Long offset = 0L;
     ContactsApi contactsApi = new ContactsApi();
-    GetContacts result = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
-    List<GetContactDetails> contacts = new ArrayList<>();
-    while (result.getCount() > contacts.size()) {
+    GetContacts contactsFromList = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
+    List<GetContactDetails> contacts = new ArrayList<>(toGetContactDetails(contactsFromList));
+
+    while (contactsFromList.getCount() > contacts.size()) {
       offset = Long.valueOf(contacts.size());
-      env.logJobInfo("retrieving list {} contacts (offset {} of total {})", listId, offset, result.getCount());
-      result = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
-      result.getContacts().stream().forEach(c -> contacts.add((GetContactDetails) c));
+      env.logJobInfo("retrieving list {} contacts (offset {} of total {})", listId, offset, contactsFromList.getCount());
+      contactsFromList = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
+      contacts.addAll(toGetContactDetails(contactsFromList));
     }
     return contacts;
   }
 
-  public String importContacts(List<GetContactDetails> contactDetails, String listId) throws ApiException {
+  public String importContacts(String listId, List<GetContactDetails> contactDetails) throws ApiException {
     Long id = parseLong(listId);
     List<RequestContactImportJsonBody> jsonBody = contactDetails.stream().map(this::toJsonBody).toList();
 
@@ -81,23 +99,26 @@ public class BrevoClient {
     requestContactImport.setUpdateExistingContacts(true);
     requestContactImport.setEmptyContactsAttributes(true);
 
-    ContactsApi api = new ContactsApi();
-    CreatedProcessId createdProcessId = api.importContacts(requestContactImport);
+    ContactsApi contactsApi = new ContactsApi();
+    CreatedProcessId createdProcessId = contactsApi.importContacts(requestContactImport);
     return createdProcessId.getProcessId().toString();
   }
 
   public String deleteContacts(String listId, Set<String> contactEmails) throws ApiException {
+    if (contactEmails.isEmpty()) {
+      return null;
+    }
     Long id = parseLong(listId);
     RemoveContactFromList removeContactFromList = new RemoveContactFromList();
     removeContactFromList.setEmails(contactEmails.stream().toList());
-    ContactsApi api = new ContactsApi();
-    PostContactInfo postContactInfo = api.removeContactFromList(id, removeContactFromList);
+    ContactsApi contactsApi = new ContactsApi();
+    PostContactInfo postContactInfo = contactsApi.removeContactFromList(id, removeContactFromList);
     return postContactInfo.getContacts().getProcessId().toString();
   }
 
   public List<GetAttributesAttributes> getAttributes() throws ApiException {
-    ContactsApi api = new ContactsApi();
-    GetAttributes response = api.getAttributes();
+    ContactsApi contactsApi = new ContactsApi();
+    GetAttributes response = contactsApi.getAttributes();
     return response.getAttributes();
   }
 
@@ -117,15 +138,21 @@ public class BrevoClient {
 //    enumerations.add(Expert);
 //    createAttribute.setEnumeration(enumerations);
 
-    ContactsApi api = new ContactsApi();
+    ContactsApi contactsApi = new ContactsApi();
     String attributeName = name;
     CreateAttribute createAttribute = new CreateAttribute();
     createAttribute.setType(type);
-    //TODO: attr category?
-    api.createAttribute("normal", attributeName, createAttribute);
+    //TODO: specific attribute category?
+    contactsApi.createAttribute("normal", attributeName, createAttribute);
   }
 
   // Utils
+  private List<GetContactDetails> toGetContactDetails(GetContacts getContacts) {
+    return getContacts.getContacts().stream()
+        .map(o -> objectMapper.convertValue(o, GetContactDetails.class))
+        .toList();
+  }
+
   private RequestContactImportJsonBody toJsonBody(GetContactDetails contact) {
     RequestContactImportJsonBody jsonBody = new RequestContactImportJsonBody();
     jsonBody.setEmail(contact.getEmail());
