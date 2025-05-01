@@ -1,11 +1,11 @@
 package com.impactupgrade.nucleus.client;
 
 import brevo.ApiClient;
+import brevo.ApiException;
 import brevo.Configuration;
 import brevo.auth.ApiKeyAuth;
 import brevoApi.ContactsApi;
 import brevoModel.CreateAttribute;
-import brevoModel.CreateAttributeEnumeration;
 import brevoModel.CreatedProcessId;
 import brevoModel.GetAttributes;
 import brevoModel.GetAttributesAttributes;
@@ -53,7 +53,7 @@ public class BrevoClient {
     //partnerKey.setApiKeyPrefix("Token");
   }
 
-  public List<GetContactDetails> getContactsFromList(String listId) throws Exception {
+  public List<GetContactDetails> getContactsFromList(String listId) throws ApiException {
     Long id = parseLong(listId);
     Long offset = 0L;
     ContactsApi contactsApi = new ContactsApi();
@@ -68,7 +68,7 @@ public class BrevoClient {
     return contacts;
   }
 
-  public String importContacts(List<GetContactDetails> contactDetails, String listId) throws Exception {
+  public String importContacts(List<GetContactDetails> contactDetails, String listId) throws ApiException {
     Long id = parseLong(listId);
     List<RequestContactImportJsonBody> jsonBody = contactDetails.stream().map(this::toJsonBody).toList();
 
@@ -86,7 +86,7 @@ public class BrevoClient {
     return createdProcessId.getProcessId().toString();
   }
 
-  public String deleteContacts(String listId, Set<String> contactEmails) throws Exception {
+  public String deleteContacts(String listId, Set<String> contactEmails) throws ApiException {
     Long id = parseLong(listId);
     RemoveContactFromList removeContactFromList = new RemoveContactFromList();
     removeContactFromList.setEmails(contactEmails.stream().toList());
@@ -95,34 +95,34 @@ public class BrevoClient {
     return postContactInfo.getContacts().getProcessId().toString();
   }
 
-  public List<GetAttributesAttributes> getAttributes() throws Exception {
+  public List<GetAttributesAttributes> getAttributes() throws ApiException {
     ContactsApi api = new ContactsApi();
     GetAttributes response = api.getAttributes();
     return response.getAttributes();
   }
 
-  //TODO
-  public void createAttribute() throws Exception {
+  public void createAttribute(String name, CreateAttribute.TypeEnum type) throws ApiException {
+    //    CreateAttributeEnumeration Beginner = new CreateAttributeEnumeration();
+//    Beginner.setLabel("Beginner");
+//    Beginner.setValue(1);
+//    CreateAttributeEnumeration Intermediate = new CreateAttributeEnumeration();
+//    Intermediate.setLabel("Intermediate");
+//    Intermediate.setValue(2);
+//    CreateAttributeEnumeration Expert = new CreateAttributeEnumeration();
+//    Expert.setLabel("Expert");
+//    Expert.setValue(3);
+//    List<CreateAttributeEnumeration> enumerations = new ArrayList<CreateAttributeEnumeration>();
+//    enumerations.add(Beginner);
+//    enumerations.add(Intermediate);
+//    enumerations.add(Expert);
+//    createAttribute.setEnumeration(enumerations);
+
     ContactsApi api = new ContactsApi();
-    String attributeCategory = "category";
-    String attributeName = "levelOfExpertise";
-    CreateAttributeEnumeration Beginner = new CreateAttributeEnumeration();
-    Beginner.setLabel("Beginner");
-    Beginner.setValue(1);
-    CreateAttributeEnumeration Intermediate = new CreateAttributeEnumeration();
-    Intermediate.setLabel("Intermediate");
-    Intermediate.setValue(2);
-    CreateAttributeEnumeration Expert = new CreateAttributeEnumeration();
-    Expert.setLabel("Expert");
-    Expert.setValue(3);
-    List<CreateAttributeEnumeration> enumerations = new ArrayList<CreateAttributeEnumeration>();
-    enumerations.add(Beginner);
-    enumerations.add(Intermediate);
-    enumerations.add(Expert);
+    String attributeName = name;
     CreateAttribute createAttribute = new CreateAttribute();
-    createAttribute.setType(CreateAttribute.TypeEnum.CATEGORY);
-    createAttribute.setEnumeration(enumerations);
-    api.createAttribute(attributeCategory, attributeName, createAttribute);
+    createAttribute.setType(type);
+    //TODO: attr category?
+    api.createAttribute("normal", attributeName, createAttribute);
   }
 
   // Utils

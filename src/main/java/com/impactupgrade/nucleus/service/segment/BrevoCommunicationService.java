@@ -1,8 +1,9 @@
 package com.impactupgrade.nucleus.service.segment;
 
+import brevo.ApiException;
+import brevoModel.CreateAttribute;
+import brevoModel.GetAttributesAttributes;
 import brevoModel.GetContactDetails;
-import com.ecwid.maleorang.MailchimpException;
-import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.BrevoClient;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -15,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,7 +32,7 @@ import static com.impactupgrade.nucleus.client.BrevoClient.SMS;
 
 public class BrevoCommunicationService extends AbstractCommunicationService {
 
-  private final Map<String, String> mergeFieldsNameToTag = new HashMap<>();
+  private final Set<String> attributeNames = new HashSet<>();
 
   @Override
   public String name() {
@@ -46,9 +48,6 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
   public void syncContacts(Calendar lastSync) throws Exception {
     for (EnvironmentConfig.CommunicationPlatform brevoConfig : env.getConfig().brevo) {
       for (EnvironmentConfig.CommunicationList communicationList : brevoConfig.lists) {
-        //TODO:
-        // clear the cache, since fields differ between audiences
-        // mergeFieldsNameToTag.clear();
 
         BrevoClient brevoClient = env.brevoClient(brevoConfig);
         List<GetContactDetails> listContacts = brevoClient.getContactsFromList(communicationList.id);
@@ -129,11 +128,11 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     try {
       Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
       for (CrmContact crmContact : contactsToUpsert) {
-        Map<String, Object> customFieldMap = getCustomFields(communicationList.id, crmContact, brevoClient, brevoConfig, communicationList);
+        Map<String, Object> customFieldMap = getCustomFields(crmContact, brevoClient, brevoConfig, communicationList);
         contactsCustomFields.put(crmContact.email, customFieldMap);
       }
-      //Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
-      //TODO: tags --> attributes?
+      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
+      //TODO: how to get tags --> ???
 //      Map<String, Set<String>> tags = mailchimpClient.getContactsTags(listMembers);
 //      Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig,
 //          communicationList);
@@ -143,7 +142,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
       String importBatchId = brevoClient.importContacts(upsertMemberInfos, communicationList.id);
 
       //TODO:
-      // update all contacts' tags
+      // how to update all contacts' tags???
 //      List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
 //          .map(crmContact -> new MailchimpClient.EmailContact(crmContact.email, activeTags.get(crmContact.email), tags.get(crmContact.email)))
 //          .collect(Collectors.toList());
@@ -156,7 +155,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
       emailsToArchive.retainAll(brevoEmails);
 
       brevoClient.deleteContacts(communicationList.id, emailsToArchive);
-    } catch (MailchimpException e) {
+    } catch (ApiException e) {
       env.logJobWarn("Brevo syncContacts failed: {}", e);
     } catch (Exception e) {
       env.logJobWarn("Brevo syncContacts failed", e);
@@ -173,18 +172,16 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     //TODO:
   }
 
-  protected Map<String, Object> getCustomFields(String listId, CrmContact crmContact, BrevoClient brevoClient,
+  protected Map<String, Object> getCustomFields(CrmContact crmContact, BrevoClient brevoClient,
                                                 EnvironmentConfig.CommunicationPlatform mailchimpConfig, EnvironmentConfig.CommunicationList communicationList)
       throws Exception {
     Map<String, Object> customFieldMap = new HashMap<>();
 
     List<CustomField> customFields = buildContactCustomFields(crmContact, mailchimpConfig, communicationList);
-    if (mergeFieldsNameToTag.isEmpty()) {
-      //TODO:
-      //List<GetAttributesAttributes> mergeFields = brevoClient.getAttributes();
-      List<MergeFieldInfo> mergeFields = List.of();
-      for (MergeFieldInfo mergeField : mergeFields) {
-        mergeFieldsNameToTag.put(mergeField.name, mergeField.tag);
+    if (attributeNames.isEmpty()) {
+      List<GetAttributesAttributes> attributes = brevoClient.getAttributes();
+      for (GetAttributesAttributes attribute : attributes) {
+        attributeNames.add(attribute.getName());
       }
     }
     for (CustomField customField : customFields) {
@@ -192,19 +189,17 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
         continue;
       }
 
-      if (!mergeFieldsNameToTag.containsKey(customField.name)) {
-        // TEXT, NUMBER, ADDRESS, PHONE, DATE, URL, IMAGEURL, RADIO, DROPDOWN, BIRTHDAY, ZIP
-        MergeFieldInfo.Type type = switch (customField.type) {
-          case DATE -> MergeFieldInfo.Type.DATE;
-          // MC doesn't support a boolean type, so we use NUMBER and map to 0/1
-          case BOOLEAN -> MergeFieldInfo.Type.NUMBER;
-          case NUMBER -> MergeFieldInfo.Type.NUMBER;
-          default -> MergeFieldInfo.Type.TEXT;
+      if (!attributeNames.contains(customField.name)) {
+        //  TEXT("text"), DATE("date"), FLOAT("float"), BOOLEAN("boolean"), ID("id"), CATEGORY("category");
+        CreateAttribute.TypeEnum type = switch (customField.type) {
+          case DATE -> CreateAttribute.TypeEnum.DATE;
+          case BOOLEAN -> CreateAttribute.TypeEnum.BOOLEAN;
+          case NUMBER -> CreateAttribute.TypeEnum.FLOAT;
+          default -> CreateAttribute.TypeEnum.TEXT;
         };
-        //TODO:
-        //MergeFieldInfo mergeField = brevoClient.createAttribute(listId, customField.name, type);
-        MergeFieldInfo mergeField = new MergeFieldInfo();
-        mergeFieldsNameToTag.put(mergeField.name, mergeField.tag);
+        //TODO: category?
+        brevoClient.createAttribute(customField.name, type);
+        attributeNames.add(customField.name);
       }
 
       Object value = customField.value;
@@ -219,8 +214,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
         value = new SimpleDateFormat("MM/dd/yyyy").format(c.getTime());
       }
 
-      String mailchimpTag = mergeFieldsNameToTag.get(customField.name);
-      customFieldMap.put(mailchimpTag, value);
+      customFieldMap.put(customField.name, value);
     }
 
     return customFieldMap;
