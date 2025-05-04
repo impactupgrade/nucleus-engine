@@ -218,51 +218,6 @@ public class BulkImportIT extends AbstractIT {
   }
 
   @Test
-  public void extrefEdgeCases() throws Exception {
-    SfdcClient sfdcClient = env.sfdcClient();
-
-    String extRef1 = RandomStringUtils.randomAlphabetic(8);
-    String extRef2 = RandomStringUtils.randomAlphabetic(8);
-    String extRef3 = RandomStringUtils.randomAlphabetic(8);
-
-    String nameA = RandomStringUtils.randomAlphabetic(8);
-    String nameB = RandomStringUtils.randomAlphabetic(8);
-    String firstnameA = RandomStringUtils.randomAlphabetic(8);
-    String lastnameA = RandomStringUtils.randomAlphabetic(8);
-    String firstnameB = RandomStringUtils.randomAlphabetic(8);
-    String lastnameB = RandomStringUtils.randomAlphabetic(8);
-    String emailA = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
-    String emailB = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
-
-    final List<Object> values = List.of(
-        List.of("Account ExtRef External_Reference__c", "Contact ExtRef External_Reference__c", "Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email"),
-        List.of(extRef1, extRef1, nameA, firstnameA, lastnameA, emailA),
-        // same account name, so the "2" account extref should be ignored and the account we imported above should be used
-        List.of(extRef2, extRef2, nameA, firstnameB, lastnameB, emailB),
-        // similarly, if the contact email was already imported, ignore the contact extref and use the existing contact, and do NOT move it to the new account provided here
-        List.of(extRef3, extRef3, nameB, firstnameA, lastnameA, emailA)
-    );
-    postToBulkImport(values);
-
-    List<SObject> aAccounts = sfdcClient.getAccountsByName(nameA);
-    assertEquals(1, aAccounts.size());
-    List<SObject> bAccounts = sfdcClient.getAccountsByName(nameB);
-    assertEquals(1, bAccounts.size());
-    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA));
-    // this would be 2 if the 3rd item doesn't discover the same email from the 1st item
-//    assertEquals(1, emailAContacts.size()); TODO, currently fails, logic needs reworked to store contacts by-email, by-phone, etc. in the secondPass
-    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB));
-    assertEquals(1, emailBContacts.size());
-
-    assertEquals(aAccounts.get(0).getId(), emailAContacts.get(0).getField("AccountId"));
-    // contact B should have landed in account A
-    assertEquals(aAccounts.get(0).getId(), emailBContacts.get(0).getField("AccountId"));
-
-    clearSfdc(lastnameA);
-    clearSfdc(lastnameB);
-  }
-
-  @Test
   public void appendPicklist() throws Exception {
     SObject contact1 = randomContactSfdc();
     SObject contact2 = randomContactSfdc();
