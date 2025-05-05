@@ -6,7 +6,7 @@ package com.impactupgrade.nucleus.controller;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.impactupgrade.nucleus.client.SfdcMetadataClient;
+import com.google.common.cache.Cache;
 import com.impactupgrade.nucleus.entity.JobStatus;
 import com.impactupgrade.nucleus.entity.JobType;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -20,6 +20,7 @@ import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.impactupgrade.nucleus.model.CrmRecurringDonation;
 import com.impactupgrade.nucleus.security.SecurityUtil;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.util.CacheUtil;
 import com.impactupgrade.nucleus.util.GoogleSheetsUtil;
 import com.impactupgrade.nucleus.util.Utils;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
@@ -58,8 +59,9 @@ import static com.impactupgrade.nucleus.util.Utils.trim;
 @Path("/crm")
 public class CrmController {
 
+  protected final static Cache<String, Double> filterToDonationsTotalCache = CacheUtil.buildManualCache();
+
   protected final EnvironmentFactory envFactory;
-  private SfdcMetadataClient sfdcMetadataClient;
 
   public CrmController(EnvironmentFactory envFactory) {
     this.envFactory = envFactory;
@@ -367,17 +369,31 @@ public class CrmController {
   @GET
   @Produces(MediaType.TEXT_PLAIN)
   public Response donationsTotal(
-          @QueryParam("filter") String filter,
-          @Context HttpServletRequest request
+      @QueryParam("filter") String filter,
+      @QueryParam("disable-cache") Boolean disableCache,
+      @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
-    env.logJobInfo("Filter: {}", filter);
+    env.logJobInfo("donationsTotal filter: {}", filter);
 
     if (Strings.isNullOrEmpty(filter)) {
       return Response.status(Response.Status.BAD_REQUEST).build();
     }
 
-    double donationsTotal = env.donationsCrmService().getDonationsTotal(filter);
+    double donationsTotal;
+    if (disableCache != null && disableCache) {
+      donationsTotal = env.donationsCrmService().getDonationsTotal(filter);
+    } else {
+      donationsTotal = filterToDonationsTotalCache.get(filter, () -> {
+        try {
+          return env.donationsCrmService().getDonationsTotal(filter);
+        } catch (Exception e) {
+          env.logJobError("unable to fetch donationsTotal for filter: {}", filter, e);
+          return null;
+        }
+      });
+    }
+
     return Response.status(200).entity(donationsTotal).build();
   }
 
