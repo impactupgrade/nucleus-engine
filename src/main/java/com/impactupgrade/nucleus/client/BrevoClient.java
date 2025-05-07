@@ -7,7 +7,6 @@ import brevo.auth.ApiKeyAuth;
 import brevoApi.ContactsApi;
 import brevoModel.CreateAttribute;
 import brevoModel.CreateContact;
-import brevoModel.CreateUpdateContactModel;
 import brevoModel.CreatedProcessId;
 import brevoModel.GetAttributes;
 import brevoModel.GetAttributesAttributes;
@@ -23,7 +22,12 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -39,6 +43,7 @@ public class BrevoClient {
   protected final Environment env;
 
   private static final Integer CONTACTS_API_LIMIT = 100;
+  private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   public BrevoClient(EnvironmentConfig.CommunicationPlatform brevoConfig, Environment env) {
@@ -49,7 +54,6 @@ public class BrevoClient {
     // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
     //apiKey.setApiKeyPrefix("Token");
 
-    // ?
     // Configure API key authorization: partner-key
     //ApiKeyAuth partnerKey = (ApiKeyAuth) apiClient.getAuthentication("partner-key");
     //partnerKey.setApiKey("YOUR PARTNER KEY");
@@ -67,14 +71,33 @@ public class BrevoClient {
     createContact.setSmsBlacklisted(false);
     createContact.setUpdateEnabled(true); // to allow upsert
     ContactsApi api = new ContactsApi();
-    CreateUpdateContactModel response = api.createContact(createContact);
+    api.createContact(createContact);
+  }
+
+  public List<GetContactDetails> getContacts(Calendar modifiedSince, Calendar createdSince) throws ApiException {
+    Long offset = 0L;
+    ContactsApi contactsApi = new ContactsApi();
+    GetContacts contacts = contactsApi.getContacts(CONTACTS_API_LIMIT.longValue(), offset, toDateString(modifiedSince), toDateString(createdSince), null, null, null);
+    List<GetContactDetails> allContacts = new ArrayList<>(toGetContactDetails(contacts));
+
+    while (contacts.getCount() > allContacts.size()) {
+      offset = Long.valueOf(allContacts.size());
+      env.logJobInfo("retrieving contacts (offset {} of total {})", offset, contacts.getCount());
+      contacts = contactsApi.getContacts(CONTACTS_API_LIMIT.longValue(), offset, toDateString(modifiedSince), toDateString(createdSince), null, null, null);
+      allContacts.addAll(toGetContactDetails(contacts));
+    }
+    return allContacts;
   }
 
   public List<GetContactDetails> getContactsFromList(String listId) throws ApiException {
+    return getContactsFromList(listId, null);
+  }
+
+  public List<GetContactDetails> getContactsFromList(String listId, Calendar modifiedSince) throws ApiException {
     Long id = parseLong(listId);
     Long offset = 0L;
     ContactsApi contactsApi = new ContactsApi();
-    GetContacts contactsFromList = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
+    GetContacts contactsFromList = contactsApi.getContactsFromList(id, toDateString(modifiedSince), CONTACTS_API_LIMIT.longValue(), offset, null);
     List<GetContactDetails> contacts = new ArrayList<>(toGetContactDetails(contactsFromList));
 
     while (contactsFromList.getCount() > contacts.size()) {
@@ -123,21 +146,6 @@ public class BrevoClient {
   }
 
   public void createAttribute(String name, CreateAttribute.TypeEnum type) throws ApiException {
-    //    CreateAttributeEnumeration Beginner = new CreateAttributeEnumeration();
-//    Beginner.setLabel("Beginner");
-//    Beginner.setValue(1);
-//    CreateAttributeEnumeration Intermediate = new CreateAttributeEnumeration();
-//    Intermediate.setLabel("Intermediate");
-//    Intermediate.setValue(2);
-//    CreateAttributeEnumeration Expert = new CreateAttributeEnumeration();
-//    Expert.setLabel("Expert");
-//    Expert.setValue(3);
-//    List<CreateAttributeEnumeration> enumerations = new ArrayList<CreateAttributeEnumeration>();
-//    enumerations.add(Beginner);
-//    enumerations.add(Intermediate);
-//    enumerations.add(Expert);
-//    createAttribute.setEnumeration(enumerations);
-
     ContactsApi contactsApi = new ContactsApi();
     String attributeName = name;
     CreateAttribute createAttribute = new CreateAttribute();
@@ -168,5 +176,14 @@ public class BrevoClient {
       log.error("Failed to parse long from string '" + s + "'!");
     }
     return l;
+  }
+
+  private String toDateString(Calendar calendar) {
+    if (calendar == null) {
+      return null;
+    }
+    Date date = calendar.getTime();
+    ZonedDateTime zdt = date.toInstant().atZone(ZoneId.of("UTC"));
+    return zdt.format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT));
   }
 }
