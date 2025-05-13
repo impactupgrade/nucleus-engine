@@ -37,6 +37,7 @@ public class BrevoClient {
 
   public static final String FIRSTNAME = "FIRSTNAME";
   public static final String LASTNAME = "LASTNAME";
+  public static final String TAGS = "TAGS";
   public static final String SMS = "SMS";
 
   protected final ApiClient apiClient;

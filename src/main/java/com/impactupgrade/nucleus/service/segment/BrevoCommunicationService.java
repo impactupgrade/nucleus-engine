@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 import static com.impactupgrade.nucleus.client.BrevoClient.FIRSTNAME;
 import static com.impactupgrade.nucleus.client.BrevoClient.LASTNAME;
 import static com.impactupgrade.nucleus.client.BrevoClient.SMS;
+import static com.impactupgrade.nucleus.client.BrevoClient.TAGS;
 
 public class BrevoCommunicationService extends AbstractCommunicationService {
 
@@ -133,8 +134,12 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
         Map<String, Object> customFieldMap = getCustomFields(crmContact, brevoClient, brevoConfig, communicationList);
         contactsCustomFields.put(crmContact.email, customFieldMap);
       }
+      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
+      Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, brevoConfig,
+          communicationList);
+
       // run the actual contact upsert
-      List<GetContactDetails> upsertMemberInfos = toGetContactDetails(communicationList, brevoConfig, contactsToUpsert, contactsCustomFields);
+      List<GetContactDetails> upsertMemberInfos = toGetContactDetails(communicationList, brevoConfig, contactsToUpsert, contactsCustomFields, activeTags);
       brevoClient.importContacts(communicationList.id, upsertMemberInfos);
 
       // archive mc emails that are marked as unsubscribed in the CRM
@@ -199,6 +204,17 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     }
   }
 
+  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts, Map<String,
+      List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform brevoConfig,
+                                                   EnvironmentConfig.CommunicationList communicationList) throws Exception {
+    Map<String, Set<String>> activeTags = new HashMap<>();
+    for (CrmContact crmContact : crmContacts) {
+      Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id),
+          brevoConfig, communicationList);
+      activeTags.put(crmContact.email, tagsCleaned);
+    }
+    return activeTags;
+  }
 
   @Override
   public void syncUnsubscribes(Calendar lastSync) throws Exception {
@@ -280,8 +296,11 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
 
     try {
       Map<String, Object> customFields = getCustomFields(crmContact, brevoClient, brevoConfig, communicationList);
+      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(List.of(crmContact), communicationList);
+      Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), brevoConfig,
+          communicationList);
       // run the actual contact upsert
-      GetContactDetails getContactDetails = toGetContactDetails(brevoConfig, crmContact, customFields, communicationList.groups);
+      GetContactDetails getContactDetails = toGetContactDetails(brevoConfig, crmContact, customFields, tags, communicationList.groups);
       brevoClient.createContact(communicationList.id, getContactDetails);
     } catch (ApiException e) {
       env.logJobWarn("Brevo upsertContact failed: {}", e);
@@ -302,6 +321,12 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
         attributeNames.add(attribute.getName());
       }
     }
+    // create tags attribute
+    if (!attributeNames.contains(TAGS)) {
+      brevoClient.createAttribute(TAGS, CreateAttribute.TypeEnum.TEXT);
+      attributeNames.add(TAGS);
+    }
+    // create custom fields' attributes
     for (CustomField customField : customFields) {
       if (customField.value == null) {
         continue;
@@ -338,13 +363,13 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
   }
 
   protected List<GetContactDetails> toGetContactDetails(EnvironmentConfig.CommunicationList communicationList, EnvironmentConfig.CommunicationPlatform brevoConfig, List<CrmContact> crmContacts,
-                                                        Map<String, Map<String, Object>> customFieldsMap) {
+                                                        Map<String, Map<String, Object>> customFieldsMap, Map<String, Set<String>> activeTags) {
     return crmContacts.stream()
-        .map(crmContact -> toGetContactDetails(brevoConfig, crmContact, customFieldsMap.get(crmContact.email), communicationList.groups))
+        .map(crmContact -> toGetContactDetails(brevoConfig, crmContact, customFieldsMap.get(crmContact.email), activeTags.get(crmContact.email), communicationList.groups))
         .collect(Collectors.toList());
   }
 
-  protected GetContactDetails toGetContactDetails(EnvironmentConfig.CommunicationPlatform brevoConfig, CrmContact crmContact, Map<String, Object> customFields, Map<String, String> groups) {
+  protected GetContactDetails toGetContactDetails(EnvironmentConfig.CommunicationPlatform brevoConfig, CrmContact crmContact, Map<String, Object> customFields, Set<String> tags, Map<String, String> groups) {
     if (crmContact == null) {
       return null;
     }
@@ -357,6 +382,11 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     Properties attributes = new Properties();
     attributes.setProperty(FIRSTNAME, crmContact.firstName);
     attributes.setProperty(LASTNAME, crmContact.lastName);
+    String tagsString = "";
+    if (tags != null && !tags.isEmpty()) {
+      tagsString = tags.stream().collect(Collectors.joining(", "));
+    }
+    attributes.setProperty(TAGS, tagsString);
 
     getContactDetails.setAttributes(attributes);
 
@@ -364,6 +394,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
       attributes.setProperty(SMS, crmContact.phoneNumberForSMS());
     }
 
+    //TODO: how to in Brevo?
 //    List<String> groupIds = crmContact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
 //    // TODO: Does this deselect what's no longer subscribed to in MC?
 //    MailchimpObject groupMap = new MailchimpObject();
