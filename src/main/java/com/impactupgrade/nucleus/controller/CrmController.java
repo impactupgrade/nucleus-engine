@@ -734,7 +734,7 @@ public class CrmController {
     importEvent.account.billingAddress.country = data.get("Billing Country");
 
     // TODO: Should "Campaign ID" go to an extref?
-//    importEvent.opportunityCampaignName = data.get("Campaign Name");
+    importEvent.opportunityCampaignName = data.get("Campaign Name");
 
     // Opportunity
     importEvent.opportunityAmount = BigDecimal.valueOf(Double.valueOf(data.get("Charged Intended Donation Amount")));
