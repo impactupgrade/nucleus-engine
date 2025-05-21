@@ -10,10 +10,10 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmImportEvent;
 import com.sforce.soap.partner.sobject.SObject;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -51,8 +51,8 @@ public class DonorPerfectToSalesforce {
   }
 
   public void migrate() throws Exception {
-    String constituentFile = "/home/brmeyer/Downloads/donmrg-constituents.csv";
-    String donationFile = "/home/brmeyer/Downloads/donmrg-gift-transactions.csv";
+    String constituentFile = "/home/brmeyer/Downloads/donmrg-constituents-may20.csv";
+    String donationFile = "/home/brmeyer/Downloads/donmrg-gift-transactions-may20.csv";
 
     List<Map<String, String>> constituentRows;
     try (InputStream is = new FileInputStream(constituentFile)) {
@@ -67,7 +67,9 @@ public class DonorPerfectToSalesforce {
     Iterator<Map<String, String>> itr = constituentRows.iterator();
     Set<String> donorIds = new HashSet<>();
     while (itr.hasNext()) {
-      Map<String, String> constituentRow = itr.next();
+      Map<String, String> _constituentRow = itr.next();
+      CaseInsensitiveMap<String, String> constituentRow = new CaseInsensitiveMap<>(_constituentRow);
+
       if ("OLDADD".equalsIgnoreCase(constituentRow.get("ADDRESS_TYPE"))) {
         System.out.println("removing old address: " + constituentRow.get("ADDRESS"));
         itr.remove();
@@ -98,9 +100,11 @@ public class DonorPerfectToSalesforce {
     // - If first name + last name + org name, assume household account. But also create a bare account for the biz and an affiliation.
     // - Otherwise, standard contact + household.
 
-    for (Map<String, String> constituentRow : constituentRows) {
+    for (Map<String, String> _constituentRow : constituentRows) {
       Map<String, String> row = new HashMap<>();
       rows.add(row);
+
+      CaseInsensitiveMap<String, String> constituentRow = new CaseInsensitiveMap<>(_constituentRow);
 
       String donorId = constituentRow.get("DONOR_ID");
       String type = constituentRow.get("DONOR_TYPE_DESCR");
@@ -158,7 +162,8 @@ public class DonorPerfectToSalesforce {
           row.put("Contact Custom DoNotCall", "true");
         }
         if ("Y".equalsIgnoreCase(constituentRow.get("NO_EMAIL"))) {
-          row.put("Contact Email Opt In", "true");
+          row.put("Contact Email Opt In", "false");
+          row.put("Contact Email Opt Out", "true");
         }
 
         row.put("Contact Personal Email", constituentRow.get("EMAIL"));
@@ -196,21 +201,10 @@ public class DonorPerfectToSalesforce {
 
     List<SObject> existingOpps = sfdcClient.queryListAutoPaged("SELECT Id, DP_ID__c, CloseDate, Amount, Account.DP_ID__c, npsp__Primary_Contact__r.DP_ID__c FROM Opportunity WHERE RecordType.Name='Donation'");
     Set<String> seenDonationIds = new HashSet<>();
-    Set<String> seenDonations = new HashSet<>();
     for (SObject existingOpp : existingOpps) {
       String oppDpId = (String) existingOpp.getField("DP_ID__c");
-      String accountDpId = (String) existingOpp.getChild("Account").getField("DP_ID__c");
-      String contactDpId = (String) existingOpp.getChild("npsp__Primary_Contact__r").getField("DP_ID__c");
-      String amount = String.format("$%.2f", Double.parseDouble(existingOpp.getField("Amount").toString()));
-      String date = new SimpleDateFormat("M/d/yyyy").format(new SimpleDateFormat("yyyy-MM-dd").parse(existingOpp.getField("CloseDate").toString()));
       if (!Strings.isNullOrEmpty(oppDpId)) {
         seenDonationIds.add(oppDpId);
-      }
-      if (!Strings.isNullOrEmpty(accountDpId)) {
-        seenDonations.add(accountDpId + "_" + date + "_" + amount);
-      }
-      if (!Strings.isNullOrEmpty(contactDpId)) {
-        seenDonations.add(contactDpId + "_" + date + "_" + amount);
       }
     }
 
@@ -223,7 +217,9 @@ public class DonorPerfectToSalesforce {
 
     rows.clear();
 
-    for (Map<String, String> donationRow : donationRows) {
+    for (Map<String, String> _donationRow : donationRows) {
+      CaseInsensitiveMap<String, String> donationRow = new CaseInsensitiveMap<>(_donationRow);
+
       String giftId = donationRow.get("GIFT_ID");
       String donorId = donationRow.get("DONOR_ID");
       String date = donationRow.get("GIFT_DATE");
@@ -238,12 +234,6 @@ public class DonorPerfectToSalesforce {
         System.out.println("missing donor " + donorId);
         continue;
       }
-
-//      String seenDpDonationKey = donorId + "_" + date + "_" + amount;
-//      if (seenDonations.contains(seenDpDonationKey)) {
-//        System.out.println("gift " + giftId + " " + date + " already exists, based on donor+date+amount");
-//        continue;
-//      }
 
       System.out.println("importing gift " + giftId + " " + date);
 
