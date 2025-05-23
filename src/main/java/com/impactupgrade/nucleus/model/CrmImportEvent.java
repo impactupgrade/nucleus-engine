@@ -118,6 +118,7 @@ public class CrmImportEvent {
     if (hasAccountColumns) return true;
     return raw.entrySet().stream()
         .filter(entry -> !"Account Id".equalsIgnoreCase(entry.getKey()))
+        .filter(entry -> !entry.getKey().toLowerCase(Locale.ROOT).startsWith("account extref"))
         .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("account") && !Strings.isNullOrEmpty(entry.getValue()));
   }
   private boolean hasContactColumns = false;
@@ -128,6 +129,7 @@ public class CrmImportEvent {
     if (hasContactColumns) return true;
     return raw.entrySet().stream()
         .filter(entry -> !"Contact Id".equalsIgnoreCase(entry.getKey()))
+        .filter(entry -> !entry.getKey().toLowerCase(Locale.ROOT).startsWith("contact extref"))
         .anyMatch(entry -> entry.getKey().toLowerCase(Locale.ROOT).startsWith("contact") && !Strings.isNullOrEmpty(entry.getValue()));
   }
   private boolean hasOppColumns = false;
@@ -198,6 +200,7 @@ public class CrmImportEvent {
   public String contactRecordTypeId;
   public String contactRecordTypeName;
   public String contactSalutation;
+  public String contactTitle;
 
   public BigDecimal opportunityAmount;
   public String opportunityCampaignId;
@@ -337,6 +340,8 @@ public class CrmImportEvent {
     importEvent.account.ownerId = data.get("Account Owner ID");
     importEvent.account.recordTypeId = data.get("Account Record Type ID");
     importEvent.account.recordTypeName = data.get("Account Record Type Name");
+    importEvent.account.email = data.get("Account Email");
+    importEvent.account.phone = data.get("Account Phone");
     importEvent.account.website = data.get("Account Website");
 
     // 3 ways campaigns can be provided, using column headers:
@@ -427,6 +432,7 @@ public class CrmImportEvent {
     }
 
     importEvent.contactSalutation = data.get("Contact Salutation");
+    importEvent.contactTitle = data.get("Contact Title");
     importEvent.contactFirstName = data.get("Contact First Name");
     importEvent.contactLastName = data.get("Contact Last Name");
     if (Strings.isNullOrEmpty(importEvent.contactFirstName) && !Strings.isNullOrEmpty(data.get("Contact Full Name"))) {
@@ -542,8 +548,8 @@ public class CrmImportEvent {
     return raw.keySet().stream().filter(k -> k.startsWith("Account")).toList();
   }
   public List<String> getAccountCustomFieldNames() {
-    return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom"))
-        .map(k -> k.replace("Account Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+    return getAccountColumnNames().stream().filter(k -> k.startsWith("Account Custom") || k.startsWith("Account ExtRef"))
+        .map(k -> k.replace("Account Custom", "").replace("Account ExtRef", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getAccountCampaignColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Account Campaign")).toList();
@@ -552,8 +558,8 @@ public class CrmImportEvent {
     return raw.keySet().stream().filter(k -> k.startsWith("Contact")).toList();
   }
   public List<String> getContactCustomFieldNames() {
-    List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom"))
-        .map(k -> k.replace("Contact Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+    List<String> contactFields = getContactColumnNames().stream().filter(k -> k.startsWith("Contact Custom") || k.startsWith("Contact ExtRef"))
+        .map(k -> k.replace("Contact Custom", "").replace("Contact ExtRef", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
     // We also need the account values!
     List<String> accountFields = getAccountCustomFieldNames().stream().map(f -> "Account." + f).toList();
     return Stream.concat(contactFields.stream(), accountFields.stream()).toList();
@@ -565,22 +571,22 @@ public class CrmImportEvent {
     return raw.keySet().stream().filter(k -> k.startsWith("Recurring Donation")).toList();
   }
   public List<String> getRecurringDonationCustomFieldNames() {
-    return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom"))
-        .map(k -> k.replace("Recurring Donation Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+    return getRecurringDonationColumnNames().stream().filter(k -> k.startsWith("Recurring Donation Custom") || k.startsWith("Recurring Donation ExtRef"))
+        .map(k -> k.replace("Recurring Donation Custom", "").replace("Recurring Donation ExtRef", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getOpportunityColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Opportunity")).toList();
   }
   public List<String> getOpportunityCustomFieldNames() {
-    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom"))
-        .map(k -> k.replace("Opportunity Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Opportunity Custom") || k.startsWith("Opportunity ExtRef"))
+        .map(k -> k.replace("Opportunity Custom", "").replace("Opportunity ExtRef", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getCampaignColumnNames() {
     return raw.keySet().stream().filter(k -> k.startsWith("Campaign")).toList();
   }
   public List<String> getCampaignCustomFieldNames() {
-    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom"))
-        .map(k -> k.replace("Campaign Custom", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
+    return getOpportunityColumnNames().stream().filter(k -> k.startsWith("Campaign Custom") || k.startsWith("Campaign ExtRef"))
+        .map(k -> k.replace("Campaign Custom", "").replace("Campaign ExtRef", "").replace("Append", "").trim()).map(this::removeDateSelectors).toList();
   }
   public List<String> getAllContactEmails() {
     return Stream.of(contactEmail, contactPersonalEmail, contactWorkEmail, contactOtherEmail)
