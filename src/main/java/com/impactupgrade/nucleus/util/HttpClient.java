@@ -11,6 +11,8 @@ import org.apache.logging.log4j.Logger;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.ClientRequestContext;
+import javax.ws.rs.client.ClientRequestFilter;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Form;
@@ -145,7 +147,22 @@ public class HttpClient {
   }
 
   private static Client client() {
-    return ClientBuilder.newClient();
+    return ClientBuilder.newClient().register(new RedirectAuthFilter());
+  }
+
+  private static class RedirectAuthFilter implements ClientRequestFilter {
+    @Override
+    public void filter(ClientRequestContext requestContext) throws IOException {
+      String url = requestContext.getUri().toString();
+
+      // Specifically for S3 and other services that take the Authorization header for the initial request, but then
+      // use a different auth setup on 30x redirect URLs (S3 includes a signature in the URL itself, and if the
+      // auth header is still included, you'll get an error). If redirected and the URL contains a sig, strip
+      // out the auth header.
+      if (url.contains("X-Amz-Algorithm") || url.contains("Signature")) {
+        requestContext.getHeaders().remove("Authorization");
+      }
+    }
   }
 
   public static class HeaderBuilder {

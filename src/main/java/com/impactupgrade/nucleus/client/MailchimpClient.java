@@ -277,7 +277,7 @@ public class MailchimpClient {
                   )
               );
         } catch (Exception e) {
-          env.logJobError("failed to fetch batch operation results", e);
+          env.logJobWarn("failed to fetch batch operation results", e);
         }
       }
     }
@@ -301,8 +301,6 @@ public class MailchimpClient {
           responseString = IOUtils.toString(tarArchiveInputStream, StandardCharsets.UTF_8);
         }
       }
-    } catch (Exception e) {
-      env.logJobError("Failed to get batch response body! {}", e);
     }
     return responseString;
   }
