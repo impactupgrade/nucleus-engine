@@ -763,8 +763,8 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
-    return Optional.empty();
+  public List<CrmCampaign> getCampaignsByExternalReference(String externalReference) throws Exception {
+    return Collections.emptyList();
   }
 
   @Override

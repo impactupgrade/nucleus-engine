@@ -92,13 +92,13 @@ public class EventBriteController {
         upsertCrmContact(contact, Optional.ofNullable(existingContact), crmService);
 
         // make sure it's not an event that existed prior to our integration
-        Optional<CrmCampaign> _campaign = crmService.getCampaignByExternalReference(attendee.eventId);
+        List<CrmCampaign> campaigns = crmService.getCampaignsByExternalReference(attendee.eventId);
         CrmCampaign campaign = null;
-        if (_campaign.isEmpty()) {
+        if (campaigns.isEmpty()) {
           EventBriteClient.Event event = eventBriteClient.getEvent("https://www.eventbriteapi.com/v3/events/" + attendee.eventId + "/");
           campaign = upsertCrmCampaign(event, crmService, env);
         } else {
-          campaign = _campaign.get();
+          campaign = campaigns.get(0);
         }
 
         addContactToCampaign(contact, campaign, crmService, env);
@@ -112,9 +112,9 @@ public class EventBriteController {
       case "event.unpublished" -> {
         EventBriteClient.Event event = eventBriteClient.getEvent(webhookPayload.apiUrl);
 
-        Optional<CrmCampaign> existingCampaign = crmService.getCampaignByExternalReference(event.id);
-        if (existingCampaign.isPresent()) {
-          crmService.deleteCampaign(existingCampaign.get().id);
+        List<CrmCampaign> existingCampaigns = crmService.getCampaignsByExternalReference(event.id);
+        for (CrmCampaign existingCampaign : existingCampaigns) {
+          crmService.deleteCampaign(existingCampaign.id);
         }
       }
 
@@ -160,8 +160,8 @@ public class EventBriteController {
 
   protected void processNewOrder(EventBriteClient.Order order, CrmService crmService, Environment env) throws Exception {
     // make sure it's not an event that existed prior to our integration
-    Optional<CrmCampaign> campaign = crmService.getCampaignByExternalReference(order.eventId);
-    if (campaign.isEmpty()) {
+    List<CrmCampaign> campaigns = crmService.getCampaignsByExternalReference(order.eventId);
+    if (campaigns.isEmpty()) {
       EventBriteClient.Event event = env.eventBriteClient().getEvent("https://www.eventbriteapi.com/v3/events/" + order.eventId + "/");
       upsertCrmCampaign(event, crmService, env);
     }
@@ -191,7 +191,7 @@ public class EventBriteController {
       crmDonation.contact = crmContact.get();
       crmDonation.account = crmContact.get().account;
 
-      crmDonation.campaignId = campaign.get().id;
+      crmDonation.campaignId = campaigns.get(0).id;
 
       crmService.insertDonation(crmDonation);
     }
@@ -208,16 +208,16 @@ public class EventBriteController {
 
   protected CrmCampaign upsertCrmCampaign(EventBriteClient.Event event, CrmService crmService, Environment env) throws Exception {
     CrmCampaign campaign = buildCrmCampaign(event);
-    Optional<CrmCampaign> existingCampaign = crmService.getCampaignByExternalReference(event.id);
+    List<CrmCampaign> existingCampaigns = crmService.getCampaignsByExternalReference(event.id);
 
-    if (existingCampaign.isEmpty()) {
+    if (existingCampaigns.isEmpty()) {
       try {
         campaign.id = crmService.insertCampaign(campaign);
       } catch (Exception e) {
         env.logJobInfo("unable to create new campaign: {}", e.getMessage());
       }
     } else {
-      campaign.id = existingCampaign.get().id;
+      campaign.id = existingCampaigns.get(0).id;
       crmService.updateCampaign(campaign);
     }
 

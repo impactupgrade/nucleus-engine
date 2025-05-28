@@ -905,8 +905,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception {
-    return toCrmCampaign(sfdcClient.getCampaignByUniqueField(externalReference));
+  public List<CrmCampaign> getCampaignsByExternalReference(String externalReference) throws Exception {
+    return toCrmCampaign(sfdcClient.getCampaignsByUniqueField(env.getConfig().salesforce.fieldDefinitions.campaignExternalReference, List.of(externalReference)));
   }
 
   @Override
@@ -2486,6 +2486,10 @@ public class SfdcCrmService implements CrmService {
 
   protected Optional<CrmCampaign> toCrmCampaign(Optional<SObject> sObject) {
     return sObject.map(this::toCrmCampaign);
+  }
+
+  protected List<CrmCampaign> toCrmCampaign(List<SObject> sObjects) {
+    return sObjects.stream().map(this::toCrmCampaign).collect(Collectors.toList());
   }
 
   // TODO: starting to feel like we need an object mapper lib...

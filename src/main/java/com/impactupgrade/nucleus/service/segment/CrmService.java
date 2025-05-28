@@ -156,7 +156,7 @@ public interface CrmService extends SegmentService {
 
   String insertCampaign(CrmCampaign crmCampaign) throws Exception;
   void updateCampaign(CrmCampaign crmCampaign) throws Exception;
-  Optional<CrmCampaign> getCampaignByExternalReference(String externalReference) throws Exception;
+  List<CrmCampaign> getCampaignsByExternalReference(String externalReference) throws Exception;
   void deleteCampaign(String campaignId) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
