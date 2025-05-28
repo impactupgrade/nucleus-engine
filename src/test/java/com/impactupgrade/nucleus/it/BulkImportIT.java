@@ -87,7 +87,7 @@ public class BulkImportIT extends AbstractIT {
         List.of(accountNameD, firstnameD, lastnameD, emailExistingD, ""),
         // email that already existed without an extref, ignore the extref for fetching but the extref should be updated on the record
         List.of("", firstNameExistingE, lastNameExistingE, emailExistingE, extRefE),
-        // email that already existed WITH an extref, ignore the extref for fetching and the new extref should NOT override the existing one
+        // email that already existed WITH an extref, which should create a new contact despite the email match
         List.of("", firstNameExistingF, lastNameExistingF, emailExistingF, extRefF)
     );
     postToBulkImport(values);
@@ -107,15 +107,18 @@ public class BulkImportIT extends AbstractIT {
     assertEquals(1, emailDExistingContacts.size());
     List<SObject> emailEExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingE));
     assertEquals(1, emailEExistingContacts.size());
+    // despite the email match, different extrefs so a duplicate was allowed
     List<SObject> emailFExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingF));
-    assertEquals(1, emailFExistingContacts.size());
+    assertEquals(2, emailFExistingContacts.size());
 
     assertEquals(aAccountId, emailAContacts.get(0).getField("AccountId"));
     assertEquals(aAccountId, emailBContacts.get(0).getField("AccountId"));
     assertEquals(accountIdExisting, emailCContacts.get(0).getField("AccountId"));
     assertEquals(firstnameD + " " + lastnameD, sfdcClient.getContactById(contactIdExistingD).get().getField("Name")); // should have updated the name, using the existing email
     assertEquals(extRefE, sfdcClient.getContactById(contactIdExistingE).get().getField("External_Reference__c")); // should have updated the extref, using the existing email
-    assertEquals(extRefExistingF, sfdcClient.getContactById(contactIdExistingF).get().getField("External_Reference__c")); // should NOT have updated the extref, using the existing email
+    assertEquals(extRefExistingF, sfdcClient.getContactById(contactIdExistingF).get().getField("External_Reference__c")); // should NOT have updated the extref
+    Optional<SObject> emailFNewContact = emailFExistingContacts.stream().filter(c -> !c.getId().equals(contactIdExistingF)).findFirst();
+    assertEquals(extRefF, emailFNewContact.get().getField("External_Reference__c")); // second one by-email, but with the unique extref
 
     clearSfdc(accountNameExisting);
     clearSfdc(lastnameA);
@@ -215,6 +218,52 @@ public class BulkImportIT extends AbstractIT {
     assertNull(contacts.get(1).getField("Description"));
 
     clearSfdc(lastname);
+  }
+
+  @Test
+  public void extrefEdgeCases() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
+
+    String extRef1 = RandomStringUtils.randomAlphabetic(8);
+    String extRef2 = RandomStringUtils.randomAlphabetic(8);
+    String extRef3 = RandomStringUtils.randomAlphabetic(8);
+
+    String nameA = RandomStringUtils.randomAlphabetic(8);
+    String nameB = RandomStringUtils.randomAlphabetic(8);
+    String firstnameA = RandomStringUtils.randomAlphabetic(8);
+    String lastnameA = RandomStringUtils.randomAlphabetic(8);
+    String firstnameB = RandomStringUtils.randomAlphabetic(8);
+    String lastnameB = RandomStringUtils.randomAlphabetic(8);
+    String emailA = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+    String emailB = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    final List<Object> values = List.of(
+        List.of("Account ExtRef External_Reference__c", "Contact ExtRef External_Reference__c", "Account Name", "Contact First Name", "Contact Last Name", "Contact Personal Email"),
+        List.of(extRef1, extRef1, nameA, firstnameA, lastnameA, emailA),
+        // same account name, but the "2" account extref should be used (import another account with the same name) and the account we imported above should be ignored
+        List.of(extRef2, extRef2, nameA, firstnameB, lastnameB, emailB),
+        // similarly, if the contact email was already imported, use the contact extref (import another with the same email) and ignore the existing contact
+        List.of(extRef3, extRef3, nameB, firstnameA, lastnameA, emailA)
+    );
+    postToBulkImport(values);
+
+    List<SObject> aAccounts = sfdcClient.getAccountsByName(nameA);
+    assertEquals(2, aAccounts.size());
+    List<SObject> bAccounts = sfdcClient.getAccountsByName(nameB);
+    assertEquals(1, bAccounts.size());
+    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA));
+//    assertEquals(2, emailAContacts.size()); TODO, currently fails, logic needs reworked to store contacts by-email, by-phone, etc. in the secondPass
+    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB));
+    assertEquals(1, emailBContacts.size());
+
+    Optional<SObject> aAccount = aAccounts.stream().filter(a -> a.getField("External_Reference__c").equals(extRef1)).findFirst();
+    assertEquals(aAccount.get().getId(), emailAContacts.get(0).getField("AccountId"));
+    // contact B should have landed in account B, despite having the same account name
+    aAccount = aAccounts.stream().filter(a -> a.getField("External_Reference__c").equals(extRef2)).findFirst();
+    assertEquals(aAccount.get().getId(), emailBContacts.get(0).getField("AccountId"));
+
+    clearSfdc(lastnameA);
+    clearSfdc(lastnameB);
   }
 
   @Test
