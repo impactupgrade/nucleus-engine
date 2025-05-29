@@ -1419,7 +1419,7 @@ public class SfdcCrmService implements CrmService {
       // If we're in the second pass, we already know we need to insert the contact.
       if (secondPass) {
         if (rowHasAccountLookups || importEvent.hasAccountColumns()) {
-          account = upsertAccount(importEvent.account, importEvent, existingAccountsById, existingAccountsByName,
+          account = upsertBulkImportAccount(importEvent.account, importEvent, existingAccountsById, existingAccountsByName,
               accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, "Account");
         }
 
@@ -1441,8 +1441,6 @@ public class SfdcCrmService implements CrmService {
             account = updateBulkImportAccount(account, importEvent.account, importEvent, "Account");
           }
 
-          // use accountId, not account.id -- if the contact was recently imported by this current process,
-          // the contact.account child relationship will not yet exist in the existingContactsById map
           contact = updateBulkImportContact(existingContact, importEvent, account, batchUpdateContacts);
         }
         // Similarly, if we have an external ref ID, check that next.
@@ -1458,8 +1456,6 @@ public class SfdcCrmService implements CrmService {
             account = updateBulkImportAccount(account, importEvent.account, importEvent, "Account");
           }
 
-          // use accountId, not account.id -- if the contact was recently imported by this current process,
-          // the contact.account child relationship will not yet exist in the existingContactsByExtRefId map
           contact = updateBulkImportContact(existingContact, importEvent, account, batchUpdateContacts);
         }
         // Else if a contact already exists with the given email address, update.
@@ -1478,8 +1474,6 @@ public class SfdcCrmService implements CrmService {
               account = updateBulkImportAccount(account, importEvent.account, importEvent, "Account");
             }
 
-            // use accountId, not account.id -- if the contact was recently imported by this current process,
-            // the contact.account child relationship will not yet exist in the existingContactsByEmail map
             contact = updateBulkImportContact(existingContact, importEvent, account, batchUpdateContacts);
           }
         }
@@ -1556,7 +1550,7 @@ public class SfdcCrmService implements CrmService {
           continue;
         }
       } else if (rowHasAccountLookups || importEvent.hasAccountColumns()) {
-        account = upsertAccount(importEvent.account, importEvent, existingAccountsById, existingAccountsByName,
+        account = upsertBulkImportAccount(importEvent.account, importEvent, existingAccountsById, existingAccountsByName,
             accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, "Account");
       }
 
@@ -1762,7 +1756,7 @@ public class SfdcCrmService implements CrmService {
     return account;
   }
 
-  protected SObject upsertAccount(
+  protected SObject upsertBulkImportAccount(
       CrmAccount crmAccount,
       CrmImportEvent importEvent,
       Map<String, SObject> existingAccountsById,
@@ -2105,7 +2099,7 @@ public class SfdcCrmService implements CrmService {
           .filter(k -> k.startsWith("Organization " + finalJ + " ExtRef ")).distinct().findFirst();
       Optional<String> orgExtRefFieldName = orgExtRefKey.map(k -> k.replace("Organization " + finalJ + " ExtRef ", ""));
 
-      SObject org = upsertAccount(crmOrg, importEvent, existingAccountsById, existingAccountsByName,
+      SObject org = upsertBulkImportAccount(crmOrg, importEvent, existingAccountsById, existingAccountsByName,
           orgExtRefKey, orgExtRefFieldName, existingAccountsByExtRef, "Organization " + finalJ);
 
       if (env.getConfig().salesforce.npsp) {
