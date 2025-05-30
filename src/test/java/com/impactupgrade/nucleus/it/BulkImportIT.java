@@ -11,6 +11,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -538,6 +539,41 @@ public class BulkImportIT extends AbstractIT {
     clearSfdc(existingContact.getField("LastName").toString());
   }
 
-  // TODO: multiple campaigns at once
+  @Test
+  public void multipleCampaignsWithSameName() throws Exception {
+    SfdcClient sfdcClient = env.sfdcClient();
 
+    // Two campaigns, both with the same name, inserted separately so one is oldest.
+    String campaignName = RandomStringUtils.randomAlphabetic(8);
+    SObject campaign1 = new SObject("Campaign");
+    campaign1.setField("Name", campaignName);
+    campaign1.setField("IsActive", true);
+    String campaignId1 = sfdcClient.insert(campaign1).getId();
+    Thread.sleep(1000); // ensure the CreatedDate has time to be different
+    SObject campaign2 = new SObject("Campaign");
+    campaign2.setField("Name", campaignName);
+    campaign2.setField("IsActive", true);
+    String campaignId2 = sfdcClient.insert(campaign2).getId();
+
+    String firstName = RandomStringUtils.randomAlphabetic(8);
+    String lastName = RandomStringUtils.randomAlphabetic(8);
+    String email = RandomStringUtils.randomAlphabetic(8).toLowerCase() + "@test.com";
+
+    final List<Object> values = List.of(
+        List.of("Contact First Name", "Contact Last Name", "Contact Email", "Contact Campaign Name", "Opportunity Date yyyy-mm-dd", "Opportunity Stage Name", "Opportunity Amount", "Opportunity Campaign Name"),
+        List.of(firstName, lastName, email, campaignName, "2025-05-29", "Closed Won", "1.0", campaignName)
+    );
+    postToBulkImport(values);
+
+    // Oldest campaign should have been selected, despite the common name.
+    List<SObject> contacts = sfdcClient.getContactsByEmails(List.of(email));
+    assertEquals(1, contacts.size());
+    String contactId = contacts.get(0).getId();
+    Map<String, List<SObject>> campaignMemberships = sfdcClient.getCampaignsByContactIds(List.of(contactId), null);
+    assertTrue(campaignMemberships.containsKey(contactId));
+    assertEquals(campaignId1, campaignMemberships.get(contactId).get(0).getField("CampaignId"));
+    List<SObject> opps = sfdcClient.getDonationsByAccountId(contacts.get(0).getField("AccountId").toString());
+    assertEquals(1, opps.size());
+    assertEquals(campaignId1, opps.get(0).getField("CampaignId"));
+  }
 }

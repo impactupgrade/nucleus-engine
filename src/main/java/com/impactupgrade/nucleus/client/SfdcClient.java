@@ -248,7 +248,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   // See note on CrmService.getContactsCampaigns. Retrieve in batches to preserve API limits!
   protected Map<String, List<SObject>> getCampaignsByIds(List<String> ids, String fieldName, String filter) throws ConnectionException, InterruptedException {
-    // TODO: Note the use of CampaignMember -- currently need the name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
+    // TODO: Note the use of CampaignMember -- currently need the id/name only, but could refactor to use CAMPAIGN_FIELDS on the child object.
 
     if (ids.isEmpty()) {
       return Collections.emptyMap();
@@ -266,11 +266,9 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     String idsJoin = page.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
-    String query = "SELECT " + fieldName + ", Campaign.Name FROM CampaignMember WHERE " + fieldName + " IN (" + idsJoin + ")";
+    String query = "SELECT " + fieldName + ", CampaignId, Campaign.Id, Campaign.Name FROM CampaignMember WHERE " + fieldName + " IN (" + idsJoin + ")";
     if (!Strings.isNullOrEmpty(filter)) {
       query += " AND " + filter;
-    } else {
-      query += " AND Campaign.IsActive=TRUE";
     }
     Map<String, List<SObject>> results = queryListAutoPaged(query).stream()
         .collect(Collectors.groupingBy(campaignMember -> (String) campaignMember.getField(fieldName)));

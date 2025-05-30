@@ -960,10 +960,16 @@ public class SfdcCrmService implements CrmService {
     List<String> contactIds = crmContacts.stream().map(c -> c.id).filter(Objects::nonNull).toList();
     List<String> accountIds = crmContacts.stream().map(c -> c.account.id).filter(Objects::nonNull).toList();
 
+    String filter = communicationList.crmFilter;
+    if (Strings.isNullOrEmpty(filter)) {
+      // Unless the org explicitly overrides it, attempt to narrow down the sheer number of campaigns
+      // by limiting to IsActive ones by default.
+      filter = "Campaign.IsActive=TRUE";
+    }
     Map<String, List<SObject>> contactCampaignMembers
-        = sfdcClient.getCampaignsByContactIds(contactIds, communicationList.crmCampaignMemberFilter);
+        = sfdcClient.getCampaignsByContactIds(contactIds, filter);
     Map<String, List<SObject>> accountCampaignMembers
-        = sfdcClient.getCampaignsByAccountIds(accountIds, communicationList.crmCampaignMemberFilter);
+        = sfdcClient.getCampaignsByAccountIds(accountIds, filter);
 
     for (CrmContact crmContact : crmContacts) {
       List<SObject> allCampaignMembers = Stream.of(
@@ -1283,15 +1289,15 @@ public class SfdcCrmService implements CrmService {
         .flatMap(e -> Stream.of(
             e.accountCampaigns.stream().map(c -> c.campaignName),
             e.contactCampaigns.stream().map(c -> c.campaignName),
-            Stream.of(e.opportunityCampaignName)
-        ))
+            Stream.of(e.opportunityCampaignName
+        )))
         .flatMap(Function.identity()) // concatenates the streams
         .filter(name -> !Strings.isNullOrEmpty(name)).distinct().collect(Collectors.toList());
     Map<String, String> campaignNameToId = Collections.emptyMap();
     if (!campaignNames.isEmpty()) {
       // Normalize the case!
       campaignNameToId = sfdcClient.getCampaignsByNames(campaignNames).stream()
-          .collect(Collectors.toMap(c -> c.getField("Name").toString().toLowerCase(Locale.ROOT), SObject::getId));
+          .collect(Collectors.toMap(c -> c.getField("Name").toString().toLowerCase(Locale.ROOT), SObject::getId, (c1, c2) -> c1));
     }
 
     List<String> recurringDonationIds = importEvents.stream().map(e -> e.recurringDonationId)
@@ -1418,11 +1424,9 @@ public class SfdcCrmService implements CrmService {
 
       // If we're in the second pass, we already know we need to insert the contact.
       if (secondPass) {
-        if (rowHasAccountLookups || importEvent.hasAccountColumns()) {
-          account = upsertBulkImportAccount(importEvent.account, importEvent, existingAccountsById, existingAccountsByName,
-              accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, "Account");
-        }
-
+        // Even if there are now account columns, create the empty account so we know its ID later for Opp inserts, etc.
+        account = upsertBulkImportAccount(importEvent.account, importEvent, existingAccountsById, existingAccountsByName,
+            accountExtRefKey, accountExtRefFieldName, existingAccountsByExtRef, "Account");
         contact = insertBulkImportContact(importEvent, account, batchInsertContacts,
             existingContactsByEmail, existingContactsByName, contactExtRefFieldName, existingContactsByExtRef, nonBatchMode);
       } else if (rowHasContactLookups || importEvent.hasContactColumns()) {
