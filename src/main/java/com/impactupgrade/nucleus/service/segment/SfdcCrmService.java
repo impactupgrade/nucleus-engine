@@ -2246,7 +2246,7 @@ public class SfdcCrmService implements CrmService {
       if (key.startsWith("Append")) {
         // appending to a multiselect picklist
         key = key.replace("Append", "").trim();
-        appendCustomValue(key, entry.getValue(), sObject, existingSObject);
+        appendCustomValues(key, entry.getValue(), sObject, existingSObject);
       } else {
         setCustomBulkValue(sObject, key, entry.getValue());
       }
@@ -2261,23 +2261,25 @@ public class SfdcCrmService implements CrmService {
     });
   }
 
-  // TODO: A bit of a hack, but we're using ; as a separator. That allows us to append to multiselect picklists.
-  //  It also works for other fields, like Description text boxes. Only downside: the ; looks a little odd.
-  protected void appendCustomValue(String key, String value, SObject sObject, SObject existingSObject) {
+  // A bit of a hack, but we're using ; as a separator. That allows us to append to multiselect picklists.
+  // But it also works for other fields, like Description text boxes. Only downside: the ; looks a little odd.
+  protected void appendCustomValues(String key, String newValues, SObject sObject, SObject existingSObject) {
+    List<String> values = new ArrayList<>();
+
     if (existingSObject != null) {
-      String existingValue = (String) existingSObject.getField(key);
-      if (!Strings.isNullOrEmpty(existingValue)) {
-        if (existingValue.contains(value)) {
-          // existing values already include the new value, so set the existing value verbatim so that we don't
-          // wipe anything out
-          value = existingValue;
-        } else {
-          // existing values did not include the new value, so append it
-          value = Strings.isNullOrEmpty(existingValue) ? value : existingValue + ";" + value;
+      List<String> existingValues = existingSObject.getField(key) == null
+          ? List.of() : Arrays.stream(existingSObject.getField(key).toString().split(";")).toList();
+      values.addAll(existingValues);
+
+      for (String newValue : newValues.split(";")) {
+        newValue = newValue.trim();
+        if (!values.contains(newValue)) {
+          values.add(newValue);
         }
       }
     }
-    sObject.setField(key, value);
+
+    sObject.setField(key, String.join(";", values));
   }
 
   protected void processBulkImportCampaignRecords(List<CrmImportEvent> importEvents) throws Exception {
