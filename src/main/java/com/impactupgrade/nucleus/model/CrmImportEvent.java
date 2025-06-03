@@ -239,8 +239,12 @@ public class CrmImportEvent {
   public boolean secondPass = false;
 
   public String contactFullName() {
-    // trim in case one side or the other is blank
-    return (contactFirstName + " " + contactLastName).trim();
+    String fullName = contactFirstName == null ? "" : contactFirstName.trim();
+    if (!Strings.isNullOrEmpty(contactLastName)) {
+      fullName += " " + contactLastName.trim();
+    }
+    // trim here in case one side or the other is blank
+    return fullName.trim();
   }
 
   public static List<CrmImportEvent> fromGeneric(List<Map<String, String>> data, Environment env) {
