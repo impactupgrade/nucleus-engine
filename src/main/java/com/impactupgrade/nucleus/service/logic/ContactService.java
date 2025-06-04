@@ -31,8 +31,14 @@ public class ContactService {
   }
 
   public void processDonor(PaymentGatewayEvent paymentGatewayEvent) throws Exception {
+    processDonor(paymentGatewayEvent, true);
+  }
+
+  public void processDonor(PaymentGatewayEvent paymentGatewayEvent, boolean createIfMissing) throws Exception {
     fetchAndSetDonorData(paymentGatewayEvent);
-    if (Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id) && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
+    if (createIfMissing
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmAccount().id)
+        && Strings.isNullOrEmpty(paymentGatewayEvent.getCrmContact().id)) {
       createDonor(paymentGatewayEvent);
     }
   }
@@ -82,10 +88,18 @@ public class ContactService {
       if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmRecurringDonation().subscriptionId)) {
         Optional<CrmRecurringDonation> crmRecurringDonation = crmService.getRecurringDonationBySubscriptionId(
             paymentGatewayEvent.getCrmRecurringDonation().subscriptionId);
+        // Recurring Donations are typically assigned to an Account OR a Contact (and Enhanced Recurring Donations
+        // requires one or the other, but disallows both). Typically, for a household gift, you'd see the Contact used,
+        // but some orgs instead use the Account.
         if (crmRecurringDonation.isPresent()) {
-          existingContact = crmService.getContactById(crmRecurringDonation.get().contact.id);
+          if (!Strings.isNullOrEmpty(crmRecurringDonation.get().contact.id)) {
+            existingContact = crmService.getContactById(crmRecurringDonation.get().contact.id);
+          } else if (!Strings.isNullOrEmpty(crmRecurringDonation.get().account.id)) {
+            existingAccount = crmService.getAccountById(crmRecurringDonation.get().account.id);
+          }
         }
       }
+
       if (existingContact.isEmpty() && !Strings.isNullOrEmpty(paymentGatewayEvent.getCrmDonation().customerId)) {
         List<CrmDonation> crmDonations = crmService.getDonationsByCustomerId(
             paymentGatewayEvent.getCrmDonation().customerId);
