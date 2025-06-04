@@ -5,10 +5,12 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
+import org.apache.http.client.utils.URLEncodedUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
+import java.nio.charset.StandardCharsets;
+import java.util.Enumeration;
 
 public class EnvironmentFactory {
 
@@ -23,18 +25,21 @@ public class EnvironmentFactory {
 
   public Environment init(HttpServletRequest request) {
     Environment env = newEnv();
-    env.setRequest(request);
+    setRequest(env, request);
 
-    env.getConfig().addOtherJson(otherJsonFilename);
+    env.getConfig().addOtherJsonFile(otherJsonFilename);
 
     return env;
   }
 
-  public Environment init(MultivaluedMap<String, String> otherContext) {
+  public Environment init(MultivaluedMap<String, String> _otherContext) {
     Environment env = newEnv();
-    env.setOtherContext(otherContext);
 
-    env.getConfig().addOtherJson(otherJsonFilename);
+    for (String key : _otherContext.keySet()) {
+      env.addOtherContext(key, _otherContext.getFirst(key));
+    }
+
+    env.getConfig().addOtherJsonFile(otherJsonFilename);
 
     return env;
   }
@@ -42,48 +47,64 @@ public class EnvironmentFactory {
   public Environment init(String otherJsonFilename) {
     Environment env = newEnv();
 
-    env.getConfig().addOtherJson(this.otherJsonFilename);
-    env.getConfig().addOtherJson(otherJsonFilename);
+    env.getConfig().addOtherJsonFile(this.otherJsonFilename);
+    env.getConfig().addOtherJsonFile(otherJsonFilename);
 
     return env;
   }
 
-  public Environment init(HttpServletRequest request, MultivaluedMap<String, String> otherContext) {
+  public Environment init(HttpServletRequest request, MultivaluedMap<String, String> _otherContext) {
     Environment env = newEnv();
-    env.setRequest(request);
-    env.setOtherContext(otherContext);
+    setRequest(env, request);
 
-    env.getConfig().addOtherJson(otherJsonFilename);
+    for (String key : _otherContext.keySet()) {
+      env.addOtherContext(key, _otherContext.getFirst(key));
+    }
+
+    env.getConfig().addOtherJsonFile(otherJsonFilename);
 
     return env;
   }
 
   public Environment init(HttpServletRequest request, String otherJsonFilename) {
     Environment env = newEnv();
-    env.setRequest(request);
+    setRequest(env, request);
 
-    env.getConfig().addOtherJson(this.otherJsonFilename);
-    env.getConfig().addOtherJson(otherJsonFilename);
+    env.getConfig().addOtherJsonFile(this.otherJsonFilename);
+    env.getConfig().addOtherJsonFile(otherJsonFilename);
 
     return env;
   }
 
   public Environment init(HttpServletRequest request, String otherContextKey, String otherContextValue) {
     Environment env = newEnv();
-    env.setRequest(request);
+    setRequest(env, request);
 
     if (!Strings.isNullOrEmpty(otherContextKey) && !Strings.isNullOrEmpty(otherContextValue)) {
-      MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
-      otherContext.add(otherContextKey, otherContextValue);
-      env.setOtherContext(otherContext);
+      env.addOtherContext(otherContextKey, otherContextValue);
     }
 
-    env.getConfig().addOtherJson(otherJsonFilename);
+    env.getConfig().addOtherJsonFile(otherJsonFilename);
 
     return env;
   }
 
   protected Environment newEnv() {
     return new Environment();
+  }
+
+  protected void setRequest(Environment env, HttpServletRequest request) {
+    if (request != null) {
+      Enumeration<String> headerNames = request.getHeaderNames();
+      while (headerNames.hasMoreElements()) {
+        String headerName = headerNames.nextElement();
+        env.getOtherContext().put(headerName, request.getHeader(headerName));
+      }
+
+      URLEncodedUtils.parse(request.getQueryString(), StandardCharsets.UTF_8).forEach(
+          pair -> env.getOtherContext().put(pair.getName(), pair.getValue()));
+
+      env.getOtherContext().put("uri", request.getRequestURI());
+    }
   }
 }

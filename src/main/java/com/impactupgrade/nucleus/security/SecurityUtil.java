@@ -13,9 +13,9 @@ import com.impactupgrade.nucleus.environment.Environment;
 public class SecurityUtil {
 
   public static void verifyApiKey(Environment env) throws SecurityException {
-    String apiKey = env.getHeaders().get("Nucleus-Api-Key");
+    String apiKey = env.getOtherContext().get("Nucleus-Api-Key");
     if (Strings.isNullOrEmpty(apiKey)) {
-      apiKey = env.getQueryParams().get("Nucleus-Api-Key");
+      apiKey = env.getOtherContext().get("Nucleus-Api-Key");
     }
     if (!env.getConfig().apiKey.equalsIgnoreCase(apiKey)) {
       env.logJobWarn("unable to verify api key");
