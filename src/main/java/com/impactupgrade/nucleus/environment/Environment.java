@@ -23,25 +23,19 @@ import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
 import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
+import com.impactupgrade.nucleus.service.segment.BareCrmService;
 import com.impactupgrade.nucleus.service.segment.CommunicationService;
 import com.impactupgrade.nucleus.service.segment.CrmService;
+import com.impactupgrade.nucleus.service.segment.DataSyncService;
 import com.impactupgrade.nucleus.service.segment.EmailService;
 import com.impactupgrade.nucleus.service.segment.JobLoggingService;
-import com.impactupgrade.nucleus.service.segment.BareCrmService;
 import com.impactupgrade.nucleus.service.segment.PaymentGatewayService;
 import com.impactupgrade.nucleus.service.segment.SegmentService;
-import com.impactupgrade.nucleus.service.segment.DataSyncService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
-import java.nio.charset.StandardCharsets;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,67 +61,37 @@ public class Environment {
 
   private static final Logger log = LogManager.getLogger(Environment.class);
 
-  // Additional context, if available.
-  // It seems odd to track URI and headers separately, rather than simply storing HttpServletRequest itself.
-  // However, many (most?) frameworks don't allow aspects of request to be accessed over and over. Due to the mechanics,
-  // some only allow it to be streamed once.
-  protected String uri = null;
-  protected final CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
-  protected final CaseInsensitiveMap<String, String> queryParams = new CaseInsensitiveMap<>();
-  protected MultivaluedMap<String, String> otherContext = new MultivaluedHashMap<>();
-
   // Whenever possible, we focus on being configuration-driven using one, large JSON file.
-  private final EnvironmentConfig _config = EnvironmentConfig.init();
+  protected final EnvironmentConfig config;
 
-  private final String jobTraceId = UUID.randomUUID().toString();
+  protected final String jobTraceId = UUID.randomUUID().toString();
 
-  public Environment() {}
+  // Additional context, if available.
+  protected CaseInsensitiveMap<String, String> otherContext = new CaseInsensitiveMap<>();
+
+  public Environment() {
+    config = EnvironmentConfig.init();
+  }
 
   public Environment(String otherJsonFilename) {
-    _config.addOtherJson(otherJsonFilename);
+    config = EnvironmentConfig.init();
+    config.addOtherJsonFile(otherJsonFilename);
   }
 
   public EnvironmentConfig getConfig() {
-    return _config;
+    return config;
   }
 
   public String getJobTraceId() {
     return jobTraceId;
   }
 
-  public void setRequest(HttpServletRequest request) {
-    if (request != null) {
-      uri = request.getRequestURI();
-
-      Enumeration<String> headerNames = request.getHeaderNames();
-      while (headerNames.hasMoreElements()) {
-        String headerName = headerNames.nextElement();
-        headers.put(headerName, request.getHeader(headerName));
-      }
-
-      URLEncodedUtils.parse(request.getQueryString(), StandardCharsets.UTF_8).forEach(
-          pair -> queryParams.put(pair.getName(), pair.getValue()));
-    }
-  }
-
-  public String getUri() {
-    return uri;
-  }
-
-  public Map<String, String> getHeaders() {
-    return headers;
-  }
-
-  public Map<String, String> getQueryParams() {
-    return queryParams;
-  }
-
-  public MultivaluedMap<String, String> getOtherContext() {
+  public Map<String, String> getOtherContext() {
     return otherContext;
   }
 
-  public void setOtherContext(MultivaluedMap<String, String> otherContext) {
-    this.otherContext = otherContext;
+  public void addOtherContext(String key, String value) {
+    otherContext.put(key, value);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,8 +256,8 @@ public class Environment {
   }
   
   public Set<JobLoggingService> jobLoggingServices() {
-    if (CollectionUtils.isNotEmpty(_config.loggers)) {
-      return _config.loggers.stream()
+    if (CollectionUtils.isNotEmpty(config.loggers)) {
+      return config.loggers.stream()
           .map(name -> segmentService(name, JobLoggingService.class))
           .filter(service -> service.isConfigured(this))
           .collect(Collectors.toSet());

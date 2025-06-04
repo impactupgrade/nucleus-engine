@@ -550,7 +550,7 @@ public class EnvironmentConfig implements Serializable {
 
   // Allow additional env.json files to be added. This cannot be statically defined, due to usages such as integration
   // tests where tests run in parallel and each may need unique setups.
-  public void addOtherJson(String otherJsonFilename) {
+  public void addOtherJsonFile(String otherJsonFilename) {
     if (!Strings.isNullOrEmpty(otherJsonFilename)) {
       try (InputStream otherJson = Thread.currentThread().getContextClassLoader()
           .getResourceAsStream(otherJsonFilename)) {
@@ -563,12 +563,8 @@ public class EnvironmentConfig implements Serializable {
     }
   }
 
-  /**
-   * Nucleus Core (and perhaps other use cases) need to dynamically provide the org's JSON from a database lookup.
-   * Assume it will always start with environment-default.json (using the static init() method). Overlay the
-   * unique JSON on top of what we already have.
-   */
-  public void init(String jsonOrg) {
+  // Nucleus Core (and perhaps other use cases) need to dynamically provide the org's JSON from a database lookup.
+  public void addOtherJsonString(String jsonOrg) {
     try {
       mapper.readerForUpdating(this).readValue(jsonOrg);
     } catch (MismatchedInputException e) {
