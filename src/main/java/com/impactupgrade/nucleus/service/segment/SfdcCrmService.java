@@ -960,7 +960,7 @@ public class SfdcCrmService implements CrmService {
     List<String> contactIds = crmContacts.stream().map(c -> c.id).filter(Objects::nonNull).toList();
     List<String> accountIds = crmContacts.stream().map(c -> c.account.id).filter(Objects::nonNull).toList();
 
-    String filter = communicationList.crmFilter;
+    String filter = communicationList.crmCampaignMemberFilter;
     if (Strings.isNullOrEmpty(filter)) {
       // Unless the org explicitly overrides it, attempt to narrow down the sheer number of campaigns
       // by limiting to IsActive ones by default.
