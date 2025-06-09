@@ -42,6 +42,7 @@ import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -70,7 +71,7 @@ public class CrmController {
   @Path("/contact")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
-  public Response getContact(
+  public Response getContacts(
           @QueryParam("keyword") String keywords,
           @QueryParam("email") String email,
           @QueryParam("phone") String phone,
@@ -86,26 +87,26 @@ public class CrmController {
 
     CrmService crmService = getCrmService(env, crmType);
 
-    Optional<CrmContact> contact = Optional.empty();
+    List<CrmContact> contacts = Collections.emptyList();
     if (!Strings.isNullOrEmpty(keywords)) {
       env.logJobInfo("searching keyword={}", keywords);
-      contact = crmService.searchContacts(ContactSearch.byKeywords(keywords)).getSingleResult();
+      contacts = crmService.searchContacts(ContactSearch.byKeywords(keywords)).getResultsFromAllFirstPages();
     } else if (!Strings.isNullOrEmpty(email)) {
       env.logJobInfo("searching email={}", email);
-      contact = crmService.searchContacts(ContactSearch.byEmail(email)).getSingleResult();
+      contacts = crmService.searchContacts(ContactSearch.byEmail(email)).getResultsFromAllFirstPages();
     } else if (!Strings.isNullOrEmpty(phone)) {
       env.logJobInfo("searching phone={}", phone);
-      contact = crmService.searchContacts(ContactSearch.byPhone(phone)).getSingleResult();
+      contacts = crmService.searchContacts(ContactSearch.byPhone(phone)).getResultsFromAllFirstPages();
     } else {
       env.logJobWarn("no search params provided");
     }
 
-    if (contact.isPresent()) {
-      env.logJobInfo("returning Contact {}", contact.get().id);
-      return Response.status(200).entity(contact.get()).build();
-    } else {
+    if (contacts.isEmpty()) {
       env.logJobInfo("Contact not found");
       return Response.status(404).build();
+    } else {
+      env.logJobInfo("returning Contacts {}", contacts.stream().map(c -> c.id).collect(Collectors.joining(", ")));
+      return Response.status(200).entity(contacts).build();
     }
   }
 
