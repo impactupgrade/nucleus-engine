@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2025 3River Development LLC, DBA Impact Upgrade. All rights reserved.
+ */
+
 package com.impactupgrade.nucleus.service.segment;
 
 import brevo.ApiException;
@@ -114,8 +118,8 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
   }
 
   protected void syncContacts(PagedResults.ResultSet<CrmContact> resultSet, EnvironmentConfig.CommunicationPlatform brevoConfig,
-                              EnvironmentConfig.CommunicationList communicationList, List<GetContactDetails> listMembers, Set<String> brevoEmails,
-                              BrevoClient brevoClient) {
+      EnvironmentConfig.CommunicationList communicationList, List<GetContactDetails> listMembers, Set<String> brevoEmails,
+      BrevoClient brevoClient) {
     List<CrmContact> contactsToUpsert = new ArrayList<>();
     List<CrmContact> contactsToArchive = new ArrayList<>();
 
@@ -204,9 +208,9 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     }
   }
 
-  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts, Map<String,
-      List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform brevoConfig,
-                                                   EnvironmentConfig.CommunicationList communicationList) throws Exception {
+  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts,
+      Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform brevoConfig,
+      EnvironmentConfig.CommunicationList communicationList) throws Exception {
     Map<String, Set<String>> activeTags = new HashMap<>();
     for (CrmContact crmContact : crmContacts) {
       Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id),
@@ -285,8 +289,13 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     }
   }
 
+  // Originally, we simply called syncContacts() and made use of existing functions. But that unfortunately
+  //  does things like download ALL contacts from the audiences. Instead, we copy and paste the process here,
+  //  stripping out the full sync and only pushing in the contact's new tags. We skip removing old tags --
+  //  instead, let the nightly job do that for everybody. This process is typically only needed when something
+  //  needs added, like a campaign tag to kick off a Journey in MC itself.
   protected void upsertContact(EnvironmentConfig.CommunicationPlatform brevoConfig,
-                               EnvironmentConfig.CommunicationList communicationList, CrmContact crmContact) throws Exception {
+      EnvironmentConfig.CommunicationList communicationList, CrmContact crmContact) throws Exception {
     BrevoClient brevoClient = env.brevoClient(brevoConfig);
 
     // transactional is always subscribed
@@ -296,9 +305,11 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
 
     try {
       Map<String, Object> customFields = getCustomFields(crmContact, brevoClient, brevoConfig, communicationList);
+      // Don't need the extra Map layer, but keeping it for now to reuse existing code.
       Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(List.of(crmContact), communicationList);
       Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), brevoConfig,
           communicationList);
+
       // run the actual contact upsert
       GetContactDetails getContactDetails = toGetContactDetails(brevoConfig, crmContact, customFields, tags, communicationList.groups);
       brevoClient.createContact(communicationList.id, getContactDetails);
@@ -310,7 +321,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
   }
 
   protected Map<String, Object> getCustomFields(CrmContact crmContact, BrevoClient brevoClient,
-                                                EnvironmentConfig.CommunicationPlatform brevoConfig, EnvironmentConfig.CommunicationList communicationList)
+      EnvironmentConfig.CommunicationPlatform brevoConfig, EnvironmentConfig.CommunicationList communicationList)
       throws Exception {
     Map<String, Object> customFieldMap = new HashMap<>();
 
@@ -321,11 +332,12 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
         attributeNames.add(attribute.getName());
       }
     }
-    // create tags attribute
+    // create tags attribute, if it doesn't already exist
     if (!attributeNames.contains(TAGS)) {
       brevoClient.createAttribute(TAGS, CreateAttribute.TypeEnum.TEXT);
       attributeNames.add(TAGS);
     }
+
     // create custom fields' attributes
     for (CustomField customField : customFields) {
       if (customField.value == null) {
@@ -363,7 +375,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
   }
 
   protected List<GetContactDetails> toGetContactDetails(EnvironmentConfig.CommunicationList communicationList, EnvironmentConfig.CommunicationPlatform brevoConfig, List<CrmContact> crmContacts,
-                                                        Map<String, Map<String, Object>> customFieldsMap, Map<String, Set<String>> activeTags) {
+      Map<String, Map<String, Object>> customFieldsMap, Map<String, Set<String>> activeTags) {
     return crmContacts.stream()
         .map(crmContact -> toGetContactDetails(brevoConfig, crmContact, customFieldsMap.get(crmContact.email), activeTags.get(crmContact.email), communicationList.groups))
         .collect(Collectors.toList());
@@ -375,36 +387,26 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     }
 
     GetContactDetails getContactDetails = new GetContactDetails();
-    // TODO: This isn't correct, but we'll need a way to pull the existing brevo contact ID? Or maybe it's never needed,
-    //  since updates use the email hash...
-//    getContactDetails.id = contact.id;
     getContactDetails.setEmail(crmContact.email);
     Properties attributes = new Properties();
     attributes.setProperty(FIRSTNAME, crmContact.firstName);
     attributes.setProperty(LASTNAME, crmContact.lastName);
+
     String tagsString = "";
     if (tags != null && !tags.isEmpty()) {
       tagsString = tags.stream().collect(Collectors.joining(", "));
     }
     attributes.setProperty(TAGS, tagsString);
 
-    getContactDetails.setAttributes(attributes);
-
     if (smsAllowed(brevoConfig, crmContact)) {
       attributes.setProperty(SMS, crmContact.phoneNumberForSMS());
     }
 
-    //TODO: how to in Brevo?
-//    List<String> groupIds = crmContact.emailGroups.stream().map(groupName -> getGroupIdFromName(groupName, groups)).collect(Collectors.toList());
-//    // TODO: Does this deselect what's no longer subscribed to in MC?
-//    MailchimpObject groupMap = new MailchimpObject();
-//    groupIds.forEach(id -> groupMap.mapping.put(id, true));
-//    mcContact.interests = groupMap;
+    getContactDetails.setAttributes(attributes);
 
     return getContactDetails;
   }
 
-  //TODO: remove?
   private boolean smsAllowed(EnvironmentConfig.CommunicationPlatform brevoConfig, CrmContact crmContact) {
     if (!brevoConfig.enableSms) {
       return false;

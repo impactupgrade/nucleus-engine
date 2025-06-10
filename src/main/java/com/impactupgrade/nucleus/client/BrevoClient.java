@@ -82,7 +82,7 @@ public class BrevoClient {
     List<GetContactDetails> allContacts = new ArrayList<>(toGetContactDetails(contacts));
 
     while (contacts.getCount() > allContacts.size()) {
-      offset = Long.valueOf(allContacts.size());
+      offset = (long) allContacts.size();
       env.logJobInfo("retrieving contacts (offset {} of total {})", offset, contacts.getCount());
       contacts = contactsApi.getContacts(CONTACTS_API_LIMIT.longValue(), offset, toDateString(modifiedSince), toDateString(createdSince), null, null, null);
       allContacts.addAll(toGetContactDetails(contacts));
@@ -102,7 +102,7 @@ public class BrevoClient {
     List<GetContactDetails> contacts = new ArrayList<>(toGetContactDetails(contactsFromList));
 
     while (contactsFromList.getCount() > contacts.size()) {
-      offset = Long.valueOf(contacts.size());
+      offset = (long) contacts.size();
       env.logJobInfo("retrieving list {} contacts (offset {} of total {})", listId, offset, contactsFromList.getCount());
       contactsFromList = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
       contacts.addAll(toGetContactDetails(contactsFromList));
@@ -148,11 +148,10 @@ public class BrevoClient {
 
   public void createAttribute(String name, CreateAttribute.TypeEnum type) throws ApiException {
     ContactsApi contactsApi = new ContactsApi();
-    String attributeName = name;
     CreateAttribute createAttribute = new CreateAttribute();
     createAttribute.setType(type);
     //TODO: specific attribute category?
-    contactsApi.createAttribute("normal", attributeName, createAttribute);
+    contactsApi.createAttribute("normal", name, createAttribute);
   }
 
   // Utils
