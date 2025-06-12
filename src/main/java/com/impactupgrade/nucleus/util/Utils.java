@@ -33,6 +33,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -425,5 +426,24 @@ public class Utils {
       phoneParts.add(phone.substring(6));
     }
     return phoneParts;
+  }
+
+  public static Long parseLong(String s) {
+    Long l = null;
+    try {
+      l = Long.parseLong(s);
+    } catch (NumberFormatException e) {
+      // ignore and return null
+    }
+    return l;
+  }
+
+  public static String toDateString(Calendar calendar, String dateTimeformat) {
+    if (calendar == null) {
+      return null;
+    }
+    Date date = calendar.getTime();
+    ZonedDateTime zdt = date.toInstant().atZone(ZoneId.of("UTC"));
+    return zdt.format(DateTimeFormatter.ofPattern(dateTimeformat));
   }
 }
