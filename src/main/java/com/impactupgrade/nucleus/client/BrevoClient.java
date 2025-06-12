@@ -19,21 +19,14 @@ import brevoModel.RequestContactImportJsonBody;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.impactupgrade.nucleus.util.Utils;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
 public class BrevoClient {
-
-  private static final Logger log = LoggerFactory.getLogger(BrevoClient.class);
 
   public static final String FIRSTNAME = "FIRSTNAME";
   public static final String LASTNAME = "LASTNAME";
@@ -43,7 +36,8 @@ public class BrevoClient {
   protected final ApiClient apiClient;
   protected final Environment env;
 
-  private static final Integer CONTACTS_API_LIMIT = 100;
+  private static final Integer CONTACTS_API_LIMIT = 1000;
+  private static final Integer CONTACTS_LIST_API_LIMIT = 500;
   private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -52,39 +46,25 @@ public class BrevoClient {
     this.apiClient = Configuration.getDefaultApiClient();
     ApiKeyAuth apiKey = (ApiKeyAuth) apiClient.getAuthentication("api-key");
     apiKey.setApiKey(brevoConfig.secretKey);
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //apiKey.setApiKeyPrefix("Token");
-
-    // Configure API key authorization: partner-key
-    //ApiKeyAuth partnerKey = (ApiKeyAuth) apiClient.getAuthentication("partner-key");
-    //partnerKey.setApiKey("YOUR PARTNER KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //partnerKey.setApiKeyPrefix("Token");
   }
 
-  public void createContact(String listId, GetContactDetails getContactDetails) throws ApiException {
-    Long id = parseLong(listId);
-    CreateContact createContact = new CreateContact();
+  public void createContact(String listId, CreateContact createContact) throws ApiException {
+    Long id = Utils.parseLong(listId);
     createContact.setListIds(List.of(id));
-    createContact.setEmail(getContactDetails.getEmail());
-    createContact.setAttributes(getContactDetails.getAttributes());
-    createContact.setEmailBlacklisted(false);
-    createContact.setSmsBlacklisted(false);
-    createContact.setUpdateEnabled(true); // to allow upsert
     ContactsApi api = new ContactsApi();
     api.createContact(createContact);
   }
 
-  public List<GetContactDetails> getContacts(Calendar modifiedSince, Calendar createdSince) throws ApiException {
+  public List<GetContactDetails> getContacts(Calendar modifiedSince, Calendar createdSince, List<Long> listIds) throws ApiException {
     Long offset = 0L;
     ContactsApi contactsApi = new ContactsApi();
-    GetContacts contacts = contactsApi.getContacts(CONTACTS_API_LIMIT.longValue(), offset, toDateString(modifiedSince), toDateString(createdSince), null, null, null);
+    GetContacts contacts = contactsApi.getContacts(CONTACTS_API_LIMIT.longValue(), offset, Utils.toDateString(modifiedSince, DATE_TIME_FORMAT), Utils.toDateString(createdSince, DATE_TIME_FORMAT), null, null, listIds);
     List<GetContactDetails> allContacts = new ArrayList<>(toGetContactDetails(contacts));
 
     while (contacts.getCount() > allContacts.size()) {
       offset = (long) allContacts.size();
       env.logJobInfo("retrieving contacts (offset {} of total {})", offset, contacts.getCount());
-      contacts = contactsApi.getContacts(CONTACTS_API_LIMIT.longValue(), offset, toDateString(modifiedSince), toDateString(createdSince), null, null, null);
+      contacts = contactsApi.getContacts(CONTACTS_API_LIMIT.longValue(), offset, Utils.toDateString(modifiedSince, DATE_TIME_FORMAT), null, null, null, null);
       allContacts.addAll(toGetContactDetails(contacts));
     }
     return allContacts;
@@ -95,44 +75,41 @@ public class BrevoClient {
   }
 
   public List<GetContactDetails> getContactsFromList(String listId, Calendar modifiedSince) throws ApiException {
-    Long id = parseLong(listId);
+    Long id = Utils.parseLong(listId);
     Long offset = 0L;
     ContactsApi contactsApi = new ContactsApi();
-    GetContacts contactsFromList = contactsApi.getContactsFromList(id, toDateString(modifiedSince), CONTACTS_API_LIMIT.longValue(), offset, null);
+    GetContacts contactsFromList = contactsApi.getContactsFromList(id, Utils.toDateString(modifiedSince, DATE_TIME_FORMAT), CONTACTS_LIST_API_LIMIT.longValue(), offset, null);
     List<GetContactDetails> contacts = new ArrayList<>(toGetContactDetails(contactsFromList));
 
     while (contactsFromList.getCount() > contacts.size()) {
       offset = (long) contacts.size();
       env.logJobInfo("retrieving list {} contacts (offset {} of total {})", listId, offset, contactsFromList.getCount());
-      contactsFromList = contactsApi.getContactsFromList(id, null, CONTACTS_API_LIMIT.longValue(), offset, null);
+      contactsFromList = contactsApi.getContactsFromList(id, null, CONTACTS_LIST_API_LIMIT.longValue(), offset, null);
       contacts.addAll(toGetContactDetails(contactsFromList));
     }
     return contacts;
   }
 
-  public String importContacts(String listId, List<GetContactDetails> contactDetails) throws ApiException {
-    Long id = parseLong(listId);
-    List<RequestContactImportJsonBody> jsonBody = contactDetails.stream().map(this::toJsonBody).toList();
+  public String importContacts(String listId, List<CreateContact> createContacts) throws ApiException {
+    Long id = Utils.parseLong(listId);
+    List<RequestContactImportJsonBody> jsonBody = createContacts.stream().map(this::toJsonBody).toList();
 
     RequestContactImport requestContactImport = new RequestContactImport();
     requestContactImport.setListIds(List.of(id));
     requestContactImport.setJsonBody(jsonBody);
 
-    requestContactImport.setEmailBlacklist(false);
-    requestContactImport.setSmsBlacklist(false);
     requestContactImport.setUpdateExistingContacts(true);
-    requestContactImport.setEmptyContactsAttributes(true);
 
     ContactsApi contactsApi = new ContactsApi();
     CreatedProcessId createdProcessId = contactsApi.importContacts(requestContactImport);
     return createdProcessId.getProcessId().toString();
   }
 
-  public String deleteContacts(String listId, Set<String> contactEmails) throws ApiException {
+  public String removeContactsFromList(String listId, Set<String> contactEmails) throws ApiException {
     if (contactEmails.isEmpty()) {
       return null;
     }
-    Long id = parseLong(listId);
+    Long id = Utils.parseLong(listId);
     RemoveContactFromList removeContactFromList = new RemoveContactFromList();
     removeContactFromList.setEmails(contactEmails.stream().toList());
     ContactsApi contactsApi = new ContactsApi();
@@ -161,29 +138,10 @@ public class BrevoClient {
         .toList();
   }
 
-  private RequestContactImportJsonBody toJsonBody(GetContactDetails contact) {
+  private RequestContactImportJsonBody toJsonBody(CreateContact createContact) {
     RequestContactImportJsonBody jsonBody = new RequestContactImportJsonBody();
-    jsonBody.setEmail(contact.getEmail());
-    jsonBody.setAttributes(contact.getAttributes());
+    jsonBody.setEmail(createContact.getEmail());
+    jsonBody.setAttributes(createContact.getAttributes());
     return jsonBody;
-  }
-
-  private Long parseLong(String s) {
-    Long l = null;
-    try {
-      l = Long.parseLong(s);
-    } catch (NumberFormatException e) {
-      log.error("Failed to parse long from string '" + s + "'!");
-    }
-    return l;
-  }
-
-  private String toDateString(Calendar calendar) {
-    if (calendar == null) {
-      return null;
-    }
-    Date date = calendar.getTime();
-    ZonedDateTime zdt = date.toInstant().atZone(ZoneId.of("UTC"));
-    return zdt.format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT));
   }
 }
