@@ -48,7 +48,7 @@ public class BrevoClient {
     apiKey.setApiKey(brevoConfig.secretKey);
   }
 
-  public void createContact(String listId, CreateContact createContact) throws ApiException {
+  public void createContact(CreateContact createContact, String listId) throws ApiException {
     Long id = Utils.parseLong(listId);
     createContact.setListIds(List.of(id));
     ContactsApi api = new ContactsApi();
@@ -71,10 +71,10 @@ public class BrevoClient {
   }
 
   public List<GetContactDetails> getContactsFromList(String listId) throws ApiException {
-    return getContactsFromList(listId, null);
+    return getContactsFromList(null, listId);
   }
 
-  public List<GetContactDetails> getContactsFromList(String listId, Calendar modifiedSince) throws ApiException {
+  public List<GetContactDetails> getContactsFromList(Calendar modifiedSince, String listId) throws ApiException {
     Long id = Utils.parseLong(listId);
     Long offset = 0L;
     ContactsApi contactsApi = new ContactsApi();
@@ -90,7 +90,7 @@ public class BrevoClient {
     return contacts;
   }
 
-  public String importContacts(String listId, List<CreateContact> createContacts) throws ApiException {
+  public String importContacts(List<CreateContact> createContacts, String listId) throws ApiException {
     Long id = Utils.parseLong(listId);
     List<RequestContactImportJsonBody> jsonBody = createContacts.stream().map(this::toJsonBody).toList();
 
@@ -105,7 +105,11 @@ public class BrevoClient {
     return createdProcessId.getProcessId().toString();
   }
 
-  public String removeContactsFromList(String listId, Set<String> contactEmails) throws ApiException {
+  // TODO: This simply removes them from a list (which is a different concept than MC audiences), allowing their contact
+  //  to remain subscribed within the account. This either needs to mark them as unsubscribed (setEmailBlacklisted?)
+  //  or, better yet, archive them if the API allows it.
+  // TODO: But we should probably remove them from the list too?
+  public String removeContactsFromList(Set<String> contactEmails, String listId) throws ApiException {
     if (contactEmails.isEmpty()) {
       return null;
     }
