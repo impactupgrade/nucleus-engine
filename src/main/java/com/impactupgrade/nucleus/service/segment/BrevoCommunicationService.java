@@ -60,13 +60,12 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
 
         BrevoClient brevoClient = env.brevoClient(brevoConfig);
         List<GetContactDetails> listContacts = brevoClient.getContactsFromList(communicationList.id);
-
         Set<String> brevoEmails = listContacts.stream().map(contact -> contact.getEmail().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
 
         PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
         for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
           do {
-            syncContacts(resultSet, brevoConfig, communicationList, listContacts, brevoEmails, brevoClient);
+            syncContacts(resultSet, brevoConfig, communicationList, brevoEmails, brevoClient);
             if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
               // next page
               resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
@@ -81,7 +80,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
           do {
             PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
             fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
-            syncContacts(fauxContacts, brevoConfig, communicationList, listContacts, brevoEmails, brevoClient);
+            syncContacts(fauxContacts, brevoConfig, communicationList, brevoEmails, brevoClient);
             if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
               // next page
               resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
@@ -120,8 +119,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
   }
 
   protected void syncContacts(PagedResults.ResultSet<CrmContact> resultSet, EnvironmentConfig.CommunicationPlatform brevoConfig,
-      EnvironmentConfig.CommunicationList communicationList, List<GetContactDetails> listMembers, Set<String> brevoEmails,
-      BrevoClient brevoClient) {
+      EnvironmentConfig.CommunicationList communicationList, Set<String> brevoEmails, BrevoClient brevoClient) {
     List<CrmContact> contactsToUpsert = new ArrayList<>();
     List<CrmContact> contactsToArchive = new ArrayList<>();
 
@@ -146,18 +144,18 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
 
       // run the actual contact upsert
       List<CreateContact> upsertMemberInfos = toCreateContacts(communicationList, brevoConfig, contactsToUpsert, contactsCustomFields, activeTags);
-      brevoClient.importContacts(communicationList.id, upsertMemberInfos);
+      brevoClient.importContacts(upsertMemberInfos, communicationList.id);
 
-      // archive mc emails that are marked as unsubscribed in the CRM
+      // archive brevo emails that are marked as unsubscribed in the CRM
       Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-      // but only if they actually exist in MC
+      // but only if they actually exist in brevo
       emailsToArchive.retainAll(brevoEmails);
 
-      brevoClient.removeContactsFromList(communicationList.id, emailsToArchive);
+      brevoClient.removeContactsFromList(emailsToArchive, communicationList.id);
     } catch (ApiException e) {
-      env.logJobWarn("Brevo syncContacts failed (code/response body): {}/{}", e.getCode(), e.getResponseBody());
+      env.logJobError("Brevo syncContacts failed (code/response body): {}/{}", e.getCode(), e.getResponseBody());
     } catch (Exception e) {
-      env.logJobWarn("Brevo syncContacts failed", e);
+      env.logJobError("Brevo syncContacts failed", e);
     }
   }
 
@@ -167,7 +165,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
       for (EnvironmentConfig.CommunicationList communicationList : brevoConfig.lists) {
         BrevoClient brevoClient = env.brevoClient(brevoConfig);
         List<GetContactDetails> listMembers = brevoClient.getContactsFromList(communicationList.id);
-        // get all mc email addresses in the entire audience
+        // get all brevo email addresses in the entire audience
         Set<String> emailsToArchive = listMembers.stream().map(memberInfo -> memberInfo.getEmail().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
 
         // remove CRM contacts
@@ -205,7 +203,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
         }
 
         env.logJobInfo("massArchiving {} listMembers in Brevo: {}", emailsToArchive.size(), String.join(", ", emailsToArchive));
-        brevoClient.removeContactsFromList(communicationList.id, emailsToArchive);
+        brevoClient.removeContactsFromList(emailsToArchive, communicationList.id);
       }
     }
   }
@@ -227,7 +225,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     for (EnvironmentConfig.CommunicationPlatform brevoConfig : env.getConfig().brevo) {
       BrevoClient brevoClient = env.brevoClient(brevoConfig);
       for (EnvironmentConfig.CommunicationList communicationList : brevoConfig.lists) {
-        List<GetContactDetails> listContacts = brevoClient.getContactsFromList(communicationList.id, lastSync);
+        List<GetContactDetails> listContacts = brevoClient.getContactsFromList(lastSync, communicationList.id);
         List<GetContactDetails> unsubscribed = listContacts.stream()
             .filter(c -> unsubscribedFromList(c, communicationList.id))
             .toList();
@@ -296,11 +294,6 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     }
   }
 
-  // Originally, we simply called syncContacts() and made use of existing functions. But that unfortunately
-  //  does things like download ALL contacts from the audiences. Instead, we copy and paste the process here,
-  //  stripping out the full sync and only pushing in the contact's new tags. We skip removing old tags --
-  //  instead, let the nightly job do that for everybody. This process is typically only needed when something
-  //  needs added, like a campaign tag to kick off a Journey in MC itself.
   protected void upsertContact(EnvironmentConfig.CommunicationPlatform brevoConfig,
       EnvironmentConfig.CommunicationList communicationList, CrmContact crmContact) throws Exception {
     BrevoClient brevoClient = env.brevoClient(brevoConfig);
@@ -319,11 +312,11 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
 
       // run the actual contact upsert
       CreateContact createContact = toCreateContact(brevoConfig, crmContact, customFields, tags, communicationList.groups);
-      brevoClient.createContact(communicationList.id, createContact);
+      brevoClient.createContact(createContact, communicationList.id);
     } catch (ApiException e) {
-      env.logJobWarn("Brevo upsertContact failed: {}", e);
+      env.logJobError("Brevo upsertContact failed: {}", e);
     } catch (Exception e) {
-      env.logJobWarn("Brevo upsertContact failed", e);
+      env.logJobError("Brevo upsertContact failed", e);
     }
   }
 
@@ -397,8 +390,12 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     createContact.setEmail(crmContact.email);
 
     Properties attributes = new Properties();
-    attributes.setProperty(FIRSTNAME, crmContact.firstName);
-    attributes.setProperty(LASTNAME, crmContact.lastName);
+    if (!Strings.isNullOrEmpty(crmContact.firstName)) {
+      attributes.setProperty(FIRSTNAME, crmContact.firstName);
+    }
+    if (!Strings.isNullOrEmpty(crmContact.lastName)) {
+      attributes.setProperty(LASTNAME, crmContact.lastName);
+    }
 
     String tagsString = "";
     if (tags != null && !tags.isEmpty()) {
@@ -406,12 +403,16 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     }
     attributes.setProperty(TAGS, tagsString);
 
-    if (smsAllowed(brevoConfig, crmContact)) {
-      createContact.setSmsBlacklisted(false);
-      attributes.setProperty(SMS, crmContact.phoneNumberForSMS());
-    } else {
-      createContact.setSmsBlacklisted(true);
+    // don't blacklist anyone if sms is not actually enabled
+    if (brevoConfig.enableSms) {
+      if (smsAllowed(brevoConfig, crmContact)) {
+        createContact.setSmsBlacklisted(false);
+        attributes.setProperty(SMS, crmContact.phoneNumberForSMS());
+      } else {
+        createContact.setSmsBlacklisted(true);
+      }
     }
+
     createContact.setAttributes(attributes);
 
     createContact.setEmailBlacklisted(!crmContact.canReceiveEmail());
