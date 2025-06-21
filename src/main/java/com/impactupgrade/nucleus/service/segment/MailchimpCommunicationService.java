@@ -121,6 +121,10 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   protected void syncContacts(PagedResults.ResultSet<CrmContact> resultSet, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
       EnvironmentConfig.CommunicationList communicationList, List<MemberInfo> listMembers, Set<String> mcEmails,
       MailchimpClient mailchimpClient) {
+    if (resultSet.getRecords().isEmpty()) {
+      return;
+    }
+
     List<CrmContact> contactsToUpsert = new ArrayList<>();
     List<CrmContact> contactsToArchive = new ArrayList<>();
 
