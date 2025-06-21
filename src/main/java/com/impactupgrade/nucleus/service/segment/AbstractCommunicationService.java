@@ -178,6 +178,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       }
     }
 
+    // TODO: This should be a field. And maybe call it account_recordtype, to not confuse it with the Account.Type field.
     if (!Strings.isNullOrEmpty(crmContact.account.recordTypeName)) {
       tags.add("account_type_" + Utils.toSlug(crmContact.account.recordTypeName));
     }

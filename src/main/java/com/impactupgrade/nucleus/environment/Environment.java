@@ -5,6 +5,7 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.google.common.base.Strings;
+import com.impactupgrade.nucleus.client.BrevoClient;
 import com.impactupgrade.nucleus.client.EventBriteClient;
 import com.impactupgrade.nucleus.client.FactsClient;
 import com.impactupgrade.nucleus.client.MailchimpClient;
@@ -238,8 +239,10 @@ public class Environment {
 
   // vendor clients
 
+  public BrevoClient brevoClient(EnvironmentConfig.CommunicationPlatform brevoConfig) { return new BrevoClient(brevoConfig, this); }
   public EventBriteClient eventBriteClient() { return new EventBriteClient(this); }
   public FactsClient factsClient() { return new FactsClient(this); }
+  public MailchimpClient mailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig) { return new MailchimpClient(mailchimpConfig, this); }
   public SfdcClient sfdcClient() { return new SfdcClient(this); }
   public SfdcClient sfdcClient(String username, String password, boolean isSandbox) { return new SfdcClient(this, username, password, isSandbox); }
   public SfdcBulkClient sfdcBulkClient() { return new SfdcBulkClient(this); }
@@ -247,7 +250,6 @@ public class Environment {
   public StripeClient stripeClient() { return new StripeClient(this); }
   public TwilioClient twilioClient() { return new TwilioClient(this); }
   public VirtuousClient virtuousClient() { return new VirtuousClient(this); }
-  public MailchimpClient mailchimpClient(EnvironmentConfig.CommunicationPlatform mailchimpConfig) { return new MailchimpClient(mailchimpConfig, this); }
 
   // job logging services
 

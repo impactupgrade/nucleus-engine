@@ -1,3 +1,4 @@
+com.impactupgrade.nucleus.service.segment.BrevoCommunicationService
 com.impactupgrade.nucleus.service.segment.ConstantContactCommunicationService
 com.impactupgrade.nucleus.service.segment.MailchimpCommunicationService
 com.impactupgrade.nucleus.service.segment.MinistryByTextCommunicationService
