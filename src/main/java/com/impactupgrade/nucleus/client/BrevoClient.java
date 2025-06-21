@@ -17,6 +17,7 @@ import brevoModel.RemoveContactFromList;
 import brevoModel.RequestContactImport;
 import brevoModel.RequestContactImportJsonBody;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.util.Utils;
@@ -91,12 +92,15 @@ public class BrevoClient {
   }
 
   public String importContacts(List<CreateContact> createContacts, String listId) throws ApiException {
-    Long id = Utils.parseLong(listId);
     List<RequestContactImportJsonBody> jsonBody = createContacts.stream().map(this::toJsonBody).toList();
 
     RequestContactImport requestContactImport = new RequestContactImport();
-    requestContactImport.setListIds(List.of(id));
     requestContactImport.setJsonBody(jsonBody);
+
+    if (!Strings.isNullOrEmpty(listId)) {
+      Long id = Utils.parseLong(listId);
+      requestContactImport.setListIds(List.of(id));
+    }
 
     requestContactImport.setUpdateExistingContacts(true);
 
@@ -105,7 +109,7 @@ public class BrevoClient {
     return createdProcessId.getProcessId().toString();
   }
 
-  public String setEmailBlacklisted(Set<String> emails, String listId) throws ApiException {
+  public String setEmailBlacklisted(Set<String> emails) throws ApiException {
     List<CreateContact> createContacts = emails.stream()
         .map(email -> {
           CreateContact createContact = new CreateContact();
@@ -113,13 +117,9 @@ public class BrevoClient {
           createContact.setEmailBlacklisted(true);
           return createContact;
         }).toList();
-    return importContacts(createContacts, listId);
+    return importContacts(createContacts, null);
   }
 
-  // TODO: This simply removes them from a list (which is a different concept than MC audiences), allowing their contact
-  //  to remain subscribed within the account. This either needs to mark them as unsubscribed (setEmailBlacklisted?)
-  //  or, better yet, archive them if the API allows it.
-  // TODO: But we should probably remove them from the list too?
   public String removeContactsFromList(Set<String> contactEmails, String listId) throws ApiException {
     if (contactEmails.isEmpty()) {
       return null;
