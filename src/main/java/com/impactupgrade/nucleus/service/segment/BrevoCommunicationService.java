@@ -203,7 +203,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
         }
 
         env.logJobInfo("Setting 'EmailBlacklisted' for {} listMembers in Brevo: {}", emailsToArchive.size(), String.join(", ", emailsToArchive));
-        brevoClient.setEmailBlacklisted(emailsToArchive, communicationList.id);
+        brevoClient.setEmailBlacklisted(emailsToArchive);
         brevoClient.removeContactsFromList(emailsToArchive, communicationList.id);
       }
     }
