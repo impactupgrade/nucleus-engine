@@ -92,6 +92,10 @@ public class BrevoClient {
   }
 
   public String importContacts(List<CreateContact> createContacts, String listId) throws ApiException {
+    if (createContacts.isEmpty()) {
+      return null;
+    }
+
     List<RequestContactImportJsonBody> jsonBody = createContacts.stream().map(this::toJsonBody).toList();
 
     RequestContactImport requestContactImport = new RequestContactImport();
@@ -110,6 +114,10 @@ public class BrevoClient {
   }
 
   public String setEmailBlacklisted(Set<String> emails) throws ApiException {
+    if (emails.isEmpty()) {
+      return null;
+    }
+
     List<CreateContact> createContacts = emails.stream()
         .map(email -> {
           CreateContact createContact = new CreateContact();
@@ -124,6 +132,7 @@ public class BrevoClient {
     if (contactEmails.isEmpty()) {
       return null;
     }
+
     Long id = Utils.parseLong(listId);
     RemoveContactFromList removeContactFromList = new RemoveContactFromList();
     removeContactFromList.setEmails(contactEmails.stream().toList());

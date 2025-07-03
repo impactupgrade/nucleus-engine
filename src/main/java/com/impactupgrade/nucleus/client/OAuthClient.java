@@ -10,6 +10,8 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.entity.Organization;
 import com.impactupgrade.nucleus.environment.Environment;
@@ -22,7 +24,6 @@ import org.json.JSONObject;
 
 import javax.ws.rs.core.Form;
 import java.time.Instant;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +34,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
 public abstract class OAuthClient extends DBConfiguredClient {
 
   private static final Logger log = LogManager.getLogger(OAuthClient.class);
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   protected final String name;
 
@@ -58,11 +60,15 @@ public abstract class OAuthClient extends DBConfiguredClient {
       JSONObject clientConfigJson = getClientConfigJson(envJson);
 
       clientConfigJson.put("accessToken", oAuthContext.accessToken());
-      clientConfigJson.put("expiresAt", oAuthContext.expiresAt() != null ? oAuthContext.expiresAt() : null);
+      clientConfigJson.put("expiresAt", oAuthContext.expiresAt() != null ? oAuthContext.expiresAt().getEpochSecond() : null);
       clientConfigJson.put("refreshToken", oAuthContext.refreshToken());
 
       org.setEnvironmentJson(envJson);
       organizationDao.update(org);
+
+      // Overwrite the current Environment with the new tokens so that additional uses within this same job
+      // have access to them.
+      env.getConfig().addOtherJsonString(org.getEnvironment());
     }
   }
 
@@ -79,7 +85,7 @@ public abstract class OAuthClient extends DBConfiguredClient {
     return HttpClient.HeaderBuilder.builder().authBearerToken(oAuthContext.accessToken());
   }
 
-  protected static abstract class OAuthContext {
+  public static abstract class OAuthContext {
 
     protected Tokens tokens;
     protected final String tokenUrl;
@@ -91,7 +97,7 @@ public abstract class OAuthClient extends DBConfiguredClient {
     protected Map<String, String> refreshTokensAdditionalParams; // if any
 
     public OAuthContext(EnvironmentConfig.Platform platform, String tokenUrl, boolean enableRefresh) {
-      Date expiresAtDate = platform.expiresAt != null ? Date.from(Instant.ofEpochSecond(platform.expiresAt)) : null;
+      Instant expiresAtDate = platform.expiresAt != null ? Instant.ofEpochSecond(platform.expiresAt) : null;
       this.tokens = new Tokens(platform.accessToken, expiresAtDate, platform.refreshToken);
       this.tokenUrl = tokenUrl;
       this.enableRefresh = enableRefresh;
@@ -99,7 +105,7 @@ public abstract class OAuthClient extends DBConfiguredClient {
 
     public OAuthContext refresh() {
       if (tokens.isValid()) {
-        log.info("access token is still valid - returning as-is...");
+//        log.info("access token is still valid - returning as-is...");
         return this;
       }
 
@@ -112,15 +118,15 @@ public abstract class OAuthClient extends DBConfiguredClient {
       return this;
     }
 
-    protected String accessToken() {
+    public String accessToken() {
       return tokens != null ? tokens.accessToken : null;
     }
 
-    protected Date expiresAt() {
+    public Instant expiresAt() {
       return tokens != null ? tokens.expiresAt : null;
     }
 
-    protected String refreshToken() {
+    public String refreshToken() {
       return tokens != null ? tokens.refreshToken : null;
     }
 
@@ -226,18 +232,22 @@ public abstract class OAuthClient extends DBConfiguredClient {
     Form form = new Form();
     params.forEach((k, v) -> form.param(k, v));
 
-    return post(url, form, APPLICATION_FORM_URLENCODED, headerBuilder, TokenResponse.class);
+    String response = post(url, form, APPLICATION_FORM_URLENCODED, headerBuilder, String.class);
+    try {
+      return objectMapper.readValue(response, TokenResponse.class);
+    } catch (JsonProcessingException e) {
+      return null;
+    }
   }
 
   private static Tokens toTokens(TokenResponse tokenResponse) {
     if (tokenResponse == null) {
       return null;
     }
-    Date expiresAt = null;
+    Instant expiresAt = null;
 
     if (tokenResponse.expiresInSeconds != null) {
-      Instant expires = Instant.now().plusSeconds(tokenResponse.expiresInSeconds);
-      expiresAt = Date.from(expires);
+      expiresAt = Instant.now().plusSeconds(tokenResponse.expiresInSeconds);
     }
 
     if (expiresAt == null) {
@@ -246,14 +256,14 @@ public abstract class OAuthClient extends DBConfiguredClient {
     return new Tokens(tokenResponse.accessToken, expiresAt, tokenResponse.refreshToken);
   }
 
-  private static Date getExpiresAt(String accessToken) {
+  private static Instant getExpiresAt(String accessToken) {
     if (Strings.isNullOrEmpty(accessToken)) {
       return null;
     }
-    Date expiresAt = null;
+    Instant expiresAt = null;
     try {
       DecodedJWT decodedJWT = JWT.decode(accessToken);
-      expiresAt = decodedJWT.getExpiresAt();
+      expiresAt = decodedJWT.getExpiresAt().toInstant();
     } catch (JWTDecodeException e) {
       log.warn("failed to decode access token! {}", e.getMessage());
     }
@@ -262,10 +272,10 @@ public abstract class OAuthClient extends DBConfiguredClient {
 
   private static class Tokens {
     public String accessToken;
-    public Date expiresAt;
+    public Instant expiresAt;
     public String refreshToken;
 
-    public Tokens(String accessToken, Date expiresAt, String refreshToken) {
+    public Tokens(String accessToken, Instant expiresAt, String refreshToken) {
       this.accessToken = accessToken;
       this.expiresAt = expiresAt;
       this.refreshToken = refreshToken;
@@ -274,7 +284,7 @@ public abstract class OAuthClient extends DBConfiguredClient {
     public boolean isValid() {
       return !Strings.isNullOrEmpty(accessToken)
           && expiresAt != null
-          && expiresAt.after(new Date());
+          && expiresAt.isAfter(Instant.now());
     }
   }
 

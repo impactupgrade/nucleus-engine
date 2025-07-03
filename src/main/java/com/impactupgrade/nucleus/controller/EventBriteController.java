@@ -31,6 +31,7 @@ import javax.ws.rs.core.Response;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Path("/eventbrite")
 public class EventBriteController {
@@ -86,7 +87,7 @@ public class EventBriteController {
 
         CrmContact contact = toCrmContact(attendee);
         // LIFO
-        CrmContact existingContact = crmService.getContactsByEmails(List.of(contact.email))
+        CrmContact existingContact = crmService.getContactsByEmails(Set.of(contact.email))
             .stream().reduce((first, second) -> second).orElse(null);
         // Unlikely that they wouldn't already exist, but keep this here as a sanity check.
         upsertCrmContact(contact, Optional.ofNullable(existingContact), crmService);
@@ -178,7 +179,7 @@ public class EventBriteController {
     // TODO: which attendee/contact to use for donation?
     // TODO: 1 donation per 1 attendee?
     // LIFO
-    Optional<CrmContact> crmContact = crmService.getContactsByEmails(List.of(attendees.get(0).profile.email))
+    Optional<CrmContact> crmContact = crmService.getContactsByEmails(Set.of(attendees.get(0).profile.email))
         .stream().reduce((first, second) -> second);
     if (crmContact.isEmpty()) {
       env.logJobInfo("skipping order with missing CRM contact");

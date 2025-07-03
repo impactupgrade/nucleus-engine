@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * For DS clients, allow Nucleus tasks like Manage Recurring Donation to work without a CRM.
@@ -44,7 +45,7 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  public List<CrmAccount> getAccountsByEmails(Set<String> emails) throws Exception {
     return Collections.emptyList();
   }
 

@@ -12,22 +12,18 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.MailchimpClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PagedResults;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,295 +48,80 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   }
 
   @Override
-  public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
-        // clear the cache, since fields differ between audiences
-        mergeFieldsNameToTag.clear();
-
-        MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
-        List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
-        Set<String> mcEmails = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-
-        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-          do {
-            syncContacts(resultSet, mailchimpConfig, communicationList, listMembers, mcEmails, mailchimpClient);
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
-
-        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
-          do {
-            PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
-            fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
-            syncContacts(fauxContacts, mailchimpConfig, communicationList, listMembers, mcEmails, mailchimpClient);
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
-      }
-    }
+  protected List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs() {
+    return env.getConfig().mailchimp;
   }
 
-  protected CrmContact asCrmContact(CrmAccount crmAccount) {
-    CrmContact crmContact = new CrmContact();
-    crmContact.account = crmAccount;
-    crmContact.crmRawObject = crmAccount.crmRawObject;
-    crmContact.email = crmAccount.email;
-    crmContact.emailBounced = crmAccount.emailBounced;
-    crmContact.emailOptIn = crmAccount.emailOptIn;
-    crmContact.emailOptOut = crmAccount.emailOptOut;
-    crmContact.firstName = crmAccount.name;
-    crmContact.mailingAddress = crmAccount.mailingAddress;
-    if (crmContact.mailingAddress == null || Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
-      crmContact.mailingAddress = crmAccount.billingAddress;
-    }
-    // TODO
-//    crmContact.firstDonationDate = ;
-//    crmContact.lastDonationDate = ;
-//    crmContact.largestDonationAmount = ;
-//    crmContact.totalDonationAmount = ;
-//    crmContact.numDonations = ;
-//    crmContact.totalDonationAmountYtd = ;
-//    crmContact.numDonationsYtd = ;
-//    crmContact.ownerName = ;
-    return crmContact;
-  }
-
-  protected void syncContacts(PagedResults.ResultSet<CrmContact> resultSet, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
-      EnvironmentConfig.CommunicationList communicationList, List<MemberInfo> listMembers, Set<String> mcEmails,
-      MailchimpClient mailchimpClient) {
-    if (resultSet.getRecords().isEmpty()) {
-      return;
-    }
-
-    List<CrmContact> contactsToUpsert = new ArrayList<>();
-    List<CrmContact> contactsToArchive = new ArrayList<>();
-
-    List<CrmContact> crmContacts = resultSet.getRecords();
-
-    // transactional is always subscribed
-    if (communicationList.type == EnvironmentConfig.CommunicationListType.TRANSACTIONAL) {
-      contactsToUpsert.addAll(crmContacts);
-    } else {
-      crmContacts.forEach(crmContact -> (crmContact.canReceiveEmail() ? contactsToUpsert : contactsToArchive).add(crmContact));
-    }
+  @Override
+  protected ExistingContacts getExistingContacts(EnvironmentConfig.CommunicationPlatform config,
+      EnvironmentConfig.CommunicationList list) {
+    MailchimpClient mailchimpClient = env.mailchimpClient(config);
+    ExistingContacts existingContacts = new ExistingContacts();
 
     try {
-      Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
-      for (CrmContact crmContact : contactsToUpsert) {
-        Map<String, Object> customFieldMap = getCustomFields(crmContact, mailchimpClient, mailchimpConfig, communicationList);
-        contactsCustomFields.put(crmContact.email, customFieldMap);
+      List<MemberInfo> listMembers = mailchimpClient.getListMembers(list.id);
+      Map<String, Set<String>> contactsTags = mailchimpClient.getContactsTags(listMembers);
+
+      for (MemberInfo memberInfo : listMembers) {
+        String email = memberInfo.email_address.toLowerCase(Locale.ROOT);
+        existingContacts.emailsToIds.put(email, email);
+        existingContacts.emailsToTags.put(email, contactsTags.getOrDefault(email, new HashSet<>()));
       }
-      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
-      Map<String, Set<String>> tags = mailchimpClient.getContactsTags(listMembers);
-      Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, mailchimpConfig,
-          communicationList);
-
-      // run the actual contact upserts
-      List<MemberInfo> upsertMemberInfos = toMcMemberInfos(communicationList, mailchimpConfig, contactsToUpsert, contactsCustomFields);
-      String upsertBatchId = mailchimpClient.upsertContactsBatch(communicationList.id, upsertMemberInfos);
-      mailchimpClient.runBatchOperations(mailchimpConfig, upsertBatchId, 0);
-
-      // update all contacts' tags
-      List<MailchimpClient.EmailContact> emailContacts = contactsToUpsert.stream()
-          .map(crmContact -> new MailchimpClient.EmailContact(crmContact.email, activeTags.get(crmContact.email), tags.get(crmContact.email)))
-          .collect(Collectors.toList());
-      String tagsBatchId = updateTagsBatch(communicationList.id, emailContacts, mailchimpClient, mailchimpConfig);
-      mailchimpClient.runBatchOperations(mailchimpConfig, tagsBatchId, 0);
-
-      // archive mc emails that are marked as unsubscribed in the CRM
-      Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-      // but only if they actually exist in MC
-      emailsToArchive.retainAll(mcEmails);
-
-      String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
-      mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
-    } catch (MailchimpException e) {
-      env.logJobWarn("Mailchimp syncContacts failed: {}", mailchimpClient.exceptionToString(e));
     } catch (Exception e) {
-      env.logJobWarn("Mailchimp syncContacts failed", e);
+      env.logJobError("Failed to get existing contacts from Mailchimp: {}", e.getMessage());
     }
+
+    return existingContacts;
   }
 
   @Override
-  public void massArchive() throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
-        MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
-        List<MemberInfo> listMembers = mailchimpClient.getListMembers(communicationList.id);
-        // get all mc email addresses in the entire audience
-        Set<String> emailsToArchive = listMembers.stream().map(memberInfo -> memberInfo.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+  protected void executeBatchUpsert(List<CrmContact> contacts,
+      Map<String, Map<String, Object>> customFields, Map<String, Set<String>> tags,
+      ExistingContacts existingContacts, EnvironmentConfig.CommunicationPlatform config,
+      EnvironmentConfig.CommunicationList list) throws Exception {
+    MailchimpClient mailchimpClient = env.mailchimpClient(config);
 
-        // remove CRM contacts
-        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(null, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-          do {
-            for (CrmContact crmContact : resultSet.getRecords()) {
-              if (crmContact.canReceiveEmail()) {
-                emailsToArchive.remove(crmContact.email.toLowerCase(Locale.ROOT));
-              }
-            }
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
-        // remove CRM accounts
-        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(null, communicationList);
-        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
-          do {
-            for (CrmAccount crmAccount : resultSet.getRecords()) {
-              if (crmAccount.canReceiveEmail()) {
-                emailsToArchive.remove(crmAccount.email.toLowerCase(Locale.ROOT));
-              }
-            }
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
+    try {
+      // Run the actual contact upserts
+      List<MemberInfo> upsertMemberInfos = toMcMemberInfos(list, config, contacts, customFields);
+      String upsertBatchId = mailchimpClient.upsertContactsBatch(list.id, upsertMemberInfos);
+      mailchimpClient.runBatchOperations(config, upsertBatchId, 0);
 
-        env.logJobInfo("massArchiving {} contacts in MC: {}", emailsToArchive.size(), String.join(", ", emailsToArchive));
-        String archiveBatchId = mailchimpClient.archiveContactsBatch(communicationList.id, emailsToArchive);
-        mailchimpClient.runBatchOperations(mailchimpConfig, archiveBatchId, 0);
-      }
+      // Update all contacts' tags
+      List<MailchimpClient.TaggedContact> taggedContacts = contacts.stream()
+          .map(crmContact -> {
+            String email = crmContact.email.toLowerCase(Locale.ROOT);
+            Set<String> activeTags = tags.get(email);
+            Set<String> existingTags = existingContacts.emailsToTags.getOrDefault(email, new HashSet<>());
+            return new MailchimpClient.TaggedContact(crmContact.email, activeTags, existingTags);
+          })
+          .collect(Collectors.toList());
+      String tagsBatchId = updateTagsBatch(list.id, taggedContacts, mailchimpClient, config);
+      mailchimpClient.runBatchOperations(config, tagsBatchId, 0);
+    } catch (MailchimpException e) {
+      env.logJobWarn("Mailchimp executeBatchUpsert failed: {}", mailchimpClient.exceptionToString(e));
+      throw e;
     }
   }
 
-  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts,
-      Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform mailchimpConfig,
-      EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    Map<String, Set<String>> activeTags = new HashMap<>();
-    for (CrmContact crmContact : crmContacts) {
-      Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id),
-          mailchimpConfig, communicationList);
-      activeTags.put(crmContact.email, tagsCleaned);
-    }
-    return activeTags;
-  }
-
-  @Override
-  public void syncUnsubscribes(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
-      for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
-        List<MemberInfo> unsubscribedMembers = mailchimpClient.getListMembers(communicationList.id, "unsubscribed", lastSync);
-        syncUnsubscribed(getEmails(unsubscribedMembers));
-
-        List<MemberInfo> cleanedMembers = mailchimpClient.getListMembers(communicationList.id, "cleaned", lastSync);
-        syncCleaned(getEmails(cleanedMembers));
-      }
-    }
-  }
-
-  protected List<String> getEmails(List<MemberInfo> memberInfos) {
-    return memberInfos.stream().map(u -> u.email_address.toLowerCase(Locale.ROOT)).distinct().sorted().toList();
-  }
-
-  protected void syncUnsubscribed(List<String> unsubscribedEmails) throws Exception {
-    updateContactsByEmails(unsubscribedEmails, c -> c.emailOptOut = true);
-    updateAccountsByEmails(unsubscribedEmails, a -> a.emailOptOut = true);
-  }
-
-  protected void syncCleaned(List<String> cleanedEmails) throws Exception {
-    updateContactsByEmails(cleanedEmails, c -> c.emailBounced = true);
-    updateAccountsByEmails(cleanedEmails, a -> a.emailBounced = true);
-  }
-
-  protected void updateContactsByEmails(List<String> emails, Consumer<CrmContact> contactConsumer) throws Exception {
-    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
-    CrmService crmService = env.primaryCrmService();
-    List<CrmContact> contacts = crmService.getContactsByEmails(emails);
-    int count = 0;
-    int total = contacts.size();
-    for (CrmContact crmContact : contacts) {
-      env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, total);
-      CrmContact updateContact = new CrmContact();
-      updateContact.id = crmContact.id;
-      contactConsumer.accept(updateContact);
-      crmService.batchUpdateContact(updateContact);
-    }
-    crmService.batchFlush();
-  }
-
-  protected void updateAccountsByEmails(List<String> emails, Consumer<CrmAccount> accountConsumer) throws Exception {
-    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
-    CrmService crmService = env.primaryCrmService();
-    List<CrmAccount> accounts = crmService.getAccountsByEmails(emails);
-    int count = 0;
-    int total = accounts.size();
-    for (CrmAccount account : accounts) {
-      env.logJobInfo("updating unsubscribed account in CRM: {} ({} of {})", account.email, count++, total);
-      CrmAccount updateAccount = new CrmAccount();
-      updateAccount.id = account.id;
-      accountConsumer.accept(updateAccount);
-      crmService.batchUpdateAccount(updateAccount);
-    }
-    crmService.batchFlush();
-  }
-
-  @Override
-  public void upsertContact(String contactId) throws Exception {
-    CrmService crmService = env.primaryCrmService();
-
-    for (EnvironmentConfig.CommunicationPlatform mailchimpConfig : env.getConfig().mailchimp) {
-      for (EnvironmentConfig.CommunicationList communicationList : mailchimpConfig.lists) {
-        // clear the cache, since fields differ between audiences
-        mergeFieldsNameToTag.clear();
-
-        Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
-        if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().email)) {
-          upsertContact(mailchimpConfig, communicationList, crmContact.get());
-        }
-      }
-    }
-  }
-
-  // Originally, we simply called syncContacts() and made use of existing functions. But that unfortunately
+  // Originally, we simply called syncContacts/executeBatchUpsert and made use of existing functions. But that unfortunately
   //  does things like download ALL contacts from the audiences. Instead, we copy and paste the process here,
   //  stripping out the full sync and only pushing in the contact's new tags. We skip removing old tags --
   //  instead, let the nightly job do that for everybody. This process is typically only needed when something
   //  needs added, like a campaign tag to kick off a Journey in MC itself.
-  protected void upsertContact(EnvironmentConfig.CommunicationPlatform mailchimpConfig,
-      EnvironmentConfig.CommunicationList communicationList, CrmContact crmContact) throws Exception {
-    MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
-
-    // transactional is always subscribed
-    if (communicationList.type != EnvironmentConfig.CommunicationListType.TRANSACTIONAL && !crmContact.canReceiveEmail()) {
-      return;
-    }
+  @Override
+  protected void executeUpsert(CrmContact contact, Map<String, Object> customFields, Set<String> tags,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    MailchimpClient mailchimpClient = env.mailchimpClient(config);
 
     try {
-      Map<String, Object> customFields = getCustomFields(crmContact, mailchimpClient, mailchimpConfig, communicationList);
-      // Don't need the extra Map layer, but keeping it for now to reuse existing code.
-      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(List.of(crmContact), communicationList);
-      Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), mailchimpConfig,
-          communicationList);
-
       // run the actual contact upserts
-      MemberInfo upsertMemberInfo = toMcMemberInfo(mailchimpConfig, crmContact, customFields, communicationList.groups);
-      mailchimpClient.upsertContact(communicationList.id, upsertMemberInfo);
+      MemberInfo upsertMemberInfo = toMcMemberInfo(config, contact, customFields, list.groups);
+      mailchimpClient.upsertContact(list.id, upsertMemberInfo);
 
       // update all contacts' tags
-      MailchimpClient.EmailContact emailContact = new MailchimpClient.EmailContact(crmContact.email, tags, Set.of());
-      mailchimpClient.updateContactTags(communicationList.id, emailContact);
+      MailchimpClient.TaggedContact taggedContact = new MailchimpClient.TaggedContact(contact.email, tags, Set.of());
+      mailchimpClient.updateContactTags(list.id, taggedContact);
     } catch (MailchimpException e) {
       env.logJobWarn("Mailchimp upsertContact failed: {}", mailchimpClient.exceptionToString(e));
     } catch (Exception e) {
@@ -348,14 +129,41 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     }
   }
 
-  protected Map<String, Object> getCustomFields(CrmContact crmContact, MailchimpClient mailchimpClient,
-      EnvironmentConfig.CommunicationPlatform mailchimpConfig, EnvironmentConfig.CommunicationList communicationList)
-      throws Exception {
+  @Override
+  protected void executeBatchArchive(Set<String> emails,
+      ExistingContacts existingContacts, EnvironmentConfig.CommunicationPlatform config,
+      EnvironmentConfig.CommunicationList list) throws Exception {
+    MailchimpClient mailchimpClient = env.mailchimpClient(config);
+    String archiveBatchId = mailchimpClient.archiveContactsBatch(list.id, emails);
+    mailchimpClient.runBatchOperations(config, archiveBatchId, 0);
+  }
+
+  @Override
+  protected Set<String> getUnsubscribedEmails(Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    MailchimpClient mailchimpClient = env.mailchimpClient(config);
+    List<MemberInfo> unsubscribedMembers = mailchimpClient.getListMembers(list.id, "unsubscribed", lastSync);
+    return getEmails(unsubscribedMembers);
+  }
+
+  @Override
+  protected Set<String> getBouncedEmails(Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    MailchimpClient mailchimpClient = env.mailchimpClient(config);
+    List<MemberInfo> cleanedMembers = mailchimpClient.getListMembers(list.id, "cleaned", lastSync);
+    return getEmails(cleanedMembers);
+  }
+
+  @Override
+  protected Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    MailchimpClient mailchimpClient = env.mailchimpClient(config);
+
     Map<String, Object> customFieldMap = new HashMap<>();
 
-    List<CustomField> customFields = buildContactCustomFields(crmContact, mailchimpConfig, communicationList);
+    List<CustomField> customFields = buildContactCustomFields(crmContact, config, list);
     if (mergeFieldsNameToTag.isEmpty()) {
-      List<MergeFieldInfo> mergeFields = mailchimpClient.getMergeFields(communicationList.id);
+      List<MergeFieldInfo> mergeFields = mailchimpClient.getMergeFields(list.id);
       for (MergeFieldInfo mergeField : mergeFields) {
         mergeFieldsNameToTag.put(mergeField.name, mergeField.tag);
       }
@@ -374,17 +182,13 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           case NUMBER -> MergeFieldInfo.Type.NUMBER;
           default -> MergeFieldInfo.Type.TEXT;
         };
-        MergeFieldInfo mergeField = mailchimpClient.createMergeField(communicationList.id, customField.name, type);
+        MergeFieldInfo mergeField = mailchimpClient.createMergeField(list.id, customField.name, type);
         mergeFieldsNameToTag.put(mergeField.name, mergeField.tag);
       }
 
       Object value = customField.value;
       if (customField.type == CustomFieldType.BOOLEAN) {
-        if (((Boolean) value)) {
-          value = 1;
-        } else {
-          value = 0;
-        }
+        value = ((Boolean) value) ? 1 : 0;
       } else if (customField.type == CustomFieldType.DATE) {
         Calendar c = (Calendar) value;
         value = new SimpleDateFormat("MM/dd/yyyy").format(c.getTime());
@@ -397,15 +201,25 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
     return customFieldMap;
   }
 
-  protected String updateTagsBatch(String listId, List<MailchimpClient.EmailContact> emailContacts,
+  @Override
+  protected void prepareBatchProcessing(EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) {
+    // Clear the cache since fields differ between audiences - done once per communication list
+    mergeFieldsNameToTag.clear();
+  }
+
+  protected Set<String> getEmails(List<MemberInfo> memberInfos) {
+    return memberInfos.stream().map(u -> u.email_address.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+  }
+
+  protected String updateTagsBatch(String listId, List<MailchimpClient.TaggedContact> taggedContacts,
       MailchimpClient mailchimpClient, EnvironmentConfig.CommunicationPlatform mailchimpConfig) {
 
     // filter down the tags-to-remove to only the ones we actually have control over
-    emailContacts.stream()
-            .filter(emailContact -> CollectionUtils.isNotEmpty(emailContact.inactiveTags()))
-            .forEach(emailContact -> {
-              emailContact.inactiveTags().removeAll(emailContact.activeTags());
-              emailContact.inactiveTags().removeIf(t -> {
+    taggedContacts.stream()
+            .filter(taggedContact -> CollectionUtils.isNotEmpty(taggedContact.inactiveTags()))
+            .forEach(taggedContact -> {
+              taggedContact.inactiveTags().removeAll(taggedContact.activeTags());
+              taggedContact.inactiveTags().removeIf(t -> {
                 List<String> controlledTags = Stream.concat(
                     mailchimpConfig.defaultControlledTags.stream(), mailchimpConfig.customControlledTags.stream()
                 ).toList();
@@ -423,7 +237,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
             });
 
     try {
-      return mailchimpClient.updateContactTagsBatch(listId, emailContacts);
+      return mailchimpClient.updateContactTagsBatch(listId, taggedContacts);
     } catch (Exception e) {
       env.logJobError("updating tags failed for contacts! {}", e.getMessage());
       return null;

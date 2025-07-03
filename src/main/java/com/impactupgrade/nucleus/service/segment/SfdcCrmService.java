@@ -114,8 +114,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
-    return toCrmAccount(sfdcClient.getAccountsByEmails(emails));
+  public List<CrmAccount> getAccountsByEmails(Set<String> emails) throws Exception {
+    return toCrmAccount(sfdcClient.getAccountsByEmails(emails.stream().toList()));
   }
 
   @Override
@@ -134,8 +134,8 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByEmails(emails));
+  public List<CrmContact> getContactsByEmails(Set<String> emails) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByEmails(emails.stream().toList()));
   }
 
   @Override

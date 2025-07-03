@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * There is typically a huge difference in the feature set of general-purpose CRMs (like SFDC and HS) vs.
@@ -48,7 +49,7 @@ public interface BasicCrmService extends CrmService {
     return Collections.emptyList();
   }
 
-  default List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception {
+  default List<CrmAccount> getAccountsByEmails(Set<String> emails) throws Exception {
     return Collections.emptyList();
   }
 
