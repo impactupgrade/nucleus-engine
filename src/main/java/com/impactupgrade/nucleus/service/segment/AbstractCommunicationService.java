@@ -234,6 +234,9 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     List<EnvironmentConfig.CommunicationPlatform> configs = getPlatformConfigs();
     for (EnvironmentConfig.CommunicationPlatform config : configs) {
       for (EnvironmentConfig.CommunicationList communicationList : config.lists) {
+        // platform-specific preparation (e.g., cache clearing) once per communication list
+        prepareBatchProcessing(config, communicationList);
+
         Set<String> existingEmails = getExistingContactEmails(config, communicationList.id);
 
         // Process CRM contacts
@@ -328,6 +331,9 @@ public abstract class AbstractCommunicationService implements CommunicationServi
 
     for (EnvironmentConfig.CommunicationPlatform config : configs) {
       for (EnvironmentConfig.CommunicationList communicationList : config.lists) {
+        // platform-specific preparation (e.g., cache clearing) once per communication list
+        prepareBatchProcessing(config, communicationList);
+
         Optional<CrmContact> _crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
         if (_crmContact.isPresent() && !Strings.isNullOrEmpty(_crmContact.get().email)) {
           CrmContact crmContact = _crmContact.get();
@@ -484,4 +490,9 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       EnvironmentConfig.CommunicationPlatform config) throws Exception;
   protected abstract Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
       EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception;
+
+  // platform-specific preparation hook called once per communication list (e.g., cache clearing)
+  protected void prepareBatchProcessing(EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) {
+    // default implementation does nothing - subclasses can override if needed
+  }
 }

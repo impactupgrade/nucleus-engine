@@ -117,16 +117,19 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
   @Override
   protected Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
       EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
-    // Clear the cache since fields differ between audiences
-    mergeFieldsNameToTag.clear();
     MailchimpClient mailchimpClient = env.mailchimpClient(config);
     return getCustomFields(crmContact, mailchimpClient, config, list);
+  }
+
+  @Override
+  protected void prepareBatchProcessing(EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) {
+    // Clear the cache since fields differ between audiences - done once per communication list
+    mergeFieldsNameToTag.clear();
   }
 
   protected List<String> getEmails(List<MemberInfo> memberInfos) {
     return memberInfos.stream().map(u -> u.email_address.toLowerCase(Locale.ROOT)).distinct().sorted().toList();
   }
-
 
   // Originally, we simply called syncContacts() and made use of existing functions. But that unfortunately
   //  does things like download ALL contacts from the audiences. Instead, we copy and paste the process here,
