@@ -18,6 +18,7 @@ import com.sendgrid.SendGrid;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,61 +42,79 @@ public class SendGridCommunicationService extends AbstractCommunicationService {
   }
 
   @Override
-  public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform communicationPlatform : env.getConfig().sendgrid) {
-      SendGrid sendgridClient = new SendGrid(communicationPlatform.secretKey);
+  protected List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs() {
+    return env.getConfig().sendgrid;
+  }
 
-      // SendGrid requires that custom field definitions first be explicitly created. Start by grabbing the whole
-      // list of existing definitions -- we'll create the rest as we go.
-      Request request = new Request();
-      request.setMethod(Method.GET);
-      request.setEndpoint("/marketing/field_definitions");
-      Response response = sendgridClient.api(request);
-      CustomFieldsResponse customFieldsResponse = mapper.readValue(response.getBody(), CustomFieldsResponse.class);
-      Map<String, String> customFieldsByName = customFieldsResponse.custom_fields.stream().collect(Collectors.toMap(f -> f.name, f -> f.id));
+  @Override
+  protected Set<String> getExistingContactEmails(EnvironmentConfig.CommunicationPlatform config, String listId) {
+    // SendGrid doesn't have a simple way to get all contacts for a list
+    // Return empty set for now - batch operations will handle duplicates
+    return new HashSet<>();
+  }
 
-      for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
-        // TODO: SG has a max of 30k per call, so we may need to break this down for some customers.
-        List<CrmContact> crmContacts = env.primaryCrmService().getEmailContacts(lastSync, communicationList)
-            .getResultSets().stream().flatMap(rs -> rs.getRecords().stream()).toList();
-        Map<String, List<String>> contactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
+  @Override
+  protected void executeBatchUpsert(List<CrmContact> contacts,
+      Map<String, Map<String, Object>> customFields, Map<String, Set<String>> tags,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    SendGrid sendgridClient = new SendGrid(config.secretKey);
 
-        env.logJobInfo("upserting {} contacts to list {}", crmContacts.size(), communicationList.id);
+    // SendGrid requires that custom field definitions first be explicitly created
+    Request request = new Request();
+    request.setMethod(Method.GET);
+    request.setEndpoint("/marketing/field_definitions");
+    Response response = sendgridClient.api(request);
+    CustomFieldsResponse customFieldsResponse = mapper.readValue(response.getBody(), CustomFieldsResponse.class);
+    Map<String, String> customFieldsByName = customFieldsResponse.custom_fields.stream().collect(Collectors.toMap(f -> f.name, f -> f.id));
 
-        request = new Request();
-        request.setMethod(Method.PUT);
-        request.setEndpoint("/marketing/contacts");
-        UpsertContacts upsertContacts = new UpsertContacts();
-        upsertContacts.list_ids = List.of(communicationList.id);
-        upsertContacts.contacts = crmContacts.stream()
-            .map(crmContact -> toSendGridContact(crmContact, contactCampaignNames.get(crmContact.id),
-                customFieldsByName, sendgridClient, communicationPlatform, communicationList))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
-        request.setBody(mapper.writeValueAsString(upsertContacts));
-        response = sendgridClient.api(request);
-        if (response.getStatusCode() < 300) {
-          env.logJobInfo("sync was successful");
-        } else {
-          env.logJobError("sync failed: {}", response.getBody());
-        }
-      }
+    Map<String, List<String>> contactCampaignNames = env.primaryCrmService().getContactsCampaigns(contacts, list);
+
+    env.logJobInfo("upserting {} contacts to list {}", contacts.size(), list.id);
+
+    request = new Request();
+    request.setMethod(Method.PUT);
+    request.setEndpoint("/marketing/contacts");
+    UpsertContacts upsertContacts = new UpsertContacts();
+    upsertContacts.list_ids = List.of(list.id);
+    upsertContacts.contacts = contacts.stream()
+        .map(crmContact -> toSendGridContact(crmContact, contactCampaignNames.get(crmContact.id),
+            customFieldsByName, sendgridClient, config, list))
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
+    request.setBody(mapper.writeValueAsString(upsertContacts));
+    response = sendgridClient.api(request);
+    if (response.getStatusCode() < 300) {
+      env.logJobInfo("sync was successful");
+    } else {
+      env.logJobError("sync failed: {}", response.getBody());
     }
   }
 
   @Override
-  public void syncUnsubscribes(Calendar lastSync) throws Exception {
-    // TODO
+  protected void executeBatchArchive(Set<String> emails, String listId,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: SendGrid archive implementation
   }
 
   @Override
-  public void upsertContact(String contactId) throws Exception {
-    //TODO
+  protected List<String> getUnsubscribedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: SendGrid unsubscribe implementation
+    return new ArrayList<>();
   }
 
   @Override
-  public void massArchive() throws Exception {
-    // TODO
+  protected List<String> getBouncedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: SendGrid bounced implementation
+    return new ArrayList<>();
+  }
+
+  @Override
+  protected Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    // SendGrid custom fields are handled in the contact conversion - return empty map
+    return new HashMap<>();
   }
 
   protected Contact toSendGridContact(CrmContact crmContact, List<String> campaignNames,
