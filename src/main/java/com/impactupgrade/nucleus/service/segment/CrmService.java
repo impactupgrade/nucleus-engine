@@ -28,6 +28,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface CrmService extends SegmentService {
 
@@ -47,7 +48,7 @@ public interface CrmService extends SegmentService {
     }
     return accounts;
   }
-  List<CrmAccount> getAccountsByEmails(List<String> emails) throws Exception;
+  List<CrmAccount> getAccountsByEmails(Set<String> emails) throws Exception;
   // TODO: Business Donations coming soon, but not all CRMs support email at the company/account level.
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
@@ -68,7 +69,7 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
-  default List<CrmContact> getContactsByEmails(List<String> emails) throws Exception {
+  default List<CrmContact> getContactsByEmails(Set<String> emails) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
       searchContacts(ContactSearch.byEmail(email)).getResultSets().stream()

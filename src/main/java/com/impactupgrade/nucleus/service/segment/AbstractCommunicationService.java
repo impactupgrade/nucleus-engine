@@ -7,18 +7,24 @@ package com.impactupgrade.nucleus.service.segment;
 import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
+import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
+import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.Utils;
 
 import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public abstract class AbstractCommunicationService implements CommunicationService {
@@ -110,6 +116,11 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       this.type = type;
       this.value = value;
     }
+  }
+
+  protected static class ExistingContacts {
+    public Map<String, String> emailsToIds = new HashMap<>();
+    public Map<String, Set<String>> emailsToTags = new HashMap<>();
   }
 
   //TODO: explicitly define in env config?
@@ -221,5 +232,277 @@ public abstract class AbstractCommunicationService implements CommunicationServi
         .map(Map.Entry::getValue)
         .findFirst()
         .orElseThrow(() -> new RuntimeException("group " + groupName + " not configured in environment.json"));
+  }
+
+  @Override
+  public void syncContacts(Calendar lastSync) throws Exception {
+    List<EnvironmentConfig.CommunicationPlatform> configs = getPlatformConfigs();
+    for (EnvironmentConfig.CommunicationPlatform config : configs) {
+      for (EnvironmentConfig.CommunicationList communicationList : config.lists) {
+        // platform-specific preparation (e.g., cache clearing) once per communication list
+        prepareBatchProcessing(config, communicationList);
+
+        ExistingContacts existingContacts = getExistingContacts(config, communicationList);
+
+        // Process CRM contacts
+        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
+        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
+          do {
+            syncContactsBatch(resultSet, config, communicationList, existingContacts);
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
+
+        // Process CRM accounts as faux contacts
+        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(lastSync, communicationList);
+        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
+          do {
+            PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
+            fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
+            syncContactsBatch(fauxContacts, config, communicationList, existingContacts);
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
+      }
+    }
+  }
+
+  protected void syncContactsBatch(PagedResults.ResultSet<CrmContact> resultSet,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList communicationList,
+      ExistingContacts existingContacts) {
+    if (resultSet.getRecords().isEmpty()) {
+      return;
+    }
+
+    List<CrmContact> contactsToUpsert = new ArrayList<>();
+    List<CrmContact> contactsToArchive = new ArrayList<>();
+
+    List<CrmContact> crmContacts = resultSet.getRecords();
+
+    // Transactional is always subscribed
+    if (communicationList.type == EnvironmentConfig.CommunicationListType.TRANSACTIONAL) {
+      contactsToUpsert.addAll(crmContacts);
+    } else {
+      crmContacts.forEach(crmContact -> (crmContact.canReceiveEmail() ? contactsToUpsert : contactsToArchive).add(crmContact));
+    }
+
+    try {
+      Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
+      for (CrmContact crmContact : contactsToUpsert) {
+        Map<String, Object> customFieldMap = buildPlatformCustomFields(crmContact, config, communicationList);
+        contactsCustomFields.put(crmContact.email, customFieldMap);
+      }
+
+      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
+      Map<String, Set<String>> activeTags = new HashMap<>();
+      for (CrmContact crmContact : crmContacts) {
+        Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), config, communicationList);
+        activeTags.put(crmContact.email, tagsCleaned);
+      }
+
+      // Execute batch upsert
+      executeBatchUpsert(contactsToUpsert, contactsCustomFields, activeTags, existingContacts, config, communicationList);
+
+      // Archive contacts that should be unsubscribed
+      Set<String> emailsToArchive = contactsToArchive.stream()
+          .map(crmContact -> crmContact.email.toLowerCase(Locale.ROOT))
+          .collect(Collectors.toSet());
+      emailsToArchive.retainAll(existingContacts.emailsToIds.keySet());
+      executeBatchArchive(emailsToArchive, existingContacts, config, communicationList);
+
+    } catch (Exception e) {
+      env.logJobWarn("{} syncContacts failed", name(), e);
+    }
+  }
+
+  @Override
+  public void upsertContact(String contactId) throws Exception {
+    CrmService crmService = env.primaryCrmService();
+    List<EnvironmentConfig.CommunicationPlatform> configs = getPlatformConfigs();
+
+    for (EnvironmentConfig.CommunicationPlatform config : configs) {
+      for (EnvironmentConfig.CommunicationList communicationList : config.lists) {
+        // platform-specific preparation (e.g., cache clearing) once per communication list
+        prepareBatchProcessing(config, communicationList);
+
+        Optional<CrmContact> _crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
+        if (_crmContact.isPresent() && !Strings.isNullOrEmpty(_crmContact.get().email)) {
+          CrmContact crmContact = _crmContact.get();
+
+          // Transactional is always subscribed
+          if (communicationList.type != EnvironmentConfig.CommunicationListType.TRANSACTIONAL && !crmContact.canReceiveEmail()) {
+            return;
+          }
+
+          try {
+            Map<String, Object> customFields = buildPlatformCustomFields(crmContact, config, communicationList);
+            Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(List.of(crmContact), communicationList);
+            Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), config, communicationList);
+
+            executeUpsert(crmContact, customFields, tags, config, communicationList);
+          } catch (Exception e) {
+            env.logJobWarn("{} upsertContact failed", name(), e);
+          }
+        }
+      }
+    }
+  }
+
+  @Override
+  public void massArchive() throws Exception {
+    List<EnvironmentConfig.CommunicationPlatform> configs = getPlatformConfigs();
+    for (EnvironmentConfig.CommunicationPlatform config : configs) {
+      for (EnvironmentConfig.CommunicationList communicationList : config.lists) {
+        ExistingContacts existingContacts = getExistingContacts(config, communicationList);
+        Set<String> emailsToArchive = new HashSet<>(existingContacts.emailsToIds.keySet());
+
+        // Remove CRM contacts that should remain
+        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(null, communicationList);
+        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
+          do {
+            for (CrmContact crmContact : resultSet.getRecords()) {
+              if (crmContact.canReceiveEmail()) {
+                emailsToArchive.remove(crmContact.email.toLowerCase(Locale.ROOT));
+              }
+            }
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
+
+        // Remove CRM accounts that should remain
+        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(null, communicationList);
+        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
+          do {
+            for (CrmAccount crmAccount : resultSet.getRecords()) {
+              if (crmAccount.canReceiveEmail()) {
+                emailsToArchive.remove(crmAccount.email.toLowerCase(Locale.ROOT));
+              }
+            }
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        }
+
+        env.logJobInfo("massArchiving {} contacts in {}: {}", emailsToArchive.size(), name(), String.join(", ", emailsToArchive));
+        executeBatchArchive(emailsToArchive, existingContacts, config, communicationList);
+      }
+    }
+  }
+
+  @Override
+  public void syncUnsubscribes(Calendar lastSync) throws Exception {
+    List<EnvironmentConfig.CommunicationPlatform> configs = getPlatformConfigs();
+    for (EnvironmentConfig.CommunicationPlatform config : configs) {
+      for (EnvironmentConfig.CommunicationList communicationList : config.lists) {
+        Set<String> unsubscribedEmails = getUnsubscribedEmails(lastSync, config, communicationList);
+        syncUnsubscribed(unsubscribedEmails);
+
+        Set<String> bouncedEmails = getBouncedEmails(lastSync, config, communicationList);
+        syncCleaned(bouncedEmails);
+      }
+    }
+  }
+
+  protected void syncUnsubscribed(Set<String> unsubscribedEmails) throws Exception {
+    updateContactsByEmails(unsubscribedEmails, c -> c.emailOptOut = true);
+    updateAccountsByEmails(unsubscribedEmails, a -> a.emailOptOut = true);
+  }
+
+  protected void syncCleaned(Set<String> cleanedEmails) throws Exception {
+    updateContactsByEmails(cleanedEmails, c -> c.emailBounced = true);
+    updateAccountsByEmails(cleanedEmails, a -> a.emailBounced = true);
+  }
+
+  protected void updateContactsByEmails(Set<String> emails, Consumer<CrmContact> contactConsumer) throws Exception {
+    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
+    CrmService crmService = env.primaryCrmService();
+    List<CrmContact> contacts = crmService.getContactsByEmails(emails);
+    int count = 0;
+    int total = contacts.size();
+    for (CrmContact crmContact : contacts) {
+      env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, total);
+      CrmContact updateContact = new CrmContact();
+      updateContact.id = crmContact.id;
+      contactConsumer.accept(updateContact);
+      crmService.batchUpdateContact(updateContact);
+    }
+    crmService.batchFlush();
+  }
+
+  protected void updateAccountsByEmails(Set<String> emails, Consumer<CrmAccount> accountConsumer) throws Exception {
+    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
+    CrmService crmService = env.primaryCrmService();
+    List<CrmAccount> accounts = crmService.getAccountsByEmails(emails);
+    int count = 0;
+    int total = accounts.size();
+    for (CrmAccount account : accounts) {
+      env.logJobInfo("updating unsubscribed account in CRM: {} ({} of {})", account.email, count++, total);
+      CrmAccount updateAccount = new CrmAccount();
+      updateAccount.id = account.id;
+      accountConsumer.accept(updateAccount);
+      crmService.batchUpdateAccount(updateAccount);
+    }
+    crmService.batchFlush();
+  }
+
+  protected CrmContact asCrmContact(CrmAccount crmAccount) {
+    CrmContact crmContact = new CrmContact();
+    crmContact.account = crmAccount;
+    crmContact.crmRawObject = crmAccount.crmRawObject;
+    crmContact.email = crmAccount.email;
+    crmContact.emailBounced = crmAccount.emailBounced;
+    crmContact.emailOptIn = crmAccount.emailOptIn;
+    crmContact.emailOptOut = crmAccount.emailOptOut;
+    crmContact.firstName = crmAccount.name;
+    crmContact.mailingAddress = crmAccount.mailingAddress;
+    if (crmContact.mailingAddress == null || Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
+      crmContact.mailingAddress = crmAccount.billingAddress;
+    }
+    return crmContact;
+  }
+
+  // platform-specific config
+  protected abstract List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs();
+
+  // platform-specific operations
+  protected abstract ExistingContacts getExistingContacts(EnvironmentConfig.CommunicationPlatform config,
+      EnvironmentConfig.CommunicationList list);
+  protected abstract void executeBatchUpsert(List<CrmContact> contacts,
+      Map<String, Map<String, Object>> customFields, Map<String, Set<String>> tags,
+      ExistingContacts existingContacts, EnvironmentConfig.CommunicationPlatform config,
+      EnvironmentConfig.CommunicationList list) throws Exception;
+  protected void executeUpsert(CrmContact contact, Map<String, Object> customFields, Set<String> tags,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    // for single contact upsert, we don't have existing contacts, so pass empty instance
+    executeBatchUpsert(List.of(contact), Map.of(contact.email, customFields), Map.of(contact.email, tags), new ExistingContacts(), config, list);
+  }
+  protected abstract void executeBatchArchive(Set<String> emails,
+      ExistingContacts existingContacts, EnvironmentConfig.CommunicationPlatform config,
+      EnvironmentConfig.CommunicationList list) throws Exception;
+  protected abstract Set<String> getUnsubscribedEmails(Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception;
+  protected abstract Set<String> getBouncedEmails(Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception;
+  protected abstract Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception;
+
+  // platform-specific preparation hook called once per communication list (e.g., cache clearing)
+  protected void prepareBatchProcessing(EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) {
+    // default implementation does nothing - subclasses can override if needed
   }
 }

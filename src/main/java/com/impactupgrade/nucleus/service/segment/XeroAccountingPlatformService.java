@@ -392,6 +392,10 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 xeroJson.put("refreshToken", refreshToken);
                 org.setEnvironmentJson(envJson);
                 organizationDao.update(org);
+
+                // Overwrite the current Environment with the new tokens so that additional uses within this same job
+                // have access to them.
+                env.getConfig().addOtherJsonString(org.getEnvironment());
             } catch (Exception e) {
                 env.logJobError("Failed to refresh access token!", e);
                 if (e instanceof TokenResponseException) {

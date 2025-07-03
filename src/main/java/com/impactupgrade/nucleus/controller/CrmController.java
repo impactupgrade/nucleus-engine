@@ -53,6 +53,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -614,7 +615,7 @@ public class CrmController {
 
         String conversationId = c.getTimeInMillis() + "";
         env.activityService().upsertActivityFromEmails(
-            Arrays.asList(emails.split(",")),
+            Set.of(emails.split(",")),
             CrmActivity.Type.EMAIL,
             conversationId,
             c,

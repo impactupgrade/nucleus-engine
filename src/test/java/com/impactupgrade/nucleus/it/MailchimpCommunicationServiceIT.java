@@ -17,10 +17,12 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Calendar;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,7 +53,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
 
   @Test
   public void syncContacts() throws Exception {
-    List<String> emails = new ArrayList<>();
+    Set<String> emails = new HashSet<>();
     List<Object> values = new LinkedList<>();
     values.add(List.of("Contact First Name", "Contact Last Name", "Contact Email", "Contact Email Opt In"));
 
@@ -95,8 +97,8 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
 
   @Test
   public void syncUnsubscribes() throws Exception {
-    List<String> unsubscribeEmails = new ArrayList<>();
-    List<String> cleanEmails = new ArrayList<>();
+    Set<String> unsubscribeEmails = new HashSet<>();
+    Set<String> cleanEmails = new HashSet<>();
     List<Object> values = new LinkedList<>();
     values.add(List.of("Contact First Name", "Contact Last Name", "Contact Email", "Contact Email Opt In"));
 
@@ -109,7 +111,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
       values.add(List.of(firstname, lastname, email, "true"));
     }
 
-    List<String> emails = new ArrayList<>();
+    Set<String> emails = new HashSet<>();
     emails.addAll(unsubscribeEmails);
     emails.addAll(cleanEmails);
 
@@ -166,7 +168,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
   }
 
   // Utils
-  private void addEmailsToList(List<String> emails, String status, String listId, MailchimpClient mailchimpClient) throws Exception {
+  private void addEmailsToList(Set<String> emails, String status, String listId, MailchimpClient mailchimpClient) throws Exception {
     List<MemberInfo> memberInfos = emails.stream().map(email -> toMemberInfo(email, status)).collect(Collectors.toList());
     mailchimpClient.upsertContactsBatch(listId, memberInfos);
   }
@@ -180,7 +182,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     return memberInfo;
   }
 
-  private void updateEmailsStatus(List<String> emails, String status, String listId, MailchimpClient mailchimpClient) throws Exception {
+  private void updateEmailsStatus(Set<String> emails, String status, String listId, MailchimpClient mailchimpClient) throws Exception {
     List<MemberInfo> memberInfos = mailchimpClient.getListMembers(listId, null, "members.email_address,members.status,members.merge_fields,members.interests,total_items", null);
     Map<String, MemberInfo> memberInfoMap = memberInfos.stream().collect(Collectors.toMap(
         m -> m.email_address.toLowerCase(Locale.ROOT),
@@ -198,7 +200,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     }
   }
 
-  private void assertEmailsStatus(List<String> emails, String status, String listId, MailchimpClient mailchimpClient) throws Exception {
+  private void assertEmailsStatus(Set<String> emails, String status, String listId, MailchimpClient mailchimpClient) throws Exception {
     List<MemberInfo> listMembers = mailchimpClient.getListMembers(listId, status, "members.email_address,members.status,total_items", null);
     assertNotNull(listMembers);
     List<String> membersEmails = listMembers.stream().map(memberInfo -> memberInfo.email_address).collect(Collectors.toList());

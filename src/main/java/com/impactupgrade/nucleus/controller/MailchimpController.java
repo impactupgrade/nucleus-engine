@@ -28,7 +28,9 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 @Path("/mailchimp")
 public class MailchimpController {
@@ -103,10 +105,10 @@ public class MailchimpController {
     MailchimpClient mailchimpClient = env.mailchimpClient(mailchimpConfig);
 
     List<SentToInfo> sentTos = mailchimpClient.getCampaignRecipients(event.id);
-    List<String> emails = sentTos.stream()
+    Set<String> emails = sentTos.stream()
         .filter(member -> member.status == SentToInfo.Status.SEND)
         .map(member -> member.email_address)
-        .toList();
+        .collect(Collectors.toSet());
 
     ContentInfo contentInfo = mailchimpClient.getCampaignContent(event.id);
 

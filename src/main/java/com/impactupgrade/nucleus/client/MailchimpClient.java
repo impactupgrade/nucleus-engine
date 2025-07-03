@@ -168,12 +168,12 @@ public class MailchimpClient {
         ));
   }
 
-  public void updateContactTags(String listId, EmailContact emailContact) throws IOException, MailchimpException {
+  public void updateContactTags(String listId, TaggedContact emailContact) throws IOException, MailchimpException {
     EditMemberMethod.AddorRemoveTag editMemberMethod = addOrRemoveTag(listId, emailContact);
     client.execute(editMemberMethod);
   }
 
-  public String updateContactTagsBatch(String listId, List<EmailContact> emailContacts) throws IOException, MailchimpException {
+  public String updateContactTagsBatch(String listId, List<TaggedContact> emailContacts) throws IOException, MailchimpException {
     List<EditMemberMethod.AddorRemoveTag> editMemberMethods = emailContacts.stream()
         .map(emailContact -> addOrRemoveTag(listId, emailContact)).collect(Collectors.toList());
 
@@ -186,7 +186,7 @@ public class MailchimpClient {
     return batchStatus.id;
   }
 
-  protected EditMemberMethod.AddorRemoveTag addOrRemoveTag(String listId, EmailContact emailContact) {
+  protected EditMemberMethod.AddorRemoveTag addOrRemoveTag(String listId, TaggedContact emailContact) {
     Set<String> active = emailContact.activeTags;
     Set<String> inactive = emailContact.inactiveTags;
     ArrayList<MailchimpObject> tags = new ArrayList<>();
@@ -353,7 +353,7 @@ public class MailchimpClient {
     return description;
   }
 
-  public record EmailContact(String email, Set<String> activeTags, Set<String> inactiveTags) {}
+  public record TaggedContact(String email, Set<String> activeTags, Set<String> inactiveTags) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static final class BatchOperation {
@@ -361,7 +361,7 @@ public class MailchimpClient {
     public Integer status;
     @JsonProperty("operation_id")
     public String operationId;
-    public BatchOperationResponse response;
+    public BatchOperationResponse response = new BatchOperationResponse();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

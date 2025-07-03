@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.service.segment.CrmService;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ActivityService {
@@ -64,7 +65,7 @@ public class ActivityService {
     crmService.batchFlush();
   }
 
-  public void upsertActivityFromEmails(List<String> emails, CrmActivity.Type type, String activityId,
+  public void upsertActivityFromEmails(Set<String> emails, CrmActivity.Type type, String activityId,
       Calendar date, String subject, String messageBody) throws Exception {
     List<CrmContact> crmContacts = crmService.getContactsByEmails(emails);
     List<String> targetIds = crmContacts.stream().map(c -> c.id).toList();
