@@ -11,8 +11,14 @@ import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.PagedResults;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 // TODO: NEEDS FULLY UPDATED WITH EVERYTHING NEW IN THE MAILCHIMP SERVICE! Likely implies genericizing some of the MC
 //  logic and pulling it upstream to AbstractCommunicationService.
@@ -29,47 +35,53 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
   }
 
   @Override
-  public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform communicationPlatform : env.getConfig().constantContact) {
-      ConstantContactClient constantContactClient = new ConstantContactClient(communicationPlatform, env);
+  protected List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs() {
+    return env.getConfig().constantContact;
+  }
 
-      for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
-        PagedResults<CrmContact> pagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
-          for (CrmContact crmContact : resultSet.getRecords()) {
-            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.email, communicationList.id);
-            constantContactClient.upsertContact(crmContact, communicationList.id);
-          }
-        }
-      }
+  @Override
+  protected Set<String> getExistingContactEmails(EnvironmentConfig.CommunicationPlatform config, String listId) {
+    // ConstantContact doesn't have a simple way to get all contacts for a list
+    // Return empty set for now - batch operations will handle duplicates
+    return new HashSet<>();
+  }
+
+  @Override
+  protected void executeBatchUpsert(List<CrmContact> contacts,
+      Map<String, Map<String, Object>> customFields, Map<String, Set<String>> tags,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    ConstantContactClient constantContactClient = new ConstantContactClient(config, env);
+
+    for (CrmContact crmContact : contacts) {
+      env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.email, list.id);
+      constantContactClient.upsertContact(crmContact, list.id);
     }
   }
 
   @Override
-  public void syncUnsubscribes(Calendar lastSync) throws Exception {
-    //TODO: remove contacts?
+  protected void executeBatchArchive(Set<String> emails, String listId,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: ConstantContact archive implementation
   }
 
   @Override
-  public void upsertContact(String contactId) throws Exception {
-    CrmService crmService = env.primaryCrmService();
-
-    for (EnvironmentConfig.CommunicationPlatform communicationPlatform : env.getConfig().constantContact) {
-      ConstantContactClient constantContactClient = new ConstantContactClient(communicationPlatform, env);
-
-      for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
-        Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
-
-        if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().phoneNumberForSMS())) {
-          env.logJobInfo("upserting contact {} {} on list {}", crmContact.get().id, crmContact.get().phoneNumberForSMS(), communicationList.id);
-          constantContactClient.upsertContact(crmContact.get(), communicationList.id);
-        }
-      }
-    }
+  protected List<String> getUnsubscribedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: ConstantContact unsubscribe implementation
+    return new ArrayList<>();
   }
 
   @Override
-  public void massArchive() throws Exception {
-    // TODO
+  protected List<String> getBouncedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: ConstantContact bounced implementation
+    return new ArrayList<>();
+  }
+
+  @Override
+  protected Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    // ConstantContact custom fields are handled in the client - return empty map
+    return new HashMap<>();
   }
 }

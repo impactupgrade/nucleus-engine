@@ -13,9 +13,7 @@ import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.BrevoClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
-import com.impactupgrade.nucleus.model.CrmAccount;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.Utils;
 
 import java.text.SimpleDateFormat;
@@ -27,10 +25,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -54,283 +50,70 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
   }
 
   @Override
-  public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform brevoConfig : env.getConfig().brevo) {
-      for (EnvironmentConfig.CommunicationList communicationList : brevoConfig.lists) {
-
-        BrevoClient brevoClient = env.brevoClient(brevoConfig);
-        List<GetContactDetails> listContacts = brevoClient.getContactsFromList(communicationList.id);
-        Set<String> brevoEmails = listContacts.stream().map(contact -> contact.getEmail().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-
-        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-          do {
-            syncContacts(resultSet, brevoConfig, communicationList, brevoEmails, brevoClient);
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
-
-        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
-          do {
-            PagedResults.ResultSet<CrmContact> fauxContacts = new PagedResults.ResultSet<>();
-            fauxContacts.getRecords().addAll(resultSet.getRecords().stream().map(this::asCrmContact).toList());
-            syncContacts(fauxContacts, brevoConfig, communicationList, brevoEmails, brevoClient);
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
-      }
-    }
+  protected List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs() {
+    return env.getConfig().brevo;
   }
 
-  protected CrmContact asCrmContact(CrmAccount crmAccount) {
-    CrmContact crmContact = new CrmContact();
-    crmContact.account = crmAccount;
-    crmContact.crmRawObject = crmAccount.crmRawObject;
-    crmContact.email = crmAccount.email;
-    crmContact.emailBounced = crmAccount.emailBounced;
-    crmContact.emailOptIn = crmAccount.emailOptIn;
-    crmContact.emailOptOut = crmAccount.emailOptOut;
-    crmContact.firstName = crmAccount.name;
-    crmContact.mailingAddress = crmAccount.mailingAddress;
-    if (crmContact.mailingAddress == null || Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
-      crmContact.mailingAddress = crmAccount.billingAddress;
-    }
-    // TODO
-//    crmContact.firstDonationDate = ;
-//    crmContact.lastDonationDate = ;
-//    crmContact.largestDonationAmount = ;
-//    crmContact.totalDonationAmount = ;
-//    crmContact.numDonations = ;
-//    crmContact.totalDonationAmountYtd = ;
-//    crmContact.numDonationsYtd = ;
-//    crmContact.ownerName = ;
-    return crmContact;
-  }
-
-  protected void syncContacts(PagedResults.ResultSet<CrmContact> resultSet, EnvironmentConfig.CommunicationPlatform brevoConfig,
-      EnvironmentConfig.CommunicationList communicationList, Set<String> brevoEmails, BrevoClient brevoClient) {
-    if (resultSet.getRecords().isEmpty()) {
-      return;
-    }
-
-    List<CrmContact> contactsToUpsert = new ArrayList<>();
-    List<CrmContact> contactsToArchive = new ArrayList<>();
-
-    List<CrmContact> crmContacts = resultSet.getRecords();
-
-    // transactional is always subscribed
-    if (communicationList.type == EnvironmentConfig.CommunicationListType.TRANSACTIONAL) {
-      contactsToUpsert.addAll(crmContacts);
-    } else {
-      crmContacts.forEach(crmContact -> (crmContact.canReceiveEmail() ? contactsToUpsert : contactsToArchive).add(crmContact));
-    }
-
+  @Override
+  protected Set<String> getExistingContactEmails(EnvironmentConfig.CommunicationPlatform config, String listId) {
+    BrevoClient brevoClient = env.brevoClient(config);
     try {
-      Map<String, Map<String, Object>> contactsCustomFields = new HashMap<>();
-      for (CrmContact crmContact : contactsToUpsert) {
-        Map<String, Object> customFieldMap = getCustomFields(crmContact, brevoClient, brevoConfig, communicationList);
-        contactsCustomFields.put(crmContact.email, customFieldMap);
-      }
-      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(crmContacts, communicationList);
-      Map<String, Set<String>> activeTags = getActiveTags(contactsToUpsert, crmContactCampaignNames, brevoConfig,
-          communicationList);
-
-      // run the actual contact upsert
-      List<CreateContact> upsertMemberInfos = toCreateContacts(brevoConfig, contactsToUpsert, contactsCustomFields, activeTags);
-      brevoClient.importContacts(upsertMemberInfos, communicationList.id);
-
-      // archive brevo emails that are marked as unsubscribed in the CRM
-      Set<String> emailsToArchive = contactsToArchive.stream().map(crmContact -> crmContact.email.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-      // but only if they actually exist in brevo
-      emailsToArchive.retainAll(brevoEmails);
-
-      brevoClient.removeContactsFromList(emailsToArchive, communicationList.id);
+      List<GetContactDetails> listContacts = brevoClient.getContactsFromList(listId);
+      return listContacts.stream().map(contact -> contact.getEmail().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
     } catch (ApiException e) {
-      env.logJobError("Brevo syncContacts failed (code/response body): {}/{}", e.getCode(), e.getResponseBody(), e);
-    } catch (Exception e) {
-      env.logJobError("Brevo syncContacts failed", e);
+      env.logJobError("Failed to get existing contact emails from Brevo: {}", e.getMessage());
+      return new HashSet<>();
     }
   }
 
   @Override
-  public void massArchive() throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform brevoConfig : env.getConfig().brevo) {
-      for (EnvironmentConfig.CommunicationList communicationList : brevoConfig.lists) {
-        BrevoClient brevoClient = env.brevoClient(brevoConfig);
-        List<GetContactDetails> listMembers = brevoClient.getContactsFromList(communicationList.id);
-        // get all brevo email addresses in the entire audience
-        Set<String> emailsToArchive = listMembers.stream().map(memberInfo -> memberInfo.getEmail().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-
-        // remove CRM contacts
-        PagedResults<CrmContact> contactPagedResults = env.primaryCrmService().getEmailContacts(null, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : contactPagedResults.getResultSets()) {
-          do {
-            for (CrmContact crmContact : resultSet.getRecords()) {
-              if (crmContact.canReceiveEmail()) {
-                emailsToArchive.remove(crmContact.email.toLowerCase(Locale.ROOT));
-              }
-            }
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              resultSet = env.primaryCrmService().queryMoreContacts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
-        // remove CRM accounts
-        PagedResults<CrmAccount> accountPagedResults = env.primaryCrmService().getEmailAccounts(null, communicationList);
-        for (PagedResults.ResultSet<CrmAccount> resultSet : accountPagedResults.getResultSets()) {
-          do {
-            for (CrmAccount crmAccount : resultSet.getRecords()) {
-              if (crmAccount.canReceiveEmail()) {
-                emailsToArchive.remove(crmAccount.email.toLowerCase(Locale.ROOT));
-              }
-            }
-            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
-              // next page
-              resultSet = env.primaryCrmService().queryMoreAccounts(resultSet.getNextPageToken());
-            } else {
-              resultSet = null;
-            }
-          } while (resultSet != null);
-        }
-
-        env.logJobInfo("Setting 'EmailBlacklisted' for {} listMembers in Brevo: {}", emailsToArchive.size(), String.join(", ", emailsToArchive));
-        brevoClient.setEmailBlacklisted(emailsToArchive);
-        brevoClient.removeContactsFromList(emailsToArchive, communicationList.id);
-      }
-    }
-  }
-
-  protected Map<String, Set<String>> getActiveTags(List<CrmContact> crmContacts,
-      Map<String, List<String>> crmContactCampaignNames, EnvironmentConfig.CommunicationPlatform brevoConfig,
-      EnvironmentConfig.CommunicationList communicationList) throws Exception {
-    Map<String, Set<String>> activeTags = new HashMap<>();
-    for (CrmContact crmContact : crmContacts) {
-      Set<String> tagsCleaned = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id),
-          brevoConfig, communicationList);
-      activeTags.put(crmContact.email, tagsCleaned);
-    }
-    return activeTags;
-  }
-
-  @Override
-  public void syncUnsubscribes(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform brevoConfig : env.getConfig().brevo) {
-      BrevoClient brevoClient = env.brevoClient(brevoConfig);
-      for (EnvironmentConfig.CommunicationList communicationList : brevoConfig.lists) {
-        List<GetContactDetails> listContacts = brevoClient.getContactsFromList(lastSync, communicationList.id);
-        List<GetContactDetails> unsubscribed = listContacts.stream()
-            .filter(c -> unsubscribedFromList(c, communicationList.id))
-            .toList();
-        syncUnsubscribed(getEmails(unsubscribed));
-      }
-    }
-  }
-
-  protected boolean unsubscribedFromList(GetContactDetails getContactDetails, String listId) {
-    Long id = Utils.parseLong(listId);
-    return id != null && getContactDetails.getListUnsubscribed() != null && getContactDetails.getListUnsubscribed().contains(id);
-  }
-
-  protected List<String> getEmails(List<GetContactDetails> contacts) {
-    return contacts.stream().map(c -> c.getEmail().toLowerCase(Locale.ROOT)).distinct().sorted().toList();
-  }
-
-  protected void syncUnsubscribed(List<String> unsubscribedEmails) throws Exception {
-    updateContactsByEmails(unsubscribedEmails, c -> c.emailOptOut = true);
-    updateAccountsByEmails(unsubscribedEmails, a -> a.emailOptOut = true);
-  }
-
-  protected void updateContactsByEmails(List<String> emails, Consumer<CrmContact> contactConsumer) throws Exception {
-    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
-    CrmService crmService = env.primaryCrmService();
-    List<CrmContact> contacts = crmService.getContactsByEmails(emails);
-    int count = 0;
-    int total = contacts.size();
-    for (CrmContact crmContact : contacts) {
-      env.logJobInfo("updating unsubscribed contact in CRM: {} ({} of {})", crmContact.email, count++, total);
-      CrmContact updateContact = new CrmContact();
-      updateContact.id = crmContact.id;
-      contactConsumer.accept(updateContact);
-      crmService.batchUpdateContact(updateContact);
-    }
-    crmService.batchFlush();
-  }
-
-  protected void updateAccountsByEmails(List<String> emails, Consumer<CrmAccount> accountConsumer) throws Exception {
-    // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
-    CrmService crmService = env.primaryCrmService();
-    List<CrmAccount> accounts = crmService.getAccountsByEmails(emails);
-    int count = 0;
-    int total = accounts.size();
-    for (CrmAccount account : accounts) {
-      env.logJobInfo("updating unsubscribed account in CRM: {} ({} of {})", account.email, count++, total);
-      CrmAccount updateAccount = new CrmAccount();
-      updateAccount.id = account.id;
-      accountConsumer.accept(updateAccount);
-      crmService.batchUpdateAccount(updateAccount);
-    }
-    crmService.batchFlush();
-  }
-
-  @Override
-  public void upsertContact(String contactId) throws Exception {
-    CrmService crmService = env.primaryCrmService();
-
-    for (EnvironmentConfig.CommunicationPlatform brevoconfig : env.getConfig().brevo) {
-      for (EnvironmentConfig.CommunicationList communicationList : brevoconfig.lists) {
-        Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
-        if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().email)) {
-          upsertContact(brevoconfig, communicationList, crmContact.get());
-        }
-      }
-    }
-  }
-
-  protected void upsertContact(EnvironmentConfig.CommunicationPlatform brevoConfig,
-      EnvironmentConfig.CommunicationList communicationList, CrmContact crmContact) throws Exception {
-    BrevoClient brevoClient = env.brevoClient(brevoConfig);
-
-    // transactional is always subscribed
-    if (communicationList.type != EnvironmentConfig.CommunicationListType.TRANSACTIONAL && !crmContact.canReceiveEmail()) {
-      return;
-    }
-
+  protected void executeBatchUpsert(List<CrmContact> contacts,
+      Map<String, Map<String, Object>> customFields, Map<String, Set<String>> tags,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    BrevoClient brevoClient = env.brevoClient(config);
     try {
-      Map<String, Object> customFields = getCustomFields(crmContact, brevoClient, brevoConfig, communicationList);
-      // Don't need the extra Map layer, but keeping it for now to reuse existing code.
-      Map<String, List<String>> crmContactCampaignNames = env.primaryCrmService().getContactsCampaigns(List.of(crmContact), communicationList);
-      Set<String> tags = getContactTagsCleaned(crmContact, crmContactCampaignNames.get(crmContact.id), brevoConfig,
-          communicationList);
-
-      // run the actual contact upsert
-      CreateContact createContact = toCreateContact(brevoConfig, crmContact, customFields, tags);
-      brevoClient.createContact(createContact, communicationList.id);
+      List<CreateContact> upsertMemberInfos = toCreateContacts(config, contacts, customFields, tags);
+      brevoClient.importContacts(upsertMemberInfos, list.id);
     } catch (ApiException e) {
-      env.logJobError("Brevo upsertContact failed: {}", e);
-    } catch (Exception e) {
-      env.logJobError("Brevo upsertContact failed", e);
+      env.logJobError("Brevo executeBatchUpsert failed (code/response body): {}/{}", e.getCode(), e.getResponseBody(), e);
+      throw e;
     }
   }
 
-  protected Map<String, Object> getCustomFields(CrmContact crmContact, BrevoClient brevoClient,
-      EnvironmentConfig.CommunicationPlatform brevoConfig, EnvironmentConfig.CommunicationList communicationList)
-      throws Exception {
+  @Override
+  protected void executeBatchArchive(Set<String> emails, String listId,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    BrevoClient brevoClient = env.brevoClient(config);
+    brevoClient.setEmailBlacklisted(emails);
+    brevoClient.removeContactsFromList(emails, listId);
+  }
+
+  @Override
+  protected List<String> getUnsubscribedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    BrevoClient brevoClient = env.brevoClient(config);
+    List<GetContactDetails> listContacts = brevoClient.getContactsFromList(lastSync, listId);
+    List<GetContactDetails> unsubscribed = listContacts.stream()
+        .filter(c -> unsubscribedFromList(c, listId))
+        .toList();
+    return getEmails(unsubscribed);
+  }
+
+  @Override
+  protected List<String> getBouncedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // Brevo doesn't have separate bounced emails endpoint like Mailchimp
+    return new ArrayList<>();
+  }
+
+  @Override
+  protected Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    BrevoClient brevoClient = env.brevoClient(config);
+
     Map<String, Object> customFieldMap = new HashMap<>();
 
-    List<CustomField> customFields = buildContactCustomFields(crmContact, brevoConfig, communicationList);
+    List<CustomField> customFields = buildContactCustomFields(crmContact, config, list);
     if (attributeNames.isEmpty()) {
       List<GetAttributesAttributes> attributes = brevoClient.getAttributes();
       for (GetAttributesAttributes attribute : attributes) {
@@ -377,6 +160,15 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
     }
 
     return customFieldMap;
+  }
+
+  protected boolean unsubscribedFromList(GetContactDetails getContactDetails, String listId) {
+    Long id = Utils.parseLong(listId);
+    return id != null && getContactDetails.getListUnsubscribed() != null && getContactDetails.getListUnsubscribed().contains(id);
+  }
+
+  protected List<String> getEmails(List<GetContactDetails> contacts) {
+    return contacts.stream().map(c -> c.getEmail().toLowerCase(Locale.ROOT)).distinct().sorted().toList();
   }
 
   protected List<CreateContact> toCreateContacts(EnvironmentConfig.CommunicationPlatform brevoConfig,
