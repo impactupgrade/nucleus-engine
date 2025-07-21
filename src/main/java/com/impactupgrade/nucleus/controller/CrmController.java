@@ -13,6 +13,7 @@ import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentFactory;
 import com.impactupgrade.nucleus.model.ContactFormData;
 import com.impactupgrade.nucleus.model.ContactSearch;
+import com.impactupgrade.nucleus.model.CrmActivity;
 import com.impactupgrade.nucleus.model.CrmContact;
 import com.impactupgrade.nucleus.model.CrmContactListType;
 import com.impactupgrade.nucleus.model.CrmCustomField;
@@ -41,7 +42,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -59,6 +62,8 @@ import static com.impactupgrade.nucleus.util.Utils.trim;
 
 @Path("/crm")
 public class CrmController {
+
+  private static final String DATE_FORMAT = "yyyy-MM-dd";
 
   protected final static Cache<String, Double> filterToDonationsTotalCache = CacheUtil.buildManualCache();
 
@@ -545,6 +550,70 @@ public class CrmController {
     List<CrmContact> contacts = crmService.getContactsFromList(listId);
 
     return Response.status(200).entity(contacts).build();
+  }
+
+  @Path("/activity/sms")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  public Response activitySms(
+      @FormParam("phone") String phone,
+      @FormParam("body") String body,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    String jobName = "SMS Activity";
+    env.startJobLog(JobType.EVENT, null, jobName, null);
+
+    Calendar c = Calendar.getInstance();
+
+    // Using today's date as part of the activity id to group all user's SMS activities for current day
+    String conversationId = phone  + "::" + new SimpleDateFormat(DATE_FORMAT).format(c.getTime());
+    env.activityService().upsertActivityFromPhoneNumbers(
+        List.of(phone),
+        CrmActivity.Type.CALL,
+        conversationId,
+        c,
+        "SMS " + conversationId,
+        body
+    );
+
+    env.endJobLog(JobStatus.DONE);
+
+    return Response.ok().build();
+  }
+
+  @Path("/activity/email")
+  @POST
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  public Response activityEmail(
+      @FormParam("email") String email,
+      @FormParam("subject") String subject,
+      @FormParam("body") String body,
+      @Context HttpServletRequest request
+  ) throws Exception {
+    Environment env = envFactory.init(request);
+    SecurityUtil.verifyApiKey(env);
+
+    String jobName = "Email Activity";
+    env.startJobLog(JobType.EVENT, null, jobName, null);
+
+    Calendar c = Calendar.getInstance();
+
+    String conversationId = email  + "::" + c.getTimeInMillis();
+    env.activityService().upsertActivityFromEmails(
+        List.of(email),
+        CrmActivity.Type.EMAIL,
+        conversationId,
+        c,
+        subject,
+        body
+    );
+
+    env.endJobLog(JobStatus.DONE);
+
+    return Response.ok().build();
   }
 
   protected List<Map<String, String>> toListOfMap(InputStream inputStream, FormDataContentDisposition fileDisposition) throws Exception {

@@ -159,7 +159,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   }
 
   public List<SObject> getAccountsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
-    return this.getBulkResults(emails, List.of(env.getConfig().salesforce.fieldDefinitions.accountEmail), "Account", this.ACCOUNT_FIELDS, this.env.getConfig().salesforce.customQueryFields.account, extraFields);
+    return this.getBulkResults(emails, List.of(env.getConfig().salesforce.fieldDefinitions.accountEmail), false, "Account", this.ACCOUNT_FIELDS, this.env.getConfig().salesforce.customQueryFields.account, extraFields);
   }
 
   public List<SObject> searchAccounts(AccountSearch accountSearch, String... extraFields)
@@ -563,17 +563,17 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
     if (contactSearch.hasEmail != null) {
       if (contactSearch.hasEmail) {
-        clauses.add("email != null AND email != ''");
+        clauses.add("Email != NULL AND Email != ''");
       } else {
-        clauses.add("email = null OR email = ''");
+        clauses.add("Email = NULL OR Email = ''");
       }
     }
 
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       if (env.getConfig().salesforce.npsp) {
-        clauses.add("email = '" + contactSearch.email + "' OR npe01__HomeEmail__c = '" + contactSearch.email + "' OR npe01__WorkEmail__c = '" + contactSearch.email + "' OR npe01__AlternateEmail__c = '" + contactSearch.email + "'");
+        clauses.add("Email = '" + contactSearch.email + "' OR npe01__HomeEmail__c = '" + contactSearch.email + "' OR npe01__WorkEmail__c = '" + contactSearch.email + "' OR npe01__AlternateEmail__c = '" + contactSearch.email + "'");
       } else {
-        clauses.add("email = '" + contactSearch.email + "'");
+        clauses.add("Email = '" + contactSearch.email + "'");
       }
     }
 
@@ -581,23 +581,24 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       List<String> phoneNumberChunks = Utils.parsePhoneNumber(contactSearch.phone);
 
       if (CollectionUtils.isNotEmpty(phoneNumberChunks)) {
-        String phonePartsCondition = phoneNumberChunks.stream()
-                .collect(Collectors.joining("%"));
+        String phonePartsCondition = String.join("%", phoneNumberChunks);
         // TODO: Finding a few clients with no homephone, so taking that out for now.
-        String phoneClause = new StringBuilder()
-                .append("Phone LIKE '%").append(phonePartsCondition).append("%'")
-                .append(" OR MobilePhone LIKE '%").append(phonePartsCondition).append("%'")
-                .toString();
-        clauses.add(phoneClause);
+        StringBuilder phoneClause = new StringBuilder()
+            .append("Phone LIKE '%").append(phonePartsCondition).append("%'")
+            .append(" OR MobilePhone LIKE '%").append(phonePartsCondition).append("%'");
+        if (env.getConfig().salesforce.npsp) {
+          phoneClause.append(" OR npe01__WorkPhone__c LIKE '%").append(phonePartsCondition).append("%'");
+        }
+        clauses.add(phoneClause.toString());
       }
     }
 
     // TODO: Finding a few clients with no homephone, so taking that out for now.
     if (contactSearch.hasPhone != null) {
       if (contactSearch.hasPhone) {
-        clauses.add("((Phone != null AND Phone != '') OR (MobilePhone != null AND MobilePhone != ''))");
+        clauses.add("((Phone != NULL AND Phone != '') OR (MobilePhone != NULL AND MobilePhone != '') OR (npe01__WorkPhone__c != NULL AND npe01__WorkPhone__c != ''))");
       } else {
-        clauses.add("(Phone = null OR Phone = '') AND (MobilePhone = null OR MobilePhone = '')");
+        clauses.add("(Phone = NULL OR Phone = '') AND (MobilePhone = NULL OR MobilePhone = '') AND (npe01__WorkPhone__c = NULL OR npe01__WorkPhone__c = '')");
       }
     }
 
@@ -654,15 +655,18 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   public List<SObject> getContactsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
     if (env.getConfig().salesforce.npsp) {
-      return getBulkResults(emails, List.of("Email", "npe01__HomeEmail__c", "npe01__WorkEmail__c", "npe01__AlternateEmail__c"), "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+      return getBulkResults(emails, List.of("Email", "npe01__HomeEmail__c", "npe01__WorkEmail__c", "npe01__AlternateEmail__c"), false, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
     } else {
-      return getBulkResults(emails, List.of("Email"), "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+      return getBulkResults(emails, List.of("Email"), false, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
     }
   }
 
   public List<SObject> getContactsByPhones(List<String> phones, String... extraFields) throws ConnectionException, InterruptedException {
+    List<String> chunkedPhones = phones.stream().map(Utils::parsePhoneNumber).filter(CollectionUtils::isNotEmpty)
+        .map(c -> String.join("%", c)).toList();
+
     // TODO: Finding a few clients with no homephone, so taking that out for now.
-    return getBulkResults(phones, List.of("Phone", "MobilePhone", "npe01__WorkPhone__c"), "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+    return getBulkResults(chunkedPhones, List.of("Phone", "MobilePhone", "npe01__WorkPhone__c"), true, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -849,12 +853,12 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected List<SObject> getBulkResults(List<String> values, String conditionFieldName, String objectType,
       String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
-    return getBulkResults(values, List.of(conditionFieldName), objectType, fields, _customFields, extraFields);
+    return getBulkResults(values, List.of(conditionFieldName), false, objectType, fields, _customFields, extraFields);
   }
 
-  protected List<SObject> getBulkResults(List<String> values, List<String> conditionFieldNames, String objectType,
-      String fields, Set<String> _customFields, String[] extraFields) throws ConnectionException, InterruptedException {
-
+  protected List<SObject> getBulkResults(List<String> values, List<String> conditionFieldNames, boolean useLike,
+      String objectType, String fields, Set<String> _customFields, String[] extraFields)
+      throws ConnectionException, InterruptedException {
     values = values.stream().filter(v -> !Strings.isNullOrEmpty(v)).toList();
     conditionFieldNames = conditionFieldNames.stream().filter(f -> !Strings.isNullOrEmpty(f)).toList();
 
@@ -883,17 +887,25 @@ public class SfdcClient extends SFDCPartnerAPIClient {
       }
     }
 
-    String valuesJoin = page.stream().map(condition -> "'" + condition.replaceAll("'", "\\\\'") + "'").collect(Collectors.joining(","));
     List<String> conditions = new ArrayList<>();
-    for (String conditionFieldName : conditionFieldNames) {
-      conditions.add(conditionFieldName + " IN (" + valuesJoin + ")");
+    if (useLike) {
+      for (String value : page) {
+        for (String conditionFieldName : conditionFieldNames) {
+          conditions.add(conditionFieldName + " LIKE '%" + value + "%'");
+        }
+      }
+    } else {
+      String valuesJoin = page.stream().map(condition -> "'" + condition.replaceAll("'", "\\\\'") + "'").collect(Collectors.joining(","));
+      for (String conditionFieldName : conditionFieldNames) {
+        conditions.add(conditionFieldName + " IN (" + valuesJoin + ")");
+      }
     }
     String conditionsJoin = String.join(" OR ", conditions);
     String query = "SELECT " + getFieldsList(fields, customFields, extraFields) + " FROM " + objectType + " WHERE " + conditionsJoin + " ORDER BY CreatedDate ASC";
     List<SObject> results = queryListAutoPaged(query);
 
     if (!more.isEmpty()) {
-      results.addAll(getBulkResults(more, conditionFieldNames, objectType, fields, customFields, extraFields));
+      results.addAll(getBulkResults(more, conditionFieldNames, useLike, objectType, fields, customFields, extraFields));
     }
 
     return results;
