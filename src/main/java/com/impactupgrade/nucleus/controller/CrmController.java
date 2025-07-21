@@ -44,6 +44,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
@@ -556,30 +557,38 @@ public class CrmController {
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   public Response activitySms(
-      @FormParam("phone") String phone,
+      @FormParam("phones") String phones,
       @FormParam("body") String body,
       @Context HttpServletRequest request
   ) throws Exception {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    String jobName = "SMS Activity";
-    env.startJobLog(JobType.EVENT, null, jobName, null);
+    Runnable thread = () -> {
+      String jobName = "SMS Activity";
+      env.startJobLog(JobType.EVENT, null, jobName, null);
 
-    Calendar c = Calendar.getInstance();
+      try {
+        Calendar c = Calendar.getInstance();
 
-    // Using today's date as part of the activity id to group all user's SMS activities for current day
-    String conversationId = phone  + "::" + new SimpleDateFormat(DATE_FORMAT).format(c.getTime());
-    env.activityService().upsertActivityFromPhoneNumbers(
-        List.of(phone),
-        CrmActivity.Type.CALL,
-        conversationId,
-        c,
-        "SMS " + conversationId,
-        body
-    );
+        // Using today's date as part of the activity id to group all user's SMS activities for current day
+        String conversationId = new SimpleDateFormat(DATE_FORMAT).format(c.getTime());
+        env.activityService().upsertActivityFromPhoneNumbers(
+            Arrays.asList(phones.split(",")),
+            CrmActivity.Type.CALL,
+            conversationId,
+            c,
+            "SMS " + conversationId,
+            body
+        );
 
-    env.endJobLog(JobStatus.DONE);
+        env.endJobLog(JobStatus.DONE);
+      } catch (Exception e) {
+        env.logJobError("activitySms failed", e);
+        env.endJobLog(JobStatus.FAILED);
+      }
+    };
+    new Thread(thread).start();
 
     return Response.ok().build();
   }
@@ -588,7 +597,7 @@ public class CrmController {
   @POST
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   public Response activityEmail(
-      @FormParam("email") String email,
+      @FormParam("emails") String emails,
       @FormParam("subject") String subject,
       @FormParam("body") String body,
       @Context HttpServletRequest request
@@ -596,22 +605,30 @@ public class CrmController {
     Environment env = envFactory.init(request);
     SecurityUtil.verifyApiKey(env);
 
-    String jobName = "Email Activity";
-    env.startJobLog(JobType.EVENT, null, jobName, null);
+    Runnable thread = () -> {
+      String jobName = "Email Activity";
+      env.startJobLog(JobType.EVENT, null, jobName, null);
 
-    Calendar c = Calendar.getInstance();
+      try {
+        Calendar c = Calendar.getInstance();
 
-    String conversationId = email  + "::" + c.getTimeInMillis();
-    env.activityService().upsertActivityFromEmails(
-        List.of(email),
-        CrmActivity.Type.EMAIL,
-        conversationId,
-        c,
-        subject,
-        body
-    );
+        String conversationId = c.getTimeInMillis() + "";
+        env.activityService().upsertActivityFromEmails(
+            Arrays.asList(emails.split(",")),
+            CrmActivity.Type.EMAIL,
+            conversationId,
+            c,
+            subject,
+            body
+        );
 
-    env.endJobLog(JobStatus.DONE);
+        env.endJobLog(JobStatus.DONE);
+      } catch (Exception e) {
+        env.logJobError("activitySms failed", e);
+        env.endJobLog(JobStatus.FAILED);
+      }
+    };
+    new Thread(thread).start();
 
     return Response.ok().build();
   }

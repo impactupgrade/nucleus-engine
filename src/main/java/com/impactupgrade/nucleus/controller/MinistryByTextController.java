@@ -62,7 +62,7 @@ public class MinistryByTextController {
     Calendar c = Calendar.getInstance();
 
     // Using today's date as the activity id to group all user's messages' statuses for current day
-    String conversationId = inboundMessageWebhookData.subscriberNo  + "::" + new SimpleDateFormat(DATE_FORMAT).format(c.getTime());
+    String conversationId = new SimpleDateFormat(DATE_FORMAT).format(c.getTime());
     env.activityService().upsertActivityFromPhoneNumbers(
         List.of(inboundMessageWebhookData.subscriberNo),
         CrmActivity.Type.CALL,
