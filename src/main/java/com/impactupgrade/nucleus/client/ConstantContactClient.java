@@ -16,6 +16,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -168,5 +169,186 @@ public class ConstantContactClient extends OAuthClient {
   private static class ContactIds extends Source {
     @JsonProperty("contact_ids")
     public List<String> contactIds;
+  }
+
+  public List<String> getExistingContactEmails() {
+    String url = API_BASE_URL + "/contacts?limit=500";
+    List<String> allEmails = new ArrayList<>();
+    
+    while (url != null) {
+      String response = HttpClient.get(url, headers(), String.class);
+      JSONObject responseObj = new JSONObject(response);
+      
+      JSONArray contacts = responseObj.getJSONArray("contacts");
+      for (int i = 0; i < contacts.length(); i++) {
+        JSONObject contact = contacts.getJSONObject(i);
+        if (contact.has("email_address") && !contact.isNull("email_address")) {
+          allEmails.add(contact.getString("email_address"));
+        }
+      }
+      
+      url = null;
+      if (responseObj.has("_links") && responseObj.getJSONObject("_links").has("next")) {
+        JSONObject nextLink = responseObj.getJSONObject("_links").getJSONObject("next");
+        if (nextLink.has("href")) {
+          url = nextLink.getString("href");
+        }
+      }
+    }
+    
+    return allEmails;
+  }
+
+  public void bulkImportContacts(List<CrmContact> crmContacts, String listId) {
+    bulkImportContactsWithCustomFields(crmContacts, listId, null);
+  }
+
+  public void bulkImportContactsWithCustomFields(List<CrmContact> crmContacts, String listId, Map<String, Map<String, Object>> contactCustomFields) {
+    if (crmContacts.isEmpty()) {
+      return;
+    }
+
+    JSONObject importRequest = new JSONObject();
+    JSONArray contactsArray = new JSONArray();
+    
+    for (CrmContact crmContact : crmContacts) {
+      Contact contact = toContact(crmContact, listId);
+      JSONObject contactJson = new JSONObject();
+      
+      if (contact.emailAddress != null) {
+        contactJson.put("email_address", contact.emailAddress);
+      }
+      if (contact.firstname != null) {
+        contactJson.put("first_name", contact.firstname);
+      }
+      if (contact.lastname != null) {
+        contactJson.put("last_name", contact.lastname);
+      }
+      if (contact.companyName != null) {
+        contactJson.put("company_name", contact.companyName);
+      }
+      if (contact.phoneNumber != null) {
+        contactJson.put("phone_number", contact.phoneNumber);
+      }
+      
+      if (listId != null && !listId.isEmpty()) {
+        JSONArray listMemberships = new JSONArray();
+        listMemberships.put(listId);
+        contactJson.put("list_memberships", listMemberships);
+      }
+      
+      if (contactCustomFields != null && contactCustomFields.containsKey(crmContact.email)) {
+        Map<String, Object> customFields = contactCustomFields.get(crmContact.email);
+        if (customFields != null && !customFields.isEmpty()) {
+          JSONArray customFieldsArray = new JSONArray();
+          for (Map.Entry<String, Object> entry : customFields.entrySet()) {
+            JSONObject customFieldJson = new JSONObject();
+            customFieldJson.put("custom_field_id", entry.getKey());
+            customFieldJson.put("value", entry.getValue().toString());
+            customFieldsArray.put(customFieldJson);
+          }
+          contactJson.put("custom_fields", customFieldsArray);
+        }
+      }
+      
+      contactsArray.put(contactJson);
+    }
+    
+    importRequest.put("contacts", contactsArray);
+    
+    HttpClient.post(API_BASE_URL + "/activities/contacts_file_import", importRequest, APPLICATION_JSON, headers(), String.class);
+  }
+
+  public List<CustomField> getCustomFields() {
+    String response = HttpClient.get(API_BASE_URL + "/contact_custom_fields", headers(), String.class);
+    JSONObject responseObj = new JSONObject(response);
+    
+    List<CustomField> customFields = new ArrayList<>();
+    if (responseObj.has("custom_fields")) {
+      JSONArray fieldsArray = responseObj.getJSONArray("custom_fields");
+      for (int i = 0; i < fieldsArray.length(); i++) {
+        JSONObject fieldObj = fieldsArray.getJSONObject(i);
+        
+        CustomField field = new CustomField();
+        field.customFieldId = fieldObj.optString("custom_field_id");
+        field.label = fieldObj.optString("label");
+        field.name = fieldObj.optString("name");
+        field.type = fieldObj.optString("type");
+        
+        customFields.add(field);
+      }
+    }
+    
+    return customFields;
+  }
+
+  public CustomField createCustomField(String name, String label, String type) {
+    JSONObject customFieldRequest = new JSONObject();
+    customFieldRequest.put("label", label);
+    customFieldRequest.put("name", name);
+    customFieldRequest.put("type", type);
+    
+    String response = HttpClient.post(API_BASE_URL + "/contact_custom_fields", customFieldRequest, APPLICATION_JSON, headers(), String.class);
+    JSONObject responseObj = new JSONObject(response);
+    
+    CustomField field = new CustomField();
+    field.customFieldId = responseObj.optString("custom_field_id");
+    field.label = responseObj.optString("label");
+    field.name = responseObj.optString("name");
+    field.type = responseObj.optString("type");
+    
+    return field;
+  }
+
+  public List<String> getUnsubscribedEmails() {
+    String url = API_BASE_URL + "/contacts?status=optout&limit=500";
+    List<String> unsubscribedEmails = new ArrayList<>();
+    
+    while (url != null) {
+      String response = HttpClient.get(url, headers(), String.class);
+      JSONObject responseObj = new JSONObject(response);
+      
+      JSONArray contacts = responseObj.getJSONArray("contacts");
+      for (int i = 0; i < contacts.length(); i++) {
+        JSONObject contact = contacts.getJSONObject(i);
+        if (contact.has("email_address") && !contact.isNull("email_address")) {
+          unsubscribedEmails.add(contact.getString("email_address"));
+        }
+      }
+      
+      url = null;
+      if (responseObj.has("_links") && responseObj.getJSONObject("_links").has("next")) {
+        JSONObject nextLink = responseObj.getJSONObject("_links").getJSONObject("next");
+        if (nextLink.has("href")) {
+          url = nextLink.getString("href");
+        }
+      }
+    }
+    
+    return unsubscribedEmails;
+  }
+
+  public void archiveContacts(List<String> emails) {
+    if (emails.isEmpty()) {
+      return;
+    }
+    
+    JSONObject deleteRequest = new JSONObject();
+    JSONArray emailsArray = new JSONArray();
+    for (String email : emails) {
+      emailsArray.put(email);
+    }
+    deleteRequest.put("contact_emails", emailsArray);
+    
+    HttpClient.post(API_BASE_URL + "/activities/remove_contacts", deleteRequest, APPLICATION_JSON, headers(), String.class);
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static final class CustomField {
+    @JsonProperty("custom_field_id")
+    public String customFieldId;
+    public String label;
+    public String name;
+    public String type;
   }
 }

@@ -4,23 +4,27 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
-import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.client.ConstantContactClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 import com.impactupgrade.nucleus.model.CrmContact;
-import com.impactupgrade.nucleus.model.PagedResults;
 
+import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-// TODO: NEEDS FULLY UPDATED WITH EVERYTHING NEW IN THE MAILCHIMP SERVICE! Likely implies genericizing some of the MC
-//  logic and pulling it upstream to AbstractCommunicationService.
 public class ConstantContactCommunicationService extends AbstractCommunicationService {
+
+  private ConstantContactClient constantContactClient;
+  private final Map<String, ConstantContactClient.CustomField> customFieldsCache = new HashMap<>();
 
   @Override
   public String name() {
-    return "constantContact";
+    return "constantcontact";
   }
 
   @Override
@@ -29,47 +33,113 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
   }
 
   @Override
-  public void syncContacts(Calendar lastSync) throws Exception {
-    for (EnvironmentConfig.CommunicationPlatform communicationPlatform : env.getConfig().constantContact) {
-      ConstantContactClient constantContactClient = new ConstantContactClient(communicationPlatform, env);
+  protected List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs() {
+    return env.getConfig().constantContact;
+  }
 
-      for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
-        PagedResults<CrmContact> pagedResults = env.primaryCrmService().getEmailContacts(lastSync, communicationList);
-        for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {
-          for (CrmContact crmContact : resultSet.getRecords()) {
-            env.logJobInfo("upserting contact {} {} on list {}", crmContact.id, crmContact.email, communicationList.id);
-            constantContactClient.upsertContact(crmContact, communicationList.id);
-          }
-        }
+  @Override
+  protected Set<String> getExistingContactEmails(EnvironmentConfig.CommunicationPlatform config, String listId) {
+    ConstantContactClient client = getClient(config);
+    List<String> emails = client.getExistingContactEmails();
+    return new HashSet<>(emails);
+  }
+
+  @Override
+  protected void executeBatchUpsert(List<CrmContact> contacts, Map<String, Map<String, Object>> customFields, 
+      Map<String, Set<String>> tags, EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    ConstantContactClient client = getClient(config);
+    
+    String listId = list != null ? list.id : null;
+    if (listId == null || listId.isEmpty()) {
+      env.logJobInfo("No listId specified for Constant Contact platform config, using bulk import without list assignment");
+    }
+    
+    client.bulkImportContactsWithCustomFields(contacts, listId, customFields);
+  }
+
+  @Override
+  protected void executeBatchArchive(Set<String> emails, String listId, EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    ConstantContactClient client = getClient(config);
+    client.archiveContacts(new ArrayList<>(emails));
+  }
+
+  @Override
+  protected List<String> getUnsubscribedEmails(String listId, Calendar lastSync, EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    ConstantContactClient client = getClient(config);
+    return client.getUnsubscribedEmails();
+  }
+
+  @Override
+  protected List<String> getBouncedEmails(String listId, Calendar lastSync, EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    return new ArrayList<>();
+  }
+
+  @Override
+  protected Map<String, Object> buildPlatformCustomFields(CrmContact crmContact, EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    ConstantContactClient client = getClient(config);
+    Map<String, Object> platformCustomFields = new HashMap<>();
+    
+    List<CustomField> customFields = buildContactCustomFields(crmContact, config, list);
+    if (customFields.isEmpty()) {
+      return platformCustomFields;
+    }
+    
+    // Populate cache if empty
+    if (customFieldsCache.isEmpty()) {
+      List<ConstantContactClient.CustomField> existingFields = client.getCustomFields();
+      for (ConstantContactClient.CustomField field : existingFields) {
+        customFieldsCache.put(field.name, field);
       }
     }
-  }
-
-  @Override
-  public void syncUnsubscribes(Calendar lastSync) throws Exception {
-    //TODO: remove contacts?
-  }
-
-  @Override
-  public void upsertContact(String contactId) throws Exception {
-    CrmService crmService = env.primaryCrmService();
-
-    for (EnvironmentConfig.CommunicationPlatform communicationPlatform : env.getConfig().constantContact) {
-      ConstantContactClient constantContactClient = new ConstantContactClient(communicationPlatform, env);
-
-      for (EnvironmentConfig.CommunicationList communicationList : communicationPlatform.lists) {
-        Optional<CrmContact> crmContact = crmService.getFilteredContactById(contactId, communicationList.crmFilter);
-
-        if (crmContact.isPresent() && !Strings.isNullOrEmpty(crmContact.get().phoneNumberForSMS())) {
-          env.logJobInfo("upserting contact {} {} on list {}", crmContact.get().id, crmContact.get().phoneNumberForSMS(), communicationList.id);
-          constantContactClient.upsertContact(crmContact.get(), communicationList.id);
+    
+    for (CustomField customField : customFields) {
+      if (customField.value == null) {
+        continue;
+      }
+      
+      String fieldName = customField.name;
+      ConstantContactClient.CustomField ccField = customFieldsCache.get(fieldName);
+      if (ccField == null) {
+        String fieldType = "TEXT";
+        if (customField.type == CustomFieldType.NUMBER) {
+          fieldType = "NUMBER";
+        } else if (customField.type == CustomFieldType.DATE) {
+          fieldType = "DATE";
+        } else if (customField.type == CustomFieldType.BOOLEAN) {
+          fieldType = "TEXT";
+        }
+        
+        try {
+          ccField = client.createCustomField(fieldName, fieldName, fieldType);
+          customFieldsCache.put(fieldName, ccField);
+        } catch (Exception e) {
+          env.logJobWarn("Failed to create custom field '{}' in Constant Contact: {}", fieldName, e.getMessage());
+          continue;
         }
       }
+      
+      if (ccField != null) {
+        Object value = customField.value;
+        if (customField.type == CustomFieldType.BOOLEAN) {
+          value = ((Boolean) value) ? "1" : "0";
+        } else if (customField.type == CustomFieldType.DATE) {
+          Calendar calendar = (Calendar) value;
+          value = String.format("%04d-%02d-%02d", 
+              calendar.get(Calendar.YEAR),
+              calendar.get(Calendar.MONTH) + 1,
+              calendar.get(Calendar.DAY_OF_MONTH));
+        }
+        platformCustomFields.put(ccField.customFieldId, value.toString());
+      }
     }
+    
+    return platformCustomFields;
   }
 
-  @Override
-  public void massArchive() throws Exception {
-    // TODO
+  private ConstantContactClient getClient(EnvironmentConfig.CommunicationPlatform platformConfig) {
+    if (constantContactClient == null) {
+      constantContactClient = new ConstantContactClient(platformConfig, env);
+    }
+    return constantContactClient;
   }
 }

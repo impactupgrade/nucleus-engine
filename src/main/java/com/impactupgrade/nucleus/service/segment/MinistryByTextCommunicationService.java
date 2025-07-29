@@ -13,10 +13,13 @@ import com.impactupgrade.nucleus.model.PagedResults;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class MinistryByTextCommunicationService extends AbstractCommunicationService {
 
@@ -38,7 +41,21 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   }
 
   @Override
+  protected List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs() {
+    return env.getConfig().ministrybytext.stream()
+        .map(mbt -> (EnvironmentConfig.CommunicationPlatform) mbt)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  protected Set<String> getExistingContactEmails(EnvironmentConfig.CommunicationPlatform config, String listId) {
+    // MinistryByText uses phone numbers, not emails - return empty set
+    return new HashSet<>();
+  }
+
+  @Override
   public void syncContacts(Calendar lastSync) throws Exception {
+    // Override to use SMS contacts instead of email contacts
     for (EnvironmentConfig.MBT mbtConfig : env.getConfig().ministrybytext) {
       MinistryByTextClient mbtClient = new MinistryByTextClient(mbtConfig, env);
 
@@ -65,12 +82,8 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   }
 
   @Override
-  public void syncUnsubscribes(Calendar lastSync) throws Exception {
-    // TODO
-  }
-
-  @Override
   public void upsertContact(String contactId) throws Exception {
+    // Override to use SMS logic instead of email logic
     CrmService crmService = env.primaryCrmService();
 
     for (EnvironmentConfig.MBT mbtConfig : env.getConfig().ministrybytext) {
@@ -88,7 +101,37 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   }
 
   @Override
-  public void massArchive() throws Exception {
-    // TODO
+  protected void executeBatchUpsert(List<CrmContact> contacts,
+      Map<String, Map<String, Object>> customFields, Map<String, Set<String>> tags,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    // This method is not used since we override syncContacts and upsertContact
+    throw new UnsupportedOperationException("MinistryByText uses custom SMS sync logic");
+  }
+
+  @Override
+  protected void executeBatchArchive(Set<String> emails, String listId,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: MinistryByText archive implementation
+  }
+
+  @Override
+  protected List<String> getUnsubscribedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // TODO: MinistryByText unsubscribe implementation
+    return new ArrayList<>();
+  }
+
+  @Override
+  protected List<String> getBouncedEmails(String listId, Calendar lastSync,
+      EnvironmentConfig.CommunicationPlatform config) throws Exception {
+    // MinistryByText doesn't have bounced emails (SMS service)
+    return new ArrayList<>();
+  }
+
+  @Override
+  protected Map<String, Object> buildPlatformCustomFields(CrmContact crmContact,
+      EnvironmentConfig.CommunicationPlatform config, EnvironmentConfig.CommunicationList list) throws Exception {
+    // MinistryByText doesn't use custom fields in the same way
+    return new HashMap<>();
   }
 }
