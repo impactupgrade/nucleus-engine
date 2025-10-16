@@ -245,7 +245,7 @@ public class StripePaymentGatewayService implements PaymentGatewayService {
         }
         if (filter(charge)) {
           env.logJobInfo("Skipping Stripe object due to filteringExpressions...");
-          return;
+          continue;
         }
 
         try {
