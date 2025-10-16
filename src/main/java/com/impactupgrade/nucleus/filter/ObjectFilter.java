@@ -4,9 +4,11 @@
 
 package com.impactupgrade.nucleus.filter;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public interface ObjectFilter<T> {
@@ -27,9 +29,11 @@ public interface ObjectFilter<T> {
     default boolean evaluate(T t, EnvironmentConfig.Expression expression) {
         String fieldValue = getFieldValue(t, expression.key);
         return switch (expression.operator) {
-            case "==" -> Objects.equals(fieldValue, expression.value);
-            case "!=" -> !Objects.equals(fieldValue, expression.value);
-            default -> false;
+          case "==" -> expression.value.equalsIgnoreCase(fieldValue);
+          case "!=" -> !expression.value.equalsIgnoreCase(fieldValue);
+          case "=~" -> !Strings.isNullOrEmpty(fieldValue) && fieldValue.toLowerCase(Locale.ROOT).contains(expression.value.toLowerCase(Locale.ROOT));
+          case "!~" -> Strings.isNullOrEmpty(fieldValue) || !fieldValue.toLowerCase(Locale.ROOT).contains(expression.value.toLowerCase(Locale.ROOT));
+          default -> false;
         };
     }
 
