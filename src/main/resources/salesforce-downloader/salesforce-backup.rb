@@ -175,6 +175,9 @@ begin
   end
 
   urls.each do |url|
+    puts "Waiting 61 seconds before downloading the next file to avoid rate limiting..."
+    sleep(61)
+
     fn = file_name(url)
     file_path = "backup-salesforce/#{fn}"
     retry_count = 0
@@ -186,6 +189,9 @@ begin
       if fs && fs == expected_size
         puts "File #{fn} exists and is the right size. Skipping."
       else
+        puts "Waiting 61 seconds before downloading the next file to avoid rate limiting..."
+        sleep(61)
+
         download_file(result, url, expected_size)
       end
     rescue Exception => e
