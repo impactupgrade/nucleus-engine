@@ -387,7 +387,8 @@ public class EnvironmentConfig implements Serializable {
 
   public SafeHiringPlatform safeHiring = new SafeHiringPlatform();
   public static class SafeHiringPlatform extends Platform {
-    public Long packageId = null;
+    public Long selfpayPackageId = null;
+    public Long orgpayPackageId = null;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
