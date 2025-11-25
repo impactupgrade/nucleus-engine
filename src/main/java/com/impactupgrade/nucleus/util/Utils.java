@@ -375,18 +375,27 @@ public class Utils {
       return "";
     }
 
-    street = street.replace("Avenue", "Ave");
-    street = street.replace("Court", "Ct");
-    street = street.replace("Cove", "Cv");
-    street = street.replace("Drive", "Dr");
-    street = street.replace("Lane", "Ln");
-    street = street.replace("Place", "Pl");
-    street = street.replace("Ridge", "Rdg");
-    street = street.replace("Road", "Rd");
-    street = street.replace("Street", "St");
+    street = street.toLowerCase(Locale.ROOT).trim();
+
+    street = street.replace("avenue", "ave");
+    street = street.replace("court", "ct");
+    street = street.replace("cove", "cv");
+    street = street.replace("drive", "dr");
+    street = street.replace("lane", "ln");
+    street = street.replace("parkway", "pkwy");
+    street = street.replace("place", "pl");
+    street = street.replace("ridge", "rdg");
+    street = street.replace("road", "rd");
+    street = street.replace("street", "st");
+
+    street = street.replace("north", "n");
+    street = street.replace("south", "s");
+    street = street.replace("east", "e");
+    street = street.replace("west", "w");
+
     street = alphanumericOnly(street);
 
-    return street.toLowerCase(Locale.ROOT).trim();
+    return street;
   }
 
   public static List<String> parsePhoneNumber(String phoneNumber) {
