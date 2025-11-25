@@ -269,8 +269,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void updateAccount(CrmAccount crmAccount) throws Exception {
-
+    public boolean updateAccount(CrmAccount crmAccount) throws Exception {
+      return true;
     }
 
     @Override
@@ -284,8 +284,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void updateContact(CrmContact crmContact) throws Exception {
-
+    public boolean updateContact(CrmContact crmContact) throws Exception {
+      return true;
     }
 
     @Override
@@ -339,13 +339,13 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void updateDonation(CrmDonation crmDonation) throws Exception {
-
+    public boolean updateDonation(CrmDonation crmDonation) throws Exception {
+      return true;
     }
 
     @Override
-    public void refundDonation(CrmDonation crmDonation) throws Exception {
-
+    public boolean refundDonation(CrmDonation crmDonation) throws Exception {
+      return true;
     }
 
     @Override
@@ -364,8 +364,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
-
+    public boolean closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+      return true;
     }
 
     @Override
@@ -374,8 +374,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
-
+    public boolean updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+      return true;
     }
 
     @Override
@@ -389,8 +389,8 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
-
+    public boolean updateCampaign(CrmCampaign crmCampaign) throws Exception {
+      return true;
     }
 
     @Override

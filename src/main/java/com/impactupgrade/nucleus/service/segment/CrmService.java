@@ -52,7 +52,7 @@ public interface CrmService extends SegmentService {
 //  Optional<CrmAccount> getAccountByEmail(String email) throws Exception;
   List<CrmAccount> searchAccounts(AccountSearch accountSearch) throws Exception;
   String insertAccount(CrmAccount crmAccount) throws Exception;
-  void updateAccount(CrmAccount crmAccount) throws Exception;
+  boolean updateAccount(CrmAccount crmAccount) throws Exception;
   void addAccountToCampaign(CrmAccount crmAccount, String campaignId, String status) throws Exception;
   // TODO: For now, need this to clean up orphaned accounts (see ContactService). But could eventually expand it
   //  to be a full-blown cascade-delete, much like what we do in IT cleanup.
@@ -86,7 +86,7 @@ public interface CrmService extends SegmentService {
   }
   PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
-  void updateContact(CrmContact crmContact) throws Exception;
+  boolean updateContact(CrmContact crmContact) throws Exception;
   // TODO: Business Donations coming soon.
 //  boolean hasSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
 //  void insertSecondaryAffiliation(String crmAccountId, String crmContactId) throws Exception;
@@ -119,8 +119,8 @@ public interface CrmService extends SegmentService {
   List<CrmDonation> getDonationsByTransactionIds(List<String> transactionIds) throws Exception;
   List<CrmDonation> getDonationsByCustomerId(String customerId) throws Exception;
   String insertDonation(CrmDonation crmDonation) throws Exception;
-  void updateDonation(CrmDonation crmDonation) throws Exception;
-  void refundDonation(CrmDonation crmDonation) throws Exception;
+  boolean updateDonation(CrmDonation crmDonation) throws Exception;
+  boolean refundDonation(CrmDonation crmDonation) throws Exception;
   void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception;
   List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception;
 
@@ -150,12 +150,12 @@ public interface CrmService extends SegmentService {
   }
   List<CrmRecurringDonation> searchAllRecurringDonations(Optional<String> name, Optional<String> email, Optional<String> phone) throws Exception;
   String insertRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
-//  void updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
+//  boolean updateRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
   // Provide the full CRM model in case additional context is needed (close reasons, etc.)
-  void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
+  boolean closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception;
 
   String insertCampaign(CrmCampaign crmCampaign) throws Exception;
-  void updateCampaign(CrmCampaign crmCampaign) throws Exception;
+  boolean updateCampaign(CrmCampaign crmCampaign) throws Exception;
   List<CrmCampaign> getCampaignsByExternalReference(String externalReference) throws Exception;
   void deleteCampaign(String campaignId) throws Exception;
 
@@ -180,7 +180,7 @@ public interface CrmService extends SegmentService {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // TODO
-  void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
+  boolean updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // COMMUNICATION SYNC

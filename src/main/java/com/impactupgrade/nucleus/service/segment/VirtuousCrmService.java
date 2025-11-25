@@ -86,8 +86,8 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void updateAccount(CrmAccount crmAccount) throws Exception {
-
+  public boolean updateAccount(CrmAccount crmAccount) throws Exception {
+    return true;
   }
 
   @Override
@@ -122,7 +122,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public boolean updateContact(CrmContact crmContact) throws Exception {
     VirtuousClient.Contact updatingContact = asContact(crmContact);
     VirtuousClient.Contact existingContact = virtuousClient.getContactById(updatingContact.id);
 
@@ -135,7 +135,7 @@ public class VirtuousCrmService implements CrmService {
       VirtuousClient.ContactMethod createdContactMethod = virtuousClient.createContactMethod(contactMethod);
       if (createdContactMethod == null) {
         env.logJobWarn("Failed to create contact method {}/{}!", contactMethod.id, contactMethod.type);
-        return;
+        return false;
       }
       env.logJobInfo("Contact method created.");
     }
@@ -145,7 +145,7 @@ public class VirtuousCrmService implements CrmService {
       env.logJobInfo("Updating contact method...");
       if (virtuousClient.updateContactMethod(contactMethod) == null) {
         env.logJobWarn("Failed to update contact method {}/{}!", contactMethod.id, contactMethod.type);
-        return;
+        return false;
       }
       env.logJobInfo("Contact method updated.");
     }
@@ -156,7 +156,7 @@ public class VirtuousCrmService implements CrmService {
       virtuousClient.deleteContactMethod(contactMethod);
     }
 
-    virtuousClient.updateContact(updatingContact);
+    return virtuousClient.updateContact(updatingContact) != null;
   }
 
   @Override
@@ -315,23 +315,24 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void updateDonation(CrmDonation crmDonation) throws Exception {
+  public boolean updateDonation(CrmDonation crmDonation) throws Exception {
     VirtuousClient.Gift gift = asGift(crmDonation);
     try {
       gift.id = Integer.parseInt(crmDonation.id);
     } catch (NumberFormatException nfe) {
       env.logJobError("Failed to parse numeric id from string {}!", crmDonation.id);
-      return;
+      return false;
     }
-    virtuousClient.updateGift(gift);
+    return virtuousClient.updateGift(gift) != null;
   }
 
   @Override
-  public void refundDonation(CrmDonation crmDonation) throws Exception {
+  public boolean refundDonation(CrmDonation crmDonation) throws Exception {
     VirtuousClient.Gift gift = virtuousClient.getGiftByTransactionSourceAndId(crmDonation.gatewayName, crmDonation.transactionId);
     if (Objects.nonNull(gift)) {
-      virtuousClient.createReversingTransaction(gift);
+      return virtuousClient.createReversingTransaction(gift) != null;
     }
+    return false;
   }
 
   @Override
@@ -391,8 +392,8 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
-    virtuousClient.cancelRecurringGift(Integer.parseInt(crmRecurringDonation.id));
+  public boolean closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+    return virtuousClient.cancelRecurringGift(Integer.parseInt(crmRecurringDonation.id)) != null;
   }
 
   @Override
@@ -401,8 +402,8 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
-
+  public boolean updateCampaign(CrmCampaign crmCampaign) throws Exception {
+    return true;
   }
 
   @Override
@@ -416,7 +417,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  public boolean updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
     VirtuousClient.RecurringGift recurringGift = (VirtuousClient.RecurringGift) crmRecurringDonation.crmRawObject;
 
@@ -437,7 +438,7 @@ public class VirtuousCrmService implements CrmService {
       // TODO
     }
 
-    virtuousClient.updateRecurringGift(recurringGift);
+    return virtuousClient.updateRecurringGift(recurringGift) != null;
   }
 
   @Override

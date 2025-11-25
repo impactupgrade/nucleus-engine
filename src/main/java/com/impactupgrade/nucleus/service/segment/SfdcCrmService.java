@@ -165,11 +165,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateAccount(CrmAccount crmAccount) throws Exception {
+  public boolean updateAccount(CrmAccount crmAccount) throws Exception {
     SObject account = new SObject("Account");
     account.setId(crmAccount.id);
     setAccountFields(account, crmAccount);
-    sfdcClient.update(account);
+    return sfdcClient.update(account).getSuccess();
   }
 
   @Override
@@ -413,7 +413,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateDonation(CrmDonation crmDonation) throws Exception {
+  public boolean updateDonation(CrmDonation crmDonation) throws Exception {
     SObject opportunity = new SObject("Opportunity");
     opportunity.setId(crmDonation.id);
 
@@ -422,7 +422,7 @@ public class SfdcCrmService implements CrmService {
     // ignore the campaign -- no need to currently re-provide that side.
     setOpportunityFields(opportunity, Optional.empty(), crmDonation);
 
-    sfdcClient.update(opportunity);
+    return sfdcClient.update(opportunity).getSuccess();
   }
 
   protected void setAccountFields(SObject account, CrmAccount crmAccount) {
@@ -476,11 +476,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public boolean updateContact(CrmContact crmContact) throws Exception {
     SObject contact = new SObject("Contact");
     contact.setId(crmContact.id);
     setContactFields(contact, crmContact);
-    sfdcClient.update(contact);
+    return sfdcClient.update(contact).getSuccess();
   }
 
   @Override
@@ -713,12 +713,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void refundDonation(CrmDonation crmDonation) throws Exception {
+  public boolean refundDonation(CrmDonation crmDonation) throws Exception {
     SObject opportunity = new SObject("Opportunity");
     opportunity.setId(crmDonation.id);
     setOpportunityRefundFields(opportunity, crmDonation);
 
-    sfdcClient.update(opportunity);
+    return sfdcClient.update(opportunity).getSuccess();
   }
 
   protected void setOpportunityRefundFields(SObject opportunity, CrmDonation crmDonation) throws Exception {
@@ -864,12 +864,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+  public boolean closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
     toUpdate.setId(crmRecurringDonation.id);
     toUpdate.setField("Npe03__Open_Ended_Status__c", "Closed");
     setRecurringDonationFieldsForClose(toUpdate, crmRecurringDonation);
-    sfdcClient.update(toUpdate);
+    return sfdcClient.update(toUpdate).getSuccess();
   }
 
   @Override
@@ -880,11 +880,11 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
+  public boolean updateCampaign(CrmCampaign crmCampaign) throws Exception {
     SObject campaign = new SObject("Campaign");
     campaign.setId(crmCampaign.id);
     setCampaignFields(campaign, crmCampaign);
-    sfdcClient.update(campaign);
+    return sfdcClient.update(campaign).getSuccess();
   }
 
   protected void setCampaignFields(SObject campaign, CrmCampaign crmCampaign) throws Exception {
@@ -1005,7 +1005,7 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  public boolean updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
 
     SObject toUpdate = new SObject("Npe03__Recurring_Donation__c");
@@ -1044,8 +1044,12 @@ public class SfdcCrmService implements CrmService {
       setRecurringDonationFieldsForResume(toUpdate, manageDonationEvent);
     }
 
-    sfdcClient.update(toUpdate);
-    sfdcClient.refreshRecurringDonation(crmRecurringDonation.id);
+    boolean success = sfdcClient.update(toUpdate).getSuccess();
+    if (success) {
+      sfdcClient.refreshRecurringDonation(crmRecurringDonation.id);
+    }
+
+    return success;
   }
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update

@@ -332,8 +332,9 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateDonation(CrmDonation crmDonation) throws Exception {
+  public boolean updateDonation(CrmDonation crmDonation) throws Exception {
     // TODO
+    return true;
   }
 
   @Override
@@ -345,10 +346,10 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateAccount(CrmAccount crmAccount) throws Exception {
+  public boolean updateAccount(CrmAccount crmAccount) throws Exception {
     CompanyProperties account = new CompanyProperties();
     setAccountFields(account, crmAccount);
-    hsClient.company().update(crmAccount.id, account);
+    return hsClient.company().update(crmAccount.id, account) != null;
   }
 
   protected void setAccountFields(CompanyProperties account, CrmAccount crmAccount) {
@@ -375,10 +376,10 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public boolean updateContact(CrmContact crmContact) throws Exception {
     ContactProperties contact = new ContactProperties();
     setContactFields(contact, crmContact);
-    hsClient.contact().update(crmContact.id, contact);
+    return hsClient.contact().update(crmContact.id, contact) != null;
   }
 
   @Override
@@ -539,11 +540,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void refundDonation(CrmDonation crmDonation) throws Exception {
+  public boolean refundDonation(CrmDonation crmDonation) throws Exception {
     DealProperties deal = new DealProperties();
     setDonationRefundFields(deal, crmDonation);
 
-    hsClient.deal().update(crmDonation.id, deal);
+    return hsClient.deal().update(crmDonation.id, deal) != null;
   }
 
   protected void setDonationRefundFields(DealProperties deal, CrmDonation crmDonation) throws Exception {
@@ -653,7 +654,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+  public boolean closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     DealProperties dealProperties = new DealProperties();
     dealProperties.setDealstage(env.getConfig().hubspot.recurringDonationPipeline.closedStageId);
     if (env.getConfig().hubspot.enableRecurring) {
@@ -662,7 +663,7 @@ public class HubSpotCrmService implements CrmService {
     }
     setRecurringDonationFieldsForClose(dealProperties, crmRecurringDonation);
 
-    hsClient.deal().update(crmRecurringDonation.id, dealProperties);
+    return hsClient.deal().update(crmRecurringDonation.id, dealProperties) != null;
   }
 
   // Give orgs an opportunity to clear anything else out that's unique to them, prior to the update
@@ -678,7 +679,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  public boolean updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     DealProperties dealProperties = new DealProperties();
 
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
@@ -707,7 +708,7 @@ public class HubSpotCrmService implements CrmService {
       // TODO: Likely a new Deal with type/dates set appropriately
     }
 
-    hsClient.deal().update(crmRecurringDonation.id, dealProperties);
+    return hsClient.deal().update(crmRecurringDonation.id, dealProperties) != null;
   }
 
   // Give orgs an opportunity to set anything else that's unique to them, prior to pause
@@ -758,8 +759,8 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
-
+  public boolean updateCampaign(CrmCampaign crmCampaign) throws Exception {
+    return true;
   }
 
   @Override

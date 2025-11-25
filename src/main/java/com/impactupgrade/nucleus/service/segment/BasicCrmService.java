@@ -60,7 +60,8 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default void updateAccount(CrmAccount crmAccount) throws Exception {
+  default boolean updateAccount(CrmAccount crmAccount) throws Exception {
+    return true;
   }
 
   default void deleteAccount(String accountId) throws Exception {
@@ -82,10 +83,12 @@ public interface BasicCrmService extends CrmService {
     return Optional.empty();
   }
 
-  default void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+  default boolean closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+    return true;
   }
 
-  default void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  default boolean updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+    return true;
   }
 
   default void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception {
@@ -115,7 +118,8 @@ public interface BasicCrmService extends CrmService {
     return null;
   }
 
-  default void updateCampaign(CrmCampaign crmCampaign) throws Exception {
+  default boolean updateCampaign(CrmCampaign crmCampaign) throws Exception {
+    return true;
   }
 
   default List<CrmCampaign> getCampaignsByExternalReference(String externalReference) throws Exception {

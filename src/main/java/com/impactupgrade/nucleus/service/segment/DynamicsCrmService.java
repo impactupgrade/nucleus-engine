@@ -77,8 +77,9 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public boolean updateContact(CrmContact crmContact) throws Exception {
     dynamicsCrmClient.updateContact(toContact(crmContact));
+    return true;
   }
 
   @Override
@@ -104,13 +105,15 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
-  public void updateDonation(CrmDonation crmDonation) throws Exception {
+  public boolean updateDonation(CrmDonation crmDonation) throws Exception {
     dynamicsCrmClient.updateOpportunity(toOpportunity(crmDonation));
+    return true;
   }
 
   @Override
-  public void refundDonation(CrmDonation crmDonation) throws Exception {
+  public boolean refundDonation(CrmDonation crmDonation) throws Exception {
     //TODO: howto?
+    return true;
   }
 
   @Override

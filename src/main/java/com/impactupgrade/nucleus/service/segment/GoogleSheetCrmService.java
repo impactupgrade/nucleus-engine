@@ -71,8 +71,8 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public void updateContact(CrmContact crmContact) throws Exception {
-
+    public boolean updateContact(CrmContact crmContact) throws Exception {
+      return true;
     }
 
     @Override
@@ -91,13 +91,13 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public void updateDonation(CrmDonation crmDonation) throws Exception {
-
+    public boolean updateDonation(CrmDonation crmDonation) throws Exception {
+      return true;
     }
 
     @Override
-    public void refundDonation(CrmDonation crmDonation) throws Exception {
-
+    public boolean refundDonation(CrmDonation crmDonation) throws Exception {
+      return true;
     }
 
     @Override

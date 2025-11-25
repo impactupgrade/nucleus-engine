@@ -188,8 +188,9 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateDonation(CrmDonation crmDonation) throws Exception {
+  public boolean updateDonation(CrmDonation crmDonation) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
+    return true;
   }
 
   @Override
@@ -231,8 +232,9 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateContact(CrmContact crmContact) throws Exception {
+  public boolean updateContact(CrmContact crmContact) throws Exception {
     // currently used only by custom donation forms, messaging opt in/out, and batch updates
+    return true;
   }
 
   @Override
@@ -340,8 +342,9 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void refundDonation(CrmDonation crmDonation) throws Exception {
+  public boolean refundDonation(CrmDonation crmDonation) throws Exception {
     // Retrieving donations by Stripe IDs are not possible.
+    return true;
   }
 
   @Override
@@ -422,8 +425,9 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateAccount(CrmAccount crmAccount) throws Exception {
+  public boolean updateAccount(CrmAccount crmAccount) throws Exception {
     // For now, holding back on households.
+    return true;
   }
 
   @Override
@@ -514,7 +518,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
+  public boolean updateRecurringDonation(ManageDonationEvent manageDonationEvent) throws Exception {
     CrmRecurringDonation crmRecurringDonation = manageDonationEvent.getCrmRecurringDonation();
     // TODO: We need a refactor. Upstream (DonationService), we're already retrieving this once to confirm the RD's
     //  existence. But here we need it again in order to get the designations. Can we trust crmRecurringDonation.raw?
@@ -547,14 +551,14 @@ public class BloomerangCrmService implements CrmService {
     recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus))
         .forEach(rd -> rd.customFields = null);
 
-    put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class);
+    return put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class) != null;
   }
 
   @Override
-  public void closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
+  public boolean closeRecurringDonation(CrmRecurringDonation crmRecurringDonation) throws Exception {
     // TODO: Avoid the double hit? Upstream already retrieved this once. Doesn't crmRecurringDonation.raw ALWAYS have Donation in it?
     Donation recurringDonation = getDonation(crmRecurringDonation.id);
-    closeRecurringDonation(recurringDonation);
+    return closeRecurringDonation(recurringDonation);
   }
 
   @Override
@@ -569,8 +573,8 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public void updateCampaign(CrmCampaign crmCampaign) throws Exception {
-
+  public boolean updateCampaign(CrmCampaign crmCampaign) throws Exception {
+    return true;
   }
 
   @Override
@@ -693,7 +697,7 @@ public class BloomerangCrmService implements CrmService {
         .findFirst().orElse(null);
   }
 
-  protected void closeRecurringDonation(Donation recurringDonation) throws Exception {
+  protected boolean closeRecurringDonation(Donation recurringDonation) throws Exception {
     recurringDonation.designations.stream().filter(d -> !Strings.isNullOrEmpty(d.recurringDonationStatus))
         .forEach(rd -> {
           rd.recurringDonationStatus = "Closed";
@@ -704,7 +708,7 @@ public class BloomerangCrmService implements CrmService {
           rd.customFields = null;
         });
 
-    put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class);
+    return put(BLOOMERANG_URL + "transaction/" + recurringDonation.id, recurringDonation, APPLICATION_JSON, headers(), Donation.class) != null;
   }
 
   protected CrmContact toCrmContact(Constituent constituent) {
