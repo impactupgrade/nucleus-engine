@@ -144,7 +144,7 @@ public class EnvironmentConfig implements Serializable {
     public String utmContent = "";
   }
   public enum AccountType {
-    HOUSEHOLD, ORGANIZATION
+    HOUSEHOLD, ORGANIZATION, SCHOOL, CHURCH
   }
   public enum TransactionType {
     DONATION, TICKET
