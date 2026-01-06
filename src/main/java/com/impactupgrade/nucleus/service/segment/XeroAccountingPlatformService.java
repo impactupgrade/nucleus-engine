@@ -63,9 +63,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
     protected static final Integer RATE_LIMIT_EXCEPTION_TIMEOUT_SECONDS = 61;
     protected static final Integer RATE_LIMIT_MAX_RETRIES = 3;
 
-    protected final ApiClient apiClient;
-    protected final AccountingApi xeroApi;
-
     protected Environment env;
 
     protected String clientId;
@@ -77,11 +74,6 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected static String accessToken;
     protected static String refreshToken;
-
-    public XeroAccountingPlatformService() {
-        this.apiClient = new ApiClient();
-        this.xeroApi = AccountingApi.getInstance(apiClient);
-    }
 
     @Override
     public String name() {
@@ -122,10 +114,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public List<String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
+        ApiClient apiClient = new ApiClient();
+        AccountingApi xeroApi = AccountingApi.getInstance(apiClient);
+
         Contacts contacts = new Contacts();
         contacts.setContacts(crmContacts.stream().map(this::toContact).toList());
         try {
-            Contacts upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS));
+            Contacts upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(apiClient), xeroTenantId, contacts, SUMMARIZE_ERRORS));
             int index = 0;
             List<Contact> contactsToRetry = new ArrayList<>();
             List<String> processedIds = new ArrayList<>();
@@ -137,7 +132,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                     if (upserted.getValidationErrors().stream()
                         .anyMatch(error -> error.getMessage().contains("Account Number already exists"))) {
 
-                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber(), true);
+                        Optional<Contact> existingContact = getContactForAccountNumber(contact.getAccountNumber(), true, xeroApi);
                         if (existingContact.isPresent()) {
                             contact.setContactID(existingContact.get().getContactID());
                             contactsToRetry.add(contact);
@@ -161,7 +156,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
             if (!contactsToRetry.isEmpty()) {
                 contacts.setContacts(contactsToRetry);
-                upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(), xeroTenantId, contacts, SUMMARIZE_ERRORS));
+                upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(apiClient), xeroTenantId, contacts, SUMMARIZE_ERRORS));
                 processedIds.addAll(upsertedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList());
             }
             return processedIds;
@@ -171,8 +166,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
     }
 
-    protected List<Contact> getContacts(String where, boolean includeArchived) throws Exception {
-        Contacts contacts = callWithRetries(() -> xeroApi.getContacts(getAccessToken(), xeroTenantId,
+    protected List<Contact> getContacts(String where, boolean includeArchived, AccountingApi xeroApi) throws Exception {
+        Contacts contacts = callWithRetries(() -> xeroApi.getContacts(getAccessToken(xeroApi.getApiClient()), xeroTenantId,
 //            OffsetDateTime ifModifiedSince,
             null,
 //            String where,
@@ -190,13 +185,15 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return contacts.getContacts();
     }
 
-    public List<Contact> getContactsForAccountNumbers(List<String> accountNumbers, boolean includeArchived) throws Exception {
+    protected List<Contact> getContactsForAccountNumbers(List<String> accountNumbers, boolean includeArchived,
+            AccountingApi xeroApi) throws Exception {
         String conditions = accountNumbers.stream().map(s -> "AccountNumber=\"" + s + "\"").collect(Collectors.joining(" OR "));
-        return getContacts(conditions, includeArchived);
+        return getContacts(conditions, includeArchived, xeroApi);
     }
 
-    public Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived) throws Exception {
-        return getContacts("AccountNumber=\"" + accountNumber + "\"", includeArchived).stream().findFirst();
+    protected Optional<Contact> getContactForAccountNumber(String accountNumber, boolean includeArchived,
+            AccountingApi xeroApi) throws Exception {
+        return getContacts("AccountNumber=\"" + accountNumber + "\"", includeArchived, xeroApi).stream().findFirst();
     }
 
     protected <T> T callWithRetries(Callable<T> callable) throws Exception {
@@ -219,10 +216,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations) throws Exception {
+        ApiClient apiClient = new ApiClient();
+        AccountingApi xeroApi = AccountingApi.getInstance(apiClient);
+
         // Get existing invoices for crmDonations by date
         List<ZonedDateTime> donationDates = crmDonations.stream().map(ac -> ac.closeDate).toList();
         ZonedDateTime minDate = Collections.min(donationDates);
-        List<Invoice> existingInvoices = getInvoices(minDate);
+        List<Invoice> existingInvoices = getInvoices(minDate, xeroApi);
         // shouldn't be collisions moving forward, but there are old references like "RD-PayWay"
         Map<String, Invoice> invoicesByReference = existingInvoices.stream()
             .collect(Collectors.toMap(Invoice::getReference, invoice -> invoice, (i1, i2) -> i1));
@@ -236,7 +236,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
             List<Invoice> invoices = new ArrayList<>();
 
             List<String> accountNumbers = crmDonationBatch.stream().map(d -> getAccountNumber(d.contact, d.account)).toList();
-            Map<String, Contact> contactsByAccountNumbers = getContactsForAccountNumbers(accountNumbers, true).stream()
+            Map<String, Contact> contactsByAccountNumbers = getContactsForAccountNumbers(accountNumbers, true, xeroApi).stream()
                 .collect(Collectors.toMap(Contact::getAccountNumber, c -> c));
 
             for (CrmDonation crmDonation : crmDonationBatch) {
@@ -266,7 +266,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
                 env.logJobInfo("inserting {} invoices", invoices.size());
                 Invoices invoicesPost = new Invoices();
                 invoicesPost.setInvoices(invoices);
-                Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
+                Invoices createdInvoices = callWithRetries(() -> xeroApi.updateOrCreateInvoices(getAccessToken(xeroApi.getApiClient()), xeroTenantId, invoicesPost, SUMMARIZE_ERRORS, UNITDP));
                 createdInvoices.getInvoices().stream().filter(i -> !i.getValidationErrors().isEmpty())
                     .forEach(i -> env.logJobWarn(i.getReference() + " failed to insert: " + i));
                 createdInvoices.getInvoices().stream().filter(i -> i.getValidationErrors().isEmpty())
@@ -277,17 +277,17 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return createdInvoiceIds;
     }
 
-    public List<Invoice> getInvoices(ZonedDateTime updatedAfter) throws Exception {
-        return getInvoices(toUpdatedAfterClause(updatedAfter));
+    protected List<Invoice> getInvoices(ZonedDateTime updatedAfter, AccountingApi xeroApi) throws Exception {
+        return getInvoices(toUpdatedAfterClause(updatedAfter), xeroApi);
     }
 
-    public List<Invoice> getInvoices(String where) throws Exception {
+    protected List<Invoice> getInvoices(String where, AccountingApi xeroApi) throws Exception {
         int page = 1;
         boolean anotherPage = true;
         List<Invoice> allInvoices = new ArrayList<>();
         while (anotherPage) {
             final int _page = page;
-            Invoices invoices = callWithRetries(() -> xeroApi.getInvoices(getAccessToken(), xeroTenantId,
+            Invoices invoices = callWithRetries(() -> xeroApi.getInvoices(getAccessToken(xeroApi.getApiClient()), xeroTenantId,
                 // OffsetDateTime ifModifiedSince
                 null,
                 where,
@@ -326,18 +326,18 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return allInvoices;
     }
 
-    public List<BankTransaction> getBankTransactions(ZonedDateTime updatedAfter) throws Exception {
-        return getBankTransactions(toUpdatedAfterClause(updatedAfter));
+    protected List<BankTransaction> getBankTransactions(ZonedDateTime updatedAfter, AccountingApi xeroApi) throws Exception {
+        return getBankTransactions(toUpdatedAfterClause(updatedAfter), xeroApi);
     }
 
-    public List<BankTransaction> getBankTransactions(String where) throws Exception {
+  protected List<BankTransaction> getBankTransactions(String where, AccountingApi xeroApi) throws Exception {
         int page = 1;
         boolean anotherPage = true;
         List<BankTransaction> allTransactions = new ArrayList<>();
         while (anotherPage) {
             final int _page = page;
             BankTransactions bankTransactions = callWithRetries(() -> xeroApi.getBankTransactions(
-                getAccessToken(), xeroTenantId, null, where, null, _page, null));
+                getAccessToken(xeroApi.getApiClient()), xeroTenantId, null, where, null, _page, null));
             List<BankTransaction> pageBankTransactions = bankTransactions.getBankTransactions();
             allTransactions.addAll(pageBankTransactions);
             if (pageBankTransactions.size() < 100) {
@@ -355,7 +355,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         return "Date >= " + "DateTime(" + year + ", " + month + ", " + day + ")";
     }
 
-    protected String getAccessToken() throws Exception {
+    protected String getAccessToken(ApiClient apiClient) throws Exception {
         DecodedJWT jwt = null;
         try {
             jwt = JWT.decode(accessToken);
