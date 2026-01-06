@@ -85,14 +85,21 @@ public class XeroDataSyncService implements DataSyncService {
   @Override
   public void syncTransactions(Calendar updatedAfter) throws Exception {
     if (env.accountingPlatformService().isPresent()) {
-      List<CrmDonation> crmDonations = env.primaryCrmService().getDonations(updatedAfter);
-      if (crmDonations.isEmpty()) {
-        return;
-      }
-      try {
-        env.accountingPlatformService().get().updateOrCreateTransactions(crmDonations);
-      } catch (Exception e) {
-        env.logJobError("{}/syncTransactions failed: {}", this.name(), e);
+      PagedResults<CrmDonation> donationPagedResults = env.primaryCrmService().getDonations(updatedAfter);
+      for (PagedResults.ResultSet<CrmDonation> resultSet : donationPagedResults.getResultSets()) {
+        try {
+          do {
+            env.accountingPlatformService().get().updateOrCreateTransactions(resultSet.getRecords());
+            if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
+              // next page
+              resultSet = env.primaryCrmService().queryMoreDonations(resultSet.getNextPageToken());
+            } else {
+              resultSet = null;
+            }
+          } while (resultSet != null);
+        } catch (Exception e) {
+          env.logJobError("{}/syncTransactions failed: {}", this.name(), e);
+        }
       }
     } else {
       env.logJobWarn("Accounting Platform Service is not defined!");

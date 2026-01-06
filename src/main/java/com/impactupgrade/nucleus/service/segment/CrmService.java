@@ -123,7 +123,7 @@ public interface CrmService extends SegmentService {
   boolean updateDonation(CrmDonation crmDonation) throws Exception;
   boolean refundDonation(CrmDonation crmDonation) throws Exception;
   void insertDonationDeposit(List<CrmDonation> crmDonations) throws Exception;
-  List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception;
+  PagedResults<CrmDonation> getDonations(Calendar updatedAfter) throws Exception;
 
   // Some CRMs do not have full-blown notions of RDs, so no RD ID. Searching by the payment gateway's
   // subscription is at times the only option.
@@ -215,6 +215,7 @@ public interface CrmService extends SegmentService {
 
   PagedResults.ResultSet<CrmContact> queryMoreContacts(String queryLocator) throws Exception;
   PagedResults.ResultSet<CrmAccount> queryMoreAccounts(String queryLocator) throws Exception;
+  PagedResults.ResultSet<CrmDonation> queryMoreDonations(String queryLocator) throws Exception;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // STATS
