@@ -233,6 +233,11 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
+  public PagedResults.ResultSet<CrmDonation> queryMoreDonations(String queryLocator) throws Exception {
+    return null;
+  }
+
+  @Override
   public void batchInsertActivity(CrmActivity crmActivity) throws Exception {
     EngagementRequest engagementRequest = new EngagementRequest();
     setTaskFields(engagementRequest, crmActivity);
@@ -592,8 +597,8 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
-    return List.of();
+  public PagedResults<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    return new PagedResults<>();
   }
 
   @Override

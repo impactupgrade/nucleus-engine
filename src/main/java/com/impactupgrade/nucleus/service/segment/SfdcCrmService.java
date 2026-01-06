@@ -274,6 +274,12 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
+  public PagedResults.ResultSet<CrmDonation> queryMoreDonations(String queryLocator) throws Exception {
+    QueryResult queryResult = sfdcClient.queryMore(queryLocator);
+    return toCrmDonationPage(queryResult);
+  }
+
+  @Override
   public void batchInsertActivity(CrmActivity crmActivity) throws Exception {
     SObject task = new SObject("Task");
 
@@ -783,8 +789,9 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
-    return toCrmDonation(sfdcClient.getDonationsUpdatedAfter(updatedAfter));
+  public PagedResults<CrmDonation> getDonations(Calendar updatedAfter) throws Exception {
+    List<QueryResult> queryResults = sfdcClient.getDonationsUpdatedAfter(updatedAfter);
+    return toCrmDonationPages(queryResults);
   }
 
   protected void setDonationDepositFields(SObject existingOpportunity, SObject opportunityUpdate,
@@ -2866,5 +2873,18 @@ public class SfdcCrmService implements CrmService {
   protected PagedResults.ResultSet<CrmContact> toCrmContactPage(QueryResult queryResult) {
     List<CrmContact> crmContacts = Arrays.stream(queryResult.getRecords()).map(this::toCrmContact).toList();
     return PagedResults.ResultSet.resultSetFromCurrentOffset(crmContacts, queryResult.getQueryLocator());
+  }
+
+  protected PagedResults<CrmDonation> toCrmDonationPages(List<QueryResult> queryResults) {
+    PagedResults<CrmDonation> pagedResults = new PagedResults<>();
+    for (QueryResult queryResult : queryResults) {
+      pagedResults.addResultSet(toCrmDonationPage(queryResult));
+    }
+    return pagedResults;
+  }
+
+  protected PagedResults.ResultSet<CrmDonation> toCrmDonationPage(QueryResult queryResult) {
+    List<CrmDonation> crmDonations = Arrays.stream(queryResult.getRecords()).map(this::toCrmDonation).toList();
+    return PagedResults.ResultSet.resultSetFromCurrentOffset(crmDonations, queryResult.getQueryLocator());
   }
 }
