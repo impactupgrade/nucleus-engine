@@ -38,6 +38,7 @@ import com.sforce.soap.partner.QueryResult;
 import com.sforce.soap.partner.SaveResult;
 import com.sforce.soap.partner.sobject.SObject;
 import com.sforce.ws.ConnectionException;
+import com.sforce.ws.bind.XmlObject;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -2401,7 +2402,7 @@ public class SfdcCrmService implements CrmService {
     }
   }
 
-  protected String getStringField(SObject sObject, String name) {
+  protected String getStringField(XmlObject sObject, String name) {
     // Optional field names may not be configured in env.json, so ensure we actually have a name first...
     if (Strings.isNullOrEmpty(name)) {
       return null;
@@ -2410,13 +2411,13 @@ public class SfdcCrmService implements CrmService {
     return (String) sObject.getField(name);
   }
 
-  protected Boolean getBooleanField(SObject sObject, String name) {
+  protected Boolean getBooleanField(XmlObject sObject, String name) {
     String s = getStringField(sObject, name);
     if (Strings.isNullOrEmpty(s)) return null;
     return Boolean.parseBoolean(s);
   }
 
-  protected void setField(SObject sObject, String name, Object value) {
+  protected void setField(XmlObject sObject, String name, Object value) {
     // Optional field names may not be configured in env.json, so ensure we actually have a name first...
     // Likewise, don't set a null or empty value.
     if (!Strings.isNullOrEmpty(name) && value != null && !Strings.isNullOrEmpty(value.toString())) {
@@ -2458,12 +2459,12 @@ public class SfdcCrmService implements CrmService {
     return campaign;
   }
 
-  protected CrmCampaign toCrmCampaign(SObject sObject) {
+  protected CrmCampaign toCrmCampaign(XmlObject sObject) {
     ZonedDateTime startDate = Utils.getZonedDateTimeFromDateTimeString((String) sObject.getField("StartDate"));
     ZonedDateTime endDate = Utils.getZonedDateTimeFromDateTimeString((String) sObject.getField("EndDate"));
 
     return new CrmCampaign(
-        sObject.getId(),
+        (String) sObject.getField("Id"),
         (String) sObject.getField("Name"),
         (String) sObject.getField(env.getConfig().salesforce.fieldDefinitions.campaignExternalReference),
         startDate,
@@ -2471,7 +2472,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("RecordTypeId"),
         (String) sObject.getChild("RecordType").getField("Name"),
         sObject,
-        "https://" + env.getConfig().salesforce.url + "/lightning/r/Campaign/" + sObject.getId() + "/view"
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Campaign/" + sObject.getField("Id") + "/view"
     );
   }
 
@@ -2485,7 +2486,7 @@ public class SfdcCrmService implements CrmService {
 
   // TODO: starting to feel like we need an object mapper lib...
 
-  protected CrmAccount toCrmAccount(SObject sObject) {
+  protected CrmAccount toCrmAccount(XmlObject sObject) {
     CrmAddress billingAddress = new CrmAddress(
         (String) sObject.getField("BillingStreet"),
         (String) sObject.getField("BillingCity"),
@@ -2515,7 +2516,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     return new CrmAccount(
-        sObject.getId(),
+        (String) sObject.getField("Id"),
         billingAddress,
         (String) sObject.getField("Description"),
         getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.accountEmail),
@@ -2529,7 +2530,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Type"),
         (String) sObject.getField("Website"),
         sObject,
-        "https://" + env.getConfig().salesforce.url + "/lightning/r/Account/" + sObject.getId() + "/view"
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Account/" + sObject.getField("Id") + "/view"
     );
   }
 
@@ -2550,7 +2551,7 @@ public class SfdcCrmService implements CrmService {
     return newPagedResults;
   }
 
-  protected CrmContact toCrmContact(SObject sObject) {
+  protected CrmContact toCrmContact(XmlObject sObject) {
     CrmContact.PreferredPhone preferredPhone = null;
     if (env.getConfig().salesforce.npsp && sObject.getField("npe01__PreferredPhone__c") != null) {
       preferredPhone = CrmContact.PreferredPhone.fromName((String) sObject.getField("npe01__PreferredPhone__c"));
@@ -2618,7 +2619,7 @@ public class SfdcCrmService implements CrmService {
       account = toCrmAccount((SObject) sObject.getChild("Account"));
 
     return new CrmContact(
-        sObject.getId(),
+        (String) sObject.getField("Id"),
         account,
         (String) sObject.getField("Description"),
         (String) sObject.getField("Email"),
@@ -2647,7 +2648,7 @@ public class SfdcCrmService implements CrmService {
         totalDonationAmountYtd,
         (String) sObject.getField("npe01__WorkPhone__c"),
         sObject,
-        "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getId() + "/view",
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getField("Id") + "/view",
         sObject::getField
     );
   }
@@ -2669,8 +2670,8 @@ public class SfdcCrmService implements CrmService {
     return newPagedResults;
   }
 
-  protected CrmDonation toCrmDonation(SObject sObject) {
-    String id = sObject.getId();
+  protected CrmDonation toCrmDonation(XmlObject sObject) {
+    String id = (String) sObject.getField("Id");
     String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
     String paymentGatewayTransactionId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayTransactionId);
     Double amount = Double.valueOf(sObject.getField("Amount").toString());
@@ -2745,7 +2746,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("OwnerId"),
         (String) sObject.getField("RecordTypeId"),
         sObject,
-        "https://" + env.getConfig().salesforce.url + "/lightning/r/Opportunity/" + sObject.getId() + "/view"
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Opportunity/" + sObject.getField("Id") + "/view"
     );
   }
 
@@ -2757,7 +2758,7 @@ public class SfdcCrmService implements CrmService {
     return sObjects.stream().map(this::toCrmDonation).collect(Collectors.toList());
   }
 
-  protected CrmRecurringDonation toCrmRecurringDonation(SObject sObject) {
+  protected CrmRecurringDonation toCrmRecurringDonation(XmlObject sObject) {
     String subscriptionId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewaySubscriptionId);
     String customerId = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayCustomerId);
     String paymentGatewayName = getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.paymentGatewayName);
@@ -2773,7 +2774,7 @@ public class SfdcCrmService implements CrmService {
       contact = toCrmContact((SObject) sObject.getChild("npe03__Contact__r"));
 
     return new CrmRecurringDonation(
-        sObject.getId(),
+        (String) sObject.getField("Id"),
         account,
         contact,
         active,
@@ -2793,7 +2794,7 @@ public class SfdcCrmService implements CrmService {
         getZonedDateFromDateString(getStringField(sObject, "npe03__Next_Payment_Date__c"), env.getConfig().timezoneId),
         getZonedDateFromDateString(getStringField(sObject, "Npe03__Date_Established__c"), env.getConfig().timezoneId),
         sObject,
-        "https://" + env.getConfig().salesforce.url + "/lightning/r/npe03__Recurring_Donation__c/" + sObject.getId() + "/view"
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/npe03__Recurring_Donation__c/" + sObject.getField("Id") + "/view"
     );
   }
 
@@ -2801,7 +2802,7 @@ public class SfdcCrmService implements CrmService {
     return sObject.map(this::toCrmRecurringDonation);
   }
 
-  protected CrmActivity toCrmActivity(SObject sObject) {
+  protected CrmActivity toCrmActivity(XmlObject sObject) {
     CrmActivity.Type type;
     switch (sObject.getField("TaskSubType") + "") {
       case "Task" -> type = CrmActivity.Type.TASK;
@@ -2826,7 +2827,7 @@ public class SfdcCrmService implements CrmService {
     }
 
     return new CrmActivity(
-        sObject.getId(),
+        (String) sObject.getField("Id"),
         null, // sObject.getField("WhoId").toString(),
         (String) sObject.getField("OwnerId"),
         (String) sObject.getField("Subject"),
@@ -2837,12 +2838,12 @@ public class SfdcCrmService implements CrmService {
         null, // Calendar dueDate,
         getStringField(sObject, env.getConfig().salesforce.fieldDefinitions.activityExternalReference),
         sObject,
-        "https://" + env.getConfig().salesforce.url + "/lightning/r/Task/" + sObject.getId() + "/view"
+        "https://" + env.getConfig().salesforce.url + "/lightning/r/Task/" + sObject.getField("Id") + "/view"
     );
   }
 
-  protected CrmUser toCrmUser(SObject sObject) {
-    return new CrmUser(sObject.getId(), sObject.getField("Email").toString());
+  protected CrmUser toCrmUser(XmlObject sObject) {
+    return new CrmUser((String) sObject.getField("Id"), (String) sObject.getField("Email"));
   }
 
   protected Optional<CrmUser> toCrmUser(Optional<SObject> sObject) {
