@@ -853,13 +853,19 @@ public class SfdcClient extends SFDCPartnerAPIClient {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   protected String getFieldsList(String fields, Collection<String> customFields, String[] extraFields) {
+    return getFieldsList("", fields, customFields, extraFields);
+  }
+
+  protected String getFieldsList(String prefix, String fields, Collection<String> customFields, String[] extraFields) {
     // deal with duplicates
     Set<String> fieldsDeduped = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     fieldsDeduped.addAll(Arrays.stream(fields.split("[,\\s]+")).toList());
     fieldsDeduped.addAll(customFields);
     fieldsDeduped.addAll(Arrays.stream(extraFields).toList());
 
-    return Joiner.on(", ").join(fieldsDeduped);
+    final String finalPrefix = (!Strings.isNullOrEmpty(prefix) && !prefix.endsWith(".")) ? prefix + "." : prefix;
+
+    return Joiner.on(", ").join(fieldsDeduped.stream().map(field -> finalPrefix + field).toList());
   }
 
   protected List<SObject> getBulkResults(List<String> values, String conditionFieldName, String objectType,
