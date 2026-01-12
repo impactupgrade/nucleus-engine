@@ -114,13 +114,13 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public List<String> updateOrCreateContacts(List<CrmContact> crmContacts) throws Exception {
-        ApiClient apiClient = new ApiClient();
-        AccountingApi xeroApi = AccountingApi.getInstance(apiClient);
+        AccountingApi xeroApi = AccountingApi.getInstance(new ApiClient());
 
         Contacts contacts = new Contacts();
         contacts.setContacts(crmContacts.stream().map(this::toContact).toList());
         try {
-            Contacts upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(apiClient), xeroTenantId, contacts, SUMMARIZE_ERRORS));
+            Contacts upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(
+                getAccessToken(xeroApi.getApiClient()), xeroTenantId, contacts, SUMMARIZE_ERRORS));
             int index = 0;
             List<Contact> contactsToRetry = new ArrayList<>();
             List<String> processedIds = new ArrayList<>();
@@ -156,7 +156,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
             if (!contactsToRetry.isEmpty()) {
                 contacts.setContacts(contactsToRetry);
-                upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(getAccessToken(apiClient), xeroTenantId, contacts, SUMMARIZE_ERRORS));
+                upsertedContacts = callWithRetries(() -> xeroApi.updateOrCreateContacts(
+                    getAccessToken(xeroApi.getApiClient()), xeroTenantId, contacts, SUMMARIZE_ERRORS));
                 processedIds.addAll(upsertedContacts.getContacts().stream().map(c -> c.getContactID().toString()).toList());
             }
             return processedIds;
@@ -216,8 +217,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     @Override
     public List<String> updateOrCreateTransactions(List<CrmDonation> crmDonations) throws Exception {
-        ApiClient apiClient = new ApiClient();
-        AccountingApi xeroApi = AccountingApi.getInstance(apiClient);
+        AccountingApi xeroApi = AccountingApi.getInstance(new ApiClient());
 
         // Get existing invoices for crmDonations by date
         List<ZonedDateTime> donationDates = crmDonations.stream().map(ac -> ac.closeDate).toList();
