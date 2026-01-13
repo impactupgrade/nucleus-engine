@@ -758,8 +758,8 @@ public class SfdcClient extends SFDCPartnerAPIClient {
 
   protected QueryResult queryDonationsUpdatedAfter(String updatedSinceClause, String... extraFields)
       throws ConnectionException, InterruptedException {
-    String query = "select " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) + " from Opportunity " +
-        "where " + updatedSinceClause + " AND stageName = 'Closed Won' ORDER BY CloseDate ASC";
+    String query = "SELECT " + getFieldsList(DONATION_FIELDS, env.getConfig().salesforce.customQueryFields.donation, extraFields) + " FROM Opportunity " +
+        "WHERE " + updatedSinceClause + " AND StageName = 'Closed Won' AND Amount > 0.0 ORDER BY CloseDate ASC";
     return query(query);
   }
 

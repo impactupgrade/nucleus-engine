@@ -9,6 +9,7 @@ import com.impactupgrade.nucleus.model.PagedResults;
 import com.impactupgrade.nucleus.util.Utils;
 import com.sforce.soap.partner.sobject.SObject;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -82,6 +83,7 @@ public class XeroDataSyncService implements DataSyncService {
     }
   }
 
+  //TODO: move to abstract class?
   @Override
   public void syncTransactions(Calendar updatedAfter) throws Exception {
     if (env.accountingPlatformService().isPresent()) {
@@ -89,7 +91,15 @@ public class XeroDataSyncService implements DataSyncService {
       for (PagedResults.ResultSet<CrmDonation> resultSet : donationPagedResults.getResultSets()) {
         try {
           do {
-            env.accountingPlatformService().get().updateOrCreateTransactions(resultSet.getRecords());
+            // Process the records, but throw out anything with a close date older than a sanity check. We have clients
+            // that periodically update old records (one did clear back 8+ years later). So skip anything older than
+            // 90 days before updatedAfter.
+            // TODO: 90 days could potentially be too limiting, if older days are created in the CRM late. But it seems
+            //  reasonable to assume 90 days is enough...
+            ZonedDateTime cutoffDate = ZonedDateTime.ofInstant(updatedAfter.toInstant(), updatedAfter.getTimeZone().toZoneId()).minusDays(90);
+            env.accountingPlatformService().get().updateOrCreateTransactions(
+                resultSet.getRecords().stream().filter(c -> c.closeDate.isAfter(cutoffDate)).toList()
+            );
             if (!Strings.isNullOrEmpty(resultSet.getNextPageToken())) {
               // next page
               resultSet = env.primaryCrmService().queryMoreDonations(resultSet.getNextPageToken());
