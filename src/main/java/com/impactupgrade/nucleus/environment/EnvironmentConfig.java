@@ -276,6 +276,7 @@ public class EnvironmentConfig implements Serializable {
   public Xero xero = new Xero();
   public static class Xero extends Platform {
     public String tenantId = "";
+    // TODO: don't believe these are used?
     public String accountId = "";
     public String accountCode = "";
   }
