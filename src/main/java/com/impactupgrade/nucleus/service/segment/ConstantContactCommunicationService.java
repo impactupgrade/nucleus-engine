@@ -42,7 +42,10 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
 
   @Override
   protected List<EnvironmentConfig.CommunicationPlatform> getPlatformConfigs() {
-    return env.getConfig().constantContact;
+    // Wrap in a new array, since OAuthClient can update the config with new refresh tokens and cause ConcurrentModificationExceptions.
+    // TODO: If this is needed by other services, may want to refactor upstream and have AbstractCommunicationService
+    //  wrap what this method responds with, every time.
+    return new ArrayList<>(env.getConfig().constantContact);
   }
 
   @Override
