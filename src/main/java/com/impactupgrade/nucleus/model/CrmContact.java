@@ -65,6 +65,7 @@ public class CrmContact extends CrmRecord {
   public String notes;
   public Integer numDonations;
   public Integer numDonationsYtd;
+  public Integer numDonationsLy;
   public String ownerId;
   public String ownerName;
   public PreferredPhone preferredPhone = PreferredPhone.MOBILE;
@@ -73,6 +74,7 @@ public class CrmContact extends CrmRecord {
   public String title;
   public Double totalDonationAmount;
   public Double totalDonationAmountYtd;
+  public Double totalDonationAmountLy;
   public String workPhone;
 
   protected String fullNameOverride;
@@ -110,6 +112,7 @@ public class CrmContact extends CrmRecord {
       String mobilePhone,
       Integer numDonations,
       Integer numDonationsYtd,
+      Integer numDonationsLy,
       String ownerId,
       String ownerName,
       PreferredPhone preferredPhone,
@@ -118,6 +121,7 @@ public class CrmContact extends CrmRecord {
       String title,
       Double totalDonationAmount,
       Double totalDonationAmountYtd,
+      Double totalDonationAmountLy,
       String workPhone,
       Object crmRawObject,
       String crmUrl,
@@ -144,6 +148,7 @@ public class CrmContact extends CrmRecord {
     this.mobilePhone = mobilePhone;
     this.numDonations = numDonations;
     this.numDonationsYtd = numDonationsYtd;
+    this.numDonationsLy = numDonationsLy;
     this.ownerId = ownerId;
     this.ownerName = ownerName;
     if (preferredPhone != null) this.preferredPhone = preferredPhone;
@@ -152,6 +157,7 @@ public class CrmContact extends CrmRecord {
     this.title = title;
     this.totalDonationAmount = totalDonationAmount;
     this.totalDonationAmountYtd = totalDonationAmountYtd;
+    this.totalDonationAmountLy = totalDonationAmountLy;
     this.workPhone = workPhone;
 
     this.fieldFetcher = fieldFetcher;

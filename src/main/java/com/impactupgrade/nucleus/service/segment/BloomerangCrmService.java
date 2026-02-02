@@ -754,7 +754,8 @@ public class BloomerangCrmService implements CrmService {
         crmAddress,
         null, // String mobilePhone,
         null, // Integer numDonations,
-        null, // Integer numDonationsYtd
+        null, // Integer numDonationsYtd,
+        null, // Integer numDonationsLy,
         null, // String ownerId,
         null, // String ownerName,
         null, // CrmContact.PreferredPhone preferredPhone,
@@ -762,7 +763,8 @@ public class BloomerangCrmService implements CrmService {
         null, // Boolean smsOptOut,
         null, // String title,
         null, // Double totalDonationAmount,
-        null, // Double totalDonationAmountYtd
+        null, // Double totalDonationAmountYtd,
+        null, // Double totalDonationAmountLy,
         null, // String workPhone,
         constituent,
         "https://crm.bloomerang.co/Constituent/" + constituent.id + "/Profile",

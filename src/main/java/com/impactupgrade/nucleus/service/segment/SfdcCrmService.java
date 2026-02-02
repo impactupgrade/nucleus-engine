@@ -2560,9 +2560,11 @@ public class SfdcCrmService implements CrmService {
     CrmAddress crmAddress = new CrmAddress();
     Double totalDonationAmount = null;
     Double totalDonationAmountYtd = null;
+    Double totalDonationAmountLy = null;
     Double largestDonationAmount = null;
     Integer numberOfDonations = null;
     Integer numberOfDonationsYtd = null;
+    Integer numberOfDonationsLy = null;
     Calendar firstCloseDate = null;
     Calendar lastCloseDate = null;
 
@@ -2580,11 +2582,13 @@ public class SfdcCrmService implements CrmService {
       if (env.getConfig().salesforce.npsp) {
         totalDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__TotalOppAmount__c"));
         totalDonationAmountYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppAmountThisYear__c"));
+        totalDonationAmountLy = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppAmountLastYear__c"));
         if (sObject.getChild("Account").getField("npo02__LargestAmount__c") != null) {
           largestDonationAmount = Double.valueOf((String) sObject.getChild("Account").getField("npo02__LargestAmount__c"));
         }
         numberOfDonations = Double.valueOf((String) sObject.getChild("Account").getField("npo02__NumberOfClosedOpps__c")).intValue();
         numberOfDonationsYtd = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppsClosedThisYear__c")).intValue();
+        numberOfDonationsLy = Double.valueOf((String) sObject.getChild("Account").getField("npo02__OppsClosedLastYear__c")).intValue();
         try {
           firstCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__FirstCloseDate__c"));
           lastCloseDate = Utils.getCalendarFromDateTimeString((String) sObject.getChild("Account").getField("npo02__LastCloseDate__c"));
@@ -2616,7 +2620,7 @@ public class SfdcCrmService implements CrmService {
     CrmAccount account = new CrmAccount();
     account.id = (String) sObject.getField("AccountId");
     if (sObject.getChild("Account") != null && sObject.getChild("Account").hasChildren())
-      account = toCrmAccount((SObject) sObject.getChild("Account"));
+      account = toCrmAccount(sObject.getChild("Account"));
 
     return new CrmContact(
         (String) sObject.getField("Id"),
@@ -2638,6 +2642,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("MobilePhone"),
         numberOfDonations,
         numberOfDonationsYtd,
+        numberOfDonationsLy,
         (String) sObject.getField("Owner.Id"),
         ownerName,
         preferredPhone,
@@ -2646,6 +2651,7 @@ public class SfdcCrmService implements CrmService {
         (String) sObject.getField("Title"),
         totalDonationAmount,
         totalDonationAmountYtd,
+        totalDonationAmountLy,
         (String) sObject.getField("npe01__WorkPhone__c"),
         sObject,
         "https://" + env.getConfig().salesforce.url + "/lightning/r/Contact/" + sObject.getField("Id") + "/view",

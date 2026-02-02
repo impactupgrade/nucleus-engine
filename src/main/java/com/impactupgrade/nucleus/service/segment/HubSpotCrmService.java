@@ -1196,6 +1196,7 @@ public class HubSpotCrmService implements CrmService {
         contact.getProperties().getMobilephone(),
         null, // Integer numDonations,
         null, // Integer numDonationsYtd
+        null, // Integer numDonationsLy
         contact.getProperties().getOwnerId(),
         null, // String ownerName,
         preferredPhone,
@@ -1204,6 +1205,7 @@ public class HubSpotCrmService implements CrmService {
         null, // String title,
         null, // Double totalDonationAmount,
         null, // Double totalDonationAmountYtd
+        null, // Double totalDonationAmountLy
         null, // String workPhone,
         contact,
         "https://app.hubspot.com/contacts/" + env.getConfig().hubspot.portalId + "/contact/" + contact.getId(),
@@ -1245,6 +1247,7 @@ public class HubSpotCrmService implements CrmService {
         getValue(contact.getProperties().getMobilePhone()),
         null, // Integer numDonations,
         null, // Integer numDonationsYtd
+        null, // Integer numDonationsLy
         null, // String ownerId,
         null, // String ownerName,
         null, //  CrmContact.PreferredPhone preferredPhone,
@@ -1253,6 +1256,7 @@ public class HubSpotCrmService implements CrmService {
         null, // String title,
         null, //   Double totalDonationAmount,
         null, // Double totalDonationAmountYtd
+        null, // Double totalDonationAmountLy
         null, //   String workPhone,
         null, //  Object crmRawObject,
         null, //   String crmUrl,

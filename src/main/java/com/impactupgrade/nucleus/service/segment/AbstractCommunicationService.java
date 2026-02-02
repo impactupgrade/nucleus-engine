@@ -86,6 +86,12 @@ public abstract class AbstractCommunicationService implements CommunicationServi
     if (crmContact.numDonationsYtd != null) {
       customFields.add(new CustomField("number_of_donations_ytd", CustomFieldType.NUMBER, crmContact.numDonationsYtd));
     }
+    if (crmContact.totalDonationAmountLy != null) {
+      customFields.add(new CustomField("total_of_donations_ly", CustomFieldType.NUMBER, crmContact.totalDonationAmountLy));
+    }
+    if (crmContact.numDonationsLy != null) {
+      customFields.add(new CustomField("number_of_donations_ly", CustomFieldType.NUMBER, crmContact.numDonationsLy));
+    }
 
     customFields.addAll(communicationPlatform.crmFieldToCommunicationFields.stream()
             .map(mapping -> getCustomField(crmContact, mapping))
