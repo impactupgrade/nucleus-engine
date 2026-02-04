@@ -144,6 +144,7 @@ public class BrevoCommunicationService extends AbstractCommunicationService {
           case DATE -> CreateAttribute.TypeEnum.DATE;
           case BOOLEAN -> CreateAttribute.TypeEnum.BOOLEAN;
           case NUMBER -> CreateAttribute.TypeEnum.FLOAT;
+          case CURRENCY -> CreateAttribute.TypeEnum.FLOAT;
           default -> CreateAttribute.TypeEnum.TEXT;
         };
         brevoClient.createAttribute(customField.name, type);

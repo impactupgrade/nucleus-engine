@@ -72,22 +72,22 @@ public abstract class AbstractCommunicationService implements CommunicationServi
       customFields.add(new CustomField("date_of_last_donation", CustomFieldType.DATE, crmContact.lastDonationDate));
     }
     if (crmContact.largestDonationAmount != null) {
-      customFields.add(new CustomField("largest_donation", CustomFieldType.NUMBER, crmContact.largestDonationAmount));
+      customFields.add(new CustomField("largest_donation", CustomFieldType.CURRENCY, crmContact.largestDonationAmount));
     }
     if (crmContact.totalDonationAmount != null) {
-      customFields.add(new CustomField("total_of_donations", CustomFieldType.NUMBER, crmContact.totalDonationAmount));
+      customFields.add(new CustomField("total_of_donations", CustomFieldType.CURRENCY, crmContact.totalDonationAmount));
     }
     if (crmContact.numDonations != null) {
       customFields.add(new CustomField("number_of_donations", CustomFieldType.NUMBER, crmContact.numDonations));
     }
     if (crmContact.totalDonationAmountYtd != null) {
-      customFields.add(new CustomField("total_of_donations_ytd", CustomFieldType.NUMBER, crmContact.totalDonationAmountYtd));
+      customFields.add(new CustomField("total_of_donations_ytd", CustomFieldType.CURRENCY, crmContact.totalDonationAmountYtd));
     }
     if (crmContact.numDonationsYtd != null) {
       customFields.add(new CustomField("number_of_donations_ytd", CustomFieldType.NUMBER, crmContact.numDonationsYtd));
     }
     if (crmContact.totalDonationAmountLy != null) {
-      customFields.add(new CustomField("total_of_donations_ly", CustomFieldType.NUMBER, crmContact.totalDonationAmountLy));
+      customFields.add(new CustomField("total_of_donations_ly", CustomFieldType.CURRENCY, crmContact.totalDonationAmountLy));
     }
     if (crmContact.numDonationsLy != null) {
       customFields.add(new CustomField("number_of_donations_ly", CustomFieldType.NUMBER, crmContact.numDonationsLy));
@@ -111,7 +111,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
   }
 
   protected enum CustomFieldType {
-    STRING, NUMBER, BOOLEAN, DATE
+    STRING, NUMBER, CURRENCY, BOOLEAN, DATE
   }
   protected static class CustomField {
     public String name;

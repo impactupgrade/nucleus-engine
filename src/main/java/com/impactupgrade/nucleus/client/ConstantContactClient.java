@@ -232,6 +232,11 @@ public class ConstantContactClient extends OAuthClient {
     customField.label = name;
     customField.type = type;
 
+    if ("currency".equalsIgnoreCase(type)) {
+      // TODO: configurable
+      customField.metadata.put("currency_code", "USD");
+    }
+
     return HttpClient.post(url, customField, MediaType.APPLICATION_JSON, headers(), CustomField.class);
   }
 
@@ -380,6 +385,7 @@ public class ConstantContactClient extends OAuthClient {
     public String label;
     public String name;
     public String type;
+    public Map<String, String> metadata = new HashMap<>();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

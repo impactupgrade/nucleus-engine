@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.service.segment;
 
+import com.ecwid.maleorang.method.v3_0.lists.merge_fields.MergeFieldInfo;
 import com.impactupgrade.nucleus.client.ConstantContactClient;
 import com.impactupgrade.nucleus.environment.Environment;
 import com.impactupgrade.nucleus.environment.EnvironmentConfig;
@@ -174,6 +175,9 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
       if (!fieldNameToId.containsKey(contactCustomField.name)) {
         String type = switch (contactCustomField.type) {
           case DATE -> "date";
+          case BOOLEAN -> "boolean";
+          case NUMBER -> "number";
+          case CURRENCY -> "currency";
           default -> "string";
         };
         ConstantContactClient.CustomField customField = constantContactClient.createCustomField(contactCustomField.name, type);
@@ -184,6 +188,8 @@ public class ConstantContactCommunicationService extends AbstractCommunicationSe
       if (contactCustomField.type == CustomFieldType.DATE) {
         Calendar c = (Calendar) value;
         value = new SimpleDateFormat("MM/dd/yyyy").format(c.getTime());
+      } else if (contactCustomField.type == CustomFieldType.BOOLEAN) {
+        value = ((Boolean) value) ? "true" : "false";
       }
 
       // TODO: technically we don't even need the IDs from fieldNameToId, since all we use custom fields for are

@@ -180,6 +180,7 @@ public class MailchimpCommunicationService extends AbstractCommunicationService 
           // MC doesn't support a boolean type, so we use NUMBER and map to 0/1
           case BOOLEAN -> MergeFieldInfo.Type.NUMBER;
           case NUMBER -> MergeFieldInfo.Type.NUMBER;
+          case CURRENCY -> MergeFieldInfo.Type.NUMBER;
           default -> MergeFieldInfo.Type.TEXT;
         };
         MergeFieldInfo mergeField = mailchimpClient.createMergeField(list.id, customField.name, type);
