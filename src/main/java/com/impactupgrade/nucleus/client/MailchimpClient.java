@@ -67,9 +67,8 @@ public class MailchimpClient {
   public static final String TAG_ACTIVE = "active";
   public static final String TAG_INACTIVE = "inactive";
 
-  // 2 hours
   protected static Integer BATCH_STATUS_RETRY_WAIT_IN_SECONDS = 10;
-  protected static Integer BATCH_STATUS_MAX_RETRIES = 30;
+  protected static Integer BATCH_STATUS_MAX_RETRIES = 60;
 
   protected final com.ecwid.maleorang.MailchimpClient client;
   protected final Environment env;
