@@ -514,8 +514,7 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
         }
         lineItem.setQuantity(1.0);
         lineItem.setUnitAmount(crmDonation.amount);
-        // TODO: DR TEST (https://developer.xero.com/documentation/api/accounting/types/#tax-rates -- country specific)
-        lineItem.setTaxType("EXEMPTOUTPUT");
+        lineItem.setTaxType(env.getConfig().xero.taxType);
 
         // TODO: DR TEST -- need to be able to override with code
         if (crmDonation.transactionType == EnvironmentConfig.TransactionType.TICKET) {
