@@ -2,6 +2,7 @@ com.impactupgrade.nucleus.service.segment.BloomerangCrmService
 com.impactupgrade.nucleus.service.segment.DynamicsCrmService
 com.impactupgrade.nucleus.service.segment.GoogleSheetCrmService
 com.impactupgrade.nucleus.service.segment.HubSpotCrmService
+com.impactupgrade.nucleus.service.segment.LittleGreenLightCrmService
 com.impactupgrade.nucleus.service.segment.SfdcCrmService
 com.impactupgrade.nucleus.service.segment.SharePointCrmService
 com.impactupgrade.nucleus.service.segment.VirtuousCrmService
