@@ -589,6 +589,13 @@ public class StripeClient {
 
   public SubscriptionCreateParams.Builder defaultSubscriptionBuilder(Customer customer, PaymentSource source,
      SubscriptionCreateParams.PaymentBehavior behavior, Integer autoCancelMonths) {
+    SubscriptionCreateParams.PaymentSettings paymentSettings =
+        SubscriptionCreateParams.PaymentSettings.builder()
+            // not in the older SDK
+//            .setSaveDefaultPaymentMethod(SaveDefaultPaymentMethod.ON_SUBSCRIPTION)
+            .putExtraParam("save_default_payment_method", "on_subscription")
+            .build();
+
     SubscriptionCreateParams.Builder subscriptionCreateParamsBuilder = SubscriptionCreateParams.builder();
     subscriptionCreateParamsBuilder.setCustomer(customer.getId());
 
@@ -609,6 +616,9 @@ public class StripeClient {
       // incomplete invoices, which doesn't give immediate donor feedback
       subscriptionCreateParamsBuilder.setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.ERROR_IF_INCOMPLETE);
     }
+
+    subscriptionCreateParamsBuilder.setPaymentSettings(paymentSettings);
+
     if (autoCancelMonths != null) {
       Calendar future = Calendar.getInstance();
       future.add(Calendar.MONTH, autoCancelMonths);
