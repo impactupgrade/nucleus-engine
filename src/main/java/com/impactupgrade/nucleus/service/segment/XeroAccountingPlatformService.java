@@ -72,8 +72,8 @@ public class XeroAccountingPlatformService implements AccountingPlatformService 
 
     protected HibernateDao<Long, Organization> organizationDao;
 
-    protected static String accessToken;
-    protected static String refreshToken;
+    protected String accessToken;
+    protected String refreshToken;
 
     @Override
     public String name() {
