@@ -23,7 +23,6 @@ import com.impactupgrade.nucleus.service.logic.ContactService;
 import com.impactupgrade.nucleus.service.logic.DonationService;
 import com.impactupgrade.nucleus.service.logic.MessagingService;
 import com.impactupgrade.nucleus.service.logic.NotificationService;
-import com.impactupgrade.nucleus.service.logic.ScheduledJobService;
 import com.impactupgrade.nucleus.service.segment.AccountingPlatformService;
 import com.impactupgrade.nucleus.service.segment.BareCrmService;
 import com.impactupgrade.nucleus.service.segment.CommunicationService;
@@ -111,7 +110,6 @@ public class Environment {
   public ContactService contactService() { return new ContactService(this); }
   public MessagingService messagingService() { return new MessagingService(this); }
   public NotificationService notificationService() { return new NotificationService(this); }
-  public ScheduledJobService scheduledJobService() { return new ScheduledJobService(this); }
 
   // segment services
 
