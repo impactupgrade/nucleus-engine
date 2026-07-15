@@ -31,6 +31,8 @@ public class HttpClient {
 
   private static final Logger log = LogManager.getLogger(HttpClient.class);
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   public static Response get(String url, HeaderBuilder headerBuilder) {
     Client client = client();
     WebTarget webTarget = client.target(url);
@@ -47,7 +49,15 @@ public class HttpClient {
     } else if (response.getStatus() == 404 ){
       log.info("GET not found: url={}", url);
     } else {
-      log.warn("GET failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      String body = response.readEntity(String.class);
+      log.warn("GET failed: url={} code={} message={}", url, response.getStatus(), body);
+      if (clazz != null) {
+        try {
+          return MAPPER.readValue(body, clazz);
+        } catch (IOException e) {
+          log.warn("failed to map error response to {}: {}", clazz.getSimpleName(), body, e);
+        }
+      }
     }
     return null;
   }
@@ -80,7 +90,15 @@ public class HttpClient {
         return response.readEntity(clazz);
       }
     } else {
-      log.warn("POST failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      String body = response.readEntity(String.class);
+      log.warn("POST failed: url={} code={} message={}", url, response.getStatus(), body);
+      if (clazz != null) {
+        try {
+          return MAPPER.readValue(body, clazz);
+        } catch (IOException e) {
+          log.warn("failed to map error response to {}: {}", clazz.getSimpleName(), body, e);
+        }
+      }
     }
     return null;
   }
@@ -106,7 +124,15 @@ public class HttpClient {
         return response.readEntity(clazz);
       }
     } else {
-      log.warn("PUT failed: url={} code={} message={}", url, response.getStatus(), response.readEntity(String.class));
+      String body = response.readEntity(String.class);
+      log.warn("PUT failed: url={} code={} message={}", url, response.getStatus(), body);
+      if (clazz != null) {
+        try {
+          return MAPPER.readValue(body, clazz);
+        } catch (IOException e) {
+          log.warn("failed to map error response to {}: {}", clazz.getSimpleName(), body, e);
+        }
+      }
     }
     return null;
   }
