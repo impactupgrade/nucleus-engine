@@ -99,7 +99,7 @@ public class MinistryByTextController {
     Calendar c = Calendar.getInstance();
 
     Optional<CrmContact> crmContact = env.primaryCrmService()
-        .searchContacts(ContactSearch.byPhone(messageStatusWebhookData.subscriberNo)).getSingleResult();
+        .searchContacts(ContactSearch.byPhone(messageStatusWebhookData.subscriberNo), true).getSingleResult();
     if (crmContact.isPresent()) {
       // Using today's date as the activity id to group all user's messages' statuses for current day
       String conversationId = new SimpleDateFormat(DATE_FORMAT).format(c.getTime());

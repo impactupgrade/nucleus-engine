@@ -211,7 +211,7 @@ public abstract class AbstractIT extends JerseyTest {
     CrmService crmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    List<CrmContact> existingContacts = crmService.searchContacts(ContactSearch.byKeywords("Tester"))
+    List<CrmContact> existingContacts = crmService.searchContacts(ContactSearch.byKeywords("Tester"), true)
         .getResultSets().stream().flatMap(rs -> rs.getRecords().stream()).toList();
     for (CrmContact existingContact : existingContacts) {
       VirtuousClient.Gifts gifts = virtuousClient.getGiftsByContact(Integer.parseInt(existingContact.id));
@@ -223,7 +223,7 @@ public abstract class AbstractIT extends JerseyTest {
     }
 
     // ensure we're actually clean
-    assertEquals(0, crmService.searchContacts(ContactSearch.byKeywords("Tester")).getResultSets()
+    assertEquals(0, crmService.searchContacts(ContactSearch.byKeywords("Tester"), true).getResultSets()
         .stream().flatMap(rs -> rs.getRecords().stream()).toList().size());
   }
 

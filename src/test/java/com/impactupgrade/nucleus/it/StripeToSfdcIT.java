@@ -53,7 +53,7 @@ public class StripeToSfdcIT extends AbstractIT {
     SfdcClient sfdcClient = env.sfdcClient();
 
     // verify ContactService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).stream().findFirst();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).stream().findFirst();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
@@ -131,7 +131,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     // verify ContactService -> SfdcCrmService
-    List<SObject> contacts = sfdcClient.searchContacts(ContactSearch.byName(firstName, lastName));
+    List<SObject> contacts = sfdcClient.searchContacts(ContactSearch.byName(firstName, lastName), true);
     // main test -- this would be 2 if the by-name match didn't work
     assertEquals(1, contacts.size());
     SObject contact = contacts.get(0);
@@ -193,7 +193,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     // verify ContactService -> SfdcCrmService
-    List<SObject> contacts = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()));
+    List<SObject> contacts = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()), true);
     // this would be 2 if the by-email match didn't work
     assertEquals(1, contacts.size());
     SObject contact = contacts.get(0);
@@ -227,7 +227,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
     SfdcClient sfdcClient = env.sfdcClient();
 
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).stream().findFirst();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).stream().findFirst();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
@@ -298,7 +298,7 @@ public class StripeToSfdcIT extends AbstractIT {
     Response response = target("/api/stripe/webhook").request().post(Entity.json(json));
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).stream().findFirst();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).stream().findFirst();
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
 
@@ -351,7 +351,7 @@ public class StripeToSfdcIT extends AbstractIT {
 
     SfdcClient sfdcClient = env.sfdcClient();
 
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).stream().findFirst();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).stream().findFirst();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
@@ -398,7 +398,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     // verify ContactService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).stream().findFirst();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).stream().findFirst();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();
@@ -466,7 +466,7 @@ public class StripeToSfdcIT extends AbstractIT {
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
     // verify ContactService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail())).stream().findFirst();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).stream().findFirst();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();

@@ -61,7 +61,7 @@ public class GoogleSheetCrmService implements BasicCrmService {
     }
 
     @Override
-    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) throws Exception {
         return null;
     }
 

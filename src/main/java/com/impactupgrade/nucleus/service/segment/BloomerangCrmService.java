@@ -96,7 +96,7 @@ public class BloomerangCrmService implements CrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) {
     Set<String> keywords = new HashSet<>();
 
     String phone = contactSearch.phone == null ? null : contactSearch.phone.replaceAll("[\\D]", "");
@@ -483,7 +483,7 @@ public class BloomerangCrmService implements CrmService {
     contactSearch.phone = phone.orElse(null);
     contactSearch.keywords = name.map(Set::of).orElse(null);
     // TODO: page them?
-    PagedResults<CrmContact> pagedResults = searchContacts(contactSearch);
+    PagedResults<CrmContact> pagedResults = searchContacts(contactSearch, true);
 
     List<CrmRecurringDonation> rds = new ArrayList<>();
     for (PagedResults.ResultSet<CrmContact> resultSet : pagedResults.getResultSets()) {

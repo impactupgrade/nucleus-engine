@@ -69,23 +69,23 @@ public interface CrmService extends SegmentService {
     }
     return contacts;
   }
-  default List<CrmContact> getContactsByEmails(Set<String> emails) throws Exception {
+  default List<CrmContact> getContactsByEmails(Set<String> emails, boolean includeSecondary) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String email : emails) {
-      searchContacts(ContactSearch.byEmail(email)).getResultSets().stream()
+      searchContacts(ContactSearch.byEmail(email), includeSecondary).getResultSets().stream()
           .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
     }
     return contacts;
   }
-  default List<CrmContact> getContactsByPhones(List<String> phones) throws Exception {
+  default List<CrmContact> getContactsByPhones(List<String> phones, boolean includeSecondary) throws Exception {
     List<CrmContact> contacts = new ArrayList<>();
     for (String phone : phones) {
-      searchContacts(ContactSearch.byPhone(phone)).getResultSets().stream()
+      searchContacts(ContactSearch.byPhone(phone), includeSecondary).getResultSets().stream()
           .flatMap(resultSet -> resultSet.getRecords().stream()).forEach(contacts::add);
     }
     return contacts;
   }
-  PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception;
+  PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) throws Exception;
   String insertContact(CrmContact crmContact) throws Exception;
   boolean updateContact(CrmContact crmContact) throws Exception;
   // TODO: Business Donations coming soon.

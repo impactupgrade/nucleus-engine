@@ -131,11 +131,11 @@ public class ContactService {
       existingContacts = crmService.getContactById(crmContact.id).map(List::of).orElse(List.of());
     }
     if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.email)) {
-      existingContacts = crmService.searchContacts(ContactSearch.byEmail(crmContact.email))
+      existingContacts = crmService.searchContacts(ContactSearch.byEmail(crmContact.email), true)
           .getResultsFromAllFirstPages();
     }
     if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.phoneNumberForSMS())) {
-      existingContacts = crmService.searchContacts(ContactSearch.byPhone(crmContact.phoneNumberForSMS()))
+      existingContacts = crmService.searchContacts(ContactSearch.byPhone(crmContact.phoneNumberForSMS()), true)
           .getResultsFromAllFirstPages();
     }
     if (existingContacts.isEmpty()
@@ -146,15 +146,15 @@ public class ContactService {
       // Only return results if an address was also available!
       if (!Strings.isNullOrEmpty(crmContact.mailingAddress.street)) {
         contactSearch.keywords = Set.of(crmContact.mailingAddress.street);
-        existingContacts = crmService.searchContacts(contactSearch).getResultsFromAllFirstPages();
+        existingContacts = crmService.searchContacts(contactSearch, true).getResultsFromAllFirstPages();
       }
       if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.account.mailingAddress.street)) {
         contactSearch.keywords = Set.of(crmContact.account.mailingAddress.street);
-        existingContacts = crmService.searchContacts(contactSearch).getResultsFromAllFirstPages();
+        existingContacts = crmService.searchContacts(contactSearch, true).getResultsFromAllFirstPages();
       }
       if (existingContacts.isEmpty() && !Strings.isNullOrEmpty(crmContact.account.billingAddress.street)) {
         contactSearch.keywords = Set.of(crmContact.account.billingAddress.street);
-        existingContacts = crmService.searchContacts(contactSearch).getResultsFromAllFirstPages();
+        existingContacts = crmService.searchContacts(contactSearch, true).getResultsFromAllFirstPages();
       }
     }
 
@@ -229,7 +229,7 @@ public class ContactService {
   public void processContactForm(ContactFormData formData) throws Exception {
     CrmContact formCrmContact = formData.toCrmContact();
 
-    Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byEmail(formCrmContact.email)).getSingleResult();
+    Optional<CrmContact> crmContact = crmService.searchContacts(ContactSearch.byEmail(formCrmContact.email), true).getSingleResult();
     if (crmContact.isEmpty()) {
       env.logJobInfo("unable to find CRM contact using email {}; creating new account and contact", formCrmContact.email);
       // create new contact

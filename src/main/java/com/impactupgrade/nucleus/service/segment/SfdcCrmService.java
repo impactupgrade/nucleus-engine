@@ -135,19 +135,19 @@ public class SfdcCrmService implements CrmService {
   }
 
   @Override
-  public List<CrmContact> getContactsByEmails(Set<String> emails) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByEmails(emails.stream().toList()));
+  public List<CrmContact> getContactsByEmails(Set<String> emails, boolean includeSecondary) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByEmails(emails.stream().toList(), includeSecondary));
   }
 
   @Override
-  public List<CrmContact> getContactsByPhones(List<String> phones) throws Exception {
-    return toCrmContact(sfdcClient.getContactsByPhones(phones));
+  public List<CrmContact> getContactsByPhones(List<String> phones, boolean includeSecondary) throws Exception {
+    return toCrmContact(sfdcClient.getContactsByPhones(phones, includeSecondary));
   }
 
   @Override
   // currentPageToken assumed to be the offset index
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws InterruptedException, ConnectionException {
-    List<SObject> results = sfdcClient.searchContacts(contactSearch);
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) throws InterruptedException, ConnectionException {
+    List<SObject> results = sfdcClient.searchContacts(contactSearch, includeSecondary);
     PagedResults<SObject> pagedResults = PagedResults.pagedResultsFromCurrentOffset(results, contactSearch);
     return toCrmContact(pagedResults);
   }
@@ -1256,7 +1256,7 @@ public class SfdcCrmService implements CrmService {
     Multimap<String, SObject> existingContactsByEmail = ArrayListMultimap.create();
     if (!contactEmails.isEmpty()) {
       // Normalize the case!
-      sfdcClient.getContactsByEmails(contactEmails, contactCustomFields)
+      sfdcClient.getContactsByEmails(contactEmails, true, contactCustomFields)
         .forEach(c -> {
             if (!Strings.isNullOrEmpty((String) c.getField("Email"))) {
               existingContactsByEmail.put(c.getField("Email").toString().toLowerCase(Locale.ROOT), c);

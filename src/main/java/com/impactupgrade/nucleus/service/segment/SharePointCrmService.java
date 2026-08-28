@@ -179,7 +179,7 @@ public class SharePointCrmService implements CrmService {
     }
 
     @Override
-    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+    public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) throws Exception {
         EnvironmentConfig.SharePointPlatform sharepoint = env.getConfig().sharePoint;
         String emailColumn = sharepoint.emailColumn;
         String phoneColumn = sharepoint.phoneColumn;

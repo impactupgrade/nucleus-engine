@@ -51,7 +51,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     CrmService virtuousCrmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
+    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
     assertEquals(customer.getName(), contact.getFullName());
@@ -94,7 +94,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     CrmService virtuousCrmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
+    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
     assertEquals(customer.getName(), contact.getFullName());
@@ -177,7 +177,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     CrmService virtuousCrmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com")).getSingleResult();
+    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail("team+integration+tester@impactupgrade.com"), true).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
 
@@ -210,7 +210,7 @@ public class StripeToVirtuousIT extends AbstractIT {
     CrmService virtuousCrmService = env.crmService("virtuous");
     VirtuousClient virtuousClient = env.virtuousClient();
 
-    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail())).getSingleResult();
+    Optional<CrmContact> contactO = virtuousCrmService.searchContacts(ContactSearch.byEmail(customer.getEmail()), true).getSingleResult();
     assertTrue(contactO.isPresent());
     CrmContact contact = contactO.get();
 

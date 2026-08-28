@@ -151,7 +151,7 @@ public class HubSpotCrmService implements CrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) {
     // TODO: For now, supporting the individual use cases, but this needs reworked at the client level. Add support for
     //  combining clauses, owner, by-namd, keyword search, pagination, etc.
 

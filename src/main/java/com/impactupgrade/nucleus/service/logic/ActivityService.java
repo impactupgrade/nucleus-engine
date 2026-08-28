@@ -67,14 +67,14 @@ public class ActivityService {
 
   public void upsertActivityFromEmails(Set<String> emails, CrmActivity.Type type, String activityId,
       Calendar date, String subject, String messageBody) throws Exception {
-    List<CrmContact> crmContacts = crmService.getContactsByEmails(emails);
+    List<CrmContact> crmContacts = crmService.getContactsByEmails(emails, false);
     List<String> targetIds = crmContacts.stream().map(c -> c.id).toList();
     upsertActivities(targetIds, type, activityId, date, subject, messageBody);
   }
 
   public void upsertActivityFromPhoneNumbers(List<String> phoneNumbers, CrmActivity.Type type, String activityId,
       Calendar date, String subject, String messageBody) throws Exception {
-    List<CrmContact> crmContacts = crmService.getContactsByPhones(phoneNumbers);
+    List<CrmContact> crmContacts = crmService.getContactsByPhones(phoneNumbers, false);
     List<String> targetIds = crmContacts.stream().map(c -> c.id).toList();
     upsertActivities(targetIds, type, activityId, date, subject, messageBody);
   }

@@ -98,18 +98,18 @@ public class BulkImportIT extends AbstractIT {
     List<SObject> aAccounts = sfdcClient.getAccountsByName(accountNameA);
     assertEquals(1, aAccounts.size());
     String aAccountId = aAccounts.get(0).getId();
-    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA));
+    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA), true);
     assertEquals(1, emailAContacts.size());
-    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB));
+    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB), true);
     assertEquals(1, emailBContacts.size());
-    List<SObject> emailCContacts = sfdcClient.getContactsByEmails(List.of(emailC));
+    List<SObject> emailCContacts = sfdcClient.getContactsByEmails(List.of(emailC), true);
     assertEquals(1, emailCContacts.size());
-    List<SObject> emailDExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingD));
+    List<SObject> emailDExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingD), true);
     assertEquals(1, emailDExistingContacts.size());
-    List<SObject> emailEExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingE));
+    List<SObject> emailEExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingE), true);
     assertEquals(1, emailEExistingContacts.size());
     // despite the email match, different extrefs so a duplicate was allowed
-    List<SObject> emailFExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingF));
+    List<SObject> emailFExistingContacts = sfdcClient.getContactsByEmails(List.of(emailExistingF), true);
     assertEquals(2, emailFExistingContacts.size());
 
     assertEquals(aAccountId, emailAContacts.get(0).getField("AccountId"));
@@ -151,13 +151,13 @@ public class BulkImportIT extends AbstractIT {
     postToBulkImport(values);
 
     // only the first should have been kept and the second skipped
-    List<SObject> emailContacts = sfdcClient.getContactsByEmails(List.of(email));
+    List<SObject> emailContacts = sfdcClient.getContactsByEmails(List.of(email), true);
     assertEquals(1, emailContacts.size());
     assertEquals(firstnameA + " " + lastnameA, emailContacts.get(0).getField("Name"));
 
     // run it again -- A already exists in SFDC, so we're making sure that it's not overwritten by B
     postToBulkImport(values);
-    emailContacts = sfdcClient.getContactsByEmails(List.of(email));
+    emailContacts = sfdcClient.getContactsByEmails(List.of(email), true);
     assertEquals(1, emailContacts.size());
     assertEquals(firstnameA + " " + lastnameA, emailContacts.get(0).getField("Name"));
 
@@ -168,7 +168,7 @@ public class BulkImportIT extends AbstractIT {
         List.of(firstnameA, lastnameA, email)
     );
     postToBulkImport(values);
-    emailContacts = sfdcClient.getContactsByEmails(List.of(email));
+    emailContacts = sfdcClient.getContactsByEmails(List.of(email), true);
     assertEquals(1, emailContacts.size());
     assertEquals(firstnameB + " " + lastnameB, emailContacts.get(0).getField("Name"));
 
@@ -252,9 +252,9 @@ public class BulkImportIT extends AbstractIT {
     assertEquals(2, aAccounts.size());
     List<SObject> bAccounts = sfdcClient.getAccountsByName(nameB);
     assertEquals(1, bAccounts.size());
-    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA));
+    List<SObject> emailAContacts = sfdcClient.getContactsByEmails(List.of(emailA), true);
 //    assertEquals(2, emailAContacts.size()); TODO, currently fails, logic needs reworked to store contacts by-email, by-phone, etc. in the secondPass
-    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB));
+    List<SObject> emailBContacts = sfdcClient.getContactsByEmails(List.of(emailB), true);
     assertEquals(1, emailBContacts.size());
 
     Optional<SObject> aAccount = aAccounts.stream().filter(a -> a.getField("External_Reference__c").equals(extRef1)).findFirst();
@@ -566,7 +566,7 @@ public class BulkImportIT extends AbstractIT {
     postToBulkImport(values);
 
     // Oldest campaign should have been selected, despite the common name.
-    List<SObject> contacts = sfdcClient.getContactsByEmails(List.of(email));
+    List<SObject> contacts = sfdcClient.getContactsByEmails(List.of(email), true);
     assertEquals(1, contacts.size());
     String contactId = contacts.get(0).getId();
     Map<String, List<SObject>> campaignMemberships = sfdcClient.getCampaignsByContactIds(List.of(contactId), null);

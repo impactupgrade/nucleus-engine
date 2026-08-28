@@ -71,7 +71,7 @@ public class CustomDonationsToSfdcIT extends AbstractIT {
     SfdcClient sfdcClient = env.sfdcClient();
 
     // verify ContactService -> SfdcCrmService
-    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(randomEmail)).stream().findFirst();
+    Optional<SObject> contactO = sfdcClient.searchContacts(ContactSearch.byEmail(randomEmail), true).stream().findFirst();
     assertTrue(contactO.isPresent());
     SObject contact = contactO.get();
     String accountId = contact.getField("AccountId").toString();

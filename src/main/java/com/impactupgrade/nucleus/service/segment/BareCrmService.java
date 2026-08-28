@@ -60,7 +60,7 @@ public class BareCrmService implements CrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) throws Exception {
     return new PagedResults<>();
   }
 
