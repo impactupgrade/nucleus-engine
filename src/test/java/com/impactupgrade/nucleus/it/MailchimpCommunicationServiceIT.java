@@ -73,7 +73,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
 
     postToBulkImport(values);
 
-    List<CrmContact> crmContacts = env.primaryCrmService().getContactsByEmails(emails);
+    List<CrmContact> crmContacts = env.primaryCrmService().getContactsByEmails(emails, false);
     assertNotNull(crmContacts);
 
     List<String> crmContactsEmails = crmContacts.stream().map(crmContact -> crmContact.email).collect(Collectors.toList());
@@ -122,7 +122,7 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
 
     postToBulkImport(values);
 
-    List<CrmContact> crmContacts = env.primaryCrmService().getContactsByEmails(emails);
+    List<CrmContact> crmContacts = env.primaryCrmService().getContactsByEmails(emails, false);
     assertNotNull(crmContacts);
 
     List<String> crmContactsEmails = crmContacts.stream().map(crmContact -> crmContact.email).collect(Collectors.toList());
@@ -147,14 +147,14 @@ public class MailchimpCommunicationServiceIT extends AbstractIT {
     // Sync unsubscribes MC >> SF
     env.communicationService("mailchimp").syncUnsubscribes(beforeBulkImport);
 
-    crmContacts = env.primaryCrmService().getContactsByEmails(unsubscribeEmails);
+    crmContacts = env.primaryCrmService().getContactsByEmails(unsubscribeEmails, false);
     assertFalse(crmContacts.isEmpty());
 
     for (CrmContact crmContact : crmContacts) {
       assertEquals(Boolean.TRUE, crmContact.emailOptOut);
     }
 
-    crmContacts = env.primaryCrmService().getContactsByEmails(cleanEmails);
+    crmContacts = env.primaryCrmService().getContactsByEmails(cleanEmails, false);
     assertFalse(crmContacts.isEmpty());
 
     for (CrmContact crmContact : crmContacts) {

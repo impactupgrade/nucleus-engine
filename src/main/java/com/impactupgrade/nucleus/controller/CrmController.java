@@ -97,13 +97,13 @@ public class CrmController {
     List<CrmContact> contacts = Collections.emptyList();
     if (!Strings.isNullOrEmpty(keywords)) {
       env.logJobInfo("searching keyword={}", keywords);
-      contacts = crmService.searchContacts(ContactSearch.byKeywords(keywords)).getResultsFromAllFirstPages();
+      contacts = crmService.searchContacts(ContactSearch.byKeywords(keywords), true).getResultsFromAllFirstPages();
     } else if (!Strings.isNullOrEmpty(email)) {
       env.logJobInfo("searching email={}", email);
-      contacts = crmService.searchContacts(ContactSearch.byEmail(email)).getResultsFromAllFirstPages();
+      contacts = crmService.searchContacts(ContactSearch.byEmail(email), true).getResultsFromAllFirstPages();
     } else if (!Strings.isNullOrEmpty(phone)) {
       env.logJobInfo("searching phone={}", phone);
-      contacts = crmService.searchContacts(ContactSearch.byPhone(phone)).getResultsFromAllFirstPages();
+      contacts = crmService.searchContacts(ContactSearch.byPhone(phone), true).getResultsFromAllFirstPages();
     } else {
       env.logJobWarn("no search params provided");
     }

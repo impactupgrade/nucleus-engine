@@ -207,7 +207,7 @@ public class TwilioController {
           NotificationService.Notification notification = new NotificationService.Notification(subject, message);
           notification.smsBody = message + " // To respond: type 'reply', then their phone number, and then your message. Ex: reploy 260-123-4567 Thanks, I got your message!";
 
-          String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from)).getSingleResult().map(c -> c.id).orElse(null);
+          String targetId = env.messagingCrmService().searchContacts(ContactSearch.byPhone(from), true).getSingleResult().map(c -> c.id).orElse(null);
 
           env.notificationService().sendNotification(notification, targetId, "sms:inbound-default");
         } else if (!Strings.isNullOrEmpty(env.getConfig().twilio.defaultResponse)) {

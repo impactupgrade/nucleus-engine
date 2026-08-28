@@ -553,7 +553,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return query(query);
   }
 
-  public List<SObject> searchContacts(ContactSearch contactSearch, String... extraFields)
+  public List<SObject> searchContacts(ContactSearch contactSearch, boolean includeSecondary, String... extraFields)
       throws ConnectionException, InterruptedException {
     List<String> clauses = new ArrayList<>();
 
@@ -566,7 +566,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
-      if (env.getConfig().salesforce.npsp) {
+      if (env.getConfig().salesforce.npsp && includeSecondary) {
         clauses.add("Email = '" + contactSearch.email + "' OR npe01__HomeEmail__c = '" + contactSearch.email + "' OR npe01__WorkEmail__c = '" + contactSearch.email + "' OR npe01__AlternateEmail__c = '" + contactSearch.email + "'");
       } else {
         clauses.add("Email = '" + contactSearch.email + "'");
@@ -582,7 +582,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
         StringBuilder phoneClause = new StringBuilder()
             .append("Phone LIKE '%").append(phonePartsCondition).append("%'")
             .append(" OR MobilePhone LIKE '%").append(phonePartsCondition).append("%'");
-        if (env.getConfig().salesforce.npsp) {
+        if (env.getConfig().salesforce.npsp && includeSecondary) {
           phoneClause.append(" OR npe01__WorkPhone__c LIKE '%").append(phonePartsCondition).append("%'");
         }
         clauses.add(phoneClause.toString());
@@ -590,6 +590,7 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     }
 
     // TODO: Finding a few clients with no homephone, so taking that out for now.
+    // TODO: does this need to check env.getConfig().salesforce.npsp too?
     if (contactSearch.hasPhone != null) {
       if (contactSearch.hasPhone) {
         clauses.add("((Phone != NULL AND Phone != '') OR (MobilePhone != NULL AND MobilePhone != '') OR (npe01__WorkPhone__c != NULL AND npe01__WorkPhone__c != ''))");
@@ -649,20 +650,25 @@ public class SfdcClient extends SFDCPartnerAPIClient {
     return queryList(query);
   }
 
-  public List<SObject> getContactsByEmails(List<String> emails, String... extraFields) throws ConnectionException, InterruptedException {
-    if (env.getConfig().salesforce.npsp) {
+  public List<SObject> getContactsByEmails(List<String> emails, boolean includeSecondary, String... extraFields) throws ConnectionException, InterruptedException {
+    if (env.getConfig().salesforce.npsp && includeSecondary) {
       return getBulkResults(emails, List.of("Email", "npe01__HomeEmail__c", "npe01__WorkEmail__c", "npe01__AlternateEmail__c"), false, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
     } else {
       return getBulkResults(emails, List.of("Email"), false, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
     }
   }
 
-  public List<SObject> getContactsByPhones(List<String> phones, String... extraFields) throws ConnectionException, InterruptedException {
+  public List<SObject> getContactsByPhones(List<String> phones, boolean includeSecondary, String... extraFields) throws ConnectionException, InterruptedException {
     List<String> chunkedPhones = phones.stream().map(Utils::parsePhoneNumber).filter(CollectionUtils::isNotEmpty)
         .map(c -> String.join("%", c)).toList();
 
     // TODO: Finding a few clients with no homephone, so taking that out for now.
-    return getBulkResults(chunkedPhones, List.of("Phone", "MobilePhone", "npe01__WorkPhone__c"), true, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+
+    if (env.getConfig().salesforce.npsp && includeSecondary) {
+      return getBulkResults(chunkedPhones, List.of("Phone", "MobilePhone", "npe01__WorkPhone__c"), true, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+    } else {
+      return getBulkResults(chunkedPhones, List.of("Phone", "MobilePhone"), true, "Contact", CONTACT_FIELDS, env.getConfig().salesforce.customQueryFields.contact, extraFields);
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

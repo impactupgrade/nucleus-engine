@@ -250,7 +250,7 @@ public class SfdcController {
             env.logJobInfo("processing row {}: {}", counter, email);
 
             if (!Strings.isNullOrEmpty(email)) {
-              Optional<SObject> contact = env.sfdcClient().searchContacts(ContactSearch.byEmail(email)).stream().findFirst();
+              Optional<SObject> contact = env.sfdcClient().searchContacts(ContactSearch.byEmail(email), true).stream().findFirst();
               if (contact.isPresent()) {
                 // SF expects date in yyyy-MM-dd'T'HH:mm:ss.SSS'Z, but iWave gives yyyy-MM-dd HH:mm
                 Date date = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(csvRecord.get("Date Scored"));

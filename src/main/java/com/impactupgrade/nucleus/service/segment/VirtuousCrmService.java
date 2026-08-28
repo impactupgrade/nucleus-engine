@@ -235,7 +235,7 @@ public class VirtuousCrmService implements CrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) {
     List<VirtuousClient.QueryCondition> conditions = new ArrayList<>();
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
       conditions.add(queryCondition("Email Address", "Is", contactSearch.email));
@@ -467,7 +467,7 @@ public class VirtuousCrmService implements CrmService {
     name.ifPresent(s -> contactSearch.keywords = Set.of(s));
     email.ifPresent(s -> contactSearch.email = s);
     phone.ifPresent(s -> contactSearch.phone = s);
-    PagedResults<CrmContact> pagedResults = searchContacts(contactSearch);
+    PagedResults<CrmContact> pagedResults = searchContacts(contactSearch, true);
 
     List<CrmRecurringDonation> results = new ArrayList<>();
 

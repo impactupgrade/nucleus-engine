@@ -437,7 +437,7 @@ public abstract class AbstractCommunicationService implements CommunicationServi
   protected void updateContactsByEmails(Set<String> emails, Consumer<CrmContact> contactConsumer) throws Exception {
     // VITAL: In order for batching to work, must be operating under a single instance of the CrmService!
     CrmService crmService = env.primaryCrmService();
-    List<CrmContact> contacts = crmService.getContactsByEmails(emails);
+    List<CrmContact> contacts = crmService.getContactsByEmails(emails, false);
     int count = 0;
     int total = contacts.size();
     for (CrmContact crmContact : contacts) {

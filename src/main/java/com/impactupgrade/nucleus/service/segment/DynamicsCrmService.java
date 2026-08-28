@@ -56,7 +56,7 @@ public class DynamicsCrmService implements BasicCrmService {
   }
 
   @Override
-  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch) throws Exception {
+  public PagedResults<CrmContact> searchContacts(ContactSearch contactSearch, boolean includeSecondary) throws Exception {
     // TODO: by name and by keywords
     DynamicsCrmClient.Contact contact;
     if (!Strings.isNullOrEmpty(contactSearch.email)) {
