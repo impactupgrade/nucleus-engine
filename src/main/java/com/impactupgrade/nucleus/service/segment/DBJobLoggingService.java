@@ -107,9 +107,11 @@ public class DBJobLoggingService implements JobLoggingService {
     job.jobName = jobName;
     job.originatingPlatform = originatingPlatform;
 
+    // TODO: No longer needed, could be dropped in DB.
     job.payload = new ObjectMapper().createObjectNode();
 
     job.status = JobStatus.ACTIVE;
+    // TODO: No longer needed, could be dropped in DB.
     job.scheduleFrequency = JobFrequency.ONETIME;
     job.scheduleInterval = 1;
     Instant now = Instant.now();

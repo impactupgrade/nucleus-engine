@@ -74,13 +74,11 @@ public class Job {
   @Column(name = "payload", columnDefinition = "json")
   public JsonNode payload;
 
-  @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
-  @Fetch(FetchMode.SUBSELECT)
-  public List<JobProgress> jobProgresses;
-
   @Column(name = "status")
   @Enumerated(EnumType.STRING)
   public JobStatus status;
+
+  // TODO: all scheduling fields can be dropped
 
   @Column(name = "schedule_frequency")
   @Enumerated(EnumType.STRING)
@@ -94,10 +92,6 @@ public class Job {
 
   @Column(name = "schedule_end")
   public Instant scheduleEnd;
-
-  @Column(name = "sequence_order")
-  @Enumerated(EnumType.STRING)
-  public JobSequenceOrder sequenceOrder;
 
   @Column(name = "started_at")
   public Instant startedAt;
