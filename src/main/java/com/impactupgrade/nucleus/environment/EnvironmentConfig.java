@@ -151,7 +151,6 @@ public class EnvironmentConfig implements Serializable {
   }
 
   public Bloomerang bloomerang = new Bloomerang();
-  // For now, don't actually need the CRMFieldDefinitions...
   public static class Bloomerang extends Platform {
     public Integer defaultFundId = null;
     public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
@@ -202,6 +201,13 @@ public class EnvironmentConfig implements Serializable {
     public Set<String> company = new HashSet<>();
     public Set<String> contact = new HashSet<>();
     public Set<String> deal = new HashSet<>();
+  }
+
+  public LittleGreenLight littleGreenLight = new LittleGreenLight();
+  public static class LittleGreenLight extends Platform {
+    public String subdomain = "";
+//    public Integer defaultFundId = null;
+    public CRMFieldDefinitions fieldDefinitions = new CRMFieldDefinitions();
   }
 
   public Salesforce salesforce = new Salesforce();
