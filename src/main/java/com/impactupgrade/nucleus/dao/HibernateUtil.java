@@ -4,6 +4,7 @@
 
 package com.impactupgrade.nucleus.dao;
 
+import com.google.common.base.Strings;
 import com.impactupgrade.nucleus.entity.Job;
 import com.impactupgrade.nucleus.entity.JobProgress;
 import com.impactupgrade.nucleus.entity.Organization;
@@ -30,10 +31,24 @@ public class HibernateUtil {
       configuration.addAnnotatedClass(JobProgress.class);
       configuration.addAnnotatedClass(Organization.class);
 
-      return configuration.buildSessionFactory(new StandardServiceRegistryBuilder().build());
+      // hibernate.properties is loaded by the registry builder, so env var overrides must be applied there (not on
+      // the Configuration, which buildSessionFactory(ServiceRegistry) ignores)
+      final StandardServiceRegistryBuilder registryBuilder = new StandardServiceRegistryBuilder();
+      applyEnv(registryBuilder, "hibernate.hikari.dataSource.url", "DATABASE_URL");
+      applyEnv(registryBuilder, "hibernate.hikari.dataSource.user", "DATABASE_USER");
+      applyEnv(registryBuilder, "hibernate.hikari.dataSource.password", "DATABASE_PASSWORD");
+
+      return configuration.buildSessionFactory(registryBuilder.build());
     } catch (Throwable e) {
       log.error("failed to create the default SessionFactory: {}", e.getMessage());
       return null;
+    }
+  }
+
+  private static void applyEnv(StandardServiceRegistryBuilder registryBuilder, String setting, String envVar) {
+    String value = System.getenv(envVar);
+    if (!Strings.isNullOrEmpty(value)) {
+      registryBuilder.applySetting(setting, value);
     }
   }
 
