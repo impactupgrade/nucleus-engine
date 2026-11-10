@@ -5,10 +5,14 @@
 package com.impactupgrade.nucleus.environment;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.base.Strings;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,6 +28,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Whenever possible, we focus on being configuration-driven using one, large JSON file.
@@ -518,6 +524,39 @@ public class EnvironmentConfig implements Serializable {
     // Allows nested objects, collections, etc. to be merged together.
     mapper.setDefaultMergeable(true);
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    // Resolve ${ENV_VAR} placeholders in any String value (fields, collection elements, map values), regardless of
+    // which JSON source it came from.
+    SimpleModule envModule = new SimpleModule();
+    envModule.addDeserializer(String.class, new StringDeserializer() {
+      @Override
+      public String deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+        return resolveEnvPlaceholders(super.deserialize(p, ctxt));
+      }
+    });
+    mapper.registerModule(envModule);
+  }
+
+  private static final Pattern ENV_PLACEHOLDER = Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_]*)}");
+
+  static String resolveEnvPlaceholders(String value) {
+    if (value == null || !value.contains("${")) {
+      return value;
+    }
+
+    Matcher m = ENV_PLACEHOLDER.matcher(value);
+    StringBuilder sb = new StringBuilder();
+    while (m.find()) {
+      String envValue = System.getenv(m.group(1));
+      if (envValue == null) {
+        log.error("environment variable {} referenced in environment JSON is not set", m.group(1));
+        // leave the placeholder as-is
+        envValue = m.group(0);
+      }
+      m.appendReplacement(sb, Matcher.quoteReplacement(envValue));
+    }
+    m.appendTail(sb);
+    return sb.toString();
   }
 
   public static EnvironmentConfig init() {
