@@ -24,8 +24,6 @@ import java.util.stream.Collectors;
 
 public class MinistryByTextCommunicationService extends AbstractCommunicationService {
 
-  protected Environment env;
-
   @Override
   public String name() {
     return "ministrybytext";
@@ -34,11 +32,6 @@ public class MinistryByTextCommunicationService extends AbstractCommunicationSer
   @Override
   public boolean isConfigured(Environment env) {
     return env.getConfig().ministrybytext != null && !env.getConfig().ministrybytext.isEmpty();
-  }
-
-  @Override
-  public void init(Environment env) {
-    this.env = env;
   }
 
   @Override
